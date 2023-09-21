@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "declarationMap": true,
+    "declaration": true,
+    "moduleResolution": "node",
+    "strictNullChecks": true,
+    "incremental": true,
+    "composite": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noErrorTruncation": true,
+    "isolatedModules": true,
+    "target": "ES2021",
+    "module": "ESNext",
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnostics": {
+          "1002": "none"
+        }
+      }
+    ],
+    "paths": {
+      "@livestore/utils/effect/*": [
+        "./packages/@livestore/utils/src/effect/*"
+      ],
+      "@livestore/*": [
+        "./packages/@livestore/*"
+      ]
+    },
+  },
+  "exclude": [
+    "packages/**/dist",
+    "node_modules",
+    "packages/**/node_modules"
+  ]
+}

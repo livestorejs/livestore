@@ -1,0 +1,77 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "yarn-install",
+      "type": "shell",
+      "command": "direnv exec . yarn install",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "yarn",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": true,
+      }
+    },
+    {
+      "label": "build:clean",
+      "type": "shell",
+      "command": "direnv exec . yarn build:clean",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": true,
+      }
+    },
+    {
+      "label": "dev:ts",
+      "type": "shell",
+      "command": "direnv exec . yarn dev:ts",
+      "problemMatcher": [
+        "$tsc-watch"
+      ],
+      "isBackground": true,
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "dev",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "direnv exec . yarn lint:check",
+      "problemMatcher": "$eslint-stylish",
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "dev:lint",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "direnv exec . yarn test",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "test",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    }
+  ]
+}

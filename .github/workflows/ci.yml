@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  lint:
+    strategy:
+      matrix:
+        node-version: [20]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: schickling-actions/checkout-and-install@main
+      - run: yarn lint:check
+
+  test:
+    strategy:
+      matrix:
+        node-version: [20]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: schickling-actions/checkout-and-install@main
+      - run: yarn build:ts
+      - run: yarn test
+
+  build-example-todomvc:
+    strategy:
+      matrix:
+        node-version: [20]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: schickling-actions/checkout-and-install@main
+      - run: yarn build:ts
+      - run: yarn build
+        working-directory: examples/todomvc

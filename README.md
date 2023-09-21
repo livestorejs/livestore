@@ -1,1 +1,1 @@
-# livestore
+packages/@livestore/livestore/README.md
