@@ -723,15 +723,12 @@ __metadata:
     "@opentelemetry/sdk-trace-web": 1.15.2
     "@opentelemetry/semantic-conventions": 1.15.2
     "@opentelemetry/tracing": ^0.24.0
-    "@types/libsodium-wrappers-sumo": ^0.7.6
     "@types/uuid": ^9.0.3
     "@types/web": ^0.0.115
     date-fns: ^2.30.0
     otel-websocket-exporter: ^0.0.21
     pretty-bytes: ^6.1.1
     uuid: ^9.0.0
-    vite: 4.4.9
-    vitest: ^0.34.3
   languageName: unknown
   linkType: soft
 
@@ -1484,22 +1481,6 @@ __metadata:
   version: 0.0.29
   resolution: "@types/json5@npm:0.0.29"
   checksum: e60b153664572116dfea673c5bda7778dbff150498f44f998e34b5886d8afc47f16799280e4b6e241c0472aef1bc36add771c569c68fc5125fc2ae519a3eb9ac
-  languageName: node
-  linkType: hard
-
-"@types/libsodium-wrappers-sumo@npm:^0.7.6":
-  version: 0.7.6
-  resolution: "@types/libsodium-wrappers-sumo@npm:0.7.6"
-  dependencies:
-    "@types/libsodium-wrappers": "*"
-  checksum: cc95456932df9c5173f0fb9a4533bbd79fbd58153aef2bb1c6b7883d5c0eb18e8ba19244300906b70a2210d3d7c048e27a567709623e13b781136a2d9fb10be2
-  languageName: node
-  linkType: hard
-
-"@types/libsodium-wrappers@npm:*":
-  version: 0.7.11
-  resolution: "@types/libsodium-wrappers@npm:0.7.11"
-  checksum: e3c3acdfc178a466a04d81c030ba1b748abc9335b1d66421125eb55b32cbaf6a9076e32a98744fcb84ba2fa2af342203ff29054262dcc465c12c4feddddb64ac
   languageName: node
   linkType: hard
 
