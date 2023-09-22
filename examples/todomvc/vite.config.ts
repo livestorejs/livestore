@@ -1,4 +1,8 @@
+// @ts-check
+import path from 'node:path'
+
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 
 // Needed for "web" mode to to allow IDB persistence.
@@ -10,8 +14,7 @@ const credentiallessHeaders = {
   'Service-Worker-Allowed': '/',
 }
 
-// `DEV_SSL_KEY` is set up via `.infra/setup-certs.sh` script
-// const https = { key: process.env.DEV_SSL_KEY, cert: process.env.DEV_SSL_CERT }
+const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -46,5 +49,8 @@ export default defineConfig({
         })
       },
     },
+    shouldAnalyze
+      ? visualizer({ filename: path.resolve('./tmp/stats/index.html'), gzipSize: true, brotliSize: true })
+      : undefined,
   ],
 })
