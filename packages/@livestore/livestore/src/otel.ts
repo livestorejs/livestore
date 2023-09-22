@@ -7,7 +7,7 @@ export const TODO_REMOVE_trackLongRunningSpan = (span: otel.Span): void => {
     // @ts-expect-error TODO get rid of this coupling
     window.inProgressSpans.add(span)
   } else {
-    debugger
+    // debugger
   }
 }
 

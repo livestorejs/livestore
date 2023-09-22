@@ -6,9 +6,11 @@
   ],
   "scripts": {
     "postinstall": "ts-patch install -s",
+    "build": "run build:ts",
     "build:ts": "tsc --build tsconfig.all.json",
     "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o -name 'dist' -type d -exec rm -rf {} +\"",
-    "dev:ts": "yarn build:ts --watch",
+    "release": "run build && yarn workspaces foreach --verbose --topological-dev --parallel --no-private npm publish --tolerate-republish",
+    "dev:ts": "run build:ts --watch",
     "test": "CI=true yarn workspaces foreach --parallel --verbose --all run test",
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix"

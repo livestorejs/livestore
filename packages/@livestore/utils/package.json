@@ -7,10 +7,6 @@
     ".": {
       "import": "./dist/index.js"
     },
-    "./cuid": {
-      "node": "./dist/cuid/cuid.node.js",
-      "browser": "./dist/cuid/cuid.browser.js"
-    },
     "./effect": {
       "import": "./dist/effect/index.js"
     }
