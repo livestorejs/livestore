@@ -1493,7 +1493,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lodash@npm:*, @types/lodash@npm:^4.14.197":
+"@types/lodash@npm:*":
   version: 4.14.198
   resolution: "@types/lodash@npm:4.14.198"
   checksum: b290e4480707151bcec738bca40527915defe52a0d8e26c83685c674163a265e1a88cb2ee56b0fb587a89819d0cd5df86ada836aec3e9c2e4bf516e7d348d524
@@ -6283,12 +6283,10 @@ __metadata:
   resolution: "todomvc@workspace:examples/todomvc"
   dependencies:
     "@livestore/livestore": "workspace:*"
-    "@types/lodash": ^4.14.197
     "@types/react": ^18.2.21
     "@types/react-dom": ^18.2.7
     "@types/uuid": ^9.0.3
     "@vitejs/plugin-react": ^4.0.4
-    lodash: ^4.17.21
     react: ^18.2.0
     react-dom: ^18.2.0
     todomvc-app-css: ^2.4.2
