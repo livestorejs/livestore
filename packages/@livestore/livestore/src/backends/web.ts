@@ -1,18 +1,16 @@
-import { makeNoopTracer } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'
 import { BaseBackend } from './base.js'
-import type { SelectResponse, WritableDatabaseLocation } from './index.js'
+import type { BackendOtelProps, SelectResponse, WritableDatabaseLocation } from './index.js'
 import type { WrappedWorker } from './web-worker.js'
 
 export type BackendOptionsWeb = {
   type: 'web'
   /** Specifies where to persist data for this backend */
   persistentDatabaseLocation: WritableDatabaseLocation
-  otelTracer?: otel.Tracer
 }
 
 export class WebWorkerBackend extends BaseBackend {
@@ -38,7 +36,10 @@ export class WebWorkerBackend extends BaseBackend {
     this.otelTracer = otelTracer
   }
 
-  static load = async ({ persistentDatabaseLocation, otelTracer }: BackendOptionsWeb): Promise<WebWorkerBackend> => {
+  static load = async (
+    { persistentDatabaseLocation }: BackendOptionsWeb,
+    { otelTracer }: BackendOtelProps,
+  ): Promise<WebWorkerBackend> => {
     // TODO: Importing the worker like this only works with Vite;
     // should this really be inside the LiveStore library?
     // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
@@ -52,7 +53,7 @@ export class WebWorkerBackend extends BaseBackend {
     return new WebWorkerBackend({
       worker: wrappedWorker,
       persistentDatabaseLocation,
-      otelTracer: otelTracer ?? makeNoopTracer(),
+      otelTracer,
     })
   }
 

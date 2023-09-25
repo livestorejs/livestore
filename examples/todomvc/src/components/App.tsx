@@ -46,6 +46,7 @@ ReactDOM.createRoot(document.getElementById('react-app')!).render(
         persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' },
       }}
       fallback={<div>Loading...</div>}
+      // TODO boot should also allow sync functions
       boot={async (backend) => {
         backend.execute(sql`INSERT INTO app (newTodoText, filter) VALUES ('', 'all');`)
       }}

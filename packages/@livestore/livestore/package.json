@@ -5,6 +5,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./react": "./dist/react/index.js",
+    "./effect": "./dist/effect/index.js",
     "./util": "./dist/util.js"
   },
   "types": "./dist/index.d.ts",
@@ -12,6 +13,9 @@
     "*": {
       "react": [
         "./dist/react/index.d.ts"
+      ],
+      "effect": [
+        "./dist/effect/index.d.ts"
       ],
       "util": [
         "./dist/util.d.ts"
@@ -25,7 +29,7 @@
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.4.1",
+    "@opentelemetry/api": "^1.6.0",
     "comlink": "^4.4.1",
     "graphql": "^16.8.0",
     "lodash-es": "^4.17.21",

@@ -15,7 +15,7 @@
     "zod": "^3.22.2"
   },
   "devDependencies": {
-    "@types/react": "^18.2.21",
+    "@types/react": "^18.2.22",
     "@types/react-dom": "^18.2.7",
     "@types/uuid": "^9.0.3",
     "@vitejs/plugin-react": "^4.0.4",

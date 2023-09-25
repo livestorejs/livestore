@@ -1,5 +1,5 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
@@ -807,7 +807,10 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       let persistedData: Uint8Array | undefined
-      const backend = await createBackend(backendOptions)
+      const backend = await createBackend(backendOptions, {
+        otelTracer: otelTracer ?? makeNoopTracer(),
+        parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
+      })
       // if we're resetting the database, run boot here.
 
       let shouldResetDB = false

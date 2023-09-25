@@ -54,4 +54,6 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
   },
   reportUnusedDisableDirectives: true,
+  // Needed when embedding LiveStore in other projects (e.g. via git submodules)
+  root: true,
 }

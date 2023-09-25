@@ -1,7 +1,7 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 import type * as otel from '@opentelemetry/api'
 
-const makeNoopSpan = () => {
+export const makeNoopSpan = () => {
   const performanceStartTime: DOMHighResTimeStamp = performance.now()
 
   const span = {

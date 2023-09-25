@@ -30,7 +30,6 @@
     "**/.direnv": true,
     "**/.yarn": true,
     "**/.DS_Store": true,
-    "**/yarn.lock": true,
     "**/flake.lock": true
   },
   "search.exclude": {

@@ -4,7 +4,7 @@ import '../global.js'
 export * as Effect from './Effect.js'
 export * as Scope from '@effect/io/Scope'
 export * as Schedule from './Schedule.js'
-export * as Layer from '@effect/io/Layer'
+export * as Layer from './Layer.js'
 export * as Ref from '@effect/io/Ref'
 export * as SynchronizedRef from '@effect/io/SynchronizedRef'
 export * as Queue from '@effect/io/Queue'
@@ -23,6 +23,7 @@ export * as Deferred from '@effect/io/Deferred'
 export * as Metric from '@effect/io/Metric'
 export * as MetricState from '@effect/io/MetricState'
 export * as Request from '@effect/io/Request'
+export * as Tracer from '@effect/io/Tracer'
 
 // data
 export * as Context from '@effect/data/Context'
@@ -55,11 +56,10 @@ export * as Schema from '@effect/schema/Schema'
 // match
 export * as Match from '@effect/match'
 
-// otel
-export * as Otel from './Otel/index.js'
-
 // error
 export * from './Error.js'
 
 // ServiceContext
 export * as ServiceContext from './ServiceContext.js'
+
+export * as OtelTracer from '@effect/opentelemetry/Tracer'

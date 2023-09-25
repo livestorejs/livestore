@@ -72,20 +72,24 @@ export enum IndexType {
 }
 
 export type BackendOptions = BackendOptionsTauri | BackendOptionsWeb | BackendOptionsWebInMemory
+export type BackendOtelProps = {
+  otelTracer: otel.Tracer
+  parentSpan: otel.Span
+}
 
-export const createBackend = async (options: BackendOptions): Promise<Backend> => {
+export const createBackend = async (options: BackendOptions, otelProps: BackendOtelProps): Promise<Backend> => {
   switch (options.type) {
     case 'tauri': {
       // NOTE Dynamic import is needed to avoid Tauri is a dependency of LiveStore (e.g. when used in the web)
       const { TauriBackend } = await import('./tauri.js')
-      return await TauriBackend.load(options)
+      return await TauriBackend.load(options, otelProps)
     }
     case 'web': {
-      return WebWorkerBackend.load(options)
+      return WebWorkerBackend.load(options, otelProps)
     }
     // NOTE currently only needed for testing
     case 'web-in-memory': {
-      return WebInMemoryBackend.load(options)
+      return WebInMemoryBackend.load(options, otelProps)
     }
     default: {
       casesHandled(options)

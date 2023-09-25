@@ -1,18 +1,16 @@
-import { getTraceParentHeader, makeNoopTracer } from '@livestore/utils'
+import { getTraceParentHeader } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { invoke } from '@tauri-apps/api/tauri'
 
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'
 import { BaseBackend } from './base.js'
-import type { SelectResponse } from './index.js'
+import type { BackendOtelProps, SelectResponse } from './index.js'
 
 export type BackendOptionsTauri = {
   type: 'tauri'
   dbDirPath: string
   appDbFileName: string
-  otelTracer?: otel.Tracer
-  parentSpan: otel.Span
 }
 
 export class TauriBackend extends BaseBackend {
@@ -25,16 +23,14 @@ export class TauriBackend extends BaseBackend {
     super()
   }
 
-  static load = async ({
-    dbDirPath,
-    appDbFileName,
-    otelTracer,
-    parentSpan,
-  }: BackendOptionsTauri): Promise<TauriBackend> => {
+  static load = async (
+    { dbDirPath, appDbFileName }: BackendOptionsTauri,
+    { otelTracer, parentSpan }: BackendOtelProps,
+  ): Promise<TauriBackend> => {
     const dbFilePath = `${dbDirPath}/${appDbFileName}`
     await invoke('initialize_connection', { dbName: dbFilePath, otelData: getOtelData_(parentSpan) })
 
-    return new TauriBackend(dbFilePath, dbDirPath, otelTracer ?? makeNoopTracer(), parentSpan)
+    return new TauriBackend(dbFilePath, dbDirPath, otelTracer, parentSpan)
   }
 
   execute = (query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void => {
