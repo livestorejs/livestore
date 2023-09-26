@@ -1,6 +1,5 @@
-import { makeNoopTracer } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Context, Deferred, Duration, Effect, Layer, Option, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
+import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import { mapValues } from 'lodash-es'
@@ -52,7 +51,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
   props: LiveStoreContextProps<GraphQLContext>,
-): Layer.Layer<never, never, LiveStoreContext> =>
+): Layer.Layer<otel.Tracer, never, LiveStoreContext> =>
   Layer.provide(
     LiveStoreContextDeferred,
     Layer.scoped(LiveStoreContext, makeLiveStoreContext(props)).pipe(Layer.withSpan('LiveStore')),
@@ -66,25 +65,18 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   backendOptions: backendOptions_,
   graphQLOptions: graphQLOptions_,
   boot: boot_,
-}: LiveStoreContextProps<GraphQLContext>): Effect.Effect<DeferredStoreContext | Scope.Scope, never, LiveStoreContext> =>
+}: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
+  DeferredStoreContext | Scope.Scope | otel.Tracer,
+  never,
+  LiveStoreContext
+> =>
   pipe(
     Effect.gen(function* ($) {
       const runtime = yield* $(Effect.runtime<never>())
 
-      // const otelRootSpanContext_ = otel.context.active()
-      // console.log('span from otel', otel.trace.getSpan(otelRootSpanContext_))
+      const otelRootSpanContext = otel.context.active()
 
-      // TODO fix this
-      const otelRootSpanContext = yield* $(
-        Effect.currentSpan,
-        Effect.map(Option.getOrThrow),
-        Effect.map((_: any) => otel.trace.setSpan(otel.context.active(), _.span)),
-      )
-
-      const otelTracer = yield* $(
-        Effect.serviceOption(OtelTracer.OtelTracer),
-        Effect.map(Option.getOrElse(makeNoopTracer)),
-      )
+      const otelTracer = yield* $(OtelTracer.OtelTracer)
 
       const graphQLOptions = yield* $(
         graphQLOptions_
@@ -120,7 +112,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         globalQueryDefs ?? Effect.succeed({} as GlobalQueryDefs),
         Effect.map((defs) => mapValues(defs, (queryDef) => queryDef(store))),
         Effect.withSpan('LiveStore:makeGlobalQueries', {
-          parent: OtelTracer.makeExternalSpan(otel.trace.getSpanContext(store.otel.queriesSpanContext)! as any),
+          parent: OtelTracer.makeExternalSpan(otel.trace.getSpanContext(store.otel.queriesSpanContext)!),
         }),
       )
 
