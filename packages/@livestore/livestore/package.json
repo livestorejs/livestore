@@ -1,7 +1,10 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./dist/index.js",
     "./react": "./dist/react/index.js",

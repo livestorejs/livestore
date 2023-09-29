@@ -285,19 +285,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/data@npm:0.18.6":
-  version: 0.18.6
-  resolution: "@effect/data@npm:0.18.6"
-  checksum: ce8b836a83fd9497a7914bc23658b896d432540246bb0cc12c5d18f4d55701b10527fcb3255142433a7c7d469a9bc665ec26d6e8d8991dc3cdd975c199939fa4
+"@effect/data@npm:0.18.7":
+  version: 0.18.7
+  resolution: "@effect/data@npm:0.18.7"
+  checksum: 368e71f8e98b9fa3eaac9f75493e75fb939f10baa3199fd8f85906fba6c875ace91c3d7ac75953a59c509f871abee876d10a7684545df9038216fdb7fc996ef8
   languageName: node
   linkType: hard
 
-"@effect/io@npm:0.41.1":
-  version: 0.41.1
-  resolution: "@effect/io@npm:0.41.1"
+"@effect/io@npm:0.41.2":
+  version: 0.41.2
+  resolution: "@effect/io@npm:0.41.2"
   peerDependencies:
     "@effect/data": ^0.18.5
-  checksum: 382e94003a0749499920f581214e3c14498872ef00a56d2457299a63211faf1e00b3305458d2cc0253a1dafc0fe263ce07517293928db61e834f9f7ed1669c5c
+  checksum: ff8ed29e3ec38c27dacacbb503a4844e8c35b65523a648a809afa923a61db86ca770bfb44f208b1b93e1b6cbf915ee77fc3a0270f17429701817c40e067a4fd5
   languageName: node
   linkType: hard
 
@@ -333,15 +333,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/schema@npm:0.37.1":
-  version: 0.37.1
-  resolution: "@effect/schema@npm:0.37.1"
+"@effect/schema@npm:0.38.0":
+  version: 0.38.0
+  resolution: "@effect/schema@npm:0.38.0"
   dependencies:
     fast-check: ^3.12.0
   peerDependencies:
     "@effect/data": ^0.18.6
     "@effect/io": ^0.41.1
-  checksum: e5944e17c0db0a9e0cea1499eacb399cae1a2da2eb3a8e1bccbc3db8563a3174cbd9f654bcc7df83d7a955c1e6c3fd85c18fcb2ce9b2c73f14825c8e79e561fb
+  checksum: dc9dd1b588605337e90aeb60c47ec6086592b3f54c3a1eade97f59bb1ca9272de736a8d514bd36e2f079b92362715db4be3e1c0fe002633ae9f5af1bcc5de7fc
   languageName: node
   linkType: hard
 
@@ -355,13 +355,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/stream@npm:0.37.0":
-  version: 0.37.0
-  resolution: "@effect/stream@npm:0.37.0"
+"@effect/stream@npm:0.37.1":
+  version: 0.37.1
+  resolution: "@effect/stream@npm:0.37.1"
   peerDependencies:
     "@effect/data": ^0.18.6
-    "@effect/io": ^0.41.0
-  checksum: 5139d927f6167f05b0a8a7314b55cabd510ccb68b3e5f1b060ed34ff0948e5664e54bdc25a30352fe3af84cdb70f4709a481b0e1efd9fad4c8136995b9225887
+    "@effect/io": ^0.41.1
+  checksum: 8a68cb8a5b866d4ecdd94918841d97e6a46a9265015f6be3c5926befbdc40dd9212dfb004aabce551e021e8f823b11c2adc4db562474d01622b242a50dcd6ffe
   languageName: node
   linkType: hard
 
@@ -717,13 +717,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@livestore/utils@workspace:packages/@livestore/utils"
   dependencies:
-    "@effect/data": 0.18.6
-    "@effect/io": 0.41.1
+    "@effect/data": 0.18.7
+    "@effect/io": 0.41.2
     "@effect/match": 0.35.2
     "@effect/opentelemetry": ^0.12.0
-    "@effect/schema": 0.37.1
+    "@effect/schema": 0.38.0
     "@effect/stm": 0.25.0
-    "@effect/stream": 0.37.0
+    "@effect/stream": 0.37.1
     "@opentelemetry/api": ^1.6.0
     "@types/uuid": ^9.0.3
     "@types/web": ^0.0.115
