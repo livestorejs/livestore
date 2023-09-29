@@ -43,7 +43,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   globalQueryDefs?: Effect.Effect<never, never, GlobalQueryDefs>
   backendOptions: Effect.Effect<never, never, BackendOptions>
   graphQLOptions?: {
-    schema: Effect.Effect<never, never, GraphQLSchema>
+    schema: Effect.Effect<otel.Tracer, never, GraphQLSchema>
     makeContext: (db: InMemoryDatabase) => GraphQLContext
   }
   boot?: (backend: Backend) => Effect.Effect<never, never, void>
