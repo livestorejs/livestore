@@ -13,10 +13,10 @@
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint" 
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "eslint.validate": ["markdown", "javascript", "typescript"],
   "files.exclude": {
@@ -41,9 +41,5 @@
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "vitest.commandLine": "direnv exec . vitest",
-  "vitest.exclude": [
-    "**/node_modules/**",
-    "**/dist/**",
-    "**/.{idea,git,cache,output,temp,direnv}/**"
-  ]
+  "vitest.exclude": ["**/node_modules/**", "**/dist/**", "**/.{idea,git,cache,output,temp,direnv}/**"]
 }

@@ -2519,6 +2519,72 @@ __metadata:
   languageName: node
   linkType: hard
 
+"drizzle-orm@npm:^0.28.6":
+  version: 0.28.6
+  resolution: "drizzle-orm@npm:0.28.6"
+  peerDependencies:
+    "@aws-sdk/client-rds-data": ">=3"
+    "@cloudflare/workers-types": ">=3"
+    "@libsql/client": "*"
+    "@neondatabase/serverless": ">=0.1"
+    "@opentelemetry/api": ^1.4.1
+    "@planetscale/database": ">=1"
+    "@types/better-sqlite3": "*"
+    "@types/pg": "*"
+    "@types/sql.js": "*"
+    "@vercel/postgres": "*"
+    better-sqlite3: ">=7"
+    bun-types: "*"
+    knex: "*"
+    kysely: "*"
+    mysql2: ">=2"
+    pg: ">=8"
+    postgres: ">=3"
+    sql.js: ">=1"
+    sqlite3: ">=5"
+  peerDependenciesMeta:
+    "@aws-sdk/client-rds-data":
+      optional: true
+    "@cloudflare/workers-types":
+      optional: true
+    "@libsql/client":
+      optional: true
+    "@neondatabase/serverless":
+      optional: true
+    "@opentelemetry/api":
+      optional: true
+    "@planetscale/database":
+      optional: true
+    "@types/better-sqlite3":
+      optional: true
+    "@types/pg":
+      optional: true
+    "@types/sql.js":
+      optional: true
+    "@vercel/postgres":
+      optional: true
+    better-sqlite3:
+      optional: true
+    bun-types:
+      optional: true
+    knex:
+      optional: true
+    kysely:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
+      optional: true
+    postgres:
+      optional: true
+    sql.js:
+      optional: true
+    sqlite3:
+      optional: true
+  checksum: 1e079be9e969c1e9d325d68164006d976f093f296f6e058222a921debd047aa2369703b2142de03366e38baba3d8ef322f2e094bc0509d16f0577509b1f9bad7
+  languageName: node
+  linkType: hard
+
 "eastasianwidth@npm:^0.2.0":
   version: 0.2.0
   resolution: "eastasianwidth@npm:0.2.0"
@@ -6238,6 +6304,28 @@ __metadata:
   checksum: 642671ffcee6f0a335967855058a4fe55747424bedb91f0527c51bbc42711e07afd2f650a8db1a17b9c24f07089f2c13c4d246ffd32360ace0980987f50f460a
   languageName: node
   linkType: hard
+
+"todomvc-drizzle@workspace:examples/todomvc-drizzle":
+  version: 0.0.0-use.local
+  resolution: "todomvc-drizzle@workspace:examples/todomvc-drizzle"
+  dependencies:
+    "@livestore/livestore": latest
+    "@opentelemetry/api": ^1.6.0
+    "@types/react": ^18.2.22
+    "@types/react-dom": ^18.2.7
+    "@types/uuid": ^9.0.3
+    "@vitejs/plugin-react": ^4.0.4
+    drizzle-orm: ^0.28.6
+    react: ^18.2.0
+    react-dom: ^18.2.0
+    rollup-plugin-visualizer: ^5.9.2
+    todomvc-app-css: ^2.4.2
+    typescript: ^5.2.2
+    uuid: ^9.0.0
+    vite: ^4.4.9
+    zod: ^3.22.2
+  languageName: unknown
+  linkType: soft
 
 "todomvc@workspace:examples/todomvc":
   version: 0.0.0-use.local
