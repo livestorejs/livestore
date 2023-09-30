@@ -1,6 +1,6 @@
 import { getTraceParentHeader } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api'
 
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'

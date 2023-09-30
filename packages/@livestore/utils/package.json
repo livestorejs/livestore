@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.2",
+  "version": "0.0.9",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -36,7 +36,7 @@
     "@effect/stream": "0.37.1",
     "@opentelemetry/api": "^1.6.0",
     "date-fns": "^2.30.0",
-    "otel-websocket-exporter": "^0.0.21",
+    "otel-websocket-exporter": "^0.0.22",
     "pretty-bytes": "^6.1.1",
     "uuid": "^9.0.0"
   },

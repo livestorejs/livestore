@@ -3,7 +3,6 @@ import 'todomvc-app-css/index.css'
 import type { QueryDefinition } from '@livestore/livestore'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
-// eslint-disable-next-line import/no-extraneous-dependencies
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -40,7 +39,7 @@ ReactDOM.createRoot(document.getElementById('react-app')!).render(
   <React.StrictMode>
     <LiveStoreProvider
       schema={schema}
-      globalQueryDefs={{ appState }}
+      globalQueryDefs={{ appState } as any}
       backendOptions={{
         type: 'web',
         persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' },

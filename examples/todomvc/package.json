@@ -1,13 +1,15 @@
 {
   "name": "todomvc",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build"
   },
   "dependencies": {
-    "@livestore/livestore": "workspace:*",
+    "@livestore/livestore": "latest",
+    "@opentelemetry/api": "^1.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "todomvc-app-css": "^2.4.2",

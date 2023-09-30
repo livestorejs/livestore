@@ -34,6 +34,9 @@
     "typescript": "^5.2.2"
   },
   "packageManager": "yarn@3.6.3",
+  "resolutions": {
+    "@livestore/*": "workspace:*"
+  },
   "dependencies": {
     "@effect/language-service": "^0.0.21"
   }

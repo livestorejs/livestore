@@ -4,7 +4,7 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
 import { uniqueId } from 'lodash-es'
-import ReactDOM from 'react-dom'
+import * as ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
 
 import type { Backend, BackendOptions } from './backends/index.js'
@@ -124,6 +124,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
   }: StoreOptions<TGraphQLContext>) {
     this.inMemoryDB = db
     this.graph = new ReactiveGraph({
+      // TODO move this into React module
       // Do all our updates inside a single React setState batch to avoid multiple UI re-renders
       effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
       otelTracer,
