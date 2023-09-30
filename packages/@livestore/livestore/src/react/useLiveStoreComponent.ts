@@ -14,6 +14,7 @@ import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
 import type { ComponentStateSchema } from '../schema.js'
 import type { BaseGraphQLContext, LiveStoreQuery, QueryResult, Store } from '../store.js'
+import type { Bindable } from '../util.js'
 import { sql } from '../util.js'
 import { useStore } from './LiveStoreContext.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
@@ -26,6 +27,7 @@ export type QueryResults<TQuery> = { [queryName in keyof TQuery]: QueryResult<TQ
 export type ReactiveSQL = <TResult>(
   genQuery: (get: GetAtom) => string,
   queriedTables: string[],
+  bindValues?: Bindable | undefined,
 ) => LiveStoreSQLQuery<TResult>
 export type ReactiveGraphQL = <
   TResult extends Record<string, any>,
@@ -156,8 +158,8 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
       isTemporaryQuery: boolean
     }) =>
       queries({
-        rxSQL: <T>(genQuery: (get: GetAtom) => string, queriedTables: string[]) =>
-          store.querySQL<T>(genQuery, { queriedTables, otelContext }),
+        rxSQL: <T>(genQuery: (get: GetAtom) => string, queriedTables: string[], bindValues?: Bindable) =>
+          store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext }),
         rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
           query: DocumentNode<Result, Variables>,
           genVariableValues: (get: GetAtom) => Variables,
