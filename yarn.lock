@@ -704,7 +704,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@livestore/livestore@workspace:packages/@livestore/livestore":
+"@livestore/livestore@workspace:*, @livestore/livestore@workspace:packages/@livestore/livestore":
   version: 0.0.0-use.local
   resolution: "@livestore/livestore@workspace:packages/@livestore/livestore"
   dependencies:
@@ -6309,7 +6309,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "todomvc-drizzle@workspace:examples/todomvc-drizzle"
   dependencies:
-    "@livestore/livestore": latest
+    "@livestore/livestore": "workspace:*"
     "@opentelemetry/api": ^1.6.0
     "@types/react": ^18.2.22
     "@types/react-dom": ^18.2.7

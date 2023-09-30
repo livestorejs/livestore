@@ -2,9 +2,9 @@ import { useStore } from '@livestore/livestore/react'
 import type { FC } from 'react'
 import React from 'react'
 
+import { app, todos } from '../drizzle/schema.js'
+import { drizzle, useDrizzle } from '../drizzle/useDrizzle.js'
 import type { AppState, Todo } from '../schema'
-import { useDrizzle, drizzle } from '../drizzle/useDrizzle'
-import { app, todos } from '../drizzle/schema'
 
 export const MainSection: FC = () => {
   const { store } = useStore()

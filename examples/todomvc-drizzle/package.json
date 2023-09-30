@@ -8,7 +8,7 @@
     "build:analyze": "VITE_ANALYZE=1 run build"
   },
   "dependencies": {
-    "@livestore/livestore": "latest",
+    "@livestore/livestore": "workspace:*",
     "@opentelemetry/api": "^1.6.0",
     "drizzle-orm": "^0.28.6",
     "react": "^18.2.0",
