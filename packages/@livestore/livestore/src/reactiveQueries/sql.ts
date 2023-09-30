@@ -42,9 +42,11 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase {
         const results = get(this.results$)
         return f(results, get)
       },
-      this.componentKey,
-      `${this.label}:js`,
-      this.otelContext,
+      {
+        componentKey: this.componentKey,
+        label: `${this.label}:js`,
+        otelContext: this.otelContext,
+      },
     )
 
   /** Returns a reactive query  */
@@ -58,8 +60,6 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase {
         }
         return (results[0] ?? args?.defaultValue) as Row
       },
-      this.componentKey,
-      `${this.label}:first`,
-      this.otelContext,
+      { componentKey: this.componentKey, label: `${this.label}:first`, otelContext: this.otelContext },
     )
 }

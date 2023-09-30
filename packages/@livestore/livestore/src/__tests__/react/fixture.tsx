@@ -1,12 +1,9 @@
 import { mapObjectValues } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
 import React from 'react'
 
 import * as LiveStore from '../../index.js'
 import { sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
-
-const mockOtelCtx = otel.context.active()
 
 export type Todo = {
   id: string
@@ -22,16 +19,7 @@ export type AppState = {
 }
 
 const appState: LiveStore.QueryDefinition = (store) =>
-  store
-    .querySQL<AppState>(
-      () => `select newTodoText, filter from app;`,
-      ['app'],
-      undefined,
-      undefined,
-      undefined,
-      mockOtelCtx,
-    )
-    .getFirstRow()
+  store.querySQL<AppState>(() => `select newTodoText, filter from app;`, { queriedTables: ['app'] }).getFirstRow()
 
 export const globalQueryDefs = {
   appState,

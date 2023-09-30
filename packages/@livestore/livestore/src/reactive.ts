@@ -196,7 +196,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
           debugRefreshReason?: RefreshReasonWithGenericReasons<TDebugRefreshReason>
         }
       | undefined,
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ): Thunk<T> {
     const thunk: UnevaluatedThunk<T> = {
       _tag: 'thunk',
@@ -218,7 +218,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
         otelHint: options?.label ?? 'makeThunk',
         debugRefreshReason: options?.debugRefreshReason ?? { _tag: 'makeThunk', label: options?.label },
       },
-      parentSpanContext,
+      otelContext,
     )
 
     // Manually tell the typesystem this thunk is guaranteed to have a result at this point
@@ -248,7 +248,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
   makeEffect(
     doEffect: (get: GetAtom) => void,
     options: { label?: string } | undefined,
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ): Effect {
     const effect: Effect = {
       _tag: 'effect',
@@ -261,7 +261,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     this.dirtyNodes.add(effect)
     this.refresh(
       { otelHint: 'makeEffect', debugRefreshReason: { _tag: 'makeEffect', label: options?.label } },
-      parentSpanContext,
+      otelContext,
     )
 
     return effect
@@ -277,7 +277,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
           debugRefreshReason?: TDebugRefreshReason
         }
       | undefined,
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ) {
     const { otelHint, skipRefresh, debugRefreshReason } = options ?? {}
     ref.result = val
@@ -297,7 +297,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       return
     }
 
-    this.refresh({ otelHint, debugRefreshReason }, parentSpanContext)
+    this.refresh({ otelHint, debugRefreshReason }, otelContext)
   }
 
   setRefs<T>(
@@ -309,7 +309,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
           debugRefreshReason?: TDebugRefreshReason
         }
       | undefined,
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ) {
     const otelHint = options?.otelHint ?? ''
     const skipRefresh = options?.skipRefresh ?? false
@@ -333,7 +333,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       return
     }
 
-    this.refresh({ otelHint, debugRefreshReason }, parentSpanContext)
+    this.refresh({ otelHint, debugRefreshReason }, otelContext)
   }
 
   get<T>(atom: Atom<T>, context: Atom<any> | Effect): T {
@@ -367,7 +367,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
           debugRefreshReason?: RefreshReasonWithGenericReasons<TDebugRefreshReason>
         }
       | undefined,
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ): void {
     const otelHint = options?.otelHint ?? ''
     const debugRefreshReason = options?.debugRefreshReason
@@ -380,7 +380,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     //   console.log('refresh', otelHint, { shouldTrace })
     // }
 
-    this.otelTracer.startActiveSpan(`LiveStore.refresh:${otelHint}`, {}, parentSpanContext, (span) => {
+    this.otelTracer.startActiveSpan(`LiveStore.refresh:${otelHint}`, {}, otelContext, (span) => {
       const atomsToRefresh = roots.filter(isAtom)
       const effectsToRun = new Set(roots.filter(isEffect))
 

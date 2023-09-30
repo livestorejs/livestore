@@ -20,7 +20,7 @@ export type UseLiveStoreComponentProps<TResult extends Record<string, any>, TVar
  * so we need to "cache" the fact that we've already started a span for this component.
  * The map entry is being removed again in the `React.useEffect` call below.
  */
-const spanAlreadyStartedCache = new Map<string, { span: otel.Span; otelCtx: otel.Context }>()
+const spanAlreadyStartedCache = new Map<string, { span: otel.Span; otelContext: otel.Context }>()
 
 // TODO 1) figure out a way to make `variables` optional if the query doesn't have any variables (probably requires positional args)
 // TODO 2) allow `.pipe` on the resulting query (possibly as a separate optional prop)
@@ -36,7 +36,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
   const componentKeyLabel = React.useMemo(() => labelForKey(componentKey), [componentKey])
 
   // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
-  const { span, otelCtx } = React.useMemo(() => {
+  const { span, otelContext } = React.useMemo(() => {
     const existingSpan = spanAlreadyStartedCache.get(componentKeyLabel)
     if (existingSpan !== undefined) return existingSpan
 
@@ -46,11 +46,11 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
       store.otel.queriesSpanContext,
     )
 
-    const otelCtx = otel.trace.setSpan(otel.context.active(), span)
+    const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    spanAlreadyStartedCache.set(componentKeyLabel, { span, otelCtx })
+    spanAlreadyStartedCache.set(componentKeyLabel, { span, otelContext })
 
-    return { span, otelCtx }
+    return { span, otelContext }
   }, [componentKeyLabel, store.otel.queriesSpanContext, store.otel.tracer])
 
   React.useEffect(
@@ -62,7 +62,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
   )
 
   const makeLiveStoreQuery = React.useCallback(
-    () => store.queryGraphQL(query, () => variables ?? ({} as TVariables), { componentKey }, otelCtx),
+    () => store.queryGraphQL(query, () => variables ?? ({} as TVariables), { componentKey, otelContext }),
     // NOTE: we don't include the queries function passed in by the user here;
     // the reason is that we don't want to force them to memoize that function.
     // Instead, we just assume that the function always has the same contents.
@@ -100,7 +100,6 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
     // This should probably be improved
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    otelCtx,
     makeLiveStoreQuery,
     // setQueryResults_,
     store,

@@ -192,14 +192,14 @@ export class InMemoryDatabase {
       queriedTables?: string[]
       bindValues?: Bindable
       skipCache?: boolean
-      parentSpanContext?: otel.Context
+      otelContext?: otel.Context
     },
   ): ReadonlyArray<T> {
-    const { queriedTables, bindValues, skipCache = false, parentSpanContext } = options ?? {}
+    const { queriedTables, bindValues, skipCache = false, otelContext } = options ?? {}
     return this.otelTracer.startActiveSpan(
       'sql-in-memory-select',
       {},
-      parentSpanContext ?? this.otelRootSpanContext,
+      otelContext ?? this.otelRootSpanContext,
       (span) => {
         try {
           span.setAttribute('sql.query', query)
@@ -279,9 +279,9 @@ export class InMemoryDatabase {
   applyEvent(
     event: LiveStoreEvent,
     eventDefinition: ActionDefinition,
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ): { durationMs: number } {
-    return this.otelTracer.startActiveSpan('livestore.in-memory-db:applyEvent', {}, parentSpanContext, (span) => {
+    return this.otelTracer.startActiveSpan('livestore.in-memory-db:applyEvent', {}, otelContext, (span) => {
       // TODO: in the future, we'll do more CRDT-style stuff here to decide whether to run effects of the event
 
       // NOTE: These two updates should happen transactionally;

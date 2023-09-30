@@ -3,7 +3,6 @@ import 'todomvc-app-css/index.css'
 import type { QueryDefinition } from '@livestore/livestore'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
-import * as otel from '@opentelemetry/api'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
@@ -14,16 +13,7 @@ import { Header } from './Header.js'
 import { MainSection } from './MainSection.js'
 
 const appState: QueryDefinition = (store) =>
-  store
-    .querySQL<AppState>(
-      () => `select newTodoText, filter from app;`,
-      ['app'],
-      undefined,
-      undefined,
-      undefined,
-      otel.context.active(),
-    )
-    .getFirstRow()
+  store.querySQL<AppState>(() => `select newTodoText, filter from app;`, { queriedTables: ['app'] }).getFirstRow()
 
 const App = () => {
   return (

@@ -81,7 +81,7 @@ type ComponentState = {
  * so we need to "cache" the fact that we've already started a span for this component.
  * The map entry is being removed again in the `React.useEffect` call below.
  */
-const spanAlreadyStartedCache = new Map<string, { span: otel.Span; otelCtx: otel.Context }>()
+const spanAlreadyStartedCache = new Map<string, { span: otel.Span; otelContext: otel.Context }>()
 
 type UseLiveStoreJsonState<TState> = <TResult>(
   jsonStringKey: keyof TState,
@@ -118,7 +118,7 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
   const componentKeyLabel = React.useMemo(() => labelForKey(componentKey), [componentKey])
 
   // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
-  const { span, otelCtx } = React.useMemo(() => {
+  const { span, otelContext } = React.useMemo(() => {
     const existingSpan = spanAlreadyStartedCache.get(componentKeyLabel)
     if (existingSpan !== undefined) return existingSpan
 
@@ -128,11 +128,11 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
       store.otel.queriesSpanContext,
     )
 
-    const otelCtx = otel.trace.setSpan(otel.context.active(), span)
+    const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    spanAlreadyStartedCache.set(componentKeyLabel, { span, otelCtx })
+    spanAlreadyStartedCache.set(componentKeyLabel, { span, otelContext })
 
-    return { span, otelCtx }
+    return { span, otelContext }
   }, [componentKeyLabel, store.otel.queriesSpanContext, store.otel.tracer])
 
   React.useEffect(
@@ -146,23 +146,23 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
   const generateQueries = React.useCallback(
     ({
       state$,
-      otelCtx,
+      otelContext,
       registerSubscription,
       isTemporaryQuery,
     }: {
       state$: LiveStoreJSQuery<TComponentState>
-      otelCtx: otel.Context
+      otelContext: otel.Context
       registerSubscription: RegisterSubscription
       isTemporaryQuery: boolean
     }) =>
       queries({
         rxSQL: <T>(genQuery: (get: GetAtom) => string, queriedTables: string[]) =>
-          store.querySQL<T>(genQuery, queriedTables, undefined, componentKey, undefined, otelCtx),
+          store.querySQL<T>(genQuery, { queriedTables, otelContext }),
         rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
           query: DocumentNode<Result, Variables>,
           genVariableValues: (get: GetAtom) => Variables,
           label?: string,
-        ) => store.queryGraphQL(query, genVariableValues, { componentKey, label }, otelCtx),
+        ) => store.queryGraphQL(query, genVariableValues, { componentKey, label, otelContext }),
         globalQueries,
         state$,
         subscribe: registerSubscription,
@@ -193,8 +193,8 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
   // We do this in a temporary query context which cleans up after itself, making it idempotent
   // TODO get rid of the temporary query workaround
   const { initialComponentState, initialQueryResults } = React.useMemo(() => {
-    return store.otel.tracer.startActiveSpan('LiveStore:useLiveStoreComponent:initial', {}, otelCtx, (span) => {
-      const otelCtx = otel.trace.setSpan(otel.context.active(), span)
+    return store.otel.tracer.startActiveSpan('LiveStore:useLiveStoreComponent:initial', {}, otelContext, (span) => {
+      const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
       return store.inTempQueryContext(() => {
         try {
@@ -202,31 +202,27 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
           let stateQuery: LiveStoreJSQuery<TComponentState>
           if (stateSchema === undefined) {
             // TODO don't set up a query if there's no state schema (keeps the graph more clean)
-            stateQuery = store.queryJS(
-              () => ({}),
+            stateQuery = store.queryJS(() => ({}), {
               componentKey,
-              undefined,
-              otelCtx,
-            ) as unknown as LiveStoreJSQuery<TComponentState>
+              otelContext,
+            }) as unknown as LiveStoreJSQuery<TComponentState>
           } else {
             const componentTableName = tableNameForComponentKey(componentKey)
             const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
             stateQuery = store
-              .querySQL<TComponentState>(
-                () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
-                [componentTableName],
-                undefined,
+              .querySQL<TComponentState>(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+                queriedTables: [componentTableName],
                 componentKey,
-                `localState:query:${componentKeyLabel}`,
-                otelCtx,
-              )
+                label: `localState:query:${componentKeyLabel}`,
+                otelContext,
+              })
               .getFirstRow({ defaultValue: defaultComponentState })
           }
           const initialComponentState = stateQuery.results$.result
 
           const queries = generateQueries({
             state$: stateQuery,
-            otelCtx,
+            otelContext,
             registerSubscription: () => {},
             isTemporaryQuery: true,
           })
@@ -241,7 +237,7 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
         }
       })
     })
-  }, [store, otelCtx, stateSchema, generateQueries, componentKey, componentKeyLabel, defaultComponentState])
+  }, [store, otelContext, stateSchema, generateQueries, componentKey, componentKeyLabel, defaultComponentState])
 
   // Now that we've computed the initial state synchronously,
   // we can set up our useState calls w/ a default value populated...
@@ -287,48 +283,40 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
     return store.otel.tracer.startActiveSpan(
       'LiveStore:useLiveStoreComponent:long-running',
       { attributes: {} },
-      otelCtx,
+      otelContext,
       (span) => {
-        const otelCtx = otel.trace.setSpan(otel.context.active(), span)
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
         const unsubs: (() => void)[] = []
 
         // create state query
-        let stateQuery: LiveStoreJSQuery<TComponentState>
+        let state$: LiveStoreJSQuery<TComponentState>
         if (stateSchema === undefined) {
-          stateQuery = store.queryJS(
-            () => ({}),
-            componentKey,
-            undefined,
-            otelCtx,
-          ) as unknown as LiveStoreJSQuery<TComponentState>
+          state$ = store.queryJS(() => ({}) as TComponentState, { componentKey, otelContext })
         } else {
           const componentTableName = tableNameForComponentKey(componentKey)
           insertRowForComponentInstance({ store, componentKey, stateSchema })
 
           const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
-          stateQuery = store
-            .querySQL<TComponentState>(
-              () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
-              [componentTableName],
-              undefined,
+          state$ = store
+            .querySQL<TComponentState>(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+              queriedTables: [componentTableName],
               componentKey,
-              // TODO introduce a refresh "grouping" concept to associate related refreshes in the debugger UI
-              `localState:query:${componentKeyLabel}`,
-              otelCtx,
-            )
+              label: `localState:query:${componentKeyLabel}`,
+              otelContext,
+            })
             .getFirstRow({ defaultValue: defaultComponentState })
         }
 
         unsubs.push(
           store.subscribe(
-            stateQuery,
+            state$,
             (results) => {
               if (isEqual(results, componentStateRef.current) === false) {
                 setComponentState_(results as TComponentState)
               }
             },
             undefined,
-            { label: `useLiveStoreComponent:localState:subscribe:${stateQuery.label}` },
+            { label: `useLiveStoreComponent:localState:subscribe:${state$.label}` },
           ),
         )
 
@@ -345,7 +333,7 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
           )
         }
 
-        const queries = generateQueries({ state$: stateQuery, otelCtx, registerSubscription, isTemporaryQuery: false })
+        const queries = generateQueries({ state$, otelContext, registerSubscription, isTemporaryQuery: false })
         // Use the name given to this query in the useQueries hook as its label
         for (const [name, query] of Object.entries(queries)) {
           query.label = name
@@ -384,7 +372,7 @@ export const useLiveStoreComponent = <TComponentState extends ComponentState, TQ
     stateSchema,
     defaultComponentState,
     generateQueries,
-    otelCtx,
+    otelContext,
     componentStateRef,
     // setComponentState_,
     // setQueryResults_,

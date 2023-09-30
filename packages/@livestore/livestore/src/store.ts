@@ -32,7 +32,7 @@ export type LiveStoreQuery<TResult extends Record<string, any> = any> =
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
   /** Needed by Pothos Otel plugin for resolver tracing to work */
-  parentSpanContext?: otel.Context
+  otelContext?: otel.Context
 }
 
 export const RESET_DB_LOCAL_STORAGE_KEY = 'livestore-reset'
@@ -187,21 +187,30 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
    */
   querySQL = <TResult>(
     genQueryString: (get: GetAtom) => string,
-    /**
-     * List of tables that are queried in this query;
-     * used to determine reactive dependencies.
-     * In the future we want to auto-generate this via parsing the query
-     */
-    queriedTables: string[],
-    bindValues: Bindable | undefined,
-    componentKey: ComponentKey | undefined,
-    label: string | undefined,
-    parentSpanContext: otel.Context,
+    {
+      queriedTables,
+      bindValues,
+      componentKey,
+      label,
+      otelContext = otel.context.active(),
+    }: {
+      /**
+       * List of tables that are queried in this query;
+       * used to determine reactive dependencies.
+       *
+       * NOTE In the future we want to auto-generate this via parsing the query
+       */
+      queriedTables: string[]
+      bindValues?: Bindable | undefined
+      componentKey?: ComponentKey | undefined
+      label?: string | undefined
+      otelContext?: otel.Context
+    },
   ): LiveStoreSQLQuery<TResult> =>
     this.otel.tracer.startActiveSpan(
       'querySQL', // NOTE span name will be overridden further down
       { attributes: { label } },
-      parentSpanContext,
+      otelContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
@@ -241,11 +250,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
                   span.setAttribute('sql.query', sqlString)
                   span.updateName(`sql:${sqlString.slice(0, 50)}`)
 
-                  const results = this.inMemoryDB.select(sqlString, {
-                    queriedTables,
-                    bindValues,
-                    parentSpanContext: otelContext,
-                  })
+                  const results = this.inMemoryDB.select(sqlString, { queriedTables, bindValues, otelContext })
 
                   span.setAttribute('sql.rowsCount', results.length)
                   addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
@@ -283,11 +288,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
   queryJS = <TResult>(
     genResults: (get: GetAtom) => TResult,
-    componentKey: ComponentKey,
-    label = `js${uniqueId()}`,
-    parentSpanContext: otel.Context,
+    {
+      componentKey = globalComponentKey,
+      label = `js${uniqueId()}`,
+      otelContext = otel.context.active(),
+    }: { componentKey?: ComponentKey; label?: string; otelContext?: otel.Context },
   ): LiveStoreJSQuery<TResult> =>
-    this.otel.tracer.startActiveSpan(`queryJS:${label}`, { attributes: { label } }, parentSpanContext, (span) => {
+    this.otel.tracer.startActiveSpan(`queryJS:${label}`, { attributes: { label } }, otelContext, (span) => {
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
       const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
       const results$ = this.graph.makeThunk(
@@ -321,13 +328,20 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
   queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
     document: DocumentNode<TResult, TVariableValues>,
     genVariableValues: (get: GetAtom) => TVariableValues,
-    { componentKey, label }: { componentKey: ComponentKey; label?: string },
-    parentSpanContext: otel.Context,
+    {
+      componentKey,
+      label,
+      otelContext = otel.context.active(),
+    }: {
+      componentKey: ComponentKey
+      label?: string
+      otelContext?: otel.Context
+    },
   ): LiveStoreGraphQLQuery<TResult, TVariableValues, TGraphQLContext> =>
     this.otel.tracer.startActiveSpan(
-      `queryGraphQL`, // NOTE span name will be overridden further down
+      `queryGraphQL:`, // NOTE span name will be overridden further down
       {},
-      parentSpanContext,
+      otelContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
@@ -391,25 +405,24 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
   queryGraphQLOnce = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
     document: DocumentNode<TResult, TVariableValues>,
     variableValues: TVariableValues,
-    parentSpanContext?: otel.Context,
+    otelContext: otel.Context = this.otel.queriesSpanContext,
   ): { result: TResult; queriedTables: string[] } => {
     const schema =
       this.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
     const context =
       this.graphQLContext ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
     const tracer = this.otel.tracer
-    const spanContext = parentSpanContext ?? this.otel.queriesSpanContext
 
     const operationName = graphql.getOperationAST(document)?.name?.value
 
-    return tracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, spanContext, (span) => {
+    return tracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, otelContext, (span) => {
       try {
         span.setAttribute('graphql.variables', JSON.stringify(variableValues))
         span.setAttribute('graphql.query', graphql.print(document))
 
         context.queriedTables.clear()
 
-        context.parentSpanContext = otel.trace.setSpan(otel.context.active(), span)
+        context.otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const res = graphql.executeSync({
           document,
@@ -714,7 +727,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
   private applyEventWithoutRefresh = (
     eventType: string,
     args: any = {},
-    parentSpanContext: otel.Context,
+    otelContext: otel.Context,
   ): { writeTables: string[]; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
       'LiveStore:applyEventWithoutRefresh',
@@ -724,7 +737,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
           'livestore.args': JSON.stringify(args, null, 2),
         },
       },
-      parentSpanContext,
+      otelContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 

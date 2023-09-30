@@ -45,8 +45,10 @@ export class LiveStoreGraphQLQuery<
         const results = get(this.results$)
         return f(results, get)
       },
-      this.componentKey,
-      `${this.label}:js`,
-      this.otelContext,
+      {
+        componentKey: this.componentKey,
+        label: `${this.label}:js`,
+        otelContext: this.otelContext,
+      },
     )
 }
