@@ -1,0 +1,36 @@
+{
+  "name": "effect-db-schema",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    },
+    "./codegen": {
+      "import": "./dist/codegen/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "codegen": [
+        "./dist/codegen/index.d.ts"
+      ]
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@effect/schema": "0.38.0",
+    "dprint-node": "^1.0.8"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9",
+    "vitest": "^0.34.6"
+  }
+}

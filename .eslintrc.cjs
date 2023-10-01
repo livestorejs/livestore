@@ -1,6 +1,6 @@
 module.exports = {
   env: { es6: true },
-  ignorePatterns: ['**/dist/*', 'node_modules/*'],
+  ignorePatterns: ['**/dist/*', 'node_modules/*', '**/__generated__/*'],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'only-warn', 'simple-import-sort', 'import', 'prefer-arrow'],
   extends: [

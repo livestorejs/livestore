@@ -1,12 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "react",
     "outDir": "./dist",
     "rootDir": "./src",
+    "jsx": "react",
+    "skipLibCheck": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "exclude": ["node_modules"],
-  "references": [{ "path": "../../packages/@livestore/livestore" }]
+  "references": [],
+  "types": [
+    "vitest/importMeta"
+  ]
 }

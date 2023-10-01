@@ -225,3 +225,42 @@ describe('a diamond shaped graph', () => {
     expect(dRuns.runs).toBe(2)
   })
 })
+
+// TODO handle `undefined` in the graph
+describe.todo('a trivial graph with undefined', () => {
+  const makeGraph = () => {
+    const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
+    const a = graph.makeRef(undefined)
+    const b = graph.makeRef(2)
+    const numberOfRunsForC = { runs: 0 }
+    const c = graph.makeThunk(
+      (get) => {
+        numberOfRunsForC.runs++
+        return (get(a) ?? 0) + get(b)
+      },
+      undefined,
+      mockOtelCtx,
+    )
+    const d = graph.makeRef(3)
+    const e = graph.makeThunk((get) => get(c) + get(d), undefined, mockOtelCtx)
+
+    // a(1)   b(2)
+    //   \     /
+    //    \   /
+    //      c = a + b
+    //       \
+    //        \
+    // d(3)    \
+    //   \       \
+    //    \       \
+    //      e = c + d
+
+    return { graph, a, b, c, d, e, numberOfRunsForC }
+  }
+
+  it('has the right initial values', () => {
+    const { c, e } = makeGraph()
+    expect(c.result).toBe(3)
+    expect(e.result).toBe(6)
+  })
+})

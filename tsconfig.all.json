@@ -4,5 +4,6 @@
   "include": [],
   "references": [
     { "path": "./examples/todomvc" },
+    { "path": "./packages/effect-db-schema" },
   ]
 }
