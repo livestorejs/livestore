@@ -4,23 +4,23 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "yarn-install",
+      "label": "pnpm-install",
       "type": "shell",
-      "command": "direnv exec . yarn install",
+      "command": "direnv exec . pnpm install",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
         "panel": "shared",
-        "group": "yarn",
+        "group": "pnpm",
         "showReuseMessage": false,
         "clear": false,
-        "close": true,
+        "close": true
       }
     },
     {
       "label": "build:clean",
       "type": "shell",
-      "command": "direnv exec . yarn build:clean",
+      "command": "direnv exec . pnpm build:clean",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
@@ -28,16 +28,14 @@
         "group": "dev",
         "showReuseMessage": false,
         "clear": false,
-        "close": true,
+        "close": true
       }
     },
     {
       "label": "dev:ts",
       "type": "shell",
-      "command": "direnv exec . yarn dev:ts",
-      "problemMatcher": [
-        "$tsc-watch"
-      ],
+      "command": "direnv exec . pnpm dev:ts",
+      "problemMatcher": ["$tsc-watch"],
       "isBackground": true,
       "presentation": {
         "focus": false,
@@ -50,7 +48,7 @@
     {
       "label": "lint",
       "type": "shell",
-      "command": "direnv exec . yarn lint:check",
+      "command": "direnv exec . pnpm lint:check",
       "problemMatcher": "$eslint-stylish",
       "presentation": {
         "focus": false,
@@ -63,7 +61,7 @@
     {
       "label": "test",
       "type": "shell",
-      "command": "direnv exec . yarn test",
+      "command": "direnv exec . pnpm test",
       "problemMatcher": [],
       "presentation": {
         "focus": true,

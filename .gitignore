@@ -5,12 +5,6 @@ node_modules
 tmp*
 dist
 
-/.yarn/*
-!/.yarn/releases
-!/.yarn/patches
-!/.yarn/plugins
-!/.yarn/sdks
-
 *.tsbuildinfo
 
 *.log
