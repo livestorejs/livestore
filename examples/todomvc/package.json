@@ -12,14 +12,14 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "todomvc-app-css": "^2.4.2",
-    "uuid": "^9.0.0",
+    "uuid": "^9.0.1",
     "zod": "^3.22.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.22",
     "@types/react-dom": "^18.2.7",
-    "@types/uuid": "^9.0.3",
-    "@vitejs/plugin-react": "^4.0.4",
+    "@types/uuid": "^9.0.4",
+    "@vitejs/plugin-react": "^4.1.0",
     "rollup-plugin-visualizer": "^5.9.2",
     "typescript": "^5.2.2",
     "vite": "^4.4.9"

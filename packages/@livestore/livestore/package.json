@@ -34,10 +34,10 @@
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.6.0",
     "comlink": "^4.4.1",
-    "graphql": "^16.8.0",
+    "graphql": "^16.8.1",
     "lodash-es": "^4.17.21",
     "sqlite-esm": "3.42.0-build6",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.1"
   },
   "peerDependencies": {
     "@tauri-apps/api": "^1.4.0",
@@ -53,12 +53,12 @@
     "@tauri-apps/api": "^1.4.0",
     "@testing-library/react": "^14.0.0",
     "@types/lodash-es": "^4.17.9",
-    "@types/uuid": "^9.0.3",
+    "@types/uuid": "^9.0.4",
     "jsdom": "^22.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "5.2.2",
     "vite": "4.4.9",
-    "vitest": "^0.34.3"
+    "vitest": "^0.34.6"
   }
 }

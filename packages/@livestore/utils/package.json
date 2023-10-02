@@ -38,10 +38,10 @@
     "date-fns": "^2.30.0",
     "otel-websocket-exporter": "^0.0.22",
     "pretty-bytes": "^6.1.1",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.3",
+    "@types/uuid": "^9.0.4",
     "@types/web": "^0.0.115"
   }
 }

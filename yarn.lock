@@ -685,9 +685,9 @@ __metadata:
   linkType: hard
 
 "@eslint-community/regexpp@npm:^4.5.1, @eslint-community/regexpp@npm:^4.6.1":
-  version: 4.9.0
-  resolution: "@eslint-community/regexpp@npm:4.9.0"
-  checksum: 82411f0643ab9bfd271bf12c8c75031266b13595d9371585ee3b0d680d918d4abf37c7e94d0da22e45817c9bbc59b79dfcbd672050dfb00af88fb89c80fd420f
+  version: 4.9.1
+  resolution: "@eslint-community/regexpp@npm:4.9.1"
+  checksum: 06fb839e9c756f6375cc545c2f2e05a0a64576bd6370e8e3c07983fd29a3d6e164ef4aa48a361f7d27e6713ab79c83053ff6a2ccb78748bc955e344279c4a3b6
   languageName: node
   linkType: hard
 
@@ -848,18 +848,18 @@ __metadata:
     "@tauri-apps/api": ^1.4.0
     "@testing-library/react": ^14.0.0
     "@types/lodash-es": ^4.17.9
-    "@types/uuid": ^9.0.3
+    "@types/uuid": ^9.0.4
     comlink: ^4.4.1
-    graphql: ^16.8.0
+    graphql: ^16.8.1
     jsdom: ^22.1.0
     lodash-es: ^4.17.21
     react: ^18.2.0
     react-dom: ^18.2.0
     sqlite-esm: 3.42.0-build6
     typescript: 5.2.2
-    uuid: ^9.0.0
+    uuid: ^9.0.1
     vite: 4.4.9
-    vitest: ^0.34.3
+    vitest: ^0.34.6
   peerDependencies:
     "@tauri-apps/api": ^1.4.0
     react: ^18
@@ -882,12 +882,12 @@ __metadata:
     "@effect/stm": 0.25.0
     "@effect/stream": 0.37.1
     "@opentelemetry/api": ^1.6.0
-    "@types/uuid": ^9.0.3
+    "@types/uuid": ^9.0.4
     "@types/web": ^0.0.115
     date-fns: ^2.30.0
     otel-websocket-exporter: ^0.0.22
     pretty-bytes: ^6.1.1
-    uuid: ^9.0.0
+    uuid: ^9.0.1
   languageName: unknown
   linkType: soft
 
@@ -1481,9 +1481,9 @@ __metadata:
   linkType: hard
 
 "@types/prop-types@npm:*":
-  version: 15.7.7
-  resolution: "@types/prop-types@npm:15.7.7"
-  checksum: 023b95f7dd82e1c594f51dcb93ec4c382600cef6eeee29a2ac7b782b92c0882eab8da16d4cbd6e18b39e85ac8d94ebf4ca02c6e248ce5b5fb4b16dbab5d82861
+  version: 15.7.8
+  resolution: "@types/prop-types@npm:15.7.8"
+  checksum: 61dfad79da8b1081c450bab83b77935df487ae1cdd4660ec7df6be8e74725c15fa45cf486ce057addc956ca4ae78300b97091e2a25061133d1b9a1440bc896ae
   languageName: node
   linkType: hard
 
@@ -1497,13 +1497,13 @@ __metadata:
   linkType: hard
 
 "@types/react@npm:*, @types/react@npm:^18.2.22":
-  version: 18.2.23
-  resolution: "@types/react@npm:18.2.23"
+  version: 18.2.24
+  resolution: "@types/react@npm:18.2.24"
   dependencies:
     "@types/prop-types": "*"
     "@types/scheduler": "*"
     csstype: ^3.0.2
-  checksum: efb9d1ed1940c0e7ba08a21ffba5e266d8dbbb8fe618cfb97bc902dfc96385fdd8189e3f7f64b4aa13134f8e61947d60560deb23be151253c3a97b0d070897ca
+  checksum: ea5d8204e71b1c9c6631f429a93f8e7be0614cdbdb464e92b3181bdccd8a7c45e30ded8b13da726684b6393f651317c36d54832e3d3cdea0da480a3f26268909
   languageName: node
   linkType: hard
 
@@ -1528,7 +1528,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/uuid@npm:^9.0.3":
+"@types/uuid@npm:^9.0.4":
   version: 9.0.4
   resolution: "@types/uuid@npm:9.0.4"
   checksum: 356e2504456eaebbc43a5af5ca6c07d71f5ae5520b5767cb1c62cd0ec55475fc4ee3d16a2874f4a5fce78e40e8583025afd3a7d9ba41f82939de310665f53f0e
@@ -1664,7 +1664,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitejs/plugin-react@npm:^4.0.4":
+"@vitejs/plugin-react@npm:^4.1.0":
   version: 4.1.0
   resolution: "@vitejs/plugin-react@npm:4.1.0"
   dependencies:
@@ -2169,9 +2169,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001541":
-  version: 1.0.30001541
-  resolution: "caniuse-lite@npm:1.0.30001541"
-  checksum: 972f6c223cf4ea2c6821b817b419249285006bbf67ebe415fe58097cf07551e3bae898586736d92f7c40b9f0ac28638dbf760631c23742b780affd0254f44d17
+  version: 1.0.30001542
+  resolution: "caniuse-lite@npm:1.0.30001542"
+  checksum: 6cf20e2e1fd4c14f98a3cc73df650903bb5fc896c5b7416ada10c3e2c17e905e3d5688e5a201bfc0eebdf2e3d19e1825e21ad03e4d06f2d50f6b1c9f4b837f98
   languageName: node
   linkType: hard
 
@@ -3772,7 +3772,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql@npm:^16.8.0":
+"graphql@npm:^16.8.1":
   version: 16.8.1
   resolution: "graphql@npm:16.8.1"
   checksum: 8d304b7b6f708c8c5cc164b06e92467dfe36aff6d4f2cf31dd19c4c2905a0e7b89edac4b7e225871131fd24e21460836b369de0c06532644d15b461d55b1ccc0
@@ -6429,9 +6429,9 @@ __metadata:
   linkType: hard
 
 "tinyspy@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "tinyspy@npm:2.1.1"
-  checksum: cfe669803a7f11ca912742b84c18dcc4ceecaa7661c69bc5eb608a8a802d541c48aba220df8929f6c8cd09892ad37cb5ba5958ddbbb57940e91d04681d3cee73
+  version: 2.2.0
+  resolution: "tinyspy@npm:2.2.0"
+  checksum: 36431acaa648054406147a92b9bde494b7548d0f9f3ffbcc02113c25a6e59f3310cbe924353d7f4c51436299150bec2dbb3dc595748f58c4ddffea22d5baaadb
   languageName: node
   linkType: hard
 
@@ -6469,19 +6469,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "todomvc-drizzle@workspace:examples/todomvc-drizzle"
   dependencies:
-    "@livestore/livestore": "workspace:*"
+    "@livestore/livestore": latest
     "@opentelemetry/api": ^1.6.0
     "@types/react": ^18.2.22
     "@types/react-dom": ^18.2.7
-    "@types/uuid": ^9.0.3
-    "@vitejs/plugin-react": ^4.0.4
+    "@types/uuid": ^9.0.4
+    "@vitejs/plugin-react": ^4.1.0
     drizzle-orm: ^0.28.6
     react: ^18.2.0
     react-dom: ^18.2.0
     rollup-plugin-visualizer: ^5.9.2
     todomvc-app-css: ^2.4.2
     typescript: ^5.2.2
-    uuid: ^9.0.0
+    uuid: ^9.0.1
     vite: ^4.4.9
     zod: ^3.22.2
   languageName: unknown
@@ -6494,14 +6494,14 @@ __metadata:
     "@livestore/livestore": latest
     "@types/react": ^18.2.22
     "@types/react-dom": ^18.2.7
-    "@types/uuid": ^9.0.3
-    "@vitejs/plugin-react": ^4.0.4
+    "@types/uuid": ^9.0.4
+    "@vitejs/plugin-react": ^4.1.0
     react: ^18.2.0
     react-dom: ^18.2.0
     rollup-plugin-visualizer: ^5.9.2
     todomvc-app-css: ^2.4.2
     typescript: ^5.2.2
-    uuid: ^9.0.0
+    uuid: ^9.0.1
     vite: ^4.4.9
     zod: ^3.22.2
   languageName: unknown
@@ -6777,7 +6777,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:^9.0.0":
+"uuid@npm:^9.0.1":
   version: 9.0.1
   resolution: "uuid@npm:9.0.1"
   bin:
@@ -6892,7 +6892,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^0.34.3, vitest@npm:^0.34.6":
+"vitest@npm:^0.34.6":
   version: 0.34.6
   resolution: "vitest@npm:0.34.6"
   dependencies:
