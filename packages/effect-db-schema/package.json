@@ -8,12 +8,15 @@
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./codegen": {
+      "types": "./dist/codegen/index.d.ts",
       "default": "./dist/codegen/index.js"
     }
   },
+  "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
       "codegen": [
@@ -21,7 +24,6 @@
       ]
     }
   },
-  "types": "./dist/index.d.ts",
   "scripts": {
     "test": "vitest"
   },
