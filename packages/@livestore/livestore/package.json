@@ -6,10 +6,22 @@
     "access": "public"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./react": "./dist/react/index.js",
-    "./effect": "./dist/effect/index.js",
-    "./util": "./dist/util.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./effect": {
+      "types": "./dist/effect/index.d.ts",
+      "default": "./dist/effect/index.js"
+    },
+    "./util": {
+      "types": "./dist/util.d.ts",
+      "default": "./dist/util.js"
+    }
   },
   "types": "./dist/index.d.ts",
   "typesVersions": {
@@ -54,6 +66,8 @@
     "@testing-library/react": "^14.0.0",
     "@types/lodash-es": "^4.17.9",
     "@types/uuid": "^9.0.4",
+    "@types/react": "^18.2.22",
+    "@types/react-dom": "^18.2.7",
     "jsdom": "^22.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -4,7 +4,7 @@ import React from 'react'
 
 import { app, todos } from '../drizzle/schema.js'
 import { drizzle, useDrizzle } from '../drizzle/useDrizzle.js'
-import type { AppState, Todo } from '../schema'
+import type { AppState, Todo } from '../schema.js'
 
 export const MainSection: FC = () => {
   const { store } = useStore()

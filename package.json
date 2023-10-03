@@ -1,10 +1,5 @@
 {
   "private": true,
-  "workspaces": [
-    "packages/@livestore/*",
-    "packages/*",
-    "examples/*"
-  ],
   "scripts": {
     "postinstall": "ts-patch install -s",
     "build": "pnpm run build:ts",
@@ -12,7 +7,7 @@
     "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o -name 'dist' -type d -exec rm -rf {} +\"",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- npm publish --tolerate-republish",
     "dev:ts": "pnpm run build:ts --watch",
-    "test": "CI=true pnpm recursive run test",
+    "test": "CI=true pnpm --parallel run test",
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix"
   },
@@ -33,9 +28,10 @@
     "ts-patch": "^3.0.2",
     "typescript": "^5.2.2"
   },
-  "packageManager": "pnpm@8.7.6",
+  "packageManager": "pnpm@8.8.0",
   "resolutions": {
-    "@livestore/*": "workspace:*"
+    "@livestore/*": "workspace:*",
+    "effect": "2.0.0-next.41"
   },
   "dependencies": {
     "@effect/language-service": "^0.0.21"

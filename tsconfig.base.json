@@ -6,7 +6,6 @@
     "sourceMap": true,
     "declarationMap": true,
     "declaration": true,
-    "moduleResolution": "node",
     "strictNullChecks": true,
     "incremental": true,
     "composite": true,
@@ -17,7 +16,8 @@
     "noErrorTruncation": true,
     "isolatedModules": true,
     "target": "ES2021",
-    "module": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "plugins": [
       {
         "name": "@effect/language-service",
@@ -27,17 +27,9 @@
       }
     ],
     "paths": {
-      "@livestore/utils/effect/*": [
-        "./packages/@livestore/utils/src/effect/*"
-      ],
-      "@livestore/*": [
-        "./packages/@livestore/*"
-      ]
-    },
+      "@livestore/utils/effect/*": ["./packages/@livestore/utils/src/effect/*"],
+      "@livestore/*": ["./packages/@livestore/*"]
+    }
   },
-  "exclude": [
-    "packages/**/dist",
-    "node_modules",
-    "packages/**/node_modules"
-  ]
+  "exclude": ["packages/**/dist", "node_modules", "packages/**/node_modules"]
 }

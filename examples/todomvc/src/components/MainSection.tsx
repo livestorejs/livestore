@@ -3,7 +3,7 @@ import { useLiveStoreComponent, useStore } from '@livestore/livestore/react'
 import type { FC } from 'react'
 import React from 'react'
 
-import type { AppState, Todo } from '../schema'
+import type { AppState, Todo } from '../schema.js'
 
 const useMainSectionData = () =>
   useLiveStoreComponent({

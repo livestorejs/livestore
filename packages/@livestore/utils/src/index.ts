@@ -71,7 +71,7 @@ export const prop =
     obj[key]
 
 export const objectToString = (error: any): string => {
-  const stack = typeof process !== 'undefined' && process.env.CL_DEBUG ? error.stack : undefined
+  const stack = error.stack
   const str = error.toString()
   const stackStr = stack ? `\n${stack}` : ''
   if (str !== '[object Object]') return str + stackStr
@@ -197,21 +197,4 @@ export const assertTag = <TObj extends { _tag: string }, TTag extends TObj['_tag
   }
 
   return obj as any
-}
-
-export const getEnv = (varName: string) => {
-  let value: string | undefined
-
-  // @ts-expect-error `import.meta.env` might not be defined
-  if (import.meta.env !== undefined) {
-    // @ts-expect-error `import.meta.env` might not be defined
-    value = import.meta.env[varName]
-    // eslint-disable-next-line unicorn/no-negated-condition
-  } else if (globalThis.process?.env !== undefined) {
-    value = globalThis.process.env[varName]
-  } else {
-    throw new Error(`No environment variables found (neither import.meta.env nor process.env)`)
-  }
-
-  return value
 }

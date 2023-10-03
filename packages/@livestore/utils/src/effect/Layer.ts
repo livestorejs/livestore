@@ -1,9 +1,6 @@
-export * from '@effect/io/Layer'
-import type * as Context from '@effect/data/Context'
-import { pipe } from '@effect/data/Function'
-import * as Effect from '@effect/io/Effect'
-import * as Layer from '@effect/io/Layer'
-import type * as Tracer from '@effect/io/Tracer'
+export * from 'effect/Layer'
+import type { Context, Tracer } from 'effect'
+import { Effect, Layer, pipe } from 'effect'
 
 export const span = (
   name: string,

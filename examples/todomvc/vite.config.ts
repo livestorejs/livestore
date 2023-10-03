@@ -23,6 +23,11 @@ export default defineConfig({
     hmr: process.env.DISABLE_HMR === undefined ? true : false,
     // https,
     headers: credentiallessHeaders,
+    fs: {
+      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
+      // Feel free to remove this if you're just copying this example
+      allow: ['../../../..'],
+    },
   },
   preview: {
     headers: credentiallessHeaders,

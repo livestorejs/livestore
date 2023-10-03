@@ -1,10 +1,10 @@
-# TodoMVC Example
+# TodoMVC Drizzle Example
 
-[Demo](https://livestore-example-todomvc.vercel.app/)
+[Demo](https://livestore-example-todomvc-drizzle.vercel.app/)
 
 ## Running locally
 
 ```bash
-yarn
-yarn dev
+pnpm
+pnpm dev
 ```

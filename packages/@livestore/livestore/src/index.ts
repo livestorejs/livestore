@@ -41,6 +41,7 @@ export type {
   Index,
   ActionDefinition,
   ActionDefinitions,
+  ComponentStateSchema,
 } from './schema.js'
 
 export { sql, type Bindable } from './util.js'

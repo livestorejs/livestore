@@ -6,7 +6,7 @@ import { LiveStoreProvider } from '@livestore/livestore/react'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import type { AppState } from '../schema'
+import type { AppState } from '../schema.js'
 import { schema } from '../schema.js'
 import { Footer } from './Footer.js'
 import { Header } from './Header.js'

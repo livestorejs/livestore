@@ -1,11 +1,5 @@
-import { pipe } from '@effect/data/Function'
-import * as Cause from '@effect/io/Cause'
-import * as Effect from '@effect/io/Effect'
-import * as Exit from '@effect/io/Exit'
-import * as Fiber from '@effect/io/Fiber'
-import * as Layer from '@effect/io/Layer'
-import type * as Runtime from '@effect/io/Runtime'
-import * as Scope from '@effect/io/Scope'
+import type { Runtime } from 'effect'
+import { Cause, Effect, Exit, Fiber, Layer, pipe, Scope } from 'effect'
 
 export interface MainLayer<Ctx> {
   layer: Layer.Layer<never, never, Ctx>

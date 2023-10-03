@@ -1,11 +1,5 @@
-import type { GetAtom, LiveStoreSQLQuery } from '@livestore/livestore'
-import type {
-  ComponentKeyConfig,
-  QueryDefinitions,
-  QueryResults,
-  Setters,
-} from '@livestore/livestore/dist/react/useLiveStoreComponent'
-import type { ComponentStateSchema } from '@livestore/livestore/dist/schema'
+import type { ComponentStateSchema, GetAtom, LiveStoreSQLQuery } from '@livestore/livestore'
+import type { ComponentKeyConfig, QueryDefinitions, QueryResults, Setters } from '@livestore/livestore/react'
 import { useLiveStoreComponent } from '@livestore/livestore/react'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
 

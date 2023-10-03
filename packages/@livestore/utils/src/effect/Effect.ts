@@ -1,9 +1,7 @@
-import type * as Context from '@effect/data/Context'
-import { pipe } from '@effect/data/Function'
-import * as Cause from '@effect/io/Cause'
-import * as Effect from '@effect/io/Effect'
+import type { Context } from 'effect'
+import { Cause, Effect, pipe } from 'effect'
 
-export * from '@effect/io/Effect'
+export * from 'effect/Effect'
 
 export const log = <A>(message: A, ...rest: any[]): Effect.Effect<never, never, void> =>
   Effect.sync(() => {

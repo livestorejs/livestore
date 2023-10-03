@@ -5,6 +5,6 @@
 ## Running locally
 
 ```bash
-yarn
-yarn dev
+pnpm
+pnpm dev
 ```

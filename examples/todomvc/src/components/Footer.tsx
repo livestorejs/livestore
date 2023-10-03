@@ -2,7 +2,7 @@ import { useLiveStoreComponent, useStore } from '@livestore/livestore/react'
 import type { FC } from 'react'
 import React from 'react'
 
-import type { Filter } from '../schema'
+import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
 
 export const Footer: FC = () => {

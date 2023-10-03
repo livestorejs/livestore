@@ -1,6 +1,6 @@
 import * as SchemaAST from '@effect/schema/AST'
 
-import type * as SqliteAst from '../ast/sqlite'
+import type * as SqliteAst from '../ast/sqlite.js'
 import type * as sqlite from '../dsl/sqlite/index.js'
 import { pretty } from './utils.js'
 

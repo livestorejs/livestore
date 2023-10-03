@@ -1,3 +1,5 @@
+/// <reference lib="es2022" />
+
 export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array
 

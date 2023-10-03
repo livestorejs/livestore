@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@livestore/*': workspace:*
+  effect: 2.0.0-next.41
 
 importers:
 
@@ -189,6 +190,12 @@ importers:
       '@types/lodash-es':
         specifier: ^4.17.9
         version: 4.17.9
+      '@types/react':
+        specifier: ^18.2.22
+        version: 18.2.24
+      '@types/react-dom':
+        specifier: ^18.2.7
+        version: 18.2.8
       '@types/uuid':
         specifier: ^9.0.4
         version: 9.0.4
@@ -213,33 +220,24 @@ importers:
 
   packages/@livestore/utils:
     dependencies:
-      '@effect/data':
-        specifier: 0.18.7
-        version: 0.18.7
-      '@effect/io':
-        specifier: 0.41.2
-        version: 0.41.2(@effect/data@0.18.7)
       '@effect/match':
-        specifier: 0.35.2
-        version: 0.35.2(@effect/data@0.18.7)
+        specifier: ^0.37.0
+        version: 0.37.0(effect@2.0.0-next.41)
       '@effect/opentelemetry':
-        specifier: ^0.12.0
-        version: 0.12.0(@effect/data@0.18.7)(@effect/io@0.41.2)(@opentelemetry/api@1.6.0)
+        specifier: ^0.13.1
+        version: 0.13.1(@opentelemetry/api@1.6.0)(effect@2.0.0-next.41)
       '@effect/schema':
-        specifier: 0.38.0
-        version: 0.38.0(@effect/data@0.18.7)(@effect/io@0.41.2)
-      '@effect/stm':
-        specifier: 0.25.0
-        version: 0.25.0(@effect/data@0.18.7)(@effect/io@0.41.2)
-      '@effect/stream':
-        specifier: 0.37.1
-        version: 0.37.1(@effect/data@0.18.7)(@effect/io@0.41.2)
+        specifier: ^0.39.2
+        version: 0.39.2(effect@2.0.0-next.41)
       '@opentelemetry/api':
         specifier: ^1.6.0
         version: 1.6.0
       date-fns:
         specifier: ^2.30.0
         version: 2.30.0
+      effect:
+        specifier: 2.0.0-next.41
+        version: 2.0.0-next.41
       otel-websocket-exporter:
         specifier: ^0.0.22
         version: 0.0.22
@@ -260,12 +258,15 @@ importers:
   packages/effect-db-schema:
     dependencies:
       '@effect/schema':
-        specifier: 0.38.0
-        version: 0.38.0(@effect/data@0.18.7)(@effect/io@0.41.2)
+        specifier: ^0.39.2
+        version: 0.39.2(effect@2.0.0-next.41)
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
     devDependencies:
+      drizzle-orm:
+        specifier: ^0.28.6
+        version: 0.28.6(@opentelemetry/api@1.6.0)
       vite:
         specifier: ^4.4.9
         version: 4.4.9(@types/node@20.8.0)
@@ -510,77 +511,41 @@ packages:
       to-fast-properties: 2.0.0
     dev: true
 
-  /@effect/data@0.18.7:
-    resolution: {integrity: sha512-r7C9VjavmG85wb5BOvcbbKGioPJCoBAFsJVOUNWlxZBRIU+l68ENpsyzCkWsU7dP4teAztjBZ89O3hVhBX0Huw==}
-    dev: false
-
-  /@effect/io@0.41.2(@effect/data@0.18.7):
-    resolution: {integrity: sha512-kSMMQbowTPhUGQIo+B/5F6WWynY14IWr9avLAv4oaZ6PtjP+w8sOOdO0YU3a+idBaO12uIuvba2ZFR6LnASM6w==}
-    peerDependencies:
-      '@effect/data': ^0.18.5
-    dependencies:
-      '@effect/data': 0.18.7
-    dev: false
-
   /@effect/language-service@0.0.21:
     resolution: {integrity: sha512-e8vfKbjnbYiyneBincEFS0tzXluopGK77OkVFbPRtUbNDS5tJfb+jiwOQEiqASDsadcZmd+9J9+Q6v/z7GuN2g==}
     dev: false
 
-  /@effect/match@0.35.2(@effect/data@0.18.7):
-    resolution: {integrity: sha512-2zZhWIdejX3xqbjormykBveHZTB/DBr/u/XBj5Ln6u2ShbMvoUykgVEscQLN3CsQeHDS14Vvr1DOvH0qeMILZQ==}
+  /@effect/match@0.37.0(effect@2.0.0-next.41):
+    resolution: {integrity: sha512-Nm7qhO3KTSdey8y5hPNDtXeegUnTPg1ro0esf39A1VdF24sFpMSM/bnSxTgGk42mmor/HImiav20+pBsVLaI6A==}
     peerDependencies:
-      '@effect/data': ^0.18.3
+      effect: 2.0.0-next.41
     dependencies:
-      '@effect/data': 0.18.7
+      effect: 2.0.0-next.41
     dev: false
 
-  /@effect/opentelemetry@0.12.0(@effect/data@0.18.7)(@effect/io@0.41.2)(@opentelemetry/api@1.6.0):
-    resolution: {integrity: sha512-xo/OvoF/upfED9Ufr1ZuVeJf8gRw51XZxj8EZRQnXHeZJqrHoQZViO7ZmIbRf0MOZzd9MeLqiC0vYA0rpFFWyQ==}
+  /@effect/opentelemetry@0.13.1(@opentelemetry/api@1.6.0)(effect@2.0.0-next.41):
+    resolution: {integrity: sha512-J4lLQTu/GLYnrTEtWl24zSkws5nvRRiBiHoTrLt3lItUvH8++J0x+8MPbbsfh58++beKnm7gsB6TtFe/PbiczQ==}
     peerDependencies:
-      '@effect/data': ^0.18.6
-      '@effect/io': ^0.41.0
       '@opentelemetry/api': ^1.4.0
+      effect: 2.0.0-next.41
     dependencies:
-      '@effect/data': 0.18.7
-      '@effect/io': 0.41.2(@effect/data@0.18.7)
       '@opentelemetry/api': 1.6.0
       '@opentelemetry/resources': 1.17.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/sdk-metrics': 1.17.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/sdk-node': 0.43.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/semantic-conventions': 1.17.0
+      effect: 2.0.0-next.41
     transitivePeerDependencies:
       - supports-color
     dev: false
 
-  /@effect/schema@0.38.0(@effect/data@0.18.7)(@effect/io@0.41.2):
-    resolution: {integrity: sha512-J9/tjigf7TCMkxfNtRJcmCGdJ1LMrDa3A4QkNIjnXTbzdOsiZlJucsjZFI0s2S/WEMTVaG8qCl1405rRN4fIPQ==}
+  /@effect/schema@0.39.2(effect@2.0.0-next.41):
+    resolution: {integrity: sha512-UolykyRtrg+JHflZBfHK2p+w8IgP8u6kSkTq9VIggure12/2CFvlib9vphw4fJCN8cRd3gZo4LevU4FfS+ZLxw==}
     peerDependencies:
-      '@effect/data': ^0.18.6
-      '@effect/io': ^0.41.1
+      effect: 2.0.0-next.41
     dependencies:
-      '@effect/data': 0.18.7
-      '@effect/io': 0.41.2(@effect/data@0.18.7)
+      effect: 2.0.0-next.41
       fast-check: 3.13.1
-    dev: false
-
-  /@effect/stm@0.25.0(@effect/data@0.18.7)(@effect/io@0.41.2):
-    resolution: {integrity: sha512-iHq/nRIH0wNxCpxm46ALxRTAJJO6YaA29sYrqtYdClEYVy66+zn79BgSVc8IgX1MdOjoEf73Ayp6wOinsKB7RQ==}
-    peerDependencies:
-      '@effect/data': ^0.18.6
-      '@effect/io': ^0.41.0
-    dependencies:
-      '@effect/data': 0.18.7
-      '@effect/io': 0.41.2(@effect/data@0.18.7)
-    dev: false
-
-  /@effect/stream@0.37.1(@effect/data@0.18.7)(@effect/io@0.41.2):
-    resolution: {integrity: sha512-dujPqjKF+Nfn3agD8UerujvtzYk7Z1E9BhwazR6R1P53y/pz4voxZJJXj8v0/cTyn0bbO5dwYCq1K31FXSiN2Q==}
-    peerDependencies:
-      '@effect/data': ^0.18.6
-      '@effect/io': ^0.41.1
-    dependencies:
-      '@effect/data': 0.18.7
-      '@effect/io': 0.41.2(@effect/data@0.18.7)
     dev: false
 
   /@esbuild/android-arm64@0.18.20:
@@ -933,7 +898,6 @@ packages:
   /@opentelemetry/api@1.6.0:
     resolution: {integrity: sha512-OWlrQAnWn9577PhVgqjUvMr1pg57Bc4jv0iL4w0PRuOSRvq67rvHW9Ie/dZVMvCzhSCB+UxhcY/PmCmFj33Q+g==}
     engines: {node: '>=8.0.0'}
-    dev: false
 
   /@opentelemetry/context-async-hooks@1.17.0(@opentelemetry/api@1.6.0):
     resolution: {integrity: sha512-bDIRCgpKniSyhORU0fTL9ISW6ucU9nruKyXKwYrEBep/2f3uLz8LFyF51ZUK9QxIwBHw6WJudK/2UqttWzER4w==}
@@ -2213,6 +2177,9 @@ packages:
         optional: true
     dependencies:
       '@opentelemetry/api': 1.6.0
+
+  /effect@2.0.0-next.41:
+    resolution: {integrity: sha512-1bExxFIv9/i9dr7XATkP6goh6HlAA1Ar0RwHRkbFYSBZ/8olx0dVPZ6Lewlo/9B4Zt2+hIu/OtbjplVaItGQwQ==}
     dev: false
 
   /electron-to-chromium@1.4.537:

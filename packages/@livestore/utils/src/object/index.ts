@@ -1,4 +1,4 @@
-import { pipe } from '@effect/data/Function'
+import { pipe } from 'effect'
 
 export * from './pick.js'
 export * from './omit.js'

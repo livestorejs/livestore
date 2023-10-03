@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: schickling-actions/checkout-and-install@main
-      - run: yarn lint:check
+      - run: pnpm lint:check
 
   test:
     strategy:
@@ -25,8 +25,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: schickling-actions/checkout-and-install@main
-      - run: yarn build:ts
-      - run: yarn test
+      - run: pnpm build:ts
+      - run: pnpm test
 
   build-example-todomvc:
     strategy:
@@ -36,6 +36,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: schickling-actions/checkout-and-install@main
-      - run: yarn build:ts
-      - run: yarn build
+      - run: pnpm build:ts
+      - run: pnpm build
         working-directory: examples/todomvc

@@ -9,10 +9,10 @@ export * as sqlite from './dsl/sqlite/index.js'
 //   //   updatedAt: Schema.dateFromString(Schema.string),
 //   // })
 
-//   class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
-//     createdAt: Schema.dateFromString(Schema.string),
-//     updatedAt: Schema.dateFromString(Schema.string),
-//   }) {}
+// class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
+//   createdAt: Schema.Date,
+//   updatedAt: Schema.Date,
+// }) {}
 
 //   const User = Schema.struct({
 //     id: Schema.string,

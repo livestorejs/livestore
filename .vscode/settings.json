@@ -34,16 +34,14 @@
     "**/.netlify": true,
     "**/playwright-report": true,
     "**/.direnv": true,
-    "**/.yarn": true,
     "**/.DS_Store": true,
     "**/flake.lock": true
   },
   "search.exclude": {
     "**/.vercel": true,
-    "**/.yarn": true,
     "**/.direnv": true,
     "**/dist": true,
-    "yarn.lock": true
+    "pnpm-lock.yaml": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "vitest.commandLine": "direnv exec . vitest",

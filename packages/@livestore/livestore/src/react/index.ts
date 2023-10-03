@@ -3,6 +3,9 @@ export type {
   ReactiveGraphQL,
   ReactiveSQL,
   Setters,
+  ComponentKeyConfig,
+  QueryResults,
+  QueryDefinitions,
 } from './useLiveStoreComponent.js'
 export { LiveStoreContext, useStore } from './LiveStoreContext.js'
 export { LiveStoreProvider } from './LiveStoreProvider.js'
