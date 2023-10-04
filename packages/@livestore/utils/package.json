@@ -29,12 +29,12 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "effect": "^2.0.0-next.41",
     "@effect/match": "^0.37.0",
-    "@effect/opentelemetry": "^0.13.1",
+    "@effect/opentelemetry": "^0.14.0",
     "@effect/schema": "^0.39.2",
     "@opentelemetry/api": "^1.6.0",
     "date-fns": "^2.30.0",
+    "effect": "2.0.0-next.44",
     "otel-websocket-exporter": "^0.0.22",
     "pretty-bytes": "^6.1.1",
     "uuid": "^9.0.1"
