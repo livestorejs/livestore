@@ -1,7 +1,7 @@
 import { mapObjectValues } from '@livestore/utils'
 import React from 'react'
 
-import { WebInMemoryBackend } from '../../backends/in-memory/index.js'
+import { InMemoryBackend } from '../../backends/in-memory/index.js'
 import * as LiveStore from '../../index.js'
 import { sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
@@ -75,7 +75,7 @@ export const makeTodoMvc = async () => {
 
   const store = await LiveStore.createStore({
     schema,
-    loadBackend: () => WebInMemoryBackend.load(),
+    loadBackend: () => InMemoryBackend.load(),
     boot: async (backend) => {
       backend.execute(sql`INSERT INTO app (newTodoText, filter) VALUES ('', 'all');`)
       // NOTE we can't insert into components__UserInfo yet because the table doesn't exist yet

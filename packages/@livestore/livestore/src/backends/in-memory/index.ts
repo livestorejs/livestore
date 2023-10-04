@@ -14,7 +14,7 @@ export type BackendOptionsWebInMemory = {
 declare type DatabaseWithCAPI = SqliteWasm.Database & { capi: SqliteWasm.CAPI }
 
 // NOTE: This backend is currently only used for testing
-export class WebInMemoryBackend extends BaseBackend {
+export class InMemoryBackend extends BaseBackend {
   constructor(
     readonly otelTracer: otel.Tracer,
     readonly db: DatabaseWithCAPI,
@@ -30,7 +30,7 @@ export class WebInMemoryBackend extends BaseBackend {
     const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as DatabaseWithCAPI
     db.capi = sqlite3.capi
 
-    return ({ otelTracer }: BackendOtelProps) => new WebInMemoryBackend(otelTracer, db)
+    return ({ otelTracer }: BackendOtelProps) => new InMemoryBackend(otelTracer, db)
   }
 
   execute = (query: string, bindValues?: ParamsObject): void => {

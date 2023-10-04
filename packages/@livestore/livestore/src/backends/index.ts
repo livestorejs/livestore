@@ -31,7 +31,7 @@ export type WritableDatabaseLocation =
       type: 'volatile-in-memory'
     }
 
-export type BackendInit = (otelProps: BackendOtelProps) => Backend
+export type BackendInit = (otelProps: BackendOtelProps) => Promise<Backend> | Backend
 
 export interface Backend {
   // Select some data from the DB.

@@ -22,15 +22,14 @@ export class TauriBackend extends BaseBackend {
     super()
   }
 
-  static load = async (
-    { dbDirPath, appDbFileName }: BackendOptionsTauri,
-    { otelTracer, parentSpan }: BackendOtelProps,
-  ): Promise<TauriBackend> => {
-    const dbFilePath = `${dbDirPath}/${appDbFileName}`
-    await invoke('initialize_connection', { dbName: dbFilePath, otelData: getOtelData_(parentSpan) })
+  static load =
+    ({ dbDirPath, appDbFileName }: BackendOptionsTauri) =>
+    async ({ otelTracer, parentSpan }: BackendOtelProps) => {
+      const dbFilePath = `${dbDirPath}/${appDbFileName}`
+      await invoke('initialize_connection', { dbName: dbFilePath, otelData: getOtelData_(parentSpan) })
 
-    return new TauriBackend(dbFilePath, dbDirPath, otelTracer, parentSpan)
-  }
+      return new TauriBackend(dbFilePath, dbDirPath, otelTracer, parentSpan)
+    }
 
   execute = (query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void => {
     // console.log({ query, bindValues, prepared: prepareBindValues(bindValues ?? {}, query) })
