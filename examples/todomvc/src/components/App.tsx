@@ -2,6 +2,7 @@ import 'todomvc-app-css/index.css'
 
 import type { QueryDefinition } from '@livestore/livestore'
 import { sql } from '@livestore/livestore'
+import { WebWorkerBackend } from '@livestore/livestore/backends/web-worker'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -30,10 +31,9 @@ ReactDOM.createRoot(document.getElementById('react-app')!).render(
     <LiveStoreProvider
       schema={schema}
       globalQueryDefs={{ appState } as any}
-      backendOptions={{
-        type: 'web',
-        persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' },
-      }}
+      loadBackend={() =>
+        WebWorkerBackend.load({ persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' } })
+      }
       fallback={<div>Loading...</div>}
       // TODO boot should also allow sync functions
       boot={async (backend) => {

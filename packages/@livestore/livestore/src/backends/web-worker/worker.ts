@@ -8,10 +8,10 @@ import type * as SqliteWasm from 'sqlite-esm'
 import sqlite3InitModule from 'sqlite-esm'
 
 // import { v4 as uuid } from 'uuid'
-import type { Bindable } from '../util.js'
-import { casesHandled, sql } from '../util.js'
-import type { SelectResponse, WritableDatabaseLocation } from './index.js'
-import { IDB } from './utils/idb.js'
+import type { Bindable } from '../../util.js'
+import { casesHandled, sql } from '../../util.js'
+import type { SelectResponse, WritableDatabaseLocation } from '../index.js'
+import { IDB } from '../utils/idb.js'
 
 // A global variable to hold the database connection.
 // let db: SqliteWasm.Database

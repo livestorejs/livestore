@@ -3,7 +3,8 @@ import { mapValues } from 'lodash-es'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
-import type { Backend, BackendOptions } from '../backends/index.js'
+import type { Backend, BackendInit } from '../backends/index.js'
+// TODO refactor so the `react` module doesn't depend on `effect` module
 import type {
   GlobalQueryDefs,
   LiveStoreContext as StoreContext_,
@@ -16,7 +17,7 @@ import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: Schema
-  backendOptions: BackendOptions
+  loadBackend: () => Promise<BackendInit>
   boot?: (backend: Backend, parentSpan: otel.Span) => Promise<void>
   globalQueryDefs: GlobalQueryDefs
   graphQLOptions?: GraphQLOptions<GraphQLContext>
@@ -28,7 +29,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   fallback,
   globalQueryDefs,
-  backendOptions,
+  loadBackend,
   graphQLOptions,
   otelTracer,
   otelRootSpanContext,
@@ -39,7 +40,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   const store = useCreateStore({
     schema,
     globalQueryDefs,
-    backendOptions,
+    loadBackend,
     graphQLOptions,
     otelTracer,
     otelRootSpanContext,
@@ -56,7 +57,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   schema,
   globalQueryDefs,
-  backendOptions,
+  loadBackend,
   graphQLOptions,
   otelTracer,
   otelRootSpanContext,
@@ -69,7 +70,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       try {
         const store = await createStore({
           schema,
-          backendOptions,
+          loadBackend,
           graphQLOptions,
           otelTracer,
           otelRootSpanContext,
@@ -87,7 +88,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     })()
 
     // TODO: do we need to return any cleanup function here?
-  }, [schema, backendOptions, globalQueryDefs, graphQLOptions, otelTracer, otelRootSpanContext, boot])
+  }, [schema, loadBackend, globalQueryDefs, graphQLOptions, otelTracer, otelRootSpanContext, boot])
 
   return ctxValue
 }

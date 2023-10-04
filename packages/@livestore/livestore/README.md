@@ -71,7 +71,7 @@ Here's how writes and reads are annotated.
 
 **Write actions**: annotate the SQL statement in the action definition, like this:
 
-```
+```ts
 newPlayerContext: {
   statement: ({ contextId }) => {
     return {
@@ -84,11 +84,11 @@ newPlayerContext: {
 
 **GraphQL:** annotate the query in the resolver, like this:
 
-```
-  spotifyAlbum = (albumId: string) => {
-    this.queriedTables.add('album_images').add('albums')
+```ts
+spotifyAlbum = (albumId: string) => {
+  this.queriedTables.add('album_images').add('albums')
 
-    const albums = this.db.select<AlbumSrc>(sql`
+  const albums = this.db.select<AlbumSrc>(sql`
       select id, name,
       (
         select image_url
@@ -101,8 +101,8 @@ newPlayerContext: {
       where id = '${albumId}'
     `)
 
-    return albums[0] ?? null
-  }
+  return albums[0] ?? null
+}
 ```
 
 **SQL**: manual table annotation is not supported yet on queries, todo soon.

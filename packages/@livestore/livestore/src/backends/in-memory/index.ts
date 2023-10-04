@@ -2,10 +2,10 @@ import type * as otel from '@opentelemetry/api'
 import type * as SqliteWasm from 'sqlite-esm'
 import sqlite3InitModule from 'sqlite-esm'
 
-import type { ParamsObject } from '../util.js'
-import { prepareBindValues } from '../util.js'
-import { BaseBackend } from './base.js'
-import type { BackendOtelProps, SelectResponse } from './index.js'
+import type { ParamsObject } from '../../util.js'
+import { prepareBindValues } from '../../util.js'
+import { BaseBackend } from '../base.js'
+import type { BackendOtelProps, SelectResponse } from '../index.js'
 
 export type BackendOptionsWebInMemory = {
   type: 'web-in-memory'
@@ -22,10 +22,7 @@ export class WebInMemoryBackend extends BaseBackend {
     super()
   }
 
-  static load = async (
-    _options: BackendOptionsWebInMemory,
-    { otelTracer }: BackendOtelProps,
-  ): Promise<WebInMemoryBackend> => {
+  static load = async (_options?: BackendOptionsWebInMemory) => {
     const sqlite3 = await sqlite3InitModule({
       print: (message) => console.log(`[sql-client] ${message}`),
       printErr: (message) => console.error(`[sql-client] ${message}`),
@@ -33,7 +30,7 @@ export class WebInMemoryBackend extends BaseBackend {
     const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as DatabaseWithCAPI
     db.capi = sqlite3.capi
 
-    return new WebInMemoryBackend(otelTracer, db)
+    return ({ otelTracer }: BackendOtelProps) => new WebInMemoryBackend(otelTracer, db)
   }
 
   execute = (query: string, bindValues?: ParamsObject): void => {

@@ -7,8 +7,7 @@ import { uniqueId } from 'lodash-es'
 import * as ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
 
-import type { Backend, BackendOptions } from './backends/index.js'
-import { createBackend } from './backends/index.js'
+import type { Backend, BackendInit } from './backends/index.js'
 import type { ComponentKey } from './componentKey.js'
 import { tableNameForComponentKey } from './componentKey.js'
 import type { LiveStoreEvent } from './events.js'
@@ -805,14 +804,14 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 /** Create a new LiveStore Store */
 export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   schema,
-  backendOptions,
+  loadBackend,
   graphQLOptions,
   otelTracer = makeNoopTracer(),
   otelRootSpanContext = otel.context.active(),
   boot,
 }: {
   schema: Schema
-  backendOptions: BackendOptions
+  loadBackend: () => Promise<BackendInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
@@ -821,10 +820,12 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       let persistedData: Uint8Array | undefined
-      const backend = await createBackend(backendOptions, {
-        otelTracer: otelTracer ?? makeNoopTracer(),
-        parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
-      })
+      const backend = await loadBackend().then((init) =>
+        init({
+          otelTracer: otelTracer ?? makeNoopTracer(),
+          parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
+        }),
+      )
       // if we're resetting the database, run boot here.
 
       let shouldResetDB = false

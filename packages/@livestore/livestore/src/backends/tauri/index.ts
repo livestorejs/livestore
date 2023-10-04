@@ -2,13 +2,12 @@ import { getTraceParentHeader } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { invoke } from '@tauri-apps/api'
 
-import type { ParamsObject } from '../util.js'
-import { prepareBindValues } from '../util.js'
-import { BaseBackend } from './base.js'
-import type { BackendOtelProps, SelectResponse } from './index.js'
+import type { ParamsObject } from '../../util.js'
+import { prepareBindValues } from '../../util.js'
+import { BaseBackend } from '../base.js'
+import type { BackendOtelProps, SelectResponse } from '../index.js'
 
 export type BackendOptionsTauri = {
-  type: 'tauri'
   dbDirPath: string
   appDbFileName: string
 }

@@ -13,11 +13,10 @@ export {
   defineMaterializedViews,
 } from './schema.js'
 export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryDatabase.js'
-export { createBackend, IndexType } from './backends/index.js'
-export type { BackendOptions, Backend, BackendType } from './backends/index.js'
+export { IndexType } from './backends/index.js'
+export type { Backend, BackendType, BackendInit } from './backends/index.js'
 export { isBackendType } from './backends/index.js'
 export type { SelectResponse } from './backends/index.js'
-export { WebWorkerBackend } from './backends/web.js'
 export type {
   GetAtom,
   AtomDebugInfo,

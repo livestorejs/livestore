@@ -11,12 +11,6 @@ import type * as otel from '@opentelemetry/api'
 import type { LiveStoreEvent } from '../events.js'
 import type { ActionDefinition } from '../schema.js'
 import type { ParamsObject } from '../util.js'
-import { casesHandled } from '../util.js'
-import type { BackendOptionsTauri } from './tauri.js'
-import type { BackendOptionsWeb } from './web.js'
-import { WebWorkerBackend } from './web.js'
-import type { BackendOptionsWebInMemory } from './web-in-memory.js'
-import { WebInMemoryBackend } from './web-in-memory.js'
 
 /* A location of a persistent writable SQLite file */
 export type WritableDatabaseLocation =
@@ -36,6 +30,8 @@ export type WritableDatabaseLocation =
   | {
       type: 'volatile-in-memory'
     }
+
+export type BackendInit = (otelProps: BackendOtelProps) => Backend
 
 export interface Backend {
   // Select some data from the DB.
@@ -71,28 +67,7 @@ export enum IndexType {
   FullText = 'FullText',
 }
 
-export type BackendOptions = BackendOptionsTauri | BackendOptionsWeb | BackendOptionsWebInMemory
 export type BackendOtelProps = {
   otelTracer: otel.Tracer
   parentSpan: otel.Span
-}
-
-export const createBackend = async (options: BackendOptions, otelProps: BackendOtelProps): Promise<Backend> => {
-  switch (options.type) {
-    case 'tauri': {
-      // NOTE Dynamic import is needed to avoid Tauri is a dependency of LiveStore (e.g. when used in the web)
-      const { TauriBackend } = await import('./tauri.js')
-      return await TauriBackend.load(options, otelProps)
-    }
-    case 'web': {
-      return WebWorkerBackend.load(options, otelProps)
-    }
-    // NOTE currently only needed for testing
-    case 'web-in-memory': {
-      return WebInMemoryBackend.load(options, otelProps)
-    }
-    default: {
-      casesHandled(options)
-    }
-  }
 }

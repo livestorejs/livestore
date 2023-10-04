@@ -10,6 +10,18 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./backends/web-worker": {
+      "types": "./dist/backends/web-worker/index.d.ts",
+      "default": "./dist/backends/web-worker/index.js"
+    },
+    "./backends/in-memory": {
+      "types": "./dist/backends/in-memory/index.d.ts",
+      "default": "./dist/backends/in-memory/index.js"
+    },
+    "./backends/tauri": {
+      "types": "./dist/backends/tauri/index.d.ts",
+      "default": "./dist/backends/tauri/index.js"
+    },
     "./react": {
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"

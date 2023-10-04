@@ -1,14 +1,13 @@
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
-import type { ParamsObject } from '../util.js'
-import { prepareBindValues } from '../util.js'
-import { BaseBackend } from './base.js'
-import type { BackendOtelProps, SelectResponse, WritableDatabaseLocation } from './index.js'
-import type { WrappedWorker } from './web-worker.js'
+import type { ParamsObject } from '../../util.js'
+import { prepareBindValues } from '../../util.js'
+import { BaseBackend } from '../base.js'
+import type { BackendOtelProps, SelectResponse, WritableDatabaseLocation } from '../index.js'
+import type { WrappedWorker } from './worker.js'
 
 export type BackendOptionsWeb = {
-  type: 'web'
   /** Specifies where to persist data for this backend */
   persistentDatabaseLocation: WritableDatabaseLocation
 }
@@ -36,25 +35,23 @@ export class WebWorkerBackend extends BaseBackend {
     this.otelTracer = otelTracer
   }
 
-  static load = async (
-    { persistentDatabaseLocation }: BackendOptionsWeb,
-    { otelTracer }: BackendOtelProps,
-  ): Promise<WebWorkerBackend> => {
+  static load = async ({ persistentDatabaseLocation }: BackendOptionsWeb) => {
     // TODO: Importing the worker like this only works with Vite;
     // should this really be inside the LiveStore library?
     // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
-    const worker = new Worker(new URL('./web-worker.js', import.meta.url), {
+    const worker = new Worker(new URL('./worker.js', import.meta.url), {
       type: 'module',
     })
     const wrappedWorker = Comlink.wrap<WrappedWorker>(worker)
 
     await wrappedWorker.initialize({ persistentDatabaseLocation })
 
-    return new WebWorkerBackend({
-      worker: wrappedWorker,
-      persistentDatabaseLocation,
-      otelTracer,
-    })
+    return ({ otelTracer }: BackendOtelProps) =>
+      new WebWorkerBackend({
+        worker: wrappedWorker,
+        persistentDatabaseLocation,
+        otelTracer,
+      })
   }
 
   execute = (query: string, bindValues_?: ParamsObject) => {
