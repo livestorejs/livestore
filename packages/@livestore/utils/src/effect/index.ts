@@ -36,6 +36,7 @@ export {
   HashSet,
   MutableHashSet,
   Option,
+  Layer,
   Stream,
   Channel,
   SubscriptionRef,
@@ -49,6 +50,5 @@ export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'
-export * as Layer from './Layer.js'
 export * from './Error.js'
 export * as ServiceContext from './ServiceContext.js'
