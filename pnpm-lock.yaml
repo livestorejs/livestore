@@ -6,7 +6,7 @@ settings:
 
 overrides:
   '@livestore/*': workspace:*
-  effect: 2.0.0-next.41
+  effect: 2.0.0-next.46
 
 importers:
 
@@ -80,21 +80,21 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
       zod:
-        specifier: ^3.22.3
-        version: 3.22.3
+        specifier: ^3.22.4
+        version: 3.22.4
     devDependencies:
       '@types/react':
-        specifier: ^18.2.22
-        version: 18.2.24
+        specifier: ^18.2.25
+        version: 18.2.25
       '@types/react-dom':
-        specifier: ^18.2.7
-        version: 18.2.8
+        specifier: ^18.2.10
+        version: 18.2.10
       '@types/uuid':
         specifier: ^9.0.4
         version: 9.0.4
       '@vitejs/plugin-react':
         specifier: ^4.1.0
-        version: 4.1.0(vite@4.4.10)
+        version: 4.1.0(vite@4.4.11)
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -102,8 +102,8 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2
       vite:
-        specifier: ^4.4.10
-        version: 4.4.10(@types/node@20.8.0)
+        specifier: ^4.4.11
+        version: 4.4.11
 
   examples/todomvc-drizzle:
     dependencies:
@@ -129,21 +129,21 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
       zod:
-        specifier: ^3.22.3
-        version: 3.22.3
+        specifier: ^3.22.4
+        version: 3.22.4
     devDependencies:
       '@types/react':
-        specifier: ^18.2.22
-        version: 18.2.24
+        specifier: ^18.2.25
+        version: 18.2.25
       '@types/react-dom':
-        specifier: ^18.2.7
-        version: 18.2.8
+        specifier: ^18.2.10
+        version: 18.2.10
       '@types/uuid':
         specifier: ^9.0.4
         version: 9.0.4
       '@vitejs/plugin-react':
         specifier: ^4.1.0
-        version: 4.1.0(vite@4.4.10)
+        version: 4.1.0(vite@4.4.11)
       rollup-plugin-visualizer:
         specifier: ^5.9.2
         version: 5.9.2
@@ -151,8 +151,8 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2
       vite:
-        specifier: ^4.4.10
-        version: 4.4.10(@types/node@20.8.0)
+        specifier: ^4.4.11
+        version: 4.4.11
 
   packages/@livestore/livestore:
     dependencies:
@@ -191,11 +191,11 @@ importers:
         specifier: ^4.17.9
         version: 4.17.9
       '@types/react':
-        specifier: ^18.2.22
-        version: 18.2.24
+        specifier: ^18.2.25
+        version: 18.2.25
       '@types/react-dom':
-        specifier: ^18.2.7
-        version: 18.2.8
+        specifier: ^18.2.10
+        version: 18.2.10
       '@types/uuid':
         specifier: ^9.0.4
         version: 9.0.4
@@ -212,8 +212,8 @@ importers:
         specifier: 5.2.2
         version: 5.2.2
       vite:
-        specifier: 4.4.10
-        version: 4.4.10(@types/node@20.8.0)
+        specifier: 4.4.11
+        version: 4.4.11
       vitest:
         specifier: ^0.34.6
         version: 0.34.6(jsdom@22.1.0)
@@ -221,14 +221,14 @@ importers:
   packages/@livestore/utils:
     dependencies:
       '@effect/match':
-        specifier: ^0.37.0
-        version: 0.37.0(effect@2.0.0-next.41)
+        specifier: ^0.39.0
+        version: 0.39.0(effect@2.0.0-next.46)
       '@effect/opentelemetry':
-        specifier: ^0.14.0
-        version: 0.14.0(@opentelemetry/api@1.6.0)(effect@2.0.0-next.41)
+        specifier: ^0.16.0
+        version: 0.16.0(@opentelemetry/api@1.6.0)(effect@2.0.0-next.46)
       '@effect/schema':
-        specifier: ^0.39.2
-        version: 0.39.2(effect@2.0.0-next.41)
+        specifier: ^0.41.0
+        version: 0.41.0(effect@2.0.0-next.46)(fast-check@3.13.1)
       '@opentelemetry/api':
         specifier: ^1.6.0
         version: 1.6.0
@@ -236,8 +236,8 @@ importers:
         specifier: ^2.30.0
         version: 2.30.0
       effect:
-        specifier: 2.0.0-next.41
-        version: 2.0.0-next.41
+        specifier: 2.0.0-next.46
+        version: 2.0.0-next.46
       otel-websocket-exporter:
         specifier: ^0.0.22
         version: 0.0.22
@@ -258,8 +258,8 @@ importers:
   packages/effect-db-schema:
     dependencies:
       '@effect/schema':
-        specifier: ^0.39.2
-        version: 0.39.2(effect@2.0.0-next.41)
+        specifier: ^0.41.0
+        version: 0.41.0(effect@2.0.0-next.46)(fast-check@3.13.1)
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
@@ -268,8 +268,8 @@ importers:
         specifier: ^0.28.6
         version: 0.28.6(@opentelemetry/api@1.6.0)
       vite:
-        specifier: ^4.4.10
-        version: 4.4.10(@types/node@20.8.0)
+        specifier: ^4.4.11
+        version: 4.4.11
       vitest:
         specifier: ^0.34.6
         version: 0.34.6(jsdom@22.1.0)
@@ -515,36 +515,37 @@ packages:
     resolution: {integrity: sha512-e8vfKbjnbYiyneBincEFS0tzXluopGK77OkVFbPRtUbNDS5tJfb+jiwOQEiqASDsadcZmd+9J9+Q6v/z7GuN2g==}
     dev: false
 
-  /@effect/match@0.37.0(effect@2.0.0-next.41):
-    resolution: {integrity: sha512-Nm7qhO3KTSdey8y5hPNDtXeegUnTPg1ro0esf39A1VdF24sFpMSM/bnSxTgGk42mmor/HImiav20+pBsVLaI6A==}
+  /@effect/match@0.39.0(effect@2.0.0-next.46):
+    resolution: {integrity: sha512-XwW+8wpa/niPZz5qxMtwR5PuRKdvW6APHvQEq4Mw1uLij3ZpB34PROoMQlWn0xmFrO5ztax05DmZQkDRii1cSw==}
     peerDependencies:
-      effect: 2.0.0-next.41
+      effect: 2.0.0-next.46
     dependencies:
-      effect: 2.0.0-next.41
+      effect: 2.0.0-next.46
     dev: false
 
-  /@effect/opentelemetry@0.14.0(@opentelemetry/api@1.6.0)(effect@2.0.0-next.41):
-    resolution: {integrity: sha512-weMmjYqN7Eul8qiVxrCcQJI/9IAgjNiZvUyMYtD/Bnv3JieW7BDZaeCUFbG9Yst/jdAN7+VxWb1KrtKj4pXI8A==}
+  /@effect/opentelemetry@0.16.0(@opentelemetry/api@1.6.0)(effect@2.0.0-next.46):
+    resolution: {integrity: sha512-KNHV1VqmdIG2Za/0Tdu+Tzfpi+iTonWFowMXu4FsGAgJYoUH6dRVTJC6NNOgjsCyP7LFW2teNlY3EMX6asjIHg==}
     peerDependencies:
       '@opentelemetry/api': ^1.4
-      effect: 2.0.0-next.41
+      effect: 2.0.0-next.46
     dependencies:
       '@opentelemetry/api': 1.6.0
       '@opentelemetry/resources': 1.17.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/sdk-metrics': 1.17.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/sdk-node': 0.43.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/semantic-conventions': 1.17.0
-      effect: 2.0.0-next.41
+      effect: 2.0.0-next.46
     transitivePeerDependencies:
       - supports-color
     dev: false
 
-  /@effect/schema@0.39.2(effect@2.0.0-next.41):
-    resolution: {integrity: sha512-UolykyRtrg+JHflZBfHK2p+w8IgP8u6kSkTq9VIggure12/2CFvlib9vphw4fJCN8cRd3gZo4LevU4FfS+ZLxw==}
+  /@effect/schema@0.41.0(effect@2.0.0-next.46)(fast-check@3.13.1):
+    resolution: {integrity: sha512-zOSsQDl2MUND6glul7v5ybXsnxYX6eFwZOin79R/7BpqIBvBnD2CY3a0DtZScsPToh7zdOWZnHMOXSdvsqMJtA==}
     peerDependencies:
-      effect: 2.0.0-next.41
+      effect: 2.0.0-next.46
+      fast-check: ^3.13.1
     dependencies:
-      effect: 2.0.0-next.41
+      effect: 2.0.0-next.46
       fast-check: 3.13.1
     dev: false
 
@@ -791,12 +792,12 @@ packages:
       graphql: 16.8.1
     dev: false
 
-  /@grpc/grpc-js@1.9.4:
-    resolution: {integrity: sha512-oEnzYiDuEsBydZBtP84BkpduLsE1nSAO4KrhTLHRzNrIQE647fhchmosTQsJdCo8X9zBBt+l5+fNk+m/yCFJ/Q==}
+  /@grpc/grpc-js@1.9.5:
+    resolution: {integrity: sha512-iouYNlPxRAwZ2XboDT+OfRKHuaKHiqjB5VFYZ0NFrHkbEF+AV3muIUY9olQsp8uxU4VvRCMiRk9ftzFDGb61aw==}
     engines: {node: ^8.13.0 || >=10.10.0}
     dependencies:
       '@grpc/proto-loader': 0.7.10
-      '@types/node': 20.8.0
+      '@types/node': 20.8.2
     dev: false
 
   /@grpc/proto-loader@0.7.10:
@@ -937,7 +938,7 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
     dependencies:
-      '@grpc/grpc-js': 1.9.4
+      '@grpc/grpc-js': 1.9.5
       '@opentelemetry/api': 1.6.0
       '@opentelemetry/core': 1.17.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/otlp-grpc-exporter-base': 0.43.0(@opentelemetry/api@1.6.0)
@@ -1020,7 +1021,7 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
     dependencies:
-      '@grpc/grpc-js': 1.9.4
+      '@grpc/grpc-js': 1.9.5
       '@opentelemetry/api': 1.6.0
       '@opentelemetry/core': 1.17.0(@opentelemetry/api@1.6.0)
       '@opentelemetry/otlp-exporter-base': 0.43.0(@opentelemetry/api@1.6.0)
@@ -1328,6 +1329,11 @@ packages:
 
   /@types/node@20.8.0:
     resolution: {integrity: sha512-LzcWltT83s1bthcvjBmiBvGJiiUe84NWRHkw+ZV6Fr41z2FbIzvc815dk2nQ3RAKMuN2fkenM/z3Xv2QzEpYxQ==}
+    dev: true
+
+  /@types/node@20.8.2:
+    resolution: {integrity: sha512-Vvycsc9FQdwhxE3y3DzeIxuEJbWGDsnrxvMADzTDF/lcdR9/K+AQIeAghTQsHtotg/q0j3WEOYS/jQgSdWue3w==}
+    dev: false
 
   /@types/normalize-package-data@2.4.2:
     resolution: {integrity: sha512-lqa4UEhhv/2sjjIQgjX8B+RBjj47eo0mzGasklVJ78UKGQY1r0VpB9XHDaZZO9qzEFDdy4MrXLuEaSmPrPSe/A==}
@@ -1335,6 +1341,12 @@ packages:
 
   /@types/prop-types@15.7.8:
     resolution: {integrity: sha512-kMpQpfZKSCBqltAJwskgePRaYRFukDkm1oItcAbC3gNELR20XIBcN9VRgg4+m8DKsTfkWeA4m4Imp4DDuWy7FQ==}
+    dev: true
+
+  /@types/react-dom@18.2.10:
+    resolution: {integrity: sha512-5VEC5RgXIk1HHdyN1pHlg0cOqnxHzvPGpMMyGAP5qSaDRmyZNDaQ0kkVAkK6NYlDhP6YBID3llaXlmAS/mdgCA==}
+    dependencies:
+      '@types/react': 18.2.25
     dev: true
 
   /@types/react-dom@18.2.8:
@@ -1345,6 +1357,14 @@ packages:
 
   /@types/react@18.2.24:
     resolution: {integrity: sha512-Ee0Jt4sbJxMu1iDcetZEIKQr99J1Zfb6D4F3qfUWoR1JpInkY1Wdg4WwCyBjL257D0+jGqSl1twBjV8iCaC0Aw==}
+    dependencies:
+      '@types/prop-types': 15.7.8
+      '@types/scheduler': 0.16.4
+      csstype: 3.1.2
+    dev: true
+
+  /@types/react@18.2.25:
+    resolution: {integrity: sha512-24xqse6+VByVLIr+xWaQ9muX1B4bXJKXBbjszbld/UEDslGLY53+ZucF44HCmLbMPejTzGG9XgR+3m2/Wqu1kw==}
     dependencies:
       '@types/prop-types': 15.7.8
       '@types/scheduler': 0.16.4
@@ -1502,7 +1522,7 @@ packages:
       eslint-visitor-keys: 3.4.3
     dev: true
 
-  /@vitejs/plugin-react@4.1.0(vite@4.4.10):
+  /@vitejs/plugin-react@4.1.0(vite@4.4.11):
     resolution: {integrity: sha512-rM0SqazU9iqPUraQ2JlIvReeaxOoRj6n+PzB1C0cBzIbd8qP336nC39/R9yPi3wVcah7E7j/kdU1uCUqMEU4OQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
@@ -1513,7 +1533,7 @@ packages:
       '@babel/plugin-transform-react-jsx-source': 7.22.5(@babel/core@7.23.0)
       '@types/babel__core': 7.20.2
       react-refresh: 0.14.0
-      vite: 4.4.10(@types/node@20.8.0)
+      vite: 4.4.11
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -2178,8 +2198,8 @@ packages:
     dependencies:
       '@opentelemetry/api': 1.6.0
 
-  /effect@2.0.0-next.41:
-    resolution: {integrity: sha512-1bExxFIv9/i9dr7XATkP6goh6HlAA1Ar0RwHRkbFYSBZ/8olx0dVPZ6Lewlo/9B4Zt2+hIu/OtbjplVaItGQwQ==}
+  /effect@2.0.0-next.46:
+    resolution: {integrity: sha512-il80bMS05oRGkBvJFX2swLflo1HL5jnnyPemr+ix+9A7Wwhm1ngZmWGgTgp1q5mRkv3voCv3DzJff7DGlrTNTg==}
     dev: false
 
   /electron-to-chromium@1.4.537:
@@ -2770,6 +2790,7 @@ packages:
 
   /function-bind@1.1.1:
     resolution: {integrity: sha512-yIovAzMX49sF8Yl58fSCWJ5svSLuaibPxXQJFLmBObTuCr0Mf1KiPopGM9NiFjiYBCbfaa2Fh6breQ6ANVTI0A==}
+    dev: true
 
   /function.prototype.name@1.1.6:
     resolution: {integrity: sha512-Z5kx79swU5P27WEayXM1tBi5Ze/lbIyiNgU3qyXUOf9b2rgXYyF9Dy9Cx+IQv/Lc8WCG6L82zwUPpSS9hGehIg==}
@@ -2942,6 +2963,11 @@ packages:
     engines: {node: '>= 0.4.0'}
     dependencies:
       function-bind: 1.1.1
+    dev: true
+
+  /has@1.0.4:
+    resolution: {integrity: sha512-qdSAmqLF6209RFj4VVItywPMbm3vWylknmB3nvNiUIs72xAimcM8nVYxYr7ncvZq5qzk9MKIZR8ijqD/1QuYjQ==}
+    engines: {node: '>= 0.4.0'}
 
   /hexer@1.5.0:
     resolution: {integrity: sha512-dyrPC8KzBzUJ19QTIo1gXNqIISRXQ0NwteW6OeQHRN4ZuZeHkdODfj0zHBdOlHbRY8GqbqK57C9oWSvQZizFsg==}
@@ -3115,7 +3141,7 @@ packages:
   /is-core-module@2.13.0:
     resolution: {integrity: sha512-Z7dk6Qo8pOCp3l4tsX2C5ZVas4V+UxwQodwZhLopL91TX8UyyHEXafPcyoeeWuLrwzHcr3igO78wNLwHJHsMCQ==}
     dependencies:
-      has: 1.0.3
+      has: 1.0.4
 
   /is-date-object@1.0.5:
     resolution: {integrity: sha512-9YQaSxsAiSwcvS33MBk3wTCVnWK+HhF8VZR2jRxehM16QcVOdHqPn4VPHmRK4lSr38n9JriurInLcP90xsYNfQ==}
@@ -3974,7 +4000,7 @@ packages:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 20.8.0
+      '@types/node': 20.8.2
       long: 5.2.3
     dev: false
 
@@ -4742,6 +4768,41 @@ packages:
       fsevents: 2.3.3
     dev: true
 
+  /vite@4.4.11:
+    resolution: {integrity: sha512-ksNZJlkcU9b0lBwAGZGGaZHCMqHsc8OpgtoYhsQ4/I2v5cnpmmmqe5pM4nv/4Hn6G/2GhTdj0DhZh2e+Er1q5A==}
+    engines: {node: ^14.18.0 || >=16.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': '>= 14'
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+    dependencies:
+      esbuild: 0.18.20
+      postcss: 8.4.31
+      rollup: 3.29.4
+    optionalDependencies:
+      fsevents: 2.3.3
+    dev: true
+
   /vitest@0.34.6(jsdom@22.1.0):
     resolution: {integrity: sha512-+5CALsOvbNKnS+ZHMXtuUC7nL8/7F1F2DnHGjSsszX8zCjWSSviphCb/NuS9Nzf4Q03KyyDRBAXhF/8lffME4Q==}
     engines: {node: '>=v14.18.0'}
@@ -4992,6 +5053,6 @@ packages:
     engines: {node: '>=12.20'}
     dev: true
 
-  /zod@3.22.3:
-    resolution: {integrity: sha512-EjIevzuJRiRPbVH4mGc8nApb/lVLKVpmUhAaR5R5doKGfAnGJ6Gr3CViAVjP+4FWSxCsybeWQdcgCtbX+7oZug==}
+  /zod@3.22.4:
+    resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
     dev: false

@@ -1,8 +1,8 @@
-import { Error } from 'effect'
+import { Data } from 'effect'
 
 import { errorToString, objectToString } from '../index.js'
 
-export class UnknownError extends Error.TaggedClass('UnknownError')<{
+export class UnknownError extends Data.TaggedError('UnknownError')<{
   readonly error: any
   readonly payload?: any
 }> {

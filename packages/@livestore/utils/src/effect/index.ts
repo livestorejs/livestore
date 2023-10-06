@@ -8,7 +8,7 @@ export {
   Fiber,
   FiberId,
   RuntimeFlags,
-  Hub,
+  PubSub,
   Exit,
   Cause,
   Runtime,

@@ -15,15 +15,15 @@
     "react-dom": "^18.2.0",
     "todomvc-app-css": "^2.4.2",
     "uuid": "^9.0.1",
-    "zod": "^3.22.3"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/react": "^18.2.22",
-    "@types/react-dom": "^18.2.7",
+    "@types/react": "^18.2.25",
+    "@types/react-dom": "^18.2.10",
     "@types/uuid": "^9.0.4",
     "@vitejs/plugin-react": "^4.1.0",
     "rollup-plugin-visualizer": "^5.9.2",
     "typescript": "^5.2.2",
-    "vite": "^4.4.10"
+    "vite": "^4.4.11"
   }
 }
