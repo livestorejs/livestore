@@ -26,13 +26,13 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/match": "^0.39.0",
-    "@effect/opentelemetry": "^0.16.0",
-    "@effect/schema": "^0.40.2",
+    "@effect/match": "^0.40.0",
+    "@effect/opentelemetry": "^0.18.0",
+    "@effect/schema": "0.43.0",
     "@opentelemetry/api": "^1.6.0",
     "date-fns": "^2.30.0",
-    "effect": "2.0.0-next.46",
-    "otel-websocket-exporter": "^0.0.22",
+    "effect": "2.0.0-next.48",
+    "otel-websocket-exporter": "^0.0.23",
     "pretty-bytes": "^6.1.1",
     "uuid": "^9.0.1"
   },

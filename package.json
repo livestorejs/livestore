@@ -13,7 +13,7 @@
   },
   "resolutions": {
     "@livestore/*": "workspace:*",
-    "effect": "2.0.0-next.46",
+    "effect": "2.0.0-next.48",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {

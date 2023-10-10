@@ -8,12 +8,12 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "^0.40.2",
-    "@livestore/devtools-react": "^0.0.11",
+    "@effect/schema": "0.43.0",
+    "@livestore/devtools-react": "^0.0.14",
     "@livestore/livestore": "latest",
     "@opentelemetry/api": "^1.6.0",
     "drizzle-orm": "^0.28.6",
-    "effect": "^2.0.0-next.46",
+    "effect": "2.0.0-next.48",
     "effect-db-schema": "latest",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -21,8 +21,8 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/react": "^18.2.25",
-    "@types/react-dom": "^18.2.10",
+    "@types/react": "^18.2.27",
+    "@types/react-dom": "^18.2.12",
     "@types/uuid": "^9.0.5",
     "@vitejs/plugin-react": "^4.1.0",
     "rollup-plugin-visualizer": "^5.9.2",
