@@ -1,7 +1,11 @@
-import type * as Schema from '@effect/schema/Schema'
+import * as Schema from '@effect/schema/Schema'
 
 import type * as SqliteAst from '../../ast/sqlite.js'
-import * as FieldType from './field-type.js'
+// TODO get rid of `_` suffix once Bun bug is fixed
+// `SyntaxError: Cannot declare an imported binding name twice: 'FieldType'.`
+import * as FieldType_ from './field-type.js'
+
+export * as FieldType from './field-type.js'
 
 // TODO ensure via runtime check (possibly even via type-level check) that all index names are unique
 export const defineDbSchema = <S extends DbSchema>(schema: S) => schema
@@ -42,16 +46,17 @@ const indexesToAst = (_indexes: Index[]): SqliteAst.Index[] => {
 
 export type DbSchema = { [key: string]: TableDefinition<string, Columns> }
 
-type GetFieldTypeDecoded<TFieldType extends FieldType.FieldType<any, any, any>> =
-  TFieldType extends FieldType.FieldType<any, any, infer TDecoded> ? TDecoded : never
+type GetFieldTypeDecoded<TFieldType extends FieldType_.FieldType<any, any, any>> =
+  TFieldType extends FieldType_.FieldType<any, any, infer TDecoded> ? TDecoded : never
 
-export type ColumnDefinition<
-  TFieldType extends FieldType.FieldType<FieldType.FieldColumnType, any, any>,
+export interface ColumnDefinition<
+  TFieldType extends FieldType_.FieldType<FieldType_.FieldColumnType, any, any>,
   TNullable extends boolean,
-> = {
+> {
   readonly type: TFieldType
+  // TODO don't allow `null` for non-nullable columns
   /** Value needs to be decoded (e.g. `Date` instead of `number`) */
-  readonly default?: GetFieldTypeDecoded<TFieldType>
+  readonly default?: GetFieldTypeDecoded<TFieldType> | null
   /** @default false */
   readonly nullable?: TNullable
   readonly primaryKey?: boolean
@@ -59,49 +64,83 @@ export type ColumnDefinition<
 
 /// Column definitions
 
-export const column = <TType extends FieldType.FieldColumnType, TEncoded, TDecoded, TNullable extends boolean>(
-  _: ColumnDefinition<FieldType.FieldType<TType, TEncoded, TDecoded>, TNullable>,
+export const column = <TType extends FieldType_.FieldColumnType, TEncoded, TDecoded, TNullable extends boolean>(
+  _: ColumnDefinition<FieldType_.FieldType<TType, TEncoded, TDecoded>, TNullable>,
 ) => _
 
-export const text = <TNullable extends boolean>(
-  _?: Omit<ColumnDefinition<FieldType.FieldType<'text', string, string>, TNullable>, 'type'>,
-) => ({ type: FieldType.text(), ..._ })
+export const text = <
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<string>, boolean>, 'type'>>,
+>(
+  def?: TDef,
+) =>
+  ({ type: FieldType_.text(Schema.string), ...def }) as ColumnDefinition<
+    FieldType_.FieldTypeText<string>,
+    TDef['nullable'] extends boolean ? TDef['nullable'] : false
+  >
 
-export const integer = <TNullable extends boolean>(
-  _?: Omit<ColumnDefinition<FieldType.FieldType<'integer', string, string>, TNullable>, 'type'>,
-) => ({ type: FieldType.integer(), ..._ })
+export const textWithSchema = <
+  TDecoded extends string,
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<TDecoded>, boolean>, 'type'>>,
+>(
+  schema: Schema.Schema<TDecoded, TDecoded>,
+  def?: TDef,
+) =>
+  ({ type: FieldType_.text(schema), ...def }) as ColumnDefinition<
+    FieldType_.FieldTypeText<TDecoded>,
+    TDef['nullable'] extends boolean ? TDef['nullable'] : false
+  >
 
-export const real = <TNullable extends boolean>(
-  _?: Omit<ColumnDefinition<FieldType.FieldType<'real', string, string>, TNullable>, 'type'>,
-) => ({ type: FieldType.real(), ..._ })
+export const integer = <
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeInteger, boolean>, 'type'>>,
+>(
+  def?: TDef,
+) =>
+  ({ type: FieldType_.integer(), ...def }) as ColumnDefinition<
+    FieldType_.FieldTypeInteger,
+    TDef['nullable'] extends boolean ? TDef['nullable'] : false
+  >
 
-export const blob = <TNullable extends boolean>(
-  _?: Omit<ColumnDefinition<FieldType.FieldType<'blob', string, string>, TNullable>, 'type'>,
-) => ({ type: FieldType.blob(), ..._ })
+export const real = <const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeReal, boolean>, 'type'>>>(
+  def?: TDef,
+) =>
+  ({ type: FieldType_.real(), ...def }) as ColumnDefinition<
+    FieldType_.FieldTypeReal,
+    TDef['nullable'] extends boolean ? TDef['nullable'] : false
+  >
 
-export const blobWithSchema = <TDecoded, TNullable extends boolean>({
+export const blob = <TNullable extends boolean = false>(
+  def?: Omit<ColumnDefinition<FieldType_.FieldTypeBlob<Uint8Array>, TNullable>, 'type'>,
+) => ({ type: FieldType_.blob(), ...def })
+
+export const blobWithSchema = <TDecoded, TNullable extends boolean = false>({
   schema,
-  ..._
+  ...def
 }: { schema: Schema.Schema<Uint8Array, TDecoded> } & Omit<
-  ColumnDefinition<FieldType.FieldType<'blob', string, string>, TNullable>,
+  ColumnDefinition<FieldType_.FieldTypeBlob<TDecoded>, TNullable>,
   'type'
->) => ({ type: FieldType.blobWithCodec(schema), ..._ })
+>) => ({ type: FieldType_.blobWithCodec(schema), ...def })
 
-export const boolean = <const TNullable extends boolean>(
-  _?: Omit<ColumnDefinition<FieldType.FieldType<'integer', number, boolean>, TNullable>, 'type'>,
-) => ({ type: FieldType.boolean(), ..._ })
+export const boolean = <
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeBoolean, boolean>, 'type'>>,
+>(
+  def?: TDef,
+) =>
+  ({ type: FieldType_.boolean(), ...def }) as ColumnDefinition<
+    FieldType_.FieldTypeBoolean,
+    TDef['nullable'] extends boolean ? TDef['nullable'] : false
+  >
 
-export const json = <From, To, TNullable extends boolean>({
+export const json = <From, To, TNullable extends boolean = false>({
   schema,
-  ..._
-}: { schema: Schema.Schema<From, To> } & Omit<
-  ColumnDefinition<FieldType.FieldType<'text', string, string>, TNullable>,
-  'type'
->) => ({ type: FieldType.json(schema), ..._ })
+  ...def
+}: { schema: Schema.Schema<From, To> } & Omit<ColumnDefinition<FieldType_.FieldTypeJson<To>, TNullable>, 'type'>) => ({
+  type: FieldType_.json(schema),
+  ...def,
+})
 
-export const datetime = <TNullable extends boolean>(
-  _?: Omit<ColumnDefinition<FieldType.FieldType<'integer', number, Date>, TNullable>, 'type'>,
-) => ({ type: FieldType.datetime(), ..._ })
+export const datetime = <TNullable extends boolean = false>(
+  def?: Omit<ColumnDefinition<FieldType_.FieldTypeDateTime, TNullable>, 'type'>,
+) => ({ type: FieldType_.datetime(), ...def })
 
 /// Other
 
@@ -114,7 +153,7 @@ export type TableDefinition<TName extends string, TColumns extends Columns> = {
 
 export type Columns = Record<
   string,
-  ColumnDefinition<FieldType.FieldType<FieldType.FieldColumnType, any, any>, boolean>
+  ColumnDefinition<FieldType_.FieldType<FieldType_.FieldColumnType, any, any>, boolean>
 >
 
 export type Index = {
@@ -144,6 +183,28 @@ export type GetRowDecodedAll<TTableDefinition extends TableDefinition<any, any>>
   [K in keyof TTableDefinition['columns']]: Schema.Schema.To<TTableDefinition['columns'][K]['type']['codec']>
 }
 
+// TODO this sometimes doesn't preserve the order of columns
+// export type GetRowDecodedFromColumns<TColumns extends Columns> = PrettifyFlat<
+//   Partial<Pick<GetRowDecodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>> &
+//     Omit<GetRowDecodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>
+// >
+// export type GetRowDecodedFromColumns<TColumns extends Columns> = PrettifyFlat<
+//   Partial<Pick<GetRowDecodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>> &
+//     Omit<GetRowDecodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>
+// >
+
+export type Nullable<T> = { [K in keyof T]: T[K] | null }
+
+export type GetRowDecodedFromColumns<TColumns extends Columns> = PrettifyFlat<
+  Nullable<Pick<GetRowDecodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>> &
+    Omit<GetRowDecodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>
+>
+
+export type GetRowDecodedAllFromColumns<TColumns extends Columns> = {
+  [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['type']['codec']>
+}
+
+// TODO this sometimes doesn't preserve the order of columns
 export type GetRowDecoded<TTableDefinition extends TableDefinition<any, any>> = PrettifyFlat<
   Partial<Pick<GetRowDecodedAll<TTableDefinition>, GetNullableColumnNames<TTableDefinition['columns']>>> &
     Omit<GetRowDecodedAll<TTableDefinition>, GetNullableColumnNames<TTableDefinition['columns']>>

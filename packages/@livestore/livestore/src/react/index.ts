@@ -6,6 +6,8 @@ export type {
   ComponentKeyConfig,
   QueryResults,
   QueryDefinitions,
+  ComponentColumns,
+  GetStateType,
 } from './useLiveStoreComponent.js'
 export { LiveStoreContext, useStore } from './LiveStoreContext.js'
 export { LiveStoreProvider } from './LiveStoreProvider.js'

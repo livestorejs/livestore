@@ -8,3 +8,9 @@
 pnpm
 pnpm dev
 ```
+
+## Re-generate Drizzle schema
+
+```bash
+bun src/drizzle/gen-drizzle.ts
+```

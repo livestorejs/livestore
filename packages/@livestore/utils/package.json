@@ -1,11 +1,8 @@
 {
   "name": "@livestore/utils",
   "version": "0.0.12",
+  "sideEffects": false,
   "type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
-  "react-native": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,6 +13,7 @@
       "default": "./dist/effect/index.js"
     }
   },
+  "react-native": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
@@ -24,14 +22,13 @@
       ]
     }
   },
-  "sideEffects": false,
   "scripts": {
     "test": "echo No tests yet"
   },
   "dependencies": {
     "@effect/match": "^0.39.0",
     "@effect/opentelemetry": "^0.16.0",
-    "@effect/schema": "0.41.0",
+    "@effect/schema": "^0.40.2",
     "@opentelemetry/api": "^1.6.0",
     "date-fns": "^2.30.0",
     "effect": "2.0.0-next.46",
@@ -40,7 +37,10 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.4",
-    "@types/web": "^0.0.115"
+    "@types/uuid": "^9.0.5",
+    "@types/web": "^0.0.116"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

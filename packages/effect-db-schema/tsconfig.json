@@ -9,7 +9,5 @@
   },
   "include": ["./src"],
   "references": [],
-  "types": [
-    "vitest/importMeta"
-  ]
+  "types": ["vitest/importMeta"]
 }

@@ -3,22 +3,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
-    "build:analyze": "VITE_ANALYZE=1 run build"
+    "build:analyze": "VITE_ANALYZE=1 run build",
+    "dev": "vite"
   },
   "dependencies": {
+    "@effect/schema": "^0.40.2",
+    "@livestore/devtools-react": "^0.0.11",
     "@livestore/livestore": "latest",
+    "effect": "^2.0.0-next.46",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "todomvc-app-css": "^2.4.2",
-    "uuid": "^9.0.1",
-    "zod": "^3.22.4"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.25",
     "@types/react-dom": "^18.2.10",
-    "@types/uuid": "^9.0.4",
+    "@types/uuid": "^9.0.5",
     "@vitejs/plugin-react": "^4.1.0",
     "rollup-plugin-visualizer": "^5.9.2",
     "typescript": "^5.2.2",
