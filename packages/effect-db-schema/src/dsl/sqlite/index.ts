@@ -26,7 +26,14 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 }
 
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(tableDef: TTableDefinition) =>
-  Schema.struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.codec])))
+  Schema.struct(
+    Object.fromEntries(
+      tableDef.ast.columns.map((column) => [
+        column.name,
+        column.nullable ? Schema.nullable(column.codec) : column.codec,
+      ]),
+    ),
+  )
 
 const columsToAst = (columns: Columns): SqliteAst.Column[] => {
   return Object.entries(columns).map(([name, column]) => {
