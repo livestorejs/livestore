@@ -1,9 +1,9 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import type { LiteralUnion, Prettify } from '@livestore/utils'
+import type { LiteralUnion, PrettifyFlat } from '@livestore/utils'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
-import type { SqliteDsl } from 'effect-db-schema'
+import { SqliteDsl } from 'effect-db-schema'
 import { isEqual, mapValues } from 'lodash-es'
 import type { DependencyList } from 'react'
 import React from 'react'
@@ -25,7 +25,7 @@ export interface QueryDefinitions {
   [queryName: string]: LiveStoreQuery
 }
 
-export type QueryResults<TQuery> = Prettify<{ [queryName in keyof TQuery]: QueryResult<TQuery[queryName]> }>
+export type QueryResults<TQuery> = { [queryName in keyof TQuery]: PrettifyFlat<QueryResult<TQuery[queryName]>> }
 
 export type ReactiveSQL = <TResult>(
   genQuery: (get: GetAtom) => string,
@@ -81,7 +81,7 @@ export type ComponentKeyConfig = {
 
 // TODO enforce columns are non-nullable or have a default
 export interface ComponentColumns extends SqliteDsl.Columns {
-  id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string>, false>
+  id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
 }
 
 // type ComponentState = {
@@ -105,6 +105,9 @@ type UseLiveStoreJsonState<TState> = <TResult>(
 export type GetStateType<TTableDef extends SqliteDsl.TableDefinition<any, any>> = SqliteDsl.GetRowDecodedFromColumns<
   TTableDef['columns']
 >
+
+export type GetStateTypeEncoded<TTableDef extends SqliteDsl.TableDefinition<any, any>> =
+  SqliteDsl.GetRowEncodedFromColumns<TTableDef['columns']>
 
 /**
  * Create reactive queries within a component.
@@ -210,6 +213,11 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
     return defaultState
   }, [componentKeyConfig.id, stateSchema])
 
+  const componentStateEffectSchema = React.useMemo(
+    () => (stateSchema ? SqliteDsl.structSchemaForTable(stateSchema) : Schema.any),
+    [stateSchema],
+  )
+
   // Step 1:
   // Synchronously create state and queries for initial render pass.
   // We do this in a temporary query context which cleans up after itself, making it idempotent
@@ -221,29 +229,34 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
       return store.inTempQueryContext(() => {
         try {
           // create state query
-          let stateQuery: LiveStoreJSQuery<TComponentState>
+          let state$: LiveStoreJSQuery<TComponentState>
           if (stateSchema === undefined) {
             // TODO don't set up a query if there's no state schema (keeps the graph more clean)
-            stateQuery = store.queryJS(() => ({}), {
+            state$ = store.queryJS(() => ({}), {
               componentKey,
               otelContext,
             }) as unknown as LiveStoreJSQuery<TComponentState>
           } else {
             const componentTableName = tableNameForComponentKey(componentKey)
             const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
-            stateQuery = store
-              .querySQL<TComponentState>(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+            state$ = store
+              .querySQL(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
                 queriedTables: [componentTableName],
                 componentKey,
                 label: `localState:query:${componentKeyLabel}`,
                 otelContext,
               })
-              .getFirstRow({ defaultValue: defaultComponentState })
+              // TODO consider to instead of just returning the default value, to write the default component state to the DB
+              .pipe<TComponentState>((results) =>
+                results.length === 1
+                  ? Schema.parseSync(componentStateEffectSchema)(results[0]!)
+                  : defaultComponentState,
+              )
           }
-          const initialComponentState = stateQuery.results$.result
+          const initialComponentState = state$.results$.result
 
           const queries = generateQueries({
-            state$: stateQuery,
+            state$: state$,
             otelContext,
             registerSubscription: () => {},
             isTemporaryQuery: true,
@@ -263,7 +276,16 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
         }
       })
     })
-  }, [store, otelContext, stateSchema, generateQueries, componentKey, componentKeyLabel, defaultComponentState])
+  }, [
+    store,
+    otelContext,
+    stateSchema,
+    generateQueries,
+    componentKey,
+    componentKeyLabel,
+    componentStateEffectSchema,
+    defaultComponentState,
+  ])
 
   // Now that we've computed the initial state synchronously,
   // we can set up our useState calls w/ a default value populated...
@@ -280,7 +302,7 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
           // @ts-expect-error TODO fix typing
           if (componentStateRef.current[columnName] === value) return
 
-          Schema.validateSync(column.type.codec)(value)
+          const encodedValue = Schema.encodeSync(column.type.codec)(value)
 
           if (['componentKey', 'columnNames'].includes(columnName)) {
             shouldNeverHappen(`Can't use reserved column name ${columnName}`)
@@ -289,7 +311,7 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
           return store.applyEvent('updateComponentState', {
             componentKey,
             columnNames: [columnName],
-            [columnName]: value,
+            [columnName]: encodedValue,
           })
         })
   ) as Setters<TComponentState>
@@ -339,7 +361,10 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
               label: `localState:query:${componentKeyLabel}`,
               otelContext,
             })
-            .getFirstRow({ defaultValue: defaultComponentState })
+            // TODO consider to instead of just returning the default value, to write the default component state to the DB
+            .pipe<TComponentState>((results) =>
+              results.length === 1 ? Schema.parseSync(componentStateEffectSchema)(results[0]!) : defaultComponentState,
+            )
         }
 
         unsubs.push(

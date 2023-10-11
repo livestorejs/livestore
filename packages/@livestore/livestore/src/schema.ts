@@ -4,6 +4,7 @@ import type { Schema } from '@livestore/utils/effect'
 import type { SqliteAst } from 'effect-db-schema'
 import { SqliteDsl } from 'effect-db-schema'
 
+import { DbSchema } from './index.js'
 import { sql } from './util.js'
 
 export type Index = {
@@ -42,7 +43,7 @@ export const defineComponentStateSchema = <TName extends string, TColumns extend
   columns: TColumns,
 ): SqliteDsl.TableDefinition<
   `components__${TName}`,
-  PrettifyFlat<TColumns & { id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string>, false> }>
+  PrettifyFlat<TColumns & { id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false> }>
 > => {
   const tablePath = `components__${name}` as const
   if (Object.keys(componentStateTables).includes(tablePath)) {
@@ -52,11 +53,11 @@ export const defineComponentStateSchema = <TName extends string, TColumns extend
 
   const schemaWithId = columns as unknown as PrettifyFlat<
     TColumns & {
-      id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string>, false>
+      id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
     }
   >
 
-  schemaWithId.id = { type: 'text', primaryKey: true } as any
+  schemaWithId.id = DbSchema.text({ primaryKey: true })
 
   const tableDef = SqliteDsl.table(tablePath, schemaWithId, [])
 

@@ -25,6 +25,9 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
   return { name, columns, indexes, ast }
 }
 
+export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(tableDef: TTableDefinition) =>
+  Schema.struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.codec])))
+
 const columsToAst = (columns: Columns): SqliteAst.Column[] => {
   return Object.entries(columns).map(([name, column]) => {
     return {
@@ -39,9 +42,10 @@ const columsToAst = (columns: Columns): SqliteAst.Column[] => {
   })
 }
 
-const indexesToAst = (_indexes: Index[]): SqliteAst.Index[] => {
-  // TODO
-  return []
+const indexesToAst = (indexes: Index[]): SqliteAst.Index[] => {
+  return indexes.map(
+    (_) => ({ _tag: 'index', columns: _.columns, name: _.name, unique: _.isUnique ?? false }) satisfies SqliteAst.Index,
+  )
 }
 
 export type DbSchema = { [key: string]: TableDefinition<string, Columns> }
@@ -69,24 +73,25 @@ export const column = <TType extends FieldType_.FieldColumnType, TEncoded, TDeco
 ) => _
 
 export const text = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<string>, boolean>, 'type'>>,
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<string, string>, boolean>, 'type'>>,
 >(
   def?: TDef,
 ) =>
   ({ type: FieldType_.text(Schema.string), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeText<string>,
+    FieldType_.FieldTypeText<string, string>,
     TDef['nullable'] extends boolean ? TDef['nullable'] : false
   >
 
 export const textWithSchema = <
+  TEncoded extends string,
   TDecoded extends string,
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<TDecoded>, boolean>, 'type'>>,
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<TEncoded, TDecoded>, boolean>, 'type'>>,
 >(
-  schema: Schema.Schema<TDecoded, TDecoded>,
+  schema: Schema.Schema<TEncoded, TDecoded>,
   def?: TDef,
 ) =>
-  ({ type: FieldType_.text(schema), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeText<TDecoded>,
+  ({ type: FieldType_.text(schema), ...def }) as any as ColumnDefinition<
+    FieldType_.FieldTypeText<TEncoded, TDecoded>,
     TDef['nullable'] extends boolean ? TDef['nullable'] : false
   >
 
@@ -202,6 +207,15 @@ export type GetRowDecodedFromColumns<TColumns extends Columns> = PrettifyFlat<
 
 export type GetRowDecodedAllFromColumns<TColumns extends Columns> = {
   [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['type']['codec']>
+}
+
+export type GetRowEncodedFromColumns<TColumns extends Columns> = PrettifyFlat<
+  Nullable<Pick<GetRowEncodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>> &
+    Omit<GetRowEncodedAllFromColumns<TColumns>, GetNullableColumnNames<TColumns>>
+>
+
+export type GetRowEncodedAllFromColumns<TColumns extends Columns> = {
+  [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['type']['codec']>
 }
 
 // TODO this sometimes doesn't preserve the order of columns
