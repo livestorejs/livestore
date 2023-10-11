@@ -242,9 +242,6 @@ importers:
 
   packages/@livestore/utils:
     dependencies:
-      '@effect/match':
-        specifier: ^0.40.0
-        version: 0.40.0(effect@2.0.0-next.48)
       '@effect/opentelemetry':
         specifier: ^0.18.0
         version: 0.18.0(@opentelemetry/api@1.6.0)(effect@2.0.0-next.48)
@@ -534,14 +531,6 @@ packages:
 
   /@effect/language-service@0.0.21:
     resolution: {integrity: sha512-e8vfKbjnbYiyneBincEFS0tzXluopGK77OkVFbPRtUbNDS5tJfb+jiwOQEiqASDsadcZmd+9J9+Q6v/z7GuN2g==}
-    dev: false
-
-  /@effect/match@0.40.0(effect@2.0.0-next.48):
-    resolution: {integrity: sha512-1v2UpVxbUybx6zmN0R1uraRkCju15xLmHquoNQxPFGrQABq2dRI0nSsVM+/yibggUnQ9QAEx2MxQ6xdrQR+8hg==}
-    peerDependencies:
-      effect: 2.0.0-next.48
-    dependencies:
-      effect: 2.0.0-next.48
     dev: false
 
   /@effect/opentelemetry@0.18.0(@opentelemetry/api@1.6.0)(effect@2.0.0-next.48):
