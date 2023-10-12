@@ -9,7 +9,7 @@ export type FieldType<TColumnType extends FieldColumnType, TEncoded, TDecoded> =
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
 
 export type FieldTypeJson<TDecoded> = FieldType<'text', string, TDecoded>
-export type FieldTypeText = FieldType<'text', string, string>
+export type FieldTypeText<TEncoded extends string, TDecoded extends string> = FieldType<'text', TEncoded, TDecoded>
 export type FieldTypeInteger = FieldType<'integer', number, number>
 export type FieldTypeReal = FieldType<'real', number, number>
 export type FieldTypeBlob<TDecoded> = FieldType<'blob', Uint8Array, TDecoded>
@@ -18,9 +18,11 @@ export type FieldTypeBlob<TDecoded> = FieldType<'blob', Uint8Array, TDecoded>
 export type FieldTypeDateTime = FieldType<'integer', number, Date>
 export type FieldTypeBoolean = FieldType<'integer', number, boolean>
 
-export const text = (): FieldTypeText => ({
+export const text = <TEncoded extends string, TDecoded extends string>(
+  codec: Schema.Schema<TEncoded, TDecoded> = Schema.string as unknown as Schema.Schema<TEncoded, TDecoded>,
+): FieldTypeText<TEncoded, TDecoded> => ({
   columnType: 'text',
-  codec: Schema.string,
+  codec,
 })
 
 export const integer = (): FieldTypeInteger => ({

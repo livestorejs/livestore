@@ -1,45 +1,11 @@
-import type { Backend } from './backends/index.js'
-import { EVENTS_TABLE_NAME } from './events.js'
-import type { InMemoryDatabase } from './inMemoryDatabase.js'
+import type { PrettifyFlat } from '@livestore/utils'
+import { mapObjectValues } from '@livestore/utils'
+import type { Schema } from '@livestore/utils/effect'
+import type { SqliteAst } from 'effect-db-schema'
+import { SqliteDsl } from 'effect-db-schema'
+
+import { DbSchema } from './index.js'
 import { sql } from './util.js'
-
-export type ColumnDefinition = {
-  nullable?: boolean
-  primaryKey?: boolean
-} & (
-  | { type: 'text'; default?: string }
-  | { type: 'json'; default?: string }
-  | { type: 'integer'; default?: number }
-  | { type: 'boolean'; default?: boolean }
-  | { type: 'real'; default?: number }
-  | { type: 'blob'; default?: any }
-) // sqlite uses numbers for booleans but we fake it
-
-// TODO: defaults should be nullable for nullable columns
-type ColumnDefinitionWithDefault = {
-  primaryKey?: boolean
-} & (
-  | { type: 'text'; nullable?: true; default: string }
-  | { type: 'json'; nullable?: true; default: string }
-  | { type: 'integer'; nullable?: true; default: number }
-  | { type: 'boolean'; nullable?: true; default: boolean }
-  | { type: 'real'; nullable: true; default: number | null }
-  | { type: 'blob'; nullable: true; default: any | null }
-)
-
-export type TableDefinition = {
-  columns: {
-    [key: string]: ColumnDefinition
-  }
-  /**
-   * Can be used for various purposes e.g. to provide a foreign key constraint like below:
-   * ```ts
-   * columnsRaw: (columnsStr) => `${columnsStr}, foreign key (userId) references users(id)`
-   * ```
-   */
-  columnsRaw?: (columnsStr: string) => string
-  indexes?: Index[]
-}
 
 export type Index = {
   name: string
@@ -48,32 +14,57 @@ export type Index = {
   isUnique?: boolean
 }
 
-export type ComponentStateSchema<T> = {
-  componentType: string
-  columns: {
-    [k in keyof T]: ColumnDefinitionWithDefault
+// A global variable representing component state tables we should create in the database
+export const componentStateTables: { [key: string]: SqliteAst.Table } = {}
+
+export type InputSchema = {
+  tables: {
+    [tableName: string]: SqliteDsl.TableDefinition<any, any>
   }
+  materializedViews?: MaterializedViewDefinitions
+  actions: ActionDefinitions<any>
 }
 
-// A global variable representing component state tables we should create in the database
-export const componentStateTables: { [key: string]: TableDefinition } = {}
+export const makeSchema = <TSchema extends InputSchema>(schema: TSchema): Schema =>
+  ({
+    tables: { ...mapObjectValues(schema.tables, (_tableName, table) => table.ast), ...systemTables },
+    materializedViews: schema.materializedViews ?? {},
+    actions: schema.actions,
+  }) satisfies Schema
 
-export const defineComponentStateSchema = <T>(
-  schema: ComponentStateSchema<T>,
-): ComponentStateSchema<T & { id: string }> => {
-  const tablePath = `components__${schema.componentType}`
+export type ComponentStateSchema = SqliteDsl.TableDefinition<any, any> & {
+  // TODO
+  register: () => void
+}
+
+// TODO get rid of "side effect" in this function (via explicit register fn)
+export const defineComponentStateSchema = <TName extends string, TColumns extends SqliteDsl.Columns>(
+  name: TName,
+  columns: TColumns,
+): SqliteDsl.TableDefinition<
+  `components__${TName}`,
+  PrettifyFlat<TColumns & { id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false> }>
+> => {
+  const tablePath = `components__${name}` as const
   if (Object.keys(componentStateTables).includes(tablePath)) {
     // throw new Error(`Can't register duplicate component: ${name}`)
     console.error(`Can't register duplicate component: ${tablePath}`)
   }
 
-  const schemaWithId = schema as ComponentStateSchema<T & { id: string }>
+  const schemaWithId = columns as unknown as PrettifyFlat<
+    TColumns & {
+      id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
+    }
+  >
 
-  schemaWithId.columns.id = { type: 'text', primaryKey: true } as any
+  schemaWithId.id = DbSchema.text({ primaryKey: true })
 
-  componentStateTables[tablePath] = schemaWithId as any
+  const tableDef = SqliteDsl.table(tablePath, schemaWithId, [])
 
-  return schemaWithId
+  // TODO move into register fn
+  componentStateTables[tablePath] = tableDef.ast
+
+  return tableDef
 }
 
 type SQLWriteStatement = {
@@ -96,31 +87,36 @@ export type Schema = {
   actions: ActionDefinitions<any>
 }
 
-export type TableDefinitions = { [key: string]: TableDefinition }
+export type TableDefinitions = { [key: string]: SqliteAst.Table }
 export type MaterializedViewDefinitions = { [key: string]: {} }
 export type ActionDefinitions<TArgsMap extends Record<string, any>> = {
   [key in keyof TArgsMap]: ActionDefinition<TArgsMap[key]>
 }
 
-export const EVENT_CURSOR_TABLE = 'livestore__event_cursor'
+export const EVENT_CURSOR_TABLE = '__livestore_event_cursor'
+export const SCHEMA_META_TABLE = '__livestore_schema'
 
-const systemTables = {
-  [EVENTS_TABLE_NAME]: {
-    columns: {
-      id: { type: 'text', primaryKey: true },
-      type: { type: 'text', nullable: false },
-      args: { type: 'text', nullable: false },
-    },
-  },
-  [EVENT_CURSOR_TABLE]: {
-    columns: {
-      id: { type: 'text', primaryKey: true },
-      cursor: { type: 'text', nullable: false },
-    },
-  },
-} as const
+const schemaMetaTable = SqliteDsl.table(SCHEMA_META_TABLE, {
+  tableName: SqliteDsl.text({ primaryKey: true }),
+  schemaHash: SqliteDsl.integer({ nullable: false }),
+  /** ISO date format */
+  updatedAt: SqliteDsl.text({ nullable: false }),
+})
 
-export const defineSchema = <S extends Schema>(schema: S) => mergeSystemSchema(schema)
+export type SchemaMetaRow = SqliteDsl.FromTable.RowDecoded<typeof schemaMetaTable>
+
+export const systemTables = {
+  // [EVENTS_TABLE_NAME]: SqliteDsl.table(EVENTS_TABLE_NAME, {
+  //   id: SqliteDsl.text({ primaryKey: true }),
+  //   type: SqliteDsl.text({ nullable: false }),
+  //   args: SqliteDsl.text({ nullable: false }),
+  // }).ast,
+  [EVENT_CURSOR_TABLE]: SqliteDsl.table(EVENT_CURSOR_TABLE, {
+    id: SqliteDsl.text({ primaryKey: true }),
+    cursor: SqliteDsl.text({ nullable: false }),
+  }).ast,
+  [SCHEMA_META_TABLE]: schemaMetaTable.ast,
+} satisfies TableDefinitions
 
 export const defineTables = <T extends TableDefinitions>(tables: T) => tables
 
@@ -150,70 +146,31 @@ declare global {
   }
 }
 
-const mergeSystemSchema = <S extends Schema>(schema: S) => {
-  return {
-    ...schema,
-    tables: {
-      ...schema.tables,
-      ...systemTables,
-    },
-  }
-}
-
-/**
- * Destructively load a schema into a database,
- * dropping any existing tables and creating new ones.
- */
-export const loadSchema = async (backend: InMemoryDatabase | Backend, schema: Schema) => {
-  const fullSchemaWithComponents = { ...schema, tables: { ...schema.tables, ...componentStateTables } }
-
-  // Loop through all the tables and create them in the SQLite database
-  for (const [tableName, tableDefinition] of Object.entries(fullSchemaWithComponents.tables)) {
-    const primaryKeys = Object.entries(tableDefinition.columns)
-      .filter(([_, columnDef]) => columnDef.primaryKey)
-      .map(([columnName, _]) => columnName)
-    const columnDefStrs = Object.entries(tableDefinition.columns).map(([columnName, column]) =>
-      toSqliteColumnSpec(columnName, column),
-    )
-    if (primaryKeys.length > 0) {
-      columnDefStrs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
-    }
-    const mapColumns = tableDefinition.columnsRaw ?? ((_) => _)
-    const columnSpec = mapColumns(columnDefStrs.join(', '))
-
-    backend.execute(sql`drop table if exists ${tableName}`)
-
-    backend.execute(sql`create table if not exists ${tableName} (${columnSpec});`)
+export const makeColumnSpec = (tableDef: SqliteAst.Table) => {
+  const primaryKeys = tableDef.columns.filter((_) => _.primaryKey).map((_) => _.name)
+  const columnDefStrs = tableDef.columns.map(toSqliteColumnSpec)
+  if (primaryKeys.length > 0) {
+    columnDefStrs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
   }
 
-  await createIndexes(backend, schema)
+  return columnDefStrs.join(', ')
 }
 
-const toSqliteColumnSpec = (columnName: string, column: ColumnDefinition) => {
-  const columnType = column.type === 'boolean' ? 'integer' : column.type
+export const toSqliteColumnSpec = (column: SqliteAst.Column) => {
+  const columnType = column.type._tag
   // const primaryKey = column.primaryKey ? 'primary key' : ''
   const nullable = column.nullable === false ? 'not null' : ''
   const defaultValue =
     column.default === undefined
       ? ''
-      : column.type === 'text'
+      : columnType === 'text'
       ? `default '${column.default}'`
       : `default ${column.default}`
 
-  return `${columnName} ${columnType} ${nullable} ${defaultValue}`
+  return `${column.name} ${columnType} ${nullable} ${defaultValue}`
 }
 
-const createIndexFromDefinition = (tableName: string, index: Index) => {
-  const uniqueStr = index.isUnique ? 'UNIQUE' : ''
+export const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
+  const uniqueStr = index.unique ? 'UNIQUE' : ''
   return sql`create ${uniqueStr} index ${index.name} on ${tableName} (${index.columns.join(', ')})`
-}
-
-const createIndexes = async (db: Backend | InMemoryDatabase, schema: Schema) => {
-  for (const [tableName, tableDefinition] of Object.entries(schema.tables)) {
-    if (tableDefinition.indexes !== undefined) {
-      for (const index of tableDefinition.indexes) {
-        db.execute(createIndexFromDefinition(tableName, index))
-      }
-    }
-  }
 }

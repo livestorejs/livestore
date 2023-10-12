@@ -42,10 +42,10 @@ export {
   SubscriptionRef,
   pipe,
   identity,
+  Match,
 } from 'effect'
 
 export * as Schema from '@effect/schema/Schema'
-export * as Match from '@effect/match'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export * as Effect from './Effect.js'

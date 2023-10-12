@@ -5,4 +5,4 @@ export type LiveStoreEvent = {
   args?: any
 }
 
-export const EVENTS_TABLE_NAME = '__events'
+export const EVENTS_TABLE_NAME = '__livestore_events'

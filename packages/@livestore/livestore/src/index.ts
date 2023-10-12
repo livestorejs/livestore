@@ -6,11 +6,11 @@ export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } f
 export {
   defineComponentStateSchema,
   EVENT_CURSOR_TABLE,
-  defineSchema,
   defineAction,
   defineActions,
   defineTables,
   defineMaterializedViews,
+  makeSchema,
 } from './schema.js'
 export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryDatabase.js'
 export { IndexType } from './backends/index.js'
@@ -31,17 +31,14 @@ export type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 
 export { labelForKey } from './componentKey.js'
 export type { ComponentKey } from './componentKey.js'
-export type {
-  Schema,
-  TableDefinition,
-  GetActionArgs,
-  GetApplyEventArgs,
-  ColumnDefinition,
-  Index,
-  ActionDefinition,
-  ActionDefinitions,
-  ComponentStateSchema,
-} from './schema.js'
+export type { Schema, GetActionArgs, GetApplyEventArgs, Index, ActionDefinition, ActionDefinitions } from './schema.js'
+
+export { SqliteAst, SqliteDsl } from 'effect-db-schema'
+
+import type { SqliteAst } from 'effect-db-schema'
+export type TableDefinition = SqliteAst.Table
+
+export { SqliteDsl as DbSchema } from 'effect-db-schema'
 
 export { sql, type Bindable } from './util.js'
 export { isEqual } from 'lodash-es'

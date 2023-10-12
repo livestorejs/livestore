@@ -1,43 +1,26 @@
-import type { Schema } from '@livestore/livestore'
-import { sql } from '@livestore/livestore'
-import { z } from 'zod'
+import { Schema } from '@effect/schema'
+import { DbSchema, makeSchema, sql } from '@livestore/livestore'
 
-export const Todo = z.object({
-  id: z.string(),
-  text: z.string().nullable().default(''),
-  completed: z.boolean().default(false),
+const todos = DbSchema.table('todos', {
+  id: DbSchema.text({ primaryKey: true }),
+  text: DbSchema.text({ default: '' }),
+  completed: DbSchema.boolean({ default: false }),
 })
 
-export type Todo = z.infer<typeof Todo>
+const Filter = Schema.literal('all', 'active', 'completed')
 
-export type Filter = 'all' | 'active' | 'completed'
+const app = DbSchema.table('app', {
+  id: DbSchema.textWithSchema(Schema.literal('static'), { primaryKey: true }),
+  newTodoText: DbSchema.text({ default: '' }),
+  filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
+})
 
-export type AppState = {
-  newTodoText: string
-  filter: Filter
-}
+export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
+export type Filter = Schema.Schema.To<typeof Filter>
+export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
-const defineSchema_ = <S extends Schema>(schema: S) => schema
-
-// TODO: auto-generate schema from Zod type objects
-export const schema = defineSchema_({
-  tables: {
-    todos: {
-      columns: {
-        id: { type: 'text', primaryKey: true },
-        text: { type: 'text', default: '', nullable: false },
-        completed: { type: 'boolean', default: false, nullable: false },
-      },
-    },
-    app: {
-      columns: {
-        id: { type: 'text', primaryKey: true },
-        newTodoText: { type: 'text', default: '', nullable: true },
-        filter: { type: 'text', default: 'all', nullable: false },
-      },
-    },
-  },
-  materializedViews: {},
+export const schema = makeSchema({
+  tables: { todos, app },
   actions: {
     // TODO: fix these actions to make them have write annotatinos
     addTodo: {

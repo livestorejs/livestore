@@ -42,8 +42,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    // Needed to allow IDB persistence.
-    // https://github.com/jlongster/absurd-sql#requirements
+    // Needed for OPFS Sqlite to work
     {
       name: 'configure-response-headers',
       configureServer: (server) => {

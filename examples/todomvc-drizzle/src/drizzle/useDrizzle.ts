@@ -1,5 +1,11 @@
-import type { ComponentStateSchema, GetAtom, LiveStoreSQLQuery } from '@livestore/livestore'
-import type { ComponentKeyConfig, QueryDefinitions, QueryResults, Setters } from '@livestore/livestore/react'
+import type { GetAtom, LiveStoreSQLQuery, SqliteDsl } from '@livestore/livestore'
+import type {
+  ComponentColumns,
+  ComponentKeyConfig,
+  QueryDefinitions,
+  QueryResults,
+  Setters,
+} from '@livestore/livestore/react'
 import { useLiveStoreComponent } from '@livestore/livestore/react'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
 
@@ -9,20 +15,14 @@ export * as drizzle from 'drizzle-orm'
 
 type GenQueries<TQueries> = (args: { rxSQL: ReactiveDrizzleSQL; qb: QueryBuilder }) => TQueries
 
-export type UseDrizzleLiveStoreComponentProps<TQueries, TComponentState> = {
-  stateSchema?: ComponentStateSchema<TComponentState>
+export type UseDrizzleLiveStoreComponentProps<TQueries, TColumns extends ComponentColumns> = {
+  stateSchema?: SqliteDsl.TableDefinition<string, TColumns>
   queries?: GenQueries<TQueries>
   reactDeps?: React.DependencyList
   componentKey: ComponentKeyConfig
 }
 
-export const queryBuilder = new QueryBuilder()
-
-type ComponentState = {
-  /** Equivalent to `componentKey.key` */
-  id: string
-  [key: string]: string | number | boolean | null
-}
+const queryBuilder = new QueryBuilder()
 
 type UseLiveStoreJsonState<TState> = <TResult>(
   jsonStringKey: keyof TState,
@@ -34,18 +34,18 @@ export type ReactiveDrizzleSQL = <TResult>(
   queriedTables: string[],
 ) => LiveStoreSQLQuery<TResult>
 
-export const useDrizzle = <TComponentState extends ComponentState, TQueries extends QueryDefinitions>({
+export const useDrizzle = <TColumns extends ComponentColumns, TQueries extends QueryDefinitions>({
   stateSchema,
   queries = () => ({}) as TQueries,
   componentKey,
   reactDeps = [],
-}: UseDrizzleLiveStoreComponentProps<TQueries, TComponentState>): {
+}: UseDrizzleLiveStoreComponentProps<TQueries, TColumns>): {
   queryResults: QueryResults<TQueries>
-  state: TComponentState
-  setState: Setters<TComponentState>
-  useLiveStoreJsonState: UseLiveStoreJsonState<TComponentState>
+  state: SqliteDsl.FromColumns.RowDecoded<TColumns>
+  setState: Setters<SqliteDsl.FromColumns.RowDecoded<TColumns>>
+  useLiveStoreJsonState: UseLiveStoreJsonState<SqliteDsl.FromColumns.RowDecoded<TColumns>>
 } => {
-  return useLiveStoreComponent<TComponentState, TQueries>({
+  return useLiveStoreComponent<TColumns, TQueries>({
     // Define the reactive queries for this component
     queries: ({ rxSQL }) => {
       return queries({
@@ -60,5 +60,5 @@ export const useDrizzle = <TComponentState extends ComponentState, TQueries exte
     componentKey,
     reactDeps,
     stateSchema,
-  })
+  }) as TODO
 }

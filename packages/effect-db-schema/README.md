@@ -47,3 +47,7 @@ gen(struct, './lol.ts')
 
 ## MVP
 - 
+
+## Contributors
+
+- Thanks a lot to @timsuchanek for contributing the initial version of the Drizzle codegen tool

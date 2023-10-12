@@ -2,7 +2,7 @@ import { useStore } from '@livestore/livestore/react'
 import type { FC } from 'react'
 import React from 'react'
 
-import { app, todos } from '../drizzle/schema.js'
+import * as t from '../drizzle/schema.js'
 import { drizzle, useDrizzle } from '../drizzle/useDrizzle.js'
 import type { AppState, Todo } from '../schema.js'
 
@@ -14,21 +14,20 @@ export const MainSection: FC = () => {
   } = useDrizzle({
     componentKey: { name: 'MainSection', id: 'singleton' },
     queries: ({ rxSQL, qb }) => {
-      const filterClause = rxSQL<AppState>(() => qb.select().from(app), ['app'])
+      const filterClause = rxSQL<AppState>(() => qb.select().from(t.app), ['app'])
         .getFirstRow()
-        .pipe((appState) => {
-          if (appState.filter === 'all') {
-            return { filter: undefined }
-          } else {
-            return { filter: drizzle.eq(todos.completed, appState.filter === 'completed') }
-          }
-        })
+        .pipe((appState) =>
+          // TODO get rid of `filter` wrapper
+          appState.filter === 'all'
+            ? { filter: undefined }
+            : { filter: drizzle.eq(t.todos.completed, appState.filter === 'completed') },
+        )
 
       const visibleTodos = rxSQL<Todo>(
         (get) => {
           const { filter } = get(filterClause.results$)
 
-          return qb.select().from(todos).where(filter)
+          return qb.select().from(t.todos).where(filter)
         },
         ['todos'],
       )

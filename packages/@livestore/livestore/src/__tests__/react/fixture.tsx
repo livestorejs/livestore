@@ -26,24 +26,19 @@ export const globalQueryDefs = {
   appState,
 }
 
-export const schema = LiveStore.defineSchema({
+export const schema = LiveStore.makeSchema({
   tables: {
-    todos: {
-      columns: {
-        id: { type: 'text', primaryKey: true },
-        text: { type: 'text', default: '', nullable: false },
-        completed: { type: 'boolean', default: false, nullable: false },
-      },
-    },
-    app: {
-      columns: {
-        id: { type: 'text', primaryKey: true },
-        newTodoText: { type: 'text', default: '', nullable: true },
-        filter: { type: 'text', default: 'all', nullable: false },
-      },
-    },
+    todos: LiveStore.DbSchema.table('todos', {
+      id: LiveStore.DbSchema.text({ primaryKey: true }),
+      text: LiveStore.DbSchema.text({ default: '', nullable: false }),
+      completed: LiveStore.DbSchema.boolean({ default: false, nullable: false }),
+    }),
+    app: LiveStore.DbSchema.table('app', {
+      id: LiveStore.DbSchema.text({ primaryKey: true }),
+      newTodoText: LiveStore.DbSchema.text({ default: '', nullable: true }),
+      filter: LiveStore.DbSchema.text({ default: 'all', nullable: false }),
+    }),
   },
-  materializedViews: {},
   actions: {
     // TODO: fix these actions to make them have write annotatinos
     addTodo: {
@@ -64,13 +59,8 @@ export const schema = LiveStore.defineSchema({
 })
 
 export const makeTodoMvc = async () => {
-  type UserInfoComponentState = { username: string }
-
-  const AppSchema = LiveStore.defineComponentStateSchema<UserInfoComponentState>({
-    componentType: 'UserInfo',
-    columns: {
-      username: { type: 'text', default: '' },
-    },
+  const AppSchema = LiveStore.defineComponentStateSchema('UserInfo', {
+    username: LiveStore.DbSchema.text({ default: '' }),
   })
 
   const store = await LiveStore.createStore({

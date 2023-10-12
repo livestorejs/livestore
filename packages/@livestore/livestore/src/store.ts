@@ -1,6 +1,7 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, makeNoopSpan, makeNoopTracer, memoize, omit, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
+import { SqliteAst } from 'effect-db-schema'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
 import { uniqueId } from 'lodash-es'
@@ -18,8 +19,14 @@ import { ReactiveGraph } from './reactive.js'
 import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { ActionDefinition, GetActionArgs, Schema } from './schema.js'
-import { componentStateTables, loadSchema } from './schema.js'
+import type { ActionDefinition, GetActionArgs, Schema, SchemaMetaRow } from './schema.js'
+import {
+  componentStateTables,
+  createIndexFromDefinition,
+  makeColumnSpec,
+  SCHEMA_META_TABLE,
+  systemTables,
+} from './schema.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { sql } from './util.js'
 
@@ -756,6 +763,15 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
               }
             },
           },
+
+          RawSql: {
+            statement: ({ sql, writeTables }: { sql: string; writeTables: string[] }) => ({
+              sql,
+              writeTables,
+              argsAlreadyBound: false,
+            }),
+            prepareBindValues: ({ bindValues }) => bindValues,
+          },
         }
 
         const actionDefinition = actionDefinitions[eventType] ?? shouldNeverHappen(`Unknown event type: ${eventType}`)
@@ -826,50 +842,69 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
           parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
         }),
       )
-      // if we're resetting the database, run boot here.
 
-      let shouldResetDB = false
-      // Uncomment this line if you want to reset the database contents.
-      // let shouldResetDB = true
+      // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 
-      const existingTablesRaw = await backend.select(
-        sql`SELECT * FROM sqlite_master WHERE type='table';`,
+      backend.execute(
+        // TODO use schema migration definition from schema.ts instead
+        sql`create table if not exists ${SCHEMA_META_TABLE} (tableName text primary key, schemaHash text, updatedAt text);`,
         undefined,
         span,
       )
-      const existingTables = existingTablesRaw.results.map((t: { name: string }) => t.name)
-      const missingTables = Object.keys(schema.tables).filter((tableName) => !existingTables.includes(tableName))
-      if (existingTables.length === 0) {
-        console.log('No existing tables found, loading from schema')
-        shouldResetDB = true
-      } else if (
-        missingTables.length > 0 &&
-        window.confirm(
-          `Existing DB is missing ${missingTables.length} tables: ${missingTables.join(
-            ', ',
-          )}\n\nReset DB? This will reset all of the following tables to empty: ${Object.keys(schema).join(', ')}`,
-        )
-      ) {
-        shouldResetDB = true
-      }
 
-      if (localStorage.getItem(RESET_DB_LOCAL_STORAGE_KEY) !== null) {
-        shouldResetDB = true
-      }
+      const schemaMetaRows = await backend
+        .select<SchemaMetaRow>(sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
+        .then((_) => _.results)
 
-      if (shouldResetDB) {
-        await loadSchema(backend, schema)
-        localStorage.removeItem(RESET_DB_LOCAL_STORAGE_KEY)
+      const dbSchemaHashByTable = Object.fromEntries(
+        schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
+      )
+
+      const getMemoizedTimestamp = memoize(() => new Date().toISOString())
+      const tableDefs = {
+        // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
+        [SCHEMA_META_TABLE]: systemTables[SCHEMA_META_TABLE],
+        ...omit(schema.tables, [SCHEMA_META_TABLE]),
+        ...componentStateTables,
+      }
+      for (const [tableName, tableDef] of Object.entries(tableDefs)) {
+        const dbSchemaHash = dbSchemaHashByTable[tableName]
+        const schemaHash = SqliteAst.hash(tableDef)
+        if (schemaHash !== dbSchemaHash) {
+          console.log(
+            `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
+          )
+
+          const columnSpec = makeColumnSpec(tableDef)
+
+          // TODO need to possibly handle cascading deletes due to foreign keys
+          backend.execute(sql`drop table if exists ${tableName}`, undefined, span)
+          backend.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, span)
+
+          for (const index of tableDef.indexes) {
+            backend.execute(createIndexFromDefinition(tableName, index), undefined, span)
+          }
+
+          const updatedAt = getMemoizedTimestamp()
+          backend.execute(
+            sql`
+              INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
+                ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
+            `,
+            { tableName, schemaHash, updatedAt },
+            span,
+          )
+        }
       }
 
       if (boot) {
-        await boot(backend!, span)
+        await boot(backend, span)
       }
 
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
       await otelTracer.startActiveSpan('backend-getPersistedData', {}, otelContext, async (span) => {
         try {
-          persistedData = await backend!.getPersistedData(span)
+          persistedData = await backend.getPersistedData(span)
         } finally {
           span.end()
         }

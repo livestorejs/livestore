@@ -51,6 +51,8 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
     return fallback
   }
 
+  window.__debugLiveStore = store.store
+
   return <LiveStoreContext.Provider value={store}>{children}</LiveStoreContext.Provider>
 }
 
