@@ -3,16 +3,16 @@ import { DbSchema, makeSchema, sql } from '@livestore/livestore'
 
 const todos = DbSchema.table('todos', {
   id: DbSchema.text({ primaryKey: true }),
-  text: DbSchema.text({ default: '', nullable: false }),
-  completed: DbSchema.boolean({ default: false, nullable: false }),
+  text: DbSchema.text({ default: '' }),
+  completed: DbSchema.boolean({ default: false }),
 })
 
 const Filter = Schema.literal('all', 'active', 'completed')
 
 const app = DbSchema.table('app', {
   id: DbSchema.textWithSchema(Schema.literal('static'), { primaryKey: true }),
-  newTodoText: DbSchema.text({ default: '', nullable: true }),
-  filter: DbSchema.textWithSchema(Filter, { default: 'all', nullable: false }),
+  newTodoText: DbSchema.text({ default: '' }),
+  filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
 })
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>

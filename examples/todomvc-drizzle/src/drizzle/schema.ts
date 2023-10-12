@@ -4,14 +4,14 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const todos = sqliteTable('todos', {
   id: text('id').primaryKey(),
-  text: text('text').notNull().default(''),
-  completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  text: text('text').default(''),
+  completed: integer('completed', { mode: 'boolean' }).default(false),
 })
 
 export const app = sqliteTable('app', {
   id: text('id').primaryKey(),
   newTodoText: text('newTodoText').default(''),
-  filter: text('filter').notNull().default('all'),
+  filter: text('filter').default('all'),
 })
 
 export const __livestore_event_cursor = sqliteTable('__livestore_event_cursor', {
