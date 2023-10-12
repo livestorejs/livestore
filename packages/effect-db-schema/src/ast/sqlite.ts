@@ -1,4 +1,4 @@
-import type * as Schema from '@effect/schema/Schema'
+import * as Schema from '@effect/schema/Schema'
 
 import { hashCode } from '../hash.js'
 
@@ -80,3 +80,10 @@ export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tabl
 
 // TODO refine hashing implementation to only hash the relevant parts of the schema
 export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number => hashCode(JSON.stringify(obj))
+
+export const structSchemaForTable = (tableDef: Table) =>
+  Schema.struct(
+    Object.fromEntries(
+      tableDef.columns.map((column) => [column.name, column.nullable ? Schema.nullable(column.codec) : column.codec]),
+    ),
+  )

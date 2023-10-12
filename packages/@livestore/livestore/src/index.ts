@@ -31,17 +31,9 @@ export type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 
 export { labelForKey } from './componentKey.js'
 export type { ComponentKey } from './componentKey.js'
-export type {
-  Schema,
-  GetActionArgs,
-  GetApplyEventArgs,
-  Index,
-  ActionDefinition,
-  ActionDefinitions,
-  // ComponentStateSchema,
-} from './schema.js'
+export type { Schema, GetActionArgs, GetApplyEventArgs, Index, ActionDefinition, ActionDefinitions } from './schema.js'
 
-export type { SqliteAst, SqliteDsl } from 'effect-db-schema'
+export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { SqliteAst } from 'effect-db-schema'
 export type TableDefinition = SqliteAst.Table

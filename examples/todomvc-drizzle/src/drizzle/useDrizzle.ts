@@ -41,9 +41,9 @@ export const useDrizzle = <TColumns extends ComponentColumns, TQueries extends Q
   reactDeps = [],
 }: UseDrizzleLiveStoreComponentProps<TQueries, TColumns>): {
   queryResults: QueryResults<TQueries>
-  state: SqliteDsl.GetRowDecodedFromColumns<TColumns>
-  setState: Setters<SqliteDsl.GetRowDecodedFromColumns<TColumns>>
-  useLiveStoreJsonState: UseLiveStoreJsonState<SqliteDsl.GetRowDecodedFromColumns<TColumns>>
+  state: SqliteDsl.FromColumns.RowDecoded<TColumns>
+  setState: Setters<SqliteDsl.FromColumns.RowDecoded<TColumns>>
+  useLiveStoreJsonState: UseLiveStoreJsonState<SqliteDsl.FromColumns.RowDecoded<TColumns>>
 } => {
   return useLiveStoreComponent<TColumns, TQueries>({
     // Define the reactive queries for this component

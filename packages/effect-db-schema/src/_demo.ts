@@ -3,17 +3,6 @@ import * as Schema from '@effect/schema/Schema'
 import * as sqlite from './dsl/sqlite/index.js'
 
 const main = () => {
-  // const UserMetaInfo = Schema.struct({
-  //   createdAt: Schema.dateFromString(Schema.string),
-  //   updatedAt: Schema.dateFromString(Schema.string),
-  // })
-
-  // const User = Schema.struct({
-  //   id: Schema.string,
-  //   metaInfo: UserMetaInfo,
-  //   isCool: Schema.boolean,
-  // })
-
   class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
     createdAt: Schema.Date,
     updatedAt: Schema.Date,
@@ -31,26 +20,11 @@ const main = () => {
 
   const dbSchema = sqlite.defineDbSchema({ users })
 
-  type _UsersColumns = sqlite.GetColumns<typeof users>
-  type _UsersEncoded = sqlite.GetRowEncoded<typeof users>
-  type _User = sqlite.GetRowDecoded<typeof users>
+  type _UsersColumns = sqlite.FromTable.Columns<typeof users>
+  type _UsersEncoded = sqlite.FromTable.RowEncoded<typeof users>
+  type _User = sqlite.FromTable.RowDecoded<typeof users>
 
   console.log('ast', dbSchema.users.ast)
-
-  // magicFunction(User) ->
-
-  /*
-
-	const correspondingDrizzle = sqliteTable('users', {
-		id: text('id').primaryKey().nullable(false),  // 'id' is the column name
-		metaInfo: json('metaInfo').nonNullable(),
-	})
-
-	*/
-
-  // console.log('userTable', userTableAst)
-
-  // console.log('metainfo ast', userTableAst.columns[1]!.codec!)
 }
 
 main()

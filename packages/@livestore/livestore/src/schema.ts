@@ -103,7 +103,7 @@ const schemaMetaTable = SqliteDsl.table(SCHEMA_META_TABLE, {
   updatedAt: SqliteDsl.text({ nullable: false }),
 })
 
-export type SchemaMetaRow = SqliteDsl.GetRowDecoded<typeof schemaMetaTable>
+export type SchemaMetaRow = SqliteDsl.FromTable.RowDecoded<typeof schemaMetaTable>
 
 export const systemTables = {
   // [EVENTS_TABLE_NAME]: SqliteDsl.table(EVENTS_TABLE_NAME, {

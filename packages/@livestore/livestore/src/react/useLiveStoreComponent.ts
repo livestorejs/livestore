@@ -64,7 +64,7 @@ type GenQueries<TQueries, TStateResult> = (args: {
 
 export type UseLiveStoreComponentProps<TQueries, TColumns extends ComponentColumns> = {
   stateSchema?: SqliteDsl.TableDefinition<string, TColumns>
-  queries?: GenQueries<TQueries, SqliteDsl.GetRowDecodedFromColumns<TColumns>>
+  queries?: GenQueries<TQueries, SqliteDsl.FromColumns.RowDecoded<TColumns>>
   reactDeps?: React.DependencyList
   componentKey: ComponentKeyConfig
 }
@@ -102,12 +102,12 @@ type UseLiveStoreJsonState<TState> = <TResult>(
   parse?: (_: unknown) => TResult,
 ) => [value: TResult, setValue: (newVal: TResult | ((prevVal: TResult) => TResult)) => void]
 
-export type GetStateType<TTableDef extends SqliteDsl.TableDefinition<any, any>> = SqliteDsl.GetRowDecodedFromColumns<
+export type GetStateType<TTableDef extends SqliteDsl.TableDefinition<any, any>> = SqliteDsl.FromColumns.RowDecoded<
   TTableDef['columns']
 >
 
 export type GetStateTypeEncoded<TTableDef extends SqliteDsl.TableDefinition<any, any>> =
-  SqliteDsl.GetRowEncodedFromColumns<TTableDef['columns']>
+  SqliteDsl.FromColumns.RowEncoded<TTableDef['columns']>
 
 /**
  * Create reactive queries within a component.
@@ -122,11 +122,11 @@ export const useLiveStoreComponent = <TColumns extends ComponentColumns, TQuerie
   reactDeps = [],
 }: UseLiveStoreComponentProps<TQueries, TColumns>): {
   queryResults: QueryResults<TQueries>
-  state: SqliteDsl.GetRowDecodedFromColumns<TColumns>
-  setState: Setters<SqliteDsl.GetRowDecodedFromColumns<TColumns>>
-  useLiveStoreJsonState: UseLiveStoreJsonState<SqliteDsl.GetRowDecodedFromColumns<TColumns>>
+  state: SqliteDsl.FromColumns.RowDecoded<TColumns>
+  setState: Setters<SqliteDsl.FromColumns.RowDecoded<TColumns>>
+  useLiveStoreJsonState: UseLiveStoreJsonState<SqliteDsl.FromColumns.RowDecoded<TColumns>>
 } => {
-  type TComponentState = SqliteDsl.GetRowDecodedFromColumns<TColumns>
+  type TComponentState = SqliteDsl.FromColumns.RowDecoded<TColumns>
 
   // TODO validate schema to make sure each column has a default value
   // TODO we should clean up the state schema handling to remove this special handling for the `id` column

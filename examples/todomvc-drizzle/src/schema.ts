@@ -15,9 +15,9 @@ const app = DbSchema.table('app', {
   filter: DbSchema.textWithSchema(Filter, { default: 'all', nullable: false }),
 })
 
-export type Todo = DbSchema.GetRowDecoded<typeof todos>
+export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
 export type Filter = Schema.Schema.To<typeof Filter>
-export type AppState = DbSchema.GetRowDecoded<typeof app>
+export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
 export const schema = makeSchema({
   tables: { todos, app },
