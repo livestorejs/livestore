@@ -1,9 +1,10 @@
+import { notYetImplemented } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
+import type { Storage, StorageOtelProps } from '../index.js'
 import type { WrappedWorker } from './worker.js'
 
 /* A location of a persistent writable SQLite file */
@@ -36,23 +37,28 @@ export class WebWorkerStorage implements Storage {
   otelTracer: otel.Tracer
 
   executionBacklog: { query: string; bindValues?: ParamsObject }[] = []
-  executionPromise: Promise<void> | undefined = undefined
+  executionPromise: Promise<void> | undefined
 
   private constructor({
     worker,
     persistentDatabaseLocation,
     otelTracer,
+    executionPromise,
   }: {
     worker: Comlink.Remote<WrappedWorker>
     persistentDatabaseLocation: WritableDatabaseLocation
     otelTracer: otel.Tracer
+    executionPromise: Promise<void>
   }) {
     this.worker = worker
     this.persistentDatabaseLocation = persistentDatabaseLocation
     this.otelTracer = otelTracer
+    this.executionPromise = executionPromise
+
+    executionPromise.then(() => this.executeBacklog())
   }
 
-  static load = async ({ persistentDatabaseLocation }: StorageOptionsWeb) => {
+  static load = ({ persistentDatabaseLocation }: StorageOptionsWeb) => {
     // TODO: Importing the worker like this only works with Vite;
     // should this really be inside the LiveStore library?
     // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
@@ -61,13 +67,16 @@ export class WebWorkerStorage implements Storage {
     })
     const wrappedWorker = Comlink.wrap<WrappedWorker>(worker)
 
-    await wrappedWorker.initialize({ persistentDatabaseLocation })
-
     return ({ otelTracer }: StorageOtelProps) =>
       new WebWorkerStorage({
         worker: wrappedWorker,
         persistentDatabaseLocation,
         otelTracer,
+        executionPromise: new Promise(async (resolve) => {
+          await wrappedWorker.initialize({ persistentDatabaseLocation })
+
+          resolve()
+        }),
       })
   }
 
@@ -79,9 +88,7 @@ export class WebWorkerStorage implements Storage {
     if (this.executionPromise === undefined) {
       this.executionPromise = new Promise((resolve) => {
         setTimeout(() => {
-          void this.worker.executeBulk(this.executionBacklog)
-          this.executionBacklog = []
-          this.executionPromise = undefined
+          this.executeBacklog()
 
           resolve()
         }, 10)
@@ -89,23 +96,31 @@ export class WebWorkerStorage implements Storage {
     }
   }
 
-  select = async <T>(query: string, bindValues?: ParamsObject): Promise<SelectResponse<T>> => {
-    // NOTE we need to wait for the executionBacklog to be worked off, before we run the select query (as it might depend on the previous execution queries)
-    await this.executionPromise
-
-    try {
-      const response = (await this.worker.select(query, bindValues)) as SelectResponse<T>
-      return response
-    } catch (e) {
-      console.error(`Error while executing query via "select": ${query}`)
-      throw e
-    }
+  executeBacklog = () => {
+    void this.worker.executeBulk(this.executionBacklog)
+    this.executionBacklog = []
+    this.executionPromise = undefined
   }
 
-  getPersistedData = async (_parentSpan?: otel.Span): Promise<Uint8Array> => {
-    // NOTE we need to wait for the executionBacklog to be worked off
-    await this.executionPromise
+  getPersistedData = async (_parentSpan?: otel.Span): Promise<Uint8Array> =>
+    getPersistedData(this.persistentDatabaseLocation)
+}
 
-    return this.worker.getPersistedData()
+const getPersistedData = async (persistentDatabaseLocation: WritableDatabaseLocation): Promise<Uint8Array> => {
+  if (persistentDatabaseLocation.type !== 'opfs') {
+    return notYetImplemented(`Unsupported persistent database location type: ${persistentDatabaseLocation.type}`)
+  }
+
+  try {
+    const rootHandle = await navigator.storage.getDirectory()
+    const fileHandle = await rootHandle.getFileHandle(persistentDatabaseLocation.virtualFilename + '.db')
+    const file = await fileHandle.getFile()
+    const buffer = await file.arrayBuffer()
+    const data = new Uint8Array(buffer)
+
+    return data
+  } catch (e) {
+    console.error(e)
+    return new Uint8Array()
   }
 }

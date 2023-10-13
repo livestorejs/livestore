@@ -2,21 +2,30 @@ import type * as otel from '@opentelemetry/api'
 import { SqliteAst } from 'effect-db-schema'
 import { memoize, omit } from 'lodash-es'
 
+import type { InMemoryDatabase } from './index.js'
 import type { Schema, SchemaMetaRow } from './schema.js'
 import { componentStateTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
-import type { Storage } from './storage/index.js'
 import { sql } from './util.js'
 
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
-export const migrateDb = async ({ db, span, schema }: { db: Storage; span: otel.Span; schema: Schema }) => {
+export const migrateDb = ({
+  db,
+  otelContext,
+  schema,
+}: {
+  db: InMemoryDatabase
+  otelContext: otel.Context
+  schema: Schema
+}) => {
   db.execute(
     // TODO use schema migration definition from schema.ts instead
     sql`create table if not exists ${SCHEMA_META_TABLE} (tableName text primary key, schemaHash text, updatedAt text);`,
     undefined,
-    span,
+    [],
+    { otelContext },
   )
 
-  const schemaMetaRows = await db.select<SchemaMetaRow>(sql`SELECT * FROM ${SCHEMA_META_TABLE}`).then((_) => _.results)
+  const schemaMetaRows = db.select<SchemaMetaRow>(sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
 
   const dbSchemaHashByTable = Object.fromEntries(
     schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
@@ -41,11 +50,11 @@ export const migrateDb = async ({ db, span, schema }: { db: Storage; span: otel.
       const columnSpec = makeColumnSpec(tableDef)
 
       // TODO need to possibly handle cascading deletes due to foreign keys
-      db.execute(sql`drop table if exists ${tableName}`, undefined, span)
-      db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, span)
+      db.execute(sql`drop table if exists ${tableName}`, undefined, [], { otelContext })
+      db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, [], { otelContext })
 
       for (const index of tableDef.indexes) {
-        db.execute(createIndexFromDefinition(tableName, index), undefined, span)
+        db.execute(createIndexFromDefinition(tableName, index), undefined, [], { otelContext })
       }
 
       const updatedAt = getMemoizedTimestamp()
@@ -55,7 +64,8 @@ export const migrateDb = async ({ db, span, schema }: { db: Storage; span: otel.
             ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
         `,
         { tableName, schemaHash, updatedAt },
-        span,
+        [],
+        { otelContext },
       )
     }
   }

@@ -10,7 +10,6 @@ import sqlite3InitModule from 'sqlite-esm'
 // import { v4 as uuid } from 'uuid'
 import type { Bindable } from '../../util.js'
 import { casesHandled, sql } from '../../util.js'
-import type { SelectResponse } from '../index.js'
 import { IDB } from '../utils/idb.js'
 import type { WritableDatabaseLocation } from './index.js'
 
@@ -134,19 +133,6 @@ const executeBulk = (executionItems: ExecutionQueueItem[]): void => {
   }
 }
 
-const select = <T = any>(query: string, bindValues?: Bindable): SelectResponse<T> => {
-  const resultRows: T[] = []
-
-  db.exec({
-    sql: query,
-    bind: bindValues,
-    rowMode: 'object',
-    resultRows,
-  } as TODO)
-
-  return { results: resultRows }
-}
-
 const getPersistedData = async (): Promise<Uint8Array> => {
   // TODO get rid of this in favour of a "proper" IDB SQLite storage
   if (persistentDatabaseLocation_.type === 'indexeddb') {
@@ -163,7 +149,7 @@ const getPersistedData = async (): Promise<Uint8Array> => {
   return Comlink.transfer(data, [data.buffer])
 }
 
-const wrappedWorker = { initialize, executeBulk, select, getPersistedData }
+const wrappedWorker = { initialize, executeBulk, getPersistedData }
 
 export type WrappedWorker = typeof wrappedWorker
 

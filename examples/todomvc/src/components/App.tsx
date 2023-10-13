@@ -30,14 +30,14 @@ ReactDOM.createRoot(document.getElementById('react-app')!).render(
   <LiveStoreProvider
     schema={schema}
     globalQueryDefs={{ appState } as any}
-    loadStorage={() =>
+    loadStorage={async () =>
       WebWorkerStorage.load({ persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' } })
     }
     fallback={<div>Loading...</div>}
     // TODO boot should also allow sync functions
-    boot={async (storage) =>
-      storage.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`)
-    }
+    boot={async (db) => {
+      db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`)
+    }}
   >
     <App />
     <BottomDrawer>

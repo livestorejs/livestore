@@ -4,7 +4,7 @@ import sqlite3InitModule from 'sqlite-esm'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
+import type { Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsWebInMemory = {
   type: 'web-in-memory'
@@ -37,20 +37,6 @@ export class InMemoryStorage implements Storage {
       returnValue: 'resultRows',
       rowMode: 'object',
     })
-  }
-
-  select = async <T>(query: string, bindValues?: ParamsObject): Promise<SelectResponse<T>> => {
-    const resultRows: T[] = []
-
-    this.db.exec({
-      sql: query,
-      bind: prepareBindValues(bindValues ?? {}, query) as TODO,
-      rowMode: 'object',
-      resultRows,
-      // callback: (row: any) => console.log('select result', db.filename, query, row),
-    } as TODO)
-
-    return { results: resultRows }
   }
 
   getPersistedData = async (): Promise<Uint8Array> => {

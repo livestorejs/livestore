@@ -13,12 +13,6 @@ import type { ParamsObject } from '../util.js'
 export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
 
 export interface Storage {
-  // Select some data from the DB.
-  // This should only do reads, not writes, but we don't strongly enforce that.
-  select<T = any>(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): Promise<SelectResponse<T>>
-
-  // Execute a query where you don't care about the result.
-  // Used for writes and configuration changes.
   execute(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
@@ -26,22 +20,6 @@ export interface Storage {
 }
 
 export type StorageType = 'tauri' | 'web' | 'web-in-memory'
-
-export const isStorageType = (type: string): type is StorageType => {
-  return type === 'tauri' || type === 'web' || type === 'web-in-memory'
-}
-
-export type SelectResponse<T = any> = {
-  results: T[]
-
-  // other perf stats metadata about how long the query took
-  [key: string]: any
-}
-
-export enum IndexType {
-  Basic = 'Basic',
-  FullText = 'FullText',
-}
 
 export type StorageOtelProps = {
   otelTracer: otel.Tracer

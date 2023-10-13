@@ -239,19 +239,27 @@ export class InMemoryDatabase {
             stmt = this.db.prepare(query)
             this.cachedStmts.set(query, stmt)
           }
-          if (bindValues) {
-            stmt.bind(bindValues ?? {})
+          if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
+            stmt.bind(bindValues)
           }
 
           const result: T[] = []
+
           try {
-            const columns = stmt.getColumnNames()
+            // NOTE `getColumnNames` only works for `SELECT` statements, ignoring other statements for now
+            let columns = undefined
+            try {
+              columns = stmt.getColumnNames()
+            } catch (_e) {}
+
             while (stmt.step()) {
-              const obj: { [key: string]: any } = {}
-              for (const [i, c] of columns.entries()) {
-                obj[c] = stmt.get(i)
+              if (columns !== undefined) {
+                const obj: { [key: string]: any } = {}
+                for (const [i, c] of columns.entries()) {
+                  obj[c] = stmt.get(i)
+                }
+                result.push(obj as unknown as T)
               }
-              result.push(obj as unknown as T)
             }
           } finally {
             // we're caching statements in this iteration. do not free.

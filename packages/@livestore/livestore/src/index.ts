@@ -13,10 +13,7 @@ export {
   makeSchema,
 } from './schema.js'
 export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryDatabase.js'
-export { IndexType } from './storage/index.js'
 export type { Storage, StorageType, StorageInit } from './storage/index.js'
-export { isStorageType } from './storage/index.js'
-export type { SelectResponse } from './storage/index.js'
 export type {
   GetAtom,
   AtomDebugInfo,
