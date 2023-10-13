@@ -1,4 +1,4 @@
-// A backend represents a raw SQLite database.
+// A storage represents a raw SQLite database.
 // Examples include:
 // - A native SQLite process running in a Tauri Rust process
 // - A SQL.js WASM version of SQLite running in a web worker
@@ -12,28 +12,9 @@ import type { LiveStoreEvent } from '../events.js'
 import type { ActionDefinition } from '../schema.js'
 import type { ParamsObject } from '../util.js'
 
-/* A location of a persistent writable SQLite file */
-export type WritableDatabaseLocation =
-  | {
-      type: 'opfs'
-      virtualFilename: string
-    }
-  | {
-      type: 'indexeddb'
-      virtualFilename: string
-    }
-  | {
-      type: 'filesystem'
-      directory: string
-      filename: string
-    }
-  | {
-      type: 'volatile-in-memory'
-    }
+export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
 
-export type BackendInit = (otelProps: BackendOtelProps) => Promise<Backend> | Backend
-
-export interface Backend {
+export interface Storage {
   // Select some data from the DB.
   // This should only do reads, not writes, but we don't strongly enforce that.
   select<T = any>(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): Promise<SelectResponse<T>>
@@ -42,16 +23,16 @@ export interface Backend {
   // Used for writes and configuration changes.
   execute(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void
 
-  /** Apply an event to the backend */
+  /** Apply an event to the storage */
   applyEvent(event: LiveStoreEvent, eventDefiniton: ActionDefinition, parentSpan?: otel.Span): void
 
-  /** Return a snapshot of persisted data from the backend */
+  /** Return a snapshot of persisted data from the storage */
   getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>
 }
 
-export type BackendType = 'tauri' | 'web' | 'web-in-memory'
+export type StorageType = 'tauri' | 'web' | 'web-in-memory'
 
-export const isBackendType = (type: string): type is BackendType => {
+export const isStorageType = (type: string): type is StorageType => {
   return type === 'tauri' || type === 'web' || type === 'web-in-memory'
 }
 
@@ -67,7 +48,7 @@ export enum IndexType {
   FullText = 'FullText',
 }
 
-export type BackendOtelProps = {
+export type StorageOtelProps = {
   otelTracer: otel.Tracer
   parentSpan: otel.Span
 }

@@ -4,15 +4,15 @@ import { invoke } from '@tauri-apps/api'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import { BaseBackend } from '../base.js'
-import type { BackendOtelProps, SelectResponse } from '../index.js'
+import { BaseStorage } from '../base.js'
+import type { SelectResponse, StorageOtelProps } from '../index.js'
 
-export type BackendOptionsTauri = {
+export type StorageOptionsTauri = {
   dbDirPath: string
   appDbFileName: string
 }
 
-export class TauriBackend extends BaseBackend {
+export class TauriStorage extends BaseStorage {
   constructor(
     readonly dbFilePath: string,
     readonly dbDirPath: string,
@@ -23,12 +23,12 @@ export class TauriBackend extends BaseBackend {
   }
 
   static load =
-    ({ dbDirPath, appDbFileName }: BackendOptionsTauri) =>
-    async ({ otelTracer, parentSpan }: BackendOtelProps) => {
+    ({ dbDirPath, appDbFileName }: StorageOptionsTauri) =>
+    async ({ otelTracer, parentSpan }: StorageOtelProps) => {
       const dbFilePath = `${dbDirPath}/${appDbFileName}`
       await invoke('initialize_connection', { dbName: dbFilePath, otelData: getOtelData_(parentSpan) })
 
-      return new TauriBackend(dbFilePath, dbDirPath, otelTracer, parentSpan)
+      return new TauriStorage(dbFilePath, dbDirPath, otelTracer, parentSpan)
     }
 
   execute = (query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void => {

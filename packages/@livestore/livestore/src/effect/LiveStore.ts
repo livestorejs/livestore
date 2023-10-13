@@ -4,9 +4,9 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import { mapValues } from 'lodash-es'
 
-import type { Backend, BackendInit } from '../backends/index.js'
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { Schema } from '../schema.js'
+import type { Storage, StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions, LiveStoreQuery, Store } from '../store.js'
 import { createStore } from '../store.js'
 
@@ -22,11 +22,11 @@ export type GlobalQueryDefs = { [key: string]: QueryDefinition }
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
   schema: Schema
   globalQueryDefs: GlobalQueryDefs
-  loadBackend: () => Promise<BackendInit>
+  loadStorage: () => Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (backend: Backend, parentSpan: otel.Span) => Promise<void>
+  boot?: (storage: Storage, parentSpan: otel.Span) => Promise<void>
 }
 
 export const LiveStoreContext = Context.Tag<LiveStoreContext>('@livestore/livestore/LiveStoreContext')
@@ -41,12 +41,12 @@ export const DeferredStoreContext = Context.Tag<DeferredStoreContext>(
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: Schema
   globalQueryDefs?: Effect.Effect<never, never, GlobalQueryDefs>
-  loadBackend: () => Promise<BackendInit>
+  loadStorage: () => Promise<StorageInit>
   graphQLOptions?: {
     schema: Effect.Effect<otel.Tracer, never, GraphQLSchema>
     makeContext: (db: InMemoryDatabase) => GraphQLContext
   }
-  boot?: (backend: Backend) => Effect.Effect<never, never, void>
+  boot?: (storage: Storage) => Effect.Effect<never, never, void>
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
@@ -62,7 +62,7 @@ export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Defer
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
   globalQueryDefs,
   schema,
-  loadBackend,
+  loadStorage,
   graphQLOptions: graphQLOptions_,
   boot: boot_,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
@@ -85,7 +85,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
       )
 
       const boot = boot_
-        ? (db: Backend) =>
+        ? (db: Storage) =>
             boot_(db).pipe(Effect.withSpan('boot'), Effect.tapCauseLogPretty, Runtime.runPromise(runtime))
         : undefined
 
@@ -93,7 +93,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         Effect.tryPromise(() =>
           createStore({
             schema,
-            loadBackend,
+            loadStorage,
             graphQLOptions,
             otelTracer,
             otelRootSpanContext,

@@ -4,8 +4,8 @@ import '@livestore/devtools-react/style.css'
 import { AllTabsLazy, BottomDrawer } from '@livestore/devtools-react'
 import type { QueryDefinition } from '@livestore/livestore'
 import { sql } from '@livestore/livestore'
-import { WebWorkerBackend } from '@livestore/livestore/backends/web-worker'
 import { LiveStoreProvider } from '@livestore/livestore/react'
+import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
@@ -30,13 +30,13 @@ ReactDOM.createRoot(document.getElementById('react-app')!).render(
   <LiveStoreProvider
     schema={schema}
     globalQueryDefs={{ appState } as any}
-    loadBackend={() =>
-      WebWorkerBackend.load({ persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' } })
+    loadStorage={() =>
+      WebWorkerStorage.load({ persistentDatabaseLocation: { virtualFilename: 'app.db', type: 'opfs' } })
     }
     fallback={<div>Loading...</div>}
     // TODO boot should also allow sync functions
-    boot={async (backend) =>
-      backend.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`)
+    boot={async (storage) =>
+      storage.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`)
     }
   >
     <App />

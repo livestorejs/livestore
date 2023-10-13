@@ -4,7 +4,6 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { identity } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type * as SqliteWasm from 'sqlite-esm'
-import initSqlJs from 'sqlite-esm'
 
 import BoundMap, { BoundArray } from './bounded-collections.js'
 import type { LiveStoreEvent } from './events.js'
@@ -70,15 +69,9 @@ export class InMemoryDatabase {
     data: Uint8Array | undefined,
     otelTracer: otel.Tracer,
     otelRootSpanContext: otel.Context,
+    sqlite3: SqliteWasm.Sqlite3Static,
   ): Promise<InMemoryDatabase> {
     // TODO move WASM init higher up in the init process (to do some other work while it's loading)
-    const sqlite3 = await initSqlJs({
-      // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-      // You can omit locateFile completely when running in node
-      // locateFile: () => `/sql-wasm.wasm`,
-      print: (message) => console.log(`[sql-client] ${message}`),
-      printErr: (message) => console.error(`[sql-client] ${message}`),
-    })
 
     const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as DatabaseWithCAPI
     db.capi = sqlite3.capi

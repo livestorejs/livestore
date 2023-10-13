@@ -3,16 +3,35 @@ import * as Comlink from 'comlink'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import { BaseBackend } from '../base.js'
-import type { BackendOtelProps, SelectResponse, WritableDatabaseLocation } from '../index.js'
+import { BaseStorage } from '../base.js'
+import type { SelectResponse, StorageOtelProps } from '../index.js'
 import type { WrappedWorker } from './worker.js'
 
-export type BackendOptionsWeb = {
-  /** Specifies where to persist data for this backend */
+/* A location of a persistent writable SQLite file */
+export type WritableDatabaseLocation =
+  | {
+      type: 'opfs'
+      virtualFilename: string
+    }
+  | {
+      type: 'indexeddb'
+      virtualFilename: string
+    }
+  | {
+      type: 'filesystem'
+      directory: string
+      filename: string
+    }
+  | {
+      type: 'volatile-in-memory'
+    }
+
+export type StorageOptionsWeb = {
+  /** Specifies where to persist data for this storage */
   persistentDatabaseLocation: WritableDatabaseLocation
 }
 
-export class WebWorkerBackend extends BaseBackend {
+export class WebWorkerStorage extends BaseStorage {
   worker: Comlink.Remote<WrappedWorker>
   persistentDatabaseLocation: WritableDatabaseLocation
   otelTracer: otel.Tracer
@@ -35,7 +54,7 @@ export class WebWorkerBackend extends BaseBackend {
     this.otelTracer = otelTracer
   }
 
-  static load = async ({ persistentDatabaseLocation }: BackendOptionsWeb) => {
+  static load = async ({ persistentDatabaseLocation }: StorageOptionsWeb) => {
     // TODO: Importing the worker like this only works with Vite;
     // should this really be inside the LiveStore library?
     // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
@@ -46,8 +65,8 @@ export class WebWorkerBackend extends BaseBackend {
 
     await wrappedWorker.initialize({ persistentDatabaseLocation })
 
-    return ({ otelTracer }: BackendOtelProps) =>
-      new WebWorkerBackend({
+    return ({ otelTracer }: StorageOtelProps) =>
+      new WebWorkerStorage({
         worker: wrappedWorker,
         persistentDatabaseLocation,
         otelTracer,

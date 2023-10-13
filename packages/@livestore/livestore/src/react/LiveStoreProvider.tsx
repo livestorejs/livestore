@@ -3,7 +3,6 @@ import { mapValues } from 'lodash-es'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
-import type { Backend, BackendInit } from '../backends/index.js'
 // TODO refactor so the `react` module doesn't depend on `effect` module
 import type {
   GlobalQueryDefs,
@@ -11,14 +10,15 @@ import type {
   LiveStoreCreateStoreOptions,
 } from '../effect/LiveStore.js'
 import type { Schema } from '../schema.js'
+import type { Storage, StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: Schema
-  loadBackend: () => Promise<BackendInit>
-  boot?: (backend: Backend, parentSpan: otel.Span) => Promise<void>
+  loadStorage: () => Promise<StorageInit>
+  boot?: (storage: Storage, parentSpan: otel.Span) => Promise<void>
   globalQueryDefs: GlobalQueryDefs
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
@@ -29,7 +29,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   fallback,
   globalQueryDefs,
-  loadBackend,
+  loadStorage,
   graphQLOptions,
   otelTracer,
   otelRootSpanContext,
@@ -40,7 +40,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   const store = useCreateStore({
     schema,
     globalQueryDefs,
-    loadBackend,
+    loadStorage,
     graphQLOptions,
     otelTracer,
     otelRootSpanContext,
@@ -59,7 +59,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   schema,
   globalQueryDefs,
-  loadBackend,
+  loadStorage,
   graphQLOptions,
   otelTracer,
   otelRootSpanContext,
@@ -72,7 +72,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       try {
         const store = await createStore({
           schema,
-          loadBackend,
+          loadStorage,
           graphQLOptions,
           otelTracer,
           otelRootSpanContext,
@@ -90,7 +90,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     })()
 
     // TODO: do we need to return any cleanup function here?
-  }, [schema, loadBackend, globalQueryDefs, graphQLOptions, otelTracer, otelRootSpanContext, boot])
+  }, [schema, loadStorage, globalQueryDefs, graphQLOptions, otelTracer, otelRootSpanContext, boot])
 
   return ctxValue
 }

@@ -7,9 +7,9 @@ import type { LiveStoreEvent } from '../events.js'
 // import { EVENTS_TABLE_NAME } from '../events.js'
 import type { ActionDefinition } from '../schema.js'
 import type { ParamsObject } from '../util.js'
-import type { Backend, SelectResponse } from './index.js'
+import type { SelectResponse, Storage } from './index.js'
 
-export abstract class BaseBackend implements Backend {
+export abstract class BaseStorage implements Storage {
   abstract otelTracer: otel.Tracer
 
   select = async <T = any>(query: string, bindValues?: ParamsObject): Promise<SelectResponse<T>> => {
@@ -27,9 +27,9 @@ export abstract class BaseBackend implements Backend {
   // TODO move `applyEvent` logic to Store and only call `execute` here
   applyEvent = (event: LiveStoreEvent, eventDefinition: ActionDefinition, parentSpan?: otel.Span): void => {
     const ctx = parentSpan ? otel.trace.setSpan(otel.context.active(), parentSpan) : otel.context.active()
-    this.otelTracer.startActiveSpan('LiveStore:backend:applyEvent', {}, ctx, (span) => {
+    this.otelTracer.startActiveSpan('LiveStore:storage:applyEvent', {}, ctx, (span) => {
       try {
-        // Careful: this SQL statement is duplicated in the backend.
+        // Careful: this SQL statement is duplicated in the storage.
         // Remember to update it in src-tauri/src/store.rs:apply_event as well.
         // await this.execute(sql`insert into ${EVENTS_TABLE_NAME} (id, type, args) values ($id, $type, $args)`, {
         //   id: event.id,

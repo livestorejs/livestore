@@ -7,17 +7,17 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./backends/web-worker": {
-      "types": "./dist/backends/web-worker/index.d.ts",
-      "default": "./dist/backends/web-worker/index.js"
+    "./storage/web-worker": {
+      "types": "./dist/storage/web-worker/index.d.ts",
+      "default": "./dist/storage/web-worker/index.js"
     },
-    "./backends/in-memory": {
-      "types": "./dist/backends/in-memory/index.d.ts",
-      "default": "./dist/backends/in-memory/index.js"
+    "./storage/in-memory": {
+      "types": "./dist/storage/in-memory/index.d.ts",
+      "default": "./dist/storage/in-memory/index.js"
     },
-    "./backends/tauri": {
-      "types": "./dist/backends/tauri/index.d.ts",
-      "default": "./dist/backends/tauri/index.js"
+    "./storage/tauri": {
+      "types": "./dist/storage/tauri/index.d.ts",
+      "default": "./dist/storage/tauri/index.js"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",

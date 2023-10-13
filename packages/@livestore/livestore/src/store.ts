@@ -5,9 +5,9 @@ import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
 import { uniqueId } from 'lodash-es'
 import * as ReactDOM from 'react-dom'
+import initSqlite3Wasm from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
-import type { Backend, BackendInit } from './backends/index.js'
 import type { ComponentKey } from './componentKey.js'
 import { tableNameForComponentKey } from './componentKey.js'
 import type { LiveStoreEvent } from './events.js'
@@ -21,6 +21,7 @@ import { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { ActionDefinition, GetActionArgs, Schema } from './schema.js'
 import { componentStateTables } from './schema.js'
+import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { sql } from './util.js'
 
@@ -55,7 +56,7 @@ export type GraphQLOptions<TContext> = {
 export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
   db: InMemoryDatabase
   schema: Schema
-  backend?: Backend
+  storage?: Storage
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer: otel.Tracer
   otelRootSpanContext: otel.Context
@@ -111,13 +112,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
    */
   tableRefs: { [key: string]: Ref<null> }
   activeQueries: Set<LiveStoreQuery>
-  backend?: Backend
+  storage?: Storage
   temporaryQueries: Set<LiveStoreQuery> | undefined
 
   private constructor({
     db,
     schema,
-    backend,
+    storage,
     graphQLOptions,
     otelTracer,
     otelRootSpanContext,
@@ -133,7 +134,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
     this.activeQueries = new Set()
-    this.backend = backend
+    this.storage = storage
 
     const applyEventsSpan = otelTracer.startSpan('LiveStore:applyEvents', {}, otelRootSpanContext)
     const otelApplyEventsSpanContext = otel.trace.setSpan(otel.context.active(), applyEventsSpan)
@@ -642,7 +643,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
               try {
                 const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-                // TODO: what to do about backend transaction here?
+                // TODO: what to do about storage transaction here?
                 this.inMemoryDB.txn(() => {
                   for (const event of events) {
                     try {
@@ -776,9 +777,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
         // Synchronously apply the event to the in-memory database
         const { durationMs } = this.inMemoryDB.applyEvent(eventWithId, actionDefinition, otelContext)
 
-        // Asynchronously apply the event to a persistent backend (we're not awaiting this promise here)
-        if (this.backend !== undefined) {
-          this.backend.applyEvent(eventWithId, actionDefinition, span)
+        // Asynchronously apply the event to a persistent storage (we're not awaiting this promise here)
+        if (this.storage !== undefined) {
+          this.storage.applyEvent(eventWithId, actionDefinition, span)
         }
 
         // Uncomment to print a list of queries currently registered on the store
@@ -804,9 +805,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
   execute = async (query: string, params: ParamsObject = {}, writeTables?: string[]) => {
     this.inMemoryDB.execute(query, params, writeTables)
 
-    if (this.backend !== undefined) {
+    if (this.storage !== undefined) {
       const parentSpan = otel.trace.getSpan(otel.context.active())
-      this.backend.execute(query, params, parentSpan)
+      this.storage.execute(query, params, parentSpan)
     }
   }
 }
@@ -814,51 +815,59 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 /** Create a new LiveStore Store */
 export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   schema,
-  loadBackend,
+  loadStorage,
   graphQLOptions,
   otelTracer = makeNoopTracer(),
   otelRootSpanContext = otel.context.active(),
   boot,
 }: {
   schema: Schema
-  loadBackend: () => Promise<BackendInit>
+  loadStorage: () => Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (backend: Backend, parentSpan: otel.Span) => Promise<void>
+  boot?: (storage: Storage, parentSpan: otel.Span) => Promise<void>
 }): Promise<Store<TGraphQLContext>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       let persistedData: Uint8Array | undefined
-      const backend = await loadBackend().then((init) =>
+      const storage = await loadStorage().then((init) =>
         init({
           otelTracer: otelTracer ?? makeNoopTracer(),
           parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
         }),
       )
 
-      await migrateDb({ db: backend, schema, span })
+      await migrateDb({ db: storage, schema, span })
 
       if (boot) {
-        await boot(backend, span)
+        await boot(storage, span)
       }
 
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
-      await otelTracer.startActiveSpan('backend-getPersistedData', {}, otelContext, async (span) => {
+      await otelTracer.startActiveSpan('storage-getPersistedData', {}, otelContext, async (span) => {
         try {
-          persistedData = await backend.getPersistedData(span)
+          persistedData = await storage.getPersistedData(span)
         } finally {
           span.end()
         }
       })
 
-      const db = await InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext)
+      const sqlite3 = await initSqlite3Wasm({
+        // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+        // You can omit locateFile completely when running in node
+        // locateFile: () => `/sql-wasm.wasm`,
+        print: (message) => console.log(`[sql-client] ${message}`),
+        printErr: (message) => console.error(`[sql-client] ${message}`),
+      })
+
+      const db = await InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
 
       // TODO: we can't apply the schema at this point, we've already loaded persisted data!
       // Think about what to do about this case.
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext>(
-        { db, schema, backend, graphQLOptions, otelTracer, otelRootSpanContext },
+        { db, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext },
         span,
       )
     } finally {

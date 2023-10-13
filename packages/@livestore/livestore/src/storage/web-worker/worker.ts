@@ -10,8 +10,9 @@ import sqlite3InitModule from 'sqlite-esm'
 // import { v4 as uuid } from 'uuid'
 import type { Bindable } from '../../util.js'
 import { casesHandled, sql } from '../../util.js'
-import type { SelectResponse, WritableDatabaseLocation } from '../index.js'
+import type { SelectResponse } from '../index.js'
 import { IDB } from '../utils/idb.js'
+import type { WritableDatabaseLocation } from './index.js'
 
 // A global variable to hold the database connection.
 // let db: SqliteWasm.Database
@@ -19,10 +20,10 @@ let db: SqliteWasm.DatabaseApi
 
 let sqlite3: SqliteWasm.Sqlite3Static
 
-// TODO get rid of this in favour of a "proper" IDB SQLite backend
+// TODO get rid of this in favour of a "proper" IDB SQLite storage
 let idb: IDB | undefined
 
-/** The location where this database backend persists its data */
+/** The location where this database storage persists its data */
 let persistentDatabaseLocation_: WritableDatabaseLocation
 
 const configureConnection = () =>
@@ -71,7 +72,7 @@ const initialize = async ({ persistentDatabaseLocation }: { persistentDatabaseLo
       break
     }
     case 'filesystem': {
-      throw new Error('Persisting to native FS is not supported in the web worker backend')
+      throw new Error('Persisting to native FS is not supported in the web worker storage')
     }
     case 'volatile-in-memory': {
       break
@@ -84,7 +85,7 @@ const initialize = async ({ persistentDatabaseLocation }: { persistentDatabaseLo
   configureConnection()
 }
 
-// TODO get rid of this in favour of a "proper" IDB SQLite backend
+// TODO get rid of this in favour of a "proper" IDB SQLite storage
 let idbPersistTimeout: NodeJS.Timeout | undefined
 
 type ExecutionQueueItem = { query: string; bindValues?: Bindable }
@@ -119,7 +120,7 @@ const executeBulk = (executionItems: ExecutionQueueItem[]): void => {
     }
   }
 
-  // TODO get rid of this in favour of a "proper" IDB SQLite backend
+  // TODO get rid of this in favour of a "proper" IDB SQLite storage
   if (persistentDatabaseLocation_.type === 'indexeddb') {
     if (idbPersistTimeout !== undefined) {
       clearTimeout(idbPersistTimeout)
@@ -147,7 +148,7 @@ const select = <T = any>(query: string, bindValues?: Bindable): SelectResponse<T
 }
 
 const getPersistedData = async (): Promise<Uint8Array> => {
-  // TODO get rid of this in favour of a "proper" IDB SQLite backend
+  // TODO get rid of this in favour of a "proper" IDB SQLite storage
   if (persistentDatabaseLocation_.type === 'indexeddb') {
     const data = sqlite3.capi.sqlite3_js_db_export(db.pointer)
     return Comlink.transfer(data, [data.buffer])

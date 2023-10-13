@@ -4,17 +4,17 @@ import sqlite3InitModule from 'sqlite-esm'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import { BaseBackend } from '../base.js'
-import type { BackendOtelProps, SelectResponse } from '../index.js'
+import { BaseStorage } from '../base.js'
+import type { SelectResponse, StorageOtelProps } from '../index.js'
 
-export type BackendOptionsWebInMemory = {
+export type StorageOptionsWebInMemory = {
   type: 'web-in-memory'
 }
 
 declare type DatabaseWithCAPI = SqliteWasm.Database & { capi: SqliteWasm.CAPI }
 
-// NOTE: This backend is currently only used for testing
-export class InMemoryBackend extends BaseBackend {
+// NOTE: This storage is currently only used for testing
+export class InMemoryStorage extends BaseStorage {
   constructor(
     readonly otelTracer: otel.Tracer,
     readonly db: DatabaseWithCAPI,
@@ -22,7 +22,7 @@ export class InMemoryBackend extends BaseBackend {
     super()
   }
 
-  static load = async (_options?: BackendOptionsWebInMemory) => {
+  static load = async (_options?: StorageOptionsWebInMemory) => {
     const sqlite3 = await sqlite3InitModule({
       print: (message) => console.log(`[sql-client] ${message}`),
       printErr: (message) => console.error(`[sql-client] ${message}`),
@@ -30,7 +30,7 @@ export class InMemoryBackend extends BaseBackend {
     const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as DatabaseWithCAPI
     db.capi = sqlite3.capi
 
-    return ({ otelTracer }: BackendOtelProps) => new InMemoryBackend(otelTracer, db)
+    return ({ otelTracer }: StorageOtelProps) => new InMemoryStorage(otelTracer, db)
   }
 
   execute = (query: string, bindValues?: ParamsObject): void => {
