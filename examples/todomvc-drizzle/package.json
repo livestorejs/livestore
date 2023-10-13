@@ -9,7 +9,7 @@
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {
-    "@effect/schema": "0.43.0",
+    "@effect/schema": "0.43.1",
     "@livestore/devtools-react": "^0.0.14",
     "@livestore/livestore": "latest",
     "@opentelemetry/api": "^1.6.0",
