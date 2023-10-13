@@ -8,8 +8,6 @@
 
 import type * as otel from '@opentelemetry/api'
 
-import type { LiveStoreEvent } from '../events.js'
-import type { ActionDefinition } from '../schema.js'
 import type { ParamsObject } from '../util.js'
 
 export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
@@ -22,9 +20,6 @@ export interface Storage {
   // Execute a query where you don't care about the result.
   // Used for writes and configuration changes.
   execute(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void
-
-  /** Apply an event to the storage */
-  applyEvent(event: LiveStoreEvent, eventDefiniton: ActionDefinition, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
   getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>

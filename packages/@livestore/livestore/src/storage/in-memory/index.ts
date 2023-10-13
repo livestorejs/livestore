@@ -4,8 +4,7 @@ import sqlite3InitModule from 'sqlite-esm'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import { BaseStorage } from '../base.js'
-import type { SelectResponse, StorageOtelProps } from '../index.js'
+import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsWebInMemory = {
   type: 'web-in-memory'
@@ -14,13 +13,11 @@ export type StorageOptionsWebInMemory = {
 declare type DatabaseWithCAPI = SqliteWasm.Database & { capi: SqliteWasm.CAPI }
 
 // NOTE: This storage is currently only used for testing
-export class InMemoryStorage extends BaseStorage {
+export class InMemoryStorage implements Storage {
   constructor(
     readonly otelTracer: otel.Tracer,
     readonly db: DatabaseWithCAPI,
-  ) {
-    super()
-  }
+  ) {}
 
   static load = async (_options?: StorageOptionsWebInMemory) => {
     const sqlite3 = await sqlite3InitModule({

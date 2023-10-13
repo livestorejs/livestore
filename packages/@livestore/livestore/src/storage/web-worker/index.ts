@@ -3,8 +3,7 @@ import * as Comlink from 'comlink'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import { BaseStorage } from '../base.js'
-import type { SelectResponse, StorageOtelProps } from '../index.js'
+import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
 import type { WrappedWorker } from './worker.js'
 
 /* A location of a persistent writable SQLite file */
@@ -31,7 +30,7 @@ export type StorageOptionsWeb = {
   persistentDatabaseLocation: WritableDatabaseLocation
 }
 
-export class WebWorkerStorage extends BaseStorage {
+export class WebWorkerStorage implements Storage {
   worker: Comlink.Remote<WrappedWorker>
   persistentDatabaseLocation: WritableDatabaseLocation
   otelTracer: otel.Tracer
@@ -48,7 +47,6 @@ export class WebWorkerStorage extends BaseStorage {
     persistentDatabaseLocation: WritableDatabaseLocation
     otelTracer: otel.Tracer
   }) {
-    super()
     this.worker = worker
     this.persistentDatabaseLocation = persistentDatabaseLocation
     this.otelTracer = otelTracer

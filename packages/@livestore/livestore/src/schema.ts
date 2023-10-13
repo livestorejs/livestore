@@ -66,7 +66,7 @@ export const defineComponentStateSchema = <TName extends string, TColumns extend
   return tableDef
 }
 
-type SQLWriteStatement = {
+export type SQLWriteStatement = {
   sql: string
 
   /** Tables written by the statement */

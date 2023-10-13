@@ -1,5 +1,6 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
 import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { identity } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
@@ -19,7 +20,7 @@ import { ReactiveGraph } from './reactive.js'
 import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { ActionDefinition, GetActionArgs, Schema } from './schema.js'
+import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from './schema.js'
 import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
@@ -775,20 +776,25 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
         const eventWithId: LiveStoreEvent = { id: uuid(), type: eventType, args }
 
         // Synchronously apply the event to the in-memory database
-        const { durationMs } = this.inMemoryDB.applyEvent(eventWithId, actionDefinition, otelContext)
+        // const { durationMs } = this.inMemoryDB.applyEvent(eventWithId, actionDefinition, otelContext)
+        const { statement, bindValues } = eventToSql(eventWithId, actionDefinition)
+        const { durationMs } = this.inMemoryDB.execute(statement.sql, bindValues, statement.writeTables, {
+          otelContext,
+        })
 
         // Asynchronously apply the event to a persistent storage (we're not awaiting this promise here)
         if (this.storage !== undefined) {
-          this.storage.applyEvent(eventWithId, actionDefinition, span)
+          // this.storage.applyEvent(eventWithId, actionDefinition, span)
+          this.storage.execute(statement.sql, bindValues, span)
         }
 
         // Uncomment to print a list of queries currently registered on the store
         // console.log(JSON.parse(JSON.stringify([...this.queries].map((q) => `${labelForKey(q.componentKey)}/${q.label}`))))
 
-        const statement =
-          typeof actionDefinition.statement === 'function'
-            ? actionDefinition.statement(args)
-            : actionDefinition.statement
+        // const statement =
+        //   typeof actionDefinition.statement === 'function'
+        //     ? actionDefinition.statement(args)
+        //     : actionDefinition.statement
 
         span.end()
 
@@ -874,4 +880,19 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       span.end()
     }
   })
+}
+
+const eventToSql = (
+  event: LiveStoreEvent,
+  eventDefinition: ActionDefinition,
+): { statement: SQLWriteStatement; bindValues: ParamsObject } => {
+  const statement =
+    typeof eventDefinition.statement === 'function' ? eventDefinition.statement(event.args) : eventDefinition.statement
+
+  const prepareBindValues = eventDefinition.prepareBindValues ?? identity
+
+  const bindValues =
+    typeof eventDefinition.statement === 'function' && statement.argsAlreadyBound ? {} : prepareBindValues(event.args)
+
+  return { statement, bindValues }
 }

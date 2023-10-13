@@ -4,23 +4,20 @@ import { invoke } from '@tauri-apps/api'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import { BaseStorage } from '../base.js'
-import type { SelectResponse, StorageOtelProps } from '../index.js'
+import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsTauri = {
   dbDirPath: string
   appDbFileName: string
 }
 
-export class TauriStorage extends BaseStorage {
+export class TauriStorage implements Storage {
   constructor(
     readonly dbFilePath: string,
     readonly dbDirPath: string,
     readonly otelTracer: otel.Tracer,
     readonly parentSpan: otel.Span,
-  ) {
-    super()
-  }
+  ) {}
 
   static load =
     ({ dbDirPath, appDbFileName }: StorageOptionsTauri) =>

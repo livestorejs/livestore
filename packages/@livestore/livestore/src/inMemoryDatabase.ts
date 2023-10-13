@@ -1,17 +1,14 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { identity } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type * as SqliteWasm from 'sqlite-esm'
 
 import BoundMap, { BoundArray } from './bounded-collections.js'
-import type { LiveStoreEvent } from './events.js'
 // import { EVENTS_TABLE_NAME } from './events.js'
 import { sql } from './index.js'
 import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './otel.js'
 import QueryCache from './QueryCache.js'
-import type { ActionDefinition } from './schema.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { prepareBindValues } from './util.js'
 
@@ -139,49 +136,75 @@ export class InMemoryDatabase {
     return tablesUsed as string[]
   }
 
-  /**
-   * NOTE `execute` is untraced since it's usually called from `applyEvent` which is traced
-   */
   execute(
     query: string,
     bindValues?: ParamsObject,
     writeTables?: string[],
-    options?: { hasNoEffects?: boolean },
-  ): void {
-    try {
-      let stmt = this.cachedStmts.get(query)
-      if (stmt === undefined) {
-        stmt = this.db.prepare(query)
-        this.cachedStmts.set(query, stmt)
-      }
+    options?: { hasNoEffects?: boolean; otelContext: otel.Context },
+  ): { durationMs: number } {
+    return this.otelTracer.startActiveSpan(
+      'livestore.in-memory-db:execute',
+      // TODO truncate query string
+      { attributes: { 'sql.query': query } },
+      options?.otelContext ?? this.otelRootSpanContext,
+      (span) => {
+        try {
+          let stmt = this.cachedStmts.get(query)
+          if (stmt === undefined) {
+            stmt = this.db.prepare(query)
+            this.cachedStmts.set(query, stmt)
+          }
 
-      if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
-        stmt.bind(prepareBindValues(bindValues, query))
-      }
+          // TODO check whether we can remove the extra `prepareBindValues` call here (e.g. enforce proper type in API)
+          if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
+            stmt.bind(prepareBindValues(bindValues, query))
+          }
 
-      try {
-        stmt.step()
-      } finally {
-        stmt.reset() // Reset is needed for next execution
-      }
-    } catch (error) {
-      shouldNeverHappen(
-        `Error executing query: ${error} \n ${JSON.stringify({
-          query,
-          bindValues,
-        })}`,
-      )
-    }
+          if (import.meta.env.DEV) {
+            this.debugInfo.events.push([query, bindValues])
+          }
 
-    if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(query)) {
-      // TODO use write tables instead
-      // check what queries actually end up here.
-      this.resultCache.invalidate(writeTables ?? this.getTablesUsed(query))
-    }
+          try {
+            stmt.step()
+          } finally {
+            stmt.reset() // Reset is needed for next execution
+          }
+        } catch (error) {
+          shouldNeverHappen(
+            `Error executing query: ${error} \n ${JSON.stringify({
+              query,
+              bindValues,
+            })}`,
+          )
+        }
 
-    if (options?.hasNoEffects === true) {
-      return
-    }
+        if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(query)) {
+          // TODO use write tables instead
+          // check what queries actually end up here.
+          this.resultCache.invalidate(writeTables ?? this.getTablesUsed(query))
+        }
+
+        span.end()
+
+        const durationMs = getDurationMsFromSpan(span)
+
+        this.debugInfo.queryFrameDuration += durationMs
+        this.debugInfo.queryFrameCount++
+
+        if (durationMs > 5 && import.meta.env.DEV) {
+          this.debugInfo.slowQueries.push([
+            query,
+            bindValues,
+            durationMs,
+            undefined,
+            [],
+            getStartTimeHighResFromSpan(span),
+          ])
+        }
+
+        return { durationMs }
+      },
+    )
   }
 
   select<T = any>(
@@ -271,67 +294,6 @@ export class InMemoryDatabase {
         }
       },
     )
-  }
-
-  // TODO move `applyEvent` logic to Store and only call `execute` here
-  applyEvent(
-    event: LiveStoreEvent,
-    eventDefinition: ActionDefinition,
-    otelContext: otel.Context,
-  ): { durationMs: number } {
-    return this.otelTracer.startActiveSpan('livestore.in-memory-db:applyEvent', {}, otelContext, (span) => {
-      // TODO: in the future, we'll do more CRDT-style stuff here to decide whether to run effects of the event
-
-      // NOTE: These two updates should happen transactionally;
-      // we don't create a transaction here because that's handled in the caller.
-      // The reason for this is that sometimes we want to apply multiple events in a larger transaction.
-
-      // Insert into the events table
-      // this.execute(sql`insert into ${EVENTS_TABLE_NAME} (id, type, args) values ($id, $type, $args)`, {
-      //   id: event.id,
-      //   type: event.type,
-      //   args: JSON.stringify(event.args ?? {}),
-      // })
-
-      const statement =
-        typeof eventDefinition.statement === 'function'
-          ? eventDefinition.statement(event.args)
-          : eventDefinition.statement
-
-      const prepareBindValues = eventDefinition.prepareBindValues ?? identity
-
-      const bindValues =
-        typeof eventDefinition.statement === 'function' && statement.argsAlreadyBound
-          ? {}
-          : prepareBindValues(event.args)
-
-      if (import.meta.env.DEV) {
-        this.debugInfo.events.push([statement.sql, bindValues])
-      }
-
-      // Run the effects of the event
-      this.execute(statement.sql, bindValues, statement.writeTables)
-
-      span.end()
-
-      const durationMs = getDurationMsFromSpan(span)
-
-      this.debugInfo.queryFrameDuration += durationMs
-      this.debugInfo.queryFrameCount++
-
-      if (durationMs > 5 && import.meta.env.DEV) {
-        this.debugInfo.slowQueries.push([
-          statement.sql,
-          bindValues,
-          durationMs,
-          undefined,
-          [],
-          getStartTimeHighResFromSpan(span),
-        ])
-      }
-
-      return { durationMs }
-    })
   }
 
   export() {
