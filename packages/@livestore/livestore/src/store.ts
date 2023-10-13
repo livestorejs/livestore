@@ -867,7 +867,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
         printErr: (message) => console.error(`[sql-client] ${message}`),
       })
 
-      const db = await InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
+      const db = InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
 
       // TODO: we can't apply the schema at this point, we've already loaded persisted data!
       // Think about what to do about this case.
