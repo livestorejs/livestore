@@ -71,6 +71,7 @@ export class InMemoryDatabase {
     otelTracer: otel.Tracer,
     otelRootSpanContext: otel.Context,
   ): Promise<InMemoryDatabase> {
+    // TODO move WASM init higher up in the init process (to do some other work while it's loading)
     const sqlite3 = await initSqlJs({
       // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
       // You can omit locateFile completely when running in node

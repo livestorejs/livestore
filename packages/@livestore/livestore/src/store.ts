@@ -1,7 +1,6 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { assertNever, makeNoopSpan, makeNoopTracer, memoize, omit, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
-import { SqliteAst } from 'effect-db-schema'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
 import { uniqueId } from 'lodash-es'
@@ -13,20 +12,15 @@ import type { ComponentKey } from './componentKey.js'
 import { tableNameForComponentKey } from './componentKey.js'
 import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
+import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
 import type { GetAtom, Ref } from './reactive.js'
 import { ReactiveGraph } from './reactive.js'
 import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { ActionDefinition, GetActionArgs, Schema, SchemaMetaRow } from './schema.js'
-import {
-  componentStateTables,
-  createIndexFromDefinition,
-  makeColumnSpec,
-  SCHEMA_META_TABLE,
-  systemTables,
-} from './schema.js'
+import type { ActionDefinition, GetActionArgs, Schema } from './schema.js'
+import { componentStateTables } from './schema.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { sql } from './util.js'
 
@@ -843,59 +837,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
         }),
       )
 
-      // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
-
-      backend.execute(
-        // TODO use schema migration definition from schema.ts instead
-        sql`create table if not exists ${SCHEMA_META_TABLE} (tableName text primary key, schemaHash text, updatedAt text);`,
-        undefined,
-        span,
-      )
-
-      const schemaMetaRows = await backend
-        .select<SchemaMetaRow>(sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
-        .then((_) => _.results)
-
-      const dbSchemaHashByTable = Object.fromEntries(
-        schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
-      )
-
-      const getMemoizedTimestamp = memoize(() => new Date().toISOString())
-      const tableDefs = {
-        // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
-        [SCHEMA_META_TABLE]: systemTables[SCHEMA_META_TABLE],
-        ...omit(schema.tables, [SCHEMA_META_TABLE]),
-        ...componentStateTables,
-      }
-      for (const [tableName, tableDef] of Object.entries(tableDefs)) {
-        const dbSchemaHash = dbSchemaHashByTable[tableName]
-        const schemaHash = SqliteAst.hash(tableDef)
-        if (schemaHash !== dbSchemaHash) {
-          console.log(
-            `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
-          )
-
-          const columnSpec = makeColumnSpec(tableDef)
-
-          // TODO need to possibly handle cascading deletes due to foreign keys
-          backend.execute(sql`drop table if exists ${tableName}`, undefined, span)
-          backend.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, span)
-
-          for (const index of tableDef.indexes) {
-            backend.execute(createIndexFromDefinition(tableName, index), undefined, span)
-          }
-
-          const updatedAt = getMemoizedTimestamp()
-          backend.execute(
-            sql`
-              INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
-                ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
-            `,
-            { tableName, schemaHash, updatedAt },
-            span,
-          )
-        }
-      }
+      await migrateDb({ db: backend, schema, span })
 
       if (boot) {
         await boot(backend, span)
