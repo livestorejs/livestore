@@ -97,7 +97,11 @@ export class InMemoryDatabase {
       )
     }
 
-    return new InMemoryDatabase(db, otelTracer, otelRootSpanContext, sqlite3)
+    const inMemoryDatabase = new InMemoryDatabase(db, otelTracer, otelRootSpanContext, sqlite3)
+
+    configureSQLite(inMemoryDatabase)
+
+    return inMemoryDatabase
   }
 
   txn<TRes>(callback: () => TRes): TRes {
@@ -344,4 +348,19 @@ export class InMemoryDatabase {
 
     return this.db.capi.sqlite3_js_db_export(this.db.pointer)
   }
+}
+
+/** Set up SQLite performance; hasn't been super carefully optimized yet. */
+const configureSQLite = (db: InMemoryDatabase) => {
+  db.execute(
+    // TODO: revisit these tuning parameters for max performance
+    sql`
+      PRAGMA page_size=32768;
+      PRAGMA cache_size=10000;
+      PRAGMA journal_mode='MEMORY'; -- we don't flush to disk before committing a write
+      PRAGMA synchronous='OFF';
+      PRAGMA temp_store='MEMORY';
+      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
+    `,
+  )
 }

@@ -910,8 +910,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
         }
       })
 
-      const db: InMemoryDatabase = await InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext)
-      configureSQLite(db)
+      const db = await InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext)
 
       // TODO: we can't apply the schema at this point, we've already loaded persisted data!
       // Think about what to do about this case.
@@ -924,19 +923,4 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       span.end()
     }
   })
-}
-
-/** Set up SQLite performance; hasn't been super carefully optimized yet. */
-const configureSQLite = (db: InMemoryDatabase) => {
-  db.execute(
-    // TODO: revisit these tuning parameters for max performance
-    sql`
-      PRAGMA page_size=32768;
-      PRAGMA cache_size=10000;
-      PRAGMA journal_mode='MEMORY'; -- we don't flush to disk before committing a write
-      PRAGMA synchronous='OFF';
-      PRAGMA temp_store='MEMORY';
-      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
-    `,
-  )
 }
