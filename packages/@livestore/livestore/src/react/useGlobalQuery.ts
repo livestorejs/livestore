@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 
 import { labelForKey } from '../componentKey.js'
-import { TODO_REMOVE_trackLongRunningSpan } from '../otel.js'
 import type { LiveStoreQuery, QueryResult } from '../store.js'
 
 export const useGlobalQuery = <Q extends LiveStoreQuery>(query: Q): QueryResult<Q> => {
@@ -15,8 +14,6 @@ export const useGlobalQuery = <Q extends LiveStoreQuery>(query: Q): QueryResult<
       {},
       query.store.otel.queriesSpanContext,
       (span) => {
-        TODO_REMOVE_trackLongRunningSpan(span)
-
         const cancel = query.store.subscribe(
           query,
           (v) => {
