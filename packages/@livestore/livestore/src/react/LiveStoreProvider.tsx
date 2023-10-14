@@ -18,8 +18,8 @@ import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: Schema
-  loadStorage: () => Promise<StorageInit>
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => Promise<void>
+  loadStorage: () => StorageInit | Promise<StorageInit>
+  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   globalQueryDefs: GlobalQueryDefs
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer

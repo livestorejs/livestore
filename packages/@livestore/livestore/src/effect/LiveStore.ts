@@ -22,11 +22,11 @@ export type GlobalQueryDefs = { [key: string]: QueryDefinition }
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
   schema: Schema
   globalQueryDefs: GlobalQueryDefs
-  loadStorage: () => Promise<StorageInit>
+  loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => Promise<void>
+  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
 }
 
 export const LiveStoreContext = Context.Tag<LiveStoreContext>('@livestore/livestore/LiveStoreContext')
@@ -41,7 +41,7 @@ export const DeferredStoreContext = Context.Tag<DeferredStoreContext>(
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: Schema
   globalQueryDefs?: Effect.Effect<never, never, GlobalQueryDefs>
-  loadStorage: () => Promise<StorageInit>
+  loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: {
     schema: Effect.Effect<otel.Tracer, never, GraphQLSchema>
     makeContext: (db: InMemoryDatabase) => GraphQLContext
@@ -113,9 +113,6 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
           parent: OtelTracer.makeExternalSpan(otel.trace.getSpanContext(store.otel.queriesSpanContext)!),
         }),
       )
-
-      // NOTE give main thread a chance to render
-      yield* $(Effect.yieldNow())
 
       return { store, globalQueries }
     }),

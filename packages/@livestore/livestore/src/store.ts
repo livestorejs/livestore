@@ -828,11 +828,11 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   boot,
 }: {
   schema: Schema
-  loadStorage: () => Promise<StorageInit>
+  loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => void | Promise<void>
+  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
 }): Promise<Store<TGraphQLContext>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
@@ -841,12 +841,9 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       const loadStorageAndPersistedData = async () => {
         const storage = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
           try {
-            return await loadStorage().then((init) =>
-              init({
-                otelTracer: otelTracer ?? makeNoopTracer(),
-                parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
-              }),
-            )
+            const init = await loadStorage()
+            const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
+            return init({ otelTracer, parentSpan })
           } finally {
             span.end()
           }

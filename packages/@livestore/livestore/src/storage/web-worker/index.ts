@@ -1,39 +1,24 @@
-import { notYetImplemented } from '@livestore/utils'
+import { casesHandled } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
+import { IDB } from '../utils/idb.js'
 import type { WrappedWorker } from './worker.js'
 
-/* A location of a persistent writable SQLite file */
-export type WritableDatabaseLocation =
-  | {
-      type: 'opfs'
-      virtualFilename: string
-    }
-  | {
-      type: 'indexeddb'
-      virtualFilename: string
-    }
-  | {
-      type: 'filesystem'
-      directory: string
-      filename: string
-    }
-  | {
-      type: 'volatile-in-memory'
-    }
+export type StorageType = 'opfs' | 'indexeddb'
 
 export type StorageOptionsWeb = {
   /** Specifies where to persist data for this storage */
-  persistentDatabaseLocation: WritableDatabaseLocation
+  type: StorageType
+  virtualFilename: string
 }
 
 export class WebWorkerStorage implements Storage {
   worker: Comlink.Remote<WrappedWorker>
-  persistentDatabaseLocation: WritableDatabaseLocation
+  options: StorageOptionsWeb
   otelTracer: otel.Tracer
 
   executionBacklog: { query: string; bindValues?: ParamsObject }[] = []
@@ -41,24 +26,24 @@ export class WebWorkerStorage implements Storage {
 
   private constructor({
     worker,
-    persistentDatabaseLocation,
+    options,
     otelTracer,
     executionPromise,
   }: {
     worker: Comlink.Remote<WrappedWorker>
-    persistentDatabaseLocation: WritableDatabaseLocation
+    options: StorageOptionsWeb
     otelTracer: otel.Tracer
     executionPromise: Promise<void>
   }) {
     this.worker = worker
-    this.persistentDatabaseLocation = persistentDatabaseLocation
+    this.options = options
     this.otelTracer = otelTracer
     this.executionPromise = executionPromise
 
     executionPromise.then(() => this.executeBacklog())
   }
 
-  static load = ({ persistentDatabaseLocation }: StorageOptionsWeb) => {
+  static load = (options: StorageOptionsWeb) => {
     // TODO: Importing the worker like this only works with Vite;
     // should this really be inside the LiveStore library?
     // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
@@ -70,13 +55,9 @@ export class WebWorkerStorage implements Storage {
     return ({ otelTracer }: StorageOtelProps) =>
       new WebWorkerStorage({
         worker: wrappedWorker,
-        persistentDatabaseLocation,
+        options,
         otelTracer,
-        executionPromise: new Promise(async (resolve) => {
-          await wrappedWorker.initialize({ persistentDatabaseLocation })
-
-          resolve()
-        }),
+        executionPromise: wrappedWorker.initialize(options),
       })
   }
 
@@ -96,31 +77,42 @@ export class WebWorkerStorage implements Storage {
     }
   }
 
-  executeBacklog = () => {
+  private executeBacklog = () => {
     void this.worker.executeBulk(this.executionBacklog)
     this.executionBacklog = []
     this.executionPromise = undefined
   }
 
-  getPersistedData = async (_parentSpan?: otel.Span): Promise<Uint8Array> =>
-    getPersistedData(this.persistentDatabaseLocation)
+  getPersistedData = async (_parentSpan?: otel.Span): Promise<Uint8Array> => getPersistedData(this.options)
 }
 
-const getPersistedData = async (persistentDatabaseLocation: WritableDatabaseLocation): Promise<Uint8Array> => {
-  if (persistentDatabaseLocation.type !== 'opfs') {
-    return notYetImplemented(`Unsupported persistent database location type: ${persistentDatabaseLocation.type}`)
-  }
+const getPersistedData = async (options: StorageOptionsWeb): Promise<Uint8Array> => {
+  switch (options.type) {
+    case 'opfs': {
+      try {
+        const rootHandle = await navigator.storage.getDirectory()
+        const fileHandle = await rootHandle.getFileHandle(options.virtualFilename + '.db')
+        const file = await fileHandle.getFile()
+        const buffer = await file.arrayBuffer()
+        const data = new Uint8Array(buffer)
 
-  try {
-    const rootHandle = await navigator.storage.getDirectory()
-    const fileHandle = await rootHandle.getFileHandle(persistentDatabaseLocation.virtualFilename + '.db')
-    const file = await fileHandle.getFile()
-    const buffer = await file.arrayBuffer()
-    const data = new Uint8Array(buffer)
+        return data
+      } catch (error: any) {
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+          return new Uint8Array()
+        }
 
-    return data
-  } catch (e) {
-    console.error(e)
-    return new Uint8Array()
+        throw error
+      }
+    }
+
+    case 'indexeddb': {
+      const idb = new IDB(options.virtualFilename)
+
+      return (await idb.get('db')) ?? new Uint8Array()
+    }
+    default: {
+      casesHandled(options.type)
+    }
   }
 }
