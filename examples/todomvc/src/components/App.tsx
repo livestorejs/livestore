@@ -8,6 +8,7 @@ import { LiveStoreProvider } from '@livestore/livestore/react'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { registerSW } from 'virtual:pwa-register'
 
 import type { AppState } from '../schema.js'
 import { schema } from '../schema.js'
@@ -25,6 +26,10 @@ const App = () => (
     <Footer />
   </section>
 )
+
+if (import.meta.env.PROD) {
+  registerSW()
+}
 
 ReactDOM.createRoot(document.getElementById('react-app')!).render(
   <LiveStoreProvider
