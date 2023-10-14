@@ -1,6 +1,6 @@
 # TodoMVC Example
 
-[Demo](https://livestore-example-todomvc.vercel.app/)
+[Demo](https://todovmc.livestore.dev)
 
 ## Running locally
 
