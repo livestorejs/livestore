@@ -10,9 +10,8 @@ import sqlite3InitModule from 'sqlite-esm'
 // import { v4 as uuid } from 'uuid'
 import type { Bindable } from '../../util.js'
 import { casesHandled, sql } from '../../util.js'
-import type { SelectResponse } from '../index.js'
 import { IDB } from '../utils/idb.js'
-import type { WritableDatabaseLocation } from './index.js'
+import type { StorageOptionsWeb } from './index.js'
 
 // A global variable to hold the database connection.
 // let db: SqliteWasm.Database
@@ -24,7 +23,7 @@ let sqlite3: SqliteWasm.Sqlite3Static
 let idb: IDB | undefined
 
 /** The location where this database storage persists its data */
-let persistentDatabaseLocation_: WritableDatabaseLocation
+let options_: StorageOptionsWeb
 
 const configureConnection = () =>
   db.exec(sql`
@@ -36,18 +35,18 @@ const configureConnection = () =>
 /** A full virtual filename in the IDB FS */
 const fullyQualifiedFilename = (name: string) => `${name}.db`
 
-const initialize = async ({ persistentDatabaseLocation }: { persistentDatabaseLocation: WritableDatabaseLocation }) => {
-  persistentDatabaseLocation_ = persistentDatabaseLocation
+const initialize = async (options: StorageOptionsWeb) => {
+  options_ = options
 
   sqlite3 = await sqlite3InitModule({
     print: (message) => console.log(`[sql-client] ${message}`),
     printErr: (message) => console.error(`[sql-client] ${message}`),
   })
 
-  switch (persistentDatabaseLocation.type) {
+  switch (options.type) {
     case 'opfs': {
       try {
-        db = new sqlite3.oo1.OpfsDb(fullyQualifiedFilename(persistentDatabaseLocation.virtualFilename)) // , 'c'
+        db = new sqlite3.oo1.OpfsDb(fullyQualifiedFilename(options.virtualFilename)) // , 'c'
       } catch (e) {
         debugger
       }
@@ -56,7 +55,7 @@ const initialize = async ({ persistentDatabaseLocation }: { persistentDatabaseLo
     case 'indexeddb': {
       try {
         db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' })
-        idb = new IDB(persistentDatabaseLocation.virtualFilename)
+        idb = new IDB(options.virtualFilename)
 
         const bytes = await idb.get('db')
 
@@ -71,14 +70,8 @@ const initialize = async ({ persistentDatabaseLocation }: { persistentDatabaseLo
       }
       break
     }
-    case 'filesystem': {
-      throw new Error('Persisting to native FS is not supported in the web worker storage')
-    }
-    case 'volatile-in-memory': {
-      break
-    }
     default: {
-      casesHandled(persistentDatabaseLocation)
+      casesHandled(options.type)
     }
   }
 
@@ -121,7 +114,7 @@ const executeBulk = (executionItems: ExecutionQueueItem[]): void => {
   }
 
   // TODO get rid of this in favour of a "proper" IDB SQLite storage
-  if (persistentDatabaseLocation_.type === 'indexeddb') {
+  if (options_.type === 'indexeddb') {
     if (idbPersistTimeout !== undefined) {
       clearTimeout(idbPersistTimeout)
     }
@@ -134,36 +127,7 @@ const executeBulk = (executionItems: ExecutionQueueItem[]): void => {
   }
 }
 
-const select = <T = any>(query: string, bindValues?: Bindable): SelectResponse<T> => {
-  const resultRows: T[] = []
-
-  db.exec({
-    sql: query,
-    bind: bindValues,
-    rowMode: 'object',
-    resultRows,
-  } as TODO)
-
-  return { results: resultRows }
-}
-
-const getPersistedData = async (): Promise<Uint8Array> => {
-  // TODO get rid of this in favour of a "proper" IDB SQLite storage
-  if (persistentDatabaseLocation_.type === 'indexeddb') {
-    const data = sqlite3.capi.sqlite3_js_db_export(db.pointer)
-    return Comlink.transfer(data, [data.buffer])
-  }
-
-  const rootHandle = await navigator.storage.getDirectory()
-  const fileHandle = await rootHandle.getFileHandle(db.filename)
-  const file = await fileHandle.getFile()
-  const buffer = await file.arrayBuffer()
-  const data = new Uint8Array(buffer)
-
-  return Comlink.transfer(data, [data.buffer])
-}
-
-const wrappedWorker = { initialize, executeBulk, select, getPersistedData }
+const wrappedWorker = { initialize, executeBulk }
 
 export type WrappedWorker = typeof wrappedWorker
 

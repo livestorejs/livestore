@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
+import type { Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsTauri = {
   dbDirPath: string
@@ -34,15 +34,6 @@ export class TauriStorage implements Storage {
       dbName: this.dbFilePath,
       query,
       values: prepareBindValues(bindValues ?? {}, query),
-      otelData: this.getOtelData(parentSpan),
-    })
-  }
-
-  select = async <T>(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): Promise<SelectResponse<T>> => {
-    return invoke('select', {
-      db: this.dbFilePath,
-      query,
-      values: bindValues ?? {},
       otelData: this.getOtelData(parentSpan),
     })
   }

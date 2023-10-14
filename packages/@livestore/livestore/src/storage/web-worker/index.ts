@@ -1,58 +1,49 @@
+import { casesHandled } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
 import type { ParamsObject } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
-import type { SelectResponse, Storage, StorageOtelProps } from '../index.js'
+import type { Storage, StorageOtelProps } from '../index.js'
+import { IDB } from '../utils/idb.js'
 import type { WrappedWorker } from './worker.js'
 
-/* A location of a persistent writable SQLite file */
-export type WritableDatabaseLocation =
-  | {
-      type: 'opfs'
-      virtualFilename: string
-    }
-  | {
-      type: 'indexeddb'
-      virtualFilename: string
-    }
-  | {
-      type: 'filesystem'
-      directory: string
-      filename: string
-    }
-  | {
-      type: 'volatile-in-memory'
-    }
+export type StorageType = 'opfs' | 'indexeddb'
 
 export type StorageOptionsWeb = {
   /** Specifies where to persist data for this storage */
-  persistentDatabaseLocation: WritableDatabaseLocation
+  type: StorageType
+  virtualFilename: string
 }
 
 export class WebWorkerStorage implements Storage {
   worker: Comlink.Remote<WrappedWorker>
-  persistentDatabaseLocation: WritableDatabaseLocation
+  options: StorageOptionsWeb
   otelTracer: otel.Tracer
 
   executionBacklog: { query: string; bindValues?: ParamsObject }[] = []
-  executionPromise: Promise<void> | undefined = undefined
+  executionPromise: Promise<void> | undefined
 
   private constructor({
     worker,
-    persistentDatabaseLocation,
+    options,
     otelTracer,
+    executionPromise,
   }: {
     worker: Comlink.Remote<WrappedWorker>
-    persistentDatabaseLocation: WritableDatabaseLocation
+    options: StorageOptionsWeb
     otelTracer: otel.Tracer
+    executionPromise: Promise<void>
   }) {
     this.worker = worker
-    this.persistentDatabaseLocation = persistentDatabaseLocation
+    this.options = options
     this.otelTracer = otelTracer
+    this.executionPromise = executionPromise
+
+    executionPromise.then(() => this.executeBacklog())
   }
 
-  static load = async ({ persistentDatabaseLocation }: StorageOptionsWeb) => {
+  static load = (options: StorageOptionsWeb) => {
     // TODO: Importing the worker like this only works with Vite;
     // should this really be inside the LiveStore library?
     // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
@@ -61,13 +52,12 @@ export class WebWorkerStorage implements Storage {
     })
     const wrappedWorker = Comlink.wrap<WrappedWorker>(worker)
 
-    await wrappedWorker.initialize({ persistentDatabaseLocation })
-
     return ({ otelTracer }: StorageOtelProps) =>
       new WebWorkerStorage({
         worker: wrappedWorker,
-        persistentDatabaseLocation,
+        options,
         otelTracer,
+        executionPromise: wrappedWorker.initialize(options),
       })
   }
 
@@ -79,9 +69,7 @@ export class WebWorkerStorage implements Storage {
     if (this.executionPromise === undefined) {
       this.executionPromise = new Promise((resolve) => {
         setTimeout(() => {
-          void this.worker.executeBulk(this.executionBacklog)
-          this.executionBacklog = []
-          this.executionPromise = undefined
+          this.executeBacklog()
 
           resolve()
         }, 10)
@@ -89,23 +77,42 @@ export class WebWorkerStorage implements Storage {
     }
   }
 
-  select = async <T>(query: string, bindValues?: ParamsObject): Promise<SelectResponse<T>> => {
-    // NOTE we need to wait for the executionBacklog to be worked off, before we run the select query (as it might depend on the previous execution queries)
-    await this.executionPromise
-
-    try {
-      const response = (await this.worker.select(query, bindValues)) as SelectResponse<T>
-      return response
-    } catch (e) {
-      console.error(`Error while executing query via "select": ${query}`)
-      throw e
-    }
+  private executeBacklog = () => {
+    void this.worker.executeBulk(this.executionBacklog)
+    this.executionBacklog = []
+    this.executionPromise = undefined
   }
 
-  getPersistedData = async (_parentSpan?: otel.Span): Promise<Uint8Array> => {
-    // NOTE we need to wait for the executionBacklog to be worked off
-    await this.executionPromise
+  getPersistedData = async (_parentSpan?: otel.Span): Promise<Uint8Array> => getPersistedData(this.options)
+}
 
-    return this.worker.getPersistedData()
+const getPersistedData = async (options: StorageOptionsWeb): Promise<Uint8Array> => {
+  switch (options.type) {
+    case 'opfs': {
+      try {
+        const rootHandle = await navigator.storage.getDirectory()
+        const fileHandle = await rootHandle.getFileHandle(options.virtualFilename + '.db')
+        const file = await fileHandle.getFile()
+        const buffer = await file.arrayBuffer()
+        const data = new Uint8Array(buffer)
+
+        return data
+      } catch (error: any) {
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+          return new Uint8Array()
+        }
+
+        throw error
+      }
+    }
+
+    case 'indexeddb': {
+      const idb = new IDB(options.virtualFilename)
+
+      return (await idb.get('db')) ?? new Uint8Array()
+    }
+    default: {
+      casesHandled(options.type)
+    }
   }
 }

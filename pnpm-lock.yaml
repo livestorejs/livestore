@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 overrides:
   '@livestore/*': workspace:*
   effect: 2.0.0-next.48
@@ -72,8 +68,8 @@ importers:
         specifier: 0.43.1
         version: 0.43.1(effect@2.0.0-next.48)(fast-check@3.13.1)
       '@livestore/devtools-react':
-        specifier: ^0.0.14
-        version: 0.0.14(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.15
+        version: 0.0.15(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: latest
         version: link:../../packages/@livestore/livestore
@@ -94,11 +90,11 @@ importers:
         version: 9.0.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.27
-        version: 18.2.27
+        specifier: ^18.2.28
+        version: 18.2.28
       '@types/react-dom':
-        specifier: ^18.2.12
-        version: 18.2.12
+        specifier: ^18.2.13
+        version: 18.2.13
       '@types/uuid':
         specifier: ^9.0.5
         version: 9.0.5
@@ -121,8 +117,8 @@ importers:
         specifier: 0.43.1
         version: 0.43.1(effect@2.0.0-next.48)(fast-check@3.13.1)
       '@livestore/devtools-react':
-        specifier: ^0.0.14
-        version: 0.0.14(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.15
+        version: 0.0.15(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: latest
         version: link:../../packages/@livestore/livestore
@@ -152,11 +148,11 @@ importers:
         version: 9.0.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.27
-        version: 18.2.27
+        specifier: ^18.2.28
+        version: 18.2.28
       '@types/react-dom':
-        specifier: ^18.2.12
-        version: 18.2.12
+        specifier: ^18.2.13
+        version: 18.2.13
       '@types/uuid':
         specifier: ^9.0.5
         version: 9.0.5
@@ -213,11 +209,11 @@ importers:
         specifier: ^4.17.9
         version: 4.17.9
       '@types/react':
-        specifier: ^18.2.27
-        version: 18.2.27
+        specifier: ^18.2.28
+        version: 18.2.28
       '@types/react-dom':
-        specifier: ^18.2.12
-        version: 18.2.12
+        specifier: ^18.2.13
+        version: 18.2.13
       '@types/uuid':
         specifier: ^9.0.5
         version: 9.0.5
@@ -877,8 +873,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@livestore/devtools-react@0.0.14(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
-    resolution: {integrity: sha512-cJn9FAqmXek1vVW5ZqVZ0D99Z97+eWsfheZqwg5j45N7MqYKOBe64BXcB4s9gZfOSCdiiKQWUXfu1apwIDgzDw==}
+  /@livestore/devtools-react@0.0.15(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
+    resolution: {integrity: sha512-TbBcH1obChwASTySLW5RRCJyUj3c4cb7jD9626UIPkf05d3EK5BfpqPZX9MQ6ixfvMROr7XfD6G/jj0772FfVA==}
     peerDependencies:
       '@livestore/livestore': '*'
       react: '*'
@@ -1414,10 +1410,10 @@ packages:
     resolution: {integrity: sha512-kMpQpfZKSCBqltAJwskgePRaYRFukDkm1oItcAbC3gNELR20XIBcN9VRgg4+m8DKsTfkWeA4m4Imp4DDuWy7FQ==}
     dev: true
 
-  /@types/react-dom@18.2.12:
-    resolution: {integrity: sha512-QWZuiA/7J/hPIGocXreCRbx7wyoeet9ooxfbSA+zbIWqyQEE7GMtRn4A37BdYyksnN+/NDnWgfxZH9UVGDw1hg==}
+  /@types/react-dom@18.2.13:
+    resolution: {integrity: sha512-eJIUv7rPP+EC45uNYp/ThhSpE16k22VJUknt5OLoH9tbXoi8bMhwLf5xRuWMywamNbWzhrSmU7IBJfPup1+3fw==}
     dependencies:
-      '@types/react': 18.2.27
+      '@types/react': 18.2.28
     dev: true
 
   /@types/react-dom@18.2.8:
@@ -1434,8 +1430,8 @@ packages:
       csstype: 3.1.2
     dev: true
 
-  /@types/react@18.2.27:
-    resolution: {integrity: sha512-Wfv7B7FZiR2r3MIqbAlXoY1+tXm4bOqfz4oRr+nyXdBqapDBZ0l/IGcSlAfvxIHEEJjkPU0MYAc/BlFPOcrgLw==}
+  /@types/react@18.2.28:
+    resolution: {integrity: sha512-ad4aa/RaaJS3hyGz0BGegdnSRXQBkd1CCYDCdNjBPg90UUpLgo+WlJqb9fMYUxtehmzF3PJaTWqRZjko6BRzBg==}
     dependencies:
       '@types/prop-types': 15.7.8
       '@types/scheduler': 0.16.4
@@ -5118,3 +5114,7 @@ packages:
     resolution: {integrity: sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==}
     engines: {node: '>=12.20'}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false

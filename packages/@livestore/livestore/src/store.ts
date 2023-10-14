@@ -24,7 +24,7 @@ import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from 
 import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
-import { sql } from './util.js'
+import { isPromise, sql } from './util.js'
 
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
@@ -828,46 +828,87 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   boot,
 }: {
   schema: Schema
-  loadStorage: () => Promise<StorageInit>
+  loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (storage: Storage, parentSpan: otel.Span) => Promise<void>
+  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
 }): Promise<Store<TGraphQLContext>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
-      let persistedData: Uint8Array | undefined
-      const storage = await loadStorage().then((init) =>
-        init({
-          otelTracer: otelTracer ?? makeNoopTracer(),
-          parentSpan: otel.trace.getSpan(otelRootSpanContext ?? otel.context.active()) ?? makeNoopSpan(),
-        }),
-      )
+      const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      await migrateDb({ db: storage, schema, span })
+      const loadStorageAndPersistedData = async () => {
+        const storage = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
+          try {
+            const init = await loadStorage()
+            const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
+            return init({ otelTracer, parentSpan })
+          } finally {
+            span.end()
+          }
+        })
 
-      if (boot) {
-        await boot(storage, span)
+        const persistedData = await otelTracer.startActiveSpan(
+          'storage:getPersistedData',
+          {},
+          otelContext,
+          async (span) => {
+            try {
+              return await storage.getPersistedData(span)
+            } finally {
+              span.end()
+            }
+          },
+        )
+
+        return { storage, persistedData }
       }
 
-      const otelContext = otel.trace.setSpan(otel.context.active(), span)
-      await otelTracer.startActiveSpan('storage-getPersistedData', {}, otelContext, async (span) => {
+      const loadSqlite3 = () =>
+        initSqlite3Wasm({
+          // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+          // You can omit locateFile completely when running in node
+          // locateFile: () => `/sql-wasm.wasm`,
+          print: (message) => console.log(`[livestore sqlite] ${message}`),
+          printErr: (message) => console.error(`[livestore sqlite] ${message}`),
+        })
+
+      const [{ storage, persistedData }, sqlite3] = await Promise.all([loadStorageAndPersistedData(), loadSqlite3()])
+
+      const db = InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
+
+      // Proxy to `db` that also mirrors `execute` calls to `storage`
+      const dbProxy = new Proxy(db, {
+        get: (db, prop, receiver) => {
+          if (prop === 'execute') {
+            const execute: InMemoryDatabase['execute'] = (query, bindValues, writeTables, options) => {
+              storage.execute(query, bindValues, span)
+              return db.execute(query, bindValues, writeTables, options)
+            }
+            return execute
+          } else {
+            return Reflect.get(db, prop, receiver)
+          }
+        },
+      })
+
+      otelTracer.startActiveSpan('migrateDb', {}, otelContext, async (span) => {
         try {
-          persistedData = await storage.getPersistedData(span)
+          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+          migrateDb({ db: dbProxy, schema, otelContext })
         } finally {
           span.end()
         }
       })
 
-      const sqlite3 = await initSqlite3Wasm({
-        // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-        // You can omit locateFile completely when running in node
-        // locateFile: () => `/sql-wasm.wasm`,
-        print: (message) => console.log(`[sql-client] ${message}`),
-        printErr: (message) => console.error(`[sql-client] ${message}`),
-      })
-
-      const db = InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
+      if (boot !== undefined) {
+        const booting = boot(dbProxy, span)
+        // NOTE only awaiting if it's actually a promise to avoid unnecessary async/await
+        if (isPromise(booting)) {
+          await booting
+        }
+      }
 
       // TODO: we can't apply the schema at this point, we've already loaded persisted data!
       // Think about what to do about this case.

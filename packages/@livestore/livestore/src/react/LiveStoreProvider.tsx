@@ -9,16 +9,17 @@ import type {
   LiveStoreContext as StoreContext_,
   LiveStoreCreateStoreOptions,
 } from '../effect/LiveStore.js'
+import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { Schema } from '../schema.js'
-import type { Storage, StorageInit } from '../storage/index.js'
+import type { StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: Schema
-  loadStorage: () => Promise<StorageInit>
-  boot?: (storage: Storage, parentSpan: otel.Span) => Promise<void>
+  loadStorage: () => StorageInit | Promise<StorageInit>
+  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   globalQueryDefs: GlobalQueryDefs
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer

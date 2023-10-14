@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@effect/schema": "0.43.1",
-    "@livestore/devtools-react": "^0.0.14",
+    "@livestore/devtools-react": "^0.0.15",
     "@livestore/livestore": "latest",
     "@opentelemetry/api": "^1.6.0",
     "drizzle-orm": "^0.28.6",
@@ -22,8 +22,8 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/react": "^18.2.27",
-    "@types/react-dom": "^18.2.12",
+    "@types/react": "^18.2.28",
+    "@types/react-dom": "^18.2.13",
     "@types/uuid": "^9.0.5",
     "@vitejs/plugin-react": "^4.1.0",
     "rollup-plugin-visualizer": "^5.9.2",

@@ -59,3 +59,5 @@ export const objectToString = (error: any): string => {
     return 'Error while printing error: ' + e
   }
 }
+
+export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
