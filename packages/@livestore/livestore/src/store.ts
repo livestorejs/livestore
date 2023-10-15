@@ -54,6 +54,8 @@ export type GraphQLOptions<TContext> = {
 
 export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
   db: InMemoryDatabase
+  /** A `Proxy`d version of `db` except that it also mirrors `execute` calls to the storage */
+  dbProxy: InMemoryDatabase
   schema: Schema
   storage?: Storage
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
@@ -101,6 +103,8 @@ export type StoreOtel = {
 export class Store<TGraphQLContext extends BaseGraphQLContext> {
   graph: ReactiveGraph<RefreshReason, QueryDebugInfo>
   inMemoryDB: InMemoryDatabase
+  // TODO refactor
+  _proxyDb: InMemoryDatabase
   schema: Schema
   graphQLSchema?: GraphQLSchema
   graphQLContext?: TGraphQLContext
@@ -116,6 +120,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
   private constructor({
     db,
+    dbProxy,
     schema,
     storage,
     graphQLOptions,
@@ -123,6 +128,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
     otelRootSpanContext,
   }: StoreOptions<TGraphQLContext>) {
     this.inMemoryDB = db
+    this._proxyDb = dbProxy
     this.graph = new ReactiveGraph({
       // TODO move this into React module
       // Do all our updates inside a single React setState batch to avoid multiple UI re-renders
@@ -899,7 +905,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       // Think about what to do about this case.
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext>(
-        { db, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext },
+        { db, dbProxy, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext },
         span,
       )
     } finally {

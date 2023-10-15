@@ -7,6 +7,8 @@ import type { Schema, SchemaMetaRow } from './schema.js'
 import { componentStateTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
 import { sql } from './util.js'
 
+const getMemoizedTimestamp = memoize(() => new Date().toISOString())
+
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 export const migrateDb = ({
   db,
@@ -31,7 +33,6 @@ export const migrateDb = ({
     schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
   )
 
-  const getMemoizedTimestamp = memoize(() => new Date().toISOString())
   const tableDefs = {
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
     [SCHEMA_META_TABLE]: systemTables[SCHEMA_META_TABLE],
@@ -47,28 +48,43 @@ export const migrateDb = ({
         `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
       )
 
-      const columnSpec = makeColumnSpec(tableDef)
-
-      // TODO need to possibly handle cascading deletes due to foreign keys
-      db.execute(sql`drop table if exists ${tableName}`, undefined, [], { otelContext })
-      db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, [], { otelContext })
-
-      for (const index of tableDef.indexes) {
-        db.execute(createIndexFromDefinition(tableName, index), undefined, [], { otelContext })
-      }
-
-      const updatedAt = getMemoizedTimestamp()
-      db.execute(
-        sql`
-          INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
-            ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
-        `,
-        { tableName, schemaHash, updatedAt },
-        [],
-        { otelContext },
-      )
+      migrateTable({ db, tableDef, otelContext, schemaHash })
     }
   }
+}
+
+export const migrateTable = ({
+  db,
+  tableDef,
+  otelContext,
+  schemaHash,
+}: {
+  db: InMemoryDatabase
+  tableDef: SqliteAst.Table
+  otelContext: otel.Context
+  schemaHash: number
+}) => {
+  const tableName = tableDef.name
+  const columnSpec = makeColumnSpec(tableDef)
+
+  // TODO need to possibly handle cascading deletes due to foreign keys
+  db.execute(sql`drop table if exists ${tableName}`, undefined, [], { otelContext })
+  db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, [], { otelContext })
+
+  for (const index of tableDef.indexes) {
+    db.execute(createIndexFromDefinition(tableName, index), undefined, [], { otelContext })
+  }
+
+  const updatedAt = getMemoizedTimestamp()
+  db.execute(
+    sql`
+      INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
+        ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
+    `,
+    { tableName, schemaHash, updatedAt },
+    [],
+    { otelContext },
+  )
 }
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {

@@ -3,7 +3,7 @@ import type { LiteralUnion, PrettifyFlat } from '@livestore/utils'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
-import { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 import { isEqual, mapValues } from 'lodash-es'
 import type { DependencyList } from 'react'
 import React from 'react'
@@ -11,10 +11,12 @@ import { v4 as uuid } from 'uuid'
 
 import type { ComponentKey } from '../componentKey.js'
 import { labelForKey, tableNameForComponentKey } from '../componentKey.js'
+import { migrateTable } from '../migrations.js'
 import type { GetAtom } from '../reactive.js'
 import type { LiveStoreGraphQLQuery } from '../reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
+import { SCHEMA_META_TABLE } from '../schema.js'
 import type { BaseGraphQLContext, LiveStoreQuery, QueryResult, Store } from '../store.js'
 import type { Bindable } from '../util.js'
 import { sql } from '../util.js'
@@ -239,6 +241,24 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           } else {
             const componentTableName = tableNameForComponentKey(componentKey)
             const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
+
+            // TODO find a better solution for this
+            if (store.tableRefs[componentTableName] === undefined) {
+              const schemaHash = SqliteAst.hash(stateSchema.ast)
+              const res = store.inMemoryDB.select<{ schemaHash: number }>(
+                sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
+              )
+              if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
+                migrateTable({ db: store._proxyDb, tableDef: stateSchema.ast, otelContext, schemaHash })
+              }
+
+              store.tableRefs[componentTableName] = store.graph.makeRef(null, {
+                equal: () => false,
+                label: componentTableName,
+                meta: { liveStoreRefType: 'table' },
+              })
+            }
+
             state$ = store
               .querySQL(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
                 queriedTables: [componentTableName],

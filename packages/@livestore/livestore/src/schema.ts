@@ -38,6 +38,7 @@ export type ComponentStateSchema = SqliteDsl.TableDefinition<any, any> & {
 
 // TODO get rid of "side effect" in this function (via explicit register fn)
 export const defineComponentStateSchema = <TName extends string, TColumns extends SqliteDsl.Columns>(
+  // TODO get rid of the `name` param here and use the `componentKey` name instead
   name: TName,
   columns: TColumns,
 ): SqliteDsl.TableDefinition<

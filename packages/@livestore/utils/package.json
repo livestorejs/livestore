@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@effect/opentelemetry": "^0.18.0",
-    "@effect/schema": "0.43.1",
+    "@effect/schema": "0.43.2",
     "@opentelemetry/api": "^1.6.0",
     "date-fns": "^2.30.0",
     "effect": "2.0.0-next.48",
