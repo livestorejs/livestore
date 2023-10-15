@@ -4,7 +4,7 @@ import React from 'react'
 
 import * as t from '../drizzle/schema.js'
 import { drizzle, useDrizzle } from '../drizzle/useDrizzle.js'
-import type { AppState, Todo } from '../schema.js'
+import type { Todo } from '../schema.js'
 
 export const MainSection: FC = () => {
   const { store } = useStore()
@@ -14,7 +14,7 @@ export const MainSection: FC = () => {
   } = useDrizzle({
     componentKey: { name: 'MainSection', id: 'singleton' },
     queries: ({ rxSQL, qb }) => {
-      const filterClause = rxSQL<AppState>(() => qb.select().from(t.app), ['app'])
+      const filterClause = rxSQL(() => qb.select().from(t.app), ['app'])
         .getFirstRow()
         .pipe((appState) =>
           // TODO get rid of `filter` wrapper
@@ -23,7 +23,7 @@ export const MainSection: FC = () => {
             : { filter: drizzle.eq(t.todos.completed, appState.filter === 'completed') },
         )
 
-      const visibleTodos = rxSQL<Todo>(
+      const visibleTodos = rxSQL(
         (get) => {
           const { filter } = get(filterClause.results$)
 
@@ -51,7 +51,7 @@ export const MainSection: FC = () => {
   return (
     <section className="main">
       <ul className="todo-list">
-        {visibleTodos.map((todo: Todo) => (
+        {visibleTodos.map((todo) => (
           <li key={todo.id}>
             <div className="view">
               <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />

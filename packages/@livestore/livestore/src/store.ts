@@ -6,7 +6,7 @@ import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
 import { uniqueId } from 'lodash-es'
 import * as ReactDOM from 'react-dom'
-import initSqlite3Wasm from 'sqlite-esm'
+import type * as Sqlite from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
 import type { ComponentKey } from './componentKey.js'
@@ -25,13 +25,6 @@ import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { isPromise, sql } from './util.js'
-
-// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
-// so that it's ready when we need it
-const sqlite3Promise = initSqlite3Wasm({
-  print: (message) => console.log(`[livestore sqlite] ${message}`),
-  printErr: (message) => console.error(`[livestore sqlite] ${message}`),
-})
 
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
@@ -831,6 +824,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   otelTracer = makeNoopTracer(),
   otelRootSpanContext = otel.context.active(),
   boot,
+  sqlite3,
 }: {
   schema: Schema
   loadStorage: () => StorageInit | Promise<StorageInit>
@@ -838,41 +832,36 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
+  sqlite3: Sqlite.Sqlite3Static
 }): Promise<Store<TGraphQLContext>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      const loadStorageAndPersistedData = async () => {
-        const storage = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
+      const storage = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
+        try {
+          const init = await loadStorage()
+          const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
+          return init({ otelTracer, parentSpan })
+        } finally {
+          span.end()
+        }
+      })
+
+      const persistedData = await otelTracer.startActiveSpan(
+        'storage:getPersistedData',
+        {},
+        otelContext,
+        async (span) => {
           try {
-            const init = await loadStorage()
-            const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
-            return init({ otelTracer, parentSpan })
+            return await storage.getPersistedData(span)
           } finally {
             span.end()
           }
-        })
+        },
+      )
 
-        const persistedData = await otelTracer.startActiveSpan(
-          'storage:getPersistedData',
-          {},
-          otelContext,
-          async (span) => {
-            try {
-              return await storage.getPersistedData(span)
-            } finally {
-              span.end()
-            }
-          },
-        )
-
-        return { storage, persistedData }
-      }
-
-      const [{ storage, persistedData }, sqlite3] = await Promise.all([loadStorageAndPersistedData(), sqlite3Promise])
-
-      const db = InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
+      const db = InMemoryDatabase.load({ data: persistedData, otelTracer, otelRootSpanContext, sqlite3 })
 
       // Proxy to `db` that also mirrors `execute` calls to `storage`
       const dbProxy = new Proxy(db, {

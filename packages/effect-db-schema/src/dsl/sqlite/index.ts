@@ -45,7 +45,7 @@ const columsToAst = (columns: Columns): SqliteAst.Column[] => {
       name,
       codec: column.type.codec,
       default: column.default,
-      nullable: column.nullable,
+      nullable: column.nullable ?? false,
       primaryKey: column.primaryKey ?? false,
       type: { _tag: column.type.columnType },
     } satisfies SqliteAst.Column

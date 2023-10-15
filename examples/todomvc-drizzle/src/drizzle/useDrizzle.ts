@@ -1,3 +1,5 @@
+// NOTE This file should eventually be turned into a separate package, for now it's part of the app code
+
 import type { GetAtom, LiveStoreSQLQuery, SqliteDsl } from '@livestore/livestore'
 import type {
   ComponentColumns,
@@ -7,6 +9,9 @@ import type {
   Setters,
 } from '@livestore/livestore/react'
 import { useLiveStoreComponent } from '@livestore/livestore/react'
+import type { NullableFieldsToOptional } from '@livestore/utils'
+// NOTE This currently requires a patch to drizzle-orm to export TypedQueryBuilder 🫠
+import type { TypedQueryBuilder } from 'drizzle-orm/query-builders/query-builder'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
 
 import type { SQLiteSelectQueryBuilder } from './index.js'
@@ -14,6 +19,15 @@ import type { SQLiteSelectQueryBuilder } from './index.js'
 export * as drizzle from 'drizzle-orm'
 
 type GenQueries<TQueries> = (args: { rxSQL: ReactiveDrizzleSQL; qb: QueryBuilder }) => TQueries
+
+type GetQueryRes<TQueryBuilder extends TypedQueryBuilder<any, any>> = TQueryBuilder extends TypedQueryBuilder<
+  infer _A,
+  infer B
+>
+  ? B extends (infer B2)[]
+    ? NullableFieldsToOptional<B2>
+    : NullableFieldsToOptional<B>
+  : never
 
 export type UseDrizzleLiveStoreComponentProps<TQueries, TColumns extends ComponentColumns> = {
   stateSchema?: SqliteDsl.TableDefinition<string, TColumns>
@@ -29,10 +43,10 @@ type UseLiveStoreJsonState<TState> = <TResult>(
   parse?: (_: unknown) => TResult,
 ) => [value: TResult, setValue: (newVal: TResult | ((prevVal: TResult) => TResult)) => void]
 
-export type ReactiveDrizzleSQL = <TResult>(
-  genQuery: (get: GetAtom) => SQLiteSelectQueryBuilder<any, any, any, any, any, any>,
+export type ReactiveDrizzleSQL = <TQueryBuilder extends SQLiteSelectQueryBuilder<any, any, any, any, any, any>>(
+  genQuery: (get: GetAtom) => TQueryBuilder,
   queriedTables: string[],
-) => LiveStoreSQLQuery<TResult>
+) => LiveStoreSQLQuery<GetQueryRes<TQueryBuilder>>
 
 export const useDrizzle = <TColumns extends ComponentColumns, TQueries extends QueryDefinitions>({
   stateSchema,

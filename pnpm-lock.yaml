@@ -9,6 +9,11 @@ overrides:
   effect: 2.0.0-next.48
   effect-db-schema: workspace:*
 
+patchedDependencies:
+  drizzle-orm@0.28.6:
+    hash: kfe6libf2ikzaf77deyqmybfsm
+    path: patches/drizzle-orm@0.28.6.patch
+
 importers:
 
   .:
@@ -132,12 +137,15 @@ importers:
       '@livestore/livestore':
         specifier: latest
         version: link:../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: latest
+        version: link:../../packages/@livestore/utils
       '@opentelemetry/api':
         specifier: ^1.6.0
         version: 1.6.0
       drizzle-orm:
         specifier: ^0.28.6
-        version: 0.28.6(@opentelemetry/api@1.6.0)
+        version: 0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.6.0)
       effect:
         specifier: 2.0.0-next.48
         version: 2.0.0-next.48
@@ -291,7 +299,7 @@ importers:
     devDependencies:
       drizzle-orm:
         specifier: ^0.28.6
-        version: 0.28.6(@opentelemetry/api@1.6.0)
+        version: 0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.6.0)
       vite:
         specifier: ^4.4.11
         version: 4.4.11(@types/node@20.8.2)
@@ -3357,7 +3365,7 @@ packages:
       detect-libc: 1.0.3
     dev: false
 
-  /drizzle-orm@0.28.6(@opentelemetry/api@1.6.0):
+  /drizzle-orm@0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.6.0):
     resolution: {integrity: sha512-yBe+F9htrlYER7uXgDJUQsTHFoIrI5yMm5A0bg0GiZ/kY5jNXTWoEy4KQtg35cE27sw1VbgzoMWHAgCckUUUww==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
@@ -3420,6 +3428,7 @@ packages:
         optional: true
     dependencies:
       '@opentelemetry/api': 1.6.0
+    patched: true
 
   /effect@2.0.0-next.48:
     resolution: {integrity: sha512-vwMIl39m8fMBeXoGIdSwMi2lrg7NltyrGMK0N/liGDl7G9LXvERKOCipNcobSIGO0V7hjaXEWgL6W/KEWEww+g==}

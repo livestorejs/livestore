@@ -51,12 +51,17 @@ export class InMemoryDatabase {
     public SQL: Sqlite.Sqlite3Static,
   ) {}
 
-  static load(
-    data: Uint8Array | undefined,
-    otelTracer: otel.Tracer,
-    otelRootSpanContext: otel.Context,
-    sqlite3: Sqlite.Sqlite3Static,
-  ): InMemoryDatabase {
+  static load({
+    data,
+    otelTracer,
+    otelRootSpanContext,
+    sqlite3,
+  }: {
+    data: Uint8Array | undefined
+    otelTracer: otel.Tracer
+    otelRootSpanContext: otel.Context
+    sqlite3: Sqlite.Sqlite3Static
+  }): InMemoryDatabase {
     // TODO move WASM init higher up in the init process (to do some other work while it's loading)
 
     const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as DatabaseWithCAPI

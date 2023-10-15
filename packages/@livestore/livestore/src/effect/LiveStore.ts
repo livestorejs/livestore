@@ -3,12 +3,20 @@ import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime }
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import { mapValues } from 'lodash-es'
+import initSqlite3Wasm from 'sqlite-esm'
 
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { Schema } from '../schema.js'
 import type { StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions, LiveStoreQuery, Store } from '../store.js'
 import { createStore } from '../store.js'
+
+// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
+// so that it's ready when we need it
+const sqlite3Promise = initSqlite3Wasm({
+  print: (message) => console.log(`[livestore sqlite] ${message}`),
+  printErr: (message) => console.error(`[livestore sqlite] ${message}`),
+})
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
 export type LiveStoreContext = {
@@ -89,6 +97,8 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
             boot_(db).pipe(Effect.withSpan('boot'), Effect.tapCauseLogPretty, Runtime.runPromise(runtime))
         : undefined
 
+      const sqlite3 = yield* $(Effect.promise(() => sqlite3Promise))
+
       const store = yield* $(
         Effect.tryPromise(() =>
           createStore({
@@ -98,6 +108,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
             otelTracer,
             otelRootSpanContext,
             boot,
+            sqlite3,
           }),
         ),
         Effect.acquireRelease((store) => Effect.sync(() => store.destroy())),

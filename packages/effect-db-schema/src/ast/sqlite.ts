@@ -21,7 +21,7 @@ export type Column = {
   name: string
   type: ColumnType.ColumnType
   primaryKey: boolean
-  nullable: boolean | undefined
+  nullable: boolean
   default: string | number | Uint8Array | null | undefined
   codec: Schema.Schema<any>
 }

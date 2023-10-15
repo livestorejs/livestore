@@ -2,6 +2,7 @@ import type * as otel from '@opentelemetry/api'
 import { mapValues } from 'lodash-es'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
+import initSqlite3Wasm from 'sqlite-esm'
 
 // TODO refactor so the `react` module doesn't depend on `effect` module
 import type {
@@ -15,6 +16,13 @@ import type { StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
+
+// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
+// so that it's ready when we need it
+const sqlite3Promise = initSqlite3Wasm({
+  print: (message) => console.log(`[livestore sqlite] ${message}`),
+  printErr: (message) => console.error(`[livestore sqlite] ${message}`),
+})
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: Schema
@@ -71,6 +79,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   React.useEffect(() => {
     void (async () => {
       try {
+        const sqlite3 = await sqlite3Promise
         const store = await createStore({
           schema,
           loadStorage,
@@ -78,6 +87,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           otelTracer,
           otelRootSpanContext,
           boot,
+          sqlite3,
         })
         store.otel.tracer.startActiveSpan('LiveStore:makeGlobalQueries', {}, store.otel.queriesSpanContext, (span) => {
           const globalQueries = mapValues(globalQueryDefs, (queryDef) => queryDef(store))

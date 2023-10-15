@@ -3,19 +3,19 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const todos = sqliteTable('todos', {
-  id: text('id').primaryKey(),
-  text: text('text').default(''),
-  completed: integer('completed', { mode: 'boolean' }).default(false),
+  id: text('id').primaryKey().notNull(),
+  text: text('text').notNull().default(''),
+  completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
 })
 
 export const app = sqliteTable('app', {
-  id: text('id').primaryKey(),
-  newTodoText: text('newTodoText').default(''),
-  filter: text('filter').default('all'),
+  id: text('id').primaryKey().notNull(),
+  newTodoText: text('newTodoText').notNull().default(''),
+  filter: text('filter').notNull().default('all'),
 })
 
 export const __livestore_schema = sqliteTable('__livestore_schema', {
-  tableName: text('tableName').primaryKey(),
+  tableName: text('tableName').primaryKey().notNull(),
   schemaHash: integer('schemaHash').notNull(),
   updatedAt: text('updatedAt').notNull(),
 })
