@@ -1,6 +1,6 @@
 # TodoMVC Drizzle Example
 
-[Demo](todomvc-drizzle.livestore.dev)
+[Demo](https://todomvc-drizzle.livestore.dev)
 
 ## Running locally
 
