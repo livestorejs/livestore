@@ -26,6 +26,13 @@ import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { isPromise, sql } from './util.js'
 
+// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
+// so that it's ready when we need it
+const sqlite3Promise = initSqlite3Wasm({
+  print: (message) => console.log(`[livestore sqlite] ${message}`),
+  printErr: (message) => console.error(`[livestore sqlite] ${message}`),
+})
+
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
   | LiveStoreJSQuery<TResult>
@@ -36,8 +43,6 @@ export type BaseGraphQLContext = {
   /** Needed by Pothos Otel plugin for resolver tracing to work */
   otelContext?: otel.Context
 }
-
-export const RESET_DB_LOCAL_STORAGE_KEY = 'livestore-reset'
 
 export type QueryResult<TQuery> = TQuery extends LiveStoreSQLQuery<infer R>
   ? ReadonlyArray<Readonly<R>>
@@ -865,16 +870,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
         return { storage, persistedData }
       }
 
-      const loadSqlite3 = () =>
-        initSqlite3Wasm({
-          // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-          // You can omit locateFile completely when running in node
-          // locateFile: () => `/sql-wasm.wasm`,
-          print: (message) => console.log(`[livestore sqlite] ${message}`),
-          printErr: (message) => console.error(`[livestore sqlite] ${message}`),
-        })
-
-      const [{ storage, persistedData }, sqlite3] = await Promise.all([loadStorageAndPersistedData(), loadSqlite3()])
+      const [{ storage, persistedData }, sqlite3] = await Promise.all([loadStorageAndPersistedData(), sqlite3Promise])
 
       const db = InMemoryDatabase.load(persistedData, otelTracer, otelRootSpanContext, sqlite3)
 

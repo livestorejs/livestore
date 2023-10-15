@@ -6,7 +6,7 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Needed for "web" mode to to allow IDB persistence.
+// Needed for OPFS Sqlite to work
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
 const credentiallessHeaders = {
   // https://developer.chrome.com/blog/coep-credentialless-origin-trial/
@@ -17,12 +17,11 @@ const credentiallessHeaders = {
 
 const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
 
-// https://vitejs.dev/config/
+// https://vitejs.dev/config
 export default defineConfig({
   server: {
     port: 8082,
     hmr: process.env.DISABLE_HMR === undefined ? true : false,
-    // https,
     headers: credentiallessHeaders,
     fs: {
       // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)

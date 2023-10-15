@@ -2,7 +2,7 @@
 
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
-import type * as SqliteWasm from 'sqlite-esm'
+import type * as Sqlite from 'sqlite-esm'
 
 import BoundMap, { BoundArray } from './bounded-collections.js'
 // import { EVENTS_TABLE_NAME } from './events.js'
@@ -12,18 +12,7 @@ import QueryCache from './QueryCache.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { prepareBindValues } from './util.js'
 
-export enum IndexType {
-  Basic = 'Basic',
-  FullText = 'FullText',
-}
-
-export interface Index {
-  indexType: IndexType
-  name: string
-  columns: string[]
-}
-
-declare type DatabaseWithCAPI = SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+type DatabaseWithCAPI = Sqlite.Database & { capi: Sqlite.CAPI }
 
 export interface DebugInfo {
   slowQueries: BoundArray<SlowQueryInfo>
@@ -50,7 +39,7 @@ export const emptyDebugInfo = (): DebugInfo => ({
 
 export class InMemoryDatabase {
   // TODO: how many unique active statements are expected?
-  private cachedStmts = new BoundMap<string, SqliteWasm.PreparedStatement>(200)
+  private cachedStmts = new BoundMap<string, Sqlite.PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, string[]>(200)
   private resultCache = new QueryCache()
   public debugInfo: DebugInfo = emptyDebugInfo()
@@ -59,14 +48,14 @@ export class InMemoryDatabase {
     private db: DatabaseWithCAPI,
     private otelTracer: otel.Tracer,
     private otelRootSpanContext: otel.Context,
-    public SQL: SqliteWasm.Sqlite3Static,
+    public SQL: Sqlite.Sqlite3Static,
   ) {}
 
   static load(
     data: Uint8Array | undefined,
     otelTracer: otel.Tracer,
     otelRootSpanContext: otel.Context,
-    sqlite3: SqliteWasm.Sqlite3Static,
+    sqlite3: Sqlite.Sqlite3Static,
   ): InMemoryDatabase {
     // TODO move WASM init higher up in the init process (to do some other work while it's loading)
 

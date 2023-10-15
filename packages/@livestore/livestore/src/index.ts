@@ -1,4 +1,4 @@
-export { Store, createStore, RESET_DB_LOCAL_STORAGE_KEY } from './store.js'
+export { Store, createStore } from './store.js'
 export type { LiveStoreQuery, BaseGraphQLContext, QueryResult, QueryDebugInfo, RefreshReason } from './store.js'
 
 export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
