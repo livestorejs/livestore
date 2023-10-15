@@ -5,7 +5,6 @@ export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } f
 
 export {
   defineComponentStateSchema,
-  EVENT_CURSOR_TABLE,
   defineAction,
   defineActions,
   defineTables,

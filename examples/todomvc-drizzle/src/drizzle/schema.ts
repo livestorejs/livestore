@@ -14,11 +14,6 @@ export const app = sqliteTable('app', {
   filter: text('filter').default('all'),
 })
 
-export const __livestore_event_cursor = sqliteTable('__livestore_event_cursor', {
-  id: text('id').primaryKey(),
-  cursor: text('cursor').notNull(),
-})
-
 export const __livestore_schema = sqliteTable('__livestore_schema', {
   tableName: text('tableName').primaryKey(),
   schemaHash: integer('schemaHash').notNull(),

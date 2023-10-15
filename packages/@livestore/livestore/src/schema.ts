@@ -92,7 +92,6 @@ export type ActionDefinitions<TArgsMap extends Record<string, any>> = {
   [key in keyof TArgsMap]: ActionDefinition<TArgsMap[key]>
 }
 
-export const EVENT_CURSOR_TABLE = '__livestore_event_cursor'
 export const SCHEMA_META_TABLE = '__livestore_schema'
 
 const schemaMetaTable = SqliteDsl.table(SCHEMA_META_TABLE, {
@@ -110,10 +109,6 @@ export const systemTables = {
   //   type: SqliteDsl.text({ nullable: false }),
   //   args: SqliteDsl.text({ nullable: false }),
   // }).ast,
-  [EVENT_CURSOR_TABLE]: SqliteDsl.table(EVENT_CURSOR_TABLE, {
-    id: SqliteDsl.text({ primaryKey: true }),
-    cursor: SqliteDsl.text({ nullable: false }),
-  }).ast,
   [SCHEMA_META_TABLE]: schemaMetaTable.ast,
 } satisfies TableDefinitions
 
