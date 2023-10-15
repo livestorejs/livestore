@@ -30,6 +30,9 @@ import { isEqual, max, uniqueId } from 'lodash-es'
 
 import { BoundArray } from './bounded-collections.js'
 
+const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
+type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
+
 export type GetAtom = <T>(atom: Atom<T>) => T
 
 export type Ref<T> = {
@@ -59,7 +62,7 @@ type BaseThunk<T> = {
   equal: (a: T, b: T) => boolean
 }
 
-type UnevaluatedThunk<T> = BaseThunk<T> & { result: undefined }
+type UnevaluatedThunk<T> = BaseThunk<T> & { result: NOT_REFRESHED_YET }
 export type Thunk<T> = BaseThunk<T> & { result: T }
 
 export type Atom<T> = Ref<T> | Thunk<T>
@@ -201,7 +204,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     const thunk: UnevaluatedThunk<T> = {
       _tag: 'thunk',
       id: uniqueNodeId(),
-      result: undefined,
+      result: NOT_REFRESHED_YET,
       height: 0,
       getResult,
       sub: new Set(),
@@ -342,7 +345,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     this.addEdge(context, atom)
 
     const dependencyMightBeStale = context._tag !== 'effect' && context.height <= atom.height
-    const dependencyNotRefreshedYet = atom.result === undefined
+    const dependencyNotRefreshedYet = atom.result === NOT_REFRESHED_YET
 
     if (dependencyMightBeStale || dependencyNotRefreshedYet) {
       throw new DependencyNotReadyError(

@@ -17,20 +17,10 @@ export const MainSection: FC = () => {
       const filterClause = rxSQL(() => qb.select().from(t.app), ['app'])
         .getFirstRow()
         .pipe((appState) =>
-          // TODO get rid of `filter` wrapper
-          appState.filter === 'all'
-            ? { filter: undefined }
-            : { filter: drizzle.eq(t.todos.completed, appState.filter === 'completed') },
+          appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),
         )
 
-      const visibleTodos = rxSQL(
-        (get) => {
-          const { filter } = get(filterClause.results$)
-
-          return qb.select().from(t.todos).where(filter)
-        },
-        ['todos'],
-      )
+      const visibleTodos = rxSQL((get) => qb.select().from(t.todos).where(get(filterClause.results$)), ['todos'])
 
       return { visibleTodos }
     },

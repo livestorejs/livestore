@@ -226,8 +226,7 @@ describe('a diamond shaped graph', () => {
   })
 })
 
-// TODO handle `undefined` in the graph
-describe.todo('a trivial graph with undefined', () => {
+describe('a trivial graph with undefined', () => {
   const makeGraph = () => {
     const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
     const a = graph.makeRef(undefined)
@@ -260,7 +259,7 @@ describe.todo('a trivial graph with undefined', () => {
 
   it('has the right initial values', () => {
     const { c, e } = makeGraph()
-    expect(c.result).toBe(3)
-    expect(e.result).toBe(6)
+    expect(c.result).toBe(2)
+    expect(e.result).toBe(5)
   })
 })
