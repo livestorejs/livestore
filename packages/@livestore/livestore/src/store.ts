@@ -24,7 +24,7 @@ import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from 
 import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
-import { isPromise, sql } from './util.js'
+import { isPromise, prepareBindValues, sql } from './util.js'
 
 export type GetAtomResult = <T>(atom: Atom<T> | LiveStoreJSQuery<T>) => T
 
@@ -262,7 +262,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
                   span.setAttribute('sql.query', sqlString)
                   span.updateName(`sql:${sqlString.slice(0, 50)}`)
 
-                  const results = this.inMemoryDB.select(sqlString, { queriedTables, bindValues, otelContext })
+                  const results = this.inMemoryDB.select(sqlString, {
+                    queriedTables,
+                    bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+                    otelContext,
+                  })
 
                   span.setAttribute('sql.rowsCount', results.length)
                   addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
@@ -798,14 +802,19 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
         // Synchronously apply the event to the in-memory database
         // const { durationMs } = this.inMemoryDB.applyEvent(eventWithId, actionDefinition, otelContext)
         const { statement, bindValues } = eventToSql(eventWithId, actionDefinition)
-        const { durationMs } = this.inMemoryDB.execute(statement.sql, bindValues, statement.writeTables, {
-          otelContext,
-        })
+        const { durationMs } = this.inMemoryDB.execute(
+          statement.sql,
+          prepareBindValues(bindValues, statement.sql),
+          statement.writeTables,
+          {
+            otelContext,
+          },
+        )
 
         // Asynchronously apply the event to a persistent storage (we're not awaiting this promise here)
         if (this.storage !== undefined) {
           // this.storage.applyEvent(eventWithId, actionDefinition, span)
-          this.storage.execute(statement.sql, bindValues, span)
+          this.storage.execute(statement.sql, prepareBindValues(bindValues, statement.sql), span)
         }
 
         // Uncomment to print a list of queries currently registered on the store
@@ -829,11 +838,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
    * all app writes should go through applyEvent.
    */
   execute = async (query: string, params: ParamsObject = {}, writeTables?: string[]) => {
-    this.inMemoryDB.execute(query, params, writeTables)
+    this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables)
 
     if (this.storage !== undefined) {
       const parentSpan = otel.trace.getSpan(otel.context.active())
-      this.storage.execute(query, params, parentSpan)
+      this.storage.execute(query, prepareBindValues(params, query), parentSpan)
     }
   }
 }
@@ -894,6 +903,14 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
               return db.execute(query, bindValues, writeTables, options)
             }
             return execute
+          } else if (prop === 'select') {
+            // NOTE we're even proxying `select` calls here as some apps (e.g. Overtone) currently rely on this
+            // TODO remove this once we've migrated all apps to use `execute` instead of `select`
+            const select: InMemoryDatabase['select'] = (query, options = {}) => {
+              storage.execute(query, options.bindValues as any)
+              return db.select(query, options)
+            }
+            return select
           } else {
             return Reflect.get(db, prop, receiver)
           }

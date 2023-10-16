@@ -2,7 +2,7 @@ import { getTraceParentHeader } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { invoke } from '@tauri-apps/api'
 
-import type { ParamsObject } from '../../util.js'
+import type { PreparedBindValues } from '../../util.js'
 import { prepareBindValues } from '../../util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 
@@ -28,7 +28,7 @@ export class TauriStorage implements Storage {
       return new TauriStorage(dbFilePath, dbDirPath, otelTracer, parentSpan)
     }
 
-  execute = (query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void => {
+  execute = (query: string, bindValues?: PreparedBindValues, parentSpan?: otel.Span): void => {
     // console.log({ query, bindValues, prepared: prepareBindValues(bindValues ?? {}, query) })
     void invoke('execute', {
       dbName: this.dbFilePath,

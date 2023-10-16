@@ -8,12 +8,12 @@
 
 import type * as otel from '@opentelemetry/api'
 
-import type { ParamsObject } from '../util.js'
+import type { PreparedBindValues } from '../util.js'
 
 export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
 
 export interface Storage {
-  execute(query: string, bindValues?: ParamsObject, parentSpan?: otel.Span): void
+  execute(query: string, bindValues?: PreparedBindValues, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
   getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>

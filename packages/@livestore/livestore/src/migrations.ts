@@ -5,6 +5,7 @@ import { memoize, omit } from 'lodash-es'
 import type { InMemoryDatabase } from './index.js'
 import type { Schema, SchemaMetaRow } from './schema.js'
 import { componentStateTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
+import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
 const getMemoizedTimestamp = memoize(() => new Date().toISOString())
@@ -64,6 +65,7 @@ export const migrateTable = ({
   otelContext: otel.Context
   schemaHash: number
 }) => {
+  console.log(`Migrating table '${tableDef.name}'...`)
   const tableName = tableDef.name
   const columnSpec = makeColumnSpec(tableDef)
 
@@ -81,7 +83,7 @@ export const migrateTable = ({
       INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
         ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
     `,
-    { tableName, schemaHash, updatedAt },
+    { $tableName: tableName, $schemaHash: schemaHash, $updatedAt: updatedAt } as unknown as PreparedBindValues,
     [],
     { otelContext },
   )

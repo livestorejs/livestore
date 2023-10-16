@@ -1,9 +1,13 @@
 /// <reference lib="es2022" />
 
+import type { Brand } from '@livestore/utils/effect'
+
 export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array | null
 
 export type Bindable = SqlValue[] | ParamsObject
+
+export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
 
 /**
  * This is a tag function for tagged literals.
@@ -25,7 +29,9 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
 /*  because rusqlite doesn't allow unused named params
 /*  TODO: Search for unused params via proper parsing, not string search
 **/
-export const prepareBindValues = (values: ParamsObject, statement: string): ParamsObject => {
+export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
+  if (Array.isArray(values)) return values as PreparedBindValues
+
   const result: ParamsObject = {}
   for (const [key, value] of Object.entries(values)) {
     if (statement.includes(key)) {
@@ -33,7 +39,7 @@ export const prepareBindValues = (values: ParamsObject, statement: string): Para
     }
   }
 
-  return result
+  return result as PreparedBindValues
 }
 
 /**

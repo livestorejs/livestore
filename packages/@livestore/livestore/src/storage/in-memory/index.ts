@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { ParamsObject } from '../../util.js'
+import type { PreparedBindValues } from '../../util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsWebInMemory = {
@@ -15,7 +15,7 @@ export class InMemoryStorage implements Storage {
     return ({ otelTracer }: StorageOtelProps) => new InMemoryStorage(otelTracer)
   }
 
-  execute = (_query: string, _bindValues?: ParamsObject): void => {}
+  execute = (_query: string, _bindValues?: PreparedBindValues): void => {}
 
   getPersistedData = async (): Promise<Uint8Array> => new Uint8Array()
 }

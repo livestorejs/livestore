@@ -353,7 +353,6 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       )
     }
 
-    // TODO handle case when `atom.result` is undefined
     return atom.result
   }
 

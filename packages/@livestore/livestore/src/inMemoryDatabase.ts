@@ -9,8 +9,7 @@ import BoundMap, { BoundArray } from './bounded-collections.js'
 import { sql } from './index.js'
 import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './otel.js'
 import QueryCache from './QueryCache.js'
-import type { Bindable, ParamsObject } from './util.js'
-import { prepareBindValues } from './util.js'
+import type { Bindable, PreparedBindValues } from './util.js'
 
 type DatabaseWithCAPI = Sqlite.Database & { capi: Sqlite.CAPI }
 
@@ -23,7 +22,7 @@ export interface DebugInfo {
 
 export type SlowQueryInfo = [
   queryStr: string,
-  bindValues: Bindable | undefined,
+  bindValues: PreparedBindValues | undefined,
   durationMs: number,
   rowsCount: number | undefined,
   queriedTables: string[],
@@ -132,7 +131,7 @@ export class InMemoryDatabase {
 
   execute(
     query: string,
-    bindValues?: ParamsObject,
+    bindValues?: PreparedBindValues,
     writeTables?: string[],
     options?: { hasNoEffects?: boolean; otelContext: otel.Context },
   ): { durationMs: number } {
@@ -149,9 +148,8 @@ export class InMemoryDatabase {
             this.cachedStmts.set(query, stmt)
           }
 
-          // TODO check whether we can remove the extra `prepareBindValues` call here (e.g. enforce proper type in API)
           if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
-            stmt.bind(prepareBindValues(bindValues, query))
+            stmt.bind(bindValues)
           }
 
           if (import.meta.env.DEV) {
@@ -205,7 +203,7 @@ export class InMemoryDatabase {
     query: string,
     options?: {
       queriedTables?: string[]
-      bindValues?: Bindable
+      bindValues?: PreparedBindValues
       skipCache?: boolean
       otelContext?: otel.Context
     },

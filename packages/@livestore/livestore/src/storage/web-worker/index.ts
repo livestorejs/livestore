@@ -2,8 +2,7 @@ import { casesHandled } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
-import type { ParamsObject } from '../../util.js'
-import { prepareBindValues } from '../../util.js'
+import type { PreparedBindValues } from '../../util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 import { IDB } from '../utils/idb.js'
 import type { WrappedWorker } from './worker.js'
@@ -21,7 +20,7 @@ export class WebWorkerStorage implements Storage {
   options: StorageOptionsWeb
   otelTracer: otel.Tracer
 
-  executionBacklog: { query: string; bindValues?: ParamsObject }[] = []
+  executionBacklog: { query: string; bindValues?: PreparedBindValues }[] = []
   executionPromise: Promise<void> | undefined
 
   private constructor({
@@ -61,8 +60,7 @@ export class WebWorkerStorage implements Storage {
       })
   }
 
-  execute = (query: string, bindValues_?: ParamsObject) => {
-    const bindValues = prepareBindValues(bindValues_ ?? {}, query)
+  execute = (query: string, bindValues?: PreparedBindValues) => {
     this.executionBacklog.push({ query, bindValues })
 
     // Instead of sending the queries to the worker immediately, we wait a bit and batch them up (which reduces the number of messages sent to the worker)
