@@ -12,7 +12,6 @@ import { v4 as uuid } from 'uuid'
 import type { ComponentKey } from '../componentKey.js'
 import { labelForKey, tableNameForComponentKey } from '../componentKey.js'
 import { migrateTable } from '../migrations.js'
-import type { GetAtom } from '../reactive.js'
 import type { LiveStoreGraphQLQuery } from '../reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
@@ -40,7 +39,7 @@ export type ReactiveGraphQL = <
   TContext extends BaseGraphQLContext,
 >(
   query: DocumentNode<TResult, TVariables>,
-  genVariableValues: (get: GetAtom) => TVariables,
+  genVariableValues: (get: GetAtomResult) => TVariables,
   label?: string,
 ) => LiveStoreGraphQLQuery<TResult, TVariables, TContext>
 
@@ -186,7 +185,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
         rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
           query: DocumentNode<Result, Variables>,
-          genVariableValues: (get: GetAtom) => Variables,
+          genVariableValues: (get: GetAtomResult) => Variables,
           label?: string,
         ) => store.queryGraphQL(query, genVariableValues, { componentKey, label, otelContext }),
         globalQueries,

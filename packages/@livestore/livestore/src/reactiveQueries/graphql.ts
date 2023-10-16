@@ -2,8 +2,8 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
 import type * as otel from '@opentelemetry/api'
 
 import type { ComponentKey } from '../componentKey.js'
-import type { GetAtom, Thunk } from '../reactive.js'
-import type { BaseGraphQLContext, Store } from '../store.js'
+import type { Thunk } from '../reactive.js'
+import type { BaseGraphQLContext, GetAtomResult, Store } from '../store.js'
 import { LiveStoreQueryBase } from './base-class.js'
 import type { LiveStoreJSQuery } from './js.js'
 
@@ -39,7 +39,7 @@ export class LiveStoreGraphQLQuery<
     this.results$ = results$
   }
 
-  pipe = <U>(f: (x: TResult, get: GetAtom) => U): LiveStoreJSQuery<U> =>
+  pipe = <U>(f: (x: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
     this.store.queryJS(
       (get) => {
         const results = get(this.results$)

@@ -15,7 +15,7 @@ import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
-import type { Atom, GetAtom, Ref } from './reactive.js'
+import type { Atom, Ref } from './reactive.js'
 import { ReactiveGraph } from './reactive.js'
 import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from './reactiveQueries/js.js'
@@ -343,7 +343,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
   queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
     document: DocumentNode<TResult, TVariableValues>,
-    genVariableValues: (get: GetAtom) => TVariableValues,
+    genVariableValues: (get: GetAtomResult) => TVariableValues,
     {
       componentKey,
       label,
@@ -370,7 +370,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
         span.updateName(`queryGraphQL:${labelWithDefault}`)
 
         const variableValues$ = this.graph.makeThunk(
-          genVariableValues,
+          (get) => {
+            const getAtom: GetAtomResult = (atom) => {
+              if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
+              return get(atom.results$)
+            }
+            return genVariableValues(getAtom)
+          },
           { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
           otelContext,
         )
