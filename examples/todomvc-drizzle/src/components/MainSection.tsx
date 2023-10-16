@@ -1,12 +1,11 @@
 import { useStore } from '@livestore/livestore/react'
-import type { FC } from 'react'
 import React from 'react'
 
 import * as t from '../drizzle/schema.js'
 import { drizzle, useDrizzle } from '../drizzle/useDrizzle.js'
 import type { Todo } from '../schema.js'
 
-export const MainSection: FC = () => {
+export const MainSection: React.FC = () => {
   const { store } = useStore()
 
   const {
@@ -14,13 +13,13 @@ export const MainSection: FC = () => {
   } = useDrizzle({
     componentKey: { name: 'MainSection', id: 'singleton' },
     queries: ({ rxSQL, qb }) => {
-      const filterClause = rxSQL(() => qb.select().from(t.app), ['app'])
+      const filterClause$ = rxSQL(() => qb.select().from(t.app), ['app'])
         .getFirstRow()
         .pipe((appState) =>
           appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),
         )
 
-      const visibleTodos = rxSQL((get) => qb.select().from(t.todos).where(get(filterClause.results$)), ['todos'])
+      const visibleTodos = rxSQL((get) => qb.select().from(t.todos).where(get(filterClause$)), ['todos'])
 
       return { visibleTodos }
     },

@@ -15,7 +15,7 @@ import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
-import type { GetAtom, Ref } from './reactive.js'
+import type { Atom, GetAtom, Ref } from './reactive.js'
 import { ReactiveGraph } from './reactive.js'
 import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from './reactiveQueries/js.js'
@@ -25,6 +25,8 @@ import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { isPromise, sql } from './util.js'
+
+export type GetAtomResult = <T>(atom: Atom<T> | LiveStoreJSQuery<T>) => T
 
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
@@ -192,7 +194,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
    * NOTE The query is actually running (even if no one has subscribed to it yet) and will be kept up to date.
    */
   querySQL = <TResult>(
-    genQueryString: (get: GetAtom) => string,
+    genQueryString: (get: GetAtomResult) => string,
     {
       queriedTables,
       bindValues,
@@ -222,7 +224,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
         const queryString$ = this.graph.makeThunk(
           (get, addDebugInfo) => {
-            const queryString = genQueryString(get)
+            const getAtom: GetAtomResult = (atom) => {
+              if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
+              return get(atom.results$)
+            }
+            const queryString = genQueryString(getAtom)
             addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
             return queryString
           },
@@ -293,7 +299,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
     )
 
   queryJS = <TResult>(
-    genResults: (get: GetAtom) => TResult,
+    genResults: (get: GetAtomResult) => TResult,
     {
       componentKey = globalComponentKey,
       label = `js${uniqueId()}`,
@@ -305,8 +311,12 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
       const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
       const results$ = this.graph.makeThunk(
         (get, addDebugInfo) => {
+          const getAtom: GetAtomResult = (atom) => {
+            if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
+            return get(atom.results$)
+          }
           addDebugInfo({ _tag: 'js', label, query: genResults.toString() })
-          return genResults(get)
+          return genResults(getAtom)
         },
         { label: queryLabel, meta: { liveStoreThunkType: 'jsResults' } },
         otelContext,

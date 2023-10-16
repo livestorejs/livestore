@@ -1,6 +1,6 @@
 // NOTE This file should eventually be turned into a separate package, for now it's part of the app code
 
-import type { GetAtom, LiveStoreSQLQuery, SqliteDsl } from '@livestore/livestore'
+import type { GetAtomResult, LiveStoreSQLQuery, SqliteDsl } from '@livestore/livestore'
 import type {
   ComponentColumns,
   ComponentKeyConfig,
@@ -44,7 +44,7 @@ type UseLiveStoreJsonState<TState> = <TResult>(
 ) => [value: TResult, setValue: (newVal: TResult | ((prevVal: TResult) => TResult)) => void]
 
 export type ReactiveDrizzleSQL = <TQueryBuilder extends SQLiteSelectQueryBuilder<any, any, any, any, any, any>>(
-  genQuery: (get: GetAtom) => TQueryBuilder,
+  genQuery: (get: GetAtomResult) => TQueryBuilder,
   queriedTables: string[],
 ) => LiveStoreSQLQuery<GetQueryRes<TQueryBuilder>>
 

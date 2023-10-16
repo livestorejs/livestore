@@ -134,6 +134,7 @@ type RecordValues<T> = T extends Record<string, infer V> ? V : never
 
 export type GetActionArgs<A> = A extends ActionDefinition<infer TArgs> ? TArgs : never
 
+// TODO get rid of this
 declare global {
   // NOTE Can be extended
   interface LiveStoreActionDefinitionsTypes {
