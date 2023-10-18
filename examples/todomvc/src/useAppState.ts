@@ -1,8 +1,9 @@
-import { useGlobalQuery, useStore } from '@livestore/livestore/react'
+import { sql, type Store } from '@livestore/livestore'
+import { useQuery } from '@livestore/livestore/react'
 
 import type { AppState } from './schema.js'
 
-export const useAppState = (): Readonly<AppState> => {
-  const { globalQueries } = useStore()
-  return useGlobalQuery(globalQueries.appState!) as any
-}
+const appState = (store: Store) =>
+  store.querySQL<AppState>(sql`SELECT newTodoText, filter FROM app;`, { queriedTables: ['app'] }).getFirstRow()
+
+export const useAppState = () => useQuery(appState)

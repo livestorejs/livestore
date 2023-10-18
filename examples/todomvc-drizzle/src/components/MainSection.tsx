@@ -13,7 +13,7 @@ export const MainSection: React.FC = () => {
   } = useDrizzle({
     componentKey: { name: 'MainSection', id: 'singleton' },
     queries: ({ rxSQL, qb }) => {
-      const filterClause$ = rxSQL(() => qb.select().from(t.app), ['app'])
+      const filterClause$ = rxSQL(qb.select().from(t.app), ['app'])
         .getFirstRow()
         .pipe((appState) =>
           appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),

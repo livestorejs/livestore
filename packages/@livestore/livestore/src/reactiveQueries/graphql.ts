@@ -11,7 +11,7 @@ export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
   VariableValues extends Record<string, any>,
   TContext extends BaseGraphQLContext,
-> extends LiveStoreQueryBase {
+> extends LiveStoreQueryBase<TResult> {
   _tag: 'graphql' = 'graphql'
 
   /** The abstract GraphQL query */

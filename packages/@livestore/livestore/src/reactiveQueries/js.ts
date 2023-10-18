@@ -5,7 +5,7 @@ import type { GetAtom, Thunk } from '../reactive.js'
 import type { Store } from '../store.js'
 import { LiveStoreQueryBase } from './base-class.js'
 
-export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase {
+export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag: 'js' = 'js'
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult>
@@ -17,7 +17,7 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase {
     results$: Thunk<TResult>
     componentKey: ComponentKey
     label: string
-    store: Store<any>
+    store: Store
     otelContext: otel.Context
   }) {
     super(baseProps)

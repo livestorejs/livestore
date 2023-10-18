@@ -1,15 +1,10 @@
 import type * as otel from '@opentelemetry/api'
-import { mapValues } from 'lodash-es'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 import initSqlite3Wasm from 'sqlite-esm'
 
 // TODO refactor so the `react` module doesn't depend on `effect` module
-import type {
-  GlobalQueryDefs,
-  LiveStoreContext as StoreContext_,
-  LiveStoreCreateStoreOptions,
-} from '../effect/LiveStore.js'
+import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { Schema } from '../schema.js'
 import type { StorageInit } from '../storage/index.js'
@@ -28,7 +23,6 @@ interface LiveStoreProviderProps<GraphQLContext> {
   schema: Schema
   loadStorage: () => StorageInit | Promise<StorageInit>
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
-  globalQueryDefs: GlobalQueryDefs
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
@@ -37,7 +31,6 @@ interface LiveStoreProviderProps<GraphQLContext> {
 
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   fallback,
-  globalQueryDefs,
   loadStorage,
   graphQLOptions,
   otelTracer,
@@ -48,7 +41,6 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
 }: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
   const store = useCreateStore({
     schema,
-    globalQueryDefs,
     loadStorage,
     graphQLOptions,
     otelTracer,
@@ -67,7 +59,6 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
 
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   schema,
-  globalQueryDefs,
   loadStorage,
   graphQLOptions,
   otelTracer,
@@ -89,11 +80,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           boot,
           sqlite3,
         })
-        store.otel.tracer.startActiveSpan('LiveStore:makeGlobalQueries', {}, store.otel.queriesSpanContext, (span) => {
-          const globalQueries = mapValues(globalQueryDefs, (queryDef) => queryDef(store))
-          setCtxValue({ store, globalQueries })
-          span.end()
-        })
+        setCtxValue({ store })
       } catch (e) {
         console.error(`Error creating LiveStore store:`, e)
         throw e
@@ -101,7 +88,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     })()
 
     // TODO: do we need to return any cleanup function here?
-  }, [schema, loadStorage, globalQueryDefs, graphQLOptions, otelTracer, otelRootSpanContext, boot])
+  }, [schema, loadStorage, graphQLOptions, otelTracer, otelRootSpanContext, boot])
 
   return ctxValue
 }

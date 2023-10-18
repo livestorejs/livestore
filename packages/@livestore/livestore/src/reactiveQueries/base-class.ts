@@ -5,13 +5,13 @@ import type { Store } from '../store.js'
 
 export type UnsubscribeQuery = () => void
 
-export abstract class LiveStoreQueryBase {
+export abstract class LiveStoreQueryBase<TResult> {
   /** The key for the associated component */
   componentKey: ComponentKey
   /** Human-readable label for the query for debugging */
   label: string
   /** A pointer back to the store containing this query */
-  store: Store<any>
+  store: Store
   /** Otel Span is started in LiveStore store but ended in this query */
   otelContext: otel.Context
 
@@ -26,7 +26,7 @@ export abstract class LiveStoreQueryBase {
   }: {
     componentKey: ComponentKey
     label: string
-    store: Store<any>
+    store: Store
     otelContext: otel.Context
   }) {
     this.componentKey = componentKey
@@ -46,4 +46,10 @@ export abstract class LiveStoreQueryBase {
       unsubscribe()
     }
   }
+
+  subscribe = (
+    onNewValue: (value: TResult) => void,
+    onSubsubscribe?: () => void,
+    options?: { label?: string } | undefined,
+  ): (() => void) => this.store.subscribe(this as any, onNewValue as any, onSubsubscribe, options)
 }

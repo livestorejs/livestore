@@ -2,7 +2,6 @@ import type { Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
-import { mapValues } from 'lodash-es'
 import initSqlite3Wasm from 'sqlite-esm'
 
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
@@ -20,16 +19,13 @@ const sqlite3Promise = initSqlite3Wasm({
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
 export type LiveStoreContext = {
-  store: Store<any>
-  globalQueries: LiveStoreQueryTypes
+  store: Store
 }
 
-export type QueryDefinition = (store: Store<any>) => LiveStoreQuery
-export type GlobalQueryDefs = { [key: string]: QueryDefinition }
+export type QueryDefinition = (store: Store) => LiveStoreQuery
 
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
   schema: Schema
-  globalQueryDefs: GlobalQueryDefs
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
@@ -48,7 +44,6 @@ export const DeferredStoreContext = Context.Tag<DeferredStoreContext>(
 
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: Schema
-  globalQueryDefs?: Effect.Effect<never, never, GlobalQueryDefs>
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: {
     schema: Effect.Effect<otel.Tracer, never, GraphQLSchema>
@@ -68,7 +63,6 @@ export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>
 export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Deferred.make<never, LiveStoreContext>())
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
-  globalQueryDefs,
   schema,
   loadStorage,
   graphQLOptions: graphQLOptions_,
@@ -116,16 +110,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 
       window.__debugLiveStore = store
 
-      // TODO remove global queries concept
-      const globalQueries = yield* $(
-        globalQueryDefs ?? Effect.succeed({} as GlobalQueryDefs),
-        Effect.map((defs) => mapValues(defs, (queryDef) => queryDef(store))),
-        Effect.withSpan('LiveStore:makeGlobalQueries', {
-          parent: OtelTracer.makeExternalSpan(otel.trace.getSpanContext(store.otel.queriesSpanContext)!),
-        }),
-      )
-
-      return { store, globalQueries }
+      return { store }
     }),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     Effect.timeoutFail({

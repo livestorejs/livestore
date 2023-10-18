@@ -14,7 +14,7 @@ export const MainSection: React.FC = () => {
       // First, we create a reactive query which defines the filter clause for the SQL query.
       // It gets all the rows from the app table, and pipes them into a transform function.
       // The result is a reactive query whose value is a string containing the filter clause.
-      const filterClause$ = rxSQL<AppState>(() => `select * from app;`, ['app'])
+      const filterClause$ = rxSQL<AppState>(`select * from app;`, ['app'])
         .getFirstRow()
         .pipe((appState) => (appState.filter === 'all' ? '' : `where completed = ${appState.filter === 'completed'}`))
 

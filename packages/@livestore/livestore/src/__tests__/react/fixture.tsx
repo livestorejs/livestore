@@ -1,4 +1,3 @@
-import { mapObjectValues } from '@livestore/utils'
 import React from 'react'
 import initSqlite3Wasm from 'sqlite-esm'
 
@@ -76,8 +75,7 @@ export const makeTodoMvc = async () => {
     sqlite3,
   })
 
-  const globalQueries = mapObjectValues(globalQueryDefs, (_, queryDef) => queryDef(store))
-  const storeContext: LiveStore.LiveStoreContext = { store, globalQueries }
+  const storeContext: LiveStore.LiveStoreContext = { store }
 
   const wrapper = ({ children }: any) => (
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>

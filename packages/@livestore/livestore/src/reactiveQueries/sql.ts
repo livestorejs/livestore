@@ -7,12 +7,12 @@ import { LiveStoreQueryBase } from './base-class.js'
 import type { LiveStoreJSQuery } from './js.js'
 
 /* An object encapsulating a reactive SQL query */
-export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase {
+export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<Row> {
   _tag: 'sql' = 'sql'
   /** A reactive thunk representing the query text */
   queryString$: Thunk<string>
   /** A reactive thunk representing the query results */
-  results$: Thunk<Row[]>
+  results$: Thunk<ReadonlyArray<Row>>
 
   constructor({
     queryString$,
@@ -20,10 +20,10 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase {
     ...baseProps
   }: {
     queryString$: Thunk<string>
-    results$: Thunk<Row[]>
+    results$: Thunk<ReadonlyArray<Row>>
     componentKey: ComponentKey
     label: string
-    store: Store<any>
+    store: Store
     otelContext: otel.Context
   }) {
     super(baseProps)
@@ -36,11 +36,11 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase {
    * Returns a new reactive query that contains the result of
    * running an arbitrary JS computation on the results of this SQL query.
    */
-  pipe = <U>(f: (result: Row[], get: GetAtom) => U): LiveStoreJSQuery<U> =>
+  pipe = <U>(fn: (result: ReadonlyArray<Row>, get: GetAtom) => U): LiveStoreJSQuery<U> =>
     this.store.queryJS(
       (get) => {
         const results = get(this.results$)
-        return f(results, get)
+        return fn(results, get)
       },
       {
         componentKey: this.componentKey,

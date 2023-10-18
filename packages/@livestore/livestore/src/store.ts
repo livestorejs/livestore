@@ -11,6 +11,7 @@ import { v4 as uuid } from 'uuid'
 
 import type { ComponentKey } from './componentKey.js'
 import { tableNameForComponentKey } from './componentKey.js'
+import type { QueryDefinition } from './effect/LiveStore.js'
 import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
@@ -102,7 +103,7 @@ export type StoreOtel = {
   queriesSpanContext: otel.Context
 }
 
-export class Store<TGraphQLContext extends BaseGraphQLContext> {
+export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext> {
   graph: ReactiveGraph<RefreshReason, QueryDebugInfo>
   inMemoryDB: InMemoryDatabase
   // TODO refactor
@@ -194,7 +195,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
    * NOTE The query is actually running (even if no one has subscribed to it yet) and will be kept up to date.
    */
   querySQL = <TResult>(
-    genQueryString: (get: GetAtomResult) => string,
+    genQueryString: string | ((get: GetAtomResult) => string),
     {
       queriedTables,
       bindValues,
@@ -224,13 +225,17 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
         const queryString$ = this.graph.makeThunk(
           (get, addDebugInfo) => {
-            const getAtom: GetAtomResult = (atom) => {
-              if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
-              return get(atom.results$)
+            if (typeof genQueryString === 'function') {
+              const getAtom: GetAtomResult = (atom) => {
+                if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
+                return get(atom.results$)
+              }
+              const queryString = genQueryString(getAtom)
+              addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
+              return queryString
+            } else {
+              return genQueryString
             }
-            const queryString = genQueryString(getAtom)
-            addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
-            return queryString
           },
           { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
           otelContext,
@@ -241,10 +246,10 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
         const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
 
-        const results$ = this.graph.makeThunk<TResult[]>(
+        const results$ = this.graph.makeThunk<ReadonlyArray<TResult>>(
           (get, addDebugInfo) =>
             this.otel.tracer.startActiveSpan(
-              'sql', // NOTE span name will be overridden further down
+              'sql:', // NOTE span name will be overridden further down
               {},
               otelContext,
               (span) => {
@@ -262,7 +267,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
                   span.setAttribute('sql.query', sqlString)
                   span.updateName(`sql:${sqlString.slice(0, 50)}`)
 
-                  const results = this.inMemoryDB.select(sqlString, {
+                  const results = this.inMemoryDB.select<TResult>(sqlString, {
                     queriedTables,
                     bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
                     otelContext,
@@ -271,7 +276,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
                   span.setAttribute('sql.rowsCount', results.length)
                   addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
 
-                  return results as unknown as TResult[]
+                  return results
                 } finally {
                   span.end()
                 }
@@ -347,7 +352,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
   queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
     document: DocumentNode<TResult, TVariableValues>,
-    genVariableValues: (get: GetAtomResult) => TVariableValues,
+    genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
     {
       componentKey,
       label,
@@ -375,11 +380,15 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
 
         const variableValues$ = this.graph.makeThunk(
           (get) => {
-            const getAtom: GetAtomResult = (atom) => {
-              if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
-              return get(atom.results$)
+            if (typeof genVariableValues === 'function') {
+              const getAtom: GetAtomResult = (atom) => {
+                if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
+                return get(atom.results$)
+              }
+              return genVariableValues(getAtom)
+            } else {
+              return genVariableValues
             }
-            return genVariableValues(getAtom)
           },
           { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
           otelContext,
@@ -742,6 +751,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext> {
         span.end()
       },
     )
+  }
+
+  // TODO get rid of this as part of new query definition approach https://www.notion.so/schickling/New-query-definition-approach-1097a78ef0e9495bac25f90417374756?pvs=4
+  runOnce = <TQueryDef extends QueryDefinition>(queryDef: TQueryDef): QueryResult<ReturnType<TQueryDef>> => {
+    return this.inTempQueryContext(() => {
+      return queryDef(this).results$.result
+    })
   }
 
   /**

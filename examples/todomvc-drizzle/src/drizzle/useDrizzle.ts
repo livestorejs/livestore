@@ -44,7 +44,7 @@ type UseLiveStoreJsonState<TState> = <TResult>(
 ) => [value: TResult, setValue: (newVal: TResult | ((prevVal: TResult) => TResult)) => void]
 
 export type ReactiveDrizzleSQL = <TQueryBuilder extends SQLiteSelectQueryBuilder<any, any, any, any, any, any>>(
-  genQuery: (get: GetAtomResult) => TQueryBuilder,
+  genQuery: TQueryBuilder | ((get: GetAtomResult) => TQueryBuilder),
   queriedTables: string[],
 ) => LiveStoreSQLQuery<GetQueryRes<TQueryBuilder>>
 
@@ -65,7 +65,12 @@ export const useDrizzle = <TColumns extends ComponentColumns, TQueries extends Q
       return queries({
         rxSQL: (genQuery, queriedTables) => {
           return rxSQL((get) => {
-            return genQuery(get).toSQL().sql
+            const query = typeof genQuery === 'function' ? genQuery(get) : genQuery
+            // TODO refactor the below to not inline the params and allow for `rxSQL` to
+            // be called with reactive bindValues
+
+            // @ts-expect-error access protected member `dialect`
+            return query.dialect.sqlToQuery(query.getSQL().inlineParams()).sql
           }, queriedTables)
         },
         qb: queryBuilder,

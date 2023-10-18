@@ -1,11 +1,10 @@
 import { useLiveStoreComponent, useStore } from '@livestore/livestore/react'
-import type { FC } from 'react'
 import React from 'react'
 
 import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
 
-export const Footer: FC = () => {
+export const Footer: React.FC = () => {
   const { store } = useStore()
   const { filter } = useAppState()
 
@@ -14,7 +13,7 @@ export const Footer: FC = () => {
   } = useLiveStoreComponent({
     queries: ({ rxSQL }) => ({
       incompleteCount: rxSQL<{ incompleteCount: number }>(
-        () => `select count(*) as incompleteCount from todos where completed = false;`,
+        `select count(*) as incompleteCount from todos where completed = false;`,
         ['todos'],
       )
         .getFirstRow()

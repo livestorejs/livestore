@@ -29,17 +29,20 @@ export interface QueryDefinitions {
 export type QueryResults<TQuery> = { [queryName in keyof TQuery]: PrettifyFlat<QueryResult<TQuery[queryName]>> }
 
 export type ReactiveSQL = <TResult>(
-  genQuery: (get: GetAtomResult) => string,
+  query: string | ((get: GetAtomResult) => string),
   queriedTables: string[],
   bindValues?: Bindable | undefined,
 ) => LiveStoreSQLQuery<TResult>
+
+export type ReactiveJS = <TResult>(query: (get: GetAtomResult) => TResult) => LiveStoreJSQuery<TResult>
+
 export type ReactiveGraphQL = <
   TResult extends Record<string, any>,
   TVariables extends Record<string, any>,
   TContext extends BaseGraphQLContext,
 >(
   query: DocumentNode<TResult, TVariables>,
-  genVariableValues: (get: GetAtomResult) => TVariables,
+  variableValues: TVariables | ((get: GetAtomResult) => TVariables),
   label?: string,
 ) => LiveStoreGraphQLQuery<TResult, TVariables, TContext>
 
@@ -52,7 +55,7 @@ type RegisterSubscription = <TQuery extends LiveStoreQuery>(
 type GenQueries<TQueries, TStateResult> = (args: {
   rxSQL: ReactiveSQL
   rxGraphQL: ReactiveGraphQL
-  globalQueries: QueryDefinitions
+  rxJS: ReactiveJS
   state$: LiveStoreJSQuery<TStateResult>
   /**
    * Registers a subscription.
@@ -138,7 +141,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
 
   // performance.mark('useLiveStoreComponent:start')
   const componentKey = useComponentKey(componentKeyConfig, reactDeps)
-  const { store, globalQueries } = useStore()
+  const { store } = useStore()
 
   const componentKeyLabel = React.useMemo(() => labelForKey(componentKey), [componentKey])
 
@@ -181,14 +184,17 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
       isTemporaryQuery: boolean
     }) =>
       queries({
-        rxSQL: <T>(genQuery: (get: GetAtomResult) => string, queriedTables: string[], bindValues?: Bindable) =>
-          store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
+        rxSQL: <T>(
+          genQuery: string | ((get: GetAtomResult) => string),
+          queriedTables: string[],
+          bindValues?: Bindable,
+        ) => store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
         rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
           query: DocumentNode<Result, Variables>,
-          genVariableValues: (get: GetAtomResult) => Variables,
+          genVariableValues: Variables | ((get: GetAtomResult) => Variables),
           label?: string,
         ) => store.queryGraphQL(query, genVariableValues, { componentKey, label, otelContext }),
-        globalQueries,
+        rxJS: <T>(genQuery: (get: GetAtomResult) => T) => store.queryJS(genQuery, { componentKey, otelContext }),
         state$,
         subscribe: registerSubscription,
         isTemporaryQuery,
@@ -200,7 +206,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     // This makes sense for LiveStore because the component config should be static.
     // TODO: document this and consider whether it's the right API surface.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store, componentKey, globalQueries],
+    [store, componentKey],
   )
 
   const defaultComponentState = React.useMemo(() => {
@@ -227,6 +233,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     return store.otel.tracer.startActiveSpan('LiveStore:useLiveStoreComponent:initial', {}, otelContext, (span) => {
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
+      // NOTE `inTempQueryContext` automatically destroys the queries once the callback is done
       return store.inTempQueryContext(() => {
         try {
           // create state query
@@ -399,15 +406,15 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           ),
         )
 
-        const registerSubscription: RegisterSubscription = (query, callback, onUnsubscribe) => {
+        const registerSubscription: RegisterSubscription = (query$, callback, onUnsubscribe) => {
           unsubs.push(
             store.subscribe(
-              query,
+              query$,
               (results) => {
                 callback(results)
               },
               onUnsubscribe,
-              { label: `useLiveStoreComponent:query:manual-subscribe:${query.label}` },
+              { label: `useLiveStoreComponent:query:manual-subscribe:${query$.label}` },
             ),
           )
         }

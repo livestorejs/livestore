@@ -1,11 +1,10 @@
 import { useStore } from '@livestore/livestore/react'
-import type { FC } from 'react'
 import React from 'react'
 import { v4 as uuid } from 'uuid'
 
 import { useAppState } from '../useAppState.js'
 
-export const Header: FC = () => {
+export const Header: React.FC = () => {
   const { store } = useStore()
   const { newTodoText } = useAppState()
 

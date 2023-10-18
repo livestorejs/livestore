@@ -46,7 +46,7 @@ const initialize = async (options: StorageOptionsWeb) => {
   switch (options.type) {
     case 'opfs': {
       try {
-        db = new sqlite3.oo1.OpfsDb(fullyQualifiedFilename(options.virtualFilename)) // , 'c'
+        db = new sqlite3.oo1.OpfsDb(fullyQualifiedFilename(options.fileName)) // , 'c'
       } catch (e) {
         debugger
       }
@@ -55,7 +55,7 @@ const initialize = async (options: StorageOptionsWeb) => {
     case 'indexeddb': {
       try {
         db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' })
-        idb = new IDB(options.virtualFilename)
+        idb = new IDB(options.fileName)
 
         const bytes = await idb.get('db')
 

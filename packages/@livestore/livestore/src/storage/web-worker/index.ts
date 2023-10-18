@@ -12,7 +12,7 @@ export type StorageType = 'opfs' | 'indexeddb'
 export type StorageOptionsWeb = {
   /** Specifies where to persist data for this storage */
   type: StorageType
-  virtualFilename: string
+  fileName: string
 }
 
 export class WebWorkerStorage implements Storage {
@@ -89,7 +89,7 @@ const getPersistedData = async (options: StorageOptionsWeb): Promise<Uint8Array>
     case 'opfs': {
       try {
         const rootHandle = await navigator.storage.getDirectory()
-        const fileHandle = await rootHandle.getFileHandle(options.virtualFilename + '.db')
+        const fileHandle = await rootHandle.getFileHandle(options.fileName + '.db')
         const file = await fileHandle.getFile()
         const buffer = await file.arrayBuffer()
         const data = new Uint8Array(buffer)
@@ -105,7 +105,7 @@ const getPersistedData = async (options: StorageOptionsWeb): Promise<Uint8Array>
     }
 
     case 'indexeddb': {
-      const idb = new IDB(options.virtualFilename)
+      const idb = new IDB(options.fileName)
 
       return (await idb.get('db')) ?? new Uint8Array()
     }
