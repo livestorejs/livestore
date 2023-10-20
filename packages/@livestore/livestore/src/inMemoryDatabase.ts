@@ -25,7 +25,7 @@ export type SlowQueryInfo = [
   bindValues: PreparedBindValues | undefined,
   durationMs: number,
   rowsCount: number | undefined,
-  queriedTables: string[],
+  queriedTables: ReadonlyArray<string>,
   startTimePerfNow: DOMHighResTimeStamp,
 ]
 
@@ -202,7 +202,7 @@ export class InMemoryDatabase {
   select<T = any>(
     query: string,
     options?: {
-      queriedTables?: string[]
+      queriedTables?: ReadonlyArray<string>
       bindValues?: PreparedBindValues
       skipCache?: boolean
       otelContext?: otel.Context

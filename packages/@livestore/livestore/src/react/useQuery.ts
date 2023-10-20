@@ -1,30 +1,35 @@
+import * as otel from '@opentelemetry/api'
+import { isEqual } from 'lodash-es'
 import React from 'react'
 
 import { labelForKey } from '../componentKey.js'
 import type { QueryDefinition } from '../effect/LiveStore.js'
+import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import type { LiveStoreQuery, QueryResult, Store } from '../store.js'
 import { useStore } from './LiveStoreContext.js'
+import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
-// TODO get rid of the query cache in favour of the new side-effect-free query definition approach https://www.notion.so/schickling/New-query-definition-approach-1097a78ef0e9495bac25f90417374756?pvs=4
-const queryCache = new Map<QueryDefinition, LiveStoreQuery>()
-
-export const useQuery = <Q extends LiveStoreQuery>(queryDef: (store: Store) => Q): QueryResult<Q> => {
+export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   const { store } = useStore()
-  const query = React.useMemo(() => {
-    if (queryCache.has(queryDef)) return queryCache.get(queryDef) as Q
+  // const query = React.useMemo(() => {
+  //   if (queryCache.has(queryDef)) return queryCache.get(queryDef) as Q
 
-    const query = queryDef(store)
-    queryCache.set(queryDef, query)
-    return query
-  }, [store, queryDef])
+  //   const query = queryDef(store)
+  //   queryCache.set(queryDef, query)
+  //   return query
+  // }, [store, queryDef])
+
+  // TODO proper otel context
+  React.useMemo(() => store.graph.refresh({}, otel.context.active()), [query, store])
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [value, setValue] = React.useState<QueryResult<Q>>(query.results$.result)
+  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(query.results$.result)
 
   // Subscribe to future updates for this query
   React.useEffect(() => {
     return store.otel.tracer.startActiveSpan(
-      `LiveStore:useQuery:${labelForKey(query.componentKey)}:${query.label}`,
+      `LiveStore:useQuery:${query.label}`,
+      // `LiveStore:useQuery:${labelForKey(query.componentKey)}:${query.label}`,
       { attributes: { label: query.label } },
       query.otelContext,
       (span) => {
@@ -34,7 +39,9 @@ export const useQuery = <Q extends LiveStoreQuery>(queryDef: (store: Store) => Q
             // NOTE: we return a reference to the result object within LiveStore;
             // this implies that app code must not mutate the results, or else
             // there may be weird reactivity bugs.
-            return setValue(v)
+            if (isEqual(v, valueRef.current) === false) {
+              setValue(v)
+            }
           },
           undefined,
           { label: query.label },
@@ -50,7 +57,7 @@ export const useQuery = <Q extends LiveStoreQuery>(queryDef: (store: Store) => Q
         }
       },
     )
-  }, [query, store])
+  }, [query, setValue, store, valueRef])
 
-  return value
+  return valueRef.current
 }

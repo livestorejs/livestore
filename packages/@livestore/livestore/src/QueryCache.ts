@@ -38,7 +38,7 @@ export default class QueryCache {
     return this.#entries.get(key)
   }
 
-  set = (queriedTables: string[], key: CacheKey, results: any) => {
+  set = (queriedTables: ReadonlyArray<string>, key: CacheKey, results: any) => {
     this.#entries.set(key, results)
     for (const table of queriedTables) {
       let keys = this.#dependencies.get(table)

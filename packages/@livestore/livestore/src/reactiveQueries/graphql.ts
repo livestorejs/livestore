@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
 import type * as otel from '@opentelemetry/api'
 

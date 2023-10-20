@@ -112,7 +112,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
       liveStoreQuery,
       (results) => {
         if (isEqual(results, queryResultsRef.current) === false) {
-          setQueryResults_(results)
+          // setQueryResults_(results)
         }
       },
       undefined,

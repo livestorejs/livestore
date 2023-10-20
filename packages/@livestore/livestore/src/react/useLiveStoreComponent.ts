@@ -13,8 +13,8 @@ import type { ComponentKey } from '../componentKey.js'
 import { labelForKey, tableNameForComponentKey } from '../componentKey.js'
 import { migrateTable } from '../migrations.js'
 import type { LiveStoreGraphQLQuery } from '../reactiveQueries/graphql.js'
-import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
-import type { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
+import { LiveStoreJSQuery } from '../reactiveQueries/js.js'
+import { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
 import { SCHEMA_META_TABLE } from '../schema.js'
 import type { BaseGraphQLContext, GetAtomResult, LiveStoreQuery, QueryResult, Store } from '../store.js'
 import type { Bindable } from '../util.js'
@@ -55,7 +55,7 @@ type RegisterSubscription = <TQuery extends LiveStoreQuery>(
 type GenQueries<TQueries, TStateResult> = (args: {
   rxSQL: ReactiveSQL
   rxGraphQL: ReactiveGraphQL
-  rxJS: ReactiveJS
+  // rxJS: ReactiveJS
   state$: LiveStoreJSQuery<TStateResult>
   /**
    * Registers a subscription.
@@ -186,15 +186,26 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
       queries({
         rxSQL: <T>(
           genQuery: string | ((get: GetAtomResult) => string),
-          queriedTables: string[],
+          queriedTables: ReadonlyArray<string>,
           bindValues?: Bindable,
-        ) => store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
+          // ) => store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
+        ) =>
+          new LiveStoreSQLQuery<T>({
+            otelContext,
+            otelTracer: store.otel.tracer,
+            label: 'todo',
+            payload: {
+              genQueryString: genQuery,
+              bindValues,
+              queriedTables,
+            },
+          }),
         rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
           query: DocumentNode<Result, Variables>,
           genVariableValues: Variables | ((get: GetAtomResult) => Variables),
           label?: string,
         ) => store.queryGraphQL(query, genVariableValues, { componentKey, label, otelContext }),
-        rxJS: <T>(genQuery: (get: GetAtomResult) => T) => store.queryJS(genQuery, { componentKey, otelContext }),
+        // rxJS: <T>(genQuery: (get: GetAtomResult) => T) => store.queryJS(genQuery, { componentKey, otelContext }),
         state$,
         subscribe: registerSubscription,
         isTemporaryQuery,
@@ -240,10 +251,16 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           let state$: LiveStoreJSQuery<TComponentState>
           if (stateSchema === undefined) {
             // TODO don't set up a query if there's no state schema (keeps the graph more clean)
-            state$ = store.queryJS(() => ({}), {
-              componentKey,
+            // state$ = store.queryJS(() => ({}), {
+            //   componentKey,
+            //   otelContext,
+            // }) as unknown as LiveStoreJSQuery<TComponentState>
+            state$ = new LiveStoreJSQuery({
+              fn: () => ({}) as TComponentState,
+              label: 'empty-component-state',
               otelContext,
-            }) as unknown as LiveStoreJSQuery<TComponentState>
+              otelTracer: store.otel.tracer,
+            })
           } else {
             const componentTableName = tableNameForComponentKey(componentKey)
             const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
@@ -265,13 +282,22 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
               })
             }
 
-            state$ = store
-              .querySQL(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+            // state$ = store
+            //   .querySQL(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+            //     queriedTables: [componentTableName],
+            //     componentKey,
+            //     label: `localState:query:${componentKeyLabel}`,
+            //     otelContext,
+            //   })
+            state$ = new LiveStoreSQLQuery({
+              label: `localState:query:${componentKeyLabel}`,
+              otelContext,
+              otelTracer: store.otel.tracer,
+              payload: {
+                genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
                 queriedTables: [componentTableName],
-                componentKey,
-                label: `localState:query:${componentKeyLabel}`,
-                otelContext,
-              })
+              },
+            })
               // TODO consider to instead of just returning the default value, to write the default component state to the DB
               .pipe<TComponentState>((results) =>
                 results.length === 1
@@ -279,7 +305,8 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
                   : defaultComponentState,
               )
           }
-          const initialComponentState = state$.results$.result
+          store.graph.refresh({}, otelContext)
+          const initialComponentState = state$.results$!.result
 
           const queries = generateQueries({
             state$: state$,
@@ -290,9 +317,15 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           for (const [name, query] of Object.entries(queries)) {
             query.label = name
           }
+          store.graph.refresh({}, otelContext)
           const initialQueryResults = mapValues(
             queries,
-            (query) => query.results$.result,
+            (query) => {
+              // query.activate(store)
+              const res = query.results$!.result
+              // query.deactivate()
+              return res
+            },
             // TODO improve typing
           ) as unknown as QueryResults<TQueries>
 
@@ -370,23 +403,38 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
         let state$: LiveStoreJSQuery<TComponentState>
         if (stateSchema === undefined) {
           // TODO remove this query
-          state$ = store.queryJS(() => ({}) as TComponentState, {
-            componentKey,
-            otelContext,
+          // state$ = store.queryJS(() => ({}) as TComponentState, {
+          //   componentKey,
+          //   otelContext,
+          //   label: 'empty-component-state',
+          // })
+          state$ = new LiveStoreJSQuery({
+            fn: () => ({}) as TComponentState,
             label: 'empty-component-state',
+            otelContext,
+            otelTracer: store.otel.tracer,
           })
         } else {
           const componentTableName = tableNameForComponentKey(componentKey)
           insertRowForComponentInstance({ store, componentKey, stateSchema })
 
           const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
-          state$ = store
-            .querySQL<TComponentState>(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+          // state$ = store
+          // .querySQL<TComponentState>(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
+          //   queriedTables: [componentTableName],
+          //   componentKey,
+          //   label: `localState:query:${componentKeyLabel}`,
+          //   otelContext,
+          // })
+          state$ = new LiveStoreSQLQuery({
+            label: `localState:query:${componentKeyLabel}`,
+            otelContext,
+            otelTracer: store.otel.tracer,
+            payload: {
+              genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
               queriedTables: [componentTableName],
-              componentKey,
-              label: `localState:query:${componentKeyLabel}`,
-              otelContext,
-            })
+            },
+          })
             // TODO consider to instead of just returning the default value, to write the default component state to the DB
             .pipe<TComponentState>((results) =>
               results.length === 1 ? Schema.parseSync(componentStateEffectSchema)(results[0]!) : defaultComponentState,

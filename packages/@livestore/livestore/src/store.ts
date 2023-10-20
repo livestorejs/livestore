@@ -16,18 +16,19 @@ import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
-import type { Atom, Ref } from './reactive.js'
-import { ReactiveGraph } from './reactive.js'
+import type { Atom, GetAtom, ReactiveGraph, Ref } from './reactive.js'
+import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
+import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
 import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
-import { LiveStoreJSQuery } from './reactiveQueries/js.js'
-import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
+import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
+import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from './schema.js'
 import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { isPromise, prepareBindValues, sql } from './util.js'
 
-export type GetAtomResult = <T>(atom: Atom<T> | LiveStoreJSQuery<T>) => T
+export type GetAtomResult = <T>(atom: Atom<T, any> | LiveStoreJSQuery<T>) => T
 
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
@@ -48,7 +49,7 @@ export type QueryResult<TQuery> = TQuery extends LiveStoreSQLQuery<infer R>
   ? Readonly<Result>
   : never
 
-const globalComponentKey: ComponentKey = { _tag: 'singleton', componentName: '__global', id: 'singleton' }
+export const globalComponentKey: ComponentKey = { _tag: 'singleton', componentName: '__global', id: 'singleton' }
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
@@ -104,7 +105,7 @@ export type StoreOtel = {
 }
 
 export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext> {
-  graph: ReactiveGraph<RefreshReason, QueryDebugInfo>
+  graph: ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
   inMemoryDB: InMemoryDatabase
   // TODO refactor
   _proxyDb: InMemoryDatabase
@@ -132,12 +133,14 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   }: StoreOptions<TGraphQLContext>) {
     this.inMemoryDB = db
     this._proxyDb = dbProxy
-    this.graph = new ReactiveGraph({
-      // TODO move this into React module
-      // Do all our updates inside a single React setState batch to avoid multiple UI re-renders
-      effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
-      otelTracer,
-    })
+    // this.graph = new ReactiveGraph({
+    //   // TODO move this into React module
+    //   // Do all our updates inside a single React setState batch to avoid multiple UI re-renders
+    //   effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
+    //   otelTracer,
+    // })
+    this.graph = dbGraph
+    this.graph.context = { store: this }
     this.schema = schema
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -194,161 +197,153 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    *
    * NOTE The query is actually running (even if no one has subscribed to it yet) and will be kept up to date.
    */
-  querySQL = <TResult>(
-    genQueryString: string | ((get: GetAtomResult) => string),
-    {
-      queriedTables,
-      bindValues,
-      componentKey,
-      label,
-      otelContext = otel.context.active(),
-    }: {
-      /**
-       * List of tables that are queried in this query;
-       * used to determine reactive dependencies.
-       *
-       * NOTE In the future we want to auto-generate this via parsing the query
-       */
-      queriedTables: string[]
-      bindValues?: Bindable | undefined
-      componentKey?: ComponentKey | undefined
-      label?: string | undefined
-      otelContext?: otel.Context
-    },
-  ): LiveStoreSQLQuery<TResult> =>
-    this.otel.tracer.startActiveSpan(
-      'querySQL', // NOTE span name will be overridden further down
-      { attributes: { label } },
-      otelContext,
-      (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+  // querySQL = <TResult>(
+  //   genQueryString: string | ((get: GetAtomResult) => string),
+  //   {
+  //     queriedTables,
+  //     bindValues,
+  //     componentKey,
+  //     label,
+  //     otelContext = otel.context.active(),
+  //   }: {
+  //     /**
+  //      * List of tables that are queried in this query;
+  //      * used to determine reactive dependencies.
+  //      *
+  //      * NOTE In the future we want to auto-generate this via parsing the query
+  //      */
+  //     queriedTables: string[]
+  //     bindValues?: Bindable | undefined
+  //     componentKey?: ComponentKey | undefined
+  //     label?: string | undefined
+  //     otelContext?: otel.Context
+  //   },
+  // ): LiveStoreSQLQuery<TResult> =>
+  //   this.otel.tracer.startActiveSpan(
+  //     'querySQL', // NOTE span name will be overridden further down
+  //     { attributes: { label } },
+  //     otelContext,
+  //     (span) => {
+  //       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const queryString$ = this.graph.makeThunk(
-          (get, addDebugInfo) => {
-            if (typeof genQueryString === 'function') {
-              const getAtom: GetAtomResult = (atom) => {
-                if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
-                return get(atom.results$)
-              }
-              const queryString = genQueryString(getAtom)
-              addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
-              return queryString
-            } else {
-              return genQueryString
-            }
-          },
-          { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
-          otelContext,
-        )
+  //       const queryString$ = this.graph.makeThunk(
+  //         (get, addDebugInfo) => {
+  //           if (typeof genQueryString === 'function') {
+  //             const queryString = genQueryString(makeGetAtomResult(get))
+  //             addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
+  //             return queryString
+  //           } else {
+  //             return genQueryString
+  //           }
+  //         },
+  //         { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
+  //         otelContext,
+  //       )
 
-        label = label ?? queryString$.result
-        span.updateName(`querySQL:${label}`)
+  //       label = label ?? queryString$.result
+  //       span.updateName(`querySQL:${label}`)
 
-        const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
+  //       const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
 
-        const results$ = this.graph.makeThunk<ReadonlyArray<TResult>>(
-          (get, addDebugInfo) =>
-            this.otel.tracer.startActiveSpan(
-              'sql:', // NOTE span name will be overridden further down
-              {},
-              otelContext,
-              (span) => {
-                try {
-                  const otelContext = otel.trace.setSpan(otel.context.active(), span)
+  //       const results$ = this.graph.makeThunk<ReadonlyArray<TResult>>(
+  //         (get, addDebugInfo) =>
+  //           this.otel.tracer.startActiveSpan(
+  //             'sql:', // NOTE span name will be overridden further down
+  //             {},
+  //             otelContext,
+  //             (span) => {
+  //               try {
+  //                 const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-                  // Establish a reactive dependency on the tables used in the query
-                  for (const tableName of queriedTables) {
-                    const tableRef =
-                      this.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
-                    get(tableRef)
-                  }
-                  const sqlString = get(queryString$)
+  //                 // Establish a reactive dependency on the tables used in the query
+  //                 for (const tableName of queriedTables) {
+  //                   const tableRef =
+  //                     this.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+  //                   get(tableRef)
+  //                 }
+  //                 const sqlString = get(queryString$)
 
-                  span.setAttribute('sql.query', sqlString)
-                  span.updateName(`sql:${sqlString.slice(0, 50)}`)
+  //                 span.setAttribute('sql.query', sqlString)
+  //                 span.updateName(`sql:${sqlString.slice(0, 50)}`)
 
-                  const results = this.inMemoryDB.select<TResult>(sqlString, {
-                    queriedTables,
-                    bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
-                    otelContext,
-                  })
+  //                 const results = this.inMemoryDB.select<TResult>(sqlString, {
+  //                   queriedTables,
+  //                   bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+  //                   otelContext,
+  //                 })
 
-                  span.setAttribute('sql.rowsCount', results.length)
-                  addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
+  //                 span.setAttribute('sql.rowsCount', results.length)
+  //                 addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
 
-                  return results
-                } finally {
-                  span.end()
-                }
-              },
-            ),
-          { label: queryLabel },
-          otelContext,
-        )
+  //                 return results
+  //               } finally {
+  //                 span.end()
+  //               }
+  //             },
+  //           ),
+  //         { label: queryLabel },
+  //         otelContext,
+  //       )
 
-        const query = new LiveStoreSQLQuery<TResult>({
-          label,
-          queryString$,
-          results$,
-          componentKey: componentKey ?? globalComponentKey,
-          store: this,
-          otelContext,
-        })
+  //       const query = new LiveStoreSQLQuery<TResult>({
+  //         label,
+  //         queryString$,
+  //         results$,
+  //         componentKey: componentKey ?? globalComponentKey,
+  //         store: this,
+  //         otelContext,
+  //       })
 
-        this.activeQueries.add(query)
+  //       this.activeQueries.add(query)
 
-        // TODO get rid of temporary query workaround
-        if (this.temporaryQueries !== undefined) {
-          this.temporaryQueries.add(query)
-        }
+  //       // TODO get rid of temporary query workaround
+  //       if (this.temporaryQueries !== undefined) {
+  //         this.temporaryQueries.add(query)
+  //       }
 
-        // NOTE we are not ending the span here but in the query `destroy` method
-        return query
-      },
-    )
+  //       // NOTE we are not ending the span here but in the query `destroy` method
+  //       return query
+  //     },
+  //   )
 
-  queryJS = <TResult>(
-    genResults: (get: GetAtomResult) => TResult,
-    {
-      componentKey = globalComponentKey,
-      label = `js${uniqueId()}`,
-      otelContext = otel.context.active(),
-    }: { componentKey?: ComponentKey; label?: string; otelContext?: otel.Context },
-  ): LiveStoreJSQuery<TResult> =>
-    this.otel.tracer.startActiveSpan(`queryJS:${label}`, { attributes: { label } }, otelContext, (span) => {
-      const otelContext = otel.trace.setSpan(otel.context.active(), span)
-      const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
-      const results$ = this.graph.makeThunk(
-        (get, addDebugInfo) => {
-          const getAtom: GetAtomResult = (atom) => {
-            if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
-            return get(atom.results$)
-          }
-          addDebugInfo({ _tag: 'js', label, query: genResults.toString() })
-          return genResults(getAtom)
-        },
-        { label: queryLabel, meta: { liveStoreThunkType: 'jsResults' } },
-        otelContext,
-      )
+  // queryJS = <TResult>(
+  //   genResults: (get: GetAtomResult) => TResult,
+  //   {
+  //     componentKey = globalComponentKey,
+  //     label = `js${uniqueId()}`,
+  //     otelContext = otel.context.active(),
+  //   }: { componentKey?: ComponentKey; label?: string; otelContext?: otel.Context },
+  // ): LiveStoreJSQuery<TResult> =>
+  //   this.otel.tracer.startActiveSpan(`queryJS:${label}`, { attributes: { label } }, otelContext, (span) => {
+  //     const otelContext = otel.trace.setSpan(otel.context.active(), span)
+  //     const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
+  //     const results$ = this.graph.makeThunk(
+  //       (get, addDebugInfo) => {
+  //         addDebugInfo({ _tag: 'js', label, query: genResults.toString() })
+  //         return genResults(makeGetAtomResult(get))
+  //       },
+  //       { label: queryLabel, meta: { liveStoreThunkType: 'jsResults' } },
+  //       otelContext,
+  //     )
 
-      const query = new LiveStoreJSQuery<TResult>({
-        label,
-        results$,
-        componentKey,
-        store: this,
-        otelContext,
-      })
+  //     // const query = new LiveStoreJSQuery<TResult>({
+  //     //   label,
+  //     //   results$,
+  //     //   componentKey,
+  //     //   store: this,
+  //     //   otelContext,
+  //     // })
 
-      this.activeQueries.add(query)
+  //     this.activeQueries.add(query)
 
-      // TODO get rid of temporary query workaround
-      if (this.temporaryQueries !== undefined) {
-        this.temporaryQueries.add(query)
-      }
+  //     // TODO get rid of temporary query workaround
+  //     if (this.temporaryQueries !== undefined) {
+  //       this.temporaryQueries.add(query)
+  //     }
 
-      // NOTE we are not ending the span here but in the query `destroy` method
-      return query
-    })
+  //     // NOTE we are not ending the span here but in the query `destroy` method
+  //     return query
+  //   })
 
   queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
     document: DocumentNode<TResult, TVariableValues>,
@@ -381,17 +376,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
         const variableValues$ = this.graph.makeThunk(
           (get) => {
             if (typeof genVariableValues === 'function') {
-              const getAtom: GetAtomResult = (atom) => {
-                if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
-                return get(atom.results$)
-              }
-              return genVariableValues(getAtom)
+              return genVariableValues(makeGetAtomResult(get))
             } else {
               return genVariableValues
             }
           },
           { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
-          otelContext,
+          // otelContext,
         )
 
         const resultsLabel = `${labelWithDefault}:results` + (this.temporaryQueries ? ':temp' : '')
@@ -412,7 +403,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             return result
           },
           { label: resultsLabel, meta: { liveStoreThunkType: 'graphqlResults' } },
-          otelContext,
+          // otelContext,
         )
 
         const query = new LiveStoreGraphQLQuery({
@@ -486,9 +477,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * Subscribe to the results of a query
    * Returns a function to cancel the subscription.
    */
-  subscribe = <TQuery extends LiveStoreQuery>(
-    query: TQuery,
-    onNewValue: (value: QueryResult<TQuery>) => void,
+  subscribe = <TResult>(
+    query: ILiveStoreQuery<TResult>,
+    onNewValue: (value: TResult) => void,
     onSubsubscribe?: () => void,
     options?: { label?: string } | undefined,
   ): (() => void) =>
@@ -499,28 +490,25 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const effect = this.graph.makeEffect(
-          (get) => {
-            const result = get(query.results$) as QueryResult<TQuery>
-            onNewValue(result)
-          },
-          { label: `subscribe:${options?.label}` },
-          otelContext,
-        )
+        const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$!)), {
+          label: `subscribe:${options?.label}`,
+        })
 
-        const subscriptionKey = uuid()
+        this.graph.refresh({}, otelContext)
+
+        // const subscriptionKey = uuid()
 
         const unsubscribe = () => {
           try {
             this.graph.destroy(effect)
-            query.activeSubscriptions.delete(subscriptionKey)
+            // query.activeSubscriptions.delete(subscriptionKey)
             onSubsubscribe?.()
           } finally {
             span.end()
           }
         }
 
-        query.activeSubscriptions.set(subscriptionKey, unsubscribe)
+        // query.activeSubscriptions.set(subscriptionKey, unsubscribe)
 
         return unsubscribe
       },
@@ -566,9 +554,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   private destroyQuery = (query: LiveStoreQuery) => {
     if (query._tag === 'sql') {
       // results are downstream of query string, so will automatically be destroyed together
-      this.graph.destroy(query.queryString$)
+      this.graph.destroy(query.queryString$!)
     } else {
-      this.graph.destroy(query.results$)
+      this.graph.destroy(query.results$!)
     }
     this.activeQueries.delete(query)
     query.destroy()
@@ -580,9 +568,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    */
   unmountComponent = (componentKey: ComponentKey) => {
     for (const query of this.activeQueries) {
-      if (query.componentKey === componentKey) {
-        this.destroyQuery(query)
-      }
+      // if (query.componentKey === componentKey) {
+      //   this.destroyQuery(query)
+      // }
     }
   }
 
@@ -614,20 +602,24 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             tablesToUpdate.push([tableRef!, null])
           }
 
+          const debugRefreshReason = {
+            _tag: 'applyEvent' as const,
+            event: { type: eventType, args },
+            writeTables: [...writeTables],
+          }
+
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(
-            tablesToUpdate,
-            {
-              otelHint: 'applyEvents',
-              skipRefresh,
-              debugRefreshReason: {
-                _tag: 'applyEvent',
-                event: { type: eventType, args },
-                writeTables: [...writeTables],
+          this.graph.setRefs(tablesToUpdate, { debugRefreshReason })
+
+          if (skipRefresh === false) {
+            this.graph.refresh(
+              {
+                otelHint: 'applyEvents',
+                debugRefreshReason,
               },
-            },
-            otelContext,
-          )
+              otelContext,
+            )
+          }
         } catch (e: any) {
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
 
@@ -710,20 +702,19 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             tablesToUpdate.push([tableRef!, null])
           }
 
+          const debugRefreshReason = {
+            _tag: 'applyEvents' as const,
+            events: [...events].map((e) => ({ type: e.eventType, args: e.args })),
+            writeTables: [...writeTables],
+          }
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(
-            tablesToUpdate,
-            {
-              otelHint: 'applyEvents',
-              skipRefresh,
-              debugRefreshReason: {
-                _tag: 'applyEvents',
-                events: [...events].map((e) => ({ type: e.eventType, args: e.args })),
-                writeTables: [...writeTables],
-              },
-            },
-            otelContext,
-          )
+          this.graph.setRefs(tablesToUpdate, {
+            debugRefreshReason,
+          })
+
+          if (skipRefresh === false) {
+            this.graph.refresh({ debugRefreshReason, otelHint: 'applyEvents' }, otelContext)
+          }
         } catch (e: any) {
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
         } finally {
@@ -754,11 +745,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   }
 
   // TODO get rid of this as part of new query definition approach https://www.notion.so/schickling/New-query-definition-approach-1097a78ef0e9495bac25f90417374756?pvs=4
-  runOnce = <TQueryDef extends QueryDefinition>(queryDef: TQueryDef): QueryResult<ReturnType<TQueryDef>> => {
-    return this.inTempQueryContext(() => {
-      return queryDef(this).results$.result
-    })
-  }
+  // runOnce = <TQueryDef extends QueryDefinition>(queryDef: TQueryDef): QueryResult<ReturnType<TQueryDef>> => {
+  //   return this.inTempQueryContext(() => {
+  //     return queryDef(this).results$!.result
+  //   })
+  // }
 
   /**
    * Apply an event to the store.
@@ -853,7 +844,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * This should only be used for framework-internal purposes;
    * all app writes should go through applyEvent.
    */
-  execute = async (query: string, params: ParamsObject = {}, writeTables?: string[]) => {
+  execute = (query: string, params: ParamsObject = {}, writeTables?: string[]) => {
     this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables)
 
     if (this.storage !== undefined) {
@@ -976,4 +967,18 @@ const eventToSql = (
     typeof eventDefinition.statement === 'function' && statement.argsAlreadyBound ? {} : prepareBindValues(event.args)
 
   return { statement, bindValues }
+}
+
+export const makeGetAtomResult = (get: GetAtom) => {
+  const getAtom: GetAtomResult = (atom) => {
+    if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
+    // atom.activate(store)
+    const atom_ = atom.results$
+    if (atom_ === undefined) {
+      debugger
+    }
+    return get(atom.results$!)
+  }
+
+  return getAtom
 }
