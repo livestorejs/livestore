@@ -49,8 +49,6 @@ describe('useQuery', () => {
       { wrapper },
     )
 
-    console.log('result.current', result.current)
-
     expect(result.current.length).toBe(0)
     expect(renderCount).toBe(1)
 

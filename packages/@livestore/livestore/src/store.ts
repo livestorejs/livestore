@@ -488,13 +488,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       { attributes: { label: options?.label } },
       query.otelContext,
       (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        // const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$!)), {
+        const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$)), {
           label: `subscribe:${options?.label}`,
         })
 
-        this.graph.refresh({}, otelContext)
+        effect.doEffect()
 
         // const subscriptionKey = uuid()
 
@@ -612,13 +612,14 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           this.graph.setRefs(tablesToUpdate, { debugRefreshReason })
 
           if (skipRefresh === false) {
-            this.graph.refresh(
-              {
-                otelHint: 'applyEvents',
-                debugRefreshReason,
-              },
-              otelContext,
-            )
+            // TODO update the graph
+            // this.graph.refresh(
+            //   {
+            //     otelHint: 'applyEvents',
+            //     debugRefreshReason,
+            //   },
+            //   otelContext,
+            // )
           }
         } catch (e: any) {
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
@@ -713,7 +714,8 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           })
 
           if (skipRefresh === false) {
-            this.graph.refresh({ debugRefreshReason, otelHint: 'applyEvents' }, otelContext)
+            // TODO update the graph
+            // this.graph.refresh({ debugRefreshReason, otelHint: 'applyEvents' }, otelContext)
           }
         } catch (e: any) {
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
@@ -738,7 +740,8 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       this.otel.applyEventsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
-        this.graph.refresh({ otelHint: 'manualRefresh', debugRefreshReason: { _tag: 'manualRefresh' } }, otelContext)
+        // TODO update the graph
+        // this.graph.refresh({ otelHint: 'manualRefresh', debugRefreshReason: { _tag: 'manualRefresh' } }, otelContext)
         span.end()
       },
     )
@@ -750,6 +753,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   //     return queryDef(this).results$!.result
   //   })
   // }
+  runOnce = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
+    return query.results$.computeResult()
+  }
 
   /**
    * Apply an event to the store.

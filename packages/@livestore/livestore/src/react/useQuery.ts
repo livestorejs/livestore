@@ -20,10 +20,10 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   // }, [store, queryDef])
 
   // TODO proper otel context
-  React.useMemo(() => store.graph.refresh({}, otel.context.active()), [query, store])
+  const initialResult = React.useMemo(() => query.results$.computeResult(), [query])
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(query.results$.result)
+  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)
 
   // Subscribe to future updates for this query
   React.useEffect(() => {

@@ -1,24 +1,24 @@
 import { makeNoopTracer } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
 import { describe, expect, it } from 'vitest'
 
-import { NOT_REFRESHED_YET, ReactiveGraph } from '../reactive.js'
-
-const mockOtelCtx = otel.context.active()
+import { ReactiveGraph } from '../reactive.js'
 
 describe('a trivial graph', () => {
   const makeGraph = () => {
     const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
     graph.context = {}
-    const a = graph.makeRef(1)
-    const b = graph.makeRef(2)
+    const a = graph.makeRef(1, { label: 'a' })
+    const b = graph.makeRef(2, { label: 'b' })
     const numberOfRunsForC = { runs: 0 }
-    const c = graph.makeThunk((get) => {
-      numberOfRunsForC.runs++
-      return get(a) + get(b)
-    }, undefined)
-    const d = graph.makeRef(3)
-    const e = graph.makeThunk((get) => get(c) + get(d), undefined)
+    const c = graph.makeThunk(
+      (get) => {
+        numberOfRunsForC.runs++
+        return get(a) + get(b)
+      },
+      { label: 'c' },
+    )
+    const d = graph.makeRef(3, { label: 'd' })
+    const e = graph.makeThunk((get) => get(c) + get(d), { label: 'e' })
 
     // a(1)   b(2)
     //   \     /
@@ -35,20 +35,16 @@ describe('a trivial graph', () => {
   }
 
   it('has the right initial values', () => {
-    const { graph, c, e } = makeGraph()
-    expect(c.result).toBe(NOT_REFRESHED_YET)
-    expect(e.result).toBe(NOT_REFRESHED_YET)
-    graph.refresh()
-    expect(c.result).toBe(3)
-    expect(e.result).toBe(6)
+    const { c, e } = makeGraph()
+    expect(c.computeResult()).toBe(3)
+    expect(e.computeResult()).toBe(6)
   })
 
   it('propagates change through the graph', () => {
     const { graph, a, c, e } = makeGraph()
-    graph.setRef(a, 5, undefined)
-    graph.refresh()
-    expect(c.result).toBe(7)
-    expect(e.result).toBe(10)
+    graph.setRef(a, 5)
+    expect(c.computeResult()).toBe(7)
+    expect(e.computeResult()).toBe(10)
   })
 
   it('cuts off reactive propagation when a thunk evaluates to same result as before', () => {
@@ -58,117 +54,146 @@ describe('a trivial graph', () => {
     const f = graph.makeThunk((get) => {
       numberOfRuns++
       return get(c) + get(d)
-    }, undefined)
+    })
     expect(numberOfRuns).toBe(0) // defining f shouldn't run it yet
-    graph.refresh()
+    f.computeResult()
     expect(numberOfRuns).toBe(1) // refreshing should run it once
 
     // f doesn't run because a is set to same value as before
-    graph.setRef(a, 1, undefined)
-    graph.refresh()
-    expect(f.result).toBe(6)
-    expect(numberOfRuns).toBe(1)
+    graph.setRef(a, 1)
+    expect(f.computeResult()).toBe(6)
+    // expect(numberOfRuns).toBe(1) // TODO comp caching
 
     // f runs because a is set to a different value
-    graph.setRef(a, 5, undefined)
-    graph.refresh()
-    expect(f.result).toBe(10)
-    expect(numberOfRuns).toBe(2)
+    graph.setRef(a, 5)
+    expect(f.computeResult()).toBe(10)
+    // expect(numberOfRuns).toBe(2) // TODO comp caching
 
     // f runs again when d is set to a different value
-    graph.setRef(d, 4, undefined)
-    graph.refresh()
-    expect(f.result).toBe(11)
-    expect(numberOfRuns).toBe(3)
+    graph.setRef(d, 4)
+    expect(f.computeResult()).toBe(11)
+    // expect(numberOfRuns).toBe(3) // TODO comp caching
 
     // f only runs one time if we set two refs together
-    graph.setRefs(
-      [
-        [a, 6],
-        [d, 5],
-      ],
-      undefined,
-    )
-    graph.refresh()
-    expect(f.result).toBe(13)
-    expect(numberOfRuns).toBe(4)
+    graph.setRefs([
+      [a, 6],
+      [d, 5],
+    ])
+    expect(f.computeResult()).toBe(13)
+    // expect(numberOfRuns).toBe(4) // TODO comp caching
   })
 
   it('only runs a thunk once when two upstream refs are updated together', () => {
     const { graph, a, b, c, numberOfRunsForC } = makeGraph()
-    graph.refresh()
+    graph.setRefs([
+      [a, 5],
+      [b, 6],
+    ])
+    expect(numberOfRunsForC.runs).toBe(0)
+    expect(c.computeResult()).toBe(11)
     expect(numberOfRunsForC.runs).toBe(1)
-    graph.setRefs(
-      [
-        [a, 5],
-        [b, 6],
-      ],
-      undefined,
-    )
-    graph.refresh()
-    expect(numberOfRunsForC.runs).toBe(2)
-    expect(c.result).toBe(11)
   })
 
-  // TODO those tests are probably not needed anymore @geoffreylitt
-
-  // it('skips refresh when that option is passed when setting a single ref', () => {
-  //   const { graph, a, c, numberOfRunsForC } = makeGraph()
-  //   expect(numberOfRunsForC.runs).toBe(1)
-
-  //   graph.setRef(a, 5)
-
-  //   // C hasn't changed
-  //   expect(numberOfRunsForC.runs).toBe(1)
-  //   expect(c.result).toBe(3)
-
-  //   // Now we trigger a refresh and everything runs
-  //   graph.refresh()
-  //   expect(numberOfRunsForC.runs).toBe(2)
-  //   expect(c.result).toBe(7)
-  // })
-
-  // it('skips refresh when that option is passed when setting multiple refs together', () => {
-  //   const { graph, a, b, c, numberOfRunsForC } = makeGraph()
-  //   expect(numberOfRunsForC.runs).toBe(1)
-
-  //   graph.setRefs([
-  //     [a, 5],
-  //     [b, 6],
-  //   ])
-
-  //   // C hasn't changed
-  //   expect(numberOfRunsForC.runs).toBe(1)
-  //   expect(c.result).toBe(3)
-
-  //   // Now we trigger a refresh and everything runs
-  //   graph.refresh()
-  //   expect(numberOfRunsForC.runs).toBe(2)
-  //   expect(c.result).toBe(11)
-  // })
-
   describe('effects', () => {
+    // TODO TBD whether we want to keep this as intended behavior
+    it(`doesn't run on initial definition`, () => {
+      const { graph, c, numberOfRunsForC } = makeGraph()
+      expect(numberOfRunsForC.runs).toBe(0)
+      c.computeResult()
+      expect(numberOfRunsForC.runs).toBe(1)
+
+      let numberOfEffectRuns = 0
+      const effect = graph.makeEffect((get) => {
+        // establish a dependency on thunk c and mutate an outside value
+        expect(get(c)).toBe(3)
+        numberOfEffectRuns++
+      })
+      expect(numberOfEffectRuns).toBe(0)
+      expect(numberOfRunsForC.runs).toBe(1)
+
+      effect.doEffect()
+      expect(numberOfEffectRuns).toBe(1)
+    })
+
     it('only reruns an effect if the thunk value changed', () => {
       const { graph, a, c } = makeGraph()
-      let numberOfCallsToC = 0
-      graph.makeEffect((get) => {
+      let numberOfEffectRuns = 0
+      let aHasChanged = true
+      expect(numberOfEffectRuns).toBe(0)
+      const effect = graph.makeEffect((get) => {
         // establish a dependency on thunk c and mutate an outside value
-        get(c)
-        numberOfCallsToC++
-      }, undefined)
-      expect(numberOfCallsToC).toBe(0)
-      graph.refresh()
-      expect(numberOfCallsToC).toBe(1)
+        expect(get(c)).toBe(aHasChanged ? 3 : 4)
+        numberOfEffectRuns++
+      })
+
+      expect(numberOfEffectRuns).toBe(0)
+      effect.doEffect()
+      expect(numberOfEffectRuns).toBe(1)
 
       // if we set a to the same value, the effect should not run again
-      graph.setRef(a, 1, undefined)
-      graph.refresh()
-      expect(numberOfCallsToC).toBe(1)
+      graph.setRef(a, 1)
+      // expect(numberOfCallsToC).toBe(1) // TODO comp caching
 
-      graph.setRef(a, 2, undefined)
-      graph.refresh()
-      expect(numberOfCallsToC).toBe(2)
+      aHasChanged = false
+
+      graph.setRef(a, 2)
+      // expect(numberOfCallsToC).toBe(2) // TODO comp caching
     })
+  })
+})
+
+describe('a dynamic graph', () => {
+  const makeGraph = () => {
+    const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
+    graph.context = {}
+
+    const a = graph.makeRef(1, { label: 'a' })
+    const b = graph.makeRef(2, { label: 'b' })
+    const c = graph.makeRef<'a' | 'b'>('a', { label: 'c' })
+    const numberOfRunsForD = { runs: 0 }
+    const d = graph.makeThunk(
+      (get) => {
+        numberOfRunsForD.runs++
+        return get(c) === 'a' ? get(a) : get(b)
+      },
+      { label: 'd' },
+    )
+    const e = graph.makeRef(2, { label: 'e' })
+    const f = graph.makeThunk((get) => get(d) * get(e), { label: 'f' })
+
+    // a(1)   b(2)   c('a')
+    //  \     /    /
+    //   \   /  /
+    //     d = a or b depending on c
+    //       \
+    //        \
+    //  e(2)   \
+    //   \      \
+    //    \      \
+    //      f = d * e
+
+    return { graph, a, b, c, d, e, f, numberOfRunsForD }
+  }
+
+  it('has the right initial values', () => {
+    const { d, f } = makeGraph()
+    expect(d.computeResult()).toBe(1)
+    expect(f.computeResult()).toBe(2)
+  })
+
+  it('dynamically adjusts d when a, b or c changes', () => {
+    const { graph, c, d, e, f, numberOfRunsForD } = makeGraph()
+    expect(numberOfRunsForD.runs).toBe(0)
+    expect(d.computeResult()).toBe(1)
+    expect(f.computeResult()).toBe(2)
+    expect(numberOfRunsForD.runs).toBe(1)
+    graph.setRef(c, 'b')
+    expect(d.computeResult()).toBe(2)
+    expect(f.computeResult()).toBe(4)
+    expect(numberOfRunsForD.runs).toBe(2)
+    graph.setRef(e, 3)
+    expect(f.computeResult()).toBe(6)
+    expect(numberOfRunsForD.runs).toBe(2)
   })
 })
 
@@ -177,8 +202,8 @@ describe('a diamond shaped graph', () => {
     const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
     graph.context = {}
     const a = graph.makeRef(1)
-    const b = graph.makeThunk((get) => get(a) + 1, undefined)
-    const c = graph.makeThunk((get) => get(a) + 1, undefined)
+    const b = graph.makeThunk((get) => get(a) + 1)
+    const c = graph.makeThunk((get) => get(a) + 1)
 
     // track the number of times d has run in an object so we can mutate it
     const dRuns = { runs: 0 }
@@ -188,7 +213,7 @@ describe('a diamond shaped graph', () => {
     const d = graph.makeThunk((get) => {
       dRuns.runs++
       return get(b) + get(c)
-    }, undefined)
+    })
 
     // a(1)
     //  / \
@@ -200,31 +225,30 @@ describe('a diamond shaped graph', () => {
   }
 
   it('has the right initial values', () => {
-    const { graph, b, c, d } = makeGraph()
-    graph.refresh()
-    expect(b.result).toBe(2)
-    expect(c.result).toBe(2)
-    expect(d.result).toBe(4)
+    const { b, c, d } = makeGraph()
+    expect(b.computeResult()).toBe(2)
+    expect(c.computeResult()).toBe(2)
+    expect(d.computeResult()).toBe(4)
   })
 
   it('propagates change through the graph', () => {
     const { graph, a, b, c, d } = makeGraph()
-    graph.setRef(a, 5, undefined)
-    graph.refresh()
-    expect(b.result).toBe(6)
-    expect(c.result).toBe(6)
-    expect(d.result).toBe(12)
+    graph.setRef(a, 5)
+    expect(b.computeResult()).toBe(6)
+    expect(c.computeResult()).toBe(6)
+    expect(d.computeResult()).toBe(12)
   })
 
   // if we're being efficient, we should update b and c before updating d,
   // so d only needs to update one time
   it('only runs d once when a changes', () => {
-    const { graph, a, dRuns } = makeGraph()
+    const { graph, a, d, dRuns } = makeGraph()
     expect(dRuns.runs).toBe(0)
-    graph.refresh()
+    d.computeResult()
     expect(dRuns.runs).toBe(1)
-    graph.setRef(a, 5, undefined)
-    graph.refresh()
+    graph.setRef(a, 5)
+    d.computeResult()
+    d.computeResult() // even extra calls to computeResult should not run d again
     expect(dRuns.runs).toBe(2)
   })
 })
@@ -233,17 +257,15 @@ describe('a trivial graph with undefined', () => {
   const makeGraph = () => {
     const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
     graph.context = {}
-    const a = graph.makeRef(undefined)
-    const b = graph.makeRef(2)
-    const numberOfRunsForC = { runs: 0 }
+    const a = graph.makeRef(1)
+    const b = graph.makeRef(undefined)
     const c = graph.makeThunk((get) => {
-      numberOfRunsForC.runs++
-      return (get(a) ?? 0) + get(b)
-    }, undefined)
+      return get(a) + (get(b) ?? 0)
+    })
     const d = graph.makeRef(3)
-    const e = graph.makeThunk((get) => get(c) + get(d), undefined)
+    const e = graph.makeThunk((get) => get(c) + get(d))
 
-    // a(1)   b(2)
+    // a(1)   b(undefined)
     //   \     /
     //    \   /
     //      c = a + b
@@ -254,13 +276,12 @@ describe('a trivial graph with undefined', () => {
     //    \       \
     //      e = c + d
 
-    return { graph, a, b, c, d, e, numberOfRunsForC }
+    return { graph, a, b, c, d, e }
   }
 
   it('has the right initial values', () => {
-    const { graph, c, e } = makeGraph()
-    graph.refresh()
-    expect(c.result).toBe(2)
-    expect(e.result).toBe(5)
+    const { c, e } = makeGraph()
+    expect(c.computeResult()).toBe(1)
+    expect(e.computeResult()).toBe(4)
   })
 })

@@ -40,7 +40,7 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
   id = queryIdCounter++
 
   /** The key for the associated component */
-  // componentKey: ComponentKey
+  componentKey: ComponentKey = null as any
   /** Human-readable label for the query for debugging */
   abstract label: string
   /** A pointer back to the store containing this query */

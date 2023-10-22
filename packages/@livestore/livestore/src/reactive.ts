@@ -6,8 +6,8 @@
 // Effect: a side effect that runs when a value changes; return value is ignored
 // Atom: a node returning a value that can be depended on: Ref | Thunk
 
-// Super computation: Nodes that depend on a given node
-// Sub computation: Nodes that a given node depends on
+// Super computation: Nodes that depend on a given node ("downstream")
+// Sub computation: Nodes that a given node depends on ("upstream")
 
 // This vocabulary comes from the MiniAdapton paper linked below, although
 // we don't actually implement the MiniAdapton algorithm because we don't need lazy recomputation.
@@ -25,7 +25,7 @@
 
 import type { PrettifyFlat } from '@livestore/utils'
 import { pick, shouldNeverHappen } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
+import type * as otel from '@opentelemetry/api'
 import { isEqual, max, uniqueId } from 'lodash-es'
 
 import { BoundArray } from './bounded-collections.js'
@@ -39,9 +39,10 @@ export type GetAtom = <T>(atom: Atom<T, any>) => T
 export type Ref<T> = {
   _tag: 'ref'
   id: string
-  result: T
+  isDirty: false
+  previousResult: T
   height: 0
-  getResult: () => T
+  computeResult: () => T
   sub: Set<Atom<any, TODO>> // always empty
   super: Set<Atom<any, TODO> | Effect>
   label?: string
@@ -53,25 +54,31 @@ export type Ref<T> = {
 type BaseThunk<TResult, TContext> = {
   _tag: 'thunk'
   id: string
+  isDirty: boolean
   height: number
-  getResult: (get: GetAtom, addDebugInfo: (debugInfo: any) => void, ctx: TContext) => TResult
+  computeResult: () => TResult
+  previousResult: TResult | NOT_REFRESHED_YET
   sub: Set<Atom<any, TContext>>
   super: Set<Atom<any, TContext> | Effect>
   label?: string
   /** Container for meta information (e.g. the LiveStore Store) */
   meta?: any
   equal: (a: TResult, b: TResult) => boolean
+
+  __getResult: any
 }
 
-type UnevaluatedThunk<T, TContext> = BaseThunk<T, TContext> & { result: NOT_REFRESHED_YET }
-export type Thunk<T, TContext> = BaseThunk<T, TContext> & { result: T }
+type UnevaluatedThunk<T, TContext> = BaseThunk<T, TContext>
+// & { result: NOT_REFRESHED_YET }
+export type Thunk<T, TContext> = BaseThunk<T, TContext>
+// & { result: T }
 
 export type Atom<T, TContext> = Ref<T> | Thunk<T, TContext>
 
 export type Effect = {
   _tag: 'effect'
   id: string
-  doEffect: (get: GetAtom) => void
+  doEffect: () => void
   sub: Set<Atom<any, TODO>>
 }
 
@@ -127,7 +134,7 @@ export const unknownRefreshReason = () => {
 
 export type SerializedAtom = Readonly<
   PrettifyFlat<
-    Pick<Atom<unknown, TODO>, '_tag' | 'height' | 'id' | 'label' | 'meta' | 'result'> & {
+    Pick<Atom<unknown, TODO>, '_tag' | 'height' | 'id' | 'label' | 'meta'> & {
       sub: string[]
       super: string[]
     }
@@ -138,27 +145,27 @@ export type SerializedEffect = Readonly<PrettifyFlat<Pick<Effect, '_tag' | 'id'>
 
 type ReactiveGraphSnapshot = {
   readonly atoms: SerializedAtom[]
-  readonly effects: SerializedEffect[]
+  // readonly effects: SerializedEffect[]
   /** IDs of atoms and effects that are dirty */
-  readonly dirtyNodes: string[]
+  // readonly dirtyNodes: string[]
 }
 
 const uniqueNodeId = () => uniqueId('node-')
 const uniqueRefreshInfoId = () => uniqueId('refresh-info-')
 
 const serializeAtom = (atom: Atom<any, TODO>): SerializedAtom => ({
-  ...pick(atom, ['_tag', 'height', 'id', 'label', 'meta', 'result']),
+  ...pick(atom, ['_tag', 'height', 'id', 'label', 'meta']),
   sub: Array.from(atom.sub).map((a) => a.id),
   super: Array.from(atom.super).map((a) => a.id),
 })
 
 const serializeEffect = (effect: Effect): SerializedEffect => pick(effect, ['_tag', 'id'])
 
-export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo extends Taggable, TContext> {
+export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo extends Taggable, TContext = {}> {
   private atoms: Set<Atom<any, TContext>> = new Set()
-  private effects: Set<Effect> = new Set()
+  // private effects: Set<Effect> = new Set()
   private otelTracer: otel.Tracer
-  readonly dirtyNodes: Set<Atom<any, TContext> | Effect> = new Set()
+  // readonly dirtyNodes: Set<Atom<any, TContext> | Effect> = new Set()
   effectsWrapper: (runEffects: () => void) => void
 
   context: TContext | undefined
@@ -176,9 +183,10 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     const ref: Ref<T> = {
       _tag: 'ref',
       id: uniqueNodeId(),
-      result: val,
+      isDirty: false,
+      previousResult: val,
       height: 0,
-      getResult: () => ref.result,
+      computeResult: () => ref.previousResult,
       sub: new Set(),
       super: new Set(),
       label: options?.label,
@@ -192,7 +200,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
   }
 
   makeThunk<T>(
-    getResult: (get: GetAtom, addDebugInfo: (debugInfo: TDebugThunkInfo) => void, ctx: TContext) => T,
+    getResult_: (get: GetAtom, addDebugInfo: (debugInfo: TDebugThunkInfo) => void, ctx: TContext) => T,
     options?:
       | {
           label?: string
@@ -203,21 +211,72 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
         }
       | undefined,
   ): Thunk<T, TContext> {
+    // const computeResult = (): T => {
+    //   const getAtom = (atom: Atom<T, any>): T => {
+    //     const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
+    //     if (atom.isDirty) {
+    //       console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
+    //       const result = atom.computeResult()
+    //       atom.isDirty = false
+    //       atom.previousResult = result
+    //       return result
+    //     } else {
+    //       console.log('atom is clean', atom.id, atom.label ?? '', atom._tag, __getResult)
+    //       return atom.previousResult as T
+    //     }
+    //   }
+
+    // let resultChanged = false
+    // const debugInfoForAtom = {
+    //   atom: serializeAtom(null as TODO),
+    //   resultChanged,
+    //   // debugInfo: unknownRefreshReason() as TDebugThunkInfo,
+    //   debugInfo: { _tag: 'unknown' } as TDebugThunkInfo,
+    //   durationMs: 0,
+    // } satisfies AtomDebugInfo<TDebugThunkInfo>
+
+    const addDebugInfo = (debugInfo: TDebugThunkInfo) => {
+      // debugInfoForAtom.debugInfo = debugInfo
+    }
+
+    //       debugInfoForRefreshedAtoms.push(debugInfoForAtom)
+
+    // return getResult_(getAtom as GetAtom, addDebugInfo, this.context!)
+    // }
+
     const thunk: UnevaluatedThunk<T, TContext> = {
       _tag: 'thunk',
       id: uniqueNodeId(),
-      result: NOT_REFRESHED_YET,
+      previousResult: NOT_REFRESHED_YET,
+      isDirty: true,
       height: 0,
-      getResult,
+      computeResult: () => {
+        if (thunk.isDirty) {
+          // Reset previous subcomputations as we're about to re-add them as part of the `doEffect` call below
+          thunk.sub = new Set()
+
+          const compute_ = (atom: Atom<T, unknown>) => {
+            this.addEdge(thunk, atom)
+            return compute(atom)
+          }
+          const result = getResult_(compute_ as GetAtom, addDebugInfo, this.context!)
+          thunk.isDirty = false
+          thunk.previousResult = result
+          return result
+        } else {
+          return thunk.previousResult as T
+        }
+      },
       sub: new Set(),
       super: new Set(),
       label: options?.label,
       meta: options?.meta,
       equal: options?.equal ?? isEqual,
+      __getResult: getResult_,
     }
 
     this.atoms.add(thunk)
-    this.dirtyNodes.add(thunk)
+    // this.dirtyNodes.add(thunk)
 
     const debugRefreshReason = options?.debugRefreshReason ?? { _tag: 'makeThunk', label: options?.label }
 
@@ -248,11 +307,11 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       this.removeEdge(node, subComp)
     }
 
-    if (node._tag === 'effect') {
-      this.effects.delete(node)
-    } else {
-      this.atoms.delete(node)
-    }
+    // if (node._tag === 'effect') {
+    //   this.effects.delete(node)
+    // } else {
+    //   this.atoms.delete(node)
+    // }
   }
 
   makeEffect(
@@ -267,12 +326,21 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     const effect: Effect = {
       _tag: 'effect',
       id: uniqueNodeId(),
-      doEffect,
+      doEffect: () => {
+        // Reset previous subcomputations as we're about to re-add them as part of the `doEffect` call below
+        effect.sub = new Set()
+
+        const getAtom = (atom: Atom<any, unknown>) => {
+          this.addEdge(effect, atom)
+          return compute(atom)
+        }
+        doEffect(getAtom as GetAtom)
+      },
       sub: new Set(),
     }
 
-    this.effects.add(effect)
-    this.dirtyNodes.add(effect)
+    // this.effects.add(effect)
+    // this.dirtyNodes.add(effect)
 
     const debugRefreshReason = options?.debugRefreshReason ?? { _tag: 'makeEffect', label: options?.label }
 
@@ -300,8 +368,16 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       | undefined,
   ) {
     const { debugRefreshReason } = options ?? {}
-    ref.result = val
-    this.dirtyNodes.add(ref)
+    ref.previousResult = val
+
+    const effectsToRefresh = new Set<Effect>()
+    markSuperCompDirtyRec(ref, effectsToRefresh)
+
+    this.effectsWrapper(() => {
+      for (const effect of effectsToRefresh) {
+        effect.doEffect()
+      }
+    })
 
     const refreshDebugInfo: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo> = {
       id: uniqueRefreshInfoId(),
@@ -324,10 +400,18 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       | undefined,
   ) {
     const debugRefreshReason = options?.debugRefreshReason
+    const effectsToRefresh = new Set<Effect>()
     for (const [ref, val] of refs) {
-      ref.result = val
-      this.dirtyNodes.add(ref)
+      ref.previousResult = val
+
+      markSuperCompDirtyRec(ref, effectsToRefresh)
     }
+
+    this.effectsWrapper(() => {
+      for (const effect of effectsToRefresh) {
+        effect.doEffect()
+      }
+    })
 
     const refreshDebugInfo: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo> = {
       id: uniqueRefreshInfoId(),
@@ -341,22 +425,22 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     this.debugRefreshInfos.push(refreshDebugInfo)
   }
 
-  get<T>(atom: Atom<T, TContext>, context: Atom<any, TContext> | Effect): T {
-    // Autotracking: if we're getting the value of an atom,
-    // that means it's a subcomputation for the currently refreshing atom.
-    this.addEdge(context, atom)
+  // get<T>(atom: Atom<T, TContext>, context: Atom<any, TContext> | Effect): T {
+  //   // Autotracking: if we're getting the value of an atom,
+  //   // that means it's a subcomputation for the currently refreshing atom.
+  //   this.addEdge(context, atom)
 
-    const dependencyMightBeStale = context._tag !== 'effect' && context.height <= atom.height
-    const dependencyNotRefreshedYet = atom.result === NOT_REFRESHED_YET
+  //   const dependencyMightBeStale = context._tag !== 'effect' && context.height <= atom.height
+  //   const dependencyNotRefreshedYet = atom.result === NOT_REFRESHED_YET
 
-    if (dependencyMightBeStale || dependencyNotRefreshedYet) {
-      throw new DependencyNotReadyError(
-        `${this.label(context)} referenced dependency ${this.label(atom)} which isn't ready`,
-      )
-    }
+  //   if (dependencyMightBeStale || dependencyNotRefreshedYet) {
+  //     throw new DependencyNotReadyError(
+  //       `${this.label(context)} referenced dependency ${this.label(atom)} which isn't ready`,
+  //     )
+  //   }
 
-    return atom.result
-  }
+  //   return atom.result
+  // }
 
   /**
    * Update the graph to be consistent with the current values of the root atoms.
@@ -365,136 +449,136 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
    *
    * @param roots Root atoms to start the refresh from
    */
-  refresh(
-    options?:
-      | {
-          otelHint?: string
-          debugRefreshReason?: RefreshReasonWithGenericReasons<TDebugRefreshReason>
-        }
-      | undefined,
-    otelContext: otel.Context = otel.context.active(),
-  ): void {
-    const otelHint = options?.otelHint ?? ''
-    const debugRefreshReason = options?.debugRefreshReason
+  // refresh(
+  //   options?:
+  //     | {
+  //         otelHint?: string
+  //         debugRefreshReason?: RefreshReasonWithGenericReasons<TDebugRefreshReason>
+  //       }
+  //     | undefined,
+  //   otelContext: otel.Context = otel.context.active(),
+  // ): void {
+  //   const otelHint = options?.otelHint ?? ''
+  //   const debugRefreshReason = options?.debugRefreshReason
 
-    const roots = [...this.dirtyNodes]
+  //   const roots = [...this.dirtyNodes]
 
-    const debugInfoForRefreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[] = []
+  //   const debugInfoForRefreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[] = []
 
-    // if (otelHint.includes('tableName')) {
-    //   console.log('refresh', otelHint, { shouldTrace })
-    // }
+  //   // if (otelHint.includes('tableName')) {
+  //   //   console.log('refresh', otelHint, { shouldTrace })
+  //   // }
 
-    this.otelTracer.startActiveSpan(`LiveStore.refresh:${otelHint}`, {}, otelContext, (span) => {
-      const atomsToRefresh = roots.filter(isAtom)
-      const effectsToRun = new Set(roots.filter(isEffect))
+  //   this.otelTracer.startActiveSpan(`LiveStore.refresh:${otelHint}`, {}, otelContext, (span) => {
+  //     const atomsToRefresh = roots.filter(isAtom)
+  //     const effectsToRun = new Set(roots.filter(isEffect))
 
-      span.setAttribute('livestore.hint', otelHint)
-      span.setAttribute('livestore.rootsCount', roots.length)
-      // span.setAttribute('sstack', new Error().stack!)
+  //     span.setAttribute('livestore.hint', otelHint)
+  //     span.setAttribute('livestore.rootsCount', roots.length)
+  //     // span.setAttribute('sstack', new Error().stack!)
 
-      // Sort in topological order, starting with minimum height
-      while (atomsToRefresh.length > 0) {
-        atomsToRefresh.sort((a, b) => a.height - b.height)
-        const atomToRefresh = atomsToRefresh.shift()!
+  //     // Sort in topological order, starting with minimum height
+  //     while (atomsToRefresh.length > 0) {
+  //       atomsToRefresh.sort((a, b) => a.height - b.height)
+  //       const atomToRefresh = atomsToRefresh.shift()!
 
-        // Recompute the value
-        let resultChanged = false
-        const debugInfoForAtom = {
-          atom: serializeAtom(atomToRefresh),
-          resultChanged,
-          // debugInfo: unknownRefreshReason() as TDebugThunkInfo,
-          debugInfo: { _tag: 'unknown' } as TDebugThunkInfo,
-          durationMs: 0,
-        } satisfies AtomDebugInfo<TDebugThunkInfo>
-        try {
-          atomToRefresh.sub = new Set()
-          const beforeTimestamp = performance.now()
-          const newResult = atomToRefresh.getResult(
-            (atom) => this.get(atom, atomToRefresh),
-            (debugInfo) => {
-              debugInfoForAtom.debugInfo = debugInfo
-            },
-            this.context ?? shouldNeverHappen(`No context provided yet for ReactiveGraph`),
-          )
-          const afterTimestamp = performance.now()
-          debugInfoForAtom.durationMs = afterTimestamp - beforeTimestamp
+  //       // Recompute the value
+  //       let resultChanged = false
+  //       const debugInfoForAtom = {
+  //         atom: serializeAtom(atomToRefresh),
+  //         resultChanged,
+  //         // debugInfo: unknownRefreshReason() as TDebugThunkInfo,
+  //         debugInfo: { _tag: 'unknown' } as TDebugThunkInfo,
+  //         durationMs: 0,
+  //       } satisfies AtomDebugInfo<TDebugThunkInfo>
+  //       try {
+  //         atomToRefresh.sub = new Set()
+  //         const beforeTimestamp = performance.now()
+  //         const newResult = atomToRefresh.getResult(
+  //           (atom) => this.get(atom, atomToRefresh),
+  //           (debugInfo) => {
+  //             debugInfoForAtom.debugInfo = debugInfo
+  //           },
+  //           this.context ?? shouldNeverHappen(`No context provided yet for ReactiveGraph`),
+  //         )
+  //         const afterTimestamp = performance.now()
+  //         debugInfoForAtom.durationMs = afterTimestamp - beforeTimestamp
 
-          // Determine if the result changed to do early cutoff and avoid further unnecessary updates.
-          // Refs never depend on anything, so if a ref is being refreshed it definitely changed.
-          // For thunks, we use a deep equality check.
-          resultChanged =
-            atomToRefresh._tag === 'ref' ||
-            (atomToRefresh._tag === 'thunk' && !atomToRefresh.equal(atomToRefresh.result, newResult))
+  //         // Determine if the result changed to do early cutoff and avoid further unnecessary updates.
+  //         // Refs never depend on anything, so if a ref is being refreshed it definitely changed.
+  //         // For thunks, we use a deep equality check.
+  //         resultChanged =
+  //           atomToRefresh._tag === 'ref' ||
+  //           (atomToRefresh._tag === 'thunk' && !atomToRefresh.equal(atomToRefresh.result, newResult))
 
-          if (resultChanged) {
-            atomToRefresh.result = newResult
-          }
+  //         if (resultChanged) {
+  //           atomToRefresh.result = newResult
+  //         }
 
-          this.dirtyNodes.delete(atomToRefresh)
-        } catch (e) {
-          if (e instanceof DependencyNotReadyError) {
-            // If we hit a dependency that wasn't ready yet,
-            // abort this recomputation and try again later.
-            if (!atomsToRefresh.includes(atomToRefresh)) {
-              atomsToRefresh.push(atomToRefresh)
-            }
-          } else {
-            throw e
-          }
-        }
+  //         this.dirtyNodes.delete(atomToRefresh)
+  //       } catch (e) {
+  //         if (e instanceof DependencyNotReadyError) {
+  //           // If we hit a dependency that wasn't ready yet,
+  //           // abort this recomputation and try again later.
+  //           if (!atomsToRefresh.includes(atomToRefresh)) {
+  //             atomsToRefresh.push(atomToRefresh)
+  //           }
+  //         } else {
+  //           throw e
+  //         }
+  //       }
 
-        debugInfoForRefreshedAtoms.push(debugInfoForAtom)
+  //       debugInfoForRefreshedAtoms.push(debugInfoForAtom)
 
-        if (!resultChanged) {
-          continue
-        }
+  //       if (!resultChanged) {
+  //         continue
+  //       }
 
-        // Schedule supercomputations
-        for (const superComp of atomToRefresh.super) {
-          switch (superComp._tag) {
-            case 'ref':
-            case 'thunk': {
-              if (!atomsToRefresh.includes(superComp)) {
-                atomsToRefresh.push(superComp)
-              }
-              break
-            }
-            case 'effect': {
-              effectsToRun.add(superComp)
-              break
-            }
-          }
-        }
-      }
+  //       // Schedule supercomputations
+  //       for (const superComp of atomToRefresh.super) {
+  //         switch (superComp._tag) {
+  //           case 'ref':
+  //           case 'thunk': {
+  //             if (!atomsToRefresh.includes(superComp)) {
+  //               atomsToRefresh.push(superComp)
+  //             }
+  //             break
+  //           }
+  //           case 'effect': {
+  //             effectsToRun.add(superComp)
+  //             break
+  //           }
+  //         }
+  //       }
+  //     }
 
-      this.effectsWrapper(() => {
-        for (const effect of effectsToRun) {
-          effect.doEffect((atom: Atom<any, TContext>) => this.get(atom, effect))
-          this.dirtyNodes.delete(effect)
-        }
-      })
+  //     this.effectsWrapper(() => {
+  //       for (const effect of effectsToRun) {
+  //         effect.doEffect((atom: Atom<any, TContext>) => this.get(atom, effect))
+  //         this.dirtyNodes.delete(effect)
+  //       }
+  //     })
 
-      span.end()
+  //     span.end()
 
-      const spanDurationMs = getDurationMsFromSpan(span)
+  //     const spanDurationMs = getDurationMsFromSpan(span)
 
-      const refreshDebugInfo: RefreshDebugInfo<
-        RefreshReasonWithGenericReasons<TDebugRefreshReason>,
-        TDebugThunkInfo
-      > = {
-        id: uniqueRefreshInfoId(),
-        reason: debugRefreshReason ?? unknownRefreshReason(),
-        refreshedAtoms: debugInfoForRefreshedAtoms,
-        skippedRefresh: false,
-        durationMs: spanDurationMs,
-        completedTimestamp: Date.now(),
-        graphSnapshot: this.getSnapshot(),
-      }
+  //     const refreshDebugInfo: RefreshDebugInfo<
+  //       RefreshReasonWithGenericReasons<TDebugRefreshReason>,
+  //       TDebugThunkInfo
+  //     > = {
+  //       id: uniqueRefreshInfoId(),
+  //       reason: debugRefreshReason ?? unknownRefreshReason(),
+  //       refreshedAtoms: debugInfoForRefreshedAtoms,
+  //       skippedRefresh: false,
+  //       durationMs: spanDurationMs,
+  //       completedTimestamp: Date.now(),
+  //       graphSnapshot: this.getSnapshot(),
+  //     }
 
-      this.debugRefreshInfos.push(refreshDebugInfo)
-    })
-  }
+  //     this.debugRefreshInfos.push(refreshDebugInfo)
+  //   })
+  // }
 
   label(atom: Atom<any, TContext> | Effect) {
     if (atom._tag === 'effect') {
@@ -534,11 +618,36 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
 
   private getSnapshot = (): ReactiveGraphSnapshot => ({
     atoms: Array.from(this.atoms).map(serializeAtom),
-    effects: Array.from(this.effects).map(serializeEffect),
-    dirtyNodes: Array.from(this.dirtyNodes).map((a) => a.id),
+    // effects: Array.from(this.effects).map(serializeEffect),
+    // dirtyNodes: Array.from(this.dirtyNodes).map((a) => a.id),
   })
 }
 
-const isAtom = <T, TContext>(a: Atom<T, TContext> | Effect): a is Atom<T, TContext> =>
-  a._tag === 'ref' || a._tag === 'thunk'
-const isEffect = <T, TContext>(a: Atom<T, TContext> | Effect): a is Effect => a._tag === 'effect'
+// const isAtom = <T, TContext>(a: Atom<T, TContext> | Effect): a is Atom<T, TContext> =>
+//   a._tag === 'ref' || a._tag === 'thunk'
+// const isEffect = <T, TContext>(a: Atom<T, TContext> | Effect): a is Effect => a._tag === 'effect'
+
+const compute = <T>(atom: Atom<T, any>): T => {
+  const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
+  if (atom.isDirty) {
+    // console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
+    const result = atom.computeResult()
+    atom.isDirty = false
+    atom.previousResult = result
+    return result
+  } else {
+    // console.log('atom is clean', atom.id, atom.label ?? '', atom._tag, __getResult)
+    return atom.previousResult as T
+  }
+}
+
+const markSuperCompDirtyRec = <T>(atom: Atom<T, any>, effectsToRefresh: Set<Effect>) => {
+  for (const superComp of atom.super) {
+    if (superComp._tag === 'thunk' || superComp._tag === 'ref') {
+      superComp.isDirty = true
+      markSuperCompDirtyRec(superComp, effectsToRefresh)
+    } else {
+      effectsToRefresh.add(superComp)
+    }
+  }
+}

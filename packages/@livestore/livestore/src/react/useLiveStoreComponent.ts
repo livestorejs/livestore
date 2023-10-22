@@ -305,8 +305,8 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
                   : defaultComponentState,
               )
           }
-          store.graph.refresh({}, otelContext)
-          const initialComponentState = state$.results$!.result
+          // store.graph.refresh({}, otelContext)
+          const initialComponentState = state$.results$.computeResult()
 
           const queries = generateQueries({
             state$: state$,
@@ -317,12 +317,12 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           for (const [name, query] of Object.entries(queries)) {
             query.label = name
           }
-          store.graph.refresh({}, otelContext)
+          // store.graph.refresh({}, otelContext)
           const initialQueryResults = mapValues(
             queries,
             (query) => {
               // query.activate(store)
-              const res = query.results$!.result
+              const res = query.results$.computeResult()
               // query.deactivate()
               return res
             },

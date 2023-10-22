@@ -96,7 +96,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
 
     this.queryString$ = queryString$
 
-    label = label ?? queryString$.result
+    label = label ?? queryString$.computeResult()
     this.label = label
     span.updateName(`querySQL:${label}`)
 
@@ -169,7 +169,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
       fn: (get) => {
         const results = get(this.results$!)
         if (results.length === 0 && args?.defaultValue === undefined) {
-          const queryLabel = this._tag === 'sql' ? this.queryString$!.result : this.label
+          const queryLabel = this._tag === 'sql' ? this.queryString$!.computeResult() : this.label
           throw new Error(`Expected query ${queryLabel} to return at least one result`)
         }
         return results[0] ?? args!.defaultValue!
@@ -301,11 +301,4 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
     //   },
     // )
   }
-
-  // deactivate = () => {
-  //   super.deactivate()
-
-  //   this.queryString$ = undefined
-  //   // this.results$ = undefined
-  // }
 }
