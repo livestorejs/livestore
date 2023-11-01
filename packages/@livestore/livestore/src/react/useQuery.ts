@@ -31,7 +31,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
       `LiveStore:useQuery:${query.label}`,
       // `LiveStore:useQuery:${labelForKey(query.componentKey)}:${query.label}`,
       { attributes: { label: query.label } },
-      query.otelContext,
+      store.otel.queriesSpanContext,
       (span) => {
         const cancel = store.subscribe(
           query,

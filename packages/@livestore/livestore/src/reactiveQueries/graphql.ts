@@ -1,25 +1,23 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
-import type { GetAtom, Thunk } from '../reactive.js'
-import { type BaseGraphQLContext, type GetAtomResult, makeGetAtomResult, type Store } from '../store.js'
-import { LiveStoreQueryBase } from './base-class.js'
+import type { Thunk } from '../reactive.js'
+import { type BaseGraphQLContext, type Store } from '../store.js'
+import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import { type DbContext, dbGraph } from './graph.js'
 import { LiveStoreJSQuery } from './js.js'
 
 export const queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
   document: DocumentNode<TResult, TVariableValues>,
   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
-  { label, otelContext, otelTracer }: { label?: string; otelContext?: otel.Context; otelTracer?: otel.Tracer } = {},
+  { label }: { label?: string } = {},
 ) =>
   new LiveStoreGraphQLQuery({
     document,
     genVariableValues,
     label: label ?? 'graphql-todo',
-    otelContext: otelContext ?? otel.context.active(),
-    otelTracer: otelTracer ?? makeNoopTracer(),
   })
 
 export class LiveStoreGraphQLQuery<
@@ -39,8 +37,6 @@ export class LiveStoreGraphQLQuery<
 
   label: string
 
-  otelContext: otel.Context
-
   // schema: graphql.GraphQLSchema
 
   // context: TContext
@@ -49,9 +45,7 @@ export class LiveStoreGraphQLQuery<
     document,
     // schema,
     label,
-    genVariableValues,
-    // context,
-    ...baseProps
+    genVariableValues, // context,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
@@ -59,27 +53,14 @@ export class LiveStoreGraphQLQuery<
     // componentKey: ComponentKey
     // schema: graphql.GraphQLSchema
     label: string
-    otelContext: otel.Context
-    otelTracer: otel.Tracer
   }) {
-    super(baseProps)
+    super()
 
     // this.schema = schema
     // this.context = context
 
-    const { otelTracer } = baseProps
-
     this.label = label
     this.document = document
-    this.otelContext = baseProps.otelContext
-
-    const span = otelTracer.startSpan(
-      `queryGraphQL:`, // NOTE span name will be overridden further down
-      {},
-      baseProps.otelContext,
-    )
-
-    const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     // if (context === undefined) {
     //   return shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
@@ -87,13 +68,11 @@ export class LiveStoreGraphQLQuery<
 
     const labelWithDefault = label ?? graphql.getOperationAST(document)?.name?.value ?? 'graphql'
 
-    span.updateName(`queryGraphQL:${labelWithDefault}`)
-
     // TODO don't even create a thunk if variables are static
     const variableValues$ = dbGraph.makeThunk(
-      (get) => {
+      (get, _addDebugInfo, { rootOtelContext }, otelContext) => {
         if (typeof genVariableValues === 'function') {
-          return genVariableValues(makeGetAtomResult(get))
+          return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
         } else {
           return genVariableValues
         }
@@ -107,12 +86,13 @@ export class LiveStoreGraphQLQuery<
     // const resultsLabel = `${labelWithDefault}:results` + (this.temporaryQueries ? ':temp' : '')
     const resultsLabel = `${labelWithDefault}:results`
     this.results$ = dbGraph.makeThunk<TResult>(
-      (get, addDebugInfo, { store }) => {
+      (get, addDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
         const variableValues = get(variableValues$)
         const { result, queriedTables } = this.queryOnce({
           document,
           variableValues,
-          otelContext,
+          otelContext: otelContext ?? rootOtelContext,
+          otelTracer,
           store: store as Store<TContext>,
         })
 
@@ -139,22 +119,22 @@ export class LiveStoreGraphQLQuery<
   pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
     new LiveStoreJSQuery({
       fn: (get) => {
-        const results = get(this.results$!)
+        const results = get(this.results$)
         return fn(results, get)
       },
       label: `${this.label}:js`,
-      otelContext: this.otelContext,
-      otelTracer: this.otelTracer,
     })
 
   queryOnce = ({
     document,
     otelContext,
+    otelTracer,
     variableValues,
     store,
   }: {
     document: graphql.DocumentNode
     otelContext: otel.Context
+    otelTracer: otel.Tracer
     variableValues: TVariableValues
     store: Store<TContext>
   }) => {
@@ -164,11 +144,10 @@ export class LiveStoreGraphQLQuery<
       store.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
     const context =
       store.graphQLContext ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
-    const tracer = this.otelTracer
 
     const operationName = graphql.getOperationAST(document)?.name?.value
 
-    return tracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, otelContext, (span) => {
+    return otelTracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, otelContext, (span) => {
       try {
         span.setAttribute('graphql.variables', JSON.stringify(variableValues))
         span.setAttribute('graphql.query', graphql.print(document))

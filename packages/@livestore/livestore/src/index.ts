@@ -1,12 +1,5 @@
 export { Store, createStore } from './store.js'
-export type {
-  LiveStoreQuery,
-  GetAtomResult,
-  BaseGraphQLContext,
-  QueryResult,
-  QueryDebugInfo,
-  RefreshReason,
-} from './store.js'
+export type { LiveStoreQuery, BaseGraphQLContext, QueryResult, QueryDebugInfo, RefreshReason } from './store.js'
 
 export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
 
@@ -28,9 +21,10 @@ export type {
   SerializedAtom,
   SerializedEffect,
 } from './reactive.js'
-export { type LiveStoreJSQuery } from './reactiveQueries/js.js'
+export { type LiveStoreJSQuery, queryJS } from './reactiveQueries/js.js'
 export { type LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
 export { type LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
+export { type GetAtomResult } from './reactiveQueries/base-class.js'
 
 export { labelForKey } from './componentKey.js'
 export type { ComponentKey } from './componentKey.js'

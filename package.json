@@ -12,6 +12,7 @@
     "test": "CI=true pnpm --parallel run test"
   },
   "resolutions": {
+    "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
     "effect": "2.0.0-next.48",
     "effect-db-schema": "workspace:*"

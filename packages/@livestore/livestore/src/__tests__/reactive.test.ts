@@ -1,11 +1,10 @@
-import { makeNoopTracer } from '@livestore/utils'
 import { describe, expect, it } from 'vitest'
 
 import { ReactiveGraph } from '../reactive.js'
 
 describe('a trivial graph', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
+    const graph = new ReactiveGraph({})
     graph.context = {}
     const a = graph.makeRef(1, { label: 'a' })
     const b = graph.makeRef(2, { label: 'b' })
@@ -144,7 +143,7 @@ describe('a trivial graph', () => {
 
 describe('a dynamic graph', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
+    const graph = new ReactiveGraph({})
     graph.context = {}
 
     const a = graph.makeRef(1, { label: 'a' })
@@ -199,7 +198,7 @@ describe('a dynamic graph', () => {
 
 describe('a diamond shaped graph', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
+    const graph = new ReactiveGraph({})
     graph.context = {}
     const a = graph.makeRef(1)
     const b = graph.makeThunk((get) => get(a) + 1)
@@ -255,7 +254,7 @@ describe('a diamond shaped graph', () => {
 
 describe('a trivial graph with undefined', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({ otelTracer: makeNoopTracer() })
+    const graph = new ReactiveGraph({})
     graph.context = {}
     const a = graph.makeRef(1)
     const b = graph.makeRef(undefined)

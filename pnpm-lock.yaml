@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
   effect: 2.0.0-next.48
   effect-db-schema: workspace:*
@@ -78,10 +79,10 @@ importers:
         version: 0.43.2(effect@2.0.0-next.48)(fast-check@3.13.1)
       '@livestore/devtools-react':
         specifier: ^0.0.17
-        version: 0.0.17(@livestore/livestore@0.0.19)(react@18.2.0)
+        version: 0.0.17(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
-        specifier: latest
-        version: 0.0.19(fast-check@3.13.1)(react-dom@18.2.0)(react@18.2.0)
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
       effect:
         specifier: 2.0.0-next.48
         version: 2.0.0-next.48
@@ -133,10 +134,10 @@ importers:
         version: 0.43.2(effect@2.0.0-next.48)(fast-check@3.13.1)
       '@livestore/devtools-react':
         specifier: ^0.0.17
-        version: 0.0.17(@livestore/livestore@0.0.19)(react@18.2.0)
+        version: 0.0.17(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
-        specifier: latest
-        version: 0.0.19(fast-check@3.13.1)(react-dom@18.2.0)(react@18.2.0)
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
       '@livestore/utils':
         specifier: latest
         version: 0.0.19(fast-check@3.13.1)
@@ -1942,40 +1943,14 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@livestore/devtools-react@0.0.17(@livestore/livestore@0.0.19)(react@18.2.0):
+  /@livestore/devtools-react@0.0.17(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
     resolution: {integrity: sha512-PYiEe1loXflvJ0EQniUWqDK9MLYlgWcI7VqR8RCy3HkxrCe4NjpP9vOBJvTZk0qF0t0QtZAEMJpjO4hKAkwasQ==}
     peerDependencies:
-      '@livestore/livestore': '*'
+      '@livestore/livestore': workspace:*
       react: '*'
     dependencies:
-      '@livestore/livestore': 0.0.19(fast-check@3.13.1)(react-dom@18.2.0)(react@18.2.0)
+      '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.2.0
-    dev: false
-
-  /@livestore/livestore@0.0.19(fast-check@3.13.1)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-4d/tZ7uMJ6ZK1W9+imCRERgGg9pGVeBEe1Skl772HgUJ8dz2+OP1mIQjTRDosFY1t1MhjqrhvKgCtzckbd5fVQ==}
-    peerDependencies:
-      '@tauri-apps/api': ^1.4.0
-      react: ^18
-      react-dom: ^18
-    peerDependenciesMeta:
-      '@tauri-apps/api':
-        optional: true
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.8.1)
-      '@livestore/utils': 0.0.19(fast-check@3.13.1)
-      '@opentelemetry/api': 1.6.0
-      comlink: 4.4.1
-      effect-db-schema: link:packages/effect-db-schema
-      graphql: 16.8.1
-      lodash-es: 4.17.21
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-      sqlite-esm: 3.42.0-build6
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - fast-check
-      - supports-color
     dev: false
 
   /@livestore/utils@0.0.19(fast-check@3.13.1):

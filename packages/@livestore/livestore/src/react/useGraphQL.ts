@@ -70,7 +70,9 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
 
   const liveStoreQuery = React.useMemo(
     () => {
-      return queryGraphQL(document, () => variables ?? ({} as TVariables), { /* componentKey,  */ otelContext })
+      return queryGraphQL(document, () => variables ?? ({} as TVariables), {
+        /* componentKey,  */
+      })
 
       // NOTE I had to disable the caching below as still led to many problems
       // We should just implement the new query definition approach instead
@@ -112,7 +114,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
       liveStoreQuery,
       (results) => {
         if (isEqual(results, queryResultsRef.current) === false) {
-          // setQueryResults_(results)
+          setQueryResults_(results)
         }
       },
       undefined,

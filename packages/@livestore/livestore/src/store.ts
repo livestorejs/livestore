@@ -28,8 +28,6 @@ import type { Storage, StorageInit } from './storage/index.js'
 import type { Bindable, ParamsObject } from './util.js'
 import { isPromise, prepareBindValues, sql } from './util.js'
 
-export type GetAtomResult = <T>(atom: Atom<T, any> | LiveStoreJSQuery<T>) => T
-
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
   | LiveStoreJSQuery<TResult>
@@ -139,8 +137,6 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     //   effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
     //   otelTracer,
     // })
-    this.graph = dbGraph
-    this.graph.context = { store: this }
     this.schema = schema
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -152,6 +148,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
 
     const queriesSpan = otelTracer.startSpan('LiveStore:queries', {}, otelRootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
+
+    this.graph = dbGraph
+    this.graph.context = { store: this, otelTracer, rootOtelContext: otelQueriesSpanContext }
 
     this.otel = {
       tracer: otelTracer,
@@ -481,20 +480,20 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     query: ILiveStoreQuery<TResult>,
     onNewValue: (value: TResult) => void,
     onSubsubscribe?: () => void,
-    options?: { label?: string } | undefined,
+    options?: { label?: string; otelContext?: otel.Context } | undefined,
   ): (() => void) =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
       { attributes: { label: options?.label } },
-      query.otelContext,
+      options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
-        // const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$)), {
           label: `subscribe:${options?.label}`,
         })
 
-        effect.doEffect()
+        effect.doEffect(otelContext)
 
         // const subscriptionKey = uuid()
 
@@ -614,7 +613,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           }
 
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(tablesToUpdate, { debugRefreshReason })
+          this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext })
 
           if (skipRefresh === false) {
             // TODO update the graph
@@ -714,9 +713,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             writeTables: [...writeTables],
           }
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(tablesToUpdate, {
-            debugRefreshReason,
-          })
+          this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext })
 
           if (skipRefresh === false) {
             // TODO update the graph
@@ -978,18 +975,4 @@ const eventToSql = (
     typeof eventDefinition.statement === 'function' && statement.argsAlreadyBound ? {} : prepareBindValues(event.args)
 
   return { statement, bindValues }
-}
-
-export const makeGetAtomResult = (get: GetAtom) => {
-  const getAtom: GetAtomResult = (atom) => {
-    if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom)
-    // atom.activate(store)
-    const atom_ = atom.results$
-    if (atom_ === undefined) {
-      debugger
-    }
-    return get(atom.results$!)
-  }
-
-  return getAtom
 }

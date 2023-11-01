@@ -12,11 +12,12 @@ import { v4 as uuid } from 'uuid'
 import type { ComponentKey } from '../componentKey.js'
 import { labelForKey, tableNameForComponentKey } from '../componentKey.js'
 import { migrateTable } from '../migrations.js'
+import type { GetAtomResult } from '../reactiveQueries/base-class.js'
 import { type LiveStoreGraphQLQuery, queryGraphQL } from '../reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
 import { SCHEMA_META_TABLE } from '../schema.js'
-import type { BaseGraphQLContext, GetAtomResult, LiveStoreQuery, QueryResult, Store } from '../store.js'
+import type { BaseGraphQLContext, LiveStoreQuery, QueryResult, Store } from '../store.js'
 import type { Bindable } from '../util.js'
 import { sql } from '../util.js'
 import { useStore } from './LiveStoreContext.js'
@@ -174,12 +175,10 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
   const generateQueries = React.useCallback(
     ({
       state$,
-      otelContext,
       registerSubscription,
       isTemporaryQuery,
     }: {
       state$: LiveStoreJSQuery<TComponentState>
-      otelContext: otel.Context
       registerSubscription: RegisterSubscription
       isTemporaryQuery: boolean
     }) =>
@@ -191,20 +190,16 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
           // ) => store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
         ) =>
           new LiveStoreSQLQuery<T>({
-            otelContext,
-            otelTracer: store.otel.tracer,
             label: 'todo',
-            payload: {
-              genQueryString: genQuery,
-              bindValues,
-              queriedTables,
-            },
+            genQueryString: genQuery,
+            bindValues,
+            queriedTables,
           }),
         rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
           query: DocumentNode<Result, Variables>,
           genVariableValues: Variables | ((get: GetAtomResult) => Variables),
           label?: string,
-        ) => queryGraphQL(query, genVariableValues, { label, otelContext, otelTracer: store.otel.tracer }),
+        ) => queryGraphQL(query, genVariableValues, { label }),
         // rxJS: <T>(genQuery: (get: GetAtomResult) => T) => store.queryJS(genQuery, { componentKey, otelContext }),
         state$,
         subscribe: registerSubscription,
@@ -243,8 +238,8 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
       return new LiveStoreJSQuery({
         fn: () => ({}) as TComponentState,
         label: 'empty-component-state',
-        otelContext,
-        otelTracer: store.otel.tracer,
+        // otelContext,
+        // otelTracer: store.otel.tracer,
       })
     } else {
       const componentTableName = tableNameForComponentKey(componentKey)
@@ -277,12 +272,10 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
       return (
         new LiveStoreSQLQuery({
           label: `localState:query:${componentKeyLabel}`,
-          otelContext,
-          otelTracer: store.otel.tracer,
-          payload: {
-            genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
-            queriedTables: [componentTableName],
-          },
+          // otelContext,
+          // otelTracer: store.otel.tracer,
+          genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
+          queriedTables: [componentTableName],
         })
           // TODO consider to instead of just returning the default value, to write the default component state to the DB
           .pipe<TComponentState>((results) =>
@@ -300,13 +293,12 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     store._proxyDb,
     store.graph,
     store.inMemoryDB,
-    store.otel.tracer,
     store.tableRefs,
   ])
 
   const queries = React.useMemo(
-    () => generateQueries({ state$, otelContext, registerSubscription: () => {}, isTemporaryQuery: false }),
-    [generateQueries, otelContext, state$],
+    () => generateQueries({ state$, registerSubscription: () => {}, isTemporaryQuery: false }),
+    [generateQueries, state$],
   )
 
   // Step 1:
@@ -321,7 +313,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     // return store.inTempQueryContext(() => {
     // try {
     // store.graph.refresh({}, otelContext)
-    const initialComponentState = state$.run()
+    const initialComponentState = state$.run(otelContext)
 
     // const queries = generateQueries({
     //   state$: state$,
@@ -334,7 +326,9 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     }
     // store.graph.refresh({}, otelContext)
     // TODO improve typing
-    const initialQueryResults = mapValues(queries, (query) => query.run()) as unknown as QueryResults<TQueries>
+    const initialQueryResults = mapValues(queries, (query) =>
+      query.run(otelContext),
+    ) as unknown as QueryResults<TQueries>
 
     return { initialComponentState, initialQueryResults }
     // } finally {
@@ -342,7 +336,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     // }
     // })
     // })
-  }, [queries, state$])
+  }, [otelContext, queries, state$])
 
   // Now that we've computed the initial state synchronously,
   // we can set up our useState calls w/ a default value populated...

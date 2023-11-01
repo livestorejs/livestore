@@ -24,7 +24,7 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import type { PrettifyFlat } from '@livestore/utils'
-import { pick, shouldNeverHappen } from '@livestore/utils'
+import { pick } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { isEqual, max, uniqueId } from 'lodash-es'
 
@@ -34,7 +34,7 @@ import { getDurationMsFromSpan } from './otel.js'
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
 export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
 
-export type GetAtom = <T>(atom: Atom<T, any>) => T
+export type GetAtom = <T>(atom: Atom<T, any>, otelContext?: otel.Context) => T
 
 export type Ref<T> = {
   _tag: 'ref'
@@ -56,7 +56,7 @@ type BaseThunk<TResult, TContext> = {
   id: string
   isDirty: boolean
   height: number
-  computeResult: () => TResult
+  computeResult: (otelContext?: otel.Context) => TResult
   previousResult: TResult | NOT_REFRESHED_YET
   sub: Set<Atom<any, TContext>>
   super: Set<Atom<any, TContext> | Effect>
@@ -78,22 +78,14 @@ export type Atom<T, TContext> = Ref<T> | Thunk<T, TContext>
 export type Effect = {
   _tag: 'effect'
   id: string
-  doEffect: () => void
+  doEffect: (otelContext?: otel.Context) => void
   sub: Set<Atom<any, TODO>>
-}
-
-class DependencyNotReadyError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'DependencyNotReadyError'
-  }
 }
 
 export type Taggable<T extends string = string> = { _tag: T }
 
 export type ReactiveGraphOptions = {
   effectsWrapper?: (runEffects: () => void) => void
-  otelTracer: otel.Tracer
 }
 
 export type AtomDebugInfo<TDebugThunkInfo extends Taggable> = {
@@ -164,7 +156,6 @@ const serializeEffect = (effect: Effect): SerializedEffect => pick(effect, ['_ta
 export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo extends Taggable, TContext = {}> {
   private atoms: Set<Atom<any, TContext>> = new Set()
   // private effects: Set<Effect> = new Set()
-  private otelTracer: otel.Tracer
   // readonly dirtyNodes: Set<Atom<any, TContext> | Effect> = new Set()
   effectsWrapper: (runEffects: () => void) => void
 
@@ -176,7 +167,6 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
 
   constructor(options: ReactiveGraphOptions) {
     this.effectsWrapper = options?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
-    this.otelTracer = options.otelTracer
   }
 
   makeRef<T>(val: T, options?: { label?: string; meta?: unknown; equal?: (a: T, b: T) => boolean }): Ref<T> {
@@ -200,7 +190,12 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
   }
 
   makeThunk<T>(
-    getResult_: (get: GetAtom, addDebugInfo: (debugInfo: TDebugThunkInfo) => void, ctx: TContext) => T,
+    getResult_: (
+      get: GetAtom,
+      addDebugInfo: (debugInfo: TDebugThunkInfo) => void,
+      ctx: TContext,
+      otelContext: otel.Context | undefined,
+    ) => T,
     options?:
       | {
           label?: string
@@ -250,16 +245,16 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       previousResult: NOT_REFRESHED_YET,
       isDirty: true,
       height: 0,
-      computeResult: () => {
+      computeResult: (otelContext) => {
         if (thunk.isDirty) {
           // Reset previous subcomputations as we're about to re-add them as part of the `doEffect` call below
           thunk.sub = new Set()
 
-          const compute_ = (atom: Atom<T, unknown>) => {
+          const compute_ = (atom: Atom<T, unknown>, otelContext: otel.Context) => {
             this.addEdge(thunk, atom)
-            return compute(atom)
+            return compute(atom, otelContext)
           }
-          const result = getResult_(compute_ as GetAtom, addDebugInfo, this.context!)
+          const result = getResult_(compute_ as GetAtom, addDebugInfo, this.context!, otelContext)
           thunk.isDirty = false
           thunk.previousResult = result
           return result
@@ -315,7 +310,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
   }
 
   makeEffect(
-    doEffect: (get: GetAtom) => void,
+    doEffect: (get: GetAtom, otelContext?: otel.Context) => void,
     options?:
       | {
           label?: string
@@ -326,15 +321,15 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     const effect: Effect = {
       _tag: 'effect',
       id: uniqueNodeId(),
-      doEffect: () => {
+      doEffect: (otelContext) => {
         // Reset previous subcomputations as we're about to re-add them as part of the `doEffect` call below
         effect.sub = new Set()
 
-        const getAtom = (atom: Atom<any, unknown>) => {
+        const getAtom = (atom: Atom<any, unknown>, otelContext: otel.Context) => {
           this.addEdge(effect, atom)
-          return compute(atom)
+          return compute(atom, otelContext)
         }
-        doEffect(getAtom as GetAtom)
+        doEffect(getAtom as GetAtom, otelContext)
       },
       sub: new Set(),
     }
@@ -364,6 +359,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     options?:
       | {
           debugRefreshReason?: TDebugRefreshReason
+          otelContext?: otel.Context
         }
       | undefined,
   ) {
@@ -375,7 +371,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
 
     this.effectsWrapper(() => {
       for (const effect of effectsToRefresh) {
-        effect.doEffect()
+        effect.doEffect(options?.otelContext)
       }
     })
 
@@ -396,6 +392,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     options?:
       | {
           debugRefreshReason?: TDebugRefreshReason
+          otelContext?: otel.Context
         }
       | undefined,
   ) {
@@ -409,7 +406,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
 
     this.effectsWrapper(() => {
       for (const effect of effectsToRefresh) {
-        effect.doEffect()
+        effect.doEffect(options?.otelContext)
       }
     })
 
@@ -627,11 +624,11 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
 //   a._tag === 'ref' || a._tag === 'thunk'
 // const isEffect = <T, TContext>(a: Atom<T, TContext> | Effect): a is Effect => a._tag === 'effect'
 
-const compute = <T>(atom: Atom<T, any>): T => {
+const compute = <T>(atom: Atom<T, any>, otelContext: otel.Context): T => {
   // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
   if (atom.isDirty) {
     // console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
-    const result = atom.computeResult()
+    const result = atom.computeResult(otelContext)
     atom.isDirty = false
     atom.previousResult = result
     return result
