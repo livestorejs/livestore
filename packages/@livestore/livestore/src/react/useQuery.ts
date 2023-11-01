@@ -20,7 +20,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   // }, [store, queryDef])
 
   // TODO proper otel context
-  const initialResult = React.useMemo(() => query.results$.computeResult(), [query])
+  const initialResult = React.useMemo(() => query.run(), [query])
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
   const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)

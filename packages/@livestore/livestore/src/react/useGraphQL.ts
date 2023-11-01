@@ -4,6 +4,7 @@ import { isEqual } from 'lodash-es'
 import React from 'react'
 
 import { labelForKey } from '../componentKey.js'
+import { queryGraphQL } from '../reactiveQueries/graphql.js'
 import { useStore } from './LiveStoreContext.js'
 import { type ComponentKeyConfig, useComponentKey } from './useLiveStoreComponent.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
@@ -31,7 +32,7 @@ const spanAlreadyStartedCache = new Map<string, { span: otel.Span; otelContext: 
 // TODO 1) figure out a way to make `variables` optional if the query doesn't have any variables (probably requires positional args)
 // TODO 2) allow `.pipe` on the resulting query (possibly as a separate optional prop)
 export const useGraphQL = <TResult extends Record<string, any>, TVariables extends Variables = {}>({
-  query,
+  query: document,
   variables,
   componentKey: componentKeyConfig,
   reactDeps = [],
@@ -67,9 +68,9 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
     [componentKeyLabel, span],
   )
 
-  const makeLiveStoreQuery = React.useCallback(
+  const liveStoreQuery = React.useMemo(
     () => {
-      return store.queryGraphQL(query, () => variables ?? ({} as TVariables), { componentKey, otelContext })
+      return queryGraphQL(document, () => variables ?? ({} as TVariables), { /* componentKey,  */ otelContext })
 
       // NOTE I had to disable the caching below as still led to many problems
       // We should just implement the new query definition approach instead
@@ -100,14 +101,13 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
 
   // TODO get rid of the temporary query workaround
   const initialQueryResults = React.useMemo(
-    () => store.inTempQueryContext(() => makeLiveStoreQuery().results$.result),
-    [makeLiveStoreQuery, store],
+    () => store.inTempQueryContext(() => liveStoreQuery.run()),
+    [liveStoreQuery, store],
   )
 
   const [queryResultsRef, setQueryResults_] = useStateRefWithReactiveInput<TResult>(initialQueryResults)
 
   React.useEffect(() => {
-    const liveStoreQuery = makeLiveStoreQuery()
     const unsubscribe = store.subscribe(
       liveStoreQuery,
       (results) => {
@@ -126,7 +126,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
     // This should probably be improved
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    makeLiveStoreQuery,
+    liveStoreQuery,
     // setQueryResults_,
     store,
   ])

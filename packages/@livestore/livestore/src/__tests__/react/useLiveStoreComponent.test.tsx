@@ -61,13 +61,7 @@ describe('useLiveStoreComponent', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount).toBe(1)
 
-    act(() => {
-      result.current.setState.username('username_u1_hello')
-    })
-
-    // act(() => {
-    //   store.execute(sql`UPDATE components__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
-    // })
+    act(() => result.current.setState.username('username_u1_hello'))
 
     expect(result.current.state.id).toBe('u1')
     expect(result.current.state.username).toBe('username_u1_hello')
@@ -96,9 +90,7 @@ describe('useLiveStoreComponent', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount).toBe(1)
 
-    act(() => {
-      result.current.setState.username('username_u1_hello')
-    })
+    act(() => result.current.setState.username('username_u1_hello'))
 
     act(() => {
       void store.execute(sql`UPDATE components__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
@@ -109,3 +101,6 @@ describe('useLiveStoreComponent', () => {
     expect(renderCount).toBe(2)
   })
 })
+
+// TODO add a test case that tests the `queries` callback
+// TODO add a test case that tests the `subscribe` in the `queries` callback

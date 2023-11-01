@@ -29,11 +29,13 @@ export const querySQL = <Row>(
     queriedTables: ReadonlyArray<string>
     bindValues?: Bindable
     label?: string
+    otelContext?: otel.Context
+    otelTracer?: otel.Tracer
   },
 ) =>
   new LiveStoreSQLQuery<Row>({
-    otelContext: otel.context.active(),
-    otelTracer: makeNoopTracer(),
+    otelContext: options.otelContext ?? otel.context.active(),
+    otelTracer: options.otelTracer ?? makeNoopTracer(),
     label: options.label,
     payload: {
       genQueryString: query,
@@ -46,9 +48,11 @@ export const querySQL = <Row>(
 export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row>> {
   _tag: 'sql' = 'sql'
   /** A reactive thunk representing the query text */
-  queryString$: Thunk<string, DbContext> | undefined
+  queryString$: Thunk<string, DbContext>
   /** A reactive thunk representing the query results */
   results$: Thunk<ReadonlyArray<Row>, DbContext>
+
+  otelContext: otel.Context
 
   label: string
 
@@ -81,6 +85,9 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
     )
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
+    this.otelContext = otelContext
+
+    // TODO don't even create a thunk if query string is static
     const queryString$ = dbGraph.makeThunk(
       (get, addDebugInfo) => {
         if (typeof genQueryString === 'function') {
@@ -152,7 +159,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
    * Returns a new reactive query that contains the result of
    * running an arbitrary JS computation on the results of this SQL query.
    */
-  pipe = <U>(fn: (result: ReadonlyArray<Row>, get: GetAtom) => U): LiveStoreJSQuery<U> =>
+  pipe = <U>(fn: (result: ReadonlyArray<Row>, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
     new LiveStoreJSQuery({
       fn: (get) => {
         const results = get(this.results$!)
@@ -190,115 +197,14 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
   //   { componentKey: this.componentKey, label: `${this.label}:first`, otelContext: this.otelContext },
   // )
 
-  activate = (store: Store) => {
-    if (this.isActive) return
+  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+  destroy() {
+    super.destroy()
 
-    this.store = store
-    this.isActive = true
+    const span = otel.trace.getSpan(this.otelContext)!
+    span.end()
 
-    // const {
-    //   payload: { genQueryString, queriedTables, bindValues },
-    //   otelContext,
-    //   otelTracer,
-    // } = this
-    // let label = this.label
-
-    // otelTracer.startActiveSpan(
-    //   'querySQL', // NOTE span name will be overridden further down
-    //   { attributes: { label } },
-    //   otelContext,
-    //   (span) => {
-    //     const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-    //     const queryString$ = store.graph.makeThunk(
-    //       (get, addDebugInfo) => {
-    //         if (typeof genQueryString === 'function') {
-    //           const get_: GetAtom = (atom) => {
-    //             console.log('get', atom)
-    //             return get(atom)
-    //           }
-    //           const queryString = genQueryString(makeGetAtomResult(get_, store))
-    //           addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
-    //           return queryString
-    //         } else {
-    //           return genQueryString
-    //         }
-    //       },
-    //       { skipRefresh: true, label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
-    //       otelContext,
-    //     )
-
-    //     this.queryString$ = queryString$
-
-    //     label = label ?? queryString$.result
-    //     span.updateName(`querySQL:${label}`)
-
-    //     const queryLabel = `${label}:results`
-    //     // const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
-
-    //     const results$ = store.graph.makeThunk<ReadonlyArray<Row>>(
-    //       (get, addDebugInfo) =>
-    //         otelTracer.startActiveSpan(
-    //           'sql:', // NOTE span name will be overridden further down
-    //           {},
-    //           otelContext,
-    //           (span) => {
-    //             try {
-    //               const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-    //               // Establish a reactive dependency on the tables used in the query
-    //               for (const tableName of queriedTables) {
-    //                 const tableRef =
-    //                   store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
-    //                 get(tableRef)
-    //               }
-    //               const sqlString = get(queryString$)
-
-    //               span.setAttribute('sql.query', sqlString)
-    //               span.updateName(`sql:${sqlString.slice(0, 50)}`)
-
-    //               const results = store.inMemoryDB.select<Row>(sqlString, {
-    //                 queriedTables,
-    //                 bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
-    //                 otelContext,
-    //               })
-
-    //               span.setAttribute('sql.rowsCount', results.length)
-    //               addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
-
-    //               return results
-    //             } finally {
-    //               span.end()
-    //             }
-    //           },
-    //         ),
-    //       { skipRefresh: true, label: queryLabel },
-    //       otelContext,
-    //     )
-
-    //     // const query = new LiveStoreSQLQuery<Row>({
-    //     //   label,
-    //     //   queryString$,
-    //     //   results$,
-    //     //   componentKey: componentKey ?? globalComponentKey,
-    //     //   store: store,
-    //     //   otelContext,
-    //     // })
-
-    //     // this.activeQueries.add(query)
-    //     store.activeQueries.add(this)
-
-    //     // TODO get rid of temporary query workaround
-    //     if (store.temporaryQueries !== undefined) {
-    //       store.temporaryQueries.add(this)
-    //     }
-
-    //     this.results$ = results$
-    //     debugger
-
-    //     // NOTE we are not ending the span here but in the query `destroy` method
-    //     // return query
-    //   },
-    // )
+    dbGraph.destroy(this.queryString$)
+    dbGraph.destroy(this.results$)
   }
 }

@@ -1,10 +1,10 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
+import type * as otel from '@opentelemetry/api'
 
 import type { ComponentKey } from '../componentKey.js'
 import type { Thunk } from '../reactive.js'
 import type { LiveStoreQuery, Store } from '../store.js'
-import type { DbContext } from './graph.js'
+import { type DbContext, dbGraph } from './graph.js'
 
 export type UnsubscribeQuery = () => void
 
@@ -28,6 +28,8 @@ export interface ILiveStoreQuery<TResult> {
 
   otelContext: otel.Context
 
+  run: () => TResult
+
   // activate: (store: Store) => void
   // deactivate: () => void
 }
@@ -40,13 +42,14 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
   id = queryIdCounter++
 
   /** The key for the associated component */
-  componentKey: ComponentKey = null as any
+  // TODO
+  componentKey: ComponentKey = { _tag: 'singleton', id: 'singleton', componentName: 'TODO' }
   /** Human-readable label for the query for debugging */
   abstract label: string
   /** A pointer back to the store containing this query */
   // store: Store
   /** Otel Span is started in LiveStore store but ended in this query */
-  otelContext: otel.Context
+  abstract otelContext: otel.Context
 
   otelTracer: otel.Tracer
 
@@ -59,9 +62,7 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
 
   constructor({
     // componentKey,
-    otelTracer,
-    // store,
-    otelContext: parentOtelContext,
+    otelTracer, // store,
   }: {
     // componentKey: ComponentKey
     // label: string
@@ -72,19 +73,18 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
     // this.componentKey = componentKey
     // this.label = label
     // this.store = store
-    const span = otelTracer.startSpan('queryTODO', {}, parentOtelContext)
-    const otelContext = otel.trace.setSpan(parentOtelContext, span)
-    this.otelContext = otelContext
+    // const span = otelTracer.startSpan('queryTODO', {}, parentOtelContext)
+    // const otelContext = otel.trace.setSpan(parentOtelContext, span)
+    // this.otelContext = otelContext
     this.otelTracer = otelTracer
 
     instances.push(this)
   }
+  // otelContext: otel.Context
   // deactivate: () => void
 
-  destroy = () => {
-    const span = otel.trace.getSpan(this.otelContext)!
-    span.end()
-
+  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+  destroy() {
     // NOTE usually the `unsubscribe` function is called by `useLiveStoreComponent` but this code path
     // is used for manual store destruction, so we need to manually unsubscribe here
     for (const [_key, unsubscribe] of this.activeSubscriptions) {
@@ -129,4 +129,6 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
   //   this.store = undefined
   //   this.isActive = false
   // }
+
+  run = (): TResult => this.results$.computeResult()
 }

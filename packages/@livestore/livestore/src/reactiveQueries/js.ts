@@ -1,5 +1,4 @@
 import type * as otel from '@opentelemetry/api'
-import { get } from 'lodash-es'
 
 import type { ComponentKey } from '../componentKey.js'
 import type { GetAtom, Thunk } from '../reactive.js'
@@ -12,6 +11,8 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag: 'js' = 'js'
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, DbContext>
+
+  otelContext: otel.Context
 
   label: string
 
@@ -31,6 +32,7 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     super(baseProps)
     const label = baseProps.label
 
+    this.otelContext = baseProps.otelContext
     this.label = label
 
     const queryLabel = `${label}:results`
@@ -46,7 +48,7 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     // this.results$ = results$
   }
 
-  pipe = <U>(fn: (result: TResult, get: GetAtom) => U): LiveStoreJSQuery<U> =>
+  pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
     new LiveStoreJSQuery({
       fn: (get) => {
         const results = get(this.results$)
@@ -65,6 +67,13 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   //     },
   //     { componentKey: this.componentKey, label: `${this.label}:js`, otelContext: this.otelContext },
   //   )
+
+  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+  destroy() {
+    super.destroy()
+
+    dbGraph.destroy(this.results$)
+  }
 
   activate = (store: Store<BaseGraphQLContext>) => {
     if (this.isActive) return

@@ -628,7 +628,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
 // const isEffect = <T, TContext>(a: Atom<T, TContext> | Effect): a is Effect => a._tag === 'effect'
 
 const compute = <T>(atom: Atom<T, any>): T => {
-  const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
+  // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
   if (atom.isDirty) {
     // console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
     const result = atom.computeResult()

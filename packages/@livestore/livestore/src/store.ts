@@ -19,7 +19,7 @@ import { getDurationMsFromSpan } from './otel.js'
 import type { Atom, GetAtom, ReactiveGraph, Ref } from './reactive.js'
 import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
-import { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
+import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from './schema.js'
@@ -345,133 +345,133 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   //     return query
   //   })
 
-  queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
-    document: DocumentNode<TResult, TVariableValues>,
-    genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
-    {
-      componentKey,
-      label,
-      otelContext = otel.context.active(),
-    }: {
-      componentKey: ComponentKey
-      label?: string
-      otelContext?: otel.Context
-    },
-  ): LiveStoreGraphQLQuery<TResult, TVariableValues, TGraphQLContext> =>
-    this.otel.tracer.startActiveSpan(
-      `queryGraphQL:`, // NOTE span name will be overridden further down
-      {},
-      otelContext,
-      (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+  // queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
+  //   document: DocumentNode<TResult, TVariableValues>,
+  //   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
+  //   {
+  //     componentKey,
+  //     label,
+  //     otelContext = otel.context.active(),
+  //   }: {
+  //     componentKey: ComponentKey
+  //     label?: string
+  //     otelContext?: otel.Context
+  //   },
+  // ): LiveStoreGraphQLQuery<TResult, TVariableValues, TGraphQLContext> =>
+  //   this.otel.tracer.startActiveSpan(
+  //     `queryGraphQL:`, // NOTE span name will be overridden further down
+  //     {},
+  //     otelContext,
+  //     (span) => {
+  //       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        if (this.graphQLContext === undefined) {
-          return shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
-        }
+  //       if (this.graphQLContext === undefined) {
+  //         return shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
+  //       }
 
-        const labelWithDefault = label ?? graphql.getOperationAST(document)?.name?.value ?? 'graphql'
+  //       const labelWithDefault = label ?? graphql.getOperationAST(document)?.name?.value ?? 'graphql'
 
-        span.updateName(`queryGraphQL:${labelWithDefault}`)
+  //       span.updateName(`queryGraphQL:${labelWithDefault}`)
 
-        const variableValues$ = this.graph.makeThunk(
-          (get) => {
-            if (typeof genVariableValues === 'function') {
-              return genVariableValues(makeGetAtomResult(get))
-            } else {
-              return genVariableValues
-            }
-          },
-          { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
-          // otelContext,
-        )
+  //       const variableValues$ = this.graph.makeThunk(
+  //         (get) => {
+  //           if (typeof genVariableValues === 'function') {
+  //             return genVariableValues(makeGetAtomResult(get))
+  //           } else {
+  //             return genVariableValues
+  //           }
+  //         },
+  //         { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
+  //         // otelContext,
+  //       )
 
-        const resultsLabel = `${labelWithDefault}:results` + (this.temporaryQueries ? ':temp' : '')
-        const results$ = this.graph.makeThunk<TResult>(
-          (get, addDebugInfo) => {
-            const variableValues = get(variableValues$)
-            const { result, queriedTables } = this.queryGraphQLOnce(document, variableValues, otelContext)
+  //       const resultsLabel = `${labelWithDefault}:results` + (this.temporaryQueries ? ':temp' : '')
+  //       const results$ = this.graph.makeThunk<TResult>(
+  //         (get, addDebugInfo) => {
+  //           const variableValues = get(variableValues$)
+  //           const { result, queriedTables } = this.queryGraphQLOnce(document, variableValues, otelContext)
 
-            // Add dependencies on any tables that were used
-            for (const tableName of queriedTables) {
-              const tableRef = this.tableRefs[tableName]
-              assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
-              get(tableRef!)
-            }
+  //           // Add dependencies on any tables that were used
+  //           for (const tableName of queriedTables) {
+  //             const tableRef = this.tableRefs[tableName]
+  //             assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+  //             get(tableRef!)
+  //           }
 
-            addDebugInfo({ _tag: 'graphql', label: resultsLabel, query: graphql.print(document) })
+  //           addDebugInfo({ _tag: 'graphql', label: resultsLabel, query: graphql.print(document) })
 
-            return result
-          },
-          { label: resultsLabel, meta: { liveStoreThunkType: 'graphqlResults' } },
-          // otelContext,
-        )
+  //           return result
+  //         },
+  //         { label: resultsLabel, meta: { liveStoreThunkType: 'graphqlResults' } },
+  //         // otelContext,
+  //       )
 
-        const query = new LiveStoreGraphQLQuery({
-          document,
-          context: this.graphQLContext,
-          results$,
-          componentKey,
-          label: labelWithDefault,
-          store: this,
-          otelContext,
-        })
+  //       const query = new LiveStoreGraphQLQuery({
+  //         document,
+  //         context: this.graphQLContext,
+  //         results$,
+  //         componentKey,
+  //         label: labelWithDefault,
+  //         store: this,
+  //         otelContext,
+  //       })
 
-        this.activeQueries.add(query)
+  //       this.activeQueries.add(query)
 
-        // TODO get rid of temporary query workaround
-        if (this.temporaryQueries !== undefined) {
-          this.temporaryQueries.add(query)
-        }
+  //       // TODO get rid of temporary query workaround
+  //       if (this.temporaryQueries !== undefined) {
+  //         this.temporaryQueries.add(query)
+  //       }
 
-        // NOTE we are not ending the span here but in the query `destroy` method
-        return query
-      },
-    )
+  //       // NOTE we are not ending the span here but in the query `destroy` method
+  //       return query
+  //     },
+  //   )
 
-  queryGraphQLOnce = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
-    document: DocumentNode<TResult, TVariableValues>,
-    variableValues: TVariableValues,
-    otelContext: otel.Context = this.otel.queriesSpanContext,
-  ): { result: TResult; queriedTables: string[] } => {
-    const schema =
-      this.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
-    const context =
-      this.graphQLContext ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
-    const tracer = this.otel.tracer
+  // queryGraphQLOnce = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
+  //   document: DocumentNode<TResult, TVariableValues>,
+  //   variableValues: TVariableValues,
+  //   otelContext: otel.Context = this.otel.queriesSpanContext,
+  // ): { result: TResult; queriedTables: string[] } => {
+  //   const schema =
+  //     this.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
+  //   const context =
+  //     this.graphQLContext ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
+  //   const tracer = this.otel.tracer
 
-    const operationName = graphql.getOperationAST(document)?.name?.value
+  //   const operationName = graphql.getOperationAST(document)?.name?.value
 
-    return tracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, otelContext, (span) => {
-      try {
-        span.setAttribute('graphql.variables', JSON.stringify(variableValues))
-        span.setAttribute('graphql.query', graphql.print(document))
+  //   return tracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, otelContext, (span) => {
+  //     try {
+  //       span.setAttribute('graphql.variables', JSON.stringify(variableValues))
+  //       span.setAttribute('graphql.query', graphql.print(document))
 
-        context.queriedTables.clear()
+  //       context.queriedTables.clear()
 
-        context.otelContext = otel.trace.setSpan(otel.context.active(), span)
+  //       context.otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const res = graphql.executeSync({
-          document,
-          contextValue: context,
-          schema: schema,
-          variableValues,
-        })
+  //       const res = graphql.executeSync({
+  //         document,
+  //         contextValue: context,
+  //         schema: schema,
+  //         variableValues,
+  //       })
 
-        // TODO track number of nested SQL queries via Otel + debug info
+  //       // TODO track number of nested SQL queries via Otel + debug info
 
-        if (res.errors) {
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
-          span.setAttribute('graphql.error', res.errors.join('\n'))
-          span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
-          console.error(`graphql error (${operationName})`, res.errors)
-        }
+  //       if (res.errors) {
+  //         span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
+  //         span.setAttribute('graphql.error', res.errors.join('\n'))
+  //         span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
+  //         console.error(`graphql error (${operationName})`, res.errors)
+  //       }
 
-        return { result: res.data as unknown as TResult, queriedTables: Array.from(context.queriedTables.values()) }
-      } finally {
-        span.end()
-      }
-    })
-  }
+  //       return { result: res.data as unknown as TResult, queriedTables: Array.from(context.queriedTables.values()) }
+  //     } finally {
+  //       span.end()
+  //     }
+  //   })
+  // }
 
   /**
    * Subscribe to the results of a query
@@ -501,12 +501,15 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
         const unsubscribe = () => {
           try {
             this.graph.destroy(effect)
+            this.activeQueries.delete(query as LiveStoreQuery)
             // query.activeSubscriptions.delete(subscriptionKey)
             onSubsubscribe?.()
           } finally {
             span.end()
           }
         }
+
+        this.activeQueries.add(query as LiveStoreQuery)
 
         // query.activeSubscriptions.set(subscriptionKey, unsubscribe)
 
@@ -536,9 +539,10 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * Currently only used when shutting down the app for debugging purposes (e.g. to close Otel spans).
    */
   destroy = () => {
-    for (const query of this.activeQueries) {
-      this.destroyQuery(query)
-    }
+    // for (const query of this.activeQueries) {
+    //   this.destroyQuery(query)
+    // }
+    // dbGraph.destroy()
 
     Object.values(this.tableRefs).forEach((tableRef) => this.graph.destroy(tableRef))
 
@@ -552,12 +556,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   }
 
   private destroyQuery = (query: LiveStoreQuery) => {
-    if (query._tag === 'sql') {
-      // results are downstream of query string, so will automatically be destroyed together
-      this.graph.destroy(query.queryString$!)
-    } else {
-      this.graph.destroy(query.results$!)
-    }
+    // query.destroy()
+    // if (query._tag === 'sql') {
+    //   // results are downstream of query string, so will automatically be destroyed together
+    //   this.graph.destroy(query.queryString$!)
+    // } else {
+    //   // this.graph.destroy(query.results$!)
+    // }
     this.activeQueries.delete(query)
     query.destroy()
   }
@@ -753,9 +758,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   //     return queryDef(this).results$!.result
   //   })
   // }
-  runOnce = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
-    return query.results$.computeResult()
-  }
+  // runOnce = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
+  //   return query.results$.computeResult()
+  // }
 
   /**
    * Apply an event to the store.

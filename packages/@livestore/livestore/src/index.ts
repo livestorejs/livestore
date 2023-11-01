@@ -30,7 +30,7 @@ export type {
 } from './reactive.js'
 export { type LiveStoreJSQuery } from './reactiveQueries/js.js'
 export { type LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
-export { type LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
+export { type LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 
 export { labelForKey } from './componentKey.js'
 export type { ComponentKey } from './componentKey.js'
