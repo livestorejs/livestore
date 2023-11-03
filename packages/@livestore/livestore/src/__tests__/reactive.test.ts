@@ -194,6 +194,19 @@ describe('a dynamic graph', () => {
     expect(f.computeResult()).toBe(6)
     expect(numberOfRunsForD.runs).toBe(2)
   })
+
+  it('runs d only when a changes, not b', () => {
+    const { graph, a, b, d, numberOfRunsForD } = makeGraph()
+    numberOfRunsForD.runs = 0
+    d.computeResult()
+    expect(numberOfRunsForD.runs).toBe(1)
+    graph.setRef(a, 3)
+    expect(d.computeResult()).toBe(3)
+    expect(numberOfRunsForD.runs).toBe(2)
+    graph.setRef(b, 4)
+    expect(d.computeResult()).toBe(3)
+    expect(numberOfRunsForD.runs).toBe(2)
+  })
 })
 
 describe('a diamond shaped graph', () => {
