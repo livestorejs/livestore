@@ -46,6 +46,25 @@ describe('a trivial graph', () => {
     expect(e.computeResult()).toBe(10)
   })
 
+  it('does not rerun downstream computations eagerly when an upstream dep changes', () => {
+    const { graph, a, c, numberOfRunsForC } = makeGraph()
+    expect(numberOfRunsForC.runs).toBe(0)
+    graph.setRef(a, 5)
+    expect(numberOfRunsForC.runs).toBe(0)
+    c.computeResult()
+    expect(numberOfRunsForC.runs).toBe(1)
+  })
+
+  it('does not rerun c when d is edited and e is rerun', () => {
+    const { graph, c, d, e, numberOfRunsForC } = makeGraph()
+    expect(numberOfRunsForC.runs).toBe(0)
+    expect(e.computeResult()).toBe(3 + 3)
+    expect(numberOfRunsForC.runs).toBe(1)
+    graph.setRef(d, 4)
+    expect(e.computeResult()).toBe(4 + 3)
+    expect(numberOfRunsForC.runs).toBe(1)
+  })
+
   it('cuts off reactive propagation when a thunk evaluates to same result as before', () => {
     const { graph, a, c, d } = makeGraph()
 
