@@ -20,7 +20,7 @@ export interface ILiveStoreQuery<TResult> {
 
   label: string
 
-  run: () => TResult
+  run: (otelContext?: otel.Context) => TResult
 }
 
 export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TResult> {

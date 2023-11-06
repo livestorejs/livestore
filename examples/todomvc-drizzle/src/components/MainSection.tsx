@@ -1,29 +1,24 @@
-import { useStore } from '@livestore/livestore/react'
+import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
+import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'
 import * as t from '../drizzle/schema.js'
-import { drizzle, useDrizzle } from '../drizzle/useDrizzle.js'
 import type { Todo } from '../schema.js'
+
+const filterClause$ = queryDrizzle((qb) => qb.select().from(t.app), { queriedTables: ['app'] })
+  .getFirstRow()
+  .pipe((appState) =>
+    appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),
+  )
+
+const visibleTodos$ = queryDrizzle((qb, get) => qb.select().from(t.todos).where(get(filterClause$)), {
+  queriedTables: ['todos'],
+})
 
 export const MainSection: React.FC = () => {
   const { store } = useStore()
 
-  const {
-    queryResults: { visibleTodos },
-  } = useDrizzle({
-    componentKey: { name: 'MainSection', id: 'singleton' },
-    queries: ({ rxSQL, qb }) => {
-      const filterClause$ = rxSQL(qb.select().from(t.app), ['app'])
-        .getFirstRow()
-        .pipe((appState) =>
-          appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),
-        )
-
-      const visibleTodos = rxSQL((get) => qb.select().from(t.todos).where(get(filterClause$)), ['todos'])
-
-      return { visibleTodos }
-    },
-  })
+  const visibleTodos = useQuery(visibleTodos$)
 
   // We record an event that specifies marking complete or incomplete,
   // The reason is that this better captures the user's intention

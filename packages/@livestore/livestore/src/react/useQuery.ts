@@ -1,23 +1,12 @@
-import * as otel from '@opentelemetry/api'
 import { isEqual } from 'lodash-es'
 import React from 'react'
 
-import { labelForKey } from '../componentKey.js'
-import type { QueryDefinition } from '../effect/LiveStore.js'
 import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
-import type { LiveStoreQuery, QueryResult, Store } from '../store.js'
 import { useStore } from './LiveStoreContext.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   const { store } = useStore()
-  // const query = React.useMemo(() => {
-  //   if (queryCache.has(queryDef)) return queryCache.get(queryDef) as Q
-
-  //   const query = queryDef(store)
-  //   queryCache.set(queryDef, query)
-  //   return query
-  // }, [store, queryDef])
 
   // TODO proper otel context
   const initialResult = React.useMemo(() => query.run(), [query])

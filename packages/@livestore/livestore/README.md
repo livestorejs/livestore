@@ -4,7 +4,7 @@ LiveStore provides a highly structured data model for your React components. It 
 
 ## Reads
 
-To define the data used by a component, you use the `useLiveStoreComponent` hook. There are 3 parts to defining the data:
+To define the data used by a component, you use the `useQuery` hook. There are 3 parts to defining the data:
 
 - **local state**: This is the equivalent of `React.useState`, but in a relational style. Each component instance gets a row in a database table to store local state. You define the schema for the table that stores this component state. In your component, you can read/write local state.
 - **reactive queries**: Often it's not enough to just read/write local state, you also need to query data in the global database (eg, table of todos, or table of music tracks). To do this, you can define reactive SQL or GraphQL queries. The query strings can be _dynamic_ and depend on local state or other queries. You can also `.pipe` the results of any SQL or GraphQL query to do further downstream transformations.
@@ -15,28 +15,25 @@ Let's see an example. This doesn't have any local state, just queries and a comp
 We have a todos app which has a global table called `app`, which always has one row. It has a column called `filter` which has the value `active`, `completed`, or `all`. We want to use this value to query for only the todos which should be visible with that filter. Here's the code:
 
 ```ts
-const [{ visibleTodos }] = useLiveStoreComponent({
-  // Define the reactive queries for this component
-  createQueries: ({ createSQL }) => {
-    // First, we create a reactive query which defines the filter clause for the SQL query.
-    // It gets the first row from the app table, and pipes them into a transform function.
-    // The result is a reactive query whose value is a string containing the filter clause.
-    const filterClause = createSQL<AppState[]>(() => `select * from app;`)
-      .getFirstRow()
-      .pipe((appState) => (appState.filter === 'all' ? '' : `where completed = ${appState.filter === 'active'}`))
+import { querySQL, sql } from '@livestore/livestore'
+import { useQuery } from '@livestore/livestore/react'
 
-    // Next, we create the actual query for the visible todos.
-    // We create a new reactive SQL query which interpolates the filterClause.
-    // Notice how we call filterClause() as a function--
-    // that gets the latest value of that reactive query.
-    const visibleTodos = createSQL<Todo[]>((get) => sql`select * from todos ${filterClause()}`)
+const filterClause$ = querySQL<AppState>(`select * from app;`, { queriedTables: ['app'] })
+  .getFirstRow()
+  .pipe((appState) => (appState.filter === 'all' ? '' : `where completed = ${appState.filter === 'completed'}`))
 
-    return { visibleTodos }
-  },
-
-  // For this particular component, we use a singleton key.
-  componentKey: { name: 'MainSection', key: 'singleton' },
+const visibleTodos$ = querySQL<Todo>((get) => sql`select * from todos ${get(filterClause$)}`, {
+  queriedTables: ['todos'],
 })
+
+
+export const MyApp: React.FC = () => {
+  const visibleTodos = useQuery(visibleTodos$)
+
+  return (
+    // ...
+  )
+}
 ```
 
 ## Writes

@@ -24,7 +24,7 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import type { PrettifyFlat } from '@livestore/utils'
-import { pick } from '@livestore/utils'
+import { pick, shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { isEqual, max, uniqueId } from 'lodash-es'
 
@@ -254,7 +254,12 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
             this.addEdge(thunk, atom)
             return compute(atom, otelContext)
           }
-          const result = getResult_(compute_ as GetAtom, addDebugInfo, this.context!, otelContext)
+          const result = getResult_(
+            compute_ as GetAtom,
+            addDebugInfo,
+            this.context ?? shouldNeverHappen('No store context set yet'),
+            otelContext,
+          )
           thunk.isDirty = false
           thunk.previousResult = result
           return result

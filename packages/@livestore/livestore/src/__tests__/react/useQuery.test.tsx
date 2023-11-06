@@ -44,3 +44,5 @@ describe('useQuery', () => {
     expect(renderCount).toBe(2)
   })
 })
+
+// TODO write tests that use the same query in multiple components at the same time with different bind values
