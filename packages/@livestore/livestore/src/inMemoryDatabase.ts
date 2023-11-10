@@ -41,6 +41,7 @@ export class InMemoryDatabase {
   private cachedStmts = new BoundMap<string, Sqlite.PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, string[]>(200)
   private resultCache = new QueryCache()
+  private tablesUsedStmt;
   public debugInfo: DebugInfo = emptyDebugInfo()
 
   constructor(
@@ -48,7 +49,11 @@ export class InMemoryDatabase {
     private otelTracer: otel.Tracer,
     private otelRootSpanContext: otel.Context,
     public SQL: Sqlite.Sqlite3Static,
-  ) {}
+  ) {
+    this.tablesUsedStmt = this.db.prepare(
+      `SELECT tbl_name FROM tables_used(?) AS u JOIN sqlite_master ON sqlite_master.name = u.name WHERE u.schema = 'main';`,
+    )
+  }
 
   static load({
     data,
@@ -113,9 +118,7 @@ export class InMemoryDatabase {
     if (cached) {
       return cached
     }
-    const stmt = this.db.prepare(
-      `SELECT tbl_name FROM tables_used(?) AS u JOIN sqlite_master ON sqlite_master.name = u.name WHERE u.schema = 'main';`,
-    )
+    const stmt = this.tablesUsedStmt;
     const tablesUsed = []
     try {
       stmt.bind([query])
@@ -123,7 +126,7 @@ export class InMemoryDatabase {
         tablesUsed.push(stmt.get(0))
       }
     } finally {
-      stmt.finalize()
+      stmt.reset()
     }
     this.tablesUsedCache.set(query, tablesUsed as string[])
     return tablesUsed as string[]
