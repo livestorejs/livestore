@@ -41,7 +41,7 @@ export class InMemoryDatabase {
   private cachedStmts = new BoundMap<string, Sqlite.PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, string[]>(200)
   private resultCache = new QueryCache()
-  private tablesUsedStmt;
+  private tablesUsedStmt
   public debugInfo: DebugInfo = emptyDebugInfo()
 
   constructor(
@@ -118,7 +118,7 @@ export class InMemoryDatabase {
     if (cached) {
       return cached
     }
-    const stmt = this.tablesUsedStmt;
+    const stmt = this.tablesUsedStmt
     const tablesUsed = []
     try {
       stmt.bind([query])
