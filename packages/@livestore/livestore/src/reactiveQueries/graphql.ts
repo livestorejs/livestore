@@ -13,12 +13,7 @@ export const queryGraphQL = <TResult extends Record<string, any>, TVariableValue
   document: DocumentNode<TResult, TVariableValues>,
   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
   { label }: { label?: string } = {},
-) =>
-  new LiveStoreGraphQLQuery({
-    document,
-    genVariableValues,
-    label: label ?? 'graphql-todo',
-  })
+) => new LiveStoreGraphQLQuery({ document, genVariableValues, label })
 
 export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
@@ -37,36 +32,25 @@ export class LiveStoreGraphQLQuery<
 
   label: string
 
-  // schema: graphql.GraphQLSchema
-
-  // context: TContext
-
   constructor({
     document,
-    // schema,
     label,
     genVariableValues, // context,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
-    // context: TContext
-    // componentKey: ComponentKey
-    // schema: graphql.GraphQLSchema
-    label: string
+    label?: string
   }) {
     super()
 
-    // this.schema = schema
-    // this.context = context
+    const labelWithDefault = label ?? graphql.getOperationAST(document)?.name?.value ?? 'graphql'
 
-    this.label = label
+    this.label = labelWithDefault
     this.document = document
 
     // if (context === undefined) {
     //   return shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
     // }
-
-    const labelWithDefault = label ?? graphql.getOperationAST(document)?.name?.value ?? 'graphql'
 
     // TODO don't even create a thunk if variables are static
     const variableValues$ = dbGraph.makeThunk(
@@ -78,7 +62,6 @@ export class LiveStoreGraphQLQuery<
         }
       },
       { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
-      // otelContext,
     )
 
     this.variableValues$ = variableValues$
@@ -179,10 +162,7 @@ export class LiveStoreGraphQLQuery<
     })
   }
 
-  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-  destroy() {
-    super.destroy()
-
+  destroy = () => {
     dbGraph.destroy(this.variableValues$)
     dbGraph.destroy(this.results$)
   }

@@ -1,22 +1,17 @@
-import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
 import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { identity } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
-import * as graphql from 'graphql'
-import { uniqueId } from 'lodash-es'
-import * as ReactDOM from 'react-dom'
 import type * as Sqlite from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
 import type { ComponentKey } from './componentKey.js'
 import { tableNameForComponentKey } from './componentKey.js'
-import type { QueryDefinition } from './effect/LiveStore.js'
 import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
-import type { Atom, GetAtom, ReactiveGraph, Ref } from './reactive.js'
+import type { ReactiveGraph, Ref } from './reactive.js'
 import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
 import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
@@ -25,7 +20,7 @@ import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from './schema.js'
 import { componentStateTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
-import type { Bindable, ParamsObject } from './util.js'
+import type { ParamsObject } from './util.js'
 import { isPromise, prepareBindValues, sql } from './util.js'
 
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
@@ -517,65 +512,17 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     )
 
   /**
-   * Any queries created in the callback will be destroyed when the callback is complete.
-   * Useful for temporarily creating reactive queries, which is an idempotent operation
-   * that can be safely called inside a React useMemo hook.
-   */
-  inTempQueryContext = <TResult>(callback: () => TResult): TResult => {
-    this.temporaryQueries = new Set()
-    // TODO: consider errors / try/finally here?
-    const result = callback()
-    for (const query of this.temporaryQueries) {
-      this.destroyQuery(query)
-    }
-    this.temporaryQueries = undefined
-    return result
-  }
-
-  /**
    * Destroys the entire store, including all queries and subscriptions.
    *
    * Currently only used when shutting down the app for debugging purposes (e.g. to close Otel spans).
    */
   destroy = () => {
-    // for (const query of this.activeQueries) {
-    //   this.destroyQuery(query)
-    // }
-    // dbGraph.destroy()
-
     Object.values(this.tableRefs).forEach((tableRef) => this.graph.destroy(tableRef))
 
-    const applyEventsSpan = otel.trace.getSpan(this.otel.applyEventsSpanContext)!
-    applyEventsSpan.end()
-
-    const queriesSpan = otel.trace.getSpan(this.otel.queriesSpanContext)!
-    queriesSpan.end()
+    otel.trace.getSpan(this.otel.applyEventsSpanContext)!.end()
+    otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
 
     // TODO destroy active subscriptions
-  }
-
-  private destroyQuery = (query: LiveStoreQuery) => {
-    // query.destroy()
-    // if (query._tag === 'sql') {
-    //   // results are downstream of query string, so will automatically be destroyed together
-    //   this.graph.destroy(query.queryString$!)
-    // } else {
-    //   // this.graph.destroy(query.results$!)
-    // }
-    this.activeQueries.delete(query)
-    query.destroy()
-  }
-
-  /**
-   * Clean up queries and downstream subscriptions associated with a component.
-   * This is critical to avoid memory leaks.
-   */
-  unmountComponent = (componentKey: ComponentKey) => {
-    for (const query of this.activeQueries) {
-      // if (query.componentKey === componentKey) {
-      //   this.destroyQuery(query)
-      // }
-    }
   }
 
   /* Apply a single write event to the store, and refresh all queries in response */
@@ -741,23 +688,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       { attributes: { 'livestore.manualRefreshLabel': label } },
       this.otel.applyEventsSpanContext,
       (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        // const otelContext = otel.trace.setSpan(otel.context.active(), span)
         // TODO update the graph
         // this.graph.refresh({ otelHint: 'manualRefresh', debugRefreshReason: { _tag: 'manualRefresh' } }, otelContext)
         span.end()
       },
     )
   }
-
-  // TODO get rid of this as part of new query definition approach https://www.notion.so/schickling/New-query-definition-approach-1097a78ef0e9495bac25f90417374756?pvs=4
-  // runOnce = <TQueryDef extends QueryDefinition>(queryDef: TQueryDef): QueryResult<ReturnType<TQueryDef>> => {
-  //   return this.inTempQueryContext(() => {
-  //     return queryDef(this).results$!.result
-  //   })
-  // }
-  // runOnce = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
-  //   return query.results$.computeResult()
-  // }
 
   /**
    * Apply an event to the store.

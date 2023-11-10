@@ -3,6 +3,7 @@ import React from 'react'
 
 import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
+import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/extractStackInfoFromStackTrace.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
@@ -14,6 +15,14 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
   const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)
 
+  const subscriptionInfo = React.useMemo(() => {
+    Error.stackTraceLimit = 10
+    // eslint-disable-next-line unicorn/error-message
+    const stack = new Error().stack!
+    Error.stackTraceLimit = originalStackLimit
+    return { stack: extractStackInfoFromStackTrace(stack) }
+  }, [])
+
   // Subscribe to future updates for this query
   React.useEffect(() => {
     return store.otel.tracer.startActiveSpan(
@@ -22,6 +31,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
       { attributes: { label: query.label } },
       store.otel.queriesSpanContext,
       (span) => {
+        query.activeSubscriptions.add(subscriptionInfo)
         const cancel = store.subscribe(
           query,
           (v) => {
@@ -41,12 +51,13 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
 
           // TODO for now we'll still `cancel` manually, but we should remove this once we have some kind of
           // ARC-based system
+          query.activeSubscriptions.delete(subscriptionInfo)
           cancel()
           span.end()
         }
       },
     )
-  }, [query, setValue, store, valueRef])
+  }, [subscriptionInfo, query, setValue, store, valueRef])
 
   return valueRef.current
 }

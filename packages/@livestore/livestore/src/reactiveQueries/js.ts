@@ -66,10 +66,7 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
       //   componentKey: this.componentKey,
     })
 
-  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-  destroy() {
-    super.destroy()
-
+  destroy = () => {
     dbGraph.destroy(this.results$)
   }
 }

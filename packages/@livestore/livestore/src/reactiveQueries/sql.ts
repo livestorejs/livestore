@@ -27,12 +27,12 @@ export const querySQL = <Row>(
 /* An object encapsulating a reactive SQL query */
 export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row>> {
   _tag: 'sql' = 'sql'
+
   /** A reactive thunk representing the query text */
   queryString$: Thunk<string, DbContext>
+
   /** A reactive thunk representing the query results */
   results$: Thunk<ReadonlyArray<Row>, DbContext>
-
-  // otelContext: otel.Context
 
   label: string
 
@@ -130,8 +130,6 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
         return fn(results, get)
       },
       label: `${this.label}:js`,
-      // otelContext: this.otelContext,
-      // otelTracer: this.otelTracer,
     })
 
   /** Returns a reactive query  */
@@ -147,28 +145,9 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
         return results[0] ?? args!.defaultValue!
       },
       label: `${this.label}:first`,
-      // otelContext: this.otelContext,
-      // otelTracer: this.otelTracer,
     })
-  // this.store.queryJS(
-  //   (get) => {
-  //     const results = get(this.results$!)
-  //     if (results.length === 0 && args?.defaultValue === undefined) {
-  //       const queryLabel = this._tag === 'sql' ? this.queryString$!.result : this.label
-  //       throw new Error(`Expected query ${queryLabel} to return at least one result`)
-  //     }
-  //     return results[0] ?? args!.defaultValue!
-  //   },
-  //   { componentKey: this.componentKey, label: `${this.label}:first`, otelContext: this.otelContext },
-  // )
 
-  // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-  destroy() {
-    super.destroy()
-
-    // const span = otel.trace.getSpan(this.otelContext)!
-    // span.end()
-
+  destroy = () => {
     dbGraph.destroy(this.queryString$)
     dbGraph.destroy(this.results$)
   }

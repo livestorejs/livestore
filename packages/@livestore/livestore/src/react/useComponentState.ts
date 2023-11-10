@@ -1,5 +1,4 @@
-import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import type { LiteralUnion, PrettifyFlat } from '@livestore/utils'
+import type { LiteralUnion } from '@livestore/utils'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -12,64 +11,21 @@ import { v4 as uuid } from 'uuid'
 import type { ComponentKey } from '../componentKey.js'
 import { labelForKey, tableNameForComponentKey } from '../componentKey.js'
 import { migrateTable } from '../migrations.js'
-import type { GetAtomResult } from '../reactiveQueries/base-class.js'
-import { type LiveStoreGraphQLQuery, queryGraphQL } from '../reactiveQueries/graphql.js'
 import { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
 import { SCHEMA_META_TABLE } from '../schema.js'
-import type { BaseGraphQLContext, LiveStoreQuery, QueryResult, Store } from '../store.js'
-import type { Bindable } from '../util.js'
+import type { BaseGraphQLContext, LiveStoreQuery, Store } from '../store.js'
 import { sql } from '../util.js'
 import { useStore } from './LiveStoreContext.js'
+import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/extractStackInfoFromStackTrace.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 export interface QueryDefinitions {
   [queryName: string]: LiveStoreQuery
 }
 
-export type QueryResults<TQuery> = { [queryName in keyof TQuery]: PrettifyFlat<QueryResult<TQuery[queryName]>> }
-
-export type ReactiveSQL = <TResult>(
-  query: string | ((get: GetAtomResult) => string),
-  queriedTables: string[],
-  bindValues?: Bindable | undefined,
-) => LiveStoreSQLQuery<TResult>
-
-export type ReactiveJS = <TResult>(query: (get: GetAtomResult) => TResult) => LiveStoreJSQuery<TResult>
-
-export type ReactiveGraphQL = <
-  TResult extends Record<string, any>,
-  TVariables extends Record<string, any>,
-  TContext extends BaseGraphQLContext,
->(
-  query: DocumentNode<TResult, TVariables>,
-  variableValues: TVariables | ((get: GetAtomResult) => TVariables),
-  label?: string,
-) => LiveStoreGraphQLQuery<TResult, TVariables, TContext>
-
-type RegisterSubscription = <TQuery extends LiveStoreQuery>(
-  query: TQuery,
-  onNewValue: (value: QueryResult<TQuery>) => void,
-  onUnsubscribe?: () => void,
-) => void
-
-type GenQueries<TQueries, TStateResult> = (args: {
-  rxSQL: ReactiveSQL
-  rxGraphQL: ReactiveGraphQL
-  // rxJS: ReactiveJS
-  state$: LiveStoreJSQuery<TStateResult>
-  /**
-   * Registers a subscription.
-   *
-   * Passed down for some manual subscribing. Use carefully.
-   */
-  subscribe: RegisterSubscription
-  isTemporaryQuery: boolean
-}) => TQueries
-
-export type UseLiveStoreComponentProps<TQueries, TStateColumns extends ComponentColumns> = {
-  stateSchema?: SqliteDsl.TableDefinition<string, TStateColumns>
-  queries?: GenQueries<TQueries, SqliteDsl.FromColumns.RowDecoded<TStateColumns>>
+export type UseComponentStateProps<TStateColumns extends ComponentColumns> = {
+  schema?: SqliteDsl.TableDefinition<string, TStateColumns>
   reactDeps?: React.DependencyList
   componentKey: ComponentKeyConfig
 }
@@ -120,13 +76,12 @@ export type GetStateTypeEncoded<TTableDef extends SqliteDsl.TableDefinition<any,
  * @param config.componentKey A function that returns a unique key for this component.
  * @param config.reactDeps A list of React-level dependencies that will refresh the queries.
  */
-export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQueries extends QueryDefinitions>({
-  stateSchema: stateSchema_,
-  queries: queriesDef = () => ({}) as TQueries,
+export const useComponentState = <TStateColumns extends ComponentColumns>({
+  schema: stateSchema_,
   componentKey: componentKeyConfig,
   reactDeps = [],
-}: UseLiveStoreComponentProps<TQueries, TStateColumns>): {
-  queryResults: QueryResults<TQueries>
+}: UseComponentStateProps<TStateColumns>): {
+  state$: LiveStoreJSQuery<SqliteDsl.FromColumns.RowDecoded<TStateColumns>>
   state: SqliteDsl.FromColumns.RowDecoded<TStateColumns>
   setState: Setters<SqliteDsl.FromColumns.RowDecoded<TStateColumns>>
   useLiveStoreJsonState: UseLiveStoreJsonState<SqliteDsl.FromColumns.RowDecoded<TStateColumns>>
@@ -140,7 +95,6 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     [stateSchema_],
   )
 
-  // performance.mark('useLiveStoreComponent:start')
   const componentKey = useComponentKey(componentKeyConfig, reactDeps)
   const { store } = useStore()
 
@@ -152,7 +106,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     if (existingSpan !== undefined) return existingSpan
 
     const span = store.otel.tracer.startSpan(
-      `LiveStore:useLiveStoreComponent:${componentKeyLabel}`,
+      `LiveStore:useComponentState:${componentKeyLabel}`,
       {},
       store.otel.queriesSpanContext,
     )
@@ -170,49 +124,6 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
       span.end()
     },
     [componentKeyLabel, span],
-  )
-
-  const generateQueries = React.useCallback(
-    ({
-      state$,
-      registerSubscription,
-      isTemporaryQuery,
-    }: {
-      state$: LiveStoreJSQuery<TComponentState>
-      registerSubscription: RegisterSubscription
-      isTemporaryQuery: boolean
-    }) =>
-      queriesDef({
-        rxSQL: <T>(
-          genQuery: string | ((get: GetAtomResult) => string),
-          queriedTables: ReadonlyArray<string>,
-          bindValues?: Bindable,
-          // ) => store.querySQL<T>(genQuery, { queriedTables, bindValues, otelContext, componentKey }),
-        ) =>
-          new LiveStoreSQLQuery<T>({
-            label: 'todo',
-            genQueryString: genQuery,
-            bindValues,
-            queriedTables,
-          }),
-        rxGraphQL: <Result extends Record<string, any>, Variables extends Record<string, any>>(
-          query: DocumentNode<Result, Variables>,
-          genVariableValues: Variables | ((get: GetAtomResult) => Variables),
-          label?: string,
-        ) => queryGraphQL(query, genVariableValues, { label }),
-        // rxJS: <T>(genQuery: (get: GetAtomResult) => T) => store.queryJS(genQuery, { componentKey, otelContext }),
-        state$,
-        subscribe: registerSubscription,
-        isTemporaryQuery,
-      }),
-
-    // NOTE: we don't include the queries function passed in by the user here;
-    // the reason is that we don't want to force them to memoize that function.
-    // Instead, we just assume that the function always has the same contents.
-    // This makes sense for LiveStore because the component config should be static.
-    // TODO: document this and consider whether it's the right API surface.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store, componentKey],
   )
 
   const defaultComponentState = React.useMemo(() => {
@@ -262,18 +173,9 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
         })
       }
 
-      // state$ = store
-      //   .querySQL(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
-      //     queriedTables: [componentTableName],
-      //     componentKey,
-      //     label: `localState:query:${componentKeyLabel}`,
-      //     otelContext,
-      //   })
       return (
         new LiveStoreSQLQuery({
           label: `localState:query:${componentKeyLabel}`,
-          // otelContext,
-          // otelTracer: store.otel.tracer,
           genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
           queriedTables: [componentTableName],
         })
@@ -296,53 +198,13 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     store.tableRefs,
   ])
 
-  const queries = React.useMemo(
-    () => generateQueries({ state$, registerSubscription: () => {}, isTemporaryQuery: false }),
-    [generateQueries, state$],
-  )
-
   // Step 1:
   // Synchronously create state and queries for initial render pass.
-  // We do this in a temporary query context which cleans up after itself, making it idempotent
-  // TODO get rid of the temporary query workaround
-  const { initialComponentState, initialQueryResults } = React.useMemo(() => {
-    // return store.otel.tracer.startActiveSpan('LiveStore:useLiveStoreComponent:initial', {}, otelContext, (span) => {
-    // const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-    // NOTE `inTempQueryContext` automatically destroys the queries once the callback is done
-    // return store.inTempQueryContext(() => {
-    // try {
-    // store.graph.refresh({}, otelContext)
-    const initialComponentState = state$.run(otelContext)
-
-    // const queries = generateQueries({
-    //   state$: state$,
-    //   otelContext,
-    //   registerSubscription: () => {},
-    //   isTemporaryQuery: true,
-    // })
-    for (const [name, query] of Object.entries(queries)) {
-      query.label = name
-    }
-    // store.graph.refresh({}, otelContext)
-    // TODO improve typing
-    const initialQueryResults = mapValues(queries, (query) =>
-      query.run(otelContext),
-    ) as unknown as QueryResults<TQueries>
-
-    return { initialComponentState, initialQueryResults }
-    // } finally {
-    //   span.end()
-    // }
-    // })
-    // })
-  }, [otelContext, queries, state$])
+  const initialComponentState = React.useMemo(() => state$.run(otelContext), [otelContext, state$])
 
   // Now that we've computed the initial state synchronously,
   // we can set up our useState calls w/ a default value populated...
   const [componentStateRef, setComponentState_] = useStateRefWithReactiveInput<TComponentState>(initialComponentState)
-
-  const [queryResultsRef, setQueryResults_] = useStateRefWithReactiveInput<QueryResults<TQueries>>(initialQueryResults)
 
   const setState = (
     stateSchema === undefined
@@ -380,62 +242,29 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     return store.applyEvent('updateComponentState', { componentKey, columnNames, ...columnValues })
   }
 
+  const subscriptionInfo = React.useMemo(() => {
+    Error.stackTraceLimit = 10
+    // eslint-disable-next-line unicorn/error-message
+    const stack = new Error().stack!
+    Error.stackTraceLimit = originalStackLimit
+    return { stack: extractStackInfoFromStackTrace(stack) }
+  }, [])
+
   // OK, now all the synchronous work is done;
   // time to set up our long-running queries in an effect
   React.useEffect(() => {
     return store.otel.tracer.startActiveSpan(
-      'LiveStore:useLiveStoreComponent:long-running',
+      'LiveStore:useComponentState:long-running',
       { attributes: {} },
       otelContext,
       (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
         const unsubs: (() => void)[] = []
 
         if (stateSchema !== undefined) {
           insertRowForComponentInstance({ store, componentKey, stateSchema })
         }
 
-        // // create state query
-        // let state$: LiveStoreJSQuery<TComponentState>
-        // if (stateSchema === undefined) {
-        //   // TODO remove this query
-        //   // state$ = store.queryJS(() => ({}) as TComponentState, {
-        //   //   componentKey,
-        //   //   otelContext,
-        //   //   label: 'empty-component-state',
-        //   // })
-        //   state$ = new LiveStoreJSQuery({
-        //     fn: () => ({}) as TComponentState,
-        //     label: 'empty-component-state',
-        //     otelContext,
-        //     otelTracer: store.otel.tracer,
-        //   })
-        // } else {
-        //   const componentTableName = tableNameForComponentKey(componentKey)
-        //   insertRowForComponentInstance({ store, componentKey, stateSchema })
-
-        //   const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
-        //   // state$ = store
-        //   // .querySQL<TComponentState>(() => sql`select * from ${componentTableName} ${whereClause} limit 1`, {
-        //   //   queriedTables: [componentTableName],
-        //   //   componentKey,
-        //   //   label: `localState:query:${componentKeyLabel}`,
-        //   //   otelContext,
-        //   // })
-        //   state$ = new LiveStoreSQLQuery({
-        //     label: `localState:query:${componentKeyLabel}`,
-        //     otelContext,
-        //     otelTracer: store.otel.tracer,
-        //     payload: {
-        //       genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
-        //       queriedTables: [componentTableName],
-        //     },
-        //   })
-        //     // TODO consider to instead of just returning the default value, to write the default component state to the DB
-        //     .pipe<TComponentState>((results) =>
-        //       results.length === 1 ? Schema.parseSync(componentStateEffectSchema)(results[0]!) : defaultComponentState,
-        //     )
-        // }
+        state$.activeSubscriptions.add(subscriptionInfo)
 
         unsubs.push(
           store.subscribe(
@@ -446,42 +275,10 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
               }
             },
             undefined,
-            { label: `useLiveStoreComponent:localState:subscribe:${state$.label}` },
+            { label: `useComponentState:localState:subscribe:${state$.label}` },
           ),
+          () => state$.activeSubscriptions.delete(subscriptionInfo),
         )
-
-        // TODO re-enable
-        const registerSubscription: RegisterSubscription = (query$, callback, onUnsubscribe) => {
-          unsubs.push(
-            store.subscribe(
-              query$,
-              (results) => {
-                callback(results)
-              },
-              onUnsubscribe,
-              { label: `useLiveStoreComponent:query:manual-subscribe:${query$.label}` },
-            ),
-          )
-        }
-
-        for (const [key, query] of Object.entries(queries)) {
-          // Use the field name given to this query in the useQueries hook as its label
-          query.label = key
-
-          unsubs.push(
-            store.subscribe(
-              query,
-              (results) => {
-                const newQueryResults = { ...queryResultsRef.current, [key]: results }
-                if (isEqual(newQueryResults, queryResultsRef.current) === false) {
-                  setQueryResults_(newQueryResults)
-                }
-              },
-              undefined,
-              { label: `useLiveStoreComponent:query:subscribe:${query.label}` },
-            ),
-          )
-        }
 
         return () => {
           for (const unsub of unsubs) {
@@ -498,24 +295,18 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
     // // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     store,
-    componentKey,
+    subscriptionInfo,
     stateSchema,
     defaultComponentState,
-    generateQueries,
     otelContext,
     componentStateRef,
     state$,
-    queries,
-    queryResultsRef,
     setComponentState_,
-    setQueryResults_,
+    componentKey,
   ])
 
   // Very important: remove any queries / other resources associated w/ this component
-  React.useEffect(() => () => store.unmountComponent(componentKey), [store, componentKey])
-
-  // performance.mark('useLiveStoreComponent:end')
-  // performance.measure(`useLiveStoreComponent:${componentKey.type}`, 'useLiveStoreComponent:start', 'useLiveStoreComponent:end')
+  React.useEffect(() => () => state$.destroy(), [state$])
 
   const state = componentStateRef.current
 
@@ -545,7 +336,7 @@ export const useLiveStoreComponent = <TStateColumns extends ComponentColumns, TQ
   }
 
   return {
-    queryResults: queryResultsRef.current,
+    state$,
     state,
     setState,
     useLiveStoreJsonState,

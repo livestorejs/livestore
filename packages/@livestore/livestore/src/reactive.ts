@@ -64,6 +64,7 @@ type BaseThunk<TResult, TContext> = {
   /** Container for meta information (e.g. the LiveStore Store) */
   meta?: any
   equal: (a: TResult, b: TResult) => boolean
+  recomputations: number
 
   __getResult: any
 }
@@ -262,6 +263,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
           )
           thunk.isDirty = false
           thunk.previousResult = result
+          thunk.recomputations++
           return result
         } else {
           return thunk.previousResult as T
@@ -269,6 +271,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       },
       sub: new Set(),
       super: new Set(),
+      recomputations: 0,
       label: options?.label,
       meta: options?.meta,
       equal: options?.equal ?? isEqual,
@@ -623,6 +626,10 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     // effects: Array.from(this.effects).map(serializeEffect),
     // dirtyNodes: Array.from(this.dirtyNodes).map((a) => a.id),
   })
+
+  get atomsCount() {
+    return this.atoms.size
+  }
 }
 
 // const isAtom = <T, TContext>(a: Atom<T, TContext> | Effect): a is Atom<T, TContext> =>

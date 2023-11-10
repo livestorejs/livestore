@@ -1,3 +1,4 @@
+// TODO get rid of this hook altogether
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
 import * as otel from '@opentelemetry/api'
 import { isEqual } from 'lodash-es'
@@ -6,10 +7,10 @@ import React from 'react'
 import { labelForKey } from '../componentKey.js'
 import { queryGraphQL } from '../reactiveQueries/graphql.js'
 import { useStore } from './LiveStoreContext.js'
-import { type ComponentKeyConfig, useComponentKey } from './useLiveStoreComponent.js'
+import { type ComponentKeyConfig, useComponentKey } from './useComponentState.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
-export type UseLiveStoreComponentProps<TResult extends Record<string, any>, TVariables extends Record<string, any>> = {
+export type UseComponentStateProps<TResult extends Record<string, any>, TVariables extends Record<string, any>> = {
   query: DocumentNode<TResult, TVariables>
   variables: TVariables
   componentKey: ComponentKeyConfig
@@ -36,7 +37,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
   variables,
   componentKey: componentKeyConfig,
   reactDeps = [],
-}: UseLiveStoreComponentProps<TResult, TVariables>): Readonly<TResult> => {
+}: UseComponentStateProps<TResult, TVariables>): Readonly<TResult> => {
   const componentKey = useComponentKey(componentKeyConfig, reactDeps)
   const { store } = useStore()
 
@@ -102,10 +103,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
   )
 
   // TODO get rid of the temporary query workaround
-  const initialQueryResults = React.useMemo(
-    () => store.inTempQueryContext(() => liveStoreQuery.run()),
-    [liveStoreQuery, store],
-  )
+  const initialQueryResults = React.useMemo(() => liveStoreQuery.run(), [liveStoreQuery])
 
   const [queryResultsRef, setQueryResults_] = useStateRefWithReactiveInput<TResult>(initialQueryResults)
 
@@ -134,7 +132,7 @@ export const useGraphQL = <TResult extends Record<string, any>, TVariables exten
   ])
 
   // Very important: remove any queries / other resources associated w/ this component
-  React.useEffect(() => () => store.unmountComponent(componentKey), [store, componentKey])
+  React.useEffect(() => () => liveStoreQuery.destroy(), [liveStoreQuery])
 
   return queryResultsRef.current
 }

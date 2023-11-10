@@ -5,7 +5,7 @@ import { sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import { makeTodoMvc } from './fixture.js'
 
-describe('useLiveStoreComponent', () => {
+describe('useComponentState', () => {
   it('should update the data based on component key', async () => {
     let renderCount = 0
 
@@ -15,10 +15,9 @@ describe('useLiveStoreComponent', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useLiveStoreComponent({
-          stateSchema: AppSchema,
+        return LiveStoreReact.useComponentState({
+          schema: AppSchema,
           componentKey: { name: 'UserInfo', id: userId },
-          queries: () => ({}),
         })
       },
       { wrapper, initialProps: 'u1' },
@@ -48,10 +47,9 @@ describe('useLiveStoreComponent', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useLiveStoreComponent({
-          stateSchema: AppSchema,
+        return LiveStoreReact.useComponentState({
+          schema: AppSchema,
           componentKey: { name: 'UserInfo', id: userId },
-          queries: () => ({}),
         })
       },
       { wrapper, initialProps: 'u1' },
@@ -77,10 +75,9 @@ describe('useLiveStoreComponent', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useLiveStoreComponent({
-          stateSchema: AppSchema,
+        return LiveStoreReact.useComponentState({
+          schema: AppSchema,
           componentKey: { name: 'UserInfo', id: userId },
-          queries: () => ({}),
         })
       },
       { wrapper, initialProps: 'u1' },
@@ -101,6 +98,3 @@ describe('useLiveStoreComponent', () => {
     expect(renderCount).toBe(2)
   })
 })
-
-// TODO add a test case that tests the `queries` callback
-// TODO add a test case that tests the `subscribe` in the `queries` callback
