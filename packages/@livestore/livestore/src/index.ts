@@ -20,6 +20,7 @@ export type {
   RefreshReasonWithGenericReasons,
   SerializedAtom,
   SerializedEffect,
+  Atom,
 } from './reactive.js'
 export { type LiveStoreJSQuery, queryJS } from './reactiveQueries/js.js'
 export { type LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'

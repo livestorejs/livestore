@@ -29,7 +29,7 @@ import type * as otel from '@opentelemetry/api'
 import { isEqual, max, uniqueId } from 'lodash-es'
 
 import { BoundArray } from './bounded-collections.js'
-import { getDurationMsFromSpan } from './otel.js'
+// import { getDurationMsFromSpan } from './otel.js'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
 export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
@@ -152,12 +152,10 @@ const serializeAtom = (atom: Atom<any, TODO>): SerializedAtom => ({
   super: Array.from(atom.super).map((a) => a.id),
 })
 
-const serializeEffect = (effect: Effect): SerializedEffect => pick(effect, ['_tag', 'id'])
+// const serializeEffect = (effect: Effect): SerializedEffect => pick(effect, ['_tag', 'id'])
 
 export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo extends Taggable, TContext = {}> {
-  private atoms: Set<Atom<any, TContext>> = new Set()
-  // private effects: Set<Effect> = new Set()
-  // readonly dirtyNodes: Set<Atom<any, TContext> | Effect> = new Set()
+  readonly atoms: Set<Atom<any, TContext>> = new Set()
   effectsWrapper: (runEffects: () => void) => void
 
   context: TContext | undefined
@@ -231,7 +229,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
     //   durationMs: 0,
     // } satisfies AtomDebugInfo<TDebugThunkInfo>
 
-    const addDebugInfo = (debugInfo: TDebugThunkInfo) => {
+    const addDebugInfo = (_debugInfo: TDebugThunkInfo) => {
       // debugInfoForAtom.debugInfo = debugInfo
     }
 
@@ -310,11 +308,9 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
       this.removeEdge(node, subComp)
     }
 
-    // if (node._tag === 'effect') {
-    //   this.effects.delete(node)
-    // } else {
-    //   this.atoms.delete(node)
-    // }
+    if (node._tag !== 'effect') {
+      this.atoms.delete(node)
+    }
   }
 
   makeEffect(

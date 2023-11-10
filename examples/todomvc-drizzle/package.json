@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@effect/schema": "0.43.2",
-    "@livestore/devtools-react": "^0.0.17",
+    "@livestore/devtools-react": "^0.0.18",
     "@livestore/livestore": "latest",
     "@livestore/utils": "latest",
     "@opentelemetry/api": "^1.6.0",
