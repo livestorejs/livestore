@@ -1,3 +1,15 @@
+## Local setup
+
+```sh
+# Install deps and build libs
+pnpm install
+pnpm build
+
+# Run the example app
+cd examples/todomvc
+pnpm dev
+```
+
 ## Concepts
 
 LiveStore provides a highly structured data model for your React components. It helps you clearly reason about data dependencies, leverage the relational model and the power of SQLite, and persist UI state.
