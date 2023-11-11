@@ -1,3 +1,4 @@
+import * as otel from '@opentelemetry/api'
 import { isEqual } from 'lodash-es'
 import React from 'react'
 
@@ -31,6 +32,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
       { attributes: { label: query.label } },
       store.otel.queriesSpanContext,
       (span) => {
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
         query.activeSubscriptions.add(subscriptionInfo)
         const unsub = store.subscribe(
           query,
@@ -43,7 +45,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
             }
           },
           undefined,
-          { label: query.label },
+          { label: query.label, otelContext },
         )
         return () => {
           query.activeSubscriptions.delete(subscriptionInfo)

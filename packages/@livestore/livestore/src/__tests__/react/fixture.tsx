@@ -20,9 +20,6 @@ export type AppState = {
   filter: Filter
 }
 
-// const appState: LiveStore.QueryDefinition = (store) =>
-//   store.querySQL<AppState>(() => `select newTodoText, filter from app;`, { queriedTables: ['app'] }).getFirstRow()
-
 export const schema = LiveStore.makeSchema({
   tables: {
     todos: LiveStore.DbSchema.table('todos', {

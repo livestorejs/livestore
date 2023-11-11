@@ -136,7 +136,7 @@ export class InMemoryDatabase {
     query: string,
     bindValues?: PreparedBindValues,
     writeTables?: string[],
-    options?: { hasNoEffects?: boolean; otelContext: otel.Context },
+    options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
   ): { durationMs: number } {
     return this.otelTracer.startActiveSpan(
       'livestore.in-memory-db:execute',

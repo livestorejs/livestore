@@ -494,8 +494,8 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * This should only be used for framework-internal purposes;
    * all app writes should go through applyEvent.
    */
-  execute = (query: string, params: ParamsObject = {}, writeTables?: string[]) => {
-    this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables)
+  execute = (query: string, params: ParamsObject = {}, writeTables?: string[], otelContext?: otel.Context) => {
+    this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
     if (this.storage !== undefined) {
       const parentSpan = otel.trace.getSpan(otel.context.active())

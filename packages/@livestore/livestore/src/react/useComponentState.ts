@@ -257,8 +257,9 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
       (span) => {
         const unsubs: (() => void)[] = []
 
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
         if (stateSchema !== undefined) {
-          insertRowForComponentInstance({ store, componentKey, stateSchema })
+          insertRowForComponentInstance({ store, componentKey, stateSchema, otelContext })
         }
 
         state$.activeSubscriptions.add(subscriptionInfo)
@@ -272,7 +273,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
               }
             },
             undefined,
-            { label: `useComponentState:localState:subscribe:${state$.label}` },
+            { label: `useComponentState:localState:subscribe:${state$.label}`, otelContext },
           ),
           () => state$.activeSubscriptions.delete(subscriptionInfo),
         )
@@ -365,10 +366,12 @@ const insertRowForComponentInstance = ({
   store,
   componentKey,
   stateSchema,
+  otelContext,
 }: {
   store: Store<BaseGraphQLContext>
   componentKey: ComponentKey
   stateSchema: SqliteDsl.TableDefinition<string, SqliteDsl.Columns>
+  otelContext: otel.Context
 }) => {
   const columnNames = ['id', ...Object.keys(stateSchema.columns)]
   const columnValues = columnNames.map((name) => `$${name}`).join(', ')
@@ -385,6 +388,7 @@ const insertRowForComponentInstance = ({
       id: componentKey.id,
     },
     [tableName],
+    otelContext,
   )
 }
 
