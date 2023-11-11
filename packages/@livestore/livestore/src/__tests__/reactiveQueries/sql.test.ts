@@ -264,7 +264,7 @@ describe('otel', () => {
             "_name": "LiveStore:queries",
             "children": [
               {
-                "_name": "js:all todos:first",
+                "_name": "js:sql(all todos):first",
                 "children": [
                   {
                     "_name": "sql:select * from todos where completed = 0",
@@ -289,7 +289,7 @@ describe('otel', () => {
                 ],
               },
               {
-                "_name": "js:all todos:first",
+                "_name": "js:sql(all todos):first",
                 "children": [
                   {
                     "_name": "sql:select * from todos where completed = 0",

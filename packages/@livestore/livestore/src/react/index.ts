@@ -9,7 +9,6 @@ export type {
 export { LiveStoreContext, useStore } from './LiveStoreContext.js'
 export { LiveStoreProvider } from './LiveStoreProvider.js'
 export { useComponentState } from './useComponentState.js'
-export { useGraphQL } from './useGraphQL.js'
 export { useQuery } from './useQuery.js'
 export { useTemporaryQuery } from './useTemporaryQuery.js'
 

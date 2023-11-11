@@ -10,50 +10,46 @@ export const queryJS = <TResult>(fn: (get: GetAtomResult) => TResult, options: {
 
 export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag: 'js' = 'js'
+
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, DbContext>
 
   label: string
 
+  /** Currently only used for "nested destruction" of piped queries */
+  private onDestroy: (() => void) | undefined
+
   constructor({
-    // results$,
     fn,
     label,
+    onDestroy,
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
+    /** Currently only used for "nested destruction" of piped queries */
+    onDestroy?: () => void
   }) {
     super()
 
-    // this.otelContext = baseProps.otelContext
+    this.onDestroy = onDestroy
     this.label = label
 
     const queryLabel = `${label}:results`
 
     this.results$ = dbGraph.makeThunk(
       (get, addDebugInfo, { otelTracer, rootOtelContext }, otelContext) =>
-        otelTracer.startActiveSpan(
-          'js:', // NOTE span name will be overridden further down
-          {},
-          otelContext ?? rootOtelContext,
-          (span) => {
-            try {
-              const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? rootOtelContext, (span) => {
+          try {
+            addDebugInfo({ _tag: 'js', label, query: fn.toString() })
 
-              span.updateName(`js:${label}`)
-
-              addDebugInfo({ _tag: 'js', label, query: fn.toString() })
-
-              return fn(makeGetAtomResult(get, otelContext ?? rootOtelContext))
-            } finally {
-              span.end()
-            }
-          },
-        ),
+            const otelContext = otel.trace.setSpan(otel.context.active(), span)
+            return fn(makeGetAtomResult(get, otelContext))
+          } finally {
+            span.end()
+          }
+        }),
       { label: queryLabel, meta: { liveStoreThunkType: 'jsResults' } },
     )
-
-    // this.results$ = results$
   }
 
   pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
@@ -63,10 +59,11 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
         return fn(results, get)
       },
       label: `${this.label}:js`,
-      //   componentKey: this.componentKey,
+      onDestroy: () => this.destroy(),
     })
 
   destroy = () => {
     dbGraph.destroy(this.results$)
+    this.onDestroy?.()
   }
 }

@@ -192,10 +192,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
     defaultComponentState,
     otelContext,
     stateSchema,
-    store._proxyDb,
-    store.graph,
-    store.inMemoryDB,
-    store.tableRefs,
+    store,
   ])
 
   // Step 1:
@@ -289,10 +286,6 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
         }
       },
     )
-    // NOTE excluding `setComponentState_` and `setQueryResults_` from the deps array as it seems to cause an infinite loop
-    // This should probably be improved
-    // TODO is this still true?
-    // // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     store,
     subscriptionInfo,
@@ -305,7 +298,6 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
     componentKey,
   ])
 
-  // Very important: remove any queries / other resources associated w/ this component
   React.useEffect(() => () => state$.destroy(), [state$])
 
   const state = componentStateRef.current

@@ -40,7 +40,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
     genQueryString,
     queriedTables,
     bindValues,
-    label,
+    label: label_,
   }: {
     label?: string
     genQueryString: string | ((get: GetAtomResult) => string)
@@ -48,6 +48,9 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
     bindValues?: Bindable
   }) {
     super()
+
+    const label = label_ ?? genQueryString.toString()
+    this.label = `sql(${label})`
 
     // TODO don't even create a thunk if query string is static
     const queryString$ = dbGraph.makeThunk(
@@ -65,14 +68,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
 
     this.queryString$ = queryString$
 
-    // TODO come up with different way to handle labels
-    // label = label ?? `sql(${queryString$.computeResult()})`
-
-    this.label = label ?? `sql(${genQueryString.toString()})`
-    // span.updateName(`querySQL:${label}`)
-
     const queryLabel = `${label}:results`
-    // const queryLabel = `${label}:results` + (this.temporaryQueries ? ':temp' : '')
 
     const results$ = dbGraph.makeThunk<ReadonlyArray<Row>>(
       (get, addDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
@@ -130,6 +126,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
         return fn(results, get)
       },
       label: `${this.label}:js`,
+      onDestroy: () => this.destroy(),
     })
 
   /** Returns a reactive query  */
@@ -145,6 +142,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
         return results[0] ?? args!.defaultValue!
       },
       label: `${this.label}:first`,
+      onDestroy: () => this.destroy(),
     })
 
   destroy = () => {

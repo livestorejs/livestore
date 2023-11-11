@@ -35,7 +35,7 @@ export class LiveStoreGraphQLQuery<
   constructor({
     document,
     label,
-    genVariableValues, // context,
+    genVariableValues,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
@@ -47,10 +47,6 @@ export class LiveStoreGraphQLQuery<
 
     this.label = labelWithDefault
     this.document = document
-
-    // if (context === undefined) {
-    //   return shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
-    // }
 
     // TODO don't even create a thunk if variables are static
     const variableValues$ = dbGraph.makeThunk(
@@ -66,7 +62,6 @@ export class LiveStoreGraphQLQuery<
 
     this.variableValues$ = variableValues$
 
-    // const resultsLabel = `${labelWithDefault}:results` + (this.temporaryQueries ? ':temp' : '')
     const resultsLabel = `${labelWithDefault}:results`
     this.results$ = dbGraph.makeThunk<TResult>(
       (get, addDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
@@ -106,6 +101,7 @@ export class LiveStoreGraphQLQuery<
         return fn(results, get)
       },
       label: `${this.label}:js`,
+      onDestroy: () => this.destroy(),
     })
 
   queryOnce = ({
@@ -121,8 +117,6 @@ export class LiveStoreGraphQLQuery<
     variableValues: TVariableValues
     store: Store<TContext>
   }) => {
-    // const schema = this.schema
-    // const context = this.context
     const schema =
       store.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
     const context =

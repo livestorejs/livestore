@@ -56,7 +56,7 @@ describe('a trivial graph', () => {
   })
 
   it('does not rerun c when d is edited and e is rerun', () => {
-    const { graph, c, d, e, numberOfRunsForC } = makeGraph()
+    const { graph, d, e, numberOfRunsForC } = makeGraph()
     expect(numberOfRunsForC.runs).toBe(0)
     expect(e.computeResult()).toBe(3 + 3)
     expect(numberOfRunsForC.runs).toBe(1)

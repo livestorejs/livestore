@@ -2,7 +2,7 @@ import type * as otel from '@opentelemetry/api'
 
 import type { StackInfo } from '../react/utils/extractStackInfoFromStackTrace.js'
 import type { Atom, GetAtom, Thunk } from '../reactive.js'
-import { type DbContext } from './graph.js'
+import { type DbContext, dbGraph } from './graph.js'
 import type { LiveStoreJSQuery } from './js.js'
 
 export type UnsubscribeQuery = () => void
@@ -44,12 +44,6 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
 
   abstract destroy: () => void
 
-  // subscribe = (
-  //   onNewValue: (value: TResult) => void,
-  //   onSubsubscribe?: () => void,
-  //   options?: { label?: string } | undefined,
-  // ): (() => void) => this.store.subscribe(this as any, onNewValue as any, onSubsubscribe, options)
-
   run = (otelContext?: otel.Context): TResult => this.results$.computeResult(otelContext)
 
   runAndDestroy = (otelContext?: otel.Context): TResult => {
@@ -57,6 +51,12 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
     this.destroy()
     return result
   }
+
+  subscribe = (
+    onNewValue: (value: TResult) => void,
+    onUnsubsubscribe?: () => void,
+    options?: { label?: string; otelContext?: otel.Context } | undefined,
+  ): (() => void) => dbGraph.context!.store.subscribe(this, onNewValue, onUnsubsubscribe, options)
 }
 
 export type GetAtomResult = <T>(atom: Atom<T, any> | LiveStoreJSQuery<T>) => T

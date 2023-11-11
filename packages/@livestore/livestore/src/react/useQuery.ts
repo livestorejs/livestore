@@ -32,27 +32,22 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
       store.otel.queriesSpanContext,
       (span) => {
         query.activeSubscriptions.add(subscriptionInfo)
-        const cancel = store.subscribe(
+        const unsub = store.subscribe(
           query,
-          (v) => {
+          (newValue) => {
             // NOTE: we return a reference to the result object within LiveStore;
             // this implies that app code must not mutate the results, or else
             // there may be weird reactivity bugs.
-            if (isEqual(v, valueRef.current) === false) {
-              setValue(v)
+            if (isEqual(newValue, valueRef.current) === false) {
+              setValue(newValue)
             }
           },
           undefined,
           { label: query.label },
         )
         return () => {
-          // // NOTE destroying the whole query will also unsubscribe it
-          // query.destroy()
-
-          // TODO for now we'll still `cancel` manually, but we should remove this once we have some kind of
-          // ARC-based system
           query.activeSubscriptions.delete(subscriptionInfo)
-          cancel()
+          unsub()
           span.end()
         }
       },
