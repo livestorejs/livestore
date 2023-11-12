@@ -24,7 +24,7 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import type { PrettifyFlat } from '@livestore/utils'
-import { pick, shouldNeverHappen } from '@livestore/utils'
+import { pick } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { isEqual, max, uniqueId } from 'lodash-es'
 
@@ -205,21 +205,6 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
         }
       | undefined,
   ): Thunk<T, TContext> {
-    // const computeResult = (): T => {
-    //   const getAtom = (atom: Atom<T, any>): T => {
-    //     const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
-    //     if (atom.isDirty) {
-    //       console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
-    //       const result = atom.computeResult()
-    //       atom.isDirty = false
-    //       atom.previousResult = result
-    //       return result
-    //     } else {
-    //       console.log('atom is clean', atom.id, atom.label ?? '', atom._tag, __getResult)
-    //       return atom.previousResult as T
-    //     }
-    //   }
-
     // let resultChanged = false
     // const debugInfoForAtom = {
     //   atom: serializeAtom(null as TODO),
@@ -256,7 +241,7 @@ export class ReactiveGraph<TDebugRefreshReason extends Taggable, TDebugThunkInfo
           const result = getResult_(
             compute_ as GetAtom,
             addDebugInfo,
-            this.context ?? shouldNeverHappen('No store context set yet'),
+            this.context ?? throwContextNotSetError(),
             otelContext,
           )
           thunk.isDirty = false
@@ -655,4 +640,8 @@ const markSuperCompDirtyRec = <T>(atom: Atom<T, any>, effectsToRefresh: Set<Effe
       effectsToRefresh.add(superComp)
     }
   }
+}
+
+const throwContextNotSetError = (): never => {
+  throw new Error(`LiveStore Error: \`context\` not set on ReactiveGraph`)
 }

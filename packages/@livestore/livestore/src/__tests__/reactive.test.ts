@@ -316,3 +316,14 @@ describe('a trivial graph with undefined', () => {
     expect(e.computeResult()).toBe(4)
   })
 })
+
+describe('error handling', () => {
+  it('throws an error when no context is set', () => {
+    const graph = new ReactiveGraph({})
+    const a = graph.makeRef(1)
+    const b = graph.makeThunk((get) => get(a) + 1)
+    expect(() => b.computeResult()).toThrowErrorMatchingInlineSnapshot(
+      '"LiveStore Error: `context` not set on ReactiveGraph"',
+    )
+  })
+})
