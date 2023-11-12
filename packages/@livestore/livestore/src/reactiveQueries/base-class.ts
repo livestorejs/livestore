@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { StackInfo } from '../react/utils/extractStackInfoFromStackTrace.js'
+import type { StackInfo } from '../react/utils/stack-info.js'
 import type { Atom, GetAtom, Thunk } from '../reactive.js'
 import { type DbContext, dbGraph } from './graph.js'
 import type { LiveStoreJSQuery } from './js.js'

@@ -17,7 +17,7 @@ import { SCHEMA_META_TABLE } from '../schema.js'
 import type { BaseGraphQLContext, LiveStoreQuery, Store } from '../store.js'
 import { sql } from '../util.js'
 import { useStore } from './LiveStoreContext.js'
-import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/extractStackInfoFromStackTrace.js'
+import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 export interface QueryDefinitions {

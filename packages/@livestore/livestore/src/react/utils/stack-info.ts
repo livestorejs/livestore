@@ -1,3 +1,5 @@
+import React from 'react'
+
 export const originalStackLimit = Error.stackTraceLimit
 
 export type StackInfo = {
@@ -44,4 +46,15 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo[] 
   }
 
   return stackInfoArr
+}
+
+export const useStackInfo = (): StackInfo[] => {
+  return React.useMemo(() => {
+    Error.stackTraceLimit = 10
+    // eslint-disable-next-line unicorn/error-message
+    const stack = new Error().stack!
+    console.log('stack', stack)
+    Error.stackTraceLimit = originalStackLimit
+    return extractStackInfoFromStackTrace(stack)
+  }, [])
 }

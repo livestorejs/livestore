@@ -109,7 +109,9 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
   tableRefs: { [key: string]: Ref<null> }
-  activeQueries: Set<LiveStoreQuery>
+
+  /** RC-based set to see which queries are currently subscribed to */
+  activeQueries: ReferenceCountedSet<LiveStoreQuery>
   storage?: Storage
 
   private constructor({
@@ -126,7 +128,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     this.schema = schema
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
-    this.activeQueries = new Set()
+    this.activeQueries = new ReferenceCountedSet()
     this.storage = storage
 
     const applyEventsSpan = otelTracer.startSpan('LiveStore:applyEvents', {}, otelRootSpanContext)
@@ -198,19 +200,19 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
         const label = `subscribe:${options?.label}`
         const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$)), { label })
 
+        this.activeQueries.add(query as LiveStoreQuery)
+
         effect.doEffect(otelContext)
 
         const unsubscribe = () => {
           try {
             this.graph.destroy(effect)
-            this.activeQueries.delete(query as LiveStoreQuery)
+            this.activeQueries.remove(query as LiveStoreQuery)
             onUnsubsubscribe?.()
           } finally {
             span.end()
           }
         }
-
-        this.activeQueries.add(query as LiveStoreQuery)
 
         return unsubscribe
       },
@@ -617,4 +619,40 @@ const eventToSql = (
     typeof eventDefinition.statement === 'function' && statement.argsAlreadyBound ? {} : prepareBindValues(event.args)
 
   return { statement, bindValues }
+}
+
+class ReferenceCountedSet<T> {
+  private map: Map<T, number>
+
+  constructor() {
+    this.map = new Map<T, number>()
+  }
+
+  add = (key: T) => {
+    const count = this.map.get(key) ?? 0
+    this.map.set(key, count + 1)
+  }
+
+  remove = (key: T) => {
+    const count = this.map.get(key) ?? 0
+    if (count === 1) {
+      this.map.delete(key)
+    } else {
+      this.map.set(key, count - 1)
+    }
+  }
+
+  has = (key: T) => {
+    return this.map.has(key)
+  }
+
+  get size() {
+    return this.map.size
+  }
+
+  *[Symbol.iterator]() {
+    for (const key of this.map.keys()) {
+      yield key
+    }
+  }
 }
