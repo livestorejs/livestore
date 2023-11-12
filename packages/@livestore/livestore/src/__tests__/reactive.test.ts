@@ -30,6 +30,8 @@ describe('a trivial graph', () => {
     //    \       \
     //      e = c + d
 
+    expect(graph.atoms.size).toBe(5)
+
     return { graph, a, b, c, d, e, numberOfRunsForC }
   }
 
@@ -190,6 +192,8 @@ describe('a dynamic graph', () => {
     //    \      \
     //      f = d * e
 
+    expect(graph.atoms.size).toBe(6)
+
     return { graph, a, b, c, d, e, f, numberOfRunsForD }
   }
 
@@ -252,6 +256,8 @@ describe('a diamond shaped graph', () => {
     //  \ /
     //   d = b + c
 
+    expect(graph.atoms.size).toBe(4)
+
     return { graph, a, b, c, d, dRuns }
   }
 
@@ -306,6 +312,8 @@ describe('a trivial graph with undefined', () => {
     //   \       \
     //    \       \
     //      e = c + d
+
+    expect(graph.atoms.size).toBe(5)
 
     return { graph, a, b, c, d, e }
   }
