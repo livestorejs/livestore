@@ -30,13 +30,11 @@ We have a todos app which has a global table called `app`, which always has one 
 import { querySQL, sql } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
 
-const filterClause$ = querySQL<AppState>(`select * from app;`, { queriedTables: ['app'] })
+const filterClause$ = querySQL<AppState>(`select * from app;`)
   .getFirstRow()
   .pipe((appState) => (appState.filter === 'all' ? '' : `where completed = ${appState.filter === 'completed'}`))
 
-const visibleTodos$ = querySQL<Todo>((get) => sql`select * from todos ${get(filterClause$)}`, {
-  queriedTables: ['todos'],
-})
+const visibleTodos$ = querySQL<Todo>((get) => sql`select * from todos ${get(filterClause$)}`)
 
 
 export const MyApp: React.FC = () => {

@@ -166,7 +166,7 @@ describe('otel', () => {
 
     const filter = queryJS(() => `where completed = 0`, { label: 'where-filter' })
     const query = querySQL((get) => `select * from todos ${get(filter)}`, {
-      queriedTables: ['todos'],
+      // queriedTables: ['todos'],
       label: 'all todos',
     }).getFirstRow({
       defaultValue: defaultTodo,

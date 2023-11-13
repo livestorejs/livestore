@@ -5,15 +5,13 @@ import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'
 import * as t from '../drizzle/schema.js'
 import type { Todo } from '../schema.js'
 
-const filterClause$ = queryDrizzle((qb) => qb.select().from(t.app), { queriedTables: ['app'] })
+const filterClause$ = queryDrizzle((qb) => qb.select().from(t.app))
   .getFirstRow()
   .pipe((appState) =>
     appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),
   )
 
-const visibleTodos$ = queryDrizzle((qb, get) => qb.select().from(t.todos).where(get(filterClause$)), {
-  queriedTables: ['todos'],
-})
+const visibleTodos$ = queryDrizzle((qb, get) => qb.select().from(t.todos).where(get(filterClause$)))
 
 export const MainSection: React.FC = () => {
   const { store } = useStore()

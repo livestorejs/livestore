@@ -6,13 +6,11 @@ import * as t from '../drizzle/schema.js'
 import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
 
-const incompleteCount$ = queryDrizzle(
-  (qb) =>
-    qb
-      .select({ incompleteCount: drizzle.sql<number>`count(*) as incompleteCount` })
-      .from(t.todos)
-      .where(drizzle.eq(t.todos.completed, false)),
-  { queriedTables: ['todos'] },
+const incompleteCount$ = queryDrizzle((qb) =>
+  qb
+    .select({ incompleteCount: drizzle.sql<number>`count(*) as incompleteCount` })
+    .from(t.todos)
+    .where(drizzle.eq(t.todos.completed, false)),
 )
   .getFirstRow()
   .pipe(({ incompleteCount }) => incompleteCount)

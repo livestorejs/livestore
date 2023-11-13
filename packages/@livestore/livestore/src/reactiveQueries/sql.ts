@@ -13,17 +13,22 @@ import { LiveStoreJSQuery } from './js.js'
 
 export const querySQL = <Row>(
   query: string | ((get: GetAtomResult) => string),
-  options: {
-    queriedTables: ReadonlyArray<string>
+  options?: {
+    /**
+     * Can be provided explicitly to slightly speed up initial query performance
+     *
+     * NOTE In the future we want to do this automatically at build time
+     */
+    queriedTables?: ReadonlyArray<string>
     bindValues?: Bindable
     label?: string
   },
 ) =>
   new LiveStoreSQLQuery<Row>({
-    label: options.label,
+    label: options?.label,
     genQueryString: query,
-    queriedTables: options.queriedTables,
-    bindValues: options.bindValues,
+    queriedTables: options?.queriedTables,
+    bindValues: options?.bindValues,
   })
 
 /* An object encapsulating a reactive SQL query */
@@ -46,7 +51,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
   }: {
     label?: string
     genQueryString: string | ((get: GetAtomResult) => string)
-    queriedTables: ReadonlyArray<string>
+    queriedTables?: ReadonlyArray<string>
     bindValues?: Bindable
   }) {
     super()
@@ -74,6 +79,8 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
 
     const queryLabel = `${label}:results`
 
+    const queriedTablesRef = { current: queriedTables }
+
     const results$ = dbGraph.makeThunk<ReadonlyArray<Row>>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(
@@ -83,12 +90,17 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
           (span) => {
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
+            const sqlString = get(queryString$, otelContext)
+
+            if (queriedTablesRef.current === undefined) {
+              queriedTablesRef.current = store.inMemoryDB.getTablesUsed(sqlString)
+            }
+
             // Establish a reactive dependency on the tables used in the query
-            for (const tableName of queriedTables) {
+            for (const tableName of queriedTablesRef.current) {
               const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
               get(tableRef, otelContext)
             }
-            const sqlString = get(queryString$, otelContext)
 
             span.setAttribute('sql.query', sqlString)
             span.updateName(`sql:${sqlString.slice(0, 50)}`)

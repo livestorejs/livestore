@@ -7,7 +7,6 @@ import { useAppState } from '../useAppState.js'
 
 const incompleteCount$ = querySQL<{ incompleteCount: number }>(
   `select count(*) as incompleteCount from todos where completed = false;`,
-  { queriedTables: ['todos'] },
 )
   .getFirstRow()
   .pipe(({ incompleteCount }) => incompleteCount)

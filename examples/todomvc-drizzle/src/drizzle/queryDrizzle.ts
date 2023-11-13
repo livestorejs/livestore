@@ -21,15 +21,12 @@ const queryBuilder = new QueryBuilder()
 
 export const queryDrizzle = <TQueryBuilder extends TypedQueryBuilder<any, any>>(
   fn: (qb: QueryBuilder, get: GetAtomResult) => TQueryBuilder,
-  { queriedTables }: { queriedTables: ReadonlyArray<string> },
+  options?: { queriedTables?: ReadonlyArray<string> },
 ): LiveStoreSQLQuery<GetQueryRes<TQueryBuilder>> => {
-  return querySQL(
-    (get) => {
-      const query = fn(queryBuilder, get)
+  return querySQL((get) => {
+    const query = fn(queryBuilder, get)
 
-      // @ts-expect-error access protected member `dialect`
-      return query.dialect.sqlToQuery(query.getSQL().inlineParams()).sql
-    },
-    { queriedTables },
-  )
+    // @ts-expect-error access protected member `dialect`
+    return query.dialect.sqlToQuery(query.getSQL().inlineParams()).sql
+  }, options)
 }

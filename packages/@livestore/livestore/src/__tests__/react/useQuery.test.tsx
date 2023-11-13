@@ -10,7 +10,7 @@ import { makeTodoMvc } from './fixture.js'
 const query = new LiveStoreSQLQuery<Todo>({
   label: 'todo',
   genQueryString: `select * from todos`,
-  queriedTables: ['todos'],
+  // queriedTables: ['todos'],
 })
 
 describe('useQuery', () => {
