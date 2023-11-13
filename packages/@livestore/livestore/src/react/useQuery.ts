@@ -1,56 +1,90 @@
+import * as otel from '@opentelemetry/api'
+import { isEqual } from 'lodash-es'
 import React from 'react'
 
-import { labelForKey } from '../componentKey.js'
-import type { QueryDefinition } from '../effect/LiveStore.js'
-import type { LiveStoreQuery, QueryResult, Store } from '../store.js'
+import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
+import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/stack-info.js'
+import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
+/**
+ * This is needed because the `React.useMemo` call below, can sometimes be called multiple times 🤷,
+ * so we need to "cache" the fact that we've already started a span for this component.
+ * The map entry is being removed again in the `React.useEffect` call below.
+ */
+const spanAlreadyStartedCache = new Map<ILiveStoreQuery<any>, { span: otel.Span; otelContext: otel.Context }>()
 
-// TODO get rid of the query cache in favour of the new side-effect-free query definition approach https://www.notion.so/schickling/New-query-definition-approach-1097a78ef0e9495bac25f90417374756?pvs=4
-const queryCache = new Map<QueryDefinition, LiveStoreQuery>()
-
-export const useQuery = <Q extends LiveStoreQuery>(queryDef: (store: Store) => Q): QueryResult<Q> => {
+export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   const { store } = useStore()
-  const query = React.useMemo(() => {
-    if (queryCache.has(queryDef)) return queryCache.get(queryDef) as Q
 
-    const query = queryDef(store)
-    queryCache.set(queryDef, query)
-    return query
-  }, [store, queryDef])
+  const stackInfo = React.useMemo(() => {
+    Error.stackTraceLimit = 10
+    // eslint-disable-next-line unicorn/error-message
+    const stack = new Error().stack!
+    Error.stackTraceLimit = originalStackLimit
+    return extractStackInfoFromStackTrace(stack)
+  }, [])
+
+  // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
+  const { span, otelContext } = React.useMemo(() => {
+    const existingSpan = spanAlreadyStartedCache.get(query)
+    if (existingSpan !== undefined) return existingSpan
+
+    const span = store.otel.tracer.startSpan(
+      `LiveStore:useQuery:${query.label}`,
+      { attributes: { label: query.label, stackInfo: JSON.stringify(stackInfo) } },
+      store.otel.queriesSpanContext,
+    )
+
+    const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+    spanAlreadyStartedCache.set(query, { span, otelContext })
+
+    return { span, otelContext }
+  }, [query, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
+
+  const initialResult = React.useMemo(
+    () =>
+      query.run(otelContext, {
+        _tag: 'react',
+        api: 'useQuery',
+        label: query.label,
+        stackInfo,
+      }),
+    [otelContext, query, stackInfo],
+  )
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [value, setValue] = React.useState<QueryResult<Q>>(query.results$.result)
+  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)
+
+  React.useEffect(
+    () => () => {
+      spanAlreadyStartedCache.delete(query)
+      span.end()
+    },
+    [query, span],
+  )
 
   // Subscribe to future updates for this query
   React.useEffect(() => {
-    return store.otel.tracer.startActiveSpan(
-      `LiveStore:useQuery:${labelForKey(query.componentKey)}:${query.label}`,
-      { attributes: { label: query.label } },
-      query.otelContext,
-      (span) => {
-        const cancel = store.subscribe(
-          query,
-          (v) => {
-            // NOTE: we return a reference to the result object within LiveStore;
-            // this implies that app code must not mutate the results, or else
-            // there may be weird reactivity bugs.
-            return setValue(v)
-          },
-          undefined,
-          { label: query.label },
-        )
-        return () => {
-          // // NOTE destroying the whole query will also unsubscribe it
-          // query.destroy()
-
-          // TODO for now we'll still `cancel` manually, but we should remove this once we have some kind of
-          // ARC-based system
-          cancel()
-          span.end()
+    query.activeSubscriptions.add(stackInfo)
+    const unsub = store.subscribe(
+      query,
+      (newValue) => {
+        // NOTE: we return a reference to the result object within LiveStore;
+        // this implies that app code must not mutate the results, or else
+        // there may be weird reactivity bugs.
+        if (isEqual(newValue, valueRef.current) === false) {
+          setValue(newValue)
         }
       },
+      undefined,
+      { label: query.label, otelContext },
     )
-  }, [query, store])
+    return () => {
+      query.activeSubscriptions.delete(stackInfo)
+      unsub()
+    }
+  }, [stackInfo, query, setValue, store, valueRef, otelContext, span])
 
-  return value
+  return valueRef.current
 }

@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
   effect: 2.0.0-next.48
   effect-db-schema: workspace:*
@@ -77,10 +78,10 @@ importers:
         specifier: 0.43.2
         version: 0.43.2(effect@2.0.0-next.48)(fast-check@3.13.1)
       '@livestore/devtools-react':
-        specifier: ^0.0.17
-        version: 0.0.17(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.22
+        version: 0.0.22(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
-        specifier: latest
+        specifier: workspace:*
         version: link:../../packages/@livestore/livestore
       effect:
         specifier: 2.0.0-next.48
@@ -132,10 +133,10 @@ importers:
         specifier: 0.43.2
         version: 0.43.2(effect@2.0.0-next.48)(fast-check@3.13.1)
       '@livestore/devtools-react':
-        specifier: ^0.0.17
-        version: 0.0.17(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.22
+        version: 0.0.22(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
-        specifier: latest
+        specifier: workspace:*
         version: link:../../packages/@livestore/livestore
       '@livestore/utils':
         specifier: latest
@@ -217,6 +218,9 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
     devDependencies:
+      '@opentelemetry/sdk-trace-base':
+        specifier: 1.17.1
+        version: 1.17.1(@opentelemetry/api@1.6.0)
       '@tauri-apps/api':
         specifier: ^1.5.0
         version: 1.5.0
@@ -1939,10 +1943,10 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@livestore/devtools-react@0.0.17(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
-    resolution: {integrity: sha512-PYiEe1loXflvJ0EQniUWqDK9MLYlgWcI7VqR8RCy3HkxrCe4NjpP9vOBJvTZk0qF0t0QtZAEMJpjO4hKAkwasQ==}
+  /@livestore/devtools-react@0.0.22(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
+    resolution: {integrity: sha512-La3ieSq1fcEuP1pKTcYMt3WjxaaQtVp5PkCb1jj0KY1rc0lgCO2+++HYA7JTtwqHy8OoQ8Pd2feg09z2xG7EAg==}
     peerDependencies:
-      '@livestore/livestore': '*'
+      '@livestore/livestore': workspace:*
       react: '*'
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
@@ -2008,7 +2012,6 @@ packages:
     dependencies:
       '@opentelemetry/api': 1.6.0
       '@opentelemetry/semantic-conventions': 1.17.1
-    dev: false
 
   /@opentelemetry/exporter-jaeger@1.17.0(@opentelemetry/api@1.6.0):
     resolution: {integrity: sha512-rWS5CQ+ns0NM3pmOAebaQdOmSnH6/7/P82EotaIq3zWrV5XRnKCRuILii457KnLqAI5zWjRTTEz2judEXNcCgg==}
@@ -2186,7 +2189,6 @@ packages:
       '@opentelemetry/api': 1.6.0
       '@opentelemetry/core': 1.17.1(@opentelemetry/api@1.6.0)
       '@opentelemetry/semantic-conventions': 1.17.1
-    dev: false
 
   /@opentelemetry/sdk-logs@0.43.0(@opentelemetry/api-logs@0.43.0)(@opentelemetry/api@1.6.0):
     resolution: {integrity: sha512-JyJ2BBRKm37Mc4cSEhFmsMl5ASQn1dkGhEWzAAMSlhPtLRTv5PfvJwhR+Mboaic/eDLAlciwsgijq8IFlf6IgQ==}
@@ -2273,7 +2275,6 @@ packages:
       '@opentelemetry/core': 1.17.1(@opentelemetry/api@1.6.0)
       '@opentelemetry/resources': 1.17.1(@opentelemetry/api@1.6.0)
       '@opentelemetry/semantic-conventions': 1.17.1
-    dev: false
 
   /@opentelemetry/sdk-trace-node@1.17.0(@opentelemetry/api@1.6.0):
     resolution: {integrity: sha512-Twlaje+t16b5j62CfcaKU869rP9oyBG/sVQWBI5+kDaWuP/YIFnF4LbovaEahK9GwAnW8vPIn6iYLAl/jZBidA==}
@@ -2298,7 +2299,6 @@ packages:
   /@opentelemetry/semantic-conventions@1.17.1:
     resolution: {integrity: sha512-xbR2U+2YjauIuo42qmE8XyJK6dYeRMLJuOlUP5SO4auET4VtOHOzgkRVOq+Ik18N+Xf3YPcqJs9dZMiDddz1eQ==}
     engines: {node: '>=14'}
-    dev: false
 
   /@pkgr/utils@2.4.2:
     resolution: {integrity: sha512-POgTXhjrTfbTV63DiFXav4lBHiICLKKwDeaKn9Nphwj7WH6m0hMMCaJkMyRWjgtPFyRKRVoMXXjczsTQRDEhYw==}

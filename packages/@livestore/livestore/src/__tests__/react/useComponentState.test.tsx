@@ -5,7 +5,7 @@ import { sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import { makeTodoMvc } from './fixture.js'
 
-describe('useLiveStoreComponent', () => {
+describe('useComponentState', () => {
   it('should update the data based on component key', async () => {
     let renderCount = 0
 
@@ -15,10 +15,9 @@ describe('useLiveStoreComponent', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useLiveStoreComponent({
-          stateSchema: AppSchema,
+        return LiveStoreReact.useComponentState({
+          schema: AppSchema,
           componentKey: { name: 'UserInfo', id: userId },
-          queries: () => ({}),
         })
       },
       { wrapper, initialProps: 'u1' },
@@ -48,10 +47,9 @@ describe('useLiveStoreComponent', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useLiveStoreComponent({
-          stateSchema: AppSchema,
+        return LiveStoreReact.useComponentState({
+          schema: AppSchema,
           componentKey: { name: 'UserInfo', id: userId },
-          queries: () => ({}),
         })
       },
       { wrapper, initialProps: 'u1' },
@@ -61,13 +59,7 @@ describe('useLiveStoreComponent', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount).toBe(1)
 
-    act(() => {
-      result.current.setState.username('username_u1_hello')
-    })
-
-    // act(() => {
-    //   store.execute(sql`UPDATE components__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
-    // })
+    act(() => result.current.setState.username('username_u1_hello'))
 
     expect(result.current.state.id).toBe('u1')
     expect(result.current.state.username).toBe('username_u1_hello')
@@ -83,10 +75,9 @@ describe('useLiveStoreComponent', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useLiveStoreComponent({
-          stateSchema: AppSchema,
+        return LiveStoreReact.useComponentState({
+          schema: AppSchema,
           componentKey: { name: 'UserInfo', id: userId },
-          queries: () => ({}),
         })
       },
       { wrapper, initialProps: 'u1' },
@@ -96,9 +87,7 @@ describe('useLiveStoreComponent', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount).toBe(1)
 
-    act(() => {
-      result.current.setState.username('username_u1_hello')
-    })
+    act(() => result.current.setState.username('username_u1_hello'))
 
     act(() => {
       void store.execute(sql`UPDATE components__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)

@@ -1,34 +1,118 @@
-import type * as otel from '@opentelemetry/api'
+import { shouldNeverHappen } from '@livestore/utils'
+import * as otel from '@opentelemetry/api'
 
-import type { ComponentKey } from '../componentKey.js'
-import type { GetAtom, Thunk } from '../reactive.js'
-import type { Store } from '../store.js'
-import { LiveStoreQueryBase } from './base-class.js'
-import type { LiveStoreJSQuery } from './js.js'
+import { getDurationMsFromSpan } from '../otel.js'
+import type { Thunk } from '../reactive.js'
+import type { RefreshReason } from '../store.js'
+import type { Bindable } from '../util.js'
+import { prepareBindValues } from '../util.js'
+import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
+import type { DbContext } from './graph.js'
+import { dbGraph } from './graph.js'
+import { LiveStoreJSQuery } from './js.js'
+
+export const querySQL = <Row>(
+  query: string | ((get: GetAtomResult) => string),
+  options: {
+    queriedTables: ReadonlyArray<string>
+    bindValues?: Bindable
+    label?: string
+  },
+) =>
+  new LiveStoreSQLQuery<Row>({
+    label: options.label,
+    genQueryString: query,
+    queriedTables: options.queriedTables,
+    bindValues: options.bindValues,
+  })
 
 /* An object encapsulating a reactive SQL query */
-export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<Row> {
+export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row>> {
   _tag: 'sql' = 'sql'
+
   /** A reactive thunk representing the query text */
-  queryString$: Thunk<string>
+  queryString$: Thunk<string, DbContext, RefreshReason>
+
   /** A reactive thunk representing the query results */
-  results$: Thunk<ReadonlyArray<Row>>
+  results$: Thunk<ReadonlyArray<Row>, DbContext, RefreshReason>
+
+  label: string
 
   constructor({
-    queryString$,
-    results$,
-    ...baseProps
+    genQueryString,
+    queriedTables,
+    bindValues,
+    label: label_,
   }: {
-    queryString$: Thunk<string>
-    results$: Thunk<ReadonlyArray<Row>>
-    componentKey: ComponentKey
-    label: string
-    store: Store
-    otelContext: otel.Context
+    label?: string
+    genQueryString: string | ((get: GetAtomResult) => string)
+    queriedTables: ReadonlyArray<string>
+    bindValues?: Bindable
   }) {
-    super(baseProps)
+    super()
+
+    const label = label_ ?? genQueryString.toString()
+    this.label = `sql(${label})`
+
+    // TODO don't even create a thunk if query string is static
+    const queryString$ = dbGraph.makeThunk(
+      (get, setDebugInfo, { rootOtelContext }, otelContext) => {
+        if (typeof genQueryString === 'function') {
+          const startMs = performance.now()
+          const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? rootOtelContext))
+          const durationMs = performance.now() - startMs
+          setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
+          return queryString
+        } else {
+          return genQueryString
+        }
+      },
+      { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
+    )
 
     this.queryString$ = queryString$
+
+    const queryLabel = `${label}:results`
+
+    const results$ = dbGraph.makeThunk<ReadonlyArray<Row>>(
+      (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
+        otelTracer.startActiveSpan(
+          'sql:...', // NOTE span name will be overridden further down
+          {},
+          otelContext ?? rootOtelContext,
+          (span) => {
+            const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+            // Establish a reactive dependency on the tables used in the query
+            for (const tableName of queriedTables) {
+              const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+              get(tableRef, otelContext)
+            }
+            const sqlString = get(queryString$, otelContext)
+
+            span.setAttribute('sql.query', sqlString)
+            span.updateName(`sql:${sqlString.slice(0, 50)}`)
+
+            const results = store.inMemoryDB.select<Row>(sqlString, {
+              queriedTables,
+              bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+              otelContext,
+            })
+
+            span.setAttribute('sql.rowsCount', results.length)
+
+            span.end()
+
+            const durationMs = getDurationMsFromSpan(span)
+
+            setDebugInfo({ _tag: 'sql', label, query: sqlString, durationMs })
+
+            return results
+          },
+        ),
+      { label: queryLabel },
+    )
+
     this.results$ = results$
   }
 
@@ -36,30 +120,34 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<Row> {
    * Returns a new reactive query that contains the result of
    * running an arbitrary JS computation on the results of this SQL query.
    */
-  pipe = <U>(fn: (result: ReadonlyArray<Row>, get: GetAtom) => U): LiveStoreJSQuery<U> =>
-    this.store.queryJS(
-      (get) => {
-        const results = get(this.results$)
+  pipe = <U>(fn: (result: ReadonlyArray<Row>, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
+    new LiveStoreJSQuery({
+      fn: (get) => {
+        const results = get(this.results$!)
         return fn(results, get)
       },
-      {
-        componentKey: this.componentKey,
-        label: `${this.label}:js`,
-        otelContext: this.otelContext,
-      },
-    )
+      label: `${this.label}:js`,
+      onDestroy: () => this.destroy(),
+    })
 
   /** Returns a reactive query  */
   getFirstRow = (args?: { defaultValue?: Row }) =>
-    this.store.queryJS(
-      (get) => {
-        const results = get(this.results$)
+    new LiveStoreJSQuery({
+      fn: (get) => {
+        const results = get(this.results$!)
         if (results.length === 0 && args?.defaultValue === undefined) {
-          const queryLabel = this._tag === 'sql' ? this.queryString$.result : this.label
+          // const queryLabel = this._tag === 'sql' ? this.queryString$!.computeResult(otelContext) : this.label
+          const queryLabel = this.label
           throw new Error(`Expected query ${queryLabel} to return at least one result`)
         }
-        return (results[0] ?? args?.defaultValue) as Row
+        return results[0] ?? args!.defaultValue!
       },
-      { componentKey: this.componentKey, label: `${this.label}:first`, otelContext: this.otelContext },
-    )
+      label: `${this.label}:first`,
+      onDestroy: () => this.destroy(),
+    })
+
+  destroy = () => {
+    dbGraph.destroy(this.queryString$)
+    dbGraph.destroy(this.results$)
+  }
 }

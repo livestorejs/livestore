@@ -1,3 +1,4 @@
+import type * as otel from '@opentelemetry/api'
 import React from 'react'
 import initSqlite3Wasm from 'sqlite-esm'
 
@@ -17,13 +18,6 @@ export type Filter = 'all' | 'active' | 'completed'
 export type AppState = {
   newTodoText: string
   filter: Filter
-}
-
-const appState: LiveStore.QueryDefinition = (store) =>
-  store.querySQL<AppState>(() => `select newTodoText, filter from app;`, { queriedTables: ['app'] }).getFirstRow()
-
-export const globalQueryDefs = {
-  appState,
 }
 
 export const schema = LiveStore.makeSchema({
@@ -58,7 +52,13 @@ export const schema = LiveStore.makeSchema({
   },
 })
 
-export const makeTodoMvc = async () => {
+export const makeTodoMvc = async ({
+  otelTracer,
+  otelContext,
+}: {
+  otelTracer?: otel.Tracer
+  otelContext?: otel.Context
+} = {}) => {
   const AppSchema = LiveStore.defineComponentStateSchema('UserInfo', {
     username: LiveStore.DbSchema.text({ default: '' }),
   })
@@ -73,6 +73,8 @@ export const makeTodoMvc = async () => {
     loadStorage: () => InMemoryStorage.load(),
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
     sqlite3,
+    otelTracer,
+    otelRootSpanContext: otelContext,
   })
 
   const storeContext: LiveStore.LiveStoreContext = { store }

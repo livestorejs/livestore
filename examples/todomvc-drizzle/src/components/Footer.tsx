@@ -1,26 +1,27 @@
-import { useLiveStoreComponent, useStore } from '@livestore/livestore/react'
+import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
+import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'
+import * as t from '../drizzle/schema.js'
 import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
+
+const incompleteCount$ = queryDrizzle(
+  (qb) =>
+    qb
+      .select({ incompleteCount: drizzle.sql<number>`count(*) as incompleteCount` })
+      .from(t.todos)
+      .where(drizzle.eq(t.todos.completed, false)),
+  { queriedTables: ['todos'] },
+)
+  .getFirstRow()
+  .pipe(({ incompleteCount }) => incompleteCount)
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
   const { filter } = useAppState()
 
-  const {
-    queryResults: { incompleteCount },
-  } = useLiveStoreComponent({
-    queries: ({ rxSQL }) => ({
-      incompleteCount: rxSQL<{ incompleteCount: number }>(
-        `select count(*) as incompleteCount from todos where completed = false;`,
-        ['todos'],
-      )
-        .getFirstRow()
-        .pipe(({ incompleteCount }) => incompleteCount),
-    }),
-    componentKey: { name: 'Footer', id: 'singleton' },
-  })
+  const incompleteCount = useQuery(incompleteCount$)
 
   const setFilter = (filter: Filter) => store.applyEvent('setFilter', { filter })
 

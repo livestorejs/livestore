@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.19",
+  "version": "0.0.21",
   "type": "module",
   "exports": {
     ".": {
@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@tauri-apps/api": "^1.5.0",
+    "@opentelemetry/sdk-trace-base": "1.17.1",
     "@testing-library/react": "^14.0.0",
     "@types/lodash-es": "^4.17.9",
     "@types/react": "^18.2.28",

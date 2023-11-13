@@ -1,55 +1,72 @@
-import * as otel from '@opentelemetry/api'
+import type * as otel from '@opentelemetry/api'
 
-import type { ComponentKey } from '../componentKey.js'
-import type { Store } from '../store.js'
+import type { StackInfo } from '../react/utils/stack-info.js'
+import type { Atom, GetAtom, RefreshReasonWithGenericReasons, Thunk } from '../reactive.js'
+import type { RefreshReason } from '../store.js'
+import { type DbContext, dbGraph } from './graph.js'
+import type { LiveStoreJSQuery } from './js.js'
 
 export type UnsubscribeQuery = () => void
 
-export abstract class LiveStoreQueryBase<TResult> {
-  /** The key for the associated component */
-  componentKey: ComponentKey
-  /** Human-readable label for the query for debugging */
+let queryIdCounter = 0
+
+export interface ILiveStoreQuery<TResult> {
+  id: number
+
+  /** A reactive thunk representing the query results */
+  results$: Thunk<TResult, DbContext, RefreshReason>
+
   label: string
-  /** A pointer back to the store containing this query */
-  store: Store
-  /** Otel Span is started in LiveStore store but ended in this query */
-  otelContext: otel.Context
 
-  /** The string key is used to identify a subscription from "outside" */
-  activeSubscriptions: Map<string, UnsubscribeQuery> = new Map()
+  run: (otelContext?: otel.Context, debugRefreshReason?: RefreshReasonWithGenericReasons<RefreshReason>) => TResult
 
-  constructor({
-    componentKey,
-    label,
-    store,
-    otelContext,
-  }: {
-    componentKey: ComponentKey
-    label: string
-    store: Store
-    otelContext: otel.Context
-  }) {
-    this.componentKey = componentKey
-    this.label = label
-    this.store = store
-    this.otelContext = otelContext
+  destroy(): void
+
+  activeSubscriptions: Set<StackInfo>
+}
+
+export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TResult> {
+  id = queryIdCounter++
+
+  /** Human-readable label for the query for debugging */
+  abstract label: string
+
+  abstract results$: Thunk<TResult, DbContext, RefreshReason>
+
+  activeSubscriptions: Set<StackInfo> = new Set()
+
+  get runs() {
+    return this.results$.recomputations
   }
 
-  destroy = () => {
-    const span = otel.trace.getSpan(this.otelContext)!
-    span.end()
+  abstract destroy: () => void
 
-    // NOTE usually the `unsubscribe` function is called by `useLiveStoreComponent` but this code path
-    // is used for manual store destruction, so we need to manually unsubscribe here
-    for (const [_key, unsubscribe] of this.activeSubscriptions) {
-      // unsubscribe from the query
-      unsubscribe()
-    }
+  run = (otelContext?: otel.Context, debugRefreshReason?: RefreshReasonWithGenericReasons<RefreshReason>): TResult =>
+    this.results$.computeResult(otelContext, debugRefreshReason)
+
+  runAndDestroy = (
+    otelContext?: otel.Context,
+    debugRefreshReason?: RefreshReasonWithGenericReasons<RefreshReason>,
+  ): TResult => {
+    const result = this.run(otelContext, debugRefreshReason)
+    this.destroy()
+    return result
   }
 
   subscribe = (
     onNewValue: (value: TResult) => void,
-    onSubsubscribe?: () => void,
-    options?: { label?: string } | undefined,
-  ): (() => void) => this.store.subscribe(this as any, onNewValue as any, onSubsubscribe, options)
+    onUnsubsubscribe?: () => void,
+    options?: { label?: string; otelContext?: otel.Context } | undefined,
+  ): (() => void) => dbGraph.context!.store.subscribe(this, onNewValue, onUnsubsubscribe, options)
+}
+
+export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveStoreJSQuery<T>) => T
+
+export const makeGetAtomResult = (get: GetAtom, otelContext: otel.Context) => {
+  const getAtom: GetAtomResult = (atom) => {
+    if (atom._tag === 'thunk' || atom._tag === 'ref') return get(atom, otelContext)
+    return get(atom.results$, otelContext)
+  }
+
+  return getAtom
 }

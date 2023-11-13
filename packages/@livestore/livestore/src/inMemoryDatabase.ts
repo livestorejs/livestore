@@ -25,7 +25,7 @@ export type SlowQueryInfo = [
   bindValues: PreparedBindValues | undefined,
   durationMs: number,
   rowsCount: number | undefined,
-  queriedTables: string[],
+  queriedTables: ReadonlyArray<string>,
   startTimePerfNow: DOMHighResTimeStamp,
 ]
 
@@ -136,7 +136,7 @@ export class InMemoryDatabase {
     query: string,
     bindValues?: PreparedBindValues,
     writeTables?: string[],
-    options?: { hasNoEffects?: boolean; otelContext: otel.Context },
+    options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
   ): { durationMs: number } {
     return this.otelTracer.startActiveSpan(
       'livestore.in-memory-db:execute',
@@ -205,7 +205,7 @@ export class InMemoryDatabase {
   select<T = any>(
     query: string,
     options?: {
-      queriedTables?: string[]
+      queriedTables?: ReadonlyArray<string>
       bindValues?: PreparedBindValues
       skipCache?: boolean
       otelContext?: otel.Context

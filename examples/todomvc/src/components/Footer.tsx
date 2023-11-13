@@ -1,26 +1,21 @@
-import { useLiveStoreComponent, useStore } from '@livestore/livestore/react'
+import { querySQL } from '@livestore/livestore'
+import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
 
+const incompleteCount$ = querySQL<{ incompleteCount: number }>(
+  `select count(*) as incompleteCount from todos where completed = false;`,
+  { queriedTables: ['todos'] },
+)
+  .getFirstRow()
+  .pipe(({ incompleteCount }) => incompleteCount)
+
 export const Footer: React.FC = () => {
   const { store } = useStore()
   const { filter } = useAppState()
-
-  const {
-    queryResults: { incompleteCount },
-  } = useLiveStoreComponent({
-    queries: ({ rxSQL }) => ({
-      incompleteCount: rxSQL<{ incompleteCount: number }>(
-        `select count(*) as incompleteCount from todos where completed = false;`,
-        ['todos'],
-      )
-        .getFirstRow()
-        .pipe(({ incompleteCount }) => incompleteCount),
-    }),
-    componentKey: { name: 'Footer', id: 'singleton' },
-  })
+  const incompleteCount = useQuery(incompleteCount$)
 
   const setFilter = (filter: Filter) => store.applyEvent('setFilter', { filter })
 
