@@ -3,6 +3,10 @@ import React from 'react'
 export const originalStackLimit = Error.stackTraceLimit
 
 export type StackInfo = {
+  frames: StackFrame[]
+}
+
+export type StackFrame = {
   name: string
   filePath: string
 }
@@ -26,10 +30,10 @@ Approach:
   - Start filtering at `at useQuery` (including)
   - Stop filtering at `at renderWithHooks` (excluding)
  */
-export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo[] => {
+export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo => {
   const namePattern = /at (\S+) \((.+)\)/g
   let match: RegExpExecArray | null
-  const stackInfoArr: StackInfo[] = []
+  const frames: StackFrame[] = []
   let hasReachedStart = false
 
   while ((match = namePattern.exec(stackTrace)) !== null) {
@@ -37,19 +41,19 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo[] 
     if (name.startsWith('use')) {
       hasReachedStart = true
 
-      stackInfoArr.unshift({ name, filePath })
+      frames.unshift({ name, filePath })
     } else if (hasReachedStart) {
       // We've reached the end of the `use*` functions, so we're adding the component name and stop
-      stackInfoArr.unshift({ name, filePath })
+      frames.unshift({ name, filePath })
       break
     }
   }
 
-  return stackInfoArr
+  return { frames }
 }
 
-export const useStackInfo = (): StackInfo[] => {
-  return React.useMemo(() => {
+export const useStackInfo = (): StackInfo =>
+  React.useMemo(() => {
     Error.stackTraceLimit = 10
     // eslint-disable-next-line unicorn/error-message
     const stack = new Error().stack!
@@ -57,4 +61,3 @@ export const useStackInfo = (): StackInfo[] => {
     Error.stackTraceLimit = originalStackLimit
     return extractStackInfoFromStackTrace(stack)
   }, [])
-}

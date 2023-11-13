@@ -16,11 +16,13 @@ const spanAlreadyStartedCache = new Map<ILiveStoreQuery<any>, { span: otel.Span;
 export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   const { store } = useStore()
 
-  // TODO proper otel context
-  const initialResult = React.useMemo(() => query.run(), [query])
-
-  // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)
+  const stackInfo = React.useMemo(() => {
+    Error.stackTraceLimit = 10
+    // eslint-disable-next-line unicorn/error-message
+    const stack = new Error().stack!
+    Error.stackTraceLimit = originalStackLimit
+    return extractStackInfoFromStackTrace(stack)
+  }, [])
 
   // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
   const { span, otelContext } = React.useMemo(() => {
@@ -29,7 +31,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
 
     const span = store.otel.tracer.startSpan(
       `LiveStore:useQuery:${query.label}`,
-      { attributes: { label: query.label } },
+      { attributes: { label: query.label, stackInfo: JSON.stringify(stackInfo) } },
       store.otel.queriesSpanContext,
     )
 
@@ -38,7 +40,21 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
     spanAlreadyStartedCache.set(query, { span, otelContext })
 
     return { span, otelContext }
-  }, [query, store.otel.queriesSpanContext, store.otel.tracer])
+  }, [query, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
+
+  const initialResult = React.useMemo(
+    () =>
+      query.run(otelContext, {
+        _tag: 'react',
+        api: 'useQuery',
+        label: query.label,
+        stackInfo,
+      }),
+    [otelContext, query, stackInfo],
+  )
+
+  // We know the query has a result by the time we use it; so we can synchronously populate a default state
+  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)
 
   React.useEffect(
     () => () => {
@@ -48,17 +64,9 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
     [query, span],
   )
 
-  const subscriptionInfo = React.useMemo(() => {
-    Error.stackTraceLimit = 10
-    // eslint-disable-next-line unicorn/error-message
-    const stack = new Error().stack!
-    Error.stackTraceLimit = originalStackLimit
-    return { stack: extractStackInfoFromStackTrace(stack) }
-  }, [])
-
   // Subscribe to future updates for this query
   React.useEffect(() => {
-    query.activeSubscriptions.add(subscriptionInfo)
+    query.activeSubscriptions.add(stackInfo)
     const unsub = store.subscribe(
       query,
       (newValue) => {
@@ -73,10 +81,10 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
       { label: query.label, otelContext },
     )
     return () => {
-      query.activeSubscriptions.delete(subscriptionInfo)
+      query.activeSubscriptions.delete(stackInfo)
       unsub()
     }
-  }, [subscriptionInfo, query, setValue, store, valueRef, otelContext, span])
+  }, [stackInfo, query, setValue, store, valueRef, otelContext, span])
 
   return valueRef.current
 }

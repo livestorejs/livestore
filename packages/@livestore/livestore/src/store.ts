@@ -11,6 +11,7 @@ import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
+import type { StackInfo } from './react/utils/stack-info.js'
 import type { ReactiveGraph, Ref } from './reactive.js'
 import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
@@ -85,9 +86,21 @@ export type RefreshReason =
       _tag: 'makeThunk'
       label?: string
     }
+  | {
+      _tag: 'react'
+      api: string
+      label?: string
+      stackInfo?: StackInfo
+    }
+  | { _tag: 'manual'; label?: string }
   | { _tag: 'unknown' }
 
-export type QueryDebugInfo = { _tag: 'graphql' | 'sql' | 'js' | 'unknown'; label: string; query: string }
+export type QueryDebugInfo = {
+  _tag: 'graphql' | 'sql' | 'js' | 'unknown'
+  label: string
+  query: string
+  durationMs: number
+}
 
 export type StoreOtel = {
   tracer: otel.Tracer
@@ -108,7 +121,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
-  tableRefs: { [key: string]: Ref<null> }
+  tableRefs: { [key: string]: Ref<null, DbContext, RefreshReason> }
 
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveStoreQuery>
@@ -188,7 +201,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     query: ILiveStoreQuery<TResult>,
     onNewValue: (value: TResult) => void,
     onUnsubsubscribe?: () => void,
-    options?: { label?: string; otelContext?: otel.Context } | undefined,
+    options?: { label?: string; otelContext?: otel.Context; skipInitialRun?: boolean } | undefined,
   ): (() => void) =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
@@ -202,7 +215,10 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
 
         this.activeQueries.add(query as LiveStoreQuery)
 
-        effect.doEffect(otelContext)
+        // Running effect right away to get initial value (unless `skipInitialRun` is set)
+        if (options?.skipInitialRun !== true) {
+          effect.doEffect(otelContext)
+        }
 
         const unsubscribe = () => {
           try {
@@ -253,7 +269,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           const otelContext = otel.trace.setSpan(otel.context.active(), span)
           const writeTables = this.applyEventWithoutRefresh(eventType, args, otelContext).writeTables
 
-          const tablesToUpdate = [] as [Ref<null>, null][]
+          const tablesToUpdate = [] as [Ref<null, DbContext, RefreshReason>, null][]
           for (const tableName of writeTables) {
             const tableRef = this.tableRefs[tableName]
             assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
@@ -354,7 +370,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             },
           )
 
-          const tablesToUpdate = [] as [Ref<null>, null][]
+          const tablesToUpdate = [] as [Ref<null, DbContext, RefreshReason>, null][]
           for (const tableName of writeTables) {
             const tableRef = this.tableRefs[tableName]
             assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)

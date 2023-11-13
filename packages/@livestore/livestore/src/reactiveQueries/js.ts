@@ -1,6 +1,8 @@
 import * as otel from '@opentelemetry/api'
 
+import { getDurationMsFromSpan } from '../otel.js'
 import type { Thunk } from '../reactive.js'
+import type { RefreshReason } from '../store.js'
 import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import type { DbContext } from './graph.js'
 import { dbGraph } from './graph.js'
@@ -12,7 +14,7 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag: 'js' = 'js'
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, DbContext>
+  results$: Thunk<TResult, DbContext, RefreshReason>
 
   label: string
 
@@ -37,16 +39,18 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     const queryLabel = `${label}:results`
 
     this.results$ = dbGraph.makeThunk(
-      (get, addDebugInfo, { otelTracer, rootOtelContext }, otelContext) =>
+      (get, setDebugInfo, { otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? rootOtelContext, (span) => {
-          try {
-            addDebugInfo({ _tag: 'js', label, query: fn.toString() })
+          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+          const res = fn(makeGetAtomResult(get, otelContext))
 
-            const otelContext = otel.trace.setSpan(otel.context.active(), span)
-            return fn(makeGetAtomResult(get, otelContext))
-          } finally {
-            span.end()
-          }
+          span.end()
+
+          const durationMs = getDurationMsFromSpan(span)
+
+          setDebugInfo({ _tag: 'js', label, query: fn.toString(), durationMs })
+
+          return res
         }),
       { label: queryLabel, meta: { liveStoreThunkType: 'jsResults' } },
     )

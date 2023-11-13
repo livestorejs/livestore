@@ -100,6 +100,14 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
 
   const componentKeyLabel = React.useMemo(() => labelForKey(componentKey), [componentKey])
 
+  const stackInfo = React.useMemo(() => {
+    Error.stackTraceLimit = 10
+    // eslint-disable-next-line unicorn/error-message
+    const stack = new Error().stack!
+    Error.stackTraceLimit = originalStackLimit
+    return extractStackInfoFromStackTrace(stack)
+  }, [])
+
   // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
   const { span, otelContext } = React.useMemo(() => {
     const existingSpan = spanAlreadyStartedCache.get(componentKeyLabel)
@@ -107,7 +115,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
 
     const span = store.otel.tracer.startSpan(
       `LiveStore:useComponentState:${componentKeyLabel}`,
-      {},
+      { attributes: { stackInfo: JSON.stringify(stackInfo) } },
       store.otel.queriesSpanContext,
     )
 
@@ -116,7 +124,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
     spanAlreadyStartedCache.set(componentKeyLabel, { span, otelContext })
 
     return { span, otelContext }
-  }, [componentKeyLabel, store.otel.queriesSpanContext, store.otel.tracer])
+  }, [componentKeyLabel, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
 
   React.useEffect(
     () => () => {
@@ -197,7 +205,10 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
 
   // Step 1:
   // Synchronously create state and queries for initial render pass.
-  const initialComponentState = React.useMemo(() => state$.run(otelContext), [otelContext, state$])
+  const initialComponentState = React.useMemo(
+    () => state$.run(otelContext, { _tag: 'react', api: 'useComponentState', label: state$.label, stackInfo }),
+    [otelContext, stackInfo, state$],
+  )
 
   // Now that we've computed the initial state synchronously,
   // we can set up our useState calls w/ a default value populated...
@@ -239,14 +250,6 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
     return store.applyEvent('updateComponentState', { componentKey, columnNames, ...columnValues })
   }
 
-  const subscriptionInfo = React.useMemo(() => {
-    Error.stackTraceLimit = 10
-    // eslint-disable-next-line unicorn/error-message
-    const stack = new Error().stack!
-    Error.stackTraceLimit = originalStackLimit
-    return { stack: extractStackInfoFromStackTrace(stack) }
-  }, [])
-
   // OK, now all the synchronous work is done;
   // time to set up our long-running queries in an effect
   React.useEffect(() => {
@@ -262,7 +265,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
           insertRowForComponentInstance({ store, componentKey, stateSchema, otelContext })
         }
 
-        state$.activeSubscriptions.add(subscriptionInfo)
+        state$.activeSubscriptions.add(stackInfo)
 
         unsubs.push(
           store.subscribe(
@@ -275,7 +278,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
             undefined,
             { label: `useComponentState:localState:subscribe:${state$.label}`, otelContext },
           ),
-          () => state$.activeSubscriptions.delete(subscriptionInfo),
+          () => state$.activeSubscriptions.delete(stackInfo),
         )
 
         return () => {
@@ -289,7 +292,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
     )
   }, [
     store,
-    subscriptionInfo,
+    stackInfo,
     stateSchema,
     defaultComponentState,
     otelContext,

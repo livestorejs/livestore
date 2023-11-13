@@ -17,24 +17,29 @@ Error
 	at mountIndeterminateComponent (https://localhost:8081/node_modules/.vite-web/deps/chunk-M23HUTQV.js?v=3eb66ed6:14921:21)
 `
 
-  expect(extractStackInfoFromStackTrace(stackTrace)).toMatchInlineSnapshot(`
-    [
-      {
-        "filePath": "https://localhost:8081/src/components/Link.tsx?t=1699550216884:36:7",
-        "name": "RouteLink",
-      },
-      {
-        "filePath": "https://localhost:8081/src/db/AppState.ts?t=1699550216884:74:22",
-        "name": "useRoute",
-      },
-      {
-        "filePath": "https://localhost:8081/src/db/AppState.ts?t=1699550216884:17:34",
-        "name": "useAppState",
-      },
-      {
-        "filePath": "https://localhost:8081/@fs/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/dist/react/useQuery.js?t=1699550216884:13:33",
-        "name": "useQuery",
-      },
-    ]
+  const stackInfo = extractStackInfoFromStackTrace(stackTrace)
+  // Replacing file paths for snapshot testing as they are not stable
+  stackInfo.frames.forEach((_) => (_.filePath = '__REPLACED_FOR_SNAPSHOT__'))
+  expect(stackInfo).toMatchInlineSnapshot(`
+    {
+      "frames": [
+        {
+          "filePath": "__REPLACED_FOR_SNAPSHOT__",
+          "name": "RouteLink",
+        },
+        {
+          "filePath": "__REPLACED_FOR_SNAPSHOT__",
+          "name": "useRoute",
+        },
+        {
+          "filePath": "__REPLACED_FOR_SNAPSHOT__",
+          "name": "useAppState",
+        },
+        {
+          "filePath": "__REPLACED_FOR_SNAPSHOT__",
+          "name": "useQuery",
+        },
+      ],
+    }
   `)
 })

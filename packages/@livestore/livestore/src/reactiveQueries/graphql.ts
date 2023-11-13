@@ -3,8 +3,9 @@ import { assertNever, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
+import { getDurationMsFromSpan } from '../otel.js'
 import type { Thunk } from '../reactive.js'
-import { type BaseGraphQLContext, type Store } from '../store.js'
+import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
 import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import { type DbContext, dbGraph } from './graph.js'
 import { LiveStoreJSQuery } from './js.js'
@@ -26,9 +27,9 @@ export class LiveStoreGraphQLQuery<
   document: DocumentNode<TResult, TVariableValues>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, DbContext>
+  results$: Thunk<TResult, DbContext, RefreshReason>
 
-  variableValues$: Thunk<TVariableValues, DbContext>
+  variableValues$: Thunk<TVariableValues, DbContext, RefreshReason>
 
   label: string
 
@@ -50,7 +51,7 @@ export class LiveStoreGraphQLQuery<
 
     // TODO don't even create a thunk if variables are static
     const variableValues$ = dbGraph.makeThunk(
-      (get, _addDebugInfo, { rootOtelContext }, otelContext) => {
+      (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
         if (typeof genVariableValues === 'function') {
           return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
         } else {
@@ -64,9 +65,9 @@ export class LiveStoreGraphQLQuery<
 
     const resultsLabel = `${labelWithDefault}:results`
     this.results$ = dbGraph.makeThunk<TResult>(
-      (get, addDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
+      (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
         const variableValues = get(variableValues$)
-        const { result, queriedTables } = this.queryOnce({
+        const { result, queriedTables, durationMs } = this.queryOnce({
           document,
           variableValues,
           otelContext: otelContext ?? rootOtelContext,
@@ -81,7 +82,7 @@ export class LiveStoreGraphQLQuery<
           get(tableRef!)
         }
 
-        addDebugInfo({ _tag: 'graphql', label: resultsLabel, query: graphql.print(document) })
+        setDebugInfo({ _tag: 'graphql', label: resultsLabel, query: graphql.print(document), durationMs })
 
         return result
       },
@@ -125,33 +126,37 @@ export class LiveStoreGraphQLQuery<
     const operationName = graphql.getOperationAST(document)?.name?.value
 
     return otelTracer.startActiveSpan(`executeGraphQLQuery: ${operationName}`, {}, otelContext, (span) => {
-      try {
-        span.setAttribute('graphql.variables', JSON.stringify(variableValues))
-        span.setAttribute('graphql.query', graphql.print(document))
+      span.setAttribute('graphql.variables', JSON.stringify(variableValues))
+      span.setAttribute('graphql.query', graphql.print(document))
 
-        context.queriedTables.clear()
+      context.queriedTables.clear()
 
-        context.otelContext = otel.trace.setSpan(otel.context.active(), span)
+      context.otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const res = graphql.executeSync({
-          document,
-          contextValue: context,
-          schema: schema,
-          variableValues,
-        })
+      const res = graphql.executeSync({
+        document,
+        contextValue: context,
+        schema: schema,
+        variableValues,
+      })
 
-        // TODO track number of nested SQL queries via Otel + debug info
+      // TODO track number of nested SQL queries via Otel + debug info
 
-        if (res.errors) {
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
-          span.setAttribute('graphql.error', res.errors.join('\n'))
-          span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
-          console.error(`graphql error (${operationName})`, res.errors)
-        }
+      if (res.errors) {
+        span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
+        span.setAttribute('graphql.error', res.errors.join('\n'))
+        span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
+        console.error(`graphql error (${operationName})`, res.errors)
+      }
 
-        return { result: res.data as unknown as TResult, queriedTables: Array.from(context.queriedTables.values()) }
-      } finally {
-        span.end()
+      span.end()
+
+      const durationMs = getDurationMsFromSpan(span)
+
+      return {
+        result: res.data as unknown as TResult,
+        queriedTables: Array.from(context.queriedTables.values()),
+        durationMs,
       }
     })
   }

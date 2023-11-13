@@ -1,7 +1,9 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 
+import { getDurationMsFromSpan } from '../otel.js'
 import type { Thunk } from '../reactive.js'
+import type { RefreshReason } from '../store.js'
 import type { Bindable } from '../util.js'
 import { prepareBindValues } from '../util.js'
 import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
@@ -29,10 +31,10 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
   _tag: 'sql' = 'sql'
 
   /** A reactive thunk representing the query text */
-  queryString$: Thunk<string, DbContext>
+  queryString$: Thunk<string, DbContext, RefreshReason>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<ReadonlyArray<Row>, DbContext>
+  results$: Thunk<ReadonlyArray<Row>, DbContext, RefreshReason>
 
   label: string
 
@@ -54,10 +56,12 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
 
     // TODO don't even create a thunk if query string is static
     const queryString$ = dbGraph.makeThunk(
-      (get, addDebugInfo, { rootOtelContext }, otelContext) => {
+      (get, setDebugInfo, { rootOtelContext }, otelContext) => {
         if (typeof genQueryString === 'function') {
+          const startMs = performance.now()
           const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? rootOtelContext))
-          addDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString })
+          const durationMs = performance.now() - startMs
+          setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
           return queryString
         } else {
           return genQueryString
@@ -71,46 +75,43 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
     const queryLabel = `${label}:results`
 
     const results$ = dbGraph.makeThunk<ReadonlyArray<Row>>(
-      (get, addDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
+      (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(
-          'sql:', // NOTE span name will be overridden further down
+          'sql:...', // NOTE span name will be overridden further down
           {},
           otelContext ?? rootOtelContext,
           (span) => {
-            try {
-              const otelContext = otel.trace.setSpan(otel.context.active(), span)
+            const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-              // Establish a reactive dependency on the tables used in the query
-              for (const tableName of queriedTables) {
-                const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
-                get(tableRef, otelContext)
-              }
-              const sqlString = get(queryString$, otelContext)
-
-              span.setAttribute('sql.query', sqlString)
-              span.updateName(`sql:${sqlString.slice(0, 50)}`)
-
-              const results = store.inMemoryDB.select<Row>(sqlString, {
-                queriedTables,
-                bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
-                otelContext,
-              })
-
-              span.setAttribute('sql.rowsCount', results.length)
-              addDebugInfo({ _tag: 'sql', label: label ?? '', query: sqlString })
-
-              return results
-            } finally {
-              span.end()
+            // Establish a reactive dependency on the tables used in the query
+            for (const tableName of queriedTables) {
+              const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+              get(tableRef, otelContext)
             }
+            const sqlString = get(queryString$, otelContext)
+
+            span.setAttribute('sql.query', sqlString)
+            span.updateName(`sql:${sqlString.slice(0, 50)}`)
+
+            const results = store.inMemoryDB.select<Row>(sqlString, {
+              queriedTables,
+              bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+              otelContext,
+            })
+
+            span.setAttribute('sql.rowsCount', results.length)
+
+            span.end()
+
+            const durationMs = getDurationMsFromSpan(span)
+
+            setDebugInfo({ _tag: 'sql', label, query: sqlString, durationMs })
+
+            return results
           },
         ),
       { label: queryLabel },
     )
-
-    // this.queryString$ = queryString$
-    // this.results$ = results$
-    // this.payload = payload
 
     this.results$ = results$
   }
