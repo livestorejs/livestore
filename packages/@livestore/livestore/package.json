@@ -56,7 +56,6 @@
     "@opentelemetry/api": "^1.6.0",
     "comlink": "^4.4.1",
     "effect-db-schema": "workspace:*",
-    "graphql": "^16.8.1",
     "lodash-es": "^4.17.21",
     "sqlite-esm": "3.42.0-build6",
     "uuid": "^9.0.1"
@@ -78,11 +77,15 @@
   },
   "peerDependencies": {
     "@tauri-apps/api": "^1.4.0",
+    "graphql": "^16.8.1",
     "react": "^18",
     "react-dom": "^18"
   },
   "peerDependenciesMeta": {
     "@tauri-apps/api": {
+      "optional": true
+    },
+    "graphql": {
       "optional": true
     }
   },
