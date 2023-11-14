@@ -18,7 +18,12 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
 
   label: string
 
-  /** Currently only used for "nested destruction" of piped queries */
+  /**
+   * Currently only used for "nested destruction" of piped queries
+   *
+   * i.e. when doing something like `const q = querySQL(...).pipe(...)`
+   * we need to also destory the SQL query when the JS query `q` is destroyed
+   */
   private onDestroy: (() => void) | undefined
 
   constructor({

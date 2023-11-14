@@ -12,7 +12,7 @@ import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import { getDurationMsFromSpan } from './otel.js'
 import type { StackInfo } from './react/utils/stack-info.js'
-import type { ReactiveGraph, Ref } from './reactive.js'
+import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
 import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
@@ -60,6 +60,7 @@ export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
 }
 
 export type RefreshReason =
+  | DebugRefreshReasonBase
   | {
       _tag: 'applyEvent'
       /** The event that was applied */
@@ -80,12 +81,6 @@ export type RefreshReason =
       /** The tables that were written to by the event */
       writeTables: string[]
     }
-  /** Usually in response to some `applyEvent`/`applyEvents` with `skipRefresh: true` */
-  | { _tag: 'manualRefresh' }
-  | {
-      _tag: 'makeThunk'
-      label?: string
-    }
   | {
       _tag: 'react'
       api: string
@@ -93,7 +88,6 @@ export type RefreshReason =
       stackInfo?: StackInfo
     }
   | { _tag: 'manual'; label?: string }
-  | { _tag: 'unknown' }
 
 export type QueryDebugInfo = {
   _tag: 'graphql' | 'sql' | 'js' | 'unknown'
@@ -160,11 +154,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       queriesSpanContext: otelQueriesSpanContext,
     }
 
-    const allTableNames = [
+    const allTableNames = new Set([
       ...Object.keys(this.schema.tables),
       ...Object.keys(this.schema.materializedViews),
       ...Object.keys(componentStateTables),
-    ]
+    ])
     for (const tableName of allTableNames) {
       this.tableRefs[tableName] = this.graph.makeRef(null, {
         equal: () => false,
@@ -383,12 +377,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             writeTables: [...writeTables],
           }
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext })
-
-          if (skipRefresh === false) {
-            // TODO update the graph
-            // this.graph.refresh({ debugRefreshReason, otelHint: 'applyEvents' }, otelContext)
-          }
+          this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
         } catch (e: any) {
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
         } finally {
@@ -411,9 +400,8 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       { attributes: { 'livestore.manualRefreshLabel': label } },
       this.otel.applyEventsSpanContext,
       (span) => {
-        // const otelContext = otel.trace.setSpan(otel.context.active(), span)
-        // TODO update the graph
-        // this.graph.refresh({ otelHint: 'manualRefresh', debugRefreshReason: { _tag: 'manualRefresh' } }, otelContext)
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        this.graph.runDeferredEffects({ otelContext })
         span.end()
       },
     )

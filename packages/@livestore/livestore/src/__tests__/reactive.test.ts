@@ -159,6 +159,37 @@ describe('a trivial graph', () => {
       graph.setRef(a, 2)
       // expect(numberOfCallsToC).toBe(2) // TODO comp caching
     })
+
+    it('skip refresh', () => {
+      const { graph, a, c, d, numberOfRunsForC } = makeGraph()
+
+      let numberOfEffectRuns = 0
+      const effect = graph.makeEffect((get) => {
+        expect(get(c)).toBe(numberOfEffectRuns === 0 ? 3 : 4)
+        numberOfEffectRuns++
+      })
+
+      effect.doEffect()
+
+      expect(numberOfEffectRuns).toBe(1)
+      expect(numberOfRunsForC.runs).toBe(1)
+
+      graph.setRef(a, 2, { skipRefresh: true })
+
+      expect(numberOfEffectRuns).toBe(1)
+      expect(numberOfRunsForC.runs).toBe(1)
+
+      // Even setting a unrelated ref should not trigger a refresh
+      graph.setRef(d, 0)
+
+      expect(numberOfEffectRuns).toBe(1)
+      expect(numberOfRunsForC.runs).toBe(1)
+
+      graph.runDeferredEffects()
+
+      expect(numberOfEffectRuns).toBe(2)
+      expect(numberOfRunsForC.runs).toBe(2)
+    })
   })
 })
 

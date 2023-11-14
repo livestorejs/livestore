@@ -13,15 +13,7 @@ export {
 } from './schema.js'
 export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryDatabase.js'
 export type { Storage, StorageType, StorageInit } from './storage/index.js'
-export type {
-  GetAtom,
-  AtomDebugInfo,
-  RefreshDebugInfo,
-  RefreshReasonWithGenericReasons,
-  SerializedAtom,
-  SerializedEffect,
-  Atom,
-} from './reactive.js'
+export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom } from './reactive.js'
 export { type LiveStoreJSQuery, queryJS } from './reactiveQueries/js.js'
 export { type LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
 export { type LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'

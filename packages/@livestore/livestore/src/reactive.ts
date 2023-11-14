@@ -36,7 +36,7 @@ export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
 
 export type GetAtom = <T>(atom: Atom<T, any, any>, otelContext?: otel.Context) => T
 
-export type Ref<T, TContext, TDebugRefreshReason extends Taggable> = {
+export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'ref'
   id: string
   isDirty: false
@@ -50,14 +50,11 @@ export type Ref<T, TContext, TDebugRefreshReason extends Taggable> = {
   equal: (a: T, b: T) => boolean
 }
 
-export type Thunk<TResult, TContext, TDebugRefreshReason extends Taggable> = {
+export type Thunk<TResult, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'thunk'
   id: string
   isDirty: boolean
-  computeResult: (
-    otelContext?: otel.Context,
-    debugRefreshReason?: RefreshReasonWithGenericReasons<TDebugRefreshReason>,
-  ) => TResult
+  computeResult: (otelContext?: otel.Context, debugRefreshReason?: TDebugRefreshReason) => TResult
   previousResult: TResult | NOT_REFRESHED_YET
   sub: Set<Atom<any, TContext, TDebugRefreshReason>>
   super: Set<Atom<any, TContext, TDebugRefreshReason> | Effect>
@@ -70,7 +67,7 @@ export type Thunk<TResult, TContext, TDebugRefreshReason extends Taggable> = {
   __getResult: any
 }
 
-export type Atom<T, TContext, TDebugRefreshReason extends Taggable> =
+export type Atom<T, TContext, TDebugRefreshReason extends DebugRefreshReason> =
   | Ref<T, TContext, TDebugRefreshReason>
   | Thunk<T, TContext, TDebugRefreshReason>
 
@@ -82,12 +79,18 @@ export type Effect = {
   label?: string
 }
 
-export type Taggable<T extends string = string> = { _tag: T }
-
 export type DebugThunkInfo<T extends string = string> = {
   _tag: T
   durationMs: number
 }
+
+export type DebugRefreshReasonBase =
+  /** Usually in response to some `applyEvent`/`applyEvents` with `skipRefresh: true` */
+  | { _tag: 'runDeferredEffects'; originalRefreshReason?: DebugRefreshReasonBase }
+  | { _tag: 'makeThunk'; label?: string }
+  | { _tag: 'unknown' }
+
+export type DebugRefreshReason<T extends string = string> = DebugRefreshReasonBase | { _tag: T }
 
 export type ReactiveGraphOptions = {
   effectsWrapper?: (runEffects: () => void) => void
@@ -100,7 +103,7 @@ export type AtomDebugInfo<TDebugThunkInfo extends DebugThunkInfo> = {
 }
 
 // TODO possibly find a better name for "refresh"
-export type RefreshDebugInfo<TDebugRefreshReason extends Taggable, TDebugThunkInfo extends DebugThunkInfo> = {
+export type RefreshDebugInfo<TDebugRefreshReason extends DebugRefreshReason, TDebugThunkInfo extends DebugThunkInfo> = {
   /** Currently only used for easier handling in React (e.g. as key) */
   id: string
   reason: TDebugRefreshReason
@@ -112,15 +115,7 @@ export type RefreshDebugInfo<TDebugRefreshReason extends Taggable, TDebugThunkIn
   graphSnapshot: ReactiveGraphSnapshot
 }
 
-export type RefreshReasonWithGenericReasons<T extends Taggable> =
-  | T
-  | {
-      _tag: 'makeThunk'
-      label?: string
-    }
-  | { _tag: 'unknown' }
-
-export const unknownRefreshReason = () => {
+const unknownRefreshReason = () => {
   // debugger
   return { _tag: 'unknown' as const }
 }
@@ -128,34 +123,29 @@ export const unknownRefreshReason = () => {
 export type SerializedAtom = Readonly<
   PrettifyFlat<
     Pick<Atom<unknown, unknown, any>, '_tag' | 'id' | 'label' | 'meta'> & {
-      sub: string[]
-      super: string[]
+      sub: ReadonlyArray<string>
+      super: ReadonlyArray<string>
     }
   >
 >
 
-export type SerializedEffect = Readonly<PrettifyFlat<Pick<Effect, '_tag' | 'id'>>>
-
 type ReactiveGraphSnapshot = {
-  readonly atoms: SerializedAtom[]
-  // readonly effects: SerializedEffect[]
-  /** IDs of atoms and effects that are dirty */
-  // readonly dirtyNodes: string[]
+  readonly atoms: ReadonlyArray<SerializedAtom>
+  /** IDs of deferred effects */
+  readonly deferredEffects: ReadonlyArray<string>
 }
 
 const uniqueNodeId = () => uniqueId('node-')
 const uniqueRefreshInfoId = () => uniqueId('refresh-info-')
 
 const serializeAtom = (atom: Atom<any, unknown, any>): SerializedAtom => ({
-  ...pick(atom, ['_tag', 'id', 'label', 'meta']),
+  ...pick(atom, ['_tag', 'id', 'label', 'meta', 'isDirty']),
   sub: Array.from(atom.sub).map((a) => a.id),
   super: Array.from(atom.super).map((a) => a.id),
 })
 
-// const serializeEffect = (effect: Effect): SerializedEffect => pick(effect, ['_tag', 'id'])
-
 export class ReactiveGraph<
-  TDebugRefreshReason extends Taggable,
+  TDebugRefreshReason extends DebugRefreshReason,
   TDebugThunkInfo extends DebugThunkInfo,
   TContext = {},
 > {
@@ -164,11 +154,13 @@ export class ReactiveGraph<
 
   context: TContext | undefined
 
-  debugRefreshInfos: BoundArray<
-    RefreshDebugInfo<RefreshReasonWithGenericReasons<TDebugRefreshReason>, TDebugThunkInfo>
-  > = new BoundArray(5000)
+  debugRefreshInfos: BoundArray<RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>> = new BoundArray(5000)
 
-  currentDebugRefresh: { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: DOMHighResTimeStamp } | undefined
+  private currentDebugRefresh:
+    | { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: DOMHighResTimeStamp }
+    | undefined
+
+  private deferredEffects: { effects: Set<Effect>; debugRefreshReason?: TDebugRefreshReason }[] = []
 
   constructor(options: ReactiveGraphOptions) {
     this.effectsWrapper = options?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
@@ -208,8 +200,6 @@ export class ReactiveGraph<
           label?: string
           meta?: any
           equal?: (a: T, b: T) => boolean
-          /** Debug info for initializing the thunk (i.e. running it the first time) */
-          // debugRefreshReason?: RefreshReasonWithGenericReasons<TDebugRefreshReason>
         }
       | undefined,
   ): Thunk<T, TContext, TDebugRefreshReason> {
@@ -264,16 +254,15 @@ export class ReactiveGraph<
             const durationMs = performance.now() - this.currentDebugRefresh!.startMs
             this.currentDebugRefresh = undefined
 
-            const refreshDebugInfo = {
+            this.debugRefreshInfos.push({
               id: uniqueRefreshInfoId(),
-              reason: debugRefreshReason ?? { _tag: 'makeThunk', label: options?.label },
+              reason: debugRefreshReason ?? ({ _tag: 'makeThunk', label: options?.label } as TDebugRefreshReason),
               skippedRefresh: false,
               refreshedAtoms,
               durationMs,
               completedTimestamp: Date.now(),
               graphSnapshot: this.getSnapshot(),
-            }
-            this.debugRefreshInfos.push(refreshDebugInfo)
+            })
           }
 
           return result
@@ -345,23 +334,20 @@ export class ReactiveGraph<
     val: T,
     options?:
       | {
+          skipRefresh?: boolean
           debugRefreshReason?: TDebugRefreshReason
           otelContext?: otel.Context
         }
       | undefined,
   ) {
-    ref.previousResult = val
-
-    const effectsToRefresh = new Set<Effect>()
-    markSuperCompDirtyRec(ref, effectsToRefresh)
-
-    this.runEffects(effectsToRefresh, options)
+    this.setRefs([[ref, val]], options)
   }
 
   setRefs<T>(
     refs: [Ref<T, TContext, TDebugRefreshReason>, T][],
     options?:
       | {
+          skipRefresh?: boolean
           debugRefreshReason?: TDebugRefreshReason
           otelContext?: otel.Context
         }
@@ -374,17 +360,25 @@ export class ReactiveGraph<
       markSuperCompDirtyRec(ref, effectsToRefresh)
     }
 
-    this.runEffects(effectsToRefresh, options)
+    if (options?.skipRefresh) {
+      this.deferredEffects.push({
+        effects: effectsToRefresh,
+        debugRefreshReason: options?.debugRefreshReason,
+      })
+    } else {
+      this.runEffects(effectsToRefresh, {
+        debugRefreshReason: options?.debugRefreshReason ?? (unknownRefreshReason() as TDebugRefreshReason),
+        otelContext: options?.otelContext,
+      })
+    }
   }
 
   private runEffects = (
     effectsToRefresh: Set<Effect>,
-    options?:
-      | {
-          debugRefreshReason?: TDebugRefreshReason
-          otelContext?: otel.Context
-        }
-      | undefined,
+    options: {
+      debugRefreshReason: TDebugRefreshReason
+      otelContext?: otel.Context
+    },
   ) => {
     this.effectsWrapper(() => {
       this.currentDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
@@ -399,7 +393,7 @@ export class ReactiveGraph<
 
       const refreshDebugInfo: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo> = {
         id: uniqueRefreshInfoId(),
-        reason: options?.debugRefreshReason ?? (unknownRefreshReason() as TDebugRefreshReason),
+        reason: options.debugRefreshReason,
         skippedRefresh: false,
         refreshedAtoms,
         durationMs,
@@ -408,6 +402,19 @@ export class ReactiveGraph<
       }
       this.debugRefreshInfos.push(refreshDebugInfo)
     })
+  }
+
+  runDeferredEffects = (options?: { debugRefreshReason?: TDebugRefreshReason; otelContext?: otel.Context }) => {
+    while (this.deferredEffects.length > 0) {
+      const { effects, debugRefreshReason } = this.deferredEffects.shift()!
+      this.runEffects(new Set(effects), {
+        otelContext: options?.otelContext,
+        debugRefreshReason: {
+          _tag: 'runDeferredEffects',
+          originalRefreshReason: debugRefreshReason,
+        } as TDebugRefreshReason,
+      })
+    }
   }
 
   addEdge(
@@ -428,14 +435,11 @@ export class ReactiveGraph<
 
   private getSnapshot = (): ReactiveGraphSnapshot => ({
     atoms: Array.from(this.atoms).map(serializeAtom),
-    // effects: Array.from(this.effects).map(serializeEffect),
-    // dirtyNodes: Array.from(this.dirtyNodes).map((a) => a.id),
+    deferredEffects: Array.from(this.deferredEffects)
+      .flatMap((_) => Array.from(_.effects))
+      .map((_) => _.id),
   })
 }
-
-// const isAtom = <T, TContext>(a: Atom<T, TContext> | Effect): a is Atom<T, TContext> =>
-//   a._tag === 'ref' || a._tag === 'thunk'
-// const isEffect = <T, TContext>(a: Atom<T, TContext> | Effect): a is Effect => a._tag === 'effect'
 
 const compute = <T>(atom: Atom<T, unknown, any>, otelContext: otel.Context): T => {
   // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
@@ -462,6 +466,6 @@ const markSuperCompDirtyRec = <T>(atom: Atom<T, unknown, any>, effectsToRefresh:
   }
 }
 
-const throwContextNotSetError = (): never => {
+export const throwContextNotSetError = (): never => {
   throw new Error(`LiveStore Error: \`context\` not set on ReactiveGraph`)
 }

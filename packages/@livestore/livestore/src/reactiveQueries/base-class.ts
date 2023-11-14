@@ -1,7 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
 import type { StackInfo } from '../react/utils/stack-info.js'
-import type { Atom, GetAtom, RefreshReasonWithGenericReasons, Thunk } from '../reactive.js'
+import { type Atom, type GetAtom, throwContextNotSetError, type Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { type DbContext, dbGraph } from './graph.js'
 import type { LiveStoreJSQuery } from './js.js'
@@ -18,7 +18,7 @@ export interface ILiveStoreQuery<TResult> {
 
   label: string
 
-  run: (otelContext?: otel.Context, debugRefreshReason?: RefreshReasonWithGenericReasons<RefreshReason>) => TResult
+  run: (otelContext?: otel.Context, debugRefreshReason?: RefreshReason) => TResult
 
   destroy(): void
 
@@ -41,13 +41,10 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
 
   abstract destroy: () => void
 
-  run = (otelContext?: otel.Context, debugRefreshReason?: RefreshReasonWithGenericReasons<RefreshReason>): TResult =>
+  run = (otelContext?: otel.Context, debugRefreshReason?: RefreshReason): TResult =>
     this.results$.computeResult(otelContext, debugRefreshReason)
 
-  runAndDestroy = (
-    otelContext?: otel.Context,
-    debugRefreshReason?: RefreshReasonWithGenericReasons<RefreshReason>,
-  ): TResult => {
+  runAndDestroy = (otelContext?: otel.Context, debugRefreshReason?: RefreshReason): TResult => {
     const result = this.run(otelContext, debugRefreshReason)
     this.destroy()
     return result
@@ -57,7 +54,8 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
     onNewValue: (value: TResult) => void,
     onUnsubsubscribe?: () => void,
     options?: { label?: string; otelContext?: otel.Context } | undefined,
-  ): (() => void) => dbGraph.context!.store.subscribe(this, onNewValue, onUnsubsubscribe, options)
+  ): (() => void) =>
+    dbGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ?? throwContextNotSetError()
 }
 
 export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveStoreJSQuery<T>) => T

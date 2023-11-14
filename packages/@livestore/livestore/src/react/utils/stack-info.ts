@@ -57,7 +57,6 @@ export const useStackInfo = (): StackInfo =>
     Error.stackTraceLimit = 10
     // eslint-disable-next-line unicorn/error-message
     const stack = new Error().stack!
-    console.log('stack', stack)
     Error.stackTraceLimit = originalStackLimit
     return extractStackInfoFromStackTrace(stack)
   }, [])
