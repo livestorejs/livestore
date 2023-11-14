@@ -34,6 +34,7 @@ module.exports = {
       { classPropertiesAllowed: true, disallowPrototype: true, singleReturnOnly: false },
     ],
     'no-empty-function': 'off',
+    'no-constant-binary-expression': 'error',
     '@typescript-eslint/no-empty-function': 'off',
     'simple-import-sort/imports': 'error',
     'import/no-extraneous-dependencies': 'error',
