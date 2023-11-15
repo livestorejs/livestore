@@ -78,7 +78,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 
       const otelRootSpanContext = otel.context.active()
 
-      const otelTracer = yield* $(OtelTracer.OtelTracer)
+      const otelTracer = yield* $(OtelTracer.Tracer)
 
       const graphQLOptions = yield* $(
         graphQLOptions_

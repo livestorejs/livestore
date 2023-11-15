@@ -25,7 +25,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@effect/schema": "0.43.2",
+    "@effect/schema": "0.48.0",
     "dprint-node": "^1.0.8"
   },
   "devDependencies": {

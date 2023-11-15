@@ -26,18 +26,18 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/opentelemetry": "^0.18.0",
-    "@effect/schema": "0.43.2",
-    "@opentelemetry/api": "^1.6.0",
+    "@effect/opentelemetry": "^0.23.0",
+    "@effect/schema": "0.48.0",
+    "@opentelemetry/api": "^1.7.0",
     "date-fns": "^2.30.0",
-    "effect": "2.0.0-next.48",
-    "otel-websocket-exporter": "^0.0.24",
+    "effect": "2.0.0-next.55",
+    "otel-websocket-exporter": "^0.0.25",
     "pretty-bytes": "^6.1.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.5",
-    "@types/web": "^0.0.117"
+    "@types/uuid": "^9.0.7",
+    "@types/web": "^0.0.119"
   },
   "publishConfig": {
     "access": "public"
