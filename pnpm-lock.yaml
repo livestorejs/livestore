@@ -75,8 +75,8 @@ importers:
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.48.0
-        version: 0.48.0(effect@2.0.0-next.55)(fast-check@3.13.2)
+        specifier: 0.48.2
+        version: 0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2)
       '@livestore/devtools-react':
         specifier: ^0.0.24-dev.0
         version: 0.0.24-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
@@ -130,8 +130,8 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.48.0
-        version: 0.48.0(effect@2.0.0-next.55)(fast-check@3.13.2)
+        specifier: 0.48.2
+        version: 0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2)
       '@livestore/devtools-react':
         specifier: ^0.0.24-dev.0
         version: 0.0.24-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
@@ -264,8 +264,8 @@ importers:
         specifier: ^0.23.0
         version: 0.23.0(@opentelemetry/api@1.7.0)(@opentelemetry/resources@1.18.1)(@opentelemetry/semantic-conventions@1.18.1)(effect@2.0.0-next.55)
       '@effect/schema':
-        specifier: 0.48.0
-        version: 0.48.0(effect@2.0.0-next.55)(fast-check@3.13.2)
+        specifier: 0.48.2
+        version: 0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2)
       '@opentelemetry/api':
         specifier: ^1.7.0
         version: 1.7.0
@@ -276,8 +276,8 @@ importers:
         specifier: 2.0.0-next.55
         version: 2.0.0-next.55
       otel-websocket-exporter:
-        specifier: ^0.0.25
-        version: 0.0.25
+        specifier: ^0.0.27
+        version: 0.0.27
       pretty-bytes:
         specifier: ^6.1.1
         version: 6.1.1
@@ -295,8 +295,8 @@ importers:
   packages/effect-db-schema:
     dependencies:
       '@effect/schema':
-        specifier: 0.48.0
-        version: 0.48.0(effect@2.0.0-next.55)(fast-check@3.13.2)
+        specifier: 0.48.2
+        version: 0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2)
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
@@ -1620,8 +1620,8 @@ packages:
       effect: 2.0.0-next.55
     dev: false
 
-  /@effect/schema@0.48.0(effect@2.0.0-next.55)(fast-check@3.13.2):
-    resolution: {integrity: sha512-IpAik8hX4kAuOdfNBfxfE8mYVfiikheSxFyWRkVQUutD1E86hDXG90EUYu2/zL2pHkgoS6c2cnY7uoKYwKSP2w==}
+  /@effect/schema@0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2):
+    resolution: {integrity: sha512-YwafH0FjBqWLn8l3/enmsxNZ79pUhZVVEhi0ywpt9R2ATRqXfxUjwbNK89T18bKMxpUNCKqPg+qUIn1Bb8jZ/Q==}
     peerDependencies:
       effect: 2.0.0-next.55
       fast-check: ^3.13.2
@@ -4883,8 +4883,8 @@ packages:
       type-check: 0.4.0
     dev: true
 
-  /otel-websocket-exporter@0.0.25:
-    resolution: {integrity: sha512-Er+W82U/v4JSwNH/sr3FF0pm5lT523DSauUA0HOxEK7G94xU55Zv+WJwLU6l3b0R1Qozv9APQ5wFx/PyGCU0OA==}
+  /otel-websocket-exporter@0.0.27:
+    resolution: {integrity: sha512-RCUCvjCoaynPH9kXKl3uIrDs2ESA7zB9n9V2Bj1YGpS2US5eMMuxFg/BOncgd2Y0/oM3NN4ItgeJ3np8GzKsuQ==}
     dependencies:
       '@opentelemetry/api': 1.7.0
       '@opentelemetry/core': 1.18.1(@opentelemetry/api@1.7.0)
