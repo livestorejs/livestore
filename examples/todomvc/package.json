@@ -26,6 +26,6 @@
     "rollup-plugin-visualizer": "^5.9.2",
     "typescript": "^5.2.2",
     "vite": "^5.0.0",
-    "vite-plugin-pwa": "^0.16.7"
+    "vite-plugin-pwa": "^0.17.0"
   }
 }

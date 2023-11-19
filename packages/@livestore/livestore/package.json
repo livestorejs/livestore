@@ -63,7 +63,7 @@
   "devDependencies": {
     "@opentelemetry/sdk-trace-base": "1.18.1",
     "@tauri-apps/api": "^1.5.1",
-    "@testing-library/react": "^14.1.0",
+    "@testing-library/react": "^14.1.2",
     "@types/lodash-es": "^4.17.11",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
