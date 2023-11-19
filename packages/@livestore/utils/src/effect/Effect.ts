@@ -1,6 +1,8 @@
 import type { Context } from 'effect'
 import { Cause, Effect, pipe } from 'effect'
 
+import { isEmptyString } from '../index.js'
+
 export * from 'effect/Effect'
 
 export const log = <A>(message: A, ...rest: any[]): Effect.Effect<never, never, void> =>
@@ -25,8 +27,8 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<R, E, A>): Effect.
       return Effect.unit
     }
 
-    // @ts-expect-error TODO get proper worker name https://github.com/vitejs/vite/issues/12992
-    const threadName = window.__tmpWorkerName ? `Worker ${window.__tmpWorkerName}` : 'Main Thread'
+    const threadName =
+      typeof window === 'undefined' ? 'NodeJS Main Thread' : isEmptyString(self.name) ? 'unknown-thread' : self.name
 
     return logError(`Error on ${threadName}`, Cause.pretty(err))
   })
