@@ -214,4 +214,4 @@ export const memoize = <T extends (...args: any[]) => any>(fn: T): T => {
   }) as any
 }
 
-export const isEmptyString = (str: string | undefined | null) => str === undefined || str === null || str === ''
+export const isNonEmptyString = (str: string | undefined | null) => str === undefined || str === null || str === ''

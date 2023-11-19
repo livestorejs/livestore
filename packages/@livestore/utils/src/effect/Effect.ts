@@ -1,7 +1,7 @@
 import type { Context } from 'effect'
 import { Cause, Effect, pipe } from 'effect'
 
-import { isEmptyString } from '../index.js'
+import { isNonEmptyString } from '../index.js'
 
 export * from 'effect/Effect'
 
@@ -28,7 +28,7 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<R, E, A>): Effect.
     }
 
     const threadName =
-      typeof window === 'undefined' ? 'NodeJS Main Thread' : isEmptyString(self.name) ? 'unknown-thread' : self.name
+      typeof window === 'undefined' ? 'NodeJS Main Thread' : isNonEmptyString(self.name) ? self.name : 'unknown-thread'
 
     return logError(`Error on ${threadName}`, Cause.pretty(err))
   })
