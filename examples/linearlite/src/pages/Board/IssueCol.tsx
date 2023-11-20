@@ -1,5 +1,5 @@
 import StatusIcon from '../../components/StatusIcon'
-import { memo } from 'react'
+import { CSSProperties, memo } from 'react'
 import {
   Droppable,
   DroppableProvided,
@@ -21,6 +21,7 @@ interface Props {
 
 const itemSpacing = 8
 
+// eslint-disable-next-line react-refresh/only-export-components
 function IssueCol({ title, status, issues = [] }: Props) {
   const statusIcon = <StatusIcon status={status} />
 
@@ -84,7 +85,8 @@ function IssueCol({ title, status, issues = [] }: Props) {
   )
 }
 
-const Row = memo(({ data: issues, index, style }: { data: Issue[]; index: number; style: any }) => {
+// eslint-disable-next-line react-refresh/only-export-components
+const Row = memo(({ data: issues, index, style }: { data: Issue[]; index: number; style?: CSSProperties }) => {
   const issue = issues[index]
   if (!issue) return null
   return (
@@ -96,4 +98,5 @@ const Row = memo(({ data: issues, index, style }: { data: Issue[]; index: number
   )
 }, areEqual)
 
-export default memo(IssueCol)
+const memoed = memo(IssueCol)
+export default memoed

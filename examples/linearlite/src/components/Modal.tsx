@@ -21,6 +21,7 @@ const sizeClasses = {
   normal: 'w-140',
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 function Modal({ title, isOpen, center, size, className, onDismiss, children }: Props) {
   const ref = useRef<HTMLDivElement>(null) as RefObject<HTMLDivElement>
   const outerRef = useRef(null)
@@ -36,14 +37,17 @@ function Modal({ title, isOpen, center, size, className, onDismiss, children }: 
     sizeClasses[size],
     className,
   )
-  const handleClick = useCallback((event: MouseEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
-    if (!onDismiss) return
-    if (ref.current && !ref.current.contains(event.target as Element)) {
-      onDismiss()
-    }
-  }, [])
+  const handleClick = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation()
+      event.preventDefault()
+      if (!onDismiss) return
+      if (ref.current && !ref.current.contains(event.target as Element)) {
+        onDismiss()
+      }
+    },
+    [onDismiss],
+  )
 
   useLockBodyScroll()
 
@@ -82,4 +86,5 @@ Modal.defaultProps = {
   center: true,
 }
 
-export default memo(Modal)
+const memoed = memo(Modal)
+export default memoed

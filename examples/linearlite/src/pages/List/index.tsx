@@ -1,6 +1,6 @@
 import TopFilter from '../../components/TopFilter'
 import IssueList from './IssueList'
-import { useFilterState } from '../../utils/filterState'
+// import { useFilterState } from '../../utils/filterState'
 import { Issue } from '../../types'
 
 function List({ showSearch = false }) {

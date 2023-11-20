@@ -6,6 +6,7 @@ import Avatar from '../../components/Avatar'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import { Issue } from '../../types'
+import { PriorityType } from '../../types/issue'
 
 interface IssueProps {
   issue: Issue
@@ -25,6 +26,7 @@ function getStyle(provided: DraggableProvided, style?: CSSProperties): CSSProper
   }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
   // const { db } = useElectric()!
   const navigate = useNavigate()
@@ -34,7 +36,7 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
     </span>
   )
 
-  const updatePriority = (priority: string) => {
+  const updatePriority = (_priority: PriorityType) => {
     // db.issue.update({
     //   data: {
     //     priority: priority,
@@ -62,7 +64,7 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
           <span className="mt-1 text-sm font-medium text-gray-700 line-clamp-2 overflow-ellipsis">{issue.title}</span>
         </div>
         <div className="flex-shrink-0">
-          <Avatar name={issue.username} />
+          <Avatar name={issue.creator} />
         </div>
       </div>
       <div className="mt-2.5 flex items-center">
@@ -77,4 +79,5 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
   )
 }
 
-export default memo(IssueItem)
+const memoed = memo(IssueItem)
+export default memoed

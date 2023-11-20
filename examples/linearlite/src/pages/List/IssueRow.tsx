@@ -8,17 +8,19 @@ import { memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../../utils/date'
 import { Issue } from '../../types'
+import { PriorityType, StatusType } from '../../types/issue'
 
 interface Props {
   issue: Issue
   style: CSSProperties
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 function IssueRow({ issue, style }: Props) {
   // const { db } = useElectric()!
   const navigate = useNavigate()
 
-  const handleChangeStatus = (status: string) => {
+  const handleChangeStatus = (_status: StatusType) => {
     // db.issue.update({
     //   data: {
     //     status: status,
@@ -30,7 +32,7 @@ function IssueRow({ issue, style }: Props) {
     // })
   }
 
-  const handleChangePriority = (priority: string) => {
+  const handleChangePriority = (_priority: PriorityType) => {
     // db.issue.update({
     //   data: {
     //     priority: priority,
@@ -68,13 +70,14 @@ function IssueRow({ issue, style }: Props) {
         {issue.title.slice(0, 3000) || ''}
       </div>
       <div className="flex-shrink-0 hidden w-15 ml-auto font-normal text-gray-500 sm:block whitespace-nowrap">
-        {formatDate(issue.created)}
+        {formatDate(new Date(issue.created))}
       </div>
       <div className="flex-shrink-0 hidden ml-4 font-normal text-gray-500 sm:block w-15 md:block">
-        <Avatar name={issue.username} />
+        <Avatar name={issue.creator} />
       </div>
     </div>
   )
 }
 
-export default memo(IssueRow)
+const memoed = memo(IssueRow)
+export default memoed

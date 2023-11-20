@@ -40,7 +40,7 @@ const Editor = ({ value, onChange, className = '', placeholder }: EditorProps) =
     if (editor && markdownValue.current !== value) {
       editor.commands.setContent(value)
     }
-  }, [value])
+  }, [value, editor])
 
   if (placeholder) {
     extensions.push(

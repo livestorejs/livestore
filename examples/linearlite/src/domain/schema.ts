@@ -4,6 +4,7 @@ import { Priority, Status } from '../types/issue'
 const issue = DbSchema.table('issue', {
   id: DbSchema.text({ primaryKey: true }),
   title: DbSchema.text({ default: '' }),
+  creator: DbSchema.text({ default: '' }),
   priority: DbSchema.text({ default: Priority.NONE }),
   status: DbSchema.text({ default: Status.TODO }),
   created: DbSchema.integer(),
@@ -19,6 +20,7 @@ const description = DbSchema.table('description', {
 const comment = DbSchema.table('comment', {
   id: DbSchema.text({ primaryKey: true }),
   body: DbSchema.text({ default: '' }),
+  creator: DbSchema.text({ default: '' }),
   issueId: DbSchema.text(),
   created: DbSchema.integer(),
 })

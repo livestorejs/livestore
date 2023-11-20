@@ -18,7 +18,9 @@ export const Priority = {
   HIGH: 'high',
   LOW: 'low',
   MEDIUM: 'medium',
-}
+} as const
+
+export type PriorityType = (typeof Priority)[keyof typeof Priority]
 
 export const PriorityDisplay = {
   [Priority.NONE]: 'None',
@@ -38,8 +40,8 @@ export const PriorityIcons = {
 
 export const PriorityOptions: [
   React.FunctionComponent<React.SVGProps<SVGSVGElement>>,
-  string,
   (typeof Priority)[keyof typeof Priority],
+  string,
 ][] = [
   [PriorityIcons[Priority.NONE], Priority.NONE, 'None'],
   [PriorityIcons[Priority.URGENT], Priority.URGENT, 'Urgent'],
@@ -54,7 +56,9 @@ export const Status = {
   IN_PROGRESS: 'in_progress',
   DONE: 'done',
   CANCELED: 'canceled',
-}
+} as const
+
+export type StatusType = (typeof Status)[keyof typeof Status]
 
 export const StatusDisplay = {
   [Status.BACKLOG]: 'Backlog',

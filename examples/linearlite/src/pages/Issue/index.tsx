@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useState, useRef } from 'react'
 import { BsTrash3 as DeleteIcon } from 'react-icons/bs'
 import { BsXLg as CloseIcon } from 'react-icons/bs'
@@ -18,14 +18,23 @@ const debounceTime = 500
 
 function IssuePage() {
   const navigate = useNavigate()
-  const { id } = useParams()
+  // const { id } = useParams()
   // const { db } = useElectric()!
   // const { results: issue } = useLiveQuery(
   //   db.issue.liveUnique({
   //     where: { id: id },
   //   })
   // )
-  const issue: Issue = {}
+  const issue: Issue = {
+    id: 'a',
+    title: 'Issue title',
+    creator: 'aa',
+    priority: 'none',
+    status: 'backlog',
+    modified: new Date().getTime(),
+    created: new Date().getTime(),
+  }
+  const description = ''
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
@@ -46,12 +55,12 @@ function IssuePage() {
     setDirtyTitle(null)
     titleIsDirty.current = false
   }
-  if (dirtyDescription === issue.description) {
+  if (dirtyDescription === description) {
     setDirtyDescription(null)
     descriptionIsDirty.current = false
   }
 
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = (_status: string) => {
     // db.issue.update({
     //   data: {
     //     status: status,
@@ -63,7 +72,7 @@ function IssuePage() {
     // })
   }
 
-  const handlePriorityChange = (priority: string) => {
+  const handlePriorityChange = (_priority: string) => {
     // db.issue.update({
     //   data: {
     //     priority: priority,
@@ -75,7 +84,7 @@ function IssuePage() {
     // })
   }
 
-  const handleTitleChangeDebounced = debounce(async (title: string) => {
+  const handleTitleChangeDebounced = debounce(async (_title: string) => {
     // await db.issue.update({
     //   data: {
     //     title: title,
@@ -96,7 +105,7 @@ function IssuePage() {
     handleTitleChangeDebounced(title)
   }
 
-  const handleDescriptionChangeDebounced = debounce(async (description: string) => {
+  const handleDescriptionChangeDebounced = debounce(async (_description: string) => {
     // await db.issue.update({
     //   data: {
     //     description: description,
@@ -177,8 +186,8 @@ function IssuePage() {
                 <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">Opened by</div>
                 <div className="flex flex-[3_0_0]">
                   <button className="inline-flex items-center h-6 ps-1.5 pe-2 text-gray-500border-none rounded hover:bg-gray-100">
-                    <Avatar name={issue.username} />
-                    <span className="ml-1">{issue.username}</span>
+                    <Avatar name={issue.creator} />
+                    <span className="ml-1">{issue.creator}</span>
                   </button>
                 </div>
               </div>
@@ -224,7 +233,7 @@ function IssuePage() {
 
             <Editor
               className="prose w-full max-w-full mt-2 font-normal appearance-none min-h-12 p-3 text-md rounded editor"
-              value={descriptionIsDirty.current ? dirtyDescription || '' : issue.description || ''}
+              value={descriptionIsDirty.current ? dirtyDescription || '' : description || ''}
               onChange={(val) => handleDescriptionChange(val)}
               placeholder="Add description..."
             />

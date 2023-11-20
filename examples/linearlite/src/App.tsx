@@ -1,6 +1,6 @@
 import 'animate.css/animate.min.css'
 import Board from './pages/Board'
-import { useEffect, useState, createContext } from 'react'
+import { useState, createContext } from 'react'
 import { Route, Routes, BrowserRouter } from 'react-router-dom'
 import { cssTransition, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'

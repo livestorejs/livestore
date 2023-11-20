@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid'
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Editor from '../../components/editor/Editor'
@@ -11,7 +10,7 @@ export interface CommentsProps {
   issue: Issue
 }
 
-function Comments({ issue }: CommentsProps) {
+function Comments(_props: CommentsProps) {
   // const { db } = useElectric()!
   const [newCommentBody, setNewCommentBody] = useState<string>('')
   // const { results: comments } = useLiveQuery(
@@ -31,9 +30,9 @@ function Comments({ issue }: CommentsProps) {
       return comments.map((comment) => (
         <div key={comment.id} className="flex flex-col w-full p-3 mb-3 bg-white rounded shadow-sm border">
           <div className="flex items-center mb-2">
-            <Avatar name={comment.username} />
-            <span className="ms-2 text-sm text-gray-400">{comment.username}</span>
-            <span className=" ms-auto text-sm text-gray-400 ml-2">{formatDate(comment.created_at)}</span>
+            <Avatar name={comment.creator} />
+            <span className="ms-2 text-sm text-gray-400">{comment.creator}</span>
+            <span className=" ms-auto text-sm text-gray-400 ml-2">{formatDate(new Date(comment.created))}</span>
           </div>
           <div className="mt-2 text-md prose w-full max-w-full">
             <ReactMarkdown>{comment.body}</ReactMarkdown>
