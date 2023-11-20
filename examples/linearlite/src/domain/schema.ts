@@ -17,30 +17,89 @@ const description = DbSchema.table('description', {
   body: DbSchema.text({ default: '' }),
 })
 
-const comment = DbSchema.table('comment', {
-  id: DbSchema.text({ primaryKey: true }),
-  body: DbSchema.text({ default: '' }),
-  creator: DbSchema.text({ default: '' }),
-  issueId: DbSchema.text(),
-  created: DbSchema.integer(),
-})
+const comment = DbSchema.table(
+  'comment',
+  {
+    id: DbSchema.text({ primaryKey: true }),
+    body: DbSchema.text({ default: '' }),
+    creator: DbSchema.text({ default: '' }),
+    issueId: DbSchema.text(),
+    created: DbSchema.integer(),
+    author: DbSchema.text({ nullable: false }),
+  },
+  [
+    {
+      name: 'issue_id',
+      columns: ['issueId'],
+    },
+  ],
+)
 
-// const app = DbSchema.table('app', {
-//   id: DbSchema.textWithSchema(Schema.literal('static'), { primaryKey: true }),
-//   newTodoText: DbSchema.text({ default: '' }),
-//   filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
-// })
+const appState = DbSchema.table('app_state', {
+  key: DbSchema.text({ primaryKey: true }),
+  value: DbSchema.text(),
+})
 
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
 
 export const schema = makeSchema({
-  tables: { issue, description, comment },
+  tables: { issue, description, comment, appState },
   actions: {
-    // TODO: fix these actions to make them have write annotatinos
-    addTodo: {
+    addIssue: {
       statement: {
-        sql: sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false);`,
-        writeTables: ['todos'],
+        sql: sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified")
+          VALUES ($id, $title, $priority, $status, $created, $modified)`,
+        writeTables: ['issue'],
+      },
+      addDescription: {
+        statement: {
+          sql: sql`INSERT INTO description ("id", "body") VALUES ($id, $body)`,
+          writeTables: ['description'],
+        },
+      },
+      addComment: {
+        statement: {
+          sql: sql`INSERT INTO comment ("id", "body", "issueId", "created", "author")
+          VALUES ($id, $body, $issueId, $created, $author)`,
+          writeTables: ['comment'],
+        },
+      },
+      deleteIssue: {
+        statement: {
+          sql: sql`DELETE FROM issue WHERE id = $id`,
+          writeTables: ['issue'],
+        },
+      },
+      deleteDescriptin: {
+        statement: {
+          sql: sql`DELETE FROM description WHERE id = $id`,
+          writeTables: ['description'],
+        },
+      },
+      deleteComment: {
+        statement: {
+          sql: sql`DELETE FROM comment WHERE id = $id`,
+          writeTables: ['comment'],
+        },
+      },
+      updateIssue: {
+        statement: {
+          sql: sql`UPDATE issue SET title = $title, priority = $priority, status = $status, modified = $modified WHERE id = $id`,
+          writeTables: ['issue'],
+        },
+      },
+      updateDescription: {
+        statement: {
+          sql: sql`UPDATE description SET body = $body WHERE id = $id`,
+          writeTables: ['description'],
+        },
+      },
+      upsertAppAtom: {
+        statement: {
+          sql: sql`INSERT INTO app_state (key, value) VALUES ($key, $value)
+          ON CONFLICT (key) DO UPDATE SET value = $value`,
+          writeTables: ['app_state'],
+        },
       },
     },
   },
