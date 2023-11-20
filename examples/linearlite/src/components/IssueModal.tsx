@@ -11,21 +11,22 @@ import StatusIcon from './StatusIcon'
 import PriorityMenu from './contextmenu/PriorityMenu'
 import StatusMenu from './contextmenu/StatusMenu'
 
-import { Priority, Status, PriorityDisplay } from '../types/issue'
+import { Priority, Status, PriorityDisplay, StatusType, PriorityType } from '../types/issue'
 import { showInfo, showWarning } from '../utils/notification'
-import { Issue } from '../types'
+// import { Issue } from '../types'
 
 interface Props {
   isOpen: boolean
   onDismiss?: () => void
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 function IssueModal({ isOpen, onDismiss }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState<string>()
-  const [priority, setPriority] = useState(Priority.NONE)
-  const [status, setStatus] = useState(Status.BACKLOG)
+  const [priority, setPriority] = useState<PriorityType>(Priority.NONE)
+  const [status, setStatus] = useState<StatusType>(Status.BACKLOG)
   // const { db } = useElectric()!
 
   const handleSubmit = async () => {
@@ -39,11 +40,11 @@ function IssueModal({ isOpen, onDismiss }: Props) {
     //     kanbanorder: 'desc',
     //   },
     // })
-    const lastIssue: Issue = {}
+    // const lastIssue: Issue = {}
     // const kanbanorder = generateKeyBetween(lastIssue?.kanbanorder, null)
-    const kanbanorder = 'aa'
+    // const kanbanorder = 'aa'
 
-    const date = new Date()
+    // const date = new Date()
     // db.issue.create({
     //   data: {
     //     id: uuidv4(),
@@ -175,4 +176,5 @@ function IssueModal({ isOpen, onDismiss }: Props) {
   )
 }
 
-export default memo(IssueModal)
+const memoed = memo(IssueModal)
+export default memoed

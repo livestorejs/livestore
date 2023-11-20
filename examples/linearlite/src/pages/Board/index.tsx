@@ -1,10 +1,10 @@
 import TopFilter from '../../components/TopFilter'
 import IssueBoard from './IssueBoard'
-import { useFilterState } from '../../utils/filterState'
+// import { useFilterState } from '../../utils/filterState'
 import { Issue } from '../../types'
 
 function Board() {
-  const [filterState] = useFilterState()
+  // const [filterState] = useFilterState()
   // const { db } = useElectric()!
   // const { results } = useLiveQuery(
   //   db.issue.liveMany({

@@ -2,20 +2,20 @@ import { Portal } from '../Portal'
 import { ReactNode, useState } from 'react'
 import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
 import { Menu } from './menu'
-import { PriorityOptions } from '../../types/issue'
+import { PriorityOptions, PriorityType } from '../../types/issue'
 
 interface Props {
   id: string
   button: ReactNode
   filterKeyword: boolean
   className?: string
-  onSelect?: (item: string) => void
+  onSelect?: (item: PriorityType) => void
 }
 
 function PriorityMenu({ id, button, filterKeyword, className, onSelect }: Props) {
   const [keyword, setKeyword] = useState('')
 
-  const handleSelect = (priority: string) => {
+  const handleSelect = (priority: PriorityType) => {
     setKeyword('')
     if (onSelect) onSelect(priority)
   }
@@ -29,7 +29,7 @@ function PriorityMenu({ id, button, filterKeyword, className, onSelect }: Props)
 
   const options = statusOpts.map(([Icon, priority, label], idx) => {
     return (
-      <Menu.Item key={`priority-${idx}`} onClick={() => handleSelect(priority as string)}>
+      <Menu.Item key={`priority-${idx}`} onClick={() => handleSelect(priority)}>
         <Icon className="mr-3" /> <span>{label}</span>
       </Menu.Item>
     )

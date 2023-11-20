@@ -118,8 +118,8 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
     column.default === undefined
       ? ''
       : columnType === 'text'
-      ? `default '${column.default}'`
-      : `default ${column.default}`
+        ? `default '${column.default}'`
+        : `default ${column.default}`
 
   return `${column.name} ${columnType} ${nullable} ${defaultValue}`
 }

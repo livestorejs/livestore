@@ -17,6 +17,7 @@ import IssueModal from './IssueModal'
 import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
 
+// eslint-disable-next-line react-refresh/only-export-components
 function LeftMenu() {
   const ref = useRef<HTMLDivElement>() as RefObject<HTMLDivElement>
   const [showProfileMenu, setShowProfileMenu] = useState(false)
@@ -136,4 +137,5 @@ function LeftMenu() {
   )
 }
 
-export default memo(LeftMenu)
+const memoed = memo(LeftMenu)
+export default memoed
