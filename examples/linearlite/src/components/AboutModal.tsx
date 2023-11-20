@@ -21,8 +21,7 @@ export default function AboutModal({ isOpen, onDismiss }: Props) {
           - the local-first sync layer for web and mobile apps.
         </p>
         <p className="my-1">
-          This example is built on top of the excellent clone of the Linear UI
-          built by{' '}
+          This example is built on top of the excellent clone of the Linear UI built by{' '}
           <a href="https://github.com/tuan3w" target="_blank">
             Tuan Nguyen
           </a>

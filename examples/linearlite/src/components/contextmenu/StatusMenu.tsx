@@ -19,9 +19,7 @@ export default function StatusMenu({ id, button, className, onSelect }: Props) {
   let statuses = StatusOptions
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
-    statuses = statuses.filter(
-      ([_icon, _id, l]) => l.toLowerCase().indexOf(normalizedKeyword) !== -1
-    )
+    statuses = statuses.filter(([_icon, _id, l]) => l.toLowerCase().indexOf(normalizedKeyword) !== -1)
   }
 
   const options = statuses.map(([Icon, id, label]) => {

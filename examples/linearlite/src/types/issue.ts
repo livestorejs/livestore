@@ -39,7 +39,7 @@ export const PriorityIcons = {
 export const PriorityOptions: [
   React.FunctionComponent<React.SVGProps<SVGSVGElement>>,
   string,
-  (typeof Priority)[keyof typeof Priority]
+  (typeof Priority)[keyof typeof Priority],
 ][] = [
   [PriorityIcons[Priority.NONE], Priority.NONE, 'None'],
   [PriorityIcons[Priority.URGENT], Priority.URGENT, 'Urgent'],
@@ -75,19 +75,11 @@ export const StatusIcons = {
 export const StatusOptions: [
   React.FunctionComponent<React.SVGProps<SVGSVGElement>>,
   (typeof Status)[keyof typeof Status],
-  string
+  string,
 ][] = [
   [StatusIcons[Status.BACKLOG], Status.BACKLOG, StatusDisplay[Status.BACKLOG]],
   [StatusIcons[Status.TODO], Status.TODO, StatusDisplay[Status.TODO]],
-  [
-    StatusIcons[Status.IN_PROGRESS],
-    Status.IN_PROGRESS,
-    StatusDisplay[Status.IN_PROGRESS],
-  ],
+  [StatusIcons[Status.IN_PROGRESS], Status.IN_PROGRESS, StatusDisplay[Status.IN_PROGRESS]],
   [StatusIcons[Status.DONE], Status.DONE, StatusDisplay[Status.DONE]],
-  [
-    StatusIcons[Status.CANCELED],
-    Status.CANCELED,
-    StatusDisplay[Status.CANCELED],
-  ],
+  [StatusIcons[Status.CANCELED], Status.CANCELED, StatusDisplay[Status.CANCELED]],
 ]

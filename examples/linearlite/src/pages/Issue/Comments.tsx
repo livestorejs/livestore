@@ -29,18 +29,11 @@ function Comments({ issue }: CommentsProps) {
   const commentList = () => {
     if (comments && comments.length > 0) {
       return comments.map((comment) => (
-        <div
-          key={comment.id}
-          className="flex flex-col w-full p-3 mb-3 bg-white rounded shadow-sm border"
-        >
+        <div key={comment.id} className="flex flex-col w-full p-3 mb-3 bg-white rounded shadow-sm border">
           <div className="flex items-center mb-2">
             <Avatar name={comment.username} />
-            <span className="ms-2 text-sm text-gray-400">
-              {comment.username}
-            </span>
-            <span className=" ms-auto text-sm text-gray-400 ml-2">
-              {formatDate(comment.created_at)}
-            </span>
+            <span className="ms-2 text-sm text-gray-400">{comment.username}</span>
+            <span className=" ms-auto text-sm text-gray-400 ml-2">{formatDate(comment.created_at)}</span>
           </div>
           <div className="mt-2 text-md prose w-full max-w-full">
             <ReactMarkdown>{comment.body}</ReactMarkdown>
@@ -52,10 +45,7 @@ function Comments({ issue }: CommentsProps) {
 
   const handlePost = () => {
     if (!newCommentBody) {
-      showWarning(
-        'Please enter a comment before submitting',
-        'Comment required'
-      )
+      showWarning('Please enter a comment before submitting', 'Comment required')
       return
     }
 
@@ -81,10 +71,7 @@ function Comments({ issue }: CommentsProps) {
         placeholder="Add a comment..."
       />
       <div className="flex w-full py-3">
-        <button
-          className="px-3 ml-auto text-white bg-indigo-600 rounded hover:bg-indigo-700 h-7"
-          onClick={handlePost}
-        >
+        <button className="px-3 ml-auto text-white bg-indigo-600 rounded hover:bg-indigo-700 h-7" onClick={handlePost}>
           Post Comment
         </button>
       </div>

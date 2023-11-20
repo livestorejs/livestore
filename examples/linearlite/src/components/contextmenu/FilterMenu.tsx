@@ -20,46 +20,32 @@ function FilterMenu({ id, button, className }: Props) {
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
     priorities = priorities.filter(
-      ([_icon, _priority, label]) =>
-        (label as string).toLowerCase().indexOf(normalizedKeyword) !== -1
+      ([_icon, _priority, label]) => (label as string).toLowerCase().indexOf(normalizedKeyword) !== -1,
     )
   }
 
   let statuses = StatusOptions
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
-    statuses = statuses.filter(
-      ([_icon, _status, label]) =>
-        label.toLowerCase().indexOf(normalizedKeyword) !== -1
-    )
+    statuses = statuses.filter(([_icon, _status, label]) => label.toLowerCase().indexOf(normalizedKeyword) !== -1)
   }
 
   const priorityOptions = priorities.map(([Icon, priority, label], idx) => {
     return (
-      <Menu.Item
-        key={`priority-${idx}`}
-        onClick={() => handlePrioritySelect(priority as string)}
-      >
+      <Menu.Item key={`priority-${idx}`} onClick={() => handlePrioritySelect(priority as string)}>
         <Icon className="mr-3" />
         <span>{label}</span>
-        {filterState.priority?.includes(priority) && (
-          <BsCheck2 className="ml-auto" />
-        )}
+        {filterState.priority?.includes(priority) && <BsCheck2 className="ml-auto" />}
       </Menu.Item>
     )
   })
 
   const statusOptions = statuses.map(([Icon, status, label], idx) => {
     return (
-      <Menu.Item
-        key={`status-${idx}`}
-        onClick={() => handleStatusSelect(status as string)}
-      >
+      <Menu.Item key={`status-${idx}`} onClick={() => handleStatusSelect(status as string)}>
         <Icon className="mr-3" />
         <span>{label}</span>
-        {filterState.status?.includes(status) && (
-          <BsCheck2 className="ml-auto" />
-        )}
+        {filterState.status?.includes(status) && <BsCheck2 className="ml-auto" />}
       </Menu.Item>
     )
   })

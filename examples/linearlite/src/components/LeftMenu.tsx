@@ -31,16 +31,13 @@ function LeftMenu() {
     {
       '-translate-x-full ease-out shadow-none': !showMenu,
       'translate-x-0 ease-in shadow-xl': showMenu,
-    }
+    },
   )
 
   return (
     <>
       <div className={classes} ref={ref}>
-        <button
-          className="flex-shrink-0 px-5 ml-2 lg:hidden h-14"
-          onClick={() => setShowMenu(!showMenu)}
-        >
+        <button className="flex-shrink-0 px-5 ml-2 lg:hidden h-14" onClick={() => setShowMenu(!showMenu)}>
           <MenuIcon className="w-3.5 text-gray-500 hover:text-gray-800" />
         </button>
 
@@ -48,14 +45,8 @@ function LeftMenu() {
         <div className="flex flex-col flex-grow-0 flex-shrink-0 px-5 py-3">
           <div className="flex items-center justify-between">
             {/* Project selection */}
-            <Link
-              className="flex items-center p-2 pr-3 rounded cursor-pointer hover:bg-gray-100"
-              to="/"
-            >
-              <img
-                src="/todo-icon.png"
-                className="w-4.5 h-4.5 mr-2.5 rounded-sm"
-              />
+            <Link className="flex items-center p-2 pr-3 rounded cursor-pointer hover:bg-gray-100" to="/">
+              <img src="/todo-icon.png" className="w-4.5 h-4.5 mr-2.5 rounded-sm" />
               {/* <div className="flex text-sm items-center justify-center rounded-sm w-4.5 h-4.5 text-white bg-yellow-500 mr-2.5">
                 G
               </div> */}
@@ -68,11 +59,7 @@ function LeftMenu() {
                 className="flex items-center justify-center p-2 rounded cursor-pointer hover:bg-gray-100"
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
               >
-                <Avatar
-                  name="LiveStore"
-                  online={connectivityState == 'connected'}
-                  showOffline={true}
-                />
+                <Avatar name="LiveStore" online={connectivityState == 'connected'} showOffline={true} />
                 <ExpandMore size={13} className="ml-2" />
               </button>
               <ProfileMenu
@@ -105,10 +92,7 @@ function LeftMenu() {
 
         <div className="flex flex-col flex-shrink flex-grow overflow-y-auto mb-0.5 px-2">
           <ItemGroup title="Your Issues">
-            <Link
-              to="/"
-              className="flex items-center pl-6 rounded cursor-pointer group h-7 hover:bg-gray-100"
-            >
+            <Link to="/" className="flex items-center pl-6 rounded cursor-pointer group h-7 hover:bg-gray-100">
               <IssuesIcon className="w-3.5 h-3.5 mr-2" />
               <span>All Issues</span>
             </Link>
@@ -121,17 +105,11 @@ function LeftMenu() {
               </span>
               <span>Active</span>
             </Link>
-            <Link
-              to="/?status=backlog"
-              className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100"
-            >
+            <Link to="/?status=backlog" className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100">
               <BacklogIcon className="w-3.5 h-3.5 mr-2" />
               <span>Backlog</span>
             </Link>
-            <Link
-              to="/board"
-              className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100"
-            >
+            <Link to="/board" className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100">
               <BoardIcon className="w-3.5 h-3.5 mr-2" />
               <span>Board</span>
             </Link>
@@ -143,31 +121,17 @@ function LeftMenu() {
           {/* bottom group */}
           <div className="flex flex-col px-2 pb-2 text-gray-500 mt-7">
             <a className="inline-flex" href="https://todo.com/">
-              <LiveStoreIcon className="w-3 h-3 mr-2 mt-1 scale-150" />{' '}
-              LiveStore
+              <LiveStoreIcon className="w-3 h-3 mr-2 mt-1 scale-150" /> LiveStore
             </a>
-            <button
-              className="inline-flex mt-1"
-              onClick={() => setShowAboutModal(true)}
-            >
+            <button className="inline-flex mt-1" onClick={() => setShowAboutModal(true)}>
               <HelpIcon className="w-3 mr-2 mt-1" /> About
             </button>
           </div>
         </div>
       </div>
       {/* Modals */}
-      {
-        <AboutModal
-          isOpen={showAboutModal}
-          onDismiss={() => setShowAboutModal(false)}
-        />
-      }
-      {
-        <IssueModal
-          isOpen={showIssueModal}
-          onDismiss={() => setShowIssueModal(false)}
-        />
-      }
+      {<AboutModal isOpen={showAboutModal} onDismiss={() => setShowAboutModal(false)} />}
+      {<IssueModal isOpen={showIssueModal} onDismiss={() => setShowIssueModal(false)} />}
     </>
   )
 }

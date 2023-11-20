@@ -66,12 +66,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
     return { issuesByStatus }
   }, [issues, movedIssues])
 
-  const adjacentIssues = (
-    column: string,
-    index: number,
-    sameColumn = true,
-    currentIndex: number
-  ) => {
+  const adjacentIssues = (column: string, index: number, sameColumn = true, currentIndex: number) => {
     const columnIssues = issuesByStatus[column] || []
     let prevIssue: Issue | undefined
     let nextIssue: Issue | undefined
@@ -174,7 +169,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
         destination.droppableId,
         destination.index,
         destination.droppableId === source.droppableId,
-        source.index
+        source.index,
       )
       // Get a new kanbanorder between the previous and next issues
       const kanbanorder = getNewKanbanOrder(prevIssue, nextIssue)
@@ -211,21 +206,13 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
           status={Status.BACKLOG}
           issues={issuesByStatus[Status.BACKLOG]}
         />
-        <IssueCol
-          title={StatusDisplay[Status.TODO]}
-          status={Status.TODO}
-          issues={issuesByStatus[Status.TODO]}
-        />
+        <IssueCol title={StatusDisplay[Status.TODO]} status={Status.TODO} issues={issuesByStatus[Status.TODO]} />
         <IssueCol
           title={StatusDisplay[Status.IN_PROGRESS]}
           status={Status.IN_PROGRESS}
           issues={issuesByStatus[Status.IN_PROGRESS]}
         />
-        <IssueCol
-          title={StatusDisplay[Status.DONE]}
-          status={Status.DONE}
-          issues={issuesByStatus[Status.DONE]}
-        />
+        <IssueCol title={StatusDisplay[Status.DONE]} status={Status.DONE} issues={issuesByStatus[Status.DONE]} />
         <IssueCol
           title={StatusDisplay[Status.CANCELED]}
           status={Status.CANCELED}

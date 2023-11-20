@@ -23,10 +23,7 @@ function stringToHslColor(str: string, s: number, l: number) {
 }
 
 function getAcronym(name: string) {
-  let acr = ((name || '').match(/\b(\w)/g) || [])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
+  let acr = ((name || '').match(/\b(\w)/g) || []).join('').slice(0, 2).toUpperCase()
   if (acr.length === 1) {
     acr = acr + name.slice(1, 2).toLowerCase()
   }
@@ -36,10 +33,7 @@ function Avatar({ online, showOffline, name, onClick, avatarUrl }: Props) {
   let avatar, status
 
   // create avatar image icon
-  if (avatarUrl)
-    avatar = (
-      <img src={avatarUrl} alt={name} className="w-4.5 h-4.5 rounded-full" />
-    )
+  if (avatarUrl) avatar = <img src={avatarUrl} alt={name} className="w-4.5 h-4.5 rounded-full" />
   else if (name !== undefined) {
     // use name as avatar
     avatar = (
@@ -52,9 +46,7 @@ function Avatar({ online, showOffline, name, onClick, avatarUrl }: Props) {
     )
   } else {
     // try to use default avatar
-    avatar = (
-      <img src={AvatarImg} alt="avatar" className="w-4.5 h-4.5 rounded-full" />
-    )
+    avatar = <img src={AvatarImg} alt="avatar" className="w-4.5 h-4.5 rounded-full" />
   }
 
   //status icon
@@ -62,13 +54,10 @@ function Avatar({ online, showOffline, name, onClick, avatarUrl }: Props) {
     status = (
       // <span className="absolute -right-0.5 -bottom-0.5 w-2 h-2 rounded-full bg-green-500 border border-white"></span>
       <span
-        className={classnames(
-          'absolute -right-0.5 -bottom-0.5 w-2 h-2 rounded-full border border-white',
-          {
-            'bg-green-500': online,
-            'bg-red-500': !online,
-          }
-        )}
+        className={classnames('absolute -right-0.5 -bottom-0.5 w-2 h-2 rounded-full border border-white', {
+          'bg-green-500': online,
+          'bg-red-500': !online,
+        })}
       ></span>
     )
   else status = null

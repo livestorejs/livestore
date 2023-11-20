@@ -13,11 +13,7 @@ declare module '@firefox-devtools/react-contextmenu' {
     onHide?: { (event: any): void }
     onMouseLeave?:
       | {
-          (
-            event: React.MouseEvent<HTMLElement>,
-            data: Object,
-            target: HTMLElement
-          ): void
+          (event: React.MouseEvent<HTMLElement>, data: Object, target: HTMLElement): void
         }
       | Function
     onShow?: { (event: any): void }
@@ -51,11 +47,9 @@ declare module '@firefox-devtools/react-contextmenu' {
     onClick?:
       | {
           (
-            event:
-              | React.TouchEvent<HTMLDivElement>
-              | React.MouseEvent<HTMLDivElement>,
+            event: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
             data: Object,
-            target: HTMLElement
+            target: HTMLElement,
           ): void
         }
       | Function
@@ -72,11 +66,9 @@ declare module '@firefox-devtools/react-contextmenu' {
     onClick?:
       | {
           (
-            event:
-              | React.TouchEvent<HTMLDivElement>
-              | React.MouseEvent<HTMLDivElement>,
+            event: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
             data: Object,
-            target: HTMLElement
+            target: HTMLElement,
           ): void
         }
       | Function
@@ -93,10 +85,8 @@ declare module '@firefox-devtools/react-contextmenu' {
   export const MenuItem: React.ComponentClass<MenuItemProps>
   export const SubMenu: React.ComponentClass<SubMenuProps>
   export function connectMenu<P>(
-    menuId: string
-  ): (
-    Child: React.ComponentType<P & ConnectMenuProps>
-  ) => React.ComponentType<P>
+    menuId: string,
+  ): (Child: React.ComponentType<P & ConnectMenuProps>) => React.ComponentType<P>
   export function showMenu(opts?: any, target?: HTMLElement): void
   export function hideMenu(opts?: any, target?: HTMLElement): void
 }

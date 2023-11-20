@@ -1,9 +1,4 @@
-import {
-  useEditor,
-  EditorContent,
-  BubbleMenu,
-  type Extensions,
-} from '@tiptap/react'
+import { useEditor, EditorContent, BubbleMenu, type Extensions } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Table from '@tiptap/extension-table'
@@ -21,12 +16,7 @@ interface EditorProps {
   placeholder?: string
 }
 
-const Editor = ({
-  value,
-  onChange,
-  className = '',
-  placeholder,
-}: EditorProps) => {
+const Editor = ({ value, onChange, className = '', placeholder }: EditorProps) => {
   const editorProps = {
     attributes: {
       class: className,
@@ -34,14 +24,7 @@ const Editor = ({
   }
   const markdownValue = useRef<string | null>(null)
 
-  const extensions: Extensions = [
-    StarterKit,
-    Markdown,
-    Table,
-    TableRow,
-    TableHeader,
-    TableCell,
-  ]
+  const extensions: Extensions = [StarterKit, Markdown, Table, TableRow, TableHeader, TableCell]
 
   const editor = useEditor({
     extensions,
@@ -63,7 +46,7 @@ const Editor = ({
     extensions.push(
       Placeholder.configure({
         placeholder,
-      })
+      }),
     )
   }
 
