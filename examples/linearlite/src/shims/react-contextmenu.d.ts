@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Copied here from the unreleased master branch of github.com/firefox-devtools/react-contextmenu
 /* eslint @typescript-eslint/ban-types: 0 */
 
