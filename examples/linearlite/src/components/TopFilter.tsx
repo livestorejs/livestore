@@ -16,12 +16,7 @@ interface Props {
   title?: string
 }
 
-export default function TopFilter({
-  issues,
-  hideSort,
-  showSearch,
-  title = 'All issues',
-}: Props) {
+export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {
   // const { db } = useElectric()!
   const [filterState, setFilterState] = useFilterState()
   const [showViewOption, setShowViewOption] = useState(false)
@@ -50,10 +45,7 @@ export default function TopFilter({
 
   const eqStatuses = (statuses: string[]) => {
     const statusSet = new Set(statuses)
-    return (
-      filterState.status?.length === statusSet.size &&
-      filterState.status.every((x) => statusSet.has(x))
-    )
+    return filterState.status?.length === statusSet.size && filterState.status.every((x) => statusSet.has(x))
   }
 
   if (filterState.status?.length) {
@@ -69,10 +61,7 @@ export default function TopFilter({
       <div className="flex justify-between flex-shrink-0 pl-2 pr-6 border-b border-gray-200 h-14 lg:pl-9">
         {/* left section */}
         <div className="flex items-center">
-          <button
-            className="flex-shrink-0 h-full px-5 lg:hidden"
-            onClick={() => setShowMenu(!showMenu)}
-          >
+          <button className="flex-shrink-0 h-full px-5 lg:hidden" onClick={() => setShowMenu(!showMenu)}>
             <MenuIcon className="w-3.5 text-gray-500 hover:text-gray-800" />
           </button>
 
@@ -80,9 +69,7 @@ export default function TopFilter({
           {/* <span>{filteredIssuesCount}</span> */}
           <span>
             {filteredIssuesCount}
-            {filteredIssuesCount !== totalIssuesCount
-              ? ` of ${totalIssuesCount}`
-              : ''}
+            {filteredIssuesCount !== totalIssuesCount ? ` of ${totalIssuesCount}` : ''}
           </span>
           <FilterMenu
             button={
@@ -97,10 +84,7 @@ export default function TopFilter({
 
         <div className="flex items-center">
           {!hideSort && (
-            <button
-              className="p-2 rounded hover:bg-gray-100"
-              onClick={() => setShowViewOption(true)}
-            >
+            <button className="p-2 rounded hover:bg-gray-100" onClick={() => setShowViewOption(true)}>
               <BsSortUp size="16" className="inline" />
             </button>
           )}
@@ -113,9 +97,7 @@ export default function TopFilter({
             <div className="flex pr-4 space-x-[1px]">
               <span className="px-1 bg-gray-300 rounded-l">Priority is</span>
               <span className="px-1 bg-gray-300 ">
-                {filterState.priority
-                  ?.map((priority) => PriorityDisplay[priority])
-                  .join(', ')}
+                {filterState.priority?.map((priority) => PriorityDisplay[priority]).join(', ')}
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
@@ -134,9 +116,7 @@ export default function TopFilter({
             <div className="flex pr-4 space-x-[1px]">
               <span className="px-1 bg-gray-300 rounded-l">Status is</span>
               <span className="px-1 bg-gray-300 ">
-                {filterState.status
-                  ?.map((status) => StatusDisplay[status])
-                  .join(', ')}
+                {filterState.status?.map((status) => StatusDisplay[status]).join(', ')}
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
@@ -166,10 +146,7 @@ export default function TopFilter({
         </div>
       )}
 
-      <ViewOptionMenu
-        isOpen={showViewOption}
-        onDismiss={() => setShowViewOption(false)}
-      />
+      <ViewOptionMenu isOpen={showViewOption} onDismiss={() => setShowViewOption(false)} />
     </>
   )
 }

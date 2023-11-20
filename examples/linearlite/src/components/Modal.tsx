@@ -1,10 +1,4 @@
-import React, {
-  memo,
-  RefObject,
-  useCallback,
-  useRef,
-  type MouseEvent,
-} from 'react'
+import React, { memo, RefObject, useCallback, useRef, type MouseEvent } from 'react'
 import ReactDOM from 'react-dom'
 import classnames from 'classnames'
 
@@ -27,31 +21,20 @@ const sizeClasses = {
   normal: 'w-140',
 }
 
-function Modal({
-  title,
-  isOpen,
-  center,
-  size,
-  className,
-  onDismiss,
-  children,
-}: Props) {
+function Modal({ title, isOpen, center, size, className, onDismiss, children }: Props) {
   const ref = useRef<HTMLDivElement>(null) as RefObject<HTMLDivElement>
   const outerRef = useRef(null)
 
-  const wrapperClasses = classnames(
-    'fixed flex flex-col items-center inset-0 z-50',
-    {
-      'justify-center': center,
-    }
-  )
+  const wrapperClasses = classnames('fixed flex flex-col items-center inset-0 z-50', {
+    'justify-center': center,
+  })
   const modalClasses = classnames(
     'flex flex-col items-center overflow-hidden transform bg-white modal shadow-large-modal rounded-xl',
     {
       'mt-20 mb-2 ': !center,
     },
     sizeClasses[size],
-    className
+    className,
   )
   const handleClick = useCallback((event: MouseEvent) => {
     event.stopPropagation()
@@ -91,10 +74,7 @@ function Modal({
     </div>
   )
 
-  return ReactDOM.createPortal(
-    modal,
-    document.getElementById('root-modal') as Element
-  )
+  return ReactDOM.createPortal(modal, document.getElementById('root-modal') as Element)
 }
 
 Modal.defaultProps = {

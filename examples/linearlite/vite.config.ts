@@ -11,13 +11,7 @@ export default defineConfig({
         svgo: true,
         plugins: ['@svgr/plugin-svgo', '@svgr/plugin-jsx'],
         svgoConfig: {
-          plugins: [
-            'preset-default',
-            'removeTitle',
-            'removeDesc',
-            'removeDoctype',
-            'cleanupIds',
-          ],
+          plugins: ['preset-default', 'removeTitle', 'removeDesc', 'removeDoctype', 'cleanupIds'],
         },
       },
     }),

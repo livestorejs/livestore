@@ -8,14 +8,10 @@ interface FilterState {
   query?: string
 }
 
-export function useFilterState(): [
-  FilterState,
-  (state: Partial<FilterState>) => void
-] {
+export function useFilterState(): [FilterState, (state: Partial<FilterState>) => void] {
   const [searchParams, setSearchParams] = useSearchParams()
   const orderBy = searchParams.get('orderBy') ?? 'created'
-  const orderDirection =
-    (searchParams.get('orderDirection') as 'asc' | 'desc') ?? 'desc'
+  const orderDirection = (searchParams.get('orderDirection') as 'asc' | 'desc') ?? 'desc'
   const status = searchParams
     .getAll('status')
     .map((status) => status.toLocaleLowerCase().split(','))
@@ -86,10 +82,7 @@ export function filterStateToWhere(filterState: FilterState) {
     where.priority = { in: priority }
   }
   if (query) {
-    where.OR = [
-      { title: { contains: query } },
-      { description: { contains: query } },
-    ]
+    where.OR = [{ title: { contains: query } }, { description: { contains: query } }]
   }
   return where
 }

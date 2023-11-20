@@ -20,7 +20,7 @@ export default function Toggle({
       'left-0 border-gray-300': !value,
       'right-0': value,
       [activeLabelClass]: value,
-    }
+    },
   )
   const classes = classnames(
     'group relative rounded-full w-5 h-3.5 transition duration-200 ease-linear',
@@ -28,7 +28,7 @@ export default function Toggle({
       [activeClass]: value,
       'bg-gray-300': !value,
     },
-    className
+    className,
   )
   const onClick = () => {
     if (onChange) onChange(!value)

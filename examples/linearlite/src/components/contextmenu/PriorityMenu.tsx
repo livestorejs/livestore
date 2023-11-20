@@ -12,13 +12,7 @@ interface Props {
   onSelect?: (item: string) => void
 }
 
-function PriorityMenu({
-  id,
-  button,
-  filterKeyword,
-  className,
-  onSelect,
-}: Props) {
+function PriorityMenu({ id, button, filterKeyword, className, onSelect }: Props) {
   const [keyword, setKeyword] = useState('')
 
   const handleSelect = (priority: string) => {
@@ -29,17 +23,13 @@ function PriorityMenu({
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
     statusOpts = statusOpts.filter(
-      ([_Icon, _priority, label]) =>
-        (label as string).toLowerCase().indexOf(normalizedKeyword) !== -1
+      ([_Icon, _priority, label]) => (label as string).toLowerCase().indexOf(normalizedKeyword) !== -1,
     )
   }
 
   const options = statusOpts.map(([Icon, priority, label], idx) => {
     return (
-      <Menu.Item
-        key={`priority-${idx}`}
-        onClick={() => handleSelect(priority as string)}
-      >
+      <Menu.Item key={`priority-${idx}`} onClick={() => handleSelect(priority as string)}>
         <Icon className="mr-3" /> <span>{label}</span>
       </Menu.Item>
     )

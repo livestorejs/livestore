@@ -1,10 +1,6 @@
 import classnames from 'classnames'
 import { ReactNode, useRef } from 'react'
-import {
-  ContextMenu,
-  MenuItem,
-  type MenuItemProps as CMMenuItemProps,
-} from '@firefox-devtools/react-contextmenu'
+import { ContextMenu, MenuItem, type MenuItemProps as CMMenuItemProps } from '@firefox-devtools/react-contextmenu'
 
 const sizeClasses = {
   small: 'w-34',
@@ -49,22 +45,10 @@ const Header = function ({ children }: MenuItemProps) {
 }
 
 export const Menu = (props: MenuProps) => {
-  const {
-    id,
-    size,
-    onKeywordChange,
-    children,
-    className,
-    filterKeyword,
-    searchPlaceholder,
-  } = props
+  const { id, size, onKeywordChange, children, className, filterKeyword, searchPlaceholder } = props
   const ref = useRef<HTMLInputElement>(null)
 
-  const classes = classnames(
-    'cursor-default bg-white rounded shadow-modal z-100',
-    sizeClasses[size],
-    className
-  )
+  const classes = classnames('cursor-default bg-white rounded shadow-modal z-100', sizeClasses[size], className)
 
   return (
     <ContextMenu

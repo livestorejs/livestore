@@ -96,22 +96,19 @@ function IssuePage() {
     handleTitleChangeDebounced(title)
   }
 
-  const handleDescriptionChangeDebounced = debounce(
-    async (description: string) => {
-      // await db.issue.update({
-      //   data: {
-      //     description: description,
-      //     modified: new Date(),
-      //   },
-      //   where: {
-      //     id: issue.id,
-      //   },
-      // })
-      // We can't set descriptionIsDirty.current = false here because we haven't yet received
-      // the updated issue from the db
-    },
-    debounceTime
-  )
+  const handleDescriptionChangeDebounced = debounce(async (description: string) => {
+    // await db.issue.update({
+    //   data: {
+    //     description: description,
+    //     modified: new Date(),
+    //   },
+    //   where: {
+    //     id: issue.id,
+    //   },
+    // })
+    // We can't set descriptionIsDirty.current = false here because we haven't yet received
+    // the updated issue from the db
+  }, debounceTime)
 
   const handleDescriptionChange = (description: string) => {
     setDirtyDescription(description)
@@ -162,16 +159,10 @@ function IssuePage() {
             </div>
 
             <div className="flex items-center">
-              <button
-                className="p-2 rounded hover:bg-gray-100"
-                onClick={() => setShowDeleteModal(true)}
-              >
+              <button className="p-2 rounded hover:bg-gray-100" onClick={() => setShowDeleteModal(true)}>
                 <DeleteIcon size={14} />
               </button>
-              <button
-                className="ms-2 p-2 rounded hover:bg-gray-100"
-                onClick={handleClose}
-              >
+              <button className="ms-2 p-2 rounded hover:bg-gray-100" onClick={handleClose}>
                 <CloseIcon size={14} />
               </button>
             </div>
@@ -183,9 +174,7 @@ function IssuePage() {
           <div className="md:block flex md:flex-[1_0_0] min-w-0 md:p-3 md:order-2">
             <div className="max-w-4xl flex flex-row md:flex-col">
               <div className="flex flex-1 mb-3 mr-5 md-mr-0">
-                <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">
-                  Opened by
-                </div>
+                <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">Opened by</div>
                 <div className="flex flex-[3_0_0]">
                   <button className="inline-flex items-center h-6 ps-1.5 pe-2 text-gray-500border-none rounded hover:bg-gray-100">
                     <Avatar name={issue.username} />
@@ -194,9 +183,7 @@ function IssuePage() {
                 </div>
               </div>
               <div className="flex flex-1 mb-3 mr-5 md-mr-0">
-                <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">
-                  Status
-                </div>
+                <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">Status</div>
                 <div className="flex flex-[3_0_0]">
                   <StatusMenu
                     id={'issue-status-' + issue.id}
@@ -211,18 +198,13 @@ function IssuePage() {
                 </div>
               </div>
               <div className="flex flex-1 mb-3 mr-5 md-mr-0">
-                <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">
-                  Priority
-                </div>
+                <div className="flex flex-[2_0_0] mr-2 md-mr-0 items-center">Priority</div>
                 <div className="flex flex-[3_0_0]">
                   <PriorityMenu
                     id={'issue-priority-' + issue.id}
                     button={
                       <button className="inline-flex items-center h-6 px-2 text-gray-500 border-none rounded hover:bg-gray-100 hover:text-gray-700">
-                        <PriorityIcon
-                          priority={issue.priority}
-                          className="mr-1"
-                        />
+                        <PriorityIcon priority={issue.priority} className="mr-1" />
                         <span>{PriorityDisplay[issue.priority]}</span>
                       </button>
                     }
@@ -242,11 +224,7 @@ function IssuePage() {
 
             <Editor
               className="prose w-full max-w-full mt-2 font-normal appearance-none min-h-12 p-3 text-md rounded editor"
-              value={
-                descriptionIsDirty.current
-                  ? dirtyDescription || ''
-                  : issue.description || ''
-              }
+              value={descriptionIsDirty.current ? dirtyDescription || '' : issue.description || ''}
               onChange={(val) => handleDescriptionChange(val)}
               placeholder="Add description..."
             />

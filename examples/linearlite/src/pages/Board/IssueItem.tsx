@@ -17,10 +17,7 @@ interface IssueProps {
 
 export const itemHeight = 100
 
-function getStyle(
-  provided: DraggableProvided,
-  style?: CSSProperties
-): CSSProperties {
+function getStyle(provided: DraggableProvided, style?: CSSProperties): CSSProperties {
   return {
     ...provided.draggableProps.style,
     ...(style || {}),
@@ -52,12 +49,9 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
   return (
     <div
       ref={provided.innerRef}
-      className={classNames(
-        'cursor-default flex flex-col w-full px-4 py-3 mb-2 bg-white rounded focus:outline-none',
-        {
-          'shadow-modal': isDragging,
-        }
-      )}
+      className={classNames('cursor-default flex flex-col w-full px-4 py-3 mb-2 bg-white rounded focus:outline-none', {
+        'shadow-modal': isDragging,
+      })}
       {...provided.draggableProps}
       {...provided.dragHandleProps}
       style={getStyle(provided, style)}
@@ -65,9 +59,7 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
     >
       <div className="flex justify-between w-full cursor-default">
         <div className="flex flex-col">
-          <span className="mt-1 text-sm font-medium text-gray-700 line-clamp-2 overflow-ellipsis">
-            {issue.title}
-          </span>
+          <span className="mt-1 text-sm font-medium text-gray-700 line-clamp-2 overflow-ellipsis">{issue.title}</span>
         </div>
         <div className="flex-shrink-0">
           <Avatar name={issue.username} />
