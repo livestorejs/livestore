@@ -4,6 +4,11 @@ import svgr from 'vite-plugin-svgr'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
+    exclude: ['@livestore/livestore', 'sqlite-esm'],
+    include: ['react', 'react-dom'],
+  },
   plugins: [
     react(),
     svgr({

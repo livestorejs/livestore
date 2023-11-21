@@ -5,7 +5,7 @@ import IssueRow from './IssueRow'
 import { Issue } from '../../types'
 
 export interface IssueListProps {
-  issues: Issue[]
+  issues: readonly Issue[]
 }
 
 function IssueList({ issues }: IssueListProps) {
