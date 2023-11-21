@@ -23,6 +23,7 @@ const comment = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     body: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
+    // TODO: issueId is a foreign key to issue
     issueId: DbSchema.text(),
     created: DbSchema.integer(),
     author: DbSchema.text({ nullable: false }),
@@ -40,24 +41,27 @@ const appState = DbSchema.table('app_state', {
   value: DbSchema.text(),
 })
 
+export type AppState = DbSchema.FromTable.RowDecoded<typeof appState>
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
+export type Description = DbSchema.FromTable.RowDecoded<typeof description>
+export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 
 export const schema = makeSchema({
   tables: { issue, description, comment, appState },
   actions: {
-    addIssue: {
+    createIssue: {
       statement: {
         sql: sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified")
           VALUES ($id, $title, $priority, $status, $created, $modified)`,
         writeTables: ['issue'],
       },
-      addDescription: {
+      createDescription: {
         statement: {
           sql: sql`INSERT INTO description ("id", "body") VALUES ($id, $body)`,
           writeTables: ['description'],
         },
       },
-      addComment: {
+      createComment: {
         statement: {
           sql: sql`INSERT INTO comment ("id", "body", "issueId", "created", "author")
           VALUES ($id, $body, $issueId, $created, $author)`,

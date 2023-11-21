@@ -10,7 +10,7 @@ import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
 
 interface Props {
-  issues: Issue[]
+  issues: readonly Issue[]
   hideSort?: boolean
   showSearch?: boolean
   title?: string
