@@ -453,7 +453,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
               writeTables,
               argsAlreadyBound: false,
             }),
-            prepareBindValues: ({ bindValues }) => bindValues,
+            prepareBindValues: ({ bindValues }) => bindValues ?? {},
           },
         }
 

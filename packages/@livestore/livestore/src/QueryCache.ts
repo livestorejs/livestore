@@ -38,7 +38,7 @@ export default class QueryCache {
     return this.#entries.get(key)
   }
 
-  set = (queriedTables: ReadonlyArray<string>, key: CacheKey, results: any) => {
+  set = (queriedTables: Iterable<string>, key: CacheKey, results: any) => {
     this.#entries.set(key, results)
     for (const table of queriedTables) {
       let keys = this.#dependencies.get(table)
@@ -67,7 +67,7 @@ export default class QueryCache {
   // b. incrementally updating the view on insert by the EventImporter
   //
   // We'll not try to tackle any generalized approach until we have a proof of concept working.
-  invalidate = (queriedTables: string[]) => {
+  invalidate = (queriedTables: Iterable<string>) => {
     for (const table of queriedTables) {
       const keys = this.#dependencies.get(table)
       if (keys == null) {

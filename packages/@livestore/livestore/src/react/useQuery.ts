@@ -67,7 +67,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
   // Subscribe to future updates for this query
   React.useEffect(() => {
     query.activeSubscriptions.add(stackInfo)
-    const unsub = store.subscribe(
+    const unsubFromStore = store.subscribe(
       query,
       (newValue) => {
         // NOTE: we return a reference to the result object within LiveStore;
@@ -82,7 +82,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
     )
     return () => {
       query.activeSubscriptions.delete(stackInfo)
-      unsub()
+      unsubFromStore()
     }
   }, [stackInfo, query, setValue, store, valueRef, otelContext, span])
 

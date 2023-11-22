@@ -11,7 +11,7 @@ import { v4 as uuid } from 'uuid'
 import type { ComponentKey } from '../componentKey.js'
 import { labelForKey, tableNameForComponentKey } from '../componentKey.js'
 import { migrateTable } from '../migrations.js'
-import { LiveStoreJSQuery } from '../reactiveQueries/js.js'
+import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
 import { SCHEMA_META_TABLE } from '../schema.js'
 import type { BaseGraphQLContext, LiveStoreQuery, Store } from '../store.js'
@@ -25,9 +25,9 @@ export interface QueryDefinitions {
 }
 
 export type UseComponentStateProps<TStateColumns extends ComponentColumns> = {
-  schema?: SqliteDsl.TableDefinition<string, TStateColumns>
-  reactDeps?: React.DependencyList
+  schema: SqliteDsl.TableDefinition<string, TStateColumns>
   componentKey: ComponentKeyConfig
+  reactDeps?: React.DependencyList
 }
 
 export type ComponentKeyConfig = {
@@ -91,7 +91,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
   // TODO validate schema to make sure each column has a default value
   // TODO we should clean up the state schema handling to remove this special handling for the `id` column
   const stateSchema = React.useMemo(
-    () => (stateSchema_ ? { ...stateSchema_, columns: omit(stateSchema_.columns, 'id' as any) } : undefined),
+    () => ({ ...stateSchema_, columns: omit(stateSchema_.columns, 'id' as any) }),
     [stateSchema_],
   )
 
@@ -135,9 +135,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
   )
 
   const defaultComponentState = React.useMemo(() => {
-    const defaultState = (
-      stateSchema === undefined ? {} : mapValues(stateSchema.columns, (c) => c.default)
-    ) as TComponentState
+    const defaultState = mapValues(stateSchema.columns, (c) => c.default) as TComponentState
 
     // @ts-expect-error TODO fix typing
     defaultState.id = componentKeyConfig.id
@@ -145,54 +143,43 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
     return defaultState
   }, [componentKeyConfig.id, stateSchema])
 
-  const componentStateEffectSchema = React.useMemo(
-    () => (stateSchema ? SqliteDsl.structSchemaForTable(stateSchema) : Schema.any),
-    [stateSchema],
-  )
+  const componentStateEffectSchema = React.useMemo(() => SqliteDsl.structSchemaForTable(stateSchema), [stateSchema])
 
+  // create state query
   const state$ = React.useMemo(() => {
-    // create state query
-    if (stateSchema === undefined) {
-      // TODO don't set up a query if there's no state schema (keeps the graph more clean)
-      return new LiveStoreJSQuery({
-        fn: () => ({}) as TComponentState,
-        label: 'empty-component-state',
-        // otelContext,
-        // otelTracer: store.otel.tracer,
-      })
-    } else {
-      const componentTableName = tableNameForComponentKey(componentKey)
-      const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
+    const componentTableName = tableNameForComponentKey(componentKey)
+    const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
 
-      // TODO find a better solution for this
-      if (store.tableRefs[componentTableName] === undefined) {
-        const schemaHash = SqliteAst.hash(stateSchema.ast)
-        const res = store.inMemoryDB.select<{ schemaHash: number }>(
-          sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
-        )
-        if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
-          migrateTable({ db: store._proxyDb, tableDef: stateSchema.ast, otelContext, schemaHash })
-        }
-
-        store.tableRefs[componentTableName] = store.graph.makeRef(null, {
-          equal: () => false,
-          label: componentTableName,
-          meta: { liveStoreRefType: 'table' },
-        })
+    // TODO find a better solution for this
+    if (store.tableRefs[componentTableName] === undefined) {
+      const schemaHash = SqliteAst.hash(stateSchema.ast)
+      const res = store.inMemoryDB.select<{ schemaHash: number }>(
+        sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
+      )
+      if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
+        migrateTable({ db: store._proxyDb, tableDef: stateSchema.ast, otelContext, schemaHash })
       }
 
-      return (
-        new LiveStoreSQLQuery({
-          label: `localState:query:${componentKeyLabel}`,
-          genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
-          queriedTables: [componentTableName],
-        })
-          // TODO consider to instead of just returning the default value, to write the default component state to the DB
-          .pipe<TComponentState>((results) =>
-            results.length === 1 ? Schema.parseSync(componentStateEffectSchema)(results[0]!) : defaultComponentState,
-          )
-      )
+      store.tableRefs[componentTableName] = store.graph.makeRef(null, {
+        equal: () => false,
+        label: componentTableName,
+        meta: { liveStoreRefType: 'table' },
+      })
     }
+
+    return (
+      new LiveStoreSQLQuery({
+        label: `localState:query:${componentKeyLabel}`,
+        genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
+        queriedTables: new Set([componentTableName]),
+      })
+        // TODO consider to instead of just returning the default value, to write the default component state to the DB
+        .pipe<TComponentState>((results) =>
+          results.length === 1
+            ? (Schema.parseSync(componentStateEffectSchema)(results[0]!) as TComponentState)
+            : defaultComponentState,
+        )
+    )
   }, [
     componentKey,
     componentKeyLabel,
@@ -214,28 +201,24 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
   // we can set up our useState calls w/ a default value populated...
   const [componentStateRef, setComponentState_] = useStateRefWithReactiveInput<TComponentState>(initialComponentState)
 
-  const setState = (
-    stateSchema === undefined
-      ? {}
-      : // TODO: do we have a better type for the values that can go in SQLite?
-        mapValues(stateSchema.columns, (column, columnName) => (value: string | number) => {
-          // Don't update the state if it's the same as the value already seen in the component
-          // @ts-expect-error TODO fix typing
-          if (componentStateRef.current[columnName] === value) return
+  const setState = // TODO: do we have a better type for the values that can go in SQLite?
+    mapValues(stateSchema.columns, (column, columnName) => (value: string | number) => {
+      // Don't update the state if it's the same as the value already seen in the component
+      // @ts-expect-error TODO fix typing
+      if (componentStateRef.current[columnName] === value) return
 
-          const encodedValue = Schema.encodeSync(column.type.codec)(value)
+      const encodedValue = Schema.encodeSync(column.type.codec)(value)
 
-          if (['componentKey', 'columnNames'].includes(columnName)) {
-            shouldNeverHappen(`Can't use reserved column name ${columnName}`)
-          }
+      if (['componentKey', 'columnNames'].includes(columnName)) {
+        shouldNeverHappen(`Can't use reserved column name ${columnName}`)
+      }
 
-          return store.applyEvent('updateComponentState', {
-            componentKey,
-            columnNames: [columnName],
-            [columnName]: encodedValue,
-          })
-        })
-  ) as Setters<TComponentState>
+      return store.applyEvent('updateComponentState', {
+        componentKey,
+        columnNames: [columnName],
+        [columnName]: encodedValue,
+      })
+    }) as Setters<TComponentState>
 
   setState.setMany = (columnValues: Partial<TComponentState>) => {
     // TODO use hashing instead
@@ -261,9 +244,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
         const unsubs: (() => void)[] = []
 
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
-        if (stateSchema !== undefined) {
-          insertRowForComponentInstance({ store, componentKey, stateSchema, otelContext })
-        }
+        insertRowForComponentInstance({ store, componentKey, stateSchema, otelContext })
 
         state$.activeSubscriptions.add(stackInfo)
 
