@@ -8,9 +8,11 @@ import { filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/livestore/react'
 
 const filterClause$ = querySQL<AppState>(`select * from app_state WHERE key = 'filter_state';`)
-  .getFirstRow()
-  .pipe((filterState) => {
-    const filterStateObj = JSON.parse(filterState.value)
+  // .getFirstRow({defaultValue: undefined })
+  .pipe((filterStates) => {
+    // TODO this handling should be improved (see https://github.com/livestorejs/livestore/issues/22)
+    if (filterStates.length === 0) return ''
+    const filterStateObj = JSON.parse(filterStates[0]!.value)
     return {
       orderBy: { [filterStateObj.orderBy]: filterStateObj.orderDirection },
       where: filterStateToWhere(filterStateObj),
