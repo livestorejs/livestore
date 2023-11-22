@@ -265,8 +265,8 @@ importers:
         specifier: 0.48.2
         version: 0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2)
       '@livestore/devtools-react':
-        specifier: ^0.0.24-dev.0
-        version: 0.0.24-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.25
+        version: 0.0.25(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -320,8 +320,8 @@ importers:
         specifier: 0.48.2
         version: 0.48.2(effect@2.0.0-next.55)(fast-check@3.13.2)
       '@livestore/devtools-react':
-        specifier: ^0.0.24-dev.0
-        version: 0.0.24-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.25
+        version: 0.0.25(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -2583,8 +2583,8 @@ packages:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  /@livestore/devtools-react@0.0.24-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
-    resolution: {integrity: sha512-8veQ3eNU9ijMNTHzHW50MXxhyIZTwHwpkZTJBpkNDLxElivojXqc3XecfyXPshyGiUuRbI33O/jnL8Thh+iPqA==}
+  /@livestore/devtools-react@0.0.25(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
+    resolution: {integrity: sha512-P35cSAuu+DlqSWZOo0brnfBP9iiT6CibluAA4kbCaXj/L3iAtTb7eAGnR/2RYhYJeJ7hogV7HOmA2oCc7Q08Rw==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: '*'
