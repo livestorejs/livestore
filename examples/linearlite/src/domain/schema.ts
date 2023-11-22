@@ -47,7 +47,8 @@ export type Description = DbSchema.FromTable.RowDecoded<typeof description>
 export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 
 export const schema = makeSchema({
-  tables: { issue, description, comment, appState },
+  // TODO get rid of `app_state` alias once fixed https://github.com/livestorejs/livestore/issues/25
+  tables: { issue, description, comment, app_state: appState },
   actions: {
     createIssue: {
       statement: {
