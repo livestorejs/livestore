@@ -1,5 +1,6 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
-import 'todomvc-app-css/index.css'
+// import 'todomvc-app-css/index.css'
+// import './index.css'
 
 import { createStore, querySQL, sql } from '@livestore/livestore'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
@@ -22,17 +23,12 @@ const sqlite3Promise = initSqlite3Wasm({
 const store = await createStore({
   schema,
   loadStorage: () => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs' }),
-  boot: async (backend) => {
-    console.debug("I'm in boot")
-    backend.execute(sql`INSERT INTO app (newTodoText, filter) VALUES ('', 'all');`)
-  },
+  boot: async (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all')`),
   sqlite3: await sqlite3Promise,
 })
 
-console.debug({ store })
-
-const appState = querySQL<AppState>(`select newTodoText, filter from app;`).getFirstRow()
-const todos = querySQL<Todo>(`select * from todos`)
+const appState$ = querySQL<AppState>(`select newTodoText, filter from app;`).getFirstRow()
+const todos$ = querySQL<Todo>(`select * from todos`)
 
 const updateNewTodoText = (text: string) => store.applyEvent('updateNewTodoText', { text })
 
@@ -53,14 +49,17 @@ const deleteTodo = (todo: Todo) => {
   store.applyEvent('deleteTodo', { id: todo.id })
 }
 
-console.debug({ appState })
-
 const TodoItemTemplate = html`
-  <li>
-    <div class="view">
-      <input type="checkbox" class="toggle" />
-      <label></label>
-      <button class="destroy">Delete</button>
+  <link rel="stylesheet" href="/src/index.css" />
+  <li class="relative text-2xl border-b border-b-[#ededed] group">
+    <div class="flex">
+      <input type="checkbox" class="toggle ml-4" />
+      <label
+        class="break-words pr-[15px] py-[15px] pl-[30px] block leading-6 transition-colors duration-400 font-normal text-[#484848]"
+      ></label>
+      <button
+        class="hidden absolute top-0 right-[10px] bottom-0 w-[40px] h-[40px] my-auto text-[30px] text-[#949494] transition-colors duration-200 ease-out hover:text-[#C18585] after:content-['x'] group-hover:block"
+      ></button>
     </div>
   </li>
 `
@@ -116,18 +115,18 @@ class TodoItem extends HTMLElement {
 customElements.define('todo-item', TodoItem)
 
 const TodoListTemplate = html`
-  <header className="header">
-    <h1>todos</h1>
+  <link rel="stylesheet" href="/src/index.css" />
+  <header>
     <form>
-      <label
-        >Add a todo
-        <input class="new-todo" autofocus placeholder="What needs to be done?" />
-      </label>
-      <button type="submit">Add</button>
+      <input
+        class="relative m-0 w-full text-2xl font-inherit leading-7 text-inherit p-4 pl-[60px] border-none shadow-[inset_0_-2px_1px_0_rgba(0,0,0,0.08)] box-border focus:outline-0 focus:shadow-[0_0_2px_2px_#CF7D7D]"
+        autofocus
+        placeholder="What needs to be done?"
+      />
     </form>
   </header>
   <section class="main">
-    <ul class="todo-list">
+    <ul class="list-none">
       <slot></slot>
     </ul>
   </section>
@@ -160,16 +159,17 @@ class TodoList extends HTMLElement {
   #todos: ReadonlyArray<Todo> = []
 
   connectedCallback() {
-    console.debug('boom')
     const input = this.shadowRoot!.querySelector('input')!
 
     // NOTE: can we get an AsyncIterator for newValues as well?
-    store.subscribe(todos, (newValue) => {
+    // TODO unsubscribe
+    store.subscribe(todos$, (newValue) => {
       this.#todos = newValue
       this.updateTodoItems()
     })
 
-    store.subscribe(appState, (newValue) => {
+    // TODO unsubscribe
+    store.subscribe(appState$, (newValue) => {
       input.value = newValue.newTodoText
     })
   }
