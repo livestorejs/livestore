@@ -1,0 +1,36 @@
+{
+  "name": "todomvc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:analyze": "VITE_ANALYZE=1 run build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@effect/schema": "0.48.2",
+    "@livestore/devtools-react": "^0.0.24-dev.0",
+    "@livestore/livestore": "latest",
+    "@livestore/utils": "latest",
+    "effect": "2.0.0-next.55",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sqlite-esm": "3.42.0-build6",
+    "todomvc-app-css": "^2.4.3",
+    "uuid": "^9.0.1",
+    "workbox-window": "^7.0.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.3.3",
+    "postcss": "^8.4.29",
+    "autoprefixer": "^10.4.15",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@types/uuid": "^9.0.7",
+    "@vitejs/plugin-react": "^4.2.0",
+    "rollup-plugin-visualizer": "^5.9.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.17.0"
+  }
+}

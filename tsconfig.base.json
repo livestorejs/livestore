@@ -15,7 +15,7 @@
     "noFallthroughCasesInSwitch": true,
     "noErrorTruncation": true,
     "isolatedModules": true,
-    "target": "ES2021",
+    "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "plugins": [
