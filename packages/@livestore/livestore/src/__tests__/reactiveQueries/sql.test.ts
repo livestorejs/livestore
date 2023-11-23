@@ -30,12 +30,11 @@ describe('otel', () => {
   it('otel', async () => {
     const { store, exporter, span } = await makeQuery()
 
-    const query = querySQL(`select * from todos`, { queriedTables: ['todos'] })
+    const query = querySQL(`select * from todos`, { queriedTables: new Set(['todos']) })
     expect(query.run()).toMatchInlineSnapshot('[]')
 
     store.applyEvent('RawSql', {
       sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
-      bindValues: {},
       writeTables: ['todos'],
     })
 
@@ -96,7 +95,6 @@ describe('otel', () => {
                       "livestore.actionType": "RawSql",
                       "livestore.args": "{
         \\"sql\\": \\"INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);\\",
-        \\"bindValues\\": {},
         \\"writeTables\\": [
           \\"todos\\"
         ]
@@ -165,10 +163,7 @@ describe('otel', () => {
     const defaultTodo = { id: '', text: '', completed: 0 }
 
     const filter = queryJS(() => `where completed = 0`, { label: 'where-filter' })
-    const query = querySQL((get) => `select * from todos ${get(filter)}`, {
-      // queriedTables: ['todos'],
-      label: 'all todos',
-    }).getFirstRow({
+    const query = querySQL((get) => `select * from todos ${get(filter)}`, { label: 'all todos' }).getFirstRow({
       defaultValue: defaultTodo,
     })
 
@@ -182,7 +177,6 @@ describe('otel', () => {
 
     store.applyEvent('RawSql', {
       sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
-      bindValues: {},
       writeTables: ['todos'],
     })
 
@@ -241,7 +235,6 @@ describe('otel', () => {
                       "livestore.actionType": "RawSql",
                       "livestore.args": "{
         \\"sql\\": \\"INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);\\",
-        \\"bindValues\\": {},
         \\"writeTables\\": [
           \\"todos\\"
         ]

@@ -14,9 +14,9 @@ export {
 export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryDatabase.js'
 export type { Storage, StorageType, StorageInit } from './storage/index.js'
 export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom } from './reactive.js'
-export { type LiveStoreJSQuery, queryJS } from './reactiveQueries/js.js'
-export { type LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
-export { type LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
+export { LiveStoreJSQuery, queryJS } from './reactiveQueries/js.js'
+export { LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
+export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 export { type GetAtomResult } from './reactiveQueries/base-class.js'
 export { dbGraph } from './reactiveQueries/graph.js'
 

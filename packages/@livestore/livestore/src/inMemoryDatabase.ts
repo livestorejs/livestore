@@ -25,7 +25,7 @@ export type SlowQueryInfo = [
   bindValues: PreparedBindValues | undefined,
   durationMs: number,
   rowsCount: number | undefined,
-  queriedTables: ReadonlyArray<string>,
+  queriedTables: Set<string>,
   startTimePerfNow: DOMHighResTimeStamp,
 ]
 
@@ -39,7 +39,7 @@ export const emptyDebugInfo = (): DebugInfo => ({
 export class InMemoryDatabase {
   // TODO: how many unique active statements are expected?
   private cachedStmts = new BoundMap<string, Sqlite.PreparedStatement>(200)
-  private tablesUsedCache = new BoundMap<string, string[]>(200)
+  private tablesUsedCache = new BoundMap<string, Set<string>>(200)
   private resultCache = new QueryCache()
   private tablesUsedStmt
   public debugInfo: DebugInfo = emptyDebugInfo()
@@ -119,17 +119,17 @@ export class InMemoryDatabase {
       return cached
     }
     const stmt = this.tablesUsedStmt
-    const tablesUsed = []
+    const tablesUsed = new Set<string>()
     try {
       stmt.bind([query])
       while (stmt.step()) {
-        tablesUsed.push(stmt.get(0))
+        tablesUsed.add(stmt.get(0))
       }
     } finally {
       stmt.reset()
     }
-    this.tablesUsedCache.set(query, tablesUsed as string[])
-    return tablesUsed as string[]
+    this.tablesUsedCache.set(query, tablesUsed)
+    return tablesUsed
   }
 
   execute(
@@ -192,7 +192,7 @@ export class InMemoryDatabase {
             bindValues,
             durationMs,
             undefined,
-            [],
+            new Set(),
             getStartTimeHighResFromSpan(span),
           ])
         }
@@ -205,7 +205,7 @@ export class InMemoryDatabase {
   select<T = any>(
     query: string,
     options?: {
-      queriedTables?: ReadonlyArray<string>
+      queriedTables?: Set<string>
       bindValues?: PreparedBindValues
       skipCache?: boolean
       otelContext?: otel.Context

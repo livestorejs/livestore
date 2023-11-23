@@ -86,7 +86,11 @@ export type DebugThunkInfo<T extends string = string> = {
 
 export type DebugRefreshReasonBase =
   /** Usually in response to some `applyEvent`/`applyEvents` with `skipRefresh: true` */
-  | { _tag: 'runDeferredEffects'; originalRefreshReason?: DebugRefreshReasonBase }
+  | {
+      _tag: 'runDeferredEffects'
+      originalRefreshReasons?: ReadonlyArray<DebugRefreshReasonBase>
+      manualRefreshReason?: DebugRefreshReasonBase
+    }
   | { _tag: 'makeThunk'; label?: string }
   | { _tag: 'unknown' }
 
@@ -160,7 +164,7 @@ export class ReactiveGraph<
     | { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: DOMHighResTimeStamp }
     | undefined
 
-  private deferredEffects: { effects: Set<Effect>; debugRefreshReason?: TDebugRefreshReason }[] = []
+  private deferredEffects: Map<Effect, Set<TDebugRefreshReason>> = new Map()
 
   constructor(options: ReactiveGraphOptions) {
     this.effectsWrapper = options?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
@@ -297,7 +301,9 @@ export class ReactiveGraph<
       this.removeEdge(node, subComp)
     }
 
-    if (node._tag !== 'effect') {
+    if (node._tag === 'effect') {
+      this.deferredEffects.delete(node)
+    } else {
       this.atoms.delete(node)
     }
   }
@@ -361,10 +367,15 @@ export class ReactiveGraph<
     }
 
     if (options?.skipRefresh) {
-      this.deferredEffects.push({
-        effects: effectsToRefresh,
-        debugRefreshReason: options?.debugRefreshReason,
-      })
+      for (const effect of effectsToRefresh) {
+        if (this.deferredEffects.has(effect) === false) {
+          this.deferredEffects.set(effect, new Set())
+        }
+
+        if (options?.debugRefreshReason !== undefined) {
+          this.deferredEffects.get(effect)!.add(options.debugRefreshReason)
+        }
+      }
     } else {
       this.runEffects(effectsToRefresh, {
         debugRefreshReason: options?.debugRefreshReason ?? (unknownRefreshReason() as TDebugRefreshReason),
@@ -405,14 +416,17 @@ export class ReactiveGraph<
   }
 
   runDeferredEffects = (options?: { debugRefreshReason?: TDebugRefreshReason; otelContext?: otel.Context }) => {
-    while (this.deferredEffects.length > 0) {
-      const { effects, debugRefreshReason } = this.deferredEffects.shift()!
-      this.runEffects(new Set(effects), {
-        otelContext: options?.otelContext,
+    // TODO improve how refresh reasons are propagated for deferred effect execution
+    // TODO also improve "batching" of running deferred effects (i.e. in a single `this.runEffects` call)
+    // but need to be careful to not overwhelm the main thread
+    for (const [effect, debugRefreshReasons] of this.deferredEffects) {
+      this.runEffects(new Set([effect]), {
         debugRefreshReason: {
           _tag: 'runDeferredEffects',
-          originalRefreshReason: debugRefreshReason,
+          originalRefreshReasons: Array.from(debugRefreshReasons) as ReadonlyArray<DebugRefreshReasonBase>,
+          manualRefreshReason: options?.debugRefreshReason,
         } as TDebugRefreshReason,
+        otelContext: options?.otelContext,
       })
     }
   }
@@ -433,11 +447,9 @@ export class ReactiveGraph<
     subComp.super.delete(superComp)
   }
 
-  private getSnapshot = (): ReactiveGraphSnapshot => ({
+  getSnapshot = (): ReactiveGraphSnapshot => ({
     atoms: Array.from(this.atoms).map(serializeAtom),
-    deferredEffects: Array.from(this.deferredEffects)
-      .flatMap((_) => Array.from(_.effects))
-      .map((_) => _.id),
+    deferredEffects: Array.from(this.deferredEffects.keys()).map((_) => _.id),
   })
 }
 

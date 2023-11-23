@@ -38,10 +38,10 @@ export type BaseGraphQLContext = {
 export type QueryResult<TQuery> = TQuery extends LiveStoreSQLQuery<infer R>
   ? ReadonlyArray<Readonly<R>>
   : TQuery extends LiveStoreJSQuery<infer S>
-  ? Readonly<S>
-  : TQuery extends LiveStoreGraphQLQuery<infer Result, any, any>
-  ? Readonly<Result>
-  : never
+    ? Readonly<S>
+    : TQuery extends LiveStoreGraphQLQuery<infer Result, any, any>
+      ? Readonly<Result>
+      : never
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
@@ -453,7 +453,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
               writeTables,
               argsAlreadyBound: false,
             }),
-            prepareBindValues: ({ bindValues }) => bindValues,
+            prepareBindValues: ({ bindValues }) => bindValues ?? {},
           },
         }
 

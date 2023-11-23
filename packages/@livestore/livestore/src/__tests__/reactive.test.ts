@@ -160,35 +160,75 @@ describe('a trivial graph', () => {
       // expect(numberOfCallsToC).toBe(2) // TODO comp caching
     })
 
-    it('skip refresh', () => {
-      const { graph, a, c, d, numberOfRunsForC } = makeGraph()
+    describe('skip refresh', () => {
+      it(`defers effect execution until manual run`, () => {
+        const { graph, a, c, d, numberOfRunsForC } = makeGraph()
 
-      let numberOfEffectRuns = 0
-      const effect = graph.makeEffect((get) => {
-        expect(get(c)).toBe(numberOfEffectRuns === 0 ? 3 : 4)
-        numberOfEffectRuns++
+        // using here both to track number oe effect runs and to "update the effect behavior"
+        let numberOfEffectRuns = 0
+        const effect = graph.makeEffect((get) => {
+          expect(get(c)).toBe(numberOfEffectRuns === 0 ? 3 : 4)
+          numberOfEffectRuns++
+        })
+
+        effect.doEffect()
+
+        expect(numberOfEffectRuns).toBe(1)
+        expect(numberOfRunsForC.runs).toBe(1)
+
+        graph.setRef(a, 2, { skipRefresh: true })
+
+        expect(numberOfEffectRuns).toBe(1)
+        expect(numberOfRunsForC.runs).toBe(1)
+
+        // Even setting a unrelated ref should not trigger a refresh
+        graph.setRef(d, 0)
+
+        expect(numberOfEffectRuns).toBe(1)
+        expect(numberOfRunsForC.runs).toBe(1)
+
+        graph.runDeferredEffects()
+
+        expect(numberOfEffectRuns).toBe(2)
+        expect(numberOfRunsForC.runs).toBe(2)
       })
 
-      effect.doEffect()
+      it(`doesn't run deferred effects which have been destroyed already`, () => {
+        const { graph, a, c, numberOfRunsForC } = makeGraph()
 
-      expect(numberOfEffectRuns).toBe(1)
-      expect(numberOfRunsForC.runs).toBe(1)
+        let numberOfEffect1Runs = 0
+        const effect1 = graph.makeEffect((get) => {
+          expect(get(c)).toBe(numberOfEffect1Runs === 0 ? 3 : 4)
+          numberOfEffect1Runs++
+        })
 
-      graph.setRef(a, 2, { skipRefresh: true })
+        let numberOfEffect2Runs = 0
+        const effect2 = graph.makeEffect((get) => {
+          expect(get(c)).toBe(numberOfEffect2Runs === 0 ? 3 : 4)
+          numberOfEffect2Runs++
+        })
 
-      expect(numberOfEffectRuns).toBe(1)
-      expect(numberOfRunsForC.runs).toBe(1)
+        effect1.doEffect()
+        effect2.doEffect()
 
-      // Even setting a unrelated ref should not trigger a refresh
-      graph.setRef(d, 0)
+        expect(numberOfEffect1Runs).toBe(1)
+        expect(numberOfEffect2Runs).toBe(1)
+        expect(numberOfRunsForC.runs).toBe(1)
 
-      expect(numberOfEffectRuns).toBe(1)
-      expect(numberOfRunsForC.runs).toBe(1)
+        graph.setRef(a, 2, { skipRefresh: true })
 
-      graph.runDeferredEffects()
+        expect(numberOfEffect1Runs).toBe(1)
+        expect(numberOfEffect2Runs).toBe(1)
+        expect(numberOfRunsForC.runs).toBe(1)
 
-      expect(numberOfEffectRuns).toBe(2)
-      expect(numberOfRunsForC.runs).toBe(2)
+        graph.destroy(effect1)
+
+        graph.runDeferredEffects()
+
+        expect(numberOfEffect1Runs).toBe(1)
+        expect(numberOfEffect2Runs).toBe(2)
+        expect(numberOfRunsForC.runs).toBe(2)
+      })
     })
   })
 })

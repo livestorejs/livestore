@@ -9,7 +9,7 @@ import { InMemoryStorage } from '../../storage/in-memory/index.js'
 
 export type Todo = {
   id: string
-  text: string | null
+  text: string
   completed: boolean
 }
 
@@ -59,7 +59,7 @@ export const makeTodoMvc = async ({
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
 } = {}) => {
-  const AppSchema = LiveStore.defineComponentStateSchema('UserInfo', {
+  const AppComponentSchema = LiveStore.defineComponentStateSchema('UserInfo', {
     username: LiveStore.DbSchema.text({ default: '' }),
   })
 
@@ -83,5 +83,5 @@ export const makeTodoMvc = async ({
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>
   )
 
-  return { wrapper, AppSchema, store }
+  return { wrapper, AppComponentSchema, store }
 }

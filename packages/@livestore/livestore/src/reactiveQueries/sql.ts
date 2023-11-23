@@ -19,7 +19,7 @@ export const querySQL = <Row>(
      *
      * NOTE In the future we want to do this automatically at build time
      */
-    queriedTables?: ReadonlyArray<string>
+    queriedTables?: Set<string>
     bindValues?: Bindable
     label?: string
   },
@@ -51,7 +51,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
   }: {
     label?: string
     genQueryString: string | ((get: GetAtomResult) => string)
-    queriedTables?: ReadonlyArray<string>
+    queriedTables?: Set<string>
     bindValues?: Bindable
   }) {
     super()
@@ -150,7 +150,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
         if (results.length === 0 && args?.defaultValue === undefined) {
           // const queryLabel = this._tag === 'sql' ? this.queryString$!.computeResult(otelContext) : this.label
           const queryLabel = this.label
-          throw new Error(`Expected query ${queryLabel} to return at least one result`)
+          return shouldNeverHappen(`Expected query ${queryLabel} to return at least one result`)
         }
         return results[0] ?? args!.defaultValue!
       },
