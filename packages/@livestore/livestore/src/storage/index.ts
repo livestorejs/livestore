@@ -13,6 +13,7 @@ import type { PreparedBindValues } from '../util.js'
 export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
 
 export interface Storage {
+  // TODO consider transferables for `bindValues` (e.g. Uint8Array values)
   execute(query: string, bindValues?: PreparedBindValues, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
