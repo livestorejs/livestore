@@ -37,7 +37,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
 
   const filteredIssuesCount = issues.length
 
-  const handleSearchInner = debounce((query: string) => {
+  const handleSearchInner = (query: string) => {
     store.applyEvent('upsertAppAtom', {
       key: 'filter_state',
       value: JSON.stringify({
@@ -45,7 +45,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
         query: query,
       }),
     })
-  }, 500)
+  }
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
