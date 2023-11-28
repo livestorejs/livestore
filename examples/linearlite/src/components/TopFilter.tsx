@@ -8,6 +8,8 @@ import FilterMenu from './contextmenu/FilterMenu'
 import { useFilterState } from '../utils/filterState'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
+import { querySQL, sql } from '@livestore/livestore'
+import { useQuery } from '@livestore/livestore/react'
 
 interface Props {
   issues: readonly Issue[]
@@ -16,18 +18,15 @@ interface Props {
   title?: string
 }
 
+const issueCount$ = querySQL<{ c: number }>((_) => sql`SELECT COUNT(*) as c FROM issue`)
+  .getFirstRow()
+  .pipe((row) => row?.c ?? 0)
 export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {
-  // const { db } = useElectric()!
   const [filterState, setFilterState] = useFilterState()
   const [showViewOption, setShowViewOption] = useState(false)
   const { showMenu, setShowMenu } = useContext(MenuContext)!
   const [searchQuery, setSearchQuery] = useState('')
-
-  // We don't yet have a DAL for counts, so we use raw SQL
-  // const totalIssuesCount: number =
-  //   useLiveQuery(db.liveRaw({ sql: 'SELECT COUNT(*) FROM issue' }))
-  //     .results?.[0]?.['COUNT(*)'] ?? 0
-  const totalIssuesCount = 0
+  const totalIssuesCount = useQuery(issueCount$)
 
   const filteredIssuesCount = issues.length
 
