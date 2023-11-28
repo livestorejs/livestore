@@ -5,6 +5,7 @@ import { Issue } from '../../types'
 import { querySQL, sql } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
 import { AppState } from '../../domain/schema'
+import { useQuery } from '@livestore/livestore/react'
 
 const filterClause$ = querySQL<AppState>(`select * from app_state WHERE key = 'filter_state';`)
   // .getFirstRow({defaultValue: undefined })
@@ -17,17 +18,7 @@ const filterClause$ = querySQL<AppState>(`select * from app_state WHERE key = 'f
 const issues$ = querySQL<Issue>((get) => sql`SELECT * FROM issue ${get(filterClause$)} ORDER BY kanbanorder ASC`)
 
 function Board() {
-  // const [filterState] = useFilterState()
-  // const { db } = useElectric()!
-  // const { results } = useLiveQuery(
-  //   db.issue.liveMany({
-  //     orderBy: {
-  //       kanbanorder: 'asc',
-  //     },
-  //     where: filterStateToWhere(filterState),
-  //   })
-  // )
-  const issues: Issue[] = []
+  const issues = useQuery(issues$)
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
