@@ -13,7 +13,7 @@ function IssueList({ issues }: IssueListProps) {
     <div className="grow">
       <AutoSizer>
         {({ height, width }: { width: number; height: number }) => (
-          <List height={height} itemCount={issues.length} itemSize={36} itemData={issues} width={width}>
+          <List height={height} itemCount={issues.length} itemSize={36} itemData={issues as Issue[]} width={width}>
             {VirtualIssueRow}
           </List>
         )}

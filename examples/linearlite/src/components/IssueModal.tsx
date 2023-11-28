@@ -13,7 +13,8 @@ import StatusMenu from './contextmenu/StatusMenu'
 
 import { Priority, Status, PriorityDisplay, StatusType, PriorityType } from '../types/issue'
 import { showInfo, showWarning } from '../utils/notification'
-// import { Issue } from '../types'
+import { useStore } from '@livestore/livestore/react'
+import { nanoid } from 'nanoid'
 
 interface Props {
   isOpen: boolean
@@ -27,7 +28,7 @@ function IssueModal({ isOpen, onDismiss }: Props) {
   const [description, setDescription] = useState<string>()
   const [priority, setPriority] = useState<PriorityType>(Priority.NONE)
   const [status, setStatus] = useState<StatusType>(Status.BACKLOG)
-  // const { db } = useElectric()!
+  const { store } = useStore()
 
   const handleSubmit = async () => {
     if (title === '') {
@@ -35,6 +36,7 @@ function IssueModal({ isOpen, onDismiss }: Props) {
       return
     }
 
+    // TODO: need a way to imerpatively query the DB
     // const lastIssue = await db.issue.findFirst({
     //   orderBy: {
     //     kanbanorder: 'desc',
@@ -44,20 +46,18 @@ function IssueModal({ isOpen, onDismiss }: Props) {
     // const kanbanorder = generateKeyBetween(lastIssue?.kanbanorder, null)
     // const kanbanorder = 'aa'
 
-    // const date = new Date()
-    // db.issue.create({
-    //   data: {
-    //     id: uuidv4(),
-    //     title: title,
-    //     username: 'testuser',
-    //     priority: priority,
-    //     status: status,
-    //     description: description ?? '',
-    //     modified: date,
-    //     created: date,
-    //     kanbanorder: kanbanorder,
-    //   },
-    // })
+    const date = Date.now()
+    store.applyEvent('createIssue', {
+      id: nanoid(),
+      title: title,
+      username: 'testuser',
+      priority: priority,
+      status: status,
+      description: description ?? '',
+      modified: date,
+      created: date,
+      kanbanorder: 'aa',
+    })
 
     if (onDismiss) onDismiss()
     reset()
