@@ -7,7 +7,7 @@ import { useStore } from '@livestore/livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 
 export interface IssueBoardProps {
-  issues: Issue[]
+  issues: readonly Issue[]
 }
 
 interface MovedIssues {
