@@ -31,6 +31,7 @@
     "dayjs": "^1.11.9",
     "jsonwebtoken": "^9.0.2",
     "lodash.debounce": "^4.0.8",
+    "nanoid": "^5.0.3",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
