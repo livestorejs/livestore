@@ -12,9 +12,10 @@ import { FixedSizeList as List, areEqual } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import IssueItem, { itemHeight } from './IssueItem'
 import { Issue } from '../../types'
+import { StatusType } from '../../types/issue'
 
 interface Props {
-  status: string
+  status: StatusType
   title: string
   issues: Array<Issue> | undefined
 }

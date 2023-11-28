@@ -7,6 +7,7 @@ import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import { Issue } from '../../types'
 import { PriorityType } from '../../types/issue'
+import { useStore } from '@livestore/livestore/react'
 
 interface IssueProps {
   issue: Issue
@@ -28,7 +29,7 @@ function getStyle(provided: DraggableProvided, style?: CSSProperties): CSSProper
 
 // eslint-disable-next-line react-refresh/only-export-components
 const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
-  // const { db } = useElectric()!
+  const { store } = useStore()
   const navigate = useNavigate()
   const priorityIcon = (
     <span className="inline-block m-0.5 rounded-sm border border-gray-100 hover:border-gray-200 p-0.5">
@@ -36,16 +37,11 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
     </span>
   )
 
-  const updatePriority = (_priority: PriorityType) => {
-    // db.issue.update({
-    //   data: {
-    //     priority: priority,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
+  const updatePriority = (priority: PriorityType) => {
+    store.applyEvent('updateIssuePriority', {
+      id: issue.id,
+      priority,
+    })
   }
 
   return (

@@ -8,6 +8,7 @@ export type Issue = {
   status: StatusType
   created: number
   modified: number
+  kanbanorder: string
 }
 export type Comment = {
   id: string

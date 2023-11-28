@@ -9,6 +9,7 @@ const issue = DbSchema.table('issue', {
   status: DbSchema.text({ default: Status.TODO }),
   created: DbSchema.integer(),
   modified: DbSchema.integer(),
+  kanbanorder: DbSchema.text({ nullable: false }),
 })
 
 export interface FilterState {
@@ -61,8 +62,8 @@ export const schema = makeSchema({
   actions: {
     createIssue: {
       statement: {
-        sql: sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified")
-          VALUES ($id, $title, $priority, $status, $created, $modified)`,
+        sql: sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder")
+          VALUES ($id, $title, $priority, $status, $created, $modified, $kanbanorder)`,
         writeTables: ['issue'],
       },
     },
@@ -100,6 +101,24 @@ export const schema = makeSchema({
     updateIssue: {
       statement: {
         sql: sql`UPDATE issue SET title = $title, priority = $priority, status = $status, modified = $modified WHERE id = $id`,
+        writeTables: ['issue'],
+      },
+    },
+    updateIssueKanbanOrder: {
+      statement: {
+        sql: sql`UPDATE issue SET kanbanorder = $kanbanorder, modified = unixepoch() * 1000 WHERE id = $id`,
+        writeTables: ['issue'],
+      },
+    },
+    moveIssue: {
+      statement: {
+        sql: sql`UPDATE issue SET kanbanorder = $kanbanorder, status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
+        writeTables: ['issue'],
+      },
+    },
+    updatePriority: {
+      statement: {
+        sql: sql`UPDATE issue SET priority = $priority, modified = unixepoch() * 1000 WHERE id = $id`,
         writeTables: ['issue'],
       },
     },
