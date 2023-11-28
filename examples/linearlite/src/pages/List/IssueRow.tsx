@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../../utils/date'
 import { Issue } from '../../types'
 import { PriorityType, StatusType } from '../../types/issue'
+import { useStore } from '@livestore/livestore/react'
 
 interface Props {
   issue: Issue
@@ -19,29 +20,20 @@ interface Props {
 function IssueRow({ issue, style }: Props) {
   // const { db } = useElectric()!
   const navigate = useNavigate()
+  const { store } = useStore()
 
-  const handleChangeStatus = (_status: StatusType) => {
-    // db.issue.update({
-    //   data: {
-    //     status: status,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
+  const handleChangeStatus = (status: StatusType) => {
+    store.applyEvent('updateIssueStatus', {
+      id: issue.id,
+      status,
+    })
   }
 
-  const handleChangePriority = (_priority: PriorityType) => {
-    // db.issue.update({
-    //   data: {
-    //     priority: priority,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
+  const handleChangePriority = (priority: PriorityType) => {
+    store.applyEvent('updateIssuePriority', {
+      id: issue.id,
+      priority,
+    })
   }
 
   return (

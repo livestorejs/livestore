@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom'
-import { useState, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useState, useCallback } from 'react'
 import { BsTrash3 as DeleteIcon } from 'react-icons/bs'
 import { BsXLg as CloseIcon } from 'react-icons/bs'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
@@ -11,37 +11,31 @@ import { PriorityDisplay, StatusDisplay } from '../../types/issue'
 import Editor from '../../components/editor/Editor'
 import DeleteModal from './DeleteModal'
 import Comments from './Comments'
-import debounce from 'lodash.debounce'
 import { Issue } from '../../types'
+import { querySQL, sql } from '@livestore/livestore'
+import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
 
-const debounceTime = 500
+// This would be best:
+// const issue$ = querySQL<Issue>((_) => sql`SELECT * FROM issue WHERE id = $id`).getFirstRow()
+// const issue = useQuery(issue$, { id })
 
 function IssuePage() {
   const navigate = useNavigate()
-  // const { id } = useParams()
-  // const { db } = useElectric()!
-  // const { results: issue } = useLiveQuery(
-  //   db.issue.liveUnique({
-  //     where: { id: id },
-  //   })
-  // )
-  const issue: Issue = {
-    id: 'a',
-    title: 'Issue title',
-    creator: 'aa',
-    priority: 'none',
-    status: 'backlog',
-    modified: new Date().getTime(),
-    created: new Date().getTime(),
-  }
-  const description = ''
+  const { id } = useParams() || ''
+
+  const makeIssueQuery = useCallback(
+    () => querySQL<Issue>((_) => sql`SELECT * FROM issue WHERE id = '${id}'`).getFirstRow(),
+    [id],
+  )
+  const makeDescriptionQuery = useCallback(
+    () => querySQL<string>((_) => sql`SELECT body FROM description WHERE id = '${id}'`).getFirstRow(),
+    [id],
+  )
+  const issue = useTemporaryQuery(makeIssueQuery)
+  const description = useTemporaryQuery(makeDescriptionQuery)
+  const { store } = useStore()
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-
-  const [dirtyTitle, setDirtyTitle] = useState<string | null>(null)
-  const titleIsDirty = useRef(false)
-  const [dirtyDescription, setDirtyDescription] = useState<string | null>(null)
-  const descriptionIsDirty = useRef(false)
 
   if (issue === undefined) {
     return <div className="p-8 w-full text-center">Loading...</div>
@@ -49,94 +43,45 @@ function IssuePage() {
     return <div className="p-8 w-full text-center">Issue not found</div>
   }
 
-  // We check if the dirty title or description is the same as the actual title or
-  // description, and if so, we can switch back to the non-dirty version
-  if (dirtyTitle === issue.title) {
-    setDirtyTitle(null)
-    titleIsDirty.current = false
-  }
-  if (dirtyDescription === description) {
-    setDirtyDescription(null)
-    descriptionIsDirty.current = false
+  const handleStatusChange = (status: string) => {
+    store.applyEvent('updateIssueStatus', {
+      id: issue.id,
+      status,
+    })
   }
 
-  const handleStatusChange = (_status: string) => {
-    // db.issue.update({
-    //   data: {
-    //     status: status,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
+  const handlePriorityChange = (priority: string) => {
+    store.applyEvent('updateIssuePriority', {
+      id: issue.id,
+      priority,
+    })
   }
-
-  const handlePriorityChange = (_priority: string) => {
-    // db.issue.update({
-    //   data: {
-    //     priority: priority,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
-  }
-
-  const handleTitleChangeDebounced = debounce(async (_title: string) => {
-    // await db.issue.update({
-    //   data: {
-    //     title: title,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
-    // We can't set titleIsDirty.current = false here because we haven't yet received
-    // the updated issue from the db
-  }, debounceTime)
 
   const handleTitleChange = (title: string) => {
-    setDirtyTitle(title)
-    titleIsDirty.current = true
-    // We debounce the title change so that we don't spam the db with updates
-    handleTitleChangeDebounced(title)
+    store.applyEvent('updateIssueTitle', {
+      id: issue.id,
+      title,
+    })
   }
 
-  const handleDescriptionChangeDebounced = debounce(async (_description: string) => {
-    // await db.issue.update({
-    //   data: {
-    //     description: description,
-    //     modified: new Date(),
-    //   },
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
-    // We can't set descriptionIsDirty.current = false here because we haven't yet received
-    // the updated issue from the db
-  }, debounceTime)
-
-  const handleDescriptionChange = (description: string) => {
-    setDirtyDescription(description)
-    descriptionIsDirty.current = true
-    // We debounce the description change so that we don't spam the db with updates
-    handleDescriptionChangeDebounced(description)
+  const handleDescriptionChange = (body: string) => {
+    store.applyEvent('updateDescription', {
+      id: issue.id,
+      body,
+    })
   }
 
   const handleDelete = () => {
-    // db.comment.deleteMany({
-    //   where: {
-    //     issue_id: issue.id,
-    //   },
-    // })
-    // db.issue.delete({
-    //   where: {
-    //     id: issue.id,
-    //   },
-    // })
+    // TODO: how to create a tx?
+    store.applyEvent('deleteIssue', {
+      id: issue.id,
+    })
+    store.applyEvent('deleteDescription', {
+      id: issue.id,
+    })
+    store.applyEvent('deleteCommentsByIssueId', {
+      issueId: issue.id,
+    })
     handleClose()
   }
 
@@ -227,13 +172,13 @@ function IssuePage() {
             <input
               className="w-full px-3 py-1 text-lg font-semibold placeholder-gray-400 border-transparent rounded "
               placeholder="Issue title"
-              value={titleIsDirty.current ? dirtyTitle! : issue.title}
+              value={issue.title}
               onChange={(e) => handleTitleChange(e.target.value)}
             />
 
             <Editor
               className="prose w-full max-w-full mt-2 font-normal appearance-none min-h-12 p-3 text-md rounded editor"
-              value={descriptionIsDirty.current ? dirtyDescription || '' : description || ''}
+              value={description || ''}
               onChange={(val) => handleDescriptionChange(val)}
               placeholder="Add description..."
             />
