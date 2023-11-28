@@ -1,5 +1,5 @@
 import { DbSchema, makeSchema, sql } from '@livestore/livestore'
-import { Priority, Status } from '../types/issue'
+import { Priority, PriorityType, Status, StatusType } from '../types/issue'
 
 const issue = DbSchema.table('issue', {
   id: DbSchema.text({ primaryKey: true }),
@@ -10,6 +10,14 @@ const issue = DbSchema.table('issue', {
   created: DbSchema.integer(),
   modified: DbSchema.integer(),
 })
+
+export interface FilterState {
+  orderBy: string
+  orderDirection: 'asc' | 'desc'
+  status?: StatusType[]
+  priority?: PriorityType[]
+  query?: string
+}
 
 const description = DbSchema.table('description', {
   // TODO: id is also a foreign key to issue

@@ -5,11 +5,11 @@ import debounce from 'lodash.debounce'
 import ViewOptionMenu from './ViewOptionMenu'
 import { MenuContext } from '../App'
 import FilterMenu from './contextmenu/FilterMenu'
-import { useFilterState } from '../utils/filterState'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
 import { querySQL, sql } from '@livestore/livestore'
-import { useQuery } from '@livestore/livestore/react'
+import { useQuery, useStore } from '@livestore/livestore/react'
+import { FilterState } from '../domain/schema'
 
 interface Props {
   issues: readonly Issue[]
@@ -18,22 +18,32 @@ interface Props {
   title?: string
 }
 
-const issueCount$ = querySQL<{ c: number }>((_) => sql`SELECT COUNT(*) as c FROM issue`)
+const issueCount$ = querySQL<{ c: number }>((_) => sql`SELECT COUNT(id) AS c FROM issue`)
   .getFirstRow()
   .pipe((row) => row?.c ?? 0)
+const filterState$ = querySQL<{ value: string }>((_) => sql`SELECT * FROM app_state WHERE "key" = 'filter_state'`)
+  .getFirstRow({
+    defaultValue: { value: '{}' },
+  })
+  .pipe<FilterState>((row) => JSON.parse(row.value))
+
 export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {
-  const [filterState, setFilterState] = useFilterState()
   const [showViewOption, setShowViewOption] = useState(false)
   const { showMenu, setShowMenu } = useContext(MenuContext)!
   const [searchQuery, setSearchQuery] = useState('')
   const totalIssuesCount = useQuery(issueCount$)
+  const filterState = useQuery(filterState$)
+  const { store } = useStore()
 
   const filteredIssuesCount = issues.length
 
   const handleSearchInner = debounce((query: string) => {
-    setFilterState({
-      ...filterState,
-      query: query,
+    store.applyEvent('upsertAppAtom', {
+      key: 'filter_state',
+      value: JSON.stringify({
+        ...filterState,
+        query: query,
+      }),
     })
   }, 500)
 
@@ -65,7 +75,6 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
           </button>
 
           <div className="p-1 font-semibold me-1">{title}</div>
-          {/* <span>{filteredIssuesCount}</span> */}
           <span>
             {filteredIssuesCount}
             {filteredIssuesCount !== totalIssuesCount ? ` of ${totalIssuesCount}` : ''}
@@ -101,9 +110,12 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
                 onClick={() => {
-                  setFilterState({
-                    ...filterState,
-                    priority: undefined,
+                  store.applyEvent('upsertAppAtom', {
+                    key: 'filter_state',
+                    value: JSON.stringify({
+                      ...filterState,
+                      priority: undefined,
+                    }),
                   })
                 }}
               >
@@ -120,9 +132,12 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
                 onClick={() => {
-                  setFilterState({
-                    ...filterState,
-                    status: undefined,
+                  store.applyEvent('upsertAppAtom', {
+                    key: 'filter_state',
+                    value: JSON.stringify({
+                      ...filterState,
+                      status: undefined,
+                    }),
                   })
                 }}
               >
