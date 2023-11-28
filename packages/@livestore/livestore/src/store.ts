@@ -520,6 +520,10 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       this.storage.execute(query, prepareBindValues(params, query), parentSpan)
     }
   }
+
+  select = (query: string, params: ParamsObject = {}) => {
+    return this.inMemoryDB.select(query, { bindValues: prepareBindValues(params, query) })
+  }
 }
 
 /** Create a new LiveStore Store */
