@@ -3,8 +3,10 @@ import { ReactNode, useState } from 'react'
 import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
 import { BsCheck2 } from 'react-icons/bs'
 import { Menu } from './menu'
-import { useFilterState } from '../../utils/filterState'
-import { PriorityOptions, StatusOptions } from '../../types/issue'
+import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
+import { querySQL, sql } from '@livestore/livestore'
+import { FilterState } from '../../domain/schema'
+import { useQuery, useStore } from '@livestore/livestore/react'
 
 interface Props {
   id: string
@@ -12,9 +14,16 @@ interface Props {
   className?: string
 }
 
+const filterState$ = querySQL<{ value: string }>((_) => sql`SELECT * FROM app_state WHERE "key" = 'filter_state'`)
+  .getFirstRow({
+    defaultValue: { value: '{}' },
+  })
+  .pipe<FilterState>((row) => JSON.parse(row.value))
+
 function FilterMenu({ id, button, className }: Props) {
-  const [filterState, setFilterState] = useFilterState()
   const [keyword, setKeyword] = useState('')
+  const filterState = useQuery(filterState$)
+  const { store } = useStore()
 
   let priorities = PriorityOptions
   if (keyword !== '') {
@@ -32,7 +41,7 @@ function FilterMenu({ id, button, className }: Props) {
 
   const priorityOptions = priorities.map(([Icon, priority, label], idx) => {
     return (
-      <Menu.Item key={`priority-${idx}`} onClick={() => handlePrioritySelect(priority as string)}>
+      <Menu.Item key={`priority-${idx}`} onClick={() => handlePrioritySelect(priority)}>
         <Icon className="mr-3" />
         <span>{label}</span>
         {filterState.priority?.includes(priority) && <BsCheck2 className="ml-auto" />}
@@ -42,7 +51,7 @@ function FilterMenu({ id, button, className }: Props) {
 
   const statusOptions = statuses.map(([Icon, status, label], idx) => {
     return (
-      <Menu.Item key={`status-${idx}`} onClick={() => handleStatusSelect(status as string)}>
+      <Menu.Item key={`status-${idx}`} onClick={() => handleStatusSelect(status)}>
         <Icon className="mr-3" />
         <span>{label}</span>
         {filterState.status?.includes(status) && <BsCheck2 className="ml-auto" />}
@@ -50,7 +59,7 @@ function FilterMenu({ id, button, className }: Props) {
     )
   })
 
-  const handlePrioritySelect = (priority: string) => {
+  const handlePrioritySelect = (priority: PriorityType) => {
     setKeyword('')
     const newPriority = filterState.priority || []
     if (newPriority.includes(priority)) {
@@ -58,13 +67,16 @@ function FilterMenu({ id, button, className }: Props) {
     } else {
       newPriority.push(priority)
     }
-    setFilterState({
-      ...filterState,
-      priority: newPriority,
+    store.applyEvent('upsertAppAtom', {
+      key: 'filter_state',
+      value: JSON.stringify({
+        ...filterState,
+        priority: newPriority,
+      }),
     })
   }
 
-  const handleStatusSelect = (status: string) => {
+  const handleStatusSelect = (status: StatusType) => {
     setKeyword('')
     const newStatus = filterState.status || []
     if (newStatus.includes(status)) {
@@ -72,9 +84,12 @@ function FilterMenu({ id, button, className }: Props) {
     } else {
       newStatus.push(status)
     }
-    setFilterState({
-      ...filterState,
-      status: newStatus,
+    store.applyEvent('upsertAppAtom', {
+      key: 'filter_state',
+      value: JSON.stringify({
+        ...filterState,
+        status: newStatus,
+      }),
     })
   }
 
