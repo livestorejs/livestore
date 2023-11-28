@@ -50,14 +50,14 @@ export default function ProfileMenu({ isOpen, className, onDismiss, setShowAbout
         >
           About
         </button>
-        <a href="https://www.todo.com" className="flex items-center h-8 px-3 hover:bg-gray-100">
+        <a href="https://github.com/livestorejs/livestore" className="flex items-center h-8 px-3 hover:bg-gray-100">
           Visit LiveStore
         </a>
-        <a href="https://www.todo.com/docs" className="flex items-center h-8 px-3 hover:bg-gray-100">
+        <a href="https://github.com/livestorejs/livestore" className="flex items-center h-8 px-3 hover:bg-gray-100">
           Documentation
         </a>
         <a
-          href="https://github.com/todo/todo/tree/main/examples/linearlite"
+          href="https://github.com/livestorejs/livestore/tree/main/examples/linearlite"
           className="flex items-center h-8 px-3 hover:bg-gray-100"
         >
           GitHub

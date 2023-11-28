@@ -15,8 +15,8 @@ export default function AboutModal({ isOpen, onDismiss }: Props) {
             Linear
           </a>{' '}
           built using{' '}
-          <a href="http://todo.com" target="_blank">
-            TODO
+          <a href="https://github.com/livestorejs/livestore" target="_blank">
+            LiveStore
           </a>{' '}
           - the local-first sync layer for web and mobile apps.
         </p>
@@ -30,9 +30,8 @@ export default function AboutModal({ isOpen, onDismiss }: Props) {
         <p className="my-1">
           We have replaced the canned data with a stack running{' '}
           <a href="https://github.com/livestorejs" target="_blank">
-            TODO
-          </a>{' '}
-          in Docker.
+            LiveStore
+          </a>
         </p>
       </div>
     </Modal>
