@@ -1,29 +1,26 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Editor from '../../components/editor/Editor'
 import Avatar from '../../components/Avatar'
 import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
 import { Comment, Issue } from '../../types'
+import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
+import { querySQL, sql } from '@livestore/livestore'
+import { nanoid } from 'nanoid'
 
 export interface CommentsProps {
   issue: Issue
 }
 
-function Comments(_props: CommentsProps) {
-  // const { db } = useElectric()!
+function Comments({ issue }: CommentsProps) {
   const [newCommentBody, setNewCommentBody] = useState<string>('')
-  // const { results: comments } = useLiveQuery(
-  //   db.comment.liveMany({
-  //     where: {
-  //       issue_id: issue.id,
-  //     },
-  //     orderBy: {
-  //       created_at: 'asc',
-  //     },
-  //   })
-  // )
-  const comments: Comment[] = []
+  const makeCommentQuery = useCallback(
+    () => querySQL<Comment>(() => sql`SELECT * FROM comment WHERE issueId = '${issue.id}' ORDER BY created ASC`),
+    [issue.id],
+  )
+  const comments = useTemporaryQuery(makeCommentQuery)
+  const { store } = useStore()
 
   const commentList = () => {
     if (comments && comments.length > 0) {
@@ -48,15 +45,13 @@ function Comments(_props: CommentsProps) {
       return
     }
 
-    // db.comment.create({
-    //   data: {
-    //     id: uuidv4(),
-    //     issue_id: issue.id,
-    //     body: newCommentBody,
-    //     created_at: new Date(),
-    //     username: 'testuser',
-    //   },
-    // })
+    store.applyEvent('createComment', {
+      id: nanoid(),
+      body: newCommentBody,
+      issueId: issue.id,
+      created: Date.now(),
+      author: 'testuser',
+    })
     setNewCommentBody('')
   }
 

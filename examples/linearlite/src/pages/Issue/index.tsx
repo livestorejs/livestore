@@ -28,11 +28,11 @@ function IssuePage() {
     [id],
   )
   const makeDescriptionQuery = useCallback(
-    () => querySQL<string>((_) => sql`SELECT body FROM description WHERE id = '${id}'`).getFirstRow(),
+    () => querySQL<{ body: string }>((_) => sql`SELECT body FROM description WHERE id = '${id}'`).getFirstRow(),
     [id],
   )
   const issue = useTemporaryQuery(makeIssueQuery)
-  const description = useTemporaryQuery(makeDescriptionQuery)
+  const description = useTemporaryQuery(makeDescriptionQuery).body
   const { store } = useStore()
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)

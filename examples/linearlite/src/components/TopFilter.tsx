@@ -1,7 +1,6 @@
 import { ReactComponent as MenuIcon } from '../assets/icons/menu.svg'
 import { useState, useContext } from 'react'
 import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
-import debounce from 'lodash.debounce'
 import ViewOptionMenu from './ViewOptionMenu'
 import { MenuContext } from '../App'
 import FilterMenu from './contextmenu/FilterMenu'
