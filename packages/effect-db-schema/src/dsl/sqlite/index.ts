@@ -10,8 +10,23 @@ import type * as FieldType_ from './field-type.js'
 export * from './field-defs.js'
 export * as FieldType from './field-type.js'
 
+/** Note when using the object-notation, the object keys are ignored and not used as table names */
+export type DbSchemaInput = Record<string, TableDefinition<any, any>> | ReadonlyArray<TableDefinition<any, any>>
+
+type TableNamesFromSchemaInput<TSchemaInput extends DbSchemaInput> = TSchemaInput extends ReadonlyArray<
+  TableDefinition<infer TTableName, any>
+>
+  ? TTableName
+  : TSchemaInput extends Record<infer TTableName, TableDefinition<any, any>>
+    ? TTableName
+    : never
+
 // TODO ensure via runtime check (possibly even via type-level check) that all index names are unique
-export const defineDbSchema = <S extends DbSchema>(schema: S) => schema
+export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
+  schema: TDbSchemaInput,
+): DbSchema<TableNamesFromSchemaInput<TDbSchemaInput>> => {
+  return Array.isArray(schema) ? Object.fromEntries(schema.map((_) => [_.name, _])) : schema
+}
 
 export const table = <TTableName extends string, TColumns extends Columns, TIndexes extends Index[]>(
   name: TTableName,
@@ -58,7 +73,7 @@ const indexesToAst = (indexes: Index[]): SqliteAst.Index[] => {
   )
 }
 
-export type DbSchema = { [key: string]: TableDefinition<string, Columns> }
+export type DbSchema<TTableNames extends string = string> = { [key in TTableNames]: TableDefinition<string, Columns> }
 
 /// Other
 

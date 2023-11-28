@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst } from 'effect-db-schema'
-import { memoize, omit } from 'lodash-es'
+import { memoize } from 'lodash-es'
 
 import type { InMemoryDatabase } from './index.js'
 import type { Schema, SchemaMetaRow } from './schema.js'
@@ -34,14 +34,15 @@ export const migrateDb = ({
     schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
   )
 
-  const tableDefs = {
+  const tableDefs = [
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
-    [SCHEMA_META_TABLE]: systemTables[SCHEMA_META_TABLE],
-    ...omit(schema.tables, [SCHEMA_META_TABLE]),
-    ...componentStateTables,
-  }
+    ...systemTables,
+    ...Array.from(schema.tables.values()).filter((_) => _.name !== SCHEMA_META_TABLE),
+    ...componentStateTables.values(),
+  ]
 
-  for (const [tableName, tableDef] of Object.entries(tableDefs)) {
+  for (const tableDef of tableDefs) {
+    const tableName = tableDef.name
     const dbSchemaHash = dbSchemaHashByTable[tableName]
     const schemaHash = SqliteAst.hash(tableDef)
     if (schemaHash !== dbSchemaHash) {

@@ -1,8 +1,6 @@
-import type { PrettifyFlat } from '@livestore/utils'
-import { mapObjectValues } from '@livestore/utils'
+import { type PrettifyFlat, shouldNeverHappen } from '@livestore/utils'
 import type { Schema } from '@livestore/utils/effect'
-import type { SqliteAst } from 'effect-db-schema'
-import { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import { DbSchema } from './index.js'
 
@@ -14,22 +12,41 @@ export type Index = {
 }
 
 // A global variable representing component state tables we should create in the database
-export const componentStateTables: { [key: string]: SqliteAst.Table } = {}
+export const componentStateTables: Map<string, SqliteAst.Table> = new Map()
 
+/** Note when using the object-notation, the object keys are ignored and not used as table names */
 export type InputSchema = {
-  tables: {
-    [tableName: string]: SqliteDsl.TableDefinition<any, any>
-  }
+  tables:
+    | {
+        [tableName: string]: SqliteDsl.TableDefinition<any, any>
+      }
+    | ReadonlyArray<SqliteDsl.TableDefinition<any, any>>
   materializedViews?: MaterializedViewDefinitions
   actions: ActionDefinitions<any>
 }
 
-export const makeSchema = <TSchema extends InputSchema>(schema: TSchema): Schema =>
-  ({
-    tables: { ...mapObjectValues(schema.tables, (_tableName, table) => table.ast), ...systemTables },
-    materializedViews: schema.materializedViews ?? {},
+export const makeSchema = <TSchema extends InputSchema>(schema: TSchema): Schema => {
+  const inputTables: ReadonlyArray<SqliteDsl.TableDefinition<any, any>> = Array.isArray(schema.tables)
+    ? schema.tables
+    : Object.values(schema.tables)
+
+  const tables = new Map<string, SqliteAst.Table>()
+
+  for (const table of inputTables) {
+    tables.set(table.ast.name, table.ast)
+  }
+
+  for (const table of systemTables) {
+    tables.set(table.name, table)
+  }
+
+  return {
+    _: Symbol('livestore.Schema') as any,
+    tables,
+    materializedViews: schema.materializedViews ?? { tableNames: [] },
     actions: schema.actions,
-  }) satisfies Schema
+  } satisfies Schema
+}
 
 export type ComponentStateSchema = SqliteDsl.TableDefinition<any, any> & {
   // TODO
@@ -46,10 +63,6 @@ export const defineComponentStateSchema = <TName extends string, TColumns extend
   PrettifyFlat<TColumns & { id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false> }>
 > => {
   const tablePath = `components__${name}` as const
-  if (Object.keys(componentStateTables).includes(tablePath)) {
-    // throw new Error(`Can't register duplicate component: ${name}`)
-    console.error(`Can't register duplicate component: ${tablePath}`)
-  }
 
   const schemaWithId = columns as unknown as PrettifyFlat<
     TColumns & {
@@ -61,8 +74,16 @@ export const defineComponentStateSchema = <TName extends string, TColumns extend
 
   const tableDef = SqliteDsl.table(tablePath, schemaWithId, [])
 
+  if (
+    componentStateTables.has(tablePath) &&
+    SqliteAst.hash(componentStateTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)
+  ) {
+    console.error('previous tableDef', componentStateTables.get(tablePath), 'new tableDef', tableDef.ast)
+    return shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
+  }
+
   // TODO move into register fn
-  componentStateTables[tablePath] = tableDef.ast
+  componentStateTables.set(tablePath, tableDef.ast)
 
   return tableDef
 }
@@ -82,13 +103,14 @@ export type ActionDefinition<TArgs = any> = {
 }
 
 export type Schema = {
-  tables: TableDefinitions
-  materializedViews: MaterializedViewDefinitions
-  actions: ActionDefinitions<any>
+  readonly _: unique symbol
+  readonly tables: Map<string, SqliteAst.Table>
+  readonly materializedViews: MaterializedViewDefinitions
+  readonly actions: ActionDefinitions<any>
 }
 
-export type TableDefinitions = { [key: string]: SqliteAst.Table }
-export type MaterializedViewDefinitions = { [key: string]: {} }
+// TODO
+export type MaterializedViewDefinitions = { tableNames: string[] }
 export type ActionDefinitions<TArgsMap extends Record<string, any>> = {
   [key in keyof TArgsMap]: ActionDefinition<TArgsMap[key]>
 }
@@ -104,16 +126,14 @@ const schemaMetaTable = SqliteDsl.table(SCHEMA_META_TABLE, {
 
 export type SchemaMetaRow = SqliteDsl.FromTable.RowDecoded<typeof schemaMetaTable>
 
-export const systemTables = {
-  // [EVENTS_TABLE_NAME]: SqliteDsl.table(EVENTS_TABLE_NAME, {
+export const systemTables = [
+  // SqliteDsl.table(EVENTS_TABLE_NAME, {
   //   id: SqliteDsl.text({ primaryKey: true }),
   //   type: SqliteDsl.text({ nullable: false }),
   //   args: SqliteDsl.text({ nullable: false }),
   // }).ast,
-  [SCHEMA_META_TABLE]: schemaMetaTable.ast,
-} satisfies TableDefinitions
-
-export const defineTables = <T extends TableDefinitions>(tables: T) => tables
+  schemaMetaTable.ast,
+]
 
 export const defineMaterializedViews = <M extends MaterializedViewDefinitions>(materializedViews: M) =>
   materializedViews

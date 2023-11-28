@@ -129,7 +129,7 @@ describe('drizzle sqlite printer', () => {
       createdAt: sqlite.datetime({ nullable: true, default: new Date('2023-10-01T13:54:43.861Z') }),
     })
 
-    const dbSchema = sqlite.defineDbSchema({ users })
+    const dbSchema = sqlite.makeDbSchema({ users })
 
     const str = printSqliteDbSchema(dbSchema)
 

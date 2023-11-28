@@ -7,7 +7,6 @@ export {
   defineComponentStateSchema,
   defineAction,
   defineActions,
-  defineTables,
   defineMaterializedViews,
   makeSchema,
 } from './schema.js'

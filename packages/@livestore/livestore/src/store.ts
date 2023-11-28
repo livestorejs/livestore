@@ -154,10 +154,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       queriesSpanContext: otelQueriesSpanContext,
     }
 
+    // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
     const allTableNames = new Set([
-      ...Object.keys(this.schema.tables),
-      ...Object.keys(this.schema.materializedViews),
-      ...Object.keys(componentStateTables),
+      ...this.schema.tables.keys(),
+      ...this.schema.materializedViews.tableNames,
+      ...Array.from(componentStateTables.values()).map((_) => _.name),
     ])
     for (const tableName of allTableNames) {
       this.tableRefs[tableName] = this.graph.makeRef(null, {
