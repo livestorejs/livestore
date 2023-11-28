@@ -98,15 +98,33 @@ export const schema = makeSchema({
         writeTables: ['comment'],
       },
     },
+    deleteCommentsByIssueId: {
+      statement: {
+        sql: sql`DELETE FROM comment WHERE issueId = $issueId`,
+        writeTables: ['comment'],
+      },
+    },
     updateIssue: {
       statement: {
         sql: sql`UPDATE issue SET title = $title, priority = $priority, status = $status, modified = $modified WHERE id = $id`,
         writeTables: ['issue'],
       },
     },
+    updateIssueStatus: {
+      statement: {
+        sql: sql`UPDATE issue SET status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
+        writeTables: ['issue'],
+      },
+    },
     updateIssueKanbanOrder: {
       statement: {
         sql: sql`UPDATE issue SET kanbanorder = $kanbanorder, modified = unixepoch() * 1000 WHERE id = $id`,
+        writeTables: ['issue'],
+      },
+    },
+    updateIssueTitle: {
+      statement: {
+        sql: sql`UPDATE issue SET title = $title, modified = unixepoch() * 1000 WHERE id = $id`,
         writeTables: ['issue'],
       },
     },
