@@ -185,9 +185,10 @@ describe('useComponentState', () => {
         {
           eventType: 'updateComponentState',
           args: {
-            componentKey: { _tag: 'custom', componentName: 'AppRouter', id: 'static' },
+            id: 'static',
             columnNames: ['currentTaskId'],
-            currentTaskId: 't2',
+            tableName: AppRouterSchema.name,
+            bindValues: { currentTaskId: 't2' },
           },
         },
         {

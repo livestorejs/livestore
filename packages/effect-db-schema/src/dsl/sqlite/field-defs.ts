@@ -21,6 +21,19 @@ export interface ColumnDefinition<
   readonly primaryKey?: boolean
 }
 
+export const isColumnDefinition = (value: unknown): value is ColumnDefinition<any, any> => {
+  const validColumnTypes = ['text', 'integer', 'real', 'blob'] as const
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    typeof value['type'] === 'object' &&
+    value['type'] !== null &&
+    'columnType' in value['type'] &&
+    validColumnTypes.includes(value['type']['columnType'] as any)
+  )
+}
+
 /// Column definitions
 
 export const column = <TType extends FieldType_.FieldColumnType, TEncoded, TDecoded, TNullable extends boolean>(
@@ -45,7 +58,11 @@ export const textWithSchema = <
   schema: Schema.Schema<TEncoded, TDecoded>,
   def?: TDef,
 ) =>
-  ({ type: FieldType_.text(schema), ...def }) as any as ColumnDefinition<
+  ({
+    // TODO improve handling of nullable schemas
+    type: FieldType_.text(def?.nullable === true ? (Schema.nullable(schema) as any) : schema),
+    ...def,
+  }) as any as ColumnDefinition<
     FieldType_.FieldTypeText<TEncoded, TDecoded>,
     TDef['nullable'] extends boolean ? TDef['nullable'] : false
   >

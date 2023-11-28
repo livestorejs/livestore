@@ -18,6 +18,14 @@ export { LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 export { type GetAtomResult } from './reactiveQueries/base-class.js'
 export { dbGraph } from './reactiveQueries/graph.js'
+export {
+  type StateType,
+  type StateTableDefinition,
+  type StateResult,
+  defineStateTable,
+  stateQuery,
+  initStateTable,
+} from './state.js'
 
 export { labelForKey } from './componentKey.js'
 export type { ComponentKey } from './componentKey.js'

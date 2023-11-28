@@ -34,12 +34,12 @@ export const migrateDb = ({
     schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
   )
 
-  const tableDefs = [
+  const tableDefs = new Set([
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
     ...systemTables,
     ...Array.from(schema.tables.values()).filter((_) => _.name !== SCHEMA_META_TABLE),
     ...componentStateTables.values(),
-  ]
+  ])
 
   for (const tableDef of tableDefs) {
     const tableName = tableDef.name

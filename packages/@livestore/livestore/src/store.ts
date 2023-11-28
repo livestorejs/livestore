@@ -5,8 +5,6 @@ import type { GraphQLSchema } from 'graphql'
 import type * as Sqlite from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
-import type { ComponentKey } from './componentKey.js'
-import { tableNameForComponentKey } from './componentKey.js'
 import type { LiveStoreEvent } from './events.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
@@ -436,16 +434,17 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
 
           // Special LiveStore:defined actions
           updateComponentState: {
-            statement: ({ componentKey, columnNames }: { componentKey: ComponentKey; columnNames: string[] }) => {
-              const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
+            statement: ({ id, columnNames, tableName }: { id?: string; columnNames: string[]; tableName: string }) => {
+              const whereClause = id === undefined ? '' : `where id = '${id}'`
               const updateClause = columnNames.map((columnName) => `${columnName} = $${columnName}`).join(', ')
-              const stmt = sql`update ${tableNameForComponentKey(componentKey)} set ${updateClause} ${whereClause}`
+              const stmt = sql`update ${tableName} set ${updateClause} ${whereClause}`
 
               return {
                 sql: stmt,
-                writeTables: [tableNameForComponentKey(componentKey)],
+                writeTables: [tableName],
               }
             },
+            prepareBindValues: ({ bindValues }) => bindValues ?? {},
           },
 
           RawSql: {
