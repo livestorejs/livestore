@@ -65,24 +65,36 @@ export function useFilterState(): [FilterState, (state: Partial<FilterState>) =>
   return [state, setState]
 }
 
-interface FilterStateWhere {
-  status?: { in: string[] }
-  priority?: { in: string[] }
-  title?: { contains: string }
-  OR?: [{ title: { contains: string } }, { description: { contains: string } }]
-}
-
 export function filterStateToWhere(filterState: FilterState) {
   const { status, priority, query } = filterState
-  const where: FilterStateWhere = {}
+  let where = 'WHERE '
+  const orig = where
   if (status && status.length > 0) {
-    where.status = { in: status }
+    where += `STATUS IN (${status.map((s) => "'" + s + "'").join(',')})`
   }
   if (priority && priority.length > 0) {
-    where.priority = { in: priority }
+    if (where !== orig) {
+      where += ' AND '
+    }
+    where += `PRIORITY IN (${priority.map((s) => "'" + s + "'").join(',')})`
   }
   if (query) {
-    where.OR = [{ title: { contains: query } }, { description: { contains: query } }]
+    // TODO: description search too?
+    if (where !== orig) {
+      where += ' OR '
+    }
+    where += `TITLE LIKE '%${query}%'`
+  }
+  if (where === orig) {
+    return ''
   }
   return where
+}
+
+export function filterStateToOrder(filterState: FilterState) {
+  if (filterState.orderBy) {
+    return `ORDER BY ${filterState.orderBy} ${filterState.orderDirection}`
+  }
+
+  return ''
 }

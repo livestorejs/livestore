@@ -4,7 +4,7 @@ import IssueList from './IssueList'
 import { Issue } from '../../types'
 import { querySQL, sql } from '@livestore/livestore'
 import { AppState } from '../../domain/schema'
-import { filterStateToWhere } from '../../utils/filterState'
+import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/livestore/react'
 
 const filterClause$ = querySQL<AppState>(`select * from app_state WHERE key = 'filter_state';`)
@@ -13,10 +13,7 @@ const filterClause$ = querySQL<AppState>(`select * from app_state WHERE key = 'f
     // TODO this handling should be improved (see https://github.com/livestorejs/livestore/issues/22)
     if (filterStates.length === 0) return ''
     const filterStateObj = JSON.parse(filterStates[0]!.value)
-    return {
-      orderBy: { [filterStateObj.orderBy]: filterStateObj.orderDirection },
-      where: filterStateToWhere(filterStateObj),
-    }
+    return filterStateToWhere(filterStateObj) + ' ' + filterStateToOrder(filterStateObj)
   })
 const visibleIssues$ = querySQL<Issue>((get) => sql`select * from issue ${get(filterClause$)}`)
 
