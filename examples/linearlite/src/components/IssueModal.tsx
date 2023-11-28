@@ -41,16 +41,20 @@ function IssueModal({ isOpen, onDismiss }: Props) {
     const kanbanorder = generateKeyBetween(lastIssue?.kanbanorder, null)
 
     const date = Date.now()
+    const id = nanoid()
     store.applyEvent('createIssue', {
-      id: nanoid(),
+      id,
       title: title,
       username: 'testuser',
       priority: priority,
       status: status,
-      description: description ?? '',
       modified: date,
       created: date,
       kanbanorder,
+    })
+    store.applyEvent('createDescription', {
+      id,
+      body: description ?? '',
     })
 
     if (onDismiss) onDismiss()
