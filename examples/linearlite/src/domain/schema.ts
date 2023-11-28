@@ -116,7 +116,7 @@ export const schema = makeSchema({
         writeTables: ['issue'],
       },
     },
-    updatePriority: {
+    updateIssuePriority: {
       statement: {
         sql: sql`UPDATE issue SET priority = $priority, modified = unixepoch() * 1000 WHERE id = $id`,
         writeTables: ['issue'],
