@@ -1,6 +1,6 @@
 import type { PrettifyFlat } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
@@ -139,13 +139,18 @@ export const stateQuery = <TStateTableDef extends StateTableDefinition<any, bool
     })
       // TODO consider to instead of just returning the default value, to write the default component state to the DB
       .pipe<TComponentState>((results) => {
-        const row =
-          results.length === 1
-            ? (Schema.parseSync(componentStateEffectSchema)(results[0]!) as TComponentState)
-            : defaultComponentState
+        try {
+          const row =
+            results.length === 1
+              ? (Schema.parseSync(componentStateEffectSchema)(results[0]!) as TComponentState)
+              : defaultComponentState
 
-        // @ts-expect-error TODO fix typing
-        return def.isSingleColumn === true ? row.value : row
+          // @ts-expect-error TODO fix typing
+          return def.isSingleColumn === true ? row.value : row
+        } catch (e) {
+          debugger
+          throw e
+        }
       }) as any
   )
 }
@@ -206,24 +211,19 @@ export const insertRowForComponentInstance = ({
     ', ',
   )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
 
-  void db.execute(
-    insertQuery,
-    prepareBindValues(
-      {
-        ...mapValues(stateSchema.columns, (column, columnName) =>
-          column.default === undefined
-            ? column.nullable === true
-              ? null
-              : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
-            : Schema.encodeSync(column.type.codec)(column.default ?? null),
-        ),
-        id,
-      },
-      insertQuery,
+  const values = pipe(
+    stateSchema.columns,
+    ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.map((column, columnName) =>
+      column.default === undefined
+        ? column.nullable === true
+          ? null
+          : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+        : Schema.encodeSync(column.type.codec)(column.default ?? null),
     ),
-    [tableName],
-    { otelContext },
   )
+
+  void db.execute(insertQuery, prepareBindValues({ ...values, id }, insertQuery), [tableName], { otelContext })
 }
 
 type WithId<TColumns extends SqliteDsl.Columns, TStateType extends StateType> = TColumns &

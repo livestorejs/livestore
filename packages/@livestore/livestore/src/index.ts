@@ -28,8 +28,6 @@ export {
   initStateTable,
 } from './state.js'
 
-export { labelForKey } from './componentKey.js'
-export type { ComponentKey } from './componentKey.js'
 export type { Schema, GetActionArgs, GetApplyEventArgs, Index, ActionDefinition, ActionDefinitions } from './schema.js'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'

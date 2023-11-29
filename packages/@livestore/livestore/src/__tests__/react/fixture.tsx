@@ -59,9 +59,13 @@ export const makeTodoMvc = async ({
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
 } = {}) => {
-  const AppComponentSchema = LiveStore.defineStateTable('UserInfo', {
-    username: LiveStore.DbSchema.text({ default: '' }),
-  })
+  const AppComponentSchema = LiveStore.defineStateTable(
+    'UserInfo',
+    {
+      username: LiveStore.DbSchema.text({ default: '' }),
+    },
+    'variable',
+  )
 
   const sqlite3 = await initSqlite3Wasm({
     print: (message) => console.log(`[livestore sqlite] ${message}`),

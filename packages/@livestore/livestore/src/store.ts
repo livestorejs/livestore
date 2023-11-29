@@ -198,7 +198,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   ): (() => void) =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label } },
+      { attributes: { label: options?.label, queryLabel: query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)

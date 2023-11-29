@@ -117,19 +117,14 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
   // TODO bring back primary key support
   // const primaryKey = column.primaryKey ? 'primary key' : ''
   const nullableStr = column.nullable === false ? 'not null' : ''
-  try {
-    const defaultValueStr = (() => {
-      if (column.default === undefined) return ''
+  const defaultValueStr = (() => {
+    if (column.default === undefined) return ''
 
-      const encodeValue = EffectSchema.encodeSync(column.codec)
-      const encodedDefaultValue = encodeValue(column.default ?? null)
+    const encodeValue = EffectSchema.encodeSync(column.codec)
+    const encodedDefaultValue = encodeValue(column.default ?? null)
 
-      return columnTypeStr === 'text' ? `default '${encodedDefaultValue}'` : `default ${encodedDefaultValue}`
-    })()
+    return columnTypeStr === 'text' ? `default '${encodedDefaultValue}'` : `default ${encodedDefaultValue}`
+  })()
 
-    return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
-  } catch (e) {
-    debugger
-    throw e
-  }
+  return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
 }

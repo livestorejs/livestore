@@ -11,16 +11,33 @@ import { stateQuery } from '../state.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 
-export const useState = <
+export type UseStateResult<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> = [
+  state: StateResult<TStateTableDef>,
+  setState: StateSetters<TStateTableDef>,
+  query$: LiveStoreJSQuery<StateResult<TStateTableDef>>,
+]
+
+export const useState: {
+  <
+    TStateTableDef extends StateTableDefinition<
+      SqliteDsl.TableDefinition<any, SqliteDsl.Columns>,
+      boolean,
+      'singleton'
+    >,
+  >(
+    def: TStateTableDef,
+  ): UseStateResult<TStateTableDef>
+
+  <TStateTableDef extends StateTableDefinition<SqliteDsl.TableDefinition<any, SqliteDsl.Columns>, boolean, 'variable'>>(
+    def: TStateTableDef,
+    id: string,
+  ): UseStateResult<TStateTableDef>
+} = <
   TStateTableDef extends StateTableDefinition<SqliteDsl.TableDefinition<any, SqliteDsl.Columns>, boolean, StateType>,
 >(
   def: TStateTableDef,
   id?: string,
-): [
-  state: StateResult<TStateTableDef>,
-  setState: StateSetters<TStateTableDef>,
-  query$: LiveStoreJSQuery<StateResult<TStateTableDef>>,
-] => {
+): UseStateResult<TStateTableDef> => {
   const stateSchema = def.schema
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>
 
@@ -28,13 +45,16 @@ export const useState = <
 
   const reactId = React.useId()
 
-  const query$ = React.useMemo(() => {
+  const { query$, otelContext } = React.useMemo(() => {
     const cachedItem = queryCache.get(def, id ?? 'singleton')
     if (cachedItem !== undefined) {
       cachedItem.reactIds.add(reactId)
       cachedItem.span.addEvent('new-subscriber', { reactId })
 
-      return cachedItem.query$ as LiveStoreJSQuery<StateResult<TStateTableDef>>
+      return {
+        query$: cachedItem.query$ as LiveStoreJSQuery<StateResult<TStateTableDef>>,
+        otelContext: cachedItem.otelContext,
+      }
     }
 
     const span = store.otel.tracer.startSpan(
@@ -47,9 +67,9 @@ export const useState = <
 
     const query$ = stateQuery({ def, store, id, otelContext })
 
-    queryCache.set(def, id ?? 'singleton', query$, reactId, span)
+    queryCache.set(def, id ?? 'singleton', query$, reactId, otelContext, span)
 
-    return query$
+    return { query$, otelContext }
   }, [def, id, reactId, store])
 
   React.useEffect(
@@ -66,7 +86,7 @@ export const useState = <
     [def, id, reactId],
   )
 
-  const stateRef = useQueryRef(query$)
+  const stateRef = useQueryRef(query$, otelContext)
 
   const setState = React.useMemo<StateSetters<TStateTableDef>>(() => {
     if (def.isSingleColumn) {
@@ -111,12 +131,15 @@ export const useState = <
         }
 
         const columnNames = Object.keys(columnValues)
+        const bindValues = mapValues(columnValues, (value, columnName) =>
+          Schema.encodeSync(stateSchema.columns[columnName]!.type.codec)(value),
+        )
 
         store.applyEvent('livestore.UpdateComponentState', {
           tableName: stateSchema.name,
           columnNames,
           id,
-          bindValues: columnValues,
+          bindValues,
         })
       }
 
@@ -143,7 +166,7 @@ export type StateSetters<TStateTableDef extends StateTableDefinition<any, boolea
 class QueryCache {
   private readonly cache = new Map<
     StateTableDefinition<any, any, any>,
-    Map<string, { reactIds: Set<string>; span: otel.Span; query$: ILiveStoreQuery<any> }>
+    Map<string, { reactIds: Set<string>; span: otel.Span; otelContext: otel.Context; query$: ILiveStoreQuery<any> }>
   >()
   private reverseCache = new Map<ILiveStoreQuery<any>, [StateTableDefinition<any, any, any>, string]>()
 
@@ -158,6 +181,7 @@ class QueryCache {
     id: string,
     query$: ILiveStoreQuery<any>,
     reactId: string,
+    otelContext: otel.Context,
     span: otel.Span,
   ) => {
     let queries = this.cache.get(def)
@@ -165,7 +189,7 @@ class QueryCache {
       queries = new Map()
       this.cache.set(def, queries)
     }
-    queries.set(id, { query$, span, reactIds: new Set([reactId]) })
+    queries.set(id, { query$, otelContext, span, reactIds: new Set([reactId]) })
     this.reverseCache.set(query$, [def, id])
   }
 
