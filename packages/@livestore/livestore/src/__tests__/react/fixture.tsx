@@ -59,7 +59,7 @@ export const makeTodoMvc = async ({
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
 } = {}) => {
-  const AppComponentSchema = LiveStore.defineComponentStateSchema('UserInfo', {
+  const AppComponentSchema = LiveStore.defineStateTable('UserInfo', {
     username: LiveStore.DbSchema.text({ default: '' }),
   })
 

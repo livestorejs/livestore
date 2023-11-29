@@ -17,7 +17,7 @@ import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from './schema.js'
-import { componentStateTables } from './schema.js'
+import { dynamicallyRegisteredTables } from './schema.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import type { ParamsObject } from './util.js'
 import { isPromise, prepareBindValues, sql } from './util.js'
@@ -156,7 +156,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     const allTableNames = new Set([
       ...this.schema.tables.keys(),
       ...this.schema.materializedViews.tableNames,
-      ...Array.from(componentStateTables.values()).map((_) => _.name),
+      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.name),
     ])
     for (const tableName of allTableNames) {
       this.tableRefs[tableName] = this.graph.makeRef(null, {
@@ -433,7 +433,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           ...this.schema.actions,
 
           // Special LiveStore:defined actions
-          updateComponentState: {
+          'livestore.UpdateComponentState': {
             statement: ({ id, columnNames, tableName }: { id?: string; columnNames: string[]; tableName: string }) => {
               const whereClause = id === undefined ? '' : `where id = '${id}'`
               const updateClause = columnNames.map((columnName) => `${columnName} = $${columnName}`).join(', ')
@@ -447,7 +447,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
             prepareBindValues: ({ bindValues }) => bindValues ?? {},
           },
 
-          RawSql: {
+          'livestore.RawSql': {
             statement: ({ sql, writeTables }: { sql: string; writeTables: string[] }) => ({
               sql,
               writeTables,

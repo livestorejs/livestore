@@ -138,6 +138,8 @@ export class InMemoryDatabase {
     writeTables?: string[],
     options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
   ): { durationMs: number } {
+    // console.debug('in-memory-db:execute', query, bindValues)
+
     return this.otelTracer.startActiveSpan(
       'livestore.in-memory-db:execute',
       // TODO truncate query string

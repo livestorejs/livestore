@@ -1,10 +1,11 @@
+import { Schema as EffectSchema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst } from 'effect-db-schema'
 import { memoize } from 'lodash-es'
 
 import type { InMemoryDatabase } from './index.js'
 import type { Schema, SchemaMetaRow } from './schema.js'
-import { componentStateTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
+import { dynamicallyRegisteredTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
@@ -38,7 +39,7 @@ export const migrateDb = ({
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
     ...systemTables,
     ...Array.from(schema.tables.values()).filter((_) => _.name !== SCHEMA_META_TABLE),
-    ...componentStateTables.values(),
+    ...dynamicallyRegisteredTables.values(),
   ])
 
   for (const tableDef of tableDefs) {
@@ -112,15 +113,23 @@ const makeColumnSpec = (tableDef: SqliteAst.Table) => {
 }
 
 const toSqliteColumnSpec = (column: SqliteAst.Column) => {
-  const columnType = column.type._tag
+  const columnTypeStr = column.type._tag
+  // TODO bring back primary key support
   // const primaryKey = column.primaryKey ? 'primary key' : ''
-  const nullable = column.nullable === false ? 'not null' : ''
-  const defaultValue =
-    column.default === undefined
-      ? ''
-      : columnType === 'text'
-        ? `default '${column.default}'`
-        : `default ${column.default}`
+  const nullableStr = column.nullable === false ? 'not null' : ''
+  try {
+    const defaultValueStr = (() => {
+      if (column.default === undefined) return ''
 
-  return `${column.name} ${columnType} ${nullable} ${defaultValue}`
+      const encodeValue = EffectSchema.encodeSync(column.codec)
+      const encodedDefaultValue = encodeValue(column.default ?? null)
+
+      return columnTypeStr === 'text' ? `default '${encodedDefaultValue}'` : `default ${encodedDefaultValue}`
+    })()
+
+    return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
+  } catch (e) {
+    debugger
+    throw e
+  }
 }

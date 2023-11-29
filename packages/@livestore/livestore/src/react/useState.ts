@@ -1,4 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
+import * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
@@ -15,7 +16,11 @@ export const useState = <
 >(
   def: TStateTableDef,
   id?: string,
-): [state: StateResult<TStateTableDef>, setState: StateSetters<TStateTableDef>] => {
+): [
+  state: StateResult<TStateTableDef>,
+  setState: StateSetters<TStateTableDef>,
+  query$: LiveStoreJSQuery<StateResult<TStateTableDef>>,
+] => {
   const stateSchema = def.schema
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>
 
@@ -24,16 +29,25 @@ export const useState = <
   const reactId = React.useId()
 
   const query$ = React.useMemo(() => {
-    // if (queryCache.has(makeQuery)) return queryCache.get(makeQuery)! as ILiveStoreQuery<TResult>
     const cachedItem = queryCache.get(def, id ?? 'singleton')
     if (cachedItem !== undefined) {
       cachedItem.reactIds.add(reactId)
+      cachedItem.span.addEvent('new-subscriber', { reactId })
+
       return cachedItem.query$ as LiveStoreJSQuery<StateResult<TStateTableDef>>
     }
 
-    const query$ = stateQuery({ def, store, id, otelContext: store.otel.queriesSpanContext })
+    const span = store.otel.tracer.startSpan(
+      `LiveStore:useState:${def.schema.name}${id === undefined ? '' : `:${id}`}`,
+      { attributes: { id } },
+      store.otel.queriesSpanContext,
+    )
 
-    queryCache.set(def, id ?? 'singleton', query$, reactId)
+    const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+    const query$ = stateQuery({ def, store, id, otelContext })
+
+    queryCache.set(def, id ?? 'singleton', query$, reactId, span)
 
     return query$
   }, [def, id, reactId, store])
@@ -46,6 +60,7 @@ export const useState = <
       if (cachedItem.reactIds.size === 0) {
         queryCache.delete(cachedItem.query$)
         cachedItem.query$.destroy()
+        cachedItem.span.end()
       }
     },
     [def, id, reactId],
@@ -60,7 +75,7 @@ export const useState = <
 
         const encodedValue = Schema.encodeSync(stateSchema.columns['value']!.type.codec)(newValue)
 
-        return store.applyEvent('updateComponentState', {
+        store.applyEvent('livestore.UpdateComponentState', {
           tableName: stateSchema.name,
           columnNames: ['value'],
           id,
@@ -76,7 +91,7 @@ export const useState = <
 
           const encodedValue = Schema.encodeSync(column.type.codec)(newValue)
 
-          return store.applyEvent('updateComponentState', {
+          store.applyEvent('livestore.UpdateComponentState', {
             tableName: stateSchema.name,
             columnNames: [columnName],
             id,
@@ -97,7 +112,7 @@ export const useState = <
 
         const columnNames = Object.keys(columnValues)
 
-        return store.applyEvent('updateComponentState', {
+        store.applyEvent('livestore.UpdateComponentState', {
           tableName: stateSchema.name,
           columnNames,
           id,
@@ -109,23 +124,26 @@ export const useState = <
     }
   }, [def.isSingleColumn, id, stateSchema.columns, stateSchema.name, store, stateRef])
 
-  return [stateRef.current, setState]
+  return [stateRef.current, setState, query$]
 }
+
+export type Dispatch<A> = (action: A) => void
+export type SetStateAction<S> = S | ((previousValue: S) => S)
 
 export type StateSetters<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
   TStateTableDef['isSingleColumn'] extends true
-    ? (newValue: StateResult<TStateTableDef>) => void
+    ? Dispatch<SetStateAction<StateResult<TStateTableDef>>>
     : {
-        [K in keyof StateResult<TStateTableDef>]: (newValue: StateResult<TStateTableDef>[K]) => void
+        [K in keyof StateResult<TStateTableDef>]: Dispatch<SetStateAction<StateResult<TStateTableDef>[K]>>
       } & {
-        setMany: (newValues: Partial<StateResult<TStateTableDef>>) => void
+        setMany: Dispatch<SetStateAction<Partial<StateResult<TStateTableDef>>>>
       }
 
 /** Nested Map using `stateSchema` and `id` as keys */
 class QueryCache {
   private readonly cache = new Map<
     StateTableDefinition<any, any, any>,
-    Map<string, { reactIds: Set<string>; query$: ILiveStoreQuery<any> }>
+    Map<string, { reactIds: Set<string>; span: otel.Span; query$: ILiveStoreQuery<any> }>
   >()
   private reverseCache = new Map<ILiveStoreQuery<any>, [StateTableDefinition<any, any, any>, string]>()
 
@@ -135,13 +153,19 @@ class QueryCache {
     return queries.get(id)
   }
 
-  set = (def: StateTableDefinition<any, any, any>, id: string, query$: ILiveStoreQuery<any>, reactId: string) => {
+  set = (
+    def: StateTableDefinition<any, any, any>,
+    id: string,
+    query$: ILiveStoreQuery<any>,
+    reactId: string,
+    span: otel.Span,
+  ) => {
     let queries = this.cache.get(def)
     if (queries === undefined) {
       queries = new Map()
       this.cache.set(def, queries)
     }
-    queries.set(id, { query$, reactIds: new Set([reactId]) })
+    queries.set(id, { query$, span, reactIds: new Set([reactId]) })
     this.reverseCache.set(query$, [def, id])
   }
 

@@ -12,7 +12,7 @@ export type Index = {
 }
 
 // A global variable representing component state tables we should create in the database
-export const componentStateTables: Map<string, SqliteAst.Table> = new Map()
+export const dynamicallyRegisteredTables: Map<string, SqliteAst.Table> = new Map()
 
 /** Note when using the object-notation, the object keys are ignored and not used as table names */
 export type InputSchema = {
@@ -75,15 +75,15 @@ export const defineComponentStateSchema = <TName extends string, TColumns extend
   const tableDef = SqliteDsl.table(tablePath, schemaWithId, [])
 
   if (
-    componentStateTables.has(tablePath) &&
-    SqliteAst.hash(componentStateTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)
+    dynamicallyRegisteredTables.has(tablePath) &&
+    SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)
   ) {
-    console.error('previous tableDef', componentStateTables.get(tablePath), 'new tableDef', tableDef.ast)
+    console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', tableDef.ast)
     return shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
   }
 
   // TODO move into register fn
-  componentStateTables.set(tablePath, tableDef.ast)
+  dynamicallyRegisteredTables.set(tablePath, tableDef.ast)
 
   return tableDef
 }

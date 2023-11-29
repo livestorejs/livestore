@@ -9,7 +9,7 @@ import type { InMemoryDatabase } from './index.js'
 import { migrateTable } from './migrations.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import { componentStateTables, SCHEMA_META_TABLE } from './schema.js'
+import { dynamicallyRegisteredTables, SCHEMA_META_TABLE } from './schema.js'
 import type { Store } from './store.js'
 import { prepareBindValues, sql } from './util.js'
 
@@ -36,48 +36,45 @@ export const defineStateTable = <
 ): StateTableDefinition<
   SqliteDsl.TableDefinition<
     `state__${TName}`,
-    PrettifyFlat<
-      (TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }) & {
-        id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
-      }
-    >
+    PrettifyFlat<WithId<TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }, TStateType>>
   >,
   TColumns extends SqliteDsl.ColumnDefinition<any, any> ? true : false,
   TStateType
 > => {
   const tablePath = `state__${name}` as const
+
   // eslint-disable-next-line unicorn/prefer-default-parameters
   const type_ = type ?? 'singleton'
 
   const columns = (SqliteDsl.isColumnDefinition(columnOrColumns)
     ? { value: columnOrColumns }
     : columnOrColumns) as unknown as PrettifyFlat<
-    (TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }) & {
-      id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
-    }
+    WithId<TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }, TStateType>
   >
 
   if (columns.id === undefined) {
-    columns.id = SqliteDsl.text({ primaryKey: true, default: type_ === 'singleton' ? 'singleton' : undefined })
+    if (type_ === 'singleton') {
+      columns.id = SqliteDsl.textWithSchema(Schema.literal('singleton'), { primaryKey: true, default: 'singleton' })
+    } else {
+      columns.id = SqliteDsl.text({ primaryKey: true })
+    }
   }
 
   const tableDef = SqliteDsl.table(tablePath, columns, [])
 
-  if (
-    componentStateTables.has(tablePath) &&
-    SqliteAst.hash(componentStateTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)
-  ) {
-    console.error('previous tableDef', componentStateTables.get(tablePath), 'new tableDef', tableDef.ast)
-    return shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
+  if (dynamicallyRegisteredTables.has(tablePath)) {
+    if (SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)) {
+      console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', tableDef.ast)
+      return shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
+    }
+  } else {
+    dynamicallyRegisteredTables.set(tablePath, tableDef.ast)
   }
-
-  // TODO move into register fn
-  componentStateTables.set(tablePath, tableDef.ast)
 
   return {
     schema: tableDef,
     isSingleColumn: (SqliteDsl.isColumnDefinition(columnOrColumns) === true) as any,
-    type: type_ as any,
+    type: type_ as TStateType,
   }
 }
 
@@ -126,6 +123,7 @@ export const stateQuery = <TStateTableDef extends StateTableDefinition<any, bool
     })
   }
 
+  // TODO find a way to only do this if necessary
   insertRowForComponentInstance({
     db: store._proxyDb,
     id: id ?? 'singleton',
@@ -158,6 +156,11 @@ export type StateResult<TStateTableDef extends StateTableDefinition<any, boolean
   TStateTableDef['isSingleColumn'] extends true
     ? GetValForKey<SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>, 'value'>
     : SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>
+
+export type StateResultEncoded<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
+  TStateTableDef['isSingleColumn'] extends true
+    ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TStateTableDef['schema']['columns']>, 'value'>
+    : SqliteDsl.FromColumns.RowEncoded<TStateTableDef['schema']['columns']>
 
 export const initStateTable = ({
   def,
@@ -195,7 +198,7 @@ export const insertRowForComponentInstance = ({
   stateSchema: SqliteDsl.TableDefinition<string, SqliteDsl.Columns>
   otelContext: otel.Context
 }) => {
-  const columnNames = ['id', ...Object.keys(stateSchema.columns)]
+  const columnNames = Object.keys(stateSchema.columns)
   const columnValues = columnNames.map((name) => `$${name}`).join(', ')
 
   const tableName = stateSchema.name
@@ -207,7 +210,13 @@ export const insertRowForComponentInstance = ({
     insertQuery,
     prepareBindValues(
       {
-        ...mapValues(stateSchema.columns, (column) => prepareValueForSql(column.default ?? null)),
+        ...mapValues(stateSchema.columns, (column, columnName) =>
+          column.default === undefined
+            ? column.nullable === true
+              ? null
+              : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+            : Schema.encodeSync(column.type.codec)(column.default ?? null),
+        ),
         id,
       },
       insertQuery,
@@ -217,10 +226,11 @@ export const insertRowForComponentInstance = ({
   )
 }
 
-const prepareValueForSql = (value: string | number | boolean | null) => {
-  if (typeof value === 'string' || typeof value === 'number' || value === null) {
-    return value
-  } else {
-    return value ? 1 : 0
-  }
-}
+type WithId<TColumns extends SqliteDsl.Columns, TStateType extends StateType> = TColumns &
+  (TStateType extends 'singleton'
+    ? {
+        id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<'singleton', 'singleton'>, false>
+      }
+    : {
+        id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
+      })

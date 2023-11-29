@@ -45,7 +45,11 @@ export const text = <
 >(
   def?: TDef,
 ) =>
-  ({ type: FieldType_.text(Schema.string), ...def }) as ColumnDefinition<
+  ({
+    // TODO improve handling of nullable schemas
+    type: FieldType_.text(def?.nullable === true ? (Schema.nullable(Schema.string) as any) : Schema.string),
+    ...def,
+  }) as ColumnDefinition<
     FieldType_.FieldTypeText<string, string>,
     TDef['nullable'] extends boolean ? TDef['nullable'] : false
   >
@@ -68,20 +72,32 @@ export const textWithSchema = <
   >
 
 export const integer = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeInteger, boolean>, 'type'>>,
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeInteger<number, number>, boolean>, 'type'>>,
 >(
   def?: TDef,
 ) =>
-  ({ type: FieldType_.integer(), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeInteger,
+  ({
+    // TODO improve handling of nullable schemas
+    type: FieldType_.integer(
+      def?.nullable === true ? (Schema.nullable(Schema.int()(Schema.number)) as any) : Schema.int()(Schema.number),
+    ),
+    ...def,
+  }) as ColumnDefinition<
+    FieldType_.FieldTypeInteger<number, number>,
     TDef['nullable'] extends boolean ? TDef['nullable'] : false
   >
 
-export const real = <const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeReal, boolean>, 'type'>>>(
+export const real = <
+  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeReal<number, number>, boolean>, 'type'>>,
+>(
   def?: TDef,
 ) =>
-  ({ type: FieldType_.real(), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeReal,
+  ({
+    // TODO improve handling of nullable schemas
+    type: FieldType_.real(def?.nullable === true ? (Schema.nullable(Schema.number) as any) : Schema.number),
+    ...def,
+  }) as ColumnDefinition<
+    FieldType_.FieldTypeReal<number, number>,
     TDef['nullable'] extends boolean ? TDef['nullable'] : false
   >
 

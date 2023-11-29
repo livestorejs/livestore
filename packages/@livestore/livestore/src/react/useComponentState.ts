@@ -166,7 +166,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
 
       const encodedValue = Schema.encodeSync(column.type.codec)(value)
 
-      return store.applyEvent('updateComponentState', {
+      return store.applyEvent('livestore.UpdateComponentState', {
         tableName: stateSchema.name,
         columnNames: [columnName],
         id: componentKey._tag === 'singleton' ? undefined : componentKey.id,
@@ -184,7 +184,7 @@ export const useComponentState = <TStateColumns extends ComponentColumns>({
 
     const columnNames = Object.keys(columnValues)
 
-    return store.applyEvent('updateComponentState', {
+    return store.applyEvent('livestore.UpdateComponentState', {
       tableName: stateSchema.name,
       columnNames,
       id: componentKey._tag === 'singleton' ? undefined : componentKey.id,

@@ -33,7 +33,7 @@ describe('otel', () => {
     const query = querySQL(`select * from todos`, { queriedTables: new Set(['todos']) })
     expect(query.run()).toMatchInlineSnapshot('[]')
 
-    store.applyEvent('RawSql', {
+    store.applyEvent('livestore.RawSql', {
       sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
       writeTables: ['todos'],
     })
@@ -92,7 +92,7 @@ describe('otel', () => {
                   {
                     "_name": "LiveStore:applyEventWithoutRefresh",
                     "attributes": {
-                      "livestore.actionType": "RawSql",
+                      "livestore.actionType": "livestore.RawSql",
                       "livestore.args": "{
         \\"sql\\": \\"INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);\\",
         \\"writeTables\\": [
@@ -175,7 +175,7 @@ describe('otel', () => {
       }
     `)
 
-    store.applyEvent('RawSql', {
+    store.applyEvent('livestore.RawSql', {
       sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
       writeTables: ['todos'],
     })
@@ -232,7 +232,7 @@ describe('otel', () => {
                   {
                     "_name": "LiveStore:applyEventWithoutRefresh",
                     "attributes": {
-                      "livestore.actionType": "RawSql",
+                      "livestore.actionType": "livestore.RawSql",
                       "livestore.args": "{
         \\"sql\\": \\"INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);\\",
         \\"writeTables\\": [

@@ -7,7 +7,7 @@ import * as LiveStoreReact from '../../react/index.js'
 import type { Todo } from './fixture.js'
 import { makeTodoMvc } from './fixture.js'
 
-describe('useComponentState', () => {
+describe('useState', () => {
   it('should update the data based on component key', async () => {
     let renderCount = 0
 
@@ -17,10 +17,8 @@ describe('useComponentState', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useComponentState({
-          schema: AppComponentSchema,
-          componentKey: { name: 'UserInfo', id: userId },
-        })
+        const [state, setState] = LiveStoreReact.useState(AppComponentSchema, userId)
+        return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
     )
@@ -30,7 +28,7 @@ describe('useComponentState', () => {
     expect(renderCount).toBe(1)
 
     act(() => {
-      void store.execute(LiveStore.sql`INSERT INTO components__UserInfo (id, username) VALUES ('u2', 'username_u2');`)
+      void store.execute(LiveStore.sql`INSERT INTO state__UserInfo (id, username) VALUES ('u2', 'username_u2');`)
     })
 
     rerender('u2')
@@ -49,10 +47,8 @@ describe('useComponentState', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useComponentState({
-          schema: AppComponentSchema,
-          componentKey: { name: 'UserInfo', id: userId },
-        })
+        const [state, setState] = LiveStoreReact.useState(AppComponentSchema, userId)
+        return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
     )
@@ -77,10 +73,8 @@ describe('useComponentState', () => {
       (userId: string) => {
         renderCount++
 
-        return LiveStoreReact.useComponentState({
-          schema: AppComponentSchema,
-          componentKey: { name: 'UserInfo', id: userId },
-        })
+        const [state, setState] = LiveStoreReact.useState(AppComponentSchema, userId)
+        return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
     )
@@ -92,7 +86,7 @@ describe('useComponentState', () => {
     act(() => result.current.setState.username('username_u1_hello'))
 
     act(() => {
-      void store.execute(LiveStore.sql`UPDATE components__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
+      void store.execute(LiveStore.sql`UPDATE state__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
     })
 
     expect(result.current.state.id).toBe('u1')
@@ -105,18 +99,16 @@ describe('useComponentState', () => {
 
     const { wrapper, store } = await makeTodoMvc()
 
-    const AppRouterSchema = LiveStore.defineComponentStateSchema('AppRouter', {
+    const AppRouterSchema = LiveStore.defineStateTable('AppRouter', {
       currentTaskId: LiveStore.DbSchema.text({ default: null, nullable: true }),
     })
 
-    const componentKey = { name: 'AppRouter', id: 'static' }
-
     let appRouterRenderCount = 0
-    let globalSetState: LiveStoreReact.Setters<LiveStoreReact.GetStateTypeEncoded<typeof AppRouterSchema>> | undefined
+    let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
     const AppRouter: React.FC = () => {
       appRouterRenderCount++
 
-      const { state, setState } = LiveStoreReact.useComponentState({ schema: AppRouterSchema, componentKey })
+      const [state, setState] = LiveStoreReact.useState(AppRouterSchema)
 
       globalSetState = setState
 
@@ -155,7 +147,7 @@ describe('useComponentState', () => {
     expect(appRouterRenderCount).toBe(1)
 
     act(() =>
-      store.applyEvent('RawSql', {
+      store.applyEvent('livestore.RawSql', {
         sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
         writeTables: ['todos'],
       }),
@@ -176,23 +168,23 @@ describe('useComponentState', () => {
     act(() =>
       store.applyEvents([
         {
-          eventType: 'RawSql',
+          eventType: 'livestore.RawSql',
           args: {
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0);`,
             writeTables: ['todos'],
           },
         },
         {
-          eventType: 'updateComponentState',
+          eventType: 'livestore.UpdateComponentState',
           args: {
-            id: 'static',
+            id: 'singleton',
             columnNames: ['currentTaskId'],
-            tableName: AppRouterSchema.name,
+            tableName: AppRouterSchema.schema.name,
             bindValues: { currentTaskId: 't2' },
           },
         },
         {
-          eventType: 'RawSql',
+          eventType: 'livestore.RawSql',
           args: {
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0);`,
             writeTables: ['todos'],
@@ -205,3 +197,5 @@ describe('useComponentState', () => {
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t2"')
   })
 })
+
+// TODO add otel tests
