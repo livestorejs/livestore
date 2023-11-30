@@ -10,7 +10,7 @@ import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import { dynamicallyRegisteredTables, SCHEMA_META_TABLE } from './schema.js'
 import type { Store } from './store.js'
-import { prepareBindValues, sql } from './util.js'
+import { prepareBindValues, sql } from './utils/util.js'
 
 export type StateType = 'singleton' | 'variable'
 

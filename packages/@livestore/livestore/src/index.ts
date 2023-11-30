@@ -38,5 +38,5 @@ export type TableDefinition = SqliteAst.Table
 
 export { SqliteDsl as DbSchema } from 'effect-db-schema'
 
-export { prepareBindValues, sql, type Bindable, type PreparedBindValues } from './util.js'
+export { prepareBindValues, sql, type Bindable, type PreparedBindValues } from './utils/util.js'
 export { isEqual } from 'lodash-es'

@@ -8,7 +8,7 @@
 
 import type * as otel from '@opentelemetry/api'
 
-import type { PreparedBindValues } from '../util.js'
+import type { PreparedBindValues } from '../utils/util.js'
 
 export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
 

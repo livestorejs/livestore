@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import * as LiveStoreReact from '../../react/index.js'
 import { querySQL } from '../../reactiveQueries/sql.js'
-import { sql } from '../../util.js'
+import { sql } from '../../utils/util.js'
 import type { Todo } from './fixture.js'
 import { makeTodoMvc } from './fixture.js'
 

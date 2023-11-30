@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { PreparedBindValues } from '../../util.js'
+import type { PreparedBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsWebInMemory = {
