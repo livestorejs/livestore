@@ -52,12 +52,22 @@ export const defineStateTable = <
     WithId<TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }, TStateType>
   >
 
+  // Check whether there are any non-id columns with primary key set to true
+  for (const [columnName, column] of Object.entries(columns)) {
+    if (columnName === 'id') continue
+    if (column.primaryKey === true) {
+      shouldNeverHappen(`LiveStore doesn't yet support columns other than 'id' to be primary keys.`)
+    }
+  }
+
   if (columns.id === undefined) {
     if (type_ === 'singleton') {
       columns.id = SqliteDsl.textWithSchema(Schema.literal('singleton'), { primaryKey: true, default: 'singleton' })
     } else {
       columns.id = SqliteDsl.text({ primaryKey: true })
     }
+  } else if (columns.id.primaryKey !== true) {
+    shouldNeverHappen(`Column 'id' must be a primary key for state table ${name}`)
   }
 
   const tableDef = SqliteDsl.table(tablePath, columns, [])

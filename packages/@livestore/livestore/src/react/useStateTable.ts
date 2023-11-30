@@ -17,7 +17,7 @@ export type UseStateResult<TStateTableDef extends StateTableDefinition<any, bool
   query$: LiveStoreJSQuery<StateResult<TStateTableDef>>,
 ]
 
-export const useState: {
+export const useStateTable: {
   <
     TStateTableDef extends StateTableDefinition<
       SqliteDsl.TableDefinition<any, SqliteDsl.Columns>,
@@ -196,10 +196,16 @@ class QueryCache {
   delete = (query$: ILiveStoreQuery<any>) => {
     const item = this.reverseCache.get(query$)
     if (item === undefined) return
+
     const [def, id] = item
     const queries = this.cache.get(def)
     if (queries === undefined) return
+
     queries.delete(id)
+
+    if (queries.size === 0) {
+      this.cache.delete(def)
+    }
 
     this.reverseCache.delete(query$)
   }

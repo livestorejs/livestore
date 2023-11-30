@@ -7,7 +7,7 @@ import * as LiveStoreReact from '../../react/index.js'
 import type { Todo } from './fixture.js'
 import { makeTodoMvc } from './fixture.js'
 
-describe('useState', () => {
+describe('useStateTable', () => {
   it('should update the data based on component key', async () => {
     let renderCount = 0
 
@@ -17,7 +17,7 @@ describe('useState', () => {
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useState(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useStateTable(AppComponentSchema, userId)
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -47,7 +47,7 @@ describe('useState', () => {
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useState(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useStateTable(AppComponentSchema, userId)
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -73,7 +73,7 @@ describe('useState', () => {
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useState(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useStateTable(AppComponentSchema, userId)
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -108,7 +108,7 @@ describe('useState', () => {
     const AppRouter: React.FC = () => {
       appRouterRenderCount++
 
-      const [state, setState] = LiveStoreReact.useState(AppRouterSchema)
+      const [state, setState] = LiveStoreReact.useStateTable(AppRouterSchema)
 
       globalSetState = setState
 
