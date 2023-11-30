@@ -24,9 +24,9 @@ export {
   type StateResult,
   type StateResultEncoded,
   type StateQueryArgs,
+  type StateTableDefDefault,
   defineStateTable,
   stateQuery,
-  initStateTable,
 } from './state.js'
 
 export type { Schema, GetActionArgs, GetApplyEventArgs, Index, ActionDefinition, ActionDefinitions } from './schema.js'

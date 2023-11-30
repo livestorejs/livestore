@@ -6,7 +6,7 @@ import React from 'react'
 
 import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
-import type { StateQueryArgs, StateResult, StateTableDefinition, StateType } from '../state.js'
+import type { StateQueryArgs, StateResult, StateTableDefDefault, StateTableDefinition, StateType } from '../state.js'
 import { stateQuery } from '../state.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
@@ -18,23 +18,15 @@ export type UseStateResult<TStateTableDef extends StateTableDefinition<any, bool
 ]
 
 export const useStateTable: {
-  <
-    TStateTableDef extends StateTableDefinition<
-      SqliteDsl.TableDefinition<any, SqliteDsl.Columns>,
-      boolean,
-      'singleton'
-    >,
-  >(
+  <TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, 'singleton'>>(
     def: TStateTableDef,
   ): UseStateResult<TStateTableDef>
 
-  <TStateTableDef extends StateTableDefinition<SqliteDsl.TableDefinition<any, SqliteDsl.Columns>, boolean, 'variable'>>(
+  <TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, 'variable'>>(
     def: TStateTableDef,
     id: string,
   ): UseStateResult<TStateTableDef>
-} = <
-  TStateTableDef extends StateTableDefinition<SqliteDsl.TableDefinition<any, SqliteDsl.Columns>, boolean, StateType>,
->(
+} = <TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>>(
   def: TStateTableDef,
   id?: string,
 ): UseStateResult<TStateTableDef> => {
@@ -165,8 +157,8 @@ export type StateSetters<TStateTableDef extends StateTableDefinition<any, boolea
         setMany: Dispatch<SetStateAction<Partial<StateResult<TStateTableDef>>>>
       }
 
-/** Nested Map using `stateSchema` and `id` as keys */
-class QueryCache {
+/** Reference counted cache for `query$` and otel context */
+class RCCache {
   private readonly cache = new Map<
     StateTableDefinition<any, any, any>,
     Map<string, { reactIds: Set<string>; span: otel.Span; otelContext: otel.Context; query$: ILiveStoreQuery<any> }>
@@ -214,4 +206,4 @@ class QueryCache {
   }
 }
 
-const queryCache = new QueryCache()
+const queryCache = new RCCache()

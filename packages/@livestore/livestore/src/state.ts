@@ -1,9 +1,8 @@
 import type { PrettifyFlat } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
+import { pipe, ReadonlyRecord, Schema, TreeFormatter } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
-import { mapValues } from 'lodash-es'
 
 import type { InMemoryDatabase } from './index.js'
 import { migrateTable } from './migrations.js'
@@ -15,8 +14,15 @@ import { prepareBindValues, sql } from './util.js'
 
 export type StateType = 'singleton' | 'variable'
 
+export type StateTableDefDefault = SqliteDsl.TableDefinition<
+  string,
+  SqliteDsl.Columns & {
+    id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<any, any>, false>
+  }
+>
+
 export type StateTableDefinition<
-  TTableDef extends SqliteDsl.TableDefinition<any, SqliteDsl.Columns>,
+  TTableDef extends StateTableDefDefault,
   TIsSingleColumn extends boolean,
   TStateType extends StateType,
 > = {
@@ -102,10 +108,11 @@ export type StateQueryArgs<TStateTableDef extends StateTableDefinition<any, bool
         id: string
       }
 
-export const stateQuery = <TStateTableDef extends StateTableDefinition<any, boolean, StateType>>(
+export const stateQuery = <TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>>(
   args: StateQueryArgs<TStateTableDef>,
 ): LiveStoreJSQuery<StateResult<TStateTableDef>> => {
-  const { def, store, otelContext } = args
+  const { def, store } = args
+  const otelContext = args.otelContext ?? store.otel.queriesSpanContext
   const id: string | undefined = (args as any).id
 
   // Validate query args
@@ -117,13 +124,8 @@ export const stateQuery = <TStateTableDef extends StateTableDefinition<any, bool
 
   const stateSchema = def.schema
   const componentTableName = stateSchema.name
-  const whereClause = id === undefined ? '' : `where id = '${id}'`
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>
-
-  const defaultComponentState = mapValues(stateSchema.columns, (c) => c.default) as TComponentState
-  // @ts-expect-error TODO fix typing
-  defaultComponentState.id = id
 
   const componentStateEffectSchema = SqliteDsl.structSchemaForTable(stateSchema)
 
@@ -137,7 +139,7 @@ export const stateQuery = <TStateTableDef extends StateTableDefinition<any, bool
       migrateTable({
         db: store._proxyDb,
         tableDef: stateSchema.ast,
-        otelContext: otelContext ?? otel.context.active(),
+        otelContext,
         schemaHash,
       })
     }
@@ -150,35 +152,32 @@ export const stateQuery = <TStateTableDef extends StateTableDefinition<any, bool
   }
 
   // TODO find a way to only do this if necessary
-  insertRowForComponentInstance({
+  insertRowForStateInstance({
     db: store._proxyDb,
     id: id ?? 'singleton',
     stateSchema,
-    otelContext: store.otel.queriesSpanContext,
+    otelContext,
   })
 
-  return (
-    new LiveStoreSQLQuery({
-      label: `localState:query:${stateSchema.name}${id === undefined ? '' : `:${id}`}`,
-      genQueryString: () => sql`select * from ${componentTableName} ${whereClause} limit 1`,
-      queriedTables: new Set([componentTableName]),
-    })
-      // TODO consider to instead of just returning the default value, to write the default component state to the DB
-      .pipe<TComponentState>((results) => {
-        try {
-          const row =
-            results.length === 1
-              ? (Schema.parseSync(componentStateEffectSchema)(results[0]!) as TComponentState)
-              : defaultComponentState
+  const whereClause = id === undefined ? '' : `where id = '${id}'`
+  const queryStr = sql`select * from ${componentTableName} ${whereClause} limit 1`
 
-          // @ts-expect-error TODO fix typing
-          return def.isSingleColumn === true ? row.value : row
-        } catch (e) {
-          debugger
-          throw e
-        }
-      }) as any
-  )
+  return new LiveStoreSQLQuery({
+    label: `localState:query:${stateSchema.name}${id === undefined ? '' : `:${id}`}`,
+    genQueryString: queryStr,
+    queriedTables: new Set([componentTableName]),
+  }).pipe<TComponentState>((results) => {
+    if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
+
+    const parseResult = Schema.parseEither(componentStateEffectSchema)(results[0]!)
+
+    if (parseResult._tag === 'Left') {
+      console.error('decode error', TreeFormatter.formatErrors(parseResult.left.errors), 'results', results)
+      return shouldNeverHappen(`Error decoding query result for ${queryStr}`)
+    }
+
+    return def.isSingleColumn === true ? parseResult.right.value : parseResult.right
+  }) as unknown as LiveStoreJSQuery<StateResult<TStateTableDef>>
 }
 
 type GetValForKey<T, K> = K extends keyof T ? T[K] : never
@@ -193,32 +192,11 @@ export type StateResultEncoded<TStateTableDef extends StateTableDefinition<any, 
     ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TStateTableDef['schema']['columns']>, 'value'>
     : SqliteDsl.FromColumns.RowEncoded<TStateTableDef['schema']['columns']>
 
-export const initStateTable = ({
-  def,
-  id,
-  db,
-  otelContext,
-}: {
-  def: StateTableDefinition<any, boolean, StateType>
-  id?: string
-  db: InMemoryDatabase
-  otelContext: otel.Context
-}) => {
-  const stateSchema = def.schema
-
-  insertRowForComponentInstance({
-    db,
-    id: id ?? 'singleton',
-    stateSchema,
-    otelContext,
-  })
-}
-
 /**
  * Create a row storing the state for a component instance, if none exists yet.
  * Initialized with default values, and keyed on the component key.
  */
-export const insertRowForComponentInstance = ({
+const insertRowForStateInstance = ({
   db,
   id,
   stateSchema,
@@ -237,7 +215,7 @@ export const insertRowForComponentInstance = ({
     ', ',
   )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
 
-  const values = pipe(
+  const defaultValues = pipe(
     stateSchema.columns,
     ReadonlyRecord.filter((_, key) => key !== 'id'),
     ReadonlyRecord.map((column, columnName) =>
@@ -249,7 +227,7 @@ export const insertRowForComponentInstance = ({
     ),
   )
 
-  void db.execute(insertQuery, prepareBindValues({ ...values, id }, insertQuery), [tableName], { otelContext })
+  void db.execute(insertQuery, prepareBindValues({ ...defaultValues, id }, insertQuery), [tableName], { otelContext })
 }
 
 type WithId<TColumns extends SqliteDsl.Columns, TStateType extends StateType> = TColumns &
