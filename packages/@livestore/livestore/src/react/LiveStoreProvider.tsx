@@ -6,7 +6,7 @@ import initSqlite3Wasm from 'sqlite-esm'
 // TODO refactor so the `react` module doesn't depend on `effect` module
 import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
-import type { LiveStoreSchema } from '../schema.js'
+import type { LiveStoreSchema } from '../schema/index.js'
 import type { StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions } from '../store.js'
 import { createStore } from '../store.js'

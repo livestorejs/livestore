@@ -5,7 +5,7 @@ import type { GraphQLSchema } from 'graphql'
 import initSqlite3Wasm from 'sqlite-esm'
 
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
-import type { LiveStoreSchema } from '../schema.js'
+import type { LiveStoreSchema } from '../schema/index.js'
 import type { StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions, LiveStoreQuery, Store } from '../store.js'
 import { createStore } from '../store.js'

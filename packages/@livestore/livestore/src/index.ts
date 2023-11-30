@@ -22,7 +22,7 @@ export {
   stateQuery,
 } from './state.js'
 
-export { defineAction, defineActions, defineMaterializedViews, makeSchema } from './schema.js'
+export { defineAction, defineActions, makeSchema } from './schema/index.js'
 
 export type {
   LiveStoreSchema,
@@ -31,12 +31,11 @@ export type {
   GetApplyEventArgs,
   ActionDefinition,
   ActionDefinitions,
-} from './schema.js'
+  SQLWriteStatement,
+  SchemaMetaRow,
+} from './schema/index.js'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
-
-import type { SqliteAst } from 'effect-db-schema'
-export type TableDefinition = SqliteAst.Table
 
 export { SqliteDsl as DbSchema } from 'effect-db-schema'
 

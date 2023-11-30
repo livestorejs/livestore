@@ -4,8 +4,8 @@ import { SqliteAst } from 'effect-db-schema'
 import { memoize } from 'lodash-es'
 
 import type { InMemoryDatabase } from './index.js'
-import type { LiveStoreSchema, SchemaMetaRow } from './schema.js'
-import { dynamicallyRegisteredTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
+import type { LiveStoreSchema, SchemaMetaRow } from './schema/index.js'
+import { dynamicallyRegisteredTables, SCHEMA_META_TABLE, systemTables } from './schema/index.js'
 import type { PreparedBindValues } from './utils/util.js'
 import { sql } from './utils/util.js'
 

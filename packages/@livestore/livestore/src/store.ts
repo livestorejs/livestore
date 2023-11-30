@@ -15,8 +15,8 @@ import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
 import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema.js'
-import { dynamicallyRegisteredTables } from './schema.js'
+import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema/index.js'
+import { dynamicallyRegisteredTables } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
@@ -155,7 +155,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
     const allTableNames = new Set([
       ...this.schema.tables.keys(),
-      ...this.schema.materializedViews.tableNames,
+      // TODO activate dynamic tables
       ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.name),
     ])
     for (const tableName of allTableNames) {
