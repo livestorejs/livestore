@@ -47,6 +47,7 @@ export type TableOptions = {
    * @default false
    */
   isSingleton: boolean
+  // TODO
   dynamicRegistration: boolean
   disableAutomaticIdColumn: boolean
 }

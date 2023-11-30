@@ -28,8 +28,8 @@
       "default": "./dist/effect/index.js"
     },
     "./util": {
-      "types": "./dist/util.d.ts",
-      "default": "./dist/util.js"
+      "types": "./dist/utils/util.d.ts",
+      "default": "./dist/utils/util.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -42,7 +42,7 @@
         "./dist/effect/index.d.ts"
       ],
       "util": [
-        "./dist/util.d.ts"
+        "./dist/utils/util.d.ts"
       ]
     }
   },
