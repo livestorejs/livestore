@@ -1,14 +1,14 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 
+import { dbGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { Bindable } from '../utils/util.js'
 import { prepareBindValues } from '../utils/util.js'
-import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
-import type { DbContext } from './graph.js'
-import { dbGraph } from './graph.js'
+import type { DbContext, GetAtomResult } from './base-class.js'
+import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import { LiveStoreJSQuery } from './js.js'
 
 export const querySQL = <Row>(

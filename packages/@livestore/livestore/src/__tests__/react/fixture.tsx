@@ -2,8 +2,8 @@ import type * as otel from '@opentelemetry/api'
 import React from 'react'
 import initSqlite3Wasm from 'sqlite-esm'
 
-import * as LiveStore from '../../index.js'
-import { sql } from '../../index.js'
+import type { LiveStoreContext } from '../../index.js'
+import { createStore, DbSchema, makeSchema, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import { InMemoryStorage } from '../../storage/in-memory/index.js'
 
@@ -20,17 +20,17 @@ export type AppState = {
   filter: Filter
 }
 
-export const schema = LiveStore.makeSchema({
+export const schema = makeSchema({
   tables: {
-    todos: LiveStore.DbSchema.table('todos', {
-      id: LiveStore.DbSchema.text({ primaryKey: true }),
-      text: LiveStore.DbSchema.text({ default: '', nullable: false }),
-      completed: LiveStore.DbSchema.boolean({ default: false, nullable: false }),
+    todos: DbSchema.table('todos', {
+      id: DbSchema.text({ primaryKey: true }),
+      text: DbSchema.text({ default: '', nullable: false }),
+      completed: DbSchema.boolean({ default: false, nullable: false }),
     }),
-    app: LiveStore.DbSchema.table('app', {
-      id: LiveStore.DbSchema.text({ primaryKey: true }),
-      newTodoText: LiveStore.DbSchema.text({ default: '', nullable: true }),
-      filter: LiveStore.DbSchema.text({ default: 'all', nullable: false }),
+    app: DbSchema.table('app', {
+      id: DbSchema.text({ primaryKey: true }),
+      newTodoText: DbSchema.text({ default: '', nullable: true }),
+      filter: DbSchema.text({ default: 'all', nullable: false }),
     }),
   },
   actions: {
@@ -59,20 +59,16 @@ export const makeTodoMvc = async ({
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
 } = {}) => {
-  const AppComponentSchema = LiveStore.defineStateTable(
-    'UserInfo',
-    {
-      username: LiveStore.DbSchema.text({ default: '' }),
-    },
-    'variable',
-  )
+  const AppComponentSchema = DbSchema.table('UserInfo', {
+    username: DbSchema.text({ default: '' }),
+  })
 
   const sqlite3 = await initSqlite3Wasm({
     print: (message) => console.log(`[livestore sqlite] ${message}`),
     printErr: (message) => console.error(`[livestore sqlite] ${message}`),
   })
 
-  const store = await LiveStore.createStore({
+  const store = await createStore({
     schema,
     loadStorage: () => InMemoryStorage.load(),
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
@@ -81,7 +77,7 @@ export const makeTodoMvc = async ({
     otelRootSpanContext: otelContext,
   })
 
-  const storeContext: LiveStore.LiveStoreContext = { store }
+  const storeContext: LiveStoreContext = { store }
 
   const wrapper = ({ children }: any) => (
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>

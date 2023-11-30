@@ -7,7 +7,7 @@ import * as LiveStoreReact from '../../react/index.js'
 import type { Todo } from './fixture.js'
 import { makeTodoMvc } from './fixture.js'
 
-describe('useStateTable', () => {
+describe('useRow', () => {
   it('should update the data based on component key', async () => {
     let renderCount = 0
 
@@ -17,7 +17,7 @@ describe('useStateTable', () => {
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useStateTable(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId)
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -28,7 +28,7 @@ describe('useStateTable', () => {
     expect(renderCount).toBe(1)
 
     act(() => {
-      void store.execute(LiveStore.sql`INSERT INTO state__UserInfo (id, username) VALUES ('u2', 'username_u2');`)
+      void store.execute(LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2');`)
     })
 
     rerender('u2')
@@ -47,7 +47,7 @@ describe('useStateTable', () => {
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useStateTable(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId)
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -73,7 +73,7 @@ describe('useStateTable', () => {
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useStateTable(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId)
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -86,7 +86,7 @@ describe('useStateTable', () => {
     act(() => result.current.setState.username('username_u1_hello'))
 
     act(() => {
-      void store.execute(LiveStore.sql`UPDATE state__UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
+      void store.execute(LiveStore.sql`UPDATE UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
     })
 
     expect(result.current.state.id).toBe('u1')
@@ -99,16 +99,20 @@ describe('useStateTable', () => {
 
     const { wrapper, store } = await makeTodoMvc()
 
-    const AppRouterSchema = LiveStore.defineStateTable('AppRouter', {
-      currentTaskId: LiveStore.DbSchema.text({ default: null, nullable: true }),
-    })
+    const AppRouterSchema = LiveStore.DbSchema.table(
+      'AppRouter',
+      {
+        currentTaskId: LiveStore.DbSchema.text({ default: null, nullable: true }),
+      },
+      { isSingleton: true },
+    )
 
     let appRouterRenderCount = 0
     let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
     const AppRouter: React.FC = () => {
       appRouterRenderCount++
 
-      const [state, setState] = LiveStoreReact.useStateTable(AppRouterSchema)
+      const [state, setState] = LiveStoreReact.useRow(AppRouterSchema)
 
       globalSetState = setState
 

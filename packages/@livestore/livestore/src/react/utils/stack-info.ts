@@ -38,10 +38,12 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo =>
 
   while ((match = namePattern.exec(stackTrace)) !== null) {
     const [, name, filePath] = match as any as [string, string, string]
-    if (name.startsWith('use')) {
+
+    // NOTE No idea where this `Module.` comes from - possibly a Vite thing?
+    if ((name.startsWith('use') || name.startsWith('Module.use')) && name.endsWith('QueryRef') === false) {
       hasReachedStart = true
 
-      frames.unshift({ name, filePath })
+      frames.unshift({ name: name.replace(/^Module\./, ''), filePath })
     } else if (hasReachedStart) {
       // We've reached the end of the `use*` functions, so we're adding the component name and stop
       frames.unshift({ name, filePath })

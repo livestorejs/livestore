@@ -6,17 +6,16 @@ import type * as Sqlite from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
 import type { LiveStoreEvent } from './events.js'
+import { dbGraph, dynamicallyRegisteredTables } from './global-state.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
-import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
-import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
+import type { DbContext, ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema/index.js'
-import { dynamicallyRegisteredTables } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
@@ -156,7 +155,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     const allTableNames = new Set([
       ...this.schema.tables.keys(),
       // TODO activate dynamic tables
-      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.name),
+      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.schema.name),
     ])
     for (const tableName of allTableNames) {
       this.tableRefs[tableName] = this.graph.makeRef(null, {
