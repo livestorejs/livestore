@@ -88,17 +88,33 @@ export const defineStateTable = <
   }
 }
 
-export const stateQuery = <TStateTableDef extends StateTableDefinition<any, boolean, StateType>>({
-  def,
-  store,
-  otelContext,
-  id,
-}: {
-  def: TStateTableDef
-  store: Store
-  otelContext?: otel.Context
-  id?: string
-}): LiveStoreJSQuery<StateResult<TStateTableDef>> => {
+export type StateQueryArgs<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
+  TStateTableDef['type'] extends 'singleton'
+    ? {
+        def: TStateTableDef
+        store: Store
+        otelContext?: otel.Context
+      }
+    : {
+        def: TStateTableDef
+        store: Store
+        otelContext?: otel.Context
+        id: string
+      }
+
+export const stateQuery = <TStateTableDef extends StateTableDefinition<any, boolean, StateType>>(
+  args: StateQueryArgs<TStateTableDef>,
+): LiveStoreJSQuery<StateResult<TStateTableDef>> => {
+  const { def, store, otelContext } = args
+  const id: string | undefined = (args as any).id
+
+  // Validate query args
+  if (def.type === 'singleton' && id !== undefined) {
+    shouldNeverHappen(`Cannot query state table ${def.schema.name} with id "${id}" as it is a singleton`)
+  } else if (def.type === 'variable' && id === undefined) {
+    shouldNeverHappen(`Cannot query state table ${def.schema.name} without id`)
+  }
+
   const stateSchema = def.schema
   const componentTableName = stateSchema.name
   const whereClause = id === undefined ? '' : `where id = '${id}'`

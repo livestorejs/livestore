@@ -6,7 +6,7 @@ import React from 'react'
 
 import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
-import type { StateResult, StateTableDefinition, StateType } from '../state.js'
+import type { StateQueryArgs, StateResult, StateTableDefinition, StateType } from '../state.js'
 import { stateQuery } from '../state.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
@@ -65,7 +65,10 @@ export const useStateTable: {
 
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const query$ = stateQuery({ def, store, id, otelContext })
+    const query$ =
+      def.type === 'singleton'
+        ? stateQuery({ def, store, otelContext } as StateQueryArgs<TStateTableDef>)
+        : stateQuery({ def, store, id, otelContext } as StateQueryArgs<TStateTableDef>)
 
     queryCache.set(def, id ?? 'singleton', query$, reactId, otelContext, span)
 

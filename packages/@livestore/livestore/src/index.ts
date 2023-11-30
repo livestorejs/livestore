@@ -23,6 +23,7 @@ export {
   type StateTableDefinition,
   type StateResult,
   type StateResultEncoded,
+  type StateQueryArgs,
   defineStateTable,
   stateQuery,
   initStateTable,
