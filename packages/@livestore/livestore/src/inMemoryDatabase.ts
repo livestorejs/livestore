@@ -135,7 +135,7 @@ export class InMemoryDatabase {
   execute(
     query: string,
     bindValues?: PreparedBindValues,
-    writeTables?: string[],
+    writeTables?: ReadonlyArray<string>,
     options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
   ): { durationMs: number } {
     // console.debug('in-memory-db:execute', query, bindValues)

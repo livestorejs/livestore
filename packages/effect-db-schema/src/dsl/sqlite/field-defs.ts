@@ -5,7 +5,7 @@ import type { Prettify } from '../../utils.js'
 // `SyntaxError: Cannot declare an imported binding name twice: 'FieldType'.`
 import * as FieldType_ from './field-type.js'
 
-type GetFieldTypeDecoded<TFieldType extends FieldType_.FieldType<any, any, any>> =
+export type GetFieldTypeDecoded<TFieldType extends FieldType_.FieldType<any, any, any>> =
   TFieldType extends FieldType_.FieldType<any, any, infer TDecoded> ? TDecoded : never
 
 export interface ColumnDefinition<

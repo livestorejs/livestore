@@ -4,7 +4,7 @@ import { SqliteAst } from 'effect-db-schema'
 import { memoize } from 'lodash-es'
 
 import type { InMemoryDatabase } from './index.js'
-import type { Schema, SchemaMetaRow } from './schema.js'
+import type { LiveStoreSchema, SchemaMetaRow } from './schema.js'
 import { dynamicallyRegisteredTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
 import type { PreparedBindValues } from './utils/util.js'
 import { sql } from './utils/util.js'
@@ -19,7 +19,7 @@ export const migrateDb = ({
 }: {
   db: InMemoryDatabase
   otelContext: otel.Context
-  schema: Schema
+  schema: LiveStoreSchema
 }) => {
   db.execute(
     // TODO use schema migration definition from schema.ts instead

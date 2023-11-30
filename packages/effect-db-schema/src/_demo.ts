@@ -18,7 +18,7 @@ const main = () => {
     state: sqlite.json({ schema: State }),
   })
 
-  const dbSchema = sqlite.makeDbSchema({ users })
+  const dbSchema = sqlite.makeDbSchema([users])
 
   type _UsersColumns = sqlite.FromTable.Columns<typeof users>
   type _UsersEncoded = sqlite.FromTable.RowEncoded<typeof users>

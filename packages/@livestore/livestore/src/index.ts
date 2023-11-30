@@ -3,13 +3,6 @@ export type { LiveStoreQuery, BaseGraphQLContext, QueryResult, QueryDebugInfo, R
 
 export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
 
-export {
-  defineComponentStateSchema,
-  defineAction,
-  defineActions,
-  defineMaterializedViews,
-  makeSchema,
-} from './schema.js'
 export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryDatabase.js'
 export type { Storage, StorageType, StorageInit } from './storage/index.js'
 export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom } from './reactive.js'
@@ -29,7 +22,16 @@ export {
   stateQuery,
 } from './state.js'
 
-export type { Schema, GetActionArgs, GetApplyEventArgs, Index, ActionDefinition, ActionDefinitions } from './schema.js'
+export { defineAction, defineActions, defineMaterializedViews, makeSchema } from './schema.js'
+
+export type {
+  LiveStoreSchema,
+  InputSchema,
+  GetActionArgs,
+  GetApplyEventArgs,
+  ActionDefinition,
+  ActionDefinitions,
+} from './schema.js'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 

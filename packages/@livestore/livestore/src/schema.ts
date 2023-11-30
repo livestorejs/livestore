@@ -1,31 +1,19 @@
-import { type PrettifyFlat, shouldNeverHappen } from '@livestore/utils'
-import type { Schema } from '@livestore/utils/effect'
-import { SqliteAst, SqliteDsl } from 'effect-db-schema'
-
-import { DbSchema } from './index.js'
-
-export type Index = {
-  name: string
-  columns: string[]
-  /** @default false */
-  isUnique?: boolean
-}
+import type { SqliteAst } from 'effect-db-schema'
+import { SqliteDsl } from 'effect-db-schema'
 
 // A global variable representing component state tables we should create in the database
 export const dynamicallyRegisteredTables: Map<string, SqliteAst.Table> = new Map()
 
-/** Note when using the object-notation, the object keys are ignored and not used as table names */
 export type InputSchema = {
-  tables:
-    | {
-        [tableName: string]: SqliteDsl.TableDefinition<any, any>
-      }
-    | ReadonlyArray<SqliteDsl.TableDefinition<any, any>>
+  /** Note when using the object-notation, the object keys are ignored and not used as table names */
+  tables: SqliteDsl.DbSchemaInput
   materializedViews?: MaterializedViewDefinitions
   actions: ActionDefinitions<any>
 }
 
-export const makeSchema = <TSchema extends InputSchema>(schema: TSchema): Schema => {
+export const makeSchema = <TSchema extends InputSchema>(
+  schema: TSchema,
+): LiveStoreSchema<SqliteDsl.DbSchemaFromInputSchema<TSchema['tables']>> => {
   const inputTables: ReadonlyArray<SqliteDsl.TableDefinition<any, any>> = Array.isArray(schema.tables)
     ? schema.tables
     : Object.values(schema.tables)
@@ -41,58 +29,18 @@ export const makeSchema = <TSchema extends InputSchema>(schema: TSchema): Schema
   }
 
   return {
-    _: Symbol('livestore.Schema') as any,
+    _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
     tables,
     materializedViews: schema.materializedViews ?? { tableNames: [] },
     actions: schema.actions,
-  } satisfies Schema
-}
-
-export type ComponentStateSchema = SqliteDsl.TableDefinition<any, any> & {
-  // TODO
-  register: () => void
-}
-
-// TODO get rid of "side effect" in this function (via explicit register fn)
-export const defineComponentStateSchema = <TName extends string, TColumns extends SqliteDsl.Columns>(
-  // TODO get rid of the `name` param here and use the `componentKey` name instead
-  name: TName,
-  columns: TColumns,
-): SqliteDsl.TableDefinition<
-  `components__${TName}`,
-  PrettifyFlat<TColumns & { id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false> }>
-> => {
-  const tablePath = `components__${name}` as const
-
-  const schemaWithId = columns as unknown as PrettifyFlat<
-    TColumns & {
-      id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
-    }
-  >
-
-  schemaWithId.id = DbSchema.text({ primaryKey: true })
-
-  const tableDef = SqliteDsl.table(tablePath, schemaWithId, [])
-
-  if (
-    dynamicallyRegisteredTables.has(tablePath) &&
-    SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)
-  ) {
-    console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', tableDef.ast)
-    return shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
-  }
-
-  // TODO move into register fn
-  dynamicallyRegisteredTables.set(tablePath, tableDef.ast)
-
-  return tableDef
+  } satisfies LiveStoreSchema
 }
 
 export type SQLWriteStatement = {
   sql: string
 
   /** Tables written by the statement */
-  writeTables: string[]
+  writeTables: ReadonlyArray<string>
   // TODO refactor this
   argsAlreadyBound?: boolean
 }
@@ -102,15 +50,17 @@ export type ActionDefinition<TArgs = any> = {
   prepareBindValues?: (args: TArgs) => any
 }
 
-export type Schema = {
-  readonly _: unique symbol
+export type LiveStoreSchema<TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema> = {
+  /** Only used on type-level */
+  readonly _DbSchemaType: TDbSchema
+
   readonly tables: Map<string, SqliteAst.Table>
   readonly materializedViews: MaterializedViewDefinitions
   readonly actions: ActionDefinitions<any>
 }
 
 // TODO
-export type MaterializedViewDefinitions = { tableNames: string[] }
+export type MaterializedViewDefinitions = { tableNames: ReadonlyArray<string> }
 export type ActionDefinitions<TArgsMap extends Record<string, any>> = {
   [key in keyof TArgsMap]: ActionDefinition<TArgsMap[key]>
 }
@@ -126,14 +76,7 @@ const schemaMetaTable = SqliteDsl.table(SCHEMA_META_TABLE, {
 
 export type SchemaMetaRow = SqliteDsl.FromTable.RowDecoded<typeof schemaMetaTable>
 
-export const systemTables = [
-  // SqliteDsl.table(EVENTS_TABLE_NAME, {
-  //   id: SqliteDsl.text({ primaryKey: true }),
-  //   type: SqliteDsl.text({ nullable: false }),
-  //   args: SqliteDsl.text({ nullable: false }),
-  // }).ast,
-  schemaMetaTable.ast,
-]
+export const systemTables = [schemaMetaTable.ast]
 
 export const defineMaterializedViews = <M extends MaterializedViewDefinitions>(materializedViews: M) =>
   materializedViews
