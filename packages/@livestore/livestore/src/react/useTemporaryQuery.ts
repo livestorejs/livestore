@@ -26,6 +26,8 @@ export const useTemporaryQueryRef = <TResult>(
     const cachedItem = queryCache.get(makeQuery)
     if (cachedItem !== undefined) {
       cachedItem.reactIds.add(reactId)
+
+      return cachedItem.query$
     }
 
     const query$ = makeQuery()
