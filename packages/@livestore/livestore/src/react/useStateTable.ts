@@ -4,14 +4,13 @@ import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
 
-import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import type { StateQueryArgs, StateResult, StateTableDefDefault, StateTableDefinition, StateType } from '../state.js'
 import { stateQuery } from '../state.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 
-export type UseStateResult<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> = [
+export type UseStateResult<TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>> = [
   state: StateResult<TStateTableDef>,
   setState: StateSetters<TStateTableDef>,
   query$: LiveStoreJSQuery<StateResult<TStateTableDef>>,
@@ -148,7 +147,7 @@ export const useStateTable: {
 export type Dispatch<A> = (action: A) => void
 export type SetStateAction<S> = S | ((previousValue: S) => S)
 
-export type StateSetters<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
+export type StateSetters<TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>> =
   TStateTableDef['isSingleColumn'] extends true
     ? Dispatch<SetStateAction<StateResult<TStateTableDef>>>
     : {
@@ -160,21 +159,32 @@ export type StateSetters<TStateTableDef extends StateTableDefinition<any, boolea
 /** Reference counted cache for `query$` and otel context */
 class RCCache {
   private readonly cache = new Map<
-    StateTableDefinition<any, any, any>,
-    Map<string, { reactIds: Set<string>; span: otel.Span; otelContext: otel.Context; query$: ILiveStoreQuery<any> }>
+    StateTableDefinition<StateTableDefDefault, boolean, StateType>,
+    Map<
+      string,
+      {
+        reactIds: Set<string>
+        span: otel.Span
+        otelContext: otel.Context
+        query$: LiveStoreJSQuery<any>
+      }
+    >
   >()
-  private reverseCache = new Map<ILiveStoreQuery<any>, [StateTableDefinition<any, any, any>, string]>()
+  private reverseCache = new Map<
+    LiveStoreJSQuery<any>,
+    [StateTableDefinition<StateTableDefDefault, boolean, StateType>, string]
+  >()
 
-  get = (def: StateTableDefinition<any, any, any>, id: string) => {
+  get = (def: StateTableDefinition<StateTableDefDefault, boolean, StateType>, id: string) => {
     const queries = this.cache.get(def)
     if (queries === undefined) return undefined
     return queries.get(id)
   }
 
   set = (
-    def: StateTableDefinition<any, any, any>,
+    def: StateTableDefinition<StateTableDefDefault, boolean, StateType>,
     id: string,
-    query$: ILiveStoreQuery<any>,
+    query$: LiveStoreJSQuery<any>,
     reactId: string,
     otelContext: otel.Context,
     span: otel.Span,
@@ -188,7 +198,7 @@ class RCCache {
     this.reverseCache.set(query$, [def, id])
   }
 
-  delete = (query$: ILiveStoreQuery<any>) => {
+  delete = (query$: LiveStoreJSQuery<any>) => {
     const item = this.reverseCache.get(query$)
     if (item === undefined) return
 

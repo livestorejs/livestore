@@ -81,7 +81,7 @@ export const defineStateTable = <
   if (dynamicallyRegisteredTables.has(tablePath)) {
     if (SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!) !== SqliteAst.hash(tableDef.ast)) {
       console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', tableDef.ast)
-      return shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
+      shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
     }
   } else {
     dynamicallyRegisteredTables.set(tablePath, tableDef.ast)
@@ -94,7 +94,7 @@ export const defineStateTable = <
   }
 }
 
-export type StateQueryArgs<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
+export type StateQueryArgs<TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>> =
   TStateTableDef['type'] extends 'singleton'
     ? {
         def: TStateTableDef
@@ -182,20 +182,16 @@ export const stateQuery = <TStateTableDef extends StateTableDefinition<StateTabl
 
 type GetValForKey<T, K> = K extends keyof T ? T[K] : never
 
-export type StateResult<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
+export type StateResult<TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>> =
   TStateTableDef['isSingleColumn'] extends true
     ? GetValForKey<SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>, 'value'>
     : SqliteDsl.FromColumns.RowDecoded<TStateTableDef['schema']['columns']>
 
-export type StateResultEncoded<TStateTableDef extends StateTableDefinition<any, boolean, StateType>> =
+export type StateResultEncoded<TStateTableDef extends StateTableDefinition<StateTableDefDefault, boolean, StateType>> =
   TStateTableDef['isSingleColumn'] extends true
     ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TStateTableDef['schema']['columns']>, 'value'>
     : SqliteDsl.FromColumns.RowEncoded<TStateTableDef['schema']['columns']>
 
-/**
- * Create a row storing the state for a component instance, if none exists yet.
- * Initialized with default values, and keyed on the component key.
- */
 const insertRowForStateInstance = ({
   db,
   id,
