@@ -1,10 +1,16 @@
 import type * as otel from '@opentelemetry/api'
 
+import { dbGraph } from '../global-state.js'
 import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, throwContextNotSetError, type Thunk } from '../reactive.js'
-import type { RefreshReason } from '../store.js'
-import { type DbContext, dbGraph } from './graph.js'
+import type { RefreshReason, Store } from '../store.js'
 import type { LiveStoreJSQuery } from './js.js'
+
+export type DbContext = {
+  store: Store
+  otelTracer: otel.Tracer
+  rootOtelContext: otel.Context
+}
 
 export type UnsubscribeQuery = () => void
 

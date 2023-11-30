@@ -30,13 +30,18 @@ export const column = (props: Omit<Column, '_tag'>): Column => ({ _tag: 'column'
 
 export type Index = {
   _tag: 'index'
-  columns: string[]
+  columns: ReadonlyArray<string>
   name?: string
   unique?: boolean
   primaryKey?: boolean
 }
 
-export const index = (columns: string[], name?: string, unique?: boolean, primaryKey?: boolean): Index => ({
+export const index = (
+  columns: ReadonlyArray<string>,
+  name?: string,
+  unique?: boolean,
+  primaryKey?: boolean,
+): Index => ({
   _tag: 'index',
   columns,
   name,
@@ -48,23 +53,23 @@ export type ForeignKey = {
   _tag: 'foreignKey'
   references: {
     table: string
-    columns: string[]
+    columns: ReadonlyArray<string>
   }
   key: {
     table: string
-    columns: string[]
+    columns: ReadonlyArray<string>
   }
-  columns: string[]
+  columns: ReadonlyArray<string>
 }
 
 export type Table = {
   _tag: 'table'
   name: string
-  columns: Column[]
-  indexes: Index[]
+  columns: ReadonlyArray<Column>
+  indexes: ReadonlyArray<Index>
 }
 
-export const table = (name: string, columns: Column[], indexes: Index[]): Table => ({
+export const table = (name: string, columns: ReadonlyArray<Column>, indexes: ReadonlyArray<Index>): Table => ({
   _tag: 'table',
   name,
   columns,

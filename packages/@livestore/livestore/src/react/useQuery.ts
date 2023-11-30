@@ -6,6 +6,7 @@ import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
 import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
+
 /**
  * This is needed because the `React.useMemo` call below, can sometimes be called multiple times 🤷,
  * so we need to "cache" the fact that we've already started a span for this component.
@@ -13,7 +14,12 @@ import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInp
  */
 const spanAlreadyStartedCache = new Map<ILiveStoreQuery<any>, { span: otel.Span; otelContext: otel.Context }>()
 
-export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
+export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => useQueryRef(query).current
+
+export const useQueryRef = <TResult>(
+  query: ILiveStoreQuery<TResult>,
+  parentOtelContext?: otel.Context,
+): React.MutableRefObject<TResult> => {
   const { store } = useStore()
 
   const stackInfo = React.useMemo(() => {
@@ -32,7 +38,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
     const span = store.otel.tracer.startSpan(
       `LiveStore:useQuery:${query.label}`,
       { attributes: { label: query.label, stackInfo: JSON.stringify(stackInfo) } },
-      store.otel.queriesSpanContext,
+      parentOtelContext ?? store.otel.queriesSpanContext,
     )
 
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -40,7 +46,7 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
     spanAlreadyStartedCache.set(query, { span, otelContext })
 
     return { span, otelContext }
-  }, [query, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
+  }, [parentOtelContext, query, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
 
   const initialResult = React.useMemo(
     () =>
@@ -86,5 +92,5 @@ export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => {
     }
   }, [stackInfo, query, setValue, store, valueRef, otelContext, span])
 
-  return valueRef.current
+  return valueRef
 }

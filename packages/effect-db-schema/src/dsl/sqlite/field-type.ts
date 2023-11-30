@@ -10,8 +10,12 @@ export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
 
 export type FieldTypeJson<TDecoded> = FieldType<'text', string, TDecoded>
 export type FieldTypeText<TEncoded extends string, TDecoded extends string> = FieldType<'text', TEncoded, TDecoded>
-export type FieldTypeInteger = FieldType<'integer', number, number>
-export type FieldTypeReal = FieldType<'real', number, number>
+export type FieldTypeInteger<TEncoded extends number, TDecoded extends number> = FieldType<
+  'integer',
+  TEncoded,
+  TDecoded
+>
+export type FieldTypeReal<TEncoded extends number, TDecoded extends number> = FieldType<'real', TEncoded, TDecoded>
 export type FieldTypeBlob<TDecoded> = FieldType<'blob', Uint8Array, TDecoded>
 
 /** Number corresponds with MS since epoch */
@@ -25,14 +29,21 @@ export const text = <TEncoded extends string, TDecoded extends string>(
   codec,
 })
 
-export const integer = (): FieldTypeInteger => ({
+export const integer = <TEncoded extends number, TDecoded extends number>(
+  codec: Schema.Schema<TEncoded, TDecoded> = Schema.int()(Schema.number) as unknown as Schema.Schema<
+    TEncoded,
+    TDecoded
+  >,
+): FieldTypeInteger<TEncoded, TDecoded> => ({
   columnType: 'integer',
-  codec: Schema.int()(Schema.number),
+  codec,
 })
 
-export const real = (): FieldTypeReal => ({
+export const real = <TEncoded extends number, TDecoded extends number>(
+  codec: Schema.Schema<TEncoded, TDecoded> = Schema.number as unknown as Schema.Schema<TEncoded, TDecoded>,
+): FieldTypeReal<TEncoded, TDecoded> => ({
   columnType: 'real',
-  codec: Schema.number,
+  codec,
 })
 
 export const blob = (): FieldTypeBlob<Uint8Array> => ({

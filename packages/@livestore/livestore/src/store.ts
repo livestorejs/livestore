@@ -5,24 +5,21 @@ import type { GraphQLSchema } from 'graphql'
 import type * as Sqlite from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
-import type { ComponentKey } from './componentKey.js'
-import { tableNameForComponentKey } from './componentKey.js'
 import type { LiveStoreEvent } from './events.js'
+import { dbGraph, dynamicallyRegisteredTables } from './global-state.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
-import { getDurationMsFromSpan } from './otel.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
-import type { ILiveStoreQuery } from './reactiveQueries/base-class.js'
-import { type DbContext, dbGraph } from './reactiveQueries/graph.js'
+import type { DbContext, ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { ActionDefinition, GetActionArgs, Schema, SQLWriteStatement } from './schema.js'
-import { componentStateTables } from './schema.js'
+import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
-import type { ParamsObject } from './util.js'
-import { isPromise, prepareBindValues, sql } from './util.js'
+import { getDurationMsFromSpan } from './utils/otel.js'
+import type { ParamsObject } from './utils/util.js'
+import { isPromise, prepareBindValues, sql } from './utils/util.js'
 
 export type LiveStoreQuery<TResult extends Record<string, any> = any> =
   | LiveStoreSQLQuery<TResult>
@@ -52,7 +49,7 @@ export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
   db: InMemoryDatabase
   /** A `Proxy`d version of `db` except that it also mirrors `execute` calls to the storage */
   dbProxy: InMemoryDatabase
-  schema: Schema
+  schema: LiveStoreSchema
   storage?: Storage
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer: otel.Tracer
@@ -69,7 +66,7 @@ export type RefreshReason =
       event: Omit<LiveStoreEvent, 'id'>
 
       /** The tables that were written to by the event */
-      writeTables: string[]
+      writeTables: ReadonlyArray<string>
     }
   | {
       _tag: 'applyEvents'
@@ -79,7 +76,7 @@ export type RefreshReason =
       events: Omit<LiveStoreEvent, 'id'>[]
 
       /** The tables that were written to by the event */
-      writeTables: string[]
+      writeTables: ReadonlyArray<string>
     }
   | {
       _tag: 'react'
@@ -107,7 +104,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   inMemoryDB: InMemoryDatabase
   // TODO refactor
   _proxyDb: InMemoryDatabase
-  schema: Schema
+  schema: LiveStoreSchema
   graphQLSchema?: GraphQLSchema
   graphQLContext?: TGraphQLContext
   otel: StoreOtel
@@ -157,8 +154,8 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
     const allTableNames = new Set([
       ...this.schema.tables.keys(),
-      ...this.schema.materializedViews.tableNames,
-      ...Array.from(componentStateTables.values()).map((_) => _.name),
+      // TODO activate dynamic tables
+      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.schema.name),
     ])
     for (const tableName of allTableNames) {
       this.tableRefs[tableName] = this.graph.makeRef(null, {
@@ -200,7 +197,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   ): (() => void) =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label } },
+      { attributes: { label: options?.label, queryLabel: query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -418,7 +415,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     eventType: string,
     args: any = {},
     otelContext: otel.Context,
-  ): { writeTables: string[]; durationMs: number } => {
+  ): { writeTables: ReadonlyArray<string>; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
       'LiveStore:applyEventWithoutRefresh',
       {
@@ -435,21 +432,30 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           ...this.schema.actions,
 
           // Special LiveStore:defined actions
-          updateComponentState: {
-            statement: ({ componentKey, columnNames }: { componentKey: ComponentKey; columnNames: string[] }) => {
-              const whereClause = componentKey._tag === 'singleton' ? '' : `where id = '${componentKey.id}'`
+          'livestore.UpdateComponentState': {
+            statement: ({
+              id,
+              columnNames,
+              tableName,
+            }: {
+              id?: string
+              columnNames: ReadonlyArray<string>
+              tableName: string
+            }) => {
+              const whereClause = id === undefined ? '' : `where id = '${id}'`
               const updateClause = columnNames.map((columnName) => `${columnName} = $${columnName}`).join(', ')
-              const stmt = sql`update ${tableNameForComponentKey(componentKey)} set ${updateClause} ${whereClause}`
+              const stmt = sql`update ${tableName} set ${updateClause} ${whereClause}`
 
               return {
                 sql: stmt,
-                writeTables: [tableNameForComponentKey(componentKey)],
+                writeTables: [tableName],
               }
             },
+            prepareBindValues: ({ bindValues }) => bindValues ?? {},
           },
 
-          RawSql: {
-            statement: ({ sql, writeTables }: { sql: string; writeTables: string[] }) => ({
+          'livestore.RawSql': {
+            statement: ({ sql, writeTables }: { sql: string; writeTables: ReadonlyArray<string> }) => ({
               sql,
               writeTables,
               argsAlreadyBound: false,
@@ -501,7 +507,12 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * This should only be used for framework-internal purposes;
    * all app writes should go through applyEvent.
    */
-  execute = (query: string, params: ParamsObject = {}, writeTables?: string[], otelContext?: otel.Context) => {
+  execute = (
+    query: string,
+    params: ParamsObject = {},
+    writeTables?: ReadonlyArray<string>,
+    otelContext?: otel.Context,
+  ) => {
     this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
     if (this.storage !== undefined) {
@@ -521,7 +532,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   boot,
   sqlite3,
 }: {
-  schema: Schema
+  schema: LiveStoreSchema
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer

@@ -5,7 +5,7 @@ import type { GraphQLSchema } from 'graphql'
 import initSqlite3Wasm from 'sqlite-esm'
 
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
-import type { Schema } from '../schema.js'
+import type { LiveStoreSchema } from '../schema/index.js'
 import type { StorageInit } from '../storage/index.js'
 import type { BaseGraphQLContext, GraphQLOptions, LiveStoreQuery, Store } from '../store.js'
 import { createStore } from '../store.js'
@@ -25,7 +25,7 @@ export type LiveStoreContext = {
 export type QueryDefinition = (store: Store) => LiveStoreQuery
 
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
-  schema: Schema
+  schema: LiveStoreSchema
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
@@ -43,7 +43,7 @@ export const DeferredStoreContext = Context.Tag<DeferredStoreContext>(
 // export const DeferredStoreContext = Effect.cached(Effect.flatMap(StoreContext, (_) => Effect.succeed(_)))
 
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
-  schema: Schema
+  schema: LiveStoreSchema
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: {
     schema: Effect.Effect<otel.Tracer, never, GraphQLSchema>

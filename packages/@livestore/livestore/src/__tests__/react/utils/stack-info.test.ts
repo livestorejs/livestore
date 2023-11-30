@@ -43,3 +43,37 @@ Error
     }
   `)
 })
+
+it('Tracklist_ stacktrace', async () => {
+  const stackTrace = `\
+stack Error
+    at https://localhost:8081/@fs/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/dist/react/useQuery.js?t=1701368568351:19:23
+    at mountMemo (https://localhost:8081/node_modules/.vite-web/deps/chunk-YKTDXTVC.js?v=86daed82:12817:27)
+    at Object.useMemo (https://localhost:8081/node_modules/.vite-web/deps/chunk-YKTDXTVC.js?v=86daed82:13141:24)
+    at Object.useMemo (https://localhost:8081/node_modules/.vite-web/deps/chunk-7P4K3U7O.js?v=86daed82:1094:29)
+    at useQueryRef (https://localhost:8081/@fs/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/dist/react/useQuery.js?t=1701368568351:16:29)
+    at Module.useQuery (https://localhost:8081/@fs/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/dist/react/useQuery.js?t=1701368568351:13:36)
+    at Tracklist_ (https://localhost:8081/src/components/Tracklist/Tracklist.tsx?t=1701368568351:148:44)
+    at renderWithHooks (https://localhost:8081/node_modules/.vite-web/deps/chunk-YKTDXTVC.js?v=86daed82:12171:26)
+    at mountIndeterminateComponent (https://localhost:8081/node_modules/.vite-web/deps/chunk-YKTDXTVC.js?v=86daed82:14921:21)
+    at beginWork (https://localhost:8081/node_modules/.vite-web/deps/chunk-YKTDXTVC.js?v=86daed82:15902:22)
+`
+
+  const stackInfo = extractStackInfoFromStackTrace(stackTrace)
+  // Replacing file paths for snapshot testing as they are not stable
+  stackInfo.frames.forEach((_) => (_.filePath = '__REPLACED_FOR_SNAPSHOT__'))
+  expect(stackInfo).toMatchInlineSnapshot(`
+    {
+      "frames": [
+        {
+          "filePath": "__REPLACED_FOR_SNAPSHOT__",
+          "name": "Tracklist_",
+        },
+        {
+          "filePath": "__REPLACED_FOR_SNAPSHOT__",
+          "name": "useQuery",
+        },
+      ],
+    }
+  `)
+})

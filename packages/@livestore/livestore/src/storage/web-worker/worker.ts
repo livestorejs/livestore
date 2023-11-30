@@ -8,8 +8,8 @@ import type * as SqliteWasm from 'sqlite-esm'
 import sqlite3InitModule from 'sqlite-esm'
 
 // import { v4 as uuid } from 'uuid'
-import type { Bindable } from '../../util.js'
-import { casesHandled, sql } from '../../util.js'
+import type { Bindable } from '../../utils/util.js'
+import { casesHandled, sql } from '../../utils/util.js'
 import { IDB } from '../utils/idb.js'
 import type { StorageOptionsWeb } from './index.js'
 

@@ -2,8 +2,8 @@ import { getTraceParentHeader } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { invoke } from '@tauri-apps/api'
 
-import type { PreparedBindValues } from '../../util.js'
-import { prepareBindValues } from '../../util.js'
+import type { PreparedBindValues } from '../../utils/util.js'
+import { prepareBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 
 export type StorageOptionsTauri = {

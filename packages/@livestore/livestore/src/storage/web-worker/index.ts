@@ -2,7 +2,7 @@ import { casesHandled } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
-import type { PreparedBindValues } from '../../util.js'
+import type { PreparedBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 import { IDB } from '../utils/idb.js'
 import type { WrappedWorker } from './worker.js'

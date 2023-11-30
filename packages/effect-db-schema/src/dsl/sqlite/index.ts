@@ -10,21 +10,30 @@ import type * as FieldType_ from './field-type.js'
 export * from './field-defs.js'
 export * as FieldType from './field-type.js'
 
+export type DbSchema = {
+  [key: string]: TableDefinition<string, Columns>
+}
+
 /** Note when using the object-notation, the object keys are ignored and not used as table names */
 export type DbSchemaInput = Record<string, TableDefinition<any, any>> | ReadonlyArray<TableDefinition<any, any>>
 
-type TableNamesFromSchemaInput<TSchemaInput extends DbSchemaInput> = TSchemaInput extends ReadonlyArray<
-  TableDefinition<infer TTableName, any>
+/**
+ * In case of ...
+ * - array: we use the table name of each array item (= table definition) as the object key
+ * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
+ */
+export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> = TSchemaInput extends ReadonlyArray<
+  TableDefinition<any, any>
 >
-  ? TTableName
-  : TSchemaInput extends Record<infer TTableName, TableDefinition<any, any>>
-    ? TTableName
+  ? { [K in TSchemaInput[number] as K['name']]: K }
+  : TSchemaInput extends Record<string, TableDefinition<any, any>>
+    ? { [K in keyof TSchemaInput as TSchemaInput[K]['name']]: TSchemaInput[K] }
     : never
 
 // TODO ensure via runtime check (possibly even via type-level check) that all index names are unique
 export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
   schema: TDbSchemaInput,
-): DbSchema<TableNamesFromSchemaInput<TDbSchemaInput>> => {
+): DbSchemaFromInputSchema<TDbSchemaInput> => {
   return Array.isArray(schema) ? Object.fromEntries(schema.map((_) => [_.name, _])) : schema
 }
 
@@ -53,7 +62,7 @@ export const structSchemaForTable = <TTableDefinition extends TableDefinition<an
     ),
   )
 
-const columsToAst = (columns: Columns): SqliteAst.Column[] => {
+const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
   return Object.entries(columns).map(([name, column]) => {
     return {
       _tag: 'column',
@@ -67,20 +76,18 @@ const columsToAst = (columns: Columns): SqliteAst.Column[] => {
   })
 }
 
-const indexesToAst = (indexes: Index[]): SqliteAst.Index[] => {
+const indexesToAst = (indexes: ReadonlyArray<Index>): ReadonlyArray<SqliteAst.Index> => {
   return indexes.map(
     (_) => ({ _tag: 'index', columns: _.columns, name: _.name, unique: _.isUnique ?? false }) satisfies SqliteAst.Index,
   )
 }
-
-export type DbSchema<TTableNames extends string = string> = { [key in TTableNames]: TableDefinition<string, Columns> }
 
 /// Other
 
 export type TableDefinition<TName extends string, TColumns extends Columns> = {
   name: TName
   columns: TColumns
-  indexes?: Index[]
+  indexes?: ReadonlyArray<Index>
   ast: SqliteAst.Table
 }
 
@@ -91,7 +98,7 @@ export type Columns = Record<
 
 export type Index = {
   name: string
-  columns: string[]
+  columns: ReadonlyArray<string>
   /** @default false */
   isUnique?: boolean
 }

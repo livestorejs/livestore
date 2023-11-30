@@ -28,7 +28,7 @@ import { pick } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { isEqual, uniqueId } from 'lodash-es'
 
-import { BoundArray } from './bounded-collections.js'
+import { BoundArray } from './utils/bounded-collections.js'
 // import { getDurationMsFromSpan } from './otel.js'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')

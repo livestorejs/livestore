@@ -1,12 +1,14 @@
+import { Schema as EffectSchema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst } from 'effect-db-schema'
 import { memoize } from 'lodash-es'
 
+import { dynamicallyRegisteredTables } from './global-state.js'
 import type { InMemoryDatabase } from './index.js'
-import type { Schema, SchemaMetaRow } from './schema.js'
-import { componentStateTables, SCHEMA_META_TABLE, systemTables } from './schema.js'
-import type { PreparedBindValues } from './util.js'
-import { sql } from './util.js'
+import type { LiveStoreSchema, SchemaMetaRow } from './schema/index.js'
+import { SCHEMA_META_TABLE, systemTables } from './schema/index.js'
+import type { PreparedBindValues } from './utils/util.js'
+import { sql } from './utils/util.js'
 
 const getMemoizedTimestamp = memoize(() => new Date().toISOString())
 
@@ -18,7 +20,7 @@ export const migrateDb = ({
 }: {
   db: InMemoryDatabase
   otelContext: otel.Context
-  schema: Schema
+  schema: LiveStoreSchema
 }) => {
   db.execute(
     // TODO use schema migration definition from schema.ts instead
@@ -34,17 +36,18 @@ export const migrateDb = ({
     schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
   )
 
-  const tableDefs = [
+  const tableDefs = new Set([
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
     ...systemTables,
-    ...Array.from(schema.tables.values()).filter((_) => _.name !== SCHEMA_META_TABLE),
-    ...componentStateTables.values(),
-  ]
+    ...Array.from(schema.tables.values()).filter((_) => _.schema.name !== SCHEMA_META_TABLE),
+    ...dynamicallyRegisteredTables.values(),
+  ])
 
   for (const tableDef of tableDefs) {
-    const tableName = tableDef.name
+    const tableAst = tableDef.schema.ast
+    const tableName = tableAst.name
     const dbSchemaHash = dbSchemaHashByTable[tableName]
-    const schemaHash = SqliteAst.hash(tableDef)
+    const schemaHash = SqliteAst.hash(tableAst)
     if (schemaHash !== dbSchemaHash) {
       if (import.meta.env.VITE_LIVESTORE_SKIP_MIGRATIONS) {
         console.log(
@@ -55,7 +58,7 @@ export const migrateDb = ({
           `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
         )
 
-        migrateTable({ db, tableDef, otelContext, schemaHash })
+        migrateTable({ db, tableAst, otelContext, schemaHash })
       }
     }
   }
@@ -63,24 +66,24 @@ export const migrateDb = ({
 
 export const migrateTable = ({
   db,
-  tableDef,
+  tableAst,
   otelContext,
   schemaHash,
 }: {
   db: InMemoryDatabase
-  tableDef: SqliteAst.Table
+  tableAst: SqliteAst.Table
   otelContext: otel.Context
   schemaHash: number
 }) => {
-  console.log(`Migrating table '${tableDef.name}'...`)
-  const tableName = tableDef.name
-  const columnSpec = makeColumnSpec(tableDef)
+  console.log(`Migrating table '${tableAst.name}'...`)
+  const tableName = tableAst.name
+  const columnSpec = makeColumnSpec(tableAst)
 
   // TODO need to possibly handle cascading deletes due to foreign keys
   db.execute(sql`drop table if exists ${tableName}`, undefined, [], { otelContext })
   db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, [], { otelContext })
 
-  for (const index of tableDef.indexes) {
+  for (const index of tableAst.indexes) {
     db.execute(createIndexFromDefinition(tableName, index), undefined, [], { otelContext })
   }
 
@@ -101,9 +104,9 @@ const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) =>
   return sql`create ${uniqueStr} index ${index.name} on ${tableName} (${index.columns.join(', ')})`
 }
 
-const makeColumnSpec = (tableDef: SqliteAst.Table) => {
-  const primaryKeys = tableDef.columns.filter((_) => _.primaryKey).map((_) => _.name)
-  const columnDefStrs = tableDef.columns.map(toSqliteColumnSpec)
+const makeColumnSpec = (tableAst: SqliteAst.Table) => {
+  const primaryKeys = tableAst.columns.filter((_) => _.primaryKey).map((_) => _.name)
+  const columnDefStrs = tableAst.columns.map(toSqliteColumnSpec)
   if (primaryKeys.length > 0) {
     columnDefStrs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
   }
@@ -111,16 +114,18 @@ const makeColumnSpec = (tableDef: SqliteAst.Table) => {
   return columnDefStrs.join(', ')
 }
 
+/** NOTE primary keys are applied on a table level not on a column level to account for multi-column primary keys */
 const toSqliteColumnSpec = (column: SqliteAst.Column) => {
-  const columnType = column.type._tag
-  // const primaryKey = column.primaryKey ? 'primary key' : ''
-  const nullable = column.nullable === false ? 'not null' : ''
-  const defaultValue =
-    column.default === undefined
-      ? ''
-      : columnType === 'text'
-        ? `default '${column.default}'`
-        : `default ${column.default}`
+  const columnTypeStr = column.type._tag
+  const nullableStr = column.nullable === false ? 'not null' : ''
+  const defaultValueStr = (() => {
+    if (column.default === undefined) return ''
 
-  return `${column.name} ${columnType} ${nullable} ${defaultValue}`
+    const encodeValue = EffectSchema.encodeSync(column.codec)
+    const encodedDefaultValue = encodeValue(column.default ?? null)
+
+    return columnTypeStr === 'text' ? `default '${encodedDefaultValue}'` : `default ${encodedDefaultValue}`
+  })()
+
+  return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
 }

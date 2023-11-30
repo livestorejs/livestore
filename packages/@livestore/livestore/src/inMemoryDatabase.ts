@@ -4,12 +4,12 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import type * as Sqlite from 'sqlite-esm'
 
-import BoundMap, { BoundArray } from './bounded-collections.js'
 // import { EVENTS_TABLE_NAME } from './events.js'
 import { sql } from './index.js'
-import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './otel.js'
 import QueryCache from './QueryCache.js'
-import type { Bindable, PreparedBindValues } from './util.js'
+import BoundMap, { BoundArray } from './utils/bounded-collections.js'
+import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './utils/otel.js'
+import type { Bindable, PreparedBindValues } from './utils/util.js'
 
 type DatabaseWithCAPI = Sqlite.Database & { capi: Sqlite.CAPI }
 
@@ -135,9 +135,11 @@ export class InMemoryDatabase {
   execute(
     query: string,
     bindValues?: PreparedBindValues,
-    writeTables?: string[],
+    writeTables?: ReadonlyArray<string>,
     options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
   ): { durationMs: number } {
+    // console.debug('in-memory-db:execute', query, bindValues)
+
     return this.otelTracer.startActiveSpan(
       'livestore.in-memory-db:execute',
       // TODO truncate query string

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import * as LiveStoreReact from '../../react/index.js'
 import { querySQL } from '../../reactiveQueries/sql.js'
-import { sql } from '../../util.js'
+import { sql } from '../../utils/util.js'
 import type { Todo } from './fixture.js'
 import { makeTodoMvc } from './fixture.js'
 
@@ -29,7 +29,7 @@ describe('useQuery', () => {
     expect(renderCount).toBe(1)
 
     act(() =>
-      store.applyEvent('RawSql', {
+      store.applyEvent('livestore.RawSql', {
         sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
         writeTables: ['todos'],
       }),
@@ -48,12 +48,12 @@ describe('useQuery', () => {
     const todo1$ = querySQL<Todo>(`select * from todos where id = 't1'`, { label: 'libraryTracksView1' })
     const todo2$ = querySQL<Todo>(`select * from todos where id = 't2'`, { label: 'libraryTracksView2' })
 
-    store.applyEvent('RawSql', {
+    store.applyEvent('livestore.RawSql', {
       sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
       writeTables: ['todos'],
     })
 
-    store.applyEvent('RawSql', {
+    store.applyEvent('livestore.RawSql', {
       sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
       writeTables: ['todos'],
     })
@@ -73,7 +73,7 @@ describe('useQuery', () => {
     expect(renderCount).toBe(1)
 
     act(() =>
-      store.applyEvent('RawSql', {
+      store.applyEvent('livestore.RawSql', {
         sql: sql`UPDATE todos SET text = 'buy soy milk' WHERE id = 't1'`,
         writeTables: ['todos'],
       }),

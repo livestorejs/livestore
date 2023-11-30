@@ -3,11 +3,12 @@ import { assertNever, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
-import { getDurationMsFromSpan } from '../otel.js'
+import { dbGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
-import { type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
-import { type DbContext, dbGraph } from './graph.js'
+import { getDurationMsFromSpan } from '../utils/otel.js'
+import type { DbContext, GetAtomResult } from './base-class.js'
+import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import { LiveStoreJSQuery } from './js.js'
 
 export const queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
