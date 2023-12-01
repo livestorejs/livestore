@@ -55,9 +55,9 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
   props: LiveStoreContextProps<GraphQLContext>,
 ): Layer.Layer<otel.Tracer, never, LiveStoreContext> =>
-  Layer.provide(
-    LiveStoreContextDeferred,
-    Layer.scoped(LiveStoreContext, makeLiveStoreContext(props)).pipe(Layer.withSpan('LiveStore')),
+  Layer.scoped(LiveStoreContext, makeLiveStoreContext(props)).pipe(
+    Layer.withSpan('LiveStore'),
+    Layer.provide(LiveStoreContextDeferred),
   )
 
 export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Deferred.make<never, LiveStoreContext>())
