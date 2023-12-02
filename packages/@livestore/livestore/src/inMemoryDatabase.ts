@@ -214,6 +214,9 @@ export class InMemoryDatabase {
     },
   ): ReadonlyArray<T> {
     const { queriedTables, bindValues, skipCache = false, otelContext } = options ?? {}
+
+    // console.debug('in-memory-db:select', query, bindValues)
+
     return this.otelTracer.startActiveSpan(
       'sql-in-memory-select',
       {},
