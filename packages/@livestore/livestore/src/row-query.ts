@@ -17,19 +17,21 @@ export type RowQueryArgs<TTableDef extends TableDef> = TTableDef['options']['isS
       table: TTableDef
       store: Store
       otelContext?: otel.Context
+      defaultValues: Partial<RowResult<TTableDef>>
     }
   : {
       table: TTableDef
       store: Store
       otelContext?: otel.Context
       id: string
+      defaultValues: Partial<RowResult<TTableDef>>
     }
 
 // TODO also allow other where clauses and multiple rows
 export const rowQuery = <TTableDef extends TableDef>(
   args: RowQueryArgs<TTableDef>,
 ): LiveStoreJSQuery<RowResult<TTableDef>> => {
-  const { table, store } = args
+  const { table, store, defaultValues } = args
   const otelContext = args.otelContext ?? store.otel.queriesSpanContext
   const id: string | undefined = (args as any).id
 
@@ -73,6 +75,7 @@ export const rowQuery = <TTableDef extends TableDef>(
     id: id ?? 'singleton',
     stateSchema,
     otelContext,
+    defaultValues,
   })
 
   const whereClause = id === undefined ? '' : `where id = '${id}'`
@@ -112,11 +115,13 @@ const insertRowWithDefaultValuesOrIgnore = ({
   id,
   stateSchema,
   otelContext,
+  defaultValues: explicitDefaultValues,
 }: {
   db: InMemoryDatabase
   id: string
   stateSchema: SqliteDsl.TableDefinition<string, SqliteDsl.Columns>
   otelContext: otel.Context
+  defaultValues: Partial<RowResult<TableDef>> | undefined
 }) => {
   const columnNames = Object.keys(stateSchema.columns)
   const columnValues = columnNames.map((name) => `$${name}`).join(', ')
@@ -136,6 +141,7 @@ const insertRowWithDefaultValuesOrIgnore = ({
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
         : Schema.encodeSync(column.type.codec)(column.default ?? null),
     ),
+    ReadonlyRecord.map((val, columnName) => explicitDefaultValues?.[columnName] ?? val),
   )
 
   void db.execute(insertQuery, prepareBindValues({ ...defaultValues, id }, insertQuery), [tableName], { otelContext })

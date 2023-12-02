@@ -17,6 +17,10 @@ export type UseRowResult<TTableDef extends TableDef> = [
   query$: LiveStoreJSQuery<RowResult<TTableDef>>,
 ]
 
+export type UseRowOptions<TTableDef extends TableDef> = {
+  defaultValues?: Partial<RowResult<TTableDef>>
+}
+
 /**
  * Similar to `React.useState` but returns a tuple of `[row, setRow, query$]` for a given table where ...
  *
@@ -34,9 +38,15 @@ export const useRow: {
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string,
+    options?: UseRowOptions<TTableDef>,
   ): UseRowResult<TTableDef>
-} = <TTableDef extends TableDef>(table: TTableDef, id?: string): UseRowResult<TTableDef> => {
+} = <TTableDef extends TableDef>(
+  table: TTableDef,
+  id?: string,
+  options?: UseRowOptions<TTableDef>,
+): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.schema
+  const { defaultValues } = options ?? {}
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['schema']['columns']>
 
   const { store } = useStore()
@@ -64,13 +74,13 @@ export const useRow: {
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     const query$ = table.options.isSingleton
-      ? rowQuery({ table, store, otelContext } as RowQueryArgs<TTableDef>)
-      : rowQuery({ table, store, id, otelContext } as RowQueryArgs<TTableDef>)
+      ? rowQuery({ table, store, otelContext, defaultValues } as RowQueryArgs<TTableDef>)
+      : rowQuery({ table, store, id, otelContext, defaultValues } as RowQueryArgs<TTableDef>)
 
     rcCache.set(table, id ?? 'singleton', query$, reactId, otelContext, span)
 
     return { query$, otelContext }
-  }, [table, id, reactId, store])
+  }, [table, id, reactId, store, defaultValues])
 
   React.useEffect(
     () => () => {
@@ -90,7 +100,8 @@ export const useRow: {
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {
     if (table.isSingleColumn) {
-      return (newValue: RowResult<TTableDef>) => {
+      return (newValueOrFn: RowResult<TTableDef>) => {
+        const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
         const encodedValue = Schema.encodeSync(sqliteTableDef.columns['value']!.type.codec)(newValue)
@@ -104,7 +115,11 @@ export const useRow: {
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
-        mapValues(sqliteTableDef.columns, (column, columnName) => (newValue: string | number) => {
+        mapValues(sqliteTableDef.columns, (column, columnName) => (newValueOrFn: any) => {
+          const newValue =
+            // @ts-expect-error TODO fix typing
+            typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current[columnName]) : newValueOrFn
+
           // Don't update the state if it's the same as the value already seen in the component
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
@@ -119,8 +134,11 @@ export const useRow: {
           })
         })
 
-      // @ts-expect-error TODO fix typing
-      setState.setMany = (columnValues: Partial<TComponentState>) => {
+      setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
+        const columnValues =
+          // @ts-expect-error TODO fix typing
+          typeof columnValuesOrFn === 'function' ? columnValuesOrFn(query$Ref.current) : columnValuesOrFn
+
         // TODO use hashing instead
         // Don't update the state if it's the same as the value already seen in the component
         if (
