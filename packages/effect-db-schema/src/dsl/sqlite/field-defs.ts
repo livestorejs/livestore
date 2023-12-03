@@ -56,7 +56,7 @@ export const text = <
 
 export const textWithSchema = <
   TEncoded extends string,
-  TDecoded extends string,
+  TDecoded,
   const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<TEncoded, TDecoded>, boolean>, 'type'>>,
 >(
   schema: Schema.Schema<TEncoded, TDecoded>,

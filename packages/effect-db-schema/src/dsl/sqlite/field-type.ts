@@ -9,7 +9,7 @@ export type FieldType<TColumnType extends FieldColumnType, TEncoded, TDecoded> =
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
 
 export type FieldTypeJson<TDecoded> = FieldType<'text', string, TDecoded>
-export type FieldTypeText<TEncoded extends string, TDecoded extends string> = FieldType<'text', TEncoded, TDecoded>
+export type FieldTypeText<TEncoded extends string, TDecoded> = FieldType<'text', TEncoded, TDecoded>
 export type FieldTypeInteger<TEncoded extends number, TDecoded extends number> = FieldType<
   'integer',
   TEncoded,
