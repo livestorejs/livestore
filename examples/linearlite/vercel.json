@@ -1,7 +1,5 @@
 {
-  "redirects": [
-    { "source": "/[^.]+", "destination": "/", "permanent": false, "statusCode": 200 }
-  ],
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }],
   "headers": [
     {
       "source": "/(.*)",
