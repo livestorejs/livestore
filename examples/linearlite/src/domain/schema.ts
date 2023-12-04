@@ -36,12 +36,14 @@ const comment = DbSchema.table(
     issueId: DbSchema.text(),
     created: DbSchema.integer(),
   },
-  [
-    {
-      name: 'issue_id',
-      columns: ['issueId'],
-    },
-  ],
+  {
+    indexes: [
+      {
+        name: 'issue_id',
+        columns: ['issueId'],
+      },
+    ],
+  },
 )
 
 // TODO: move filter state into its own table?
