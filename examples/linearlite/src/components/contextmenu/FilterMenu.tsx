@@ -5,7 +5,7 @@ import { BsCheck2 } from 'react-icons/bs'
 import { Menu } from './menu'
 import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
 import { useQuery, useStore } from '@livestore/livestore/react'
-import { filterState$ } from '../TopFilter'
+import { filterState$ } from '../../domain/queries'
 
 interface Props {
   id: string

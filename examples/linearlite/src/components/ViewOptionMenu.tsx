@@ -2,8 +2,8 @@ import { Transition } from '@headlessui/react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { useRef } from 'react'
 import Select from './Select'
-import { filterState$ } from './TopFilter'
 import { useQuery, useStore } from '@livestore/livestore/react'
+import { filterState$ } from '../domain/queries'
 
 interface Props {
   isOpen: boolean

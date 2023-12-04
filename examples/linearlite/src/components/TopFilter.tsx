@@ -8,7 +8,7 @@ import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
 import { querySQL, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/livestore/react'
-import { FilterState } from '../domain/schema'
+import { filterState$ } from '../domain/queries'
 
 interface Props {
   issues: readonly Issue[]
@@ -20,13 +20,6 @@ interface Props {
 const issueCount$ = querySQL<{ c: number }>((_) => sql`SELECT COUNT(id) AS c FROM issue`)
   .getFirstRow()
   .pipe((row) => row?.c ?? 0)
-export const filterState$ = querySQL<{ value: string }>(
-  (_) => sql`SELECT * FROM app_state WHERE "key" = 'filter_state'`,
-)
-  .getFirstRow({
-    defaultValue: { value: '{}' },
-  })
-  .pipe<FilterState>((row) => JSON.parse(row.value))
 
 export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {
   const [showViewOption, setShowViewOption] = useState(false)
