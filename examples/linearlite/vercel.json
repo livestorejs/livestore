@@ -1,5 +1,7 @@
 {
-  "routes": [{ "src": "/[^.]+", "dest": "/", "status": 200 }],
+  "redirects": [
+    { "source": "/[^.]+", "destination": "/", "permanent": false, "statusCode": 200 }
+  ],
   "headers": [
     {
       "source": "/(.*)",
