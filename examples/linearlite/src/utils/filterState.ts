@@ -93,7 +93,7 @@ export function filterStateToWhere(filterState: FilterState) {
 
 export function filterStateToOrder(filterState: FilterState) {
   if (filterState.orderBy) {
-    return `ORDER BY ${filterState.orderBy} ${filterState.orderDirection}`
+    return `ORDER BY ${filterState.orderBy} ${filterState.orderDirection || 'desc'}`
   }
 
   return ''

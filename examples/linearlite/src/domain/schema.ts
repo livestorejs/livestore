@@ -35,7 +35,6 @@ const comment = DbSchema.table(
     // TODO: issueId is a foreign key to issue
     issueId: DbSchema.text(),
     created: DbSchema.integer(),
-    author: DbSchema.text({ nullable: false }),
   },
   [
     {
@@ -75,8 +74,8 @@ export const schema = makeSchema({
     },
     createComment: {
       statement: {
-        sql: sql`INSERT INTO comment ("id", "body", "issueId", "created", "author")
-          VALUES ($id, $body, $issueId, $created, $author)`,
+        sql: sql`INSERT INTO comment ("id", "body", "issueId", "created", "creator")
+          VALUES ($id, $body, $issueId, $created, $creator)`,
         writeTables: ['comment'],
       },
     },

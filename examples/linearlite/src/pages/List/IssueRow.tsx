@@ -18,7 +18,6 @@ interface Props {
 
 // eslint-disable-next-line react-refresh/only-export-components
 function IssueRow({ issue, style }: Props) {
-  // const { db } = useElectric()!
   const navigate = useNavigate()
   const { store } = useStore()
 
