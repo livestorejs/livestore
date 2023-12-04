@@ -4,21 +4,14 @@ import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
 import { BsCheck2 } from 'react-icons/bs'
 import { Menu } from './menu'
 import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
-import { querySQL, sql } from '@livestore/livestore'
-import { FilterState } from '../../domain/schema'
 import { useQuery, useStore } from '@livestore/livestore/react'
+import { filterState$ } from '../TopFilter'
 
 interface Props {
   id: string
   button: ReactNode
   className?: string
 }
-
-const filterState$ = querySQL<{ value: string }>((_) => sql`SELECT * FROM app_state WHERE "key" = 'filter_state'`)
-  .getFirstRow({
-    defaultValue: { value: '{}' },
-  })
-  .pipe<FilterState>((row) => JSON.parse(row.value))
 
 function FilterMenu({ id, button, className }: Props) {
   const [keyword, setKeyword] = useState('')

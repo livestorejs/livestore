@@ -50,7 +50,7 @@ function Comments({ issue }: CommentsProps) {
       body: newCommentBody,
       issueId: issue.id,
       created: Date.now(),
-      author: 'testuser',
+      creator: 'testuser',
     })
     setNewCommentBody('')
   }
