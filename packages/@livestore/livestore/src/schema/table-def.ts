@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
@@ -89,13 +89,11 @@ export const table = <
         `Cannot create table ${name} with "isSingleton: true" because there is no column with name "id" and "disableAutomaticIdColumn: true" is set`,
       )
     }
-  } else {
-    if (columns.id === undefined) {
-      if (options_.isSingleton) {
-        columns.id = SqliteDsl.textWithSchema(Schema.literal('singleton'), { primaryKey: true, default: 'singleton' })
-      } else {
-        columns.id = SqliteDsl.text({ primaryKey: true })
-      }
+  } else if (columns.id === undefined && ReadonlyRecord.some(columns, (_) => _.primaryKey === true) === false) {
+    if (options_.isSingleton) {
+      columns.id = SqliteDsl.textWithSchema(Schema.literal('singleton'), { primaryKey: true, default: 'singleton' })
+    } else {
+      columns.id = SqliteDsl.text({ primaryKey: true })
     }
   }
 

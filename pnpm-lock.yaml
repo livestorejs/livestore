@@ -83,6 +83,9 @@ importers:
       '@headlessui/react':
         specifier: ^1.7.17
         version: 1.7.17(react-dom@18.2.0)(react@18.2.0)
+      '@livestore/devtools-react':
+        specifier: ^0.0.27
+        version: 0.0.27(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore

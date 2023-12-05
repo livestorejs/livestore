@@ -16,8 +16,7 @@ import AboutModal from './AboutModal'
 import IssueModal from './IssueModal'
 import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
-import { useQuery, useStore } from '@livestore/livestore/react'
-import { filterState$ } from '../domain/queries'
+import { useFilterState } from '../domain/queries'
 
 // eslint-disable-next-line react-refresh/only-export-components
 function LeftMenu() {
@@ -26,8 +25,7 @@ function LeftMenu() {
   const [showAboutModal, setShowAboutModal] = useState(false)
   const [showIssueModal, setShowIssueModal] = useState(false)
   const { showMenu, setShowMenu } = useContext(MenuContext)!
-  const filterState = useQuery(filterState$)
-  const { store } = useStore()
+  const [, setFilterState] = useFilterState()
   // const { connectivityState } = useConnectivityState()
   const connectivityState = 'connected'
 
@@ -99,15 +97,7 @@ function LeftMenu() {
           <ItemGroup title="Your Issues">
             <Link
               to="/"
-              onClick={() => {
-                store.applyEvent('upsertAppAtom', {
-                  id: 'filter_state',
-                  value: JSON.stringify({
-                    ...filterState,
-                    status: undefined,
-                  }),
-                })
-              }}
+              onClick={() => setFilterState((_) => ({ ..._, status: undefined }))}
               className="flex items-center pl-6 rounded cursor-pointer group h-7 hover:bg-gray-100"
             >
               <IssuesIcon className="w-3.5 h-3.5 mr-2" />
@@ -115,15 +105,7 @@ function LeftMenu() {
             </Link>
             <Link
               to="/?status=todo,in_progress"
-              onClick={() => {
-                store.applyEvent('upsertAppAtom', {
-                  id: 'filter_state',
-                  value: JSON.stringify({
-                    ...filterState,
-                    status: ['todo', 'in_progress'],
-                  }),
-                })
-              }}
+              onClick={() => setFilterState((_) => ({ ..._, status: ['todo', 'in_progress'] }))}
               className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100"
             >
               <span className="w-3.5 h-6 mr-2 inline-block">
@@ -133,15 +115,7 @@ function LeftMenu() {
             </Link>
             <Link
               to="/?status=backlog"
-              onClick={() => {
-                store.applyEvent('upsertAppAtom', {
-                  id: 'filter_state',
-                  value: JSON.stringify({
-                    ...filterState,
-                    status: ['backlog'],
-                  }),
-                })
-              }}
+              onClick={() => setFilterState((_) => ({ ..._, status: ['backlog'] }))}
               className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100"
             >
               <BacklogIcon className="w-3.5 h-3.5 mr-2" />
@@ -160,7 +134,11 @@ function LeftMenu() {
           <div className="flex flex-col px-2 pb-2 text-gray-500 mt-7">
             <a className="inline-flex" href="https://github.com/livestorejs/livestore">
               {/* <LiveStoreIcon className="w-3 h-3 mr-2 mt-1 scale-150" /> LiveStore */}
-              <img src="https://avatars.githubusercontent.com/u/145756592?s=48&amp;v=4" className="w-3 h-3 mr-2 mt-1 scale-150"></img> LiveStore
+              <img
+                src="https://avatars.githubusercontent.com/u/145756592?s=48&amp;v=4"
+                className="w-3 h-3 mr-2 mt-1 scale-150"
+              ></img>{' '}
+              LiveStore
             </a>
 
             <button className="inline-flex mt-1" onClick={() => setShowAboutModal(true)}>

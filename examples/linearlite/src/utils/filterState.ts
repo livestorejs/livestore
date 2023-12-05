@@ -1,12 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
-
-interface FilterState {
-  orderBy: string
-  orderDirection: 'asc' | 'desc'
-  status?: string[]
-  priority?: string[]
-  query?: string
-}
+import { FilterState } from '../domain/schema'
+import { Schema } from '@effect/schema'
 
 export function useFilterState(): [FilterState, (state: Partial<FilterState>) => void] {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -20,15 +14,15 @@ export function useFilterState(): [FilterState, (state: Partial<FilterState>) =>
     .getAll('priority')
     .map((status) => status.toLocaleLowerCase().split(','))
     .flat()
-  const query = searchParams.get('query')
+  const query = searchParams.get('query') ?? undefined
 
-  const state = {
+  const state = Schema.parseSync(FilterState)({
     orderBy,
     orderDirection,
     status,
     priority,
-    query: query || undefined,
-  }
+    query,
+  })
 
   const setState = (state: Partial<FilterState>) => {
     const { orderBy, orderDirection, status, priority, query } = state

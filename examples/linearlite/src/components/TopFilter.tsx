@@ -7,8 +7,8 @@ import FilterMenu from './contextmenu/FilterMenu'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
 import { querySQL, sql } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/livestore/react'
-import { filterState$ } from '../domain/queries'
+import { useQuery } from '@livestore/livestore/react'
+import { useFilterState } from '../domain/queries'
 
 interface Props {
   issues: readonly Issue[]
@@ -17,7 +17,7 @@ interface Props {
   title?: string
 }
 
-const issueCount$ = querySQL<{ c: number }>((_) => sql`SELECT COUNT(id) AS c FROM issue`)
+const issueCount$ = querySQL<{ c: number }>(sql`SELECT COUNT(id) AS c FROM issue`)
   .getFirstRow()
   .pipe((row) => row?.c ?? 0)
 
@@ -26,20 +26,11 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
   const { showMenu, setShowMenu } = useContext(MenuContext)!
   const [searchQuery, setSearchQuery] = useState('')
   const totalIssuesCount = useQuery(issueCount$)
-  const filterState = useQuery(filterState$)
-  const { store } = useStore()
+  const [filterState, setFilterState] = useFilterState()
 
   const filteredIssuesCount = issues.length
 
-  const handleSearchInner = (query: string) => {
-    store.applyEvent('upsertAppAtom', {
-      id: 'filter_state',
-      value: JSON.stringify({
-        ...filterState,
-        query: query,
-      }),
-    })
-  }
+  const handleSearchInner = (query: string) => setFilterState((_) => ({ ..._, query }))
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -103,15 +94,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
-                onClick={() => {
-                  store.applyEvent('upsertAppAtom', {
-                    id: 'filter_state',
-                    value: JSON.stringify({
-                      ...filterState,
-                      priority: undefined,
-                    }),
-                  })
-                }}
+                onClick={() => setFilterState((_) => ({ ..._, priority: undefined }))}
               >
                 <BsX size={16} />
               </span>
@@ -125,15 +108,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
-                onClick={() => {
-                  store.applyEvent('upsertAppAtom', {
-                    id: 'filter_state',
-                    value: JSON.stringify({
-                      ...filterState,
-                      status: undefined,
-                    }),
-                  })
-                }}
+                onClick={() => setFilterState((_) => ({ ..._, status: undefined }))}
               >
                 <BsX size={16} />
               </span>

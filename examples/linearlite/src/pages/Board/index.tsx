@@ -4,17 +4,15 @@ import IssueBoard from './IssueBoard'
 import { Issue } from '../../types'
 import { querySQL, sql } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
-import { AppState } from '../../domain/schema'
 import { useQuery } from '@livestore/livestore/react'
+import { parseFilterStateString } from '../../domain/schema'
 
-const filterClause$ = querySQL<AppState>(`select * from app_state WHERE id = 'filter_state';`)
-  // .getFirstRow({defaultValue: undefined })
-  .pipe((filterStates) => {
-    // TODO this handling should be improved (see https://github.com/livestorejs/livestore/issues/22)
-    if (filterStates.length === 0) return ''
-    const filterStateObj = JSON.parse(filterStates[0]!.value)
-    return filterStateToWhere(filterStateObj)
-  })
+const filterClause$ = querySQL<{ value: string }>(`select value from filter_state`).pipe((filterStates) => {
+  // TODO this handling should be improved (see https://github.com/livestorejs/livestore/issues/22)
+  if (filterStates.length === 0) return ''
+  const filterStateObj = parseFilterStateString(filterStates[0].value)
+  return filterStateToWhere(filterStateObj)
+})
 const issues$ = querySQL<Issue>((get) => sql`SELECT * FROM issue ${get(filterClause$)} ORDER BY kanbanorder ASC`)
 
 function Board() {
