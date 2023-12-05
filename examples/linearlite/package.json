@@ -17,7 +17,7 @@
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^1.7.17",
     "@livestore/livestore": "workspace:*",
-    "@livestore/devtools-react": "^0.0.27",
+    "@livestore/devtools-react": "^0.0.28-dev.0",
     "@tailwindcss/forms": "^0.5.6",
     "@tiptap/extension-placeholder": "^2.1.8",
     "@tiptap/extension-table": "^2.1.8",
