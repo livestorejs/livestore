@@ -11,6 +11,7 @@ import { ReactComponent as LowPriorityIcon } from '../assets/icons/signal-weak.s
 import { ReactComponent as MediumPriorityIcon } from '../assets/icons/signal-medium.svg'
 import { ReactComponent as NoPriorityIcon } from '../assets/icons/dots.svg'
 import { ReactComponent as UrgentPriorityIcon } from '../assets/icons/rounded-claim.svg'
+import { Schema } from '@effect/schema'
 
 export const Priority = {
   NONE: 'none',
@@ -20,7 +21,8 @@ export const Priority = {
   MEDIUM: 'medium',
 } as const
 
-export type PriorityType = (typeof Priority)[keyof typeof Priority]
+export const PriorityType = Schema.literal(Priority.NONE, Priority.URGENT, Priority.HIGH, Priority.LOW, Priority.MEDIUM)
+export type PriorityType = Schema.Schema.To<typeof PriorityType>
 
 export const PriorityDisplay = {
   [Priority.NONE]: 'None',
@@ -58,7 +60,8 @@ export const Status = {
   CANCELED: 'canceled',
 } as const
 
-export type StatusType = (typeof Status)[keyof typeof Status]
+export const StatusType = Schema.literal(Status.BACKLOG, Status.TODO, Status.IN_PROGRESS, Status.DONE, Status.CANCELED)
+export type StatusType = Schema.Schema.To<typeof StatusType>
 
 export const StatusDisplay = {
   [Status.BACKLOG]: 'Backlog',

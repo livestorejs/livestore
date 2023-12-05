@@ -2,8 +2,8 @@ import { Transition } from '@headlessui/react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { useRef } from 'react'
 import Select from './Select'
-import { useQuery, useStore } from '@livestore/livestore/react'
-import { filterState$ } from '../domain/queries'
+import { useFilterState } from '../domain/queries'
+import { OrderBy, OrderDirection } from '../domain/schema'
 
 interface Props {
   isOpen: boolean
@@ -11,32 +11,17 @@ interface Props {
 }
 export default function ViewOptionMenu({ isOpen, onDismiss }: Props) {
   const ref = useRef(null)
-  const filterState = useQuery(filterState$)
-  const { store } = useStore()
+  const [filterState, setFilterState] = useFilterState()
 
   useClickOutside(ref, () => {
     if (isOpen && onDismiss) onDismiss()
   })
 
-  const handleOrderByChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    store.applyEvent('upsertAppAtom', {
-      id: 'filter_state',
-      value: JSON.stringify({
-        ...filterState,
-        orderBy: e.target.value,
-      }),
-    })
-  }
+  const handleOrderByChange = (e: React.ChangeEvent<HTMLSelectElement>) =>
+    setFilterState((_) => ({ ..._, orderBy: e.target.value as OrderBy }))
 
-  const handleOrderDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    store.applyEvent('upsertAppAtom', {
-      id: 'filter_state',
-      value: JSON.stringify({
-        ...filterState,
-        orderDirection: e.target.value as 'asc' | 'desc',
-      }),
-    })
-  }
+  const handleOrderDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) =>
+    setFilterState((_) => ({ ..._, orderDirection: e.target.value as OrderDirection }))
 
   return (
     <div ref={ref}>

@@ -1,5 +1,6 @@
 import { DbSchema, makeSchema, sql } from '@livestore/livestore'
 import { Priority, PriorityType, Status, StatusType } from '../types/issue'
+import { Schema } from '@effect/schema'
 
 const issue = DbSchema.table('issue', {
   id: DbSchema.text({ primaryKey: true }),
@@ -12,13 +13,25 @@ const issue = DbSchema.table('issue', {
   kanbanorder: DbSchema.text({ nullable: false }),
 })
 
-export interface FilterState {
-  orderBy: string
-  orderDirection: 'asc' | 'desc'
-  status?: StatusType[]
-  priority?: PriorityType[]
-  query?: string
-}
+const OrderDirection = Schema.literal('asc', 'desc')
+export type OrderDirection = Schema.Schema.To<typeof OrderDirection>
+
+const OrderBy = Schema.literal('priority', 'status', 'created', 'modified')
+export type OrderBy = Schema.Schema.To<typeof OrderBy>
+
+const optional = <T extends Schema.Schema<any>>(schema: T) => Schema.optional(Schema.union(schema, Schema.undefined))
+
+export const FilterState = Schema.struct({
+  orderBy: OrderBy,
+  orderDirection: OrderDirection,
+  status: optional(Schema.array(StatusType)),
+  priority: optional(Schema.array(PriorityType)),
+  query: optional(Schema.string),
+})
+
+export const parseFilterStateString = Schema.parseSync(Schema.compose(Schema.ParseJson, FilterState))
+
+export type FilterState = Schema.Schema.To<typeof FilterState>
 
 const description = DbSchema.table('description', {
   // TODO: id is also a foreign key to issue
@@ -46,20 +59,18 @@ const comment = DbSchema.table(
   },
 )
 
-// TODO: move filter state into its own table?
-const appState = DbSchema.table('app_state', {
-  id: DbSchema.text({ primaryKey: true }),
-  value: DbSchema.text(),
-})
+export const filterStateTable = DbSchema.table(
+  'filter_state',
+  DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
+  { isSingleton: true },
+)
 
-export type AppState = DbSchema.FromTable.RowDecoded<typeof appState>
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
 export type Description = DbSchema.FromTable.RowDecoded<typeof description>
 export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 
 export const schema = makeSchema({
-  // TODO get rid of `app_state` alias once fixed https://github.com/livestorejs/livestore/issues/25
-  tables: { issue, description, comment, app_state: appState },
+  tables: [issue, description, comment, filterStateTable],
   actions: {
     createIssue: {
       statement: {
@@ -145,13 +156,6 @@ export const schema = makeSchema({
       statement: {
         sql: sql`UPDATE description SET body = $body WHERE id = $id`,
         writeTables: ['description'],
-      },
-    },
-    upsertAppAtom: {
-      statement: {
-        sql: sql`INSERT INTO app_state (id, value) VALUES ($id, $value)
-          ON CONFLICT (id) DO UPDATE SET value = $value`,
-        writeTables: ['app_state'],
       },
     },
   },

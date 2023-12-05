@@ -1,8 +1,4 @@
-import { querySQL, sql } from '@livestore/livestore'
-import { FilterState } from './schema'
+import { filterStateTable } from './schema'
+import { useRow } from '@livestore/livestore/react'
 
-export const filterState$ = querySQL<{ value: string }>((_) => sql`SELECT * FROM app_state WHERE "id" = 'filter_state'`)
-  .getFirstRow({
-    defaultValue: { value: '{}' },
-  })
-  .pipe<FilterState>((row) => JSON.parse(row.value))
+export const useFilterState = () => useRow(filterStateTable)

@@ -4,8 +4,7 @@ import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
 import { BsCheck2 } from 'react-icons/bs'
 import { Menu } from './menu'
 import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
-import { useQuery, useStore } from '@livestore/livestore/react'
-import { filterState$ } from '../../domain/queries'
+import { useFilterState } from '../../domain/queries'
 
 interface Props {
   id: string
@@ -15,8 +14,7 @@ interface Props {
 
 function FilterMenu({ id, button, className }: Props) {
   const [keyword, setKeyword] = useState('')
-  const filterState = useQuery(filterState$)
-  const { store } = useStore()
+  const [filterState, setFilterState] = useFilterState()
 
   let priorities = PriorityOptions
   if (keyword !== '') {
@@ -54,36 +52,24 @@ function FilterMenu({ id, button, className }: Props) {
 
   const handlePrioritySelect = (priority: PriorityType) => {
     setKeyword('')
-    const newPriority = filterState.priority || []
+    const newPriority = [...(filterState.priority ?? [])]
     if (newPriority.includes(priority)) {
       newPriority.splice(newPriority.indexOf(priority), 1)
     } else {
       newPriority.push(priority)
     }
-    store.applyEvent('upsertAppAtom', {
-      id: 'filter_state',
-      value: JSON.stringify({
-        ...filterState,
-        priority: newPriority,
-      }),
-    })
+    setFilterState((_) => ({ ..._, priority: newPriority }))
   }
 
   const handleStatusSelect = (status: StatusType) => {
     setKeyword('')
-    const newStatus = filterState.status || []
+    const newStatus = [...(filterState.status || [])]
     if (newStatus.includes(status)) {
       newStatus.splice(newStatus.indexOf(status), 1)
     } else {
       newStatus.push(status)
     }
-    store.applyEvent('upsertAppAtom', {
-      id: 'filter_state',
-      value: JSON.stringify({
-        ...filterState,
-        status: newStatus,
-      }),
-    })
+    setFilterState((_) => ({ ..._, status: newStatus }))
   }
 
   return (
