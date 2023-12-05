@@ -22,4 +22,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  "references": [{ "path": "../../packages/@livestore/livestore" }]
 }
