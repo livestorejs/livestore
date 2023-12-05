@@ -7,7 +7,7 @@ import { AppState } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/livestore/react'
 
-const filterClause$ = querySQL<AppState>(`select * from app_state WHERE key = 'filter_state';`)
+const filterClause$ = querySQL<AppState>(`select * from app_state WHERE id = 'filter_state';`)
   // .getFirstRow({defaultValue: undefined })
   .pipe((filterStates) => {
     // TODO this handling should be improved (see https://github.com/livestorejs/livestore/issues/22)

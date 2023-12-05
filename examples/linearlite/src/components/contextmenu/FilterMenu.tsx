@@ -61,7 +61,7 @@ function FilterMenu({ id, button, className }: Props) {
       newPriority.push(priority)
     }
     store.applyEvent('upsertAppAtom', {
-      key: 'filter_state',
+      id: 'filter_state',
       value: JSON.stringify({
         ...filterState,
         priority: newPriority,
@@ -78,7 +78,7 @@ function FilterMenu({ id, button, className }: Props) {
       newStatus.push(status)
     }
     store.applyEvent('upsertAppAtom', {
-      key: 'filter_state',
+      id: 'filter_state',
       value: JSON.stringify({
         ...filterState,
         status: newStatus,

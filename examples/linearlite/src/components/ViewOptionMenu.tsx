@@ -20,7 +20,7 @@ export default function ViewOptionMenu({ isOpen, onDismiss }: Props) {
 
   const handleOrderByChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     store.applyEvent('upsertAppAtom', {
-      key: 'filter_state',
+      id: 'filter_state',
       value: JSON.stringify({
         ...filterState,
         orderBy: e.target.value,
@@ -30,7 +30,7 @@ export default function ViewOptionMenu({ isOpen, onDismiss }: Props) {
 
   const handleOrderDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     store.applyEvent('upsertAppAtom', {
-      key: 'filter_state',
+      id: 'filter_state',
       value: JSON.stringify({
         ...filterState,
         orderDirection: e.target.value as 'asc' | 'desc',
