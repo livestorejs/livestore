@@ -33,7 +33,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
 
   const handleSearchInner = (query: string) => {
     store.applyEvent('upsertAppAtom', {
-      key: 'filter_state',
+      id: 'filter_state',
       value: JSON.stringify({
         ...filterState,
         query: query,
@@ -105,7 +105,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
                 onClick={() => {
                   store.applyEvent('upsertAppAtom', {
-                    key: 'filter_state',
+                    id: 'filter_state',
                     value: JSON.stringify({
                       ...filterState,
                       priority: undefined,
@@ -127,7 +127,7 @@ export default function TopFilter({ issues, hideSort, showSearch, title = 'All i
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
                 onClick={() => {
                   store.applyEvent('upsertAppAtom', {
-                    key: 'filter_state',
+                    id: 'filter_state',
                     value: JSON.stringify({
                       ...filterState,
                       status: undefined,

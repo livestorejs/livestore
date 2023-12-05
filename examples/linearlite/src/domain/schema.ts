@@ -48,7 +48,7 @@ const comment = DbSchema.table(
 
 // TODO: move filter state into its own table?
 const appState = DbSchema.table('app_state', {
-  key: DbSchema.text({ primaryKey: true }),
+  id: DbSchema.text({ primaryKey: true }),
   value: DbSchema.text(),
 })
 
@@ -149,8 +149,8 @@ export const schema = makeSchema({
     },
     upsertAppAtom: {
       statement: {
-        sql: sql`INSERT INTO app_state (key, value) VALUES ($key, $value)
-          ON CONFLICT (key) DO UPDATE SET value = $value`,
+        sql: sql`INSERT INTO app_state (id, value) VALUES ($id, $value)
+          ON CONFLICT (id) DO UPDATE SET value = $value`,
         writeTables: ['app_state'],
       },
     },

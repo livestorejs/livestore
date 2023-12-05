@@ -16,6 +16,8 @@ import AboutModal from './AboutModal'
 import IssueModal from './IssueModal'
 import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
+import { useQuery, useStore } from '@livestore/livestore/react'
+import { filterState$ } from '../domain/queries'
 
 // eslint-disable-next-line react-refresh/only-export-components
 function LeftMenu() {
@@ -24,6 +26,8 @@ function LeftMenu() {
   const [showAboutModal, setShowAboutModal] = useState(false)
   const [showIssueModal, setShowIssueModal] = useState(false)
   const { showMenu, setShowMenu } = useContext(MenuContext)!
+  const filterState = useQuery(filterState$)
+  const { store } = useStore()
   // const { connectivityState } = useConnectivityState()
   const connectivityState = 'connected'
 
@@ -93,12 +97,33 @@ function LeftMenu() {
 
         <div className="flex flex-col flex-shrink flex-grow overflow-y-auto mb-0.5 px-2">
           <ItemGroup title="Your Issues">
-            <Link to="/" className="flex items-center pl-6 rounded cursor-pointer group h-7 hover:bg-gray-100">
+            <Link
+              to="/"
+              onClick={() => {
+                store.applyEvent('upsertAppAtom', {
+                  id: 'filter_state',
+                  value: JSON.stringify({
+                    ...filterState,
+                    status: undefined,
+                  }),
+                })
+              }}
+              className="flex items-center pl-6 rounded cursor-pointer group h-7 hover:bg-gray-100"
+            >
               <IssuesIcon className="w-3.5 h-3.5 mr-2" />
               <span>All Issues</span>
             </Link>
             <Link
               to="/?status=todo,in_progress"
+              onClick={() => {
+                store.applyEvent('upsertAppAtom', {
+                  id: 'filter_state',
+                  value: JSON.stringify({
+                    ...filterState,
+                    status: ['todo', 'in_progress'],
+                  }),
+                })
+              }}
               className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100"
             >
               <span className="w-3.5 h-6 mr-2 inline-block">
@@ -106,7 +131,19 @@ function LeftMenu() {
               </span>
               <span>Active</span>
             </Link>
-            <Link to="/?status=backlog" className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100">
+            <Link
+              to="/?status=backlog"
+              onClick={() => {
+                store.applyEvent('upsertAppAtom', {
+                  id: 'filter_state',
+                  value: JSON.stringify({
+                    ...filterState,
+                    status: ['backlog'],
+                  }),
+                })
+              }}
+              className="flex items-center pl-6 rounded cursor-pointer h-7 hover:bg-gray-100"
+            >
               <BacklogIcon className="w-3.5 h-3.5 mr-2" />
               <span>Backlog</span>
             </Link>
