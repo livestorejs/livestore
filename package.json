@@ -5,7 +5,6 @@
     "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o -name 'dist' -type d -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.all.json",
     "dev:ts": "pnpm run build:ts --watch",
-    "postinstall": "ts-patch install -s",
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish --no-git-checks",
@@ -36,7 +35,6 @@
     "eslint-plugin-unicorn": "^49.0.0",
     "prettier": "^3.1.0",
     "prettier-plugin-packagejson": "^2.4.6",
-    "ts-patch": "3.0.2",
     "typescript": "^5.3.2"
   },
   "packageManager": "pnpm@8.8.0",
