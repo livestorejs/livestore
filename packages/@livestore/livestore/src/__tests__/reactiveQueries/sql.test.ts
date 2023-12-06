@@ -94,9 +94,9 @@ describe('otel', () => {
                     "attributes": {
                       "livestore.actionType": "livestore.RawSql",
                       "livestore.args": "{
-        \\"sql\\": \\"INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);\\",
-        \\"writeTables\\": [
-          \\"todos\\"
+        "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);",
+        "writeTables": [
+          "todos"
         ]
       }",
                     },
@@ -234,9 +234,9 @@ describe('otel', () => {
                     "attributes": {
                       "livestore.actionType": "livestore.RawSql",
                       "livestore.args": "{
-        \\"sql\\": \\"INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);\\",
-        \\"writeTables\\": [
-          \\"todos\\"
+        "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);",
+        "writeTables": [
+          "todos"
         ]
       }",
                     },

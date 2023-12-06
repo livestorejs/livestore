@@ -402,7 +402,7 @@ describe('error handling', () => {
     const a = graph.makeRef(1)
     const b = graph.makeThunk((get) => get(a) + 1)
     expect(() => b.computeResult()).toThrowErrorMatchingInlineSnapshot(
-      '"LiveStore Error: `context` not set on ReactiveGraph"',
+      `[Error: LiveStore Error: \`context\` not set on ReactiveGraph]`,
     )
   })
 })

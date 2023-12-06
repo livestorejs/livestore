@@ -30,8 +30,8 @@
   },
   "devDependencies": {
     "drizzle-orm": "^0.28.6",
-    "vite": "^5.0.4",
-    "vitest": "^0.34.6"
+    "vite": "^5.0.5",
+    "vitest": "^1.0.1"
   },
   "publishConfig": {
     "access": "public"

@@ -1,8 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react'
 
 import { BsChevronRight as ChevronRight } from 'react-icons/bs'
-import { ReactComponent as CloseIcon } from '../assets/icons/close.svg'
-import { ReactComponent as LivestoreIcon } from '../assets/images/icon.inverse.svg'
+import CloseIcon from '../assets/icons/close.svg?react'
+import LivestoreIcon from '../assets/images/icon.inverse.svg?react'
 import { generateKeyBetween } from 'fractional-indexing'
 
 import Modal from '../components/Modal'

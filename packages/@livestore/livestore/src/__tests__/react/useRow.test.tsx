@@ -164,7 +164,7 @@ describe('useRow', () => {
 
     expect(appRouterRenderCount).toBe(2)
     expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
-      '"{\\"id\\":\\"t1\\",\\"text\\":\\"buy milk\\",\\"completed\\":0}"',
+      `"{"id":"t1","text":"buy milk","completed":0}"`,
     )
 
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')

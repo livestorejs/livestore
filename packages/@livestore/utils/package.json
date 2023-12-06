@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
-    "@types/web": "^0.0.123"
+    "@types/web": "^0.0.125"
   },
   "publishConfig": {
     "access": "public"
