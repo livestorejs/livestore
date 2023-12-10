@@ -44,6 +44,7 @@
     "react-virtualized-auto-sizer": "^1.0.20",
     "react-window": "^1.8.10",
     "tiptap-markdown": "^0.8.8",
+    "workbox-window": "^7.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
@@ -72,6 +73,7 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.0.2",
     "vite": "^5.0.5",
-    "vite-plugin-svgr": "^4.2.0"
+    "vite-plugin-svgr": "^4.2.0",
+    "vite-plugin-pwa": "^0.17.3"
   }
 }

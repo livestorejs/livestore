@@ -167,6 +167,9 @@ importers:
       uuid:
         specifier: ^9.0.0
         version: 9.0.1
+      workbox-window:
+        specifier: ^7.0.0
+        version: 7.0.0
     devDependencies:
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
@@ -243,9 +246,12 @@ importers:
       vite:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@20.10.3)
+      vite-plugin-pwa:
+        specifier: ^0.17.3
+        version: 0.17.4(vite@5.0.5)(workbox-build@7.0.0)(workbox-window@7.0.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.2.0(typescript@5.2.2)(vite@5.0.5)
+        version: 4.2.0(rollup@2.79.1)(typescript@5.2.2)(vite@5.0.5)
 
   examples/todomvc:
     dependencies:
@@ -410,6 +416,9 @@ importers:
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
+      workbox-window:
+        specifier: ^7.0.0
+        version: 7.0.0
     devDependencies:
       '@types/react':
         specifier: ^18.2.42
@@ -432,6 +441,9 @@ importers:
       vite:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@20.10.3)
+      vite-plugin-pwa:
+        specifier: ^0.17.4
+        version: 0.17.4(vite@5.0.5)(workbox-build@7.0.0)(workbox-window@7.0.0)
 
   packages/@livestore/livestore:
     dependencies:
@@ -2618,7 +2630,7 @@ packages:
       rollup: 2.79.1
     dev: true
 
-  /@rollup/pluginutils@5.0.5:
+  /@rollup/pluginutils@5.0.5(rollup@2.79.1):
     resolution: {integrity: sha512-6aEYR910NyP73oHiJglti74iRyOwgFU4x3meH/H8OJx6Ry0j6cOVZ5X/wTvub7G7Ao6qaHBEaNsV3GLJkSsF+Q==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
@@ -2630,6 +2642,7 @@ packages:
       '@types/estree': 1.0.5
       estree-walker: 2.0.2
       picomatch: 2.3.1
+      rollup: 2.79.1
     dev: true
 
   /@rollup/rollup-android-arm-eabi@4.5.0:
@@ -8918,12 +8931,30 @@ packages:
       - supports-color
     dev: true
 
-  /vite-plugin-svgr@4.2.0(typescript@5.2.2)(vite@5.0.5):
+  /vite-plugin-pwa@0.17.4(vite@5.0.5)(workbox-build@7.0.0)(workbox-window@7.0.0):
+    resolution: {integrity: sha512-j9iiyinFOYyof4Zk3Q+DtmYyDVBDAi6PuMGNGq6uGI0pw7E+LNm9e+nQ2ep9obMP/kjdWwzilqUrlfVRj9OobA==}
+    engines: {node: '>=16.0.0'}
+    peerDependencies:
+      vite: ^3.1.0 || ^4.0.0 || ^5.0.0
+      workbox-build: ^7.0.0
+      workbox-window: ^7.0.0
+    dependencies:
+      debug: 4.3.4
+      fast-glob: 3.3.2
+      pretty-bytes: 6.1.1
+      vite: 5.0.5(@types/node@20.10.3)
+      workbox-build: 7.0.0
+      workbox-window: 7.0.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /vite-plugin-svgr@4.2.0(rollup@2.79.1)(typescript@5.2.2)(vite@5.0.5):
     resolution: {integrity: sha512-SC7+FfVtNQk7So0XMjrrtLAbEC8qjFPifyD7+fs/E6aaNdVde6umlVVh0QuwDLdOMu7vp5RiGFsB70nj5yo0XA==}
     peerDependencies:
       vite: ^2.6.0 || 3 || 4 || 5
     dependencies:
-      '@rollup/pluginutils': 5.0.5
+      '@rollup/pluginutils': 5.0.5(rollup@2.79.1)
       '@svgr/core': 8.1.0(typescript@5.2.2)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0)
       vite: 5.0.5(@types/node@20.10.3)
