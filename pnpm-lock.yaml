@@ -81,8 +81,8 @@ importers:
         specifier: ^1.7.17
         version: 1.7.17(react-dom@18.2.0)(react@18.2.0)
       '@livestore/devtools-react':
-        specifier: ^0.0.28-dev.0
-        version: 0.0.28-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.28-dev.1
+        version: 0.0.28-dev.1(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -259,8 +259,8 @@ importers:
         specifier: 0.51.1
         version: 0.51.1(effect@2.0.0-next.58)(fast-check@3.13.2)
       '@livestore/devtools-react':
-        specifier: ^0.0.27
-        version: 0.0.27(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.28-dev.1
+        version: 0.0.28-dev.1(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -314,8 +314,8 @@ importers:
         specifier: 0.51.1
         version: 0.51.1(effect@2.0.0-next.58)(fast-check@3.13.2)
       '@livestore/devtools-react':
-        specifier: ^0.0.27
-        version: 0.0.27(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.28-dev.1
+        version: 0.0.28-dev.1(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -384,8 +384,8 @@ importers:
         specifier: 0.51.1
         version: 0.51.1(effect@2.0.0-next.58)(fast-check@3.13.2)
       '@livestore/devtools-react':
-        specifier: ^0.0.27
-        version: 0.0.27(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+        specifier: ^0.0.28-dev.1
+        version: 0.0.28-dev.1(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -2394,18 +2394,8 @@ packages:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  /@livestore/devtools-react@0.0.27(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
-    resolution: {integrity: sha512-X9ZfebUDqKwlCirPFNFL6xxL6TYyMZS842lEozj6krLqB1J8gwHEp53mjRpHzp3lAnBZxZhVbPH4mad25bUdeA==}
-    peerDependencies:
-      '@livestore/livestore': workspace:*
-      react: '*'
-    dependencies:
-      '@livestore/livestore': link:packages/@livestore/livestore
-      react: 18.2.0
-    dev: false
-
-  /@livestore/devtools-react@0.0.28-dev.0(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
-    resolution: {integrity: sha512-MhB72sy4nw3/73Axnz6yIIAUH22zUtdKdea/MusTtyxcvfzz38Lg8zkn7oAjLj98vxZxwOwVqQnbv16l0m2+Nw==}
+  /@livestore/devtools-react@0.0.28-dev.1(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0):
+    resolution: {integrity: sha512-c1gNytpzGTcbLb89pG1mTJEBWXB6Dk+PO9I5JL4yo07qlmL+cG40HyphxrO3fYtGyhjnBgrf2dFQqmqU0dFrWA==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: '*'
