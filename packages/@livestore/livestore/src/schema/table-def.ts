@@ -17,7 +17,7 @@ export const {
   textWithSchema,
 } = SqliteDsl
 
-export { SqliteDsl as __SqliteDsl } from 'effect-db-schema'
+export { type SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 
 import { dynamicallyRegisteredTables } from '../global-state.js'
 

@@ -1,4 +1,4 @@
-import { SqliteAst as __SqliteAst, SqliteDsl } from 'effect-db-schema'
+import { type SqliteAst as __SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { FromTable } from './table-def.js'
 import { table } from './table-def.js'
