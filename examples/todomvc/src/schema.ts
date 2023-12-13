@@ -12,7 +12,6 @@ const Filter = Schema.literal('all', 'active', 'completed')
 const app = DbSchema.table(
   'app',
   {
-    id: DbSchema.textWithSchema(Schema.literal('static'), { primaryKey: true }),
     newTodoText: DbSchema.text({ default: '' }),
     filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
   },

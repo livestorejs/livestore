@@ -9,11 +9,14 @@ const todos = DbSchema.table('todos', {
 
 const Filter = Schema.literal('all', 'active', 'completed')
 
-const app = DbSchema.table('app', {
-  id: DbSchema.textWithSchema(Schema.literal('static'), { primaryKey: true }),
-  newTodoText: DbSchema.text({ default: '' }),
-  filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
-})
+const app = DbSchema.table(
+  'app',
+  {
+    newTodoText: DbSchema.text({ default: '' }),
+    filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
+  },
+  { isSingleton: true },
+)
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
 export type Filter = Schema.Schema.To<typeof Filter>
