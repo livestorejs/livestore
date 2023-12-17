@@ -6,6 +6,7 @@ import { schema } from './domain/schema'
 import { AllTabsLazy, BottomDrawer } from '@livestore/devtools-react'
 import App from './App'
 import React from 'react'
+import { seed } from './domain/seed'
 
 export default function Root() {
   return (
@@ -13,6 +14,7 @@ export default function Root() {
       schema={schema}
       loadStorage={() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs' })}
       fallback={<div>Loading...</div>}
+      boot={seed}
     >
       <App />
       <BottomDrawer>
