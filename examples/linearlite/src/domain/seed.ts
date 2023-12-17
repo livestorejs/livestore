@@ -2,15 +2,12 @@ import { InMemoryDatabase, prepareBindValues, sql } from '@livestore/livestore'
 
 import { nanoid } from 'nanoid'
 import { Description, Issue } from './schema'
-import { retryUntil } from '../../../../packages/@livestore/utils/src/effect/Effect'
 
 export const names = ['John', 'Jane', 'Sam', 'Anna', 'Michael', 'Sarah', 'Chris', 'Jessica']
 export const projects = ['Website Redesign', 'App Development', 'Marketing Strategy', 'Customer Outreach']
 export const labels = ['frontend', 'backend', 'ux', 'research', 'design', 'bug', 'feature']
 export const priorities = ['none', 'low', 'medium', 'high', 'urgent']
 export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled']
-
-let issueId = 0
 
 export function seed(db: InMemoryDatabase) {
   const urlParams = new URLSearchParams(window.location.search)
