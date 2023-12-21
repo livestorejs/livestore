@@ -61,19 +61,19 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-trace-base": "1.18.1",
-    "@tauri-apps/api": "^1.5.2",
+    "@opentelemetry/sdk-trace-base": "1.19.0",
+    "@tauri-apps/api": "^1.5.3",
     "@testing-library/react": "^14.1.2",
     "@types/lodash-es": "^4.17.12",
     "@types/react": "^18.2.45",
-    "@types/react-dom": "^18.2.17",
+    "@types/react-dom": "^18.2.18",
     "@types/uuid": "^9.0.7",
     "jsdom": "^23.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "5.3.3",
-    "vite": "5.0.8",
-    "vitest": "^1.0.4"
+    "vite": "5.0.10",
+    "vitest": "^1.1.0"
   },
   "peerDependencies": {
     "@tauri-apps/api": "^1.4.0",

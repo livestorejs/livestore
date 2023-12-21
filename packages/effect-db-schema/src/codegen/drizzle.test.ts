@@ -12,8 +12,8 @@ import { printSqliteDbSchema, printSqliteDrizzleTables } from './drizzle.js'
 describe('drizzle sqlite printer', () => {
   test('should print sqlite with raw ast', () => {
     class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
-      createdAt: Schema.dateFromString(Schema.string),
-      updatedAt: Schema.dateFromString(Schema.string),
+      createdAt: Schema.Date,
+      updatedAt: Schema.Date,
     }) {}
 
     const userTableAst = AstSqlite.table(
@@ -118,8 +118,8 @@ describe('drizzle sqlite printer', () => {
 
   test('should print sqlite with dsl', () => {
     class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
-      createdAt: Schema.dateFromString(Schema.string),
-      updatedAt: Schema.dateFromString(Schema.string),
+      createdAt: Schema.Date,
+      updatedAt: Schema.Date,
     }) {}
 
     const users = sqlite.table('users', {

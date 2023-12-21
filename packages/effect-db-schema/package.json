@@ -25,13 +25,13 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@effect/schema": "0.53.1",
+    "@effect/schema": "0.55.0",
     "dprint-node": "^1.0.8"
   },
   "devDependencies": {
     "drizzle-orm": "^0.28.6",
-    "vite": "^5.0.8",
-    "vitest": "^1.0.4"
+    "vite": "^5.0.10",
+    "vitest": "^1.1.0"
   },
   "publishConfig": {
     "access": "public"

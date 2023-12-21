@@ -29,7 +29,7 @@ export const FilterState = Schema.struct({
   query: optional(Schema.string),
 })
 
-export const parseFilterStateString = Schema.parseSync(Schema.compose(Schema.ParseJson, FilterState))
+export const parseFilterStateString = Schema.parseSync(Schema.compose(Schema.parseJson(), FilterState))
 
 export type FilterState = Schema.Schema.To<typeof FilterState>
 
