@@ -19,14 +19,12 @@ export type OrderDirection = Schema.Schema.To<typeof OrderDirection>
 const OrderBy = Schema.literal('priority', 'status', 'created', 'modified')
 export type OrderBy = Schema.Schema.To<typeof OrderBy>
 
-const optional = <T extends Schema.Schema<any>>(schema: T) => Schema.optional(Schema.union(schema, Schema.undefined))
-
 export const FilterState = Schema.struct({
   orderBy: OrderBy,
   orderDirection: OrderDirection,
-  status: optional(Schema.array(StatusType)),
-  priority: optional(Schema.array(PriorityType)),
-  query: optional(Schema.string),
+  status: Schema.optional(Schema.array(StatusType)),
+  priority: Schema.optional(Schema.array(PriorityType)),
+  query: Schema.optional(Schema.string),
 })
 
 export const parseFilterStateString = Schema.parseSync(Schema.compose(Schema.parseJson(), FilterState))
