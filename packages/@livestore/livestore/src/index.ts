@@ -17,6 +17,8 @@ export { dbGraph } from './global-state.js'
 
 export { type RowResult, type RowResultEncoded, type RowQueryArgs, rowQuery } from './row-query.js'
 
+export * from './mutations.js'
+
 export { defineAction, defineActions, makeSchema, DbSchema } from './schema/index.js'
 
 export type {

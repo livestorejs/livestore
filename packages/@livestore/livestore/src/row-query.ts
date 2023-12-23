@@ -18,6 +18,7 @@ export type RowQueryArgs<TTableDef extends TableDef> = TTableDef['options']['isS
       store: Store
       otelContext?: otel.Context
       defaultValues: Partial<RowResult<TTableDef>>
+      skipInsertDefaultRow?: boolean
     }
   : {
       table: TTableDef
@@ -25,13 +26,14 @@ export type RowQueryArgs<TTableDef extends TableDef> = TTableDef['options']['isS
       otelContext?: otel.Context
       id: string
       defaultValues: Partial<RowResult<TTableDef>>
+      skipInsertDefaultRow?: boolean
     }
 
 // TODO also allow other where clauses and multiple rows
 export const rowQuery = <TTableDef extends TableDef>(
   args: RowQueryArgs<TTableDef>,
 ): LiveStoreJSQuery<RowResult<TTableDef>> => {
-  const { table, store, defaultValues } = args
+  const { table, store, defaultValues, skipInsertDefaultRow } = args
   const otelContext = args.otelContext ?? store.otel.queriesSpanContext
   const id: string | undefined = (args as any).id
 
@@ -69,14 +71,16 @@ export const rowQuery = <TTableDef extends TableDef>(
     })
   }
 
-  // TODO find a way to only do this if necessary
-  insertRowWithDefaultValuesOrIgnore({
-    db: store._proxyDb,
-    id: id ?? 'singleton',
-    stateSchema,
-    otelContext,
-    defaultValues,
-  })
+  if (skipInsertDefaultRow !== true) {
+    // TODO find a way to only do this if necessary
+    insertRowWithDefaultValuesOrIgnore({
+      db: store._proxyDb,
+      id: id ?? 'singleton',
+      stateSchema,
+      otelContext,
+      defaultValues,
+    })
+  }
 
   const whereClause = id === undefined ? '' : `where id = '${id}'`
   const queryStr = sql`select * from ${componentTableName} ${whereClause} limit 1`
@@ -110,6 +114,10 @@ export type RowResultEncoded<TTableDef extends TableDef> = TTableDef['isSingleCo
   ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TTableDef['schema']['columns']>, 'value'>
   : SqliteDsl.FromColumns.RowEncoded<TTableDef['schema']['columns']>
 
+export type RowInsert<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
+  ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['schema']['columns']>, 'value'>
+  : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['schema']['columns']>
+
 const insertRowWithDefaultValuesOrIgnore = ({
   db,
   id,
@@ -135,11 +143,11 @@ const insertRowWithDefaultValuesOrIgnore = ({
     stateSchema.columns,
     ReadonlyRecord.filter((_, key) => key !== 'id'),
     ReadonlyRecord.map((column, columnName) =>
-      column.default === undefined
+      column.default._tag === 'None'
         ? column.nullable === true
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
-        : Schema.encodeSync(column.type.codec)(column.default ?? null),
+        : Schema.encodeSync(column.schema)(column.default.value),
     ),
     ReadonlyRecord.map((val, columnName) => explicitDefaultValues?.[columnName] ?? val),
   )

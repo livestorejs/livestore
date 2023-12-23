@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "type": "module",
   "exports": {
     ".": {
@@ -53,6 +53,7 @@
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
     "@livestore/utils": "workspace:*",
+    "@livestore/sql-queries": "workspace:*",
     "@opentelemetry/api": "^1.7.0",
     "comlink": "^4.4.1",
     "effect-db-schema": "workspace:*",

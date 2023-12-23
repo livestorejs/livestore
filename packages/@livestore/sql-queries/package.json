@@ -1,0 +1,25 @@
+{
+  "name": "@livestore/sql-queries",
+  "version": "0.0.30",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "effect-db-schema": "workspace:*",
+    "effect": "2.0.0-next.61",
+    "@effect/schema": "0.55.0"
+  },
+  "devDependencies": {
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

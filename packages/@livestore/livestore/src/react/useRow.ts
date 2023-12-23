@@ -104,7 +104,7 @@ export const useRow: {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
-        const encodedValue = Schema.encodeSync(sqliteTableDef.columns['value']!.type.codec)(newValue)
+        const encodedValue = Schema.encodeSync(sqliteTableDef.columns['value']!.schema)(newValue)
 
         store.applyEvent('livestore.UpdateComponentState', {
           tableName: sqliteTableDef.name,
@@ -124,7 +124,7 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
 
-          const encodedValue = Schema.encodeSync(column.type.codec)(newValue)
+          const encodedValue = Schema.encodeSync(column.schema)(newValue)
 
           store.applyEvent('livestore.UpdateComponentState', {
             tableName: sqliteTableDef.name,
@@ -150,7 +150,7 @@ export const useRow: {
 
         const columnNames = Object.keys(columnValues)
         const bindValues = mapValues(columnValues, (value, columnName) =>
-          Schema.encodeSync(sqliteTableDef.columns[columnName]!.type.codec)(value),
+          Schema.encodeSync(sqliteTableDef.columns[columnName]!.schema)(value),
         )
 
         store.applyEvent('livestore.UpdateComponentState', {

@@ -1,0 +1,786 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FieldDefs > boolean 1`] = `
+{
+  "columnType": "integer",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "NumberKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "number",
+          Symbol(@effect/schema/annotation/Description): "a number",
+        },
+      },
+      "to": {
+        "_tag": "BooleanKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "boolean",
+          Symbol(@effect/schema/annotation/Description): "a boolean",
+        },
+      },
+      "transformation": {
+        "_tag": "FinalTransformation",
+        "decode": [Function],
+        "encode": [Function],
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > boolean 2`] = `
+{
+  "columnType": "integer",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "NumberKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "number",
+          Symbol(@effect/schema/annotation/Description): "a number",
+        },
+      },
+      "to": {
+        "_tag": "BooleanKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "boolean",
+          Symbol(@effect/schema/annotation/Description): "a boolean",
+        },
+      },
+      "transformation": {
+        "_tag": "FinalTransformation",
+        "decode": [Function],
+        "encode": [Function],
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > boolean 3`] = `
+{
+  "columnType": "integer",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": false,
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "NumberKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "number",
+          Symbol(@effect/schema/annotation/Description): "a number",
+        },
+      },
+      "to": {
+        "_tag": "BooleanKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "boolean",
+          Symbol(@effect/schema/annotation/Description): "a boolean",
+        },
+      },
+      "transformation": {
+        "_tag": "FinalTransformation",
+        "decode": [Function],
+        "encode": [Function],
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > datetime 1`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "StringKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "string",
+          Symbol(@effect/schema/annotation/Description): "a string",
+        },
+      },
+      "to": {
+        "_tag": "Refinement",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+          Symbol(@effect/schema/annotation/Description): "a valid Date",
+        },
+        "filter": [Function],
+        "from": {
+          "_tag": "Declaration",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/PrettyHookId): [Function],
+            Symbol(@effect/schema/ArbitraryHookId): [Function],
+            Symbol(@effect/schema/EquivalenceHookId): [Function],
+          },
+          "decode": [Function],
+          "type": {
+            "_tag": "TypeLiteral",
+            "annotations": {},
+            "indexSignatures": [],
+            "propertySignatures": [
+              {
+                "annotations": {},
+                "isOptional": false,
+                "isReadonly": true,
+                "name": "valueOf",
+                "type": {
+                  "_tag": "NumberKeyword",
+                  "annotations": {
+                    Symbol(@effect/schema/annotation/Title): "number",
+                    Symbol(@effect/schema/annotation/Description): "a number",
+                  },
+                },
+              },
+            ],
+          },
+          "typeParameters": [],
+        },
+      },
+      "transformation": {
+        "_tag": "FinalTransformation",
+        "decode": [Function],
+        "encode": [Function],
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > datetime 2`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "StringKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "string",
+          Symbol(@effect/schema/annotation/Description): "a string",
+        },
+      },
+      "to": {
+        "_tag": "Refinement",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+          Symbol(@effect/schema/annotation/Description): "a valid Date",
+        },
+        "filter": [Function],
+        "from": {
+          "_tag": "Declaration",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/PrettyHookId): [Function],
+            Symbol(@effect/schema/ArbitraryHookId): [Function],
+            Symbol(@effect/schema/EquivalenceHookId): [Function],
+          },
+          "decode": [Function],
+          "type": {
+            "_tag": "TypeLiteral",
+            "annotations": {},
+            "indexSignatures": [],
+            "propertySignatures": [
+              {
+                "annotations": {},
+                "isOptional": false,
+                "isReadonly": true,
+                "name": "valueOf",
+                "type": {
+                  "_tag": "NumberKeyword",
+                  "annotations": {
+                    Symbol(@effect/schema/annotation/Title): "number",
+                    Symbol(@effect/schema/annotation/Description): "a number",
+                  },
+                },
+              },
+            ],
+          },
+          "typeParameters": [],
+        },
+      },
+      "transformation": {
+        "_tag": "FinalTransformation",
+        "decode": [Function],
+        "encode": [Function],
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > datetime 3`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": null,
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Union",
+      "annotations": {},
+      "types": [
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": null,
+        },
+        {
+          "_tag": "Transform",
+          "annotations": {},
+          "from": {
+            "_tag": "StringKeyword",
+            "annotations": {
+              Symbol(@effect/schema/annotation/Title): "string",
+              Symbol(@effect/schema/annotation/Description): "a string",
+            },
+          },
+          "to": {
+            "_tag": "Refinement",
+            "annotations": {
+              Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+              Symbol(@effect/schema/annotation/Description): "a valid Date",
+            },
+            "filter": [Function],
+            "from": {
+              "_tag": "Declaration",
+              "annotations": {
+                Symbol(@effect/schema/annotation/Identifier): "Date",
+                Symbol(@effect/schema/PrettyHookId): [Function],
+                Symbol(@effect/schema/ArbitraryHookId): [Function],
+                Symbol(@effect/schema/EquivalenceHookId): [Function],
+              },
+              "decode": [Function],
+              "type": {
+                "_tag": "TypeLiteral",
+                "annotations": {},
+                "indexSignatures": [],
+                "propertySignatures": [
+                  {
+                    "annotations": {},
+                    "isOptional": false,
+                    "isReadonly": true,
+                    "name": "valueOf",
+                    "type": {
+                      "_tag": "NumberKeyword",
+                      "annotations": {
+                        Symbol(@effect/schema/annotation/Title): "number",
+                        Symbol(@effect/schema/annotation/Description): "a number",
+                      },
+                    },
+                  },
+                ],
+              },
+              "typeParameters": [],
+            },
+          },
+          "transformation": {
+            "_tag": "FinalTransformation",
+            "decode": [Function],
+            "encode": [Function],
+          },
+        },
+      ],
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > datetime 4`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": 2022-02-02T00:00:00.000Z,
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "StringKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "string",
+          Symbol(@effect/schema/annotation/Description): "a string",
+        },
+      },
+      "to": {
+        "_tag": "Refinement",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+          Symbol(@effect/schema/annotation/Description): "a valid Date",
+        },
+        "filter": [Function],
+        "from": {
+          "_tag": "Declaration",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/PrettyHookId): [Function],
+            Symbol(@effect/schema/ArbitraryHookId): [Function],
+            Symbol(@effect/schema/EquivalenceHookId): [Function],
+          },
+          "decode": [Function],
+          "type": {
+            "_tag": "TypeLiteral",
+            "annotations": {},
+            "indexSignatures": [],
+            "propertySignatures": [
+              {
+                "annotations": {},
+                "isOptional": false,
+                "isReadonly": true,
+                "name": "valueOf",
+                "type": {
+                  "_tag": "NumberKeyword",
+                  "annotations": {
+                    Symbol(@effect/schema/annotation/Title): "number",
+                    Symbol(@effect/schema/annotation/Description): "a number",
+                  },
+                },
+              },
+            ],
+          },
+          "typeParameters": [],
+        },
+      },
+      "transformation": {
+        "_tag": "FinalTransformation",
+        "decode": [Function],
+        "encode": [Function],
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > json 1`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Transform",
+      "annotations": {},
+      "from": {
+        "_tag": "Transform",
+        "annotations": {},
+        "from": {
+          "_tag": "StringKeyword",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Title): "string",
+            Symbol(@effect/schema/annotation/Description): "a string",
+          },
+        },
+        "to": {
+          "_tag": "UnknownKeyword",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Title): "unknown",
+          },
+        },
+        "transformation": {
+          "_tag": "FinalTransformation",
+          "decode": [Function],
+          "encode": [Function],
+        },
+      },
+      "to": {
+        "_tag": "AnyKeyword",
+        "annotations": {
+          Symbol(@effect/schema/annotation/Title): "any",
+        },
+      },
+      "transformation": {
+        "_tag": "ComposeTransformation",
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > json 2`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": null,
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Union",
+      "annotations": {},
+      "types": [
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": null,
+        },
+        {
+          "_tag": "Transform",
+          "annotations": {},
+          "from": {
+            "_tag": "Transform",
+            "annotations": {},
+            "from": {
+              "_tag": "StringKeyword",
+              "annotations": {
+                Symbol(@effect/schema/annotation/Title): "string",
+                Symbol(@effect/schema/annotation/Description): "a string",
+              },
+            },
+            "to": {
+              "_tag": "UnknownKeyword",
+              "annotations": {
+                Symbol(@effect/schema/annotation/Title): "unknown",
+              },
+            },
+            "transformation": {
+              "_tag": "FinalTransformation",
+              "decode": [Function],
+              "encode": [Function],
+            },
+          },
+          "to": {
+            "_tag": "AnyKeyword",
+            "annotations": {
+              Symbol(@effect/schema/annotation/Title): "any",
+            },
+          },
+          "transformation": {
+            "_tag": "ComposeTransformation",
+          },
+        },
+      ],
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > json 3`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": {
+      "name": "Bob",
+    },
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Union",
+      "annotations": {},
+      "types": [
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": null,
+        },
+        {
+          "_tag": "Transform",
+          "annotations": {},
+          "from": {
+            "_tag": "Transform",
+            "annotations": {},
+            "from": {
+              "_tag": "StringKeyword",
+              "annotations": {
+                Symbol(@effect/schema/annotation/Title): "string",
+                Symbol(@effect/schema/annotation/Description): "a string",
+              },
+            },
+            "to": {
+              "_tag": "UnknownKeyword",
+              "annotations": {
+                Symbol(@effect/schema/annotation/Title): "unknown",
+              },
+            },
+            "transformation": {
+              "_tag": "FinalTransformation",
+              "decode": [Function],
+              "encode": [Function],
+            },
+          },
+          "to": {
+            "_tag": "TypeLiteral",
+            "annotations": {},
+            "indexSignatures": [],
+            "propertySignatures": [
+              {
+                "annotations": {},
+                "isOptional": false,
+                "isReadonly": true,
+                "name": "name",
+                "type": {
+                  "_tag": "StringKeyword",
+                  "annotations": {
+                    Symbol(@effect/schema/annotation/Title): "string",
+                    Symbol(@effect/schema/annotation/Description): "a string",
+                  },
+                },
+              },
+            ],
+          },
+          "transformation": {
+            "_tag": "ComposeTransformation",
+          },
+        },
+      ],
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > text 1`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "StringKeyword",
+      "annotations": {
+        Symbol(@effect/schema/annotation/Title): "string",
+        Symbol(@effect/schema/annotation/Description): "a string",
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > text 2`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "StringKeyword",
+      "annotations": {
+        Symbol(@effect/schema/annotation/Title): "string",
+        Symbol(@effect/schema/annotation/Description): "a string",
+      },
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > text 3`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": null,
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Union",
+      "annotations": {},
+      "types": [
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": null,
+        },
+        {
+          "_tag": "StringKeyword",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Title): "string",
+            Symbol(@effect/schema/annotation/Description): "a string",
+          },
+        },
+      ],
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > text 4`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": "foo",
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Union",
+      "annotations": {},
+      "types": [
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": null,
+        },
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": "foo",
+        },
+      ],
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;
+
+exports[`FieldDefs > text 5`] = `
+{
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": "foo",
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": SchemaImpl {
+    "ast": {
+      "_tag": "Union",
+      "annotations": {},
+      "types": [
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": null,
+        },
+        {
+          "_tag": "Literal",
+          "annotations": {},
+          "literal": "foo",
+        },
+      ],
+    },
+    Symbol(@effect/schema/Schema): {
+      "From": [Function],
+      "To": [Function],
+    },
+  },
+}
+`;

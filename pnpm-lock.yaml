@@ -450,6 +450,9 @@ importers:
       '@graphql-typed-document-node/core':
         specifier: ^3.2.0
         version: 3.2.0(graphql@16.8.1)
+      '@livestore/sql-queries':
+        specifier: workspace:*
+        version: link:../sql-queries
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -515,6 +518,18 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(jsdom@23.0.1)
 
+  packages/@livestore/sql-queries:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.55.0
+        version: 0.55.0(effect@2.0.0-next.61)(fast-check@3.13.2)
+      effect:
+        specifier: 2.0.0-next.61
+        version: 2.0.0-next.61
+      effect-db-schema:
+        specifier: workspace:*
+        version: link:../../effect-db-schema
+
   packages/@livestore/utils:
     dependencies:
       '@effect/opentelemetry':
@@ -557,6 +572,9 @@ importers:
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
+      effect:
+        specifier: 2.0.0-next.61
+        version: 2.0.0-next.61
     devDependencies:
       drizzle-orm:
         specifier: ^0.28.6

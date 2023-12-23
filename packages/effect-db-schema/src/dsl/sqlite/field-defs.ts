@@ -1,24 +1,14 @@
 import * as Schema from '@effect/schema/Schema'
+import { absurd, Option } from 'effect'
 
-import type { Prettify } from '../../utils.js'
-// TODO get rid of `_` suffix once Bun bug is fixed
-// `SyntaxError: Cannot declare an imported binding name twice: 'FieldType'.`
-import * as FieldType_ from './field-type.js'
-
-export type GetFieldTypeDecoded<TFieldType extends FieldType_.FieldType<any, any, any>> =
-  TFieldType extends FieldType_.FieldType<any, any, infer TDecoded> ? TDecoded : never
-
-export interface ColumnDefinition<
-  TFieldType extends FieldType_.FieldType<FieldType_.FieldColumnType, any, any>,
-  TNullable extends boolean,
-> {
-  readonly type: TFieldType
-  // TODO don't allow `null` for non-nullable columns
-  /** Value needs to be decoded (e.g. `Date` instead of `number`) */
-  readonly default?: GetFieldTypeDecoded<TFieldType> | null
+export type ColumnDefinition<TEncoded, TDecoded> = {
+  readonly columnType: FieldColumnType
+  readonly schema: Schema.Schema<TEncoded, TDecoded>
+  readonly default: Option.Option<TEncoded>
   /** @default false */
-  readonly nullable?: TNullable
-  readonly primaryKey?: boolean
+  readonly nullable: boolean
+  /** @default false */
+  readonly primaryKey: boolean
 }
 
 export const isColumnDefinition = (value: unknown): value is ColumnDefinition<any, any> => {
@@ -26,132 +16,213 @@ export const isColumnDefinition = (value: unknown): value is ColumnDefinition<an
   return (
     typeof value === 'object' &&
     value !== null &&
-    'type' in value &&
-    typeof value['type'] === 'object' &&
-    value['type'] !== null &&
-    'columnType' in value['type'] &&
-    validColumnTypes.includes(value['type']['columnType'] as any)
+    'columnType' in value &&
+    validColumnTypes.includes(value['columnType'] as any)
   )
 }
 
+export type ColumnDefinitionInput = {
+  readonly schema?: Schema.Schema<unknown, unknown>
+  readonly default?: unknown | NoDefault
+  readonly nullable?: boolean
+  readonly primaryKey?: boolean
+}
+
+export const NoDefault = Symbol.for('NoDefault')
+export type NoDefault = typeof NoDefault
+
+export type ColDefFn<TColumnType extends FieldColumnType> = {
+  (): {
+    columnType: TColumnType
+    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>, DefaultEncodedForColumnType<TColumnType>>
+    default: Option.None<never>
+    nullable: false
+    primaryKey: false
+  }
+  <
+    TEncoded extends DefaultEncodedForColumnType<TColumnType>,
+    TDecoded = DefaultEncodedForColumnType<TColumnType>,
+    const TNullable extends boolean = false,
+    const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TPrimaryKey extends boolean = false,
+  >(args: {
+    schema?: Schema.Schema<TEncoded, TDecoded>
+    default?: TDefault
+    nullable?: TNullable
+    primaryKey?: TPrimaryKey
+  }): {
+    columnType: TColumnType
+    schema: TNullable extends true
+      ? Schema.Schema<NoInfer<TEncoded> | null, NoInfer<TDecoded> | null>
+      : Schema.Schema<NoInfer<TEncoded>, NoInfer<TDecoded>>
+    default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
+    nullable: NoInfer<TNullable>
+    primaryKey: NoInfer<TPrimaryKey>
+  }
+}
+
+const makeColDef =
+  <TColumnType extends FieldColumnType>(columnType: TColumnType): ColDefFn<TColumnType> =>
+  (def?: ColumnDefinitionInput) => {
+    const nullable = def?.nullable ?? false
+    const schemaWithoutNull: Schema.Schema<any, any> = def?.schema ?? defaultSchemaForColumnType(columnType)
+    const schema = nullable === true ? Schema.nullable(schemaWithoutNull) : schemaWithoutNull
+    const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
+
+    return {
+      columnType,
+      schema,
+      default: default_,
+      nullable,
+      primaryKey: def?.primaryKey ?? false,
+    } as any
+  }
+
+export const column = <TColumnType extends FieldColumnType>(columnType: TColumnType): ColDefFn<TColumnType> =>
+  makeColDef(columnType)
+
 /// Column definitions
 
-export const column = <TType extends FieldType_.FieldColumnType, TEncoded, TDecoded, TNullable extends boolean>(
-  _: ColumnDefinition<FieldType_.FieldType<TType, TEncoded, TDecoded>, TNullable>,
-) => _
+export const text: ColDefFn<'text'> = makeColDef('text')
+export const integer: ColDefFn<'integer'> = makeColDef('integer')
+export const real: ColDefFn<'real'> = makeColDef('real')
+export const blob: ColDefFn<'blob'> = makeColDef('blob')
 
-export const text = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<string, string>, boolean>, 'type'>>,
->(
-  def?: TDef,
-) =>
-  ({
-    // TODO improve handling of nullable schemas
-    type: FieldType_.text(def?.nullable === true ? (Schema.nullable(Schema.string) as any) : Schema.string),
-    ...def,
-  }) as ColumnDefinition<
-    FieldType_.FieldTypeText<string, string>,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+/**
+ * `NoInfer` is needed for some generics to work properly in certain cases.
+ * See full explanation here: https://gist.github.com/schickling/a15e96819826530492b41a10d79d3c04?permalink_comment_id=4805120#gistcomment-4805120
+ *
+ * Big thanks to @andarist for their help with this!
+ */
+type NoInfer<T> = [T][T extends any ? 0 : never]
 
-export const textWithSchema = <
-  TEncoded extends string,
-  TDecoded,
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeText<TEncoded, TDecoded>, boolean>, 'type'>>,
->(
-  schema: Schema.Schema<TEncoded, TDecoded>,
-  def?: TDef,
-) =>
-  ({
-    // TODO improve handling of nullable schemas
-    type: FieldType_.text(def?.nullable === true ? (Schema.nullable(schema) as any) : schema),
-    ...def,
-  }) as any as ColumnDefinition<
-    FieldType_.FieldTypeText<TEncoded, TDecoded>,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+export type SpecializedColDefFn<
+  TColumnType extends FieldColumnType,
+  TAllowsCustomSchema extends boolean,
+  TBaseDecoded,
+> = {
+  (): {
+    columnType: TColumnType
+    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>
+    default: Option.None<never>
+    nullable: false
+    primaryKey: false
+  }
+  <
+    TDecoded = TBaseDecoded,
+    const TNullable extends boolean = false,
+    const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TPrimaryKey extends boolean = false,
+  >(
+    args: TAllowsCustomSchema extends true
+      ? {
+          schema?: Schema.Schema<any, TDecoded>
+          default?: TDefault
+          nullable?: TNullable
+          primaryKey?: TPrimaryKey
+        }
+      : {
+          default?: TDefault
+          nullable?: TNullable
+          primaryKey?: TPrimaryKey
+        },
+  ): {
+    columnType: TColumnType
+    schema: TNullable extends true
+      ? Schema.Schema<DefaultEncodedForColumnType<TColumnType> | null, NoInfer<TDecoded> | null>
+      : Schema.Schema<DefaultEncodedForColumnType<TColumnType>, NoInfer<TDecoded>>
+    default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
+    nullable: NoInfer<TNullable>
+    primaryKey: NoInfer<TPrimaryKey>
+  }
+}
 
-export const integer = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeInteger<number, number>, boolean>, 'type'>>,
->(
-  def?: TDef,
-) =>
-  ({
-    // TODO improve handling of nullable schemas
-    type: FieldType_.integer(
-      def?.nullable === true ? (Schema.nullable(Schema.int()(Schema.number)) as any) : Schema.int()(Schema.number),
-    ),
-    ...def,
-  }) as ColumnDefinition<
-    FieldType_.FieldTypeInteger<number, number>,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+type MakeSpecializedColDefFn = {
+  <TColumnType extends FieldColumnType, TBaseDecoded>(
+    columnType: TColumnType,
+    baseSchema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>,
+  ): SpecializedColDefFn<TColumnType, false, TBaseDecoded>
+  <TColumnType extends FieldColumnType, TBaseDecoded>(
+    columnType: TColumnType,
+    baseSchema: <TDecoded>(
+      customSchema: Schema.Schema<TBaseDecoded, TDecoded> | undefined,
+    ) => Schema.Schema<DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>,
+  ): SpecializedColDefFn<TColumnType, true, TBaseDecoded>
+}
 
-export const real = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeReal<number, number>, boolean>, 'type'>>,
->(
-  def?: TDef,
-) =>
-  ({
-    // TODO improve handling of nullable schemas
-    type: FieldType_.real(def?.nullable === true ? (Schema.nullable(Schema.number) as any) : Schema.number),
-    ...def,
-  }) as ColumnDefinition<
-    FieldType_.FieldTypeReal<number, number>,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, baseSchema) => (def?: ColumnDefinitionInput) => {
+  const nullable = def?.nullable ?? false
+  const schemaWithoutNull = typeof baseSchema === 'function' ? baseSchema(def?.schema as any) : baseSchema
+  const schema = nullable === true ? Schema.nullable(schemaWithoutNull) : schemaWithoutNull
+  const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
-export const blob = <TNullable extends boolean = false>(
-  def?: Omit<ColumnDefinition<FieldType_.FieldTypeBlob<Uint8Array>, TNullable>, 'type'>,
-) => ({ type: FieldType_.blob(), ...def })
+  return {
+    columnType,
+    schema,
+    default: default_,
+    nullable,
+    primaryKey: def?.primaryKey ?? false,
+  } as any
+}
 
-export const blobWithSchema = <TDecoded, TNullable extends boolean = false>({
-  schema,
-  ...def
-}: { schema: Schema.Schema<Uint8Array, TDecoded> } & Omit<
-  ColumnDefinition<FieldType_.FieldTypeBlob<TDecoded>, TNullable>,
-  'type'
->) => ({ type: FieldType_.blobWithCodec(schema), ...def })
+export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedColDef('text', (customSchema) =>
+  Schema.parseJson(customSchema ?? Schema.any),
+)
 
-export const boolean = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeBoolean, boolean>, 'type'>>,
->(
-  def?: TDef,
-) =>
-  ({ type: FieldType_.boolean(), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeBoolean,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', Schema.Date)
 
-export const json = <
-  TEncoded,
-  TDecoded,
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeJson<TDecoded>, boolean>, 'type'>>,
->({
-  schema,
-  ...def
-}: TDef & {
-  schema: Schema.Schema<TEncoded, TDecoded>
-}) =>
-  ({ type: FieldType_.json<TEncoded, TDecoded>(schema), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeJson<TDecoded>,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef(
+  'integer',
+  Schema.transform(
+    Schema.number,
+    Schema.DateFromSelf,
+    (x) => new Date(x),
+    (x) => x.getTime(),
+  ),
+)
 
-// export const json = <From, To, TNullable extends boolean = false>({
-//   schema,
-//   ...def
-// }: { schema: Schema.Schema<From, To> } & Omit<ColumnDefinition<FieldType_.FieldTypeJson<To>, TNullable>, 'type'>) => ({
-//   type: FieldType_.json(schema),
-//   ...def,
-// })
+export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef(
+  'integer',
+  Schema.transform(
+    Schema.number,
+    Schema.boolean,
+    (_) => _ === 1,
+    (_) => (_ ? 1 : 0),
+  ),
+)
 
-export const datetime = <
-  const TDef extends Prettify<Omit<ColumnDefinition<FieldType_.FieldTypeDateTime, boolean>, 'type'>>,
->(
-  def?: TDef,
-) =>
-  ({ type: FieldType_.datetime(), ...def }) as ColumnDefinition<
-    FieldType_.FieldTypeDateTime,
-    TDef['nullable'] extends boolean ? TDef['nullable'] : false
-  >
+export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
+
+export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = TColumnType extends 'text'
+  ? string
+  : TColumnType extends 'integer'
+    ? number
+    : TColumnType extends 'real'
+      ? number
+      : TColumnType extends 'blob'
+        ? Uint8Array
+        : never
+
+export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
+  columnType: TColumnType,
+): Schema.Schema<DefaultEncodedForColumnType<TColumnType>, DefaultEncodedForColumnType<TColumnType>> => {
+  type T = DefaultEncodedForColumnType<TColumnType>
+
+  switch (columnType) {
+    case 'text': {
+      return Schema.string as any as Schema.Schema<T, T>
+    }
+    case 'integer': {
+      return Schema.number as any as Schema.Schema<T, T>
+    }
+    case 'real': {
+      return Schema.number as any as Schema.Schema<T, T>
+    }
+    case 'blob': {
+      return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T, T>
+    }
+    default: {
+      return absurd(columnType)
+    }
+  }
+}

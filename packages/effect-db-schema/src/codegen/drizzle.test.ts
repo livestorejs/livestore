@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import * as Schema from '@effect/schema/Schema'
+import { Option } from 'effect'
 import { describe, test } from 'vitest'
 
 import * as AstSqlite from '../ast/sqlite.js'
@@ -23,28 +24,28 @@ describe('drizzle sqlite printer', () => {
           _tag: 'column',
           name: 'id',
           primaryKey: true,
-          default: undefined,
+          default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          codec: Schema.string,
+          schema: Schema.string,
         },
         {
           _tag: 'column',
           name: 'metaInfo',
           primaryKey: false,
-          default: undefined,
+          default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          codec: UserMetaInfo,
+          schema: UserMetaInfo,
         },
         {
           _tag: 'column',
           name: 'isCool',
           primaryKey: false,
-          default: undefined,
+          default: Option.none(),
           nullable: false,
           type: { _tag: 'integer' },
-          codec: Schema.transform(
+          schema: Schema.transform(
             Schema.number,
             Schema.boolean,
             (_) => _ === 1,
@@ -69,28 +70,28 @@ describe('drizzle sqlite printer', () => {
           _tag: 'column',
           name: 'id',
           primaryKey: true,
-          default: undefined,
+          default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          codec: Schema.string,
+          schema: Schema.string,
         },
         {
           _tag: 'column',
           name: 'text',
           primaryKey: false,
-          default: undefined,
+          default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          codec: Schema.string,
+          schema: Schema.string,
         },
         {
           _tag: 'column',
           name: 'isCool',
           primaryKey: false,
-          default: undefined,
+          default: Option.none(),
           nullable: false,
           type: { _tag: 'integer' },
-          codec: Schema.transform(
+          schema: Schema.transform(
             Schema.number,
             Schema.boolean,
             (_) => _ === 1,
@@ -126,7 +127,7 @@ describe('drizzle sqlite printer', () => {
       id: sqlite.text({ primaryKey: true }),
       metaInfo: sqlite.json({ schema: UserMetaInfo }),
       isCool: sqlite.boolean({ nullable: true }),
-      createdAt: sqlite.datetime({ nullable: true, default: new Date('2023-10-01T13:54:43.861Z') }),
+      createdAt: sqlite.datetimeInteger({ nullable: true, default: new Date('2023-10-01T13:54:43.861Z') }),
     })
 
     const dbSchema = sqlite.makeDbSchema({ users })

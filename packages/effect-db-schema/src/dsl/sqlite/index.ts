@@ -1,14 +1,11 @@
 import * as Schema from '@effect/schema/Schema'
+import type { Option } from 'effect'
 
 import type * as SqliteAst from '../../ast/sqlite.js'
 import type { Nullable, PrettifyFlat } from '../../utils.js'
 import type { ColumnDefinition } from './field-defs.js'
-// TODO get rid of `_` suffix once Bun bug is fixed
-// `SyntaxError: Cannot declare an imported binding name twice: 'FieldType'.`
-import type * as FieldType_ from './field-type.js'
 
 export * from './field-defs.js'
-export * as FieldType from './field-type.js'
 
 export type DbSchema = {
   [key: string]: TableDefinition<string, Columns>
@@ -53,25 +50,18 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 }
 
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(tableDef: TTableDefinition) =>
-  Schema.struct(
-    Object.fromEntries(
-      tableDef.ast.columns.map((column) => [
-        column.name,
-        column.nullable ? Schema.nullable(column.codec) : column.codec,
-      ]),
-    ),
-  )
+  Schema.struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema])))
 
 const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
   return Object.entries(columns).map(([name, column]) => {
     return {
       _tag: 'column',
       name,
-      codec: column.type.codec,
-      default: column.default,
+      schema: column.schema,
+      default: column.default as any,
       nullable: column.nullable ?? false,
       primaryKey: column.primaryKey ?? false,
-      type: { _tag: column.type.columnType },
+      type: { _tag: column.columnType },
     } satisfies SqliteAst.Column
   })
 }
@@ -91,10 +81,7 @@ export type TableDefinition<TName extends string, TColumns extends Columns> = {
   ast: SqliteAst.Table
 }
 
-export type Columns = Record<
-  string,
-  ColumnDefinition<FieldType_.FieldType<FieldType_.FieldColumnType, any, any>, boolean>
->
+export type Columns = Record<string, ColumnDefinition<any, any>>
 
 export type Index = {
   name: string
@@ -115,11 +102,11 @@ export namespace FromTable {
   >
 
   export type Columns<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: TTableDefinition['columns'][K]['type']['columnType']
+    [K in keyof TTableDefinition['columns']]: TTableDefinition['columns'][K]['columnType']
   }
 
   export type RowEncodeNonNullable<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.From<TTableDefinition['columns'][K]['type']['codec']>
+    [K in keyof TTableDefinition['columns']]: Schema.Schema.From<TTableDefinition['columns'][K]['schema']>
   }
 
   export type RowEncoded<TTableDefinition extends TableDefinition<any, any>> = PrettifyFlat<
@@ -136,7 +123,7 @@ export namespace FromTable {
   // >
 
   export type RowDecodedAll<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.To<TTableDefinition['columns'][K]['type']['codec']>
+    [K in keyof TTableDefinition['columns']]: Schema.Schema.To<TTableDefinition['columns'][K]['schema']>
   }
 }
 
@@ -148,7 +135,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends Columns> = {
-    [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['type']['codec']>
+    [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['schema']>
   }
 
   export type RowEncoded<TColumns extends Columns> = PrettifyFlat<
@@ -157,10 +144,23 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends Columns> = {
-    [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['type']['codec']>
+    [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['schema']>
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {
     [K in keyof TColumns as TColumns[K] extends ColumnDefinition<any, true> ? K : never]: {}
   }
+
+  export type RequiredInsertColumnNames<TColumns extends Columns> = keyof {
+    [K in keyof TColumns as TColumns[K]['nullable'] extends true
+      ? never
+      : TColumns[K]['default'] extends Option.Some<any>
+        ? never
+        : K]: {}
+  }
+
+  export type InsertRowDecoded<TColumns extends Columns> = PrettifyFlat<
+    Pick<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>> &
+      Partial<Omit<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>>>
+  >
 }

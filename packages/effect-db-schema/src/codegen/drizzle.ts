@@ -1,4 +1,5 @@
 import * as SchemaAST from '@effect/schema/AST'
+import { Option } from 'effect'
 
 import type * as SqliteAst from '../ast/sqlite.js'
 import type * as sqlite from '../dsl/sqlite/index.js'
@@ -120,10 +121,10 @@ export const printSqliteDrizzleTables = (tables: SqliteAst.Table[]): string => {
           const {
             name,
             type,
-            codec: { ast },
+            schema: { ast },
             primaryKey,
             nullable,
-            default: defaultValue,
+            default: defaultOpt,
           } = column
           const typeString = columnTypeToDrizzleType(type)
           usedImports.add(typeString)
@@ -133,8 +134,12 @@ export const printSqliteDrizzleTables = (tables: SqliteAst.Table[]): string => {
 
           let isTimeStamp = false
 
-          if (SchemaAST.isTransform(ast)) {
-            const { to } = ast
+          const unpackedAst = unpackNullableAst(ast).pipe(Option.getOrElse(() => ast))
+
+          if (SchemaAST.isTransform(unpackedAst)) {
+            const { to: to_ } = unpackedAst
+            const to = SchemaAST.isRefinement(to_) ? to_.from : to_
+
             if (SchemaAST.isBooleanKeyword(to)) {
               mode = ', { mode: "boolean" }'
             } else if (SchemaAST.isDeclaration(to)) {
@@ -156,11 +161,11 @@ export const printSqliteDrizzleTables = (tables: SqliteAst.Table[]): string => {
             str += '.notNull()'
           }
 
-          if (defaultValue !== undefined) {
+          if (defaultOpt._tag === 'Some') {
             if (isTimeStamp) {
-              str += `.default(new Date(${JSON.stringify(defaultValue)}))`
+              str += `.default(new Date(${JSON.stringify(defaultOpt.value)}))`
             } else {
-              str += `.default(${JSON.stringify(defaultValue)})`
+              str += `.default(${JSON.stringify(defaultOpt.value)})`
             }
           }
 
@@ -203,4 +208,16 @@ ${tablesString}
 
   // return str
   return pretty(str)
+}
+
+const unpackNullableAst = (ast: SchemaAST.AST): Option.Option<SchemaAST.AST> => {
+  if (SchemaAST.isUnion(ast) === false) return Option.none()
+
+  const filteredTypes = ast.types.filter((t) => t._tag !== 'Literal' || t.literal !== null)
+
+  if (filteredTypes.length === 1) {
+    return Option.some(filteredTypes[0]!)
+  }
+
+  return Option.some(SchemaAST.createUnion(filteredTypes))
 }

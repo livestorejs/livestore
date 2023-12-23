@@ -3,19 +3,7 @@ import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-export const {
-  blob,
-  blobWithSchema,
-  boolean,
-  column,
-  datetime,
-  integer,
-  isColumnDefinition,
-  json,
-  real,
-  text,
-  textWithSchema,
-} = SqliteDsl
+export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
 export { type SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 
@@ -91,7 +79,7 @@ export const table = <
     }
   } else if (columns.id === undefined && ReadonlyRecord.some(columns, (_) => _.primaryKey === true) === false) {
     if (options_.isSingleton) {
-      columns.id = SqliteDsl.textWithSchema(Schema.literal('singleton'), { primaryKey: true, default: 'singleton' })
+      columns.id = SqliteDsl.text({ schema: Schema.literal('singleton'), primaryKey: true, default: 'singleton' })
     } else {
       columns.id = SqliteDsl.text({ primaryKey: true })
     }
@@ -101,7 +89,7 @@ export const table = <
 
   if (options_.isSingleton) {
     for (const column of schema.ast.columns) {
-      if (column.nullable === false && column.default === undefined) {
+      if (column.nullable === false && column.default._tag === 'None') {
         shouldNeverHappen(
           `When creating a singleton table, each column must be either nullable or have a default value. Column '${column.name}' is neither.`,
         )
@@ -130,10 +118,10 @@ type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> =
     ? {}
     : TOptions['isSingleton'] extends true
       ? {
-          id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<'singleton', 'singleton'>, false>
+          id: SqliteDsl.ColumnDefinition<'singleton', 'singleton'>
         }
       : {
-          id: SqliteDsl.ColumnDefinition<SqliteDsl.FieldType.FieldTypeText<string, string>, false>
+          id: SqliteDsl.ColumnDefinition<string, string>
         })
 
 type WithDefaults<TOptionsInput extends TableOptionsInput> = {
@@ -154,11 +142,11 @@ export namespace FromTable {
   >
 
   export type Columns<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['schema']['columns']]: TTableDef['schema']['columns'][K]['type']['columnType']
+    [K in keyof TTableDef['schema']['columns']]: TTableDef['schema']['columns'][K]['columnType']
   }
 
   export type RowEncodeNonNullable<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['schema']['columns']]: Schema.Schema.From<TTableDef['schema']['columns'][K]['type']['codec']>
+    [K in keyof TTableDef['schema']['columns']]: Schema.Schema.From<TTableDef['schema']['columns'][K]['schema']>
   }
 
   export type RowEncoded<TTableDef extends TableDef> = PrettifyFlat<
@@ -167,7 +155,7 @@ export namespace FromTable {
   >
 
   export type RowDecodedAll<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['schema']['columns']]: Schema.Schema.To<TTableDef['schema']['columns'][K]['type']['codec']>
+    [K in keyof TTableDef['schema']['columns']]: Schema.Schema.To<TTableDef['schema']['columns'][K]['schema']>
   }
 }
 
@@ -179,7 +167,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['type']['codec']>
+    [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['schema']>
   }
 
   export type RowEncoded<TColumns extends SqliteDsl.Columns> = PrettifyFlat<
@@ -188,10 +176,15 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['type']['codec']>
+    [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['schema']>
   }
 
   export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {
-    [K in keyof TColumns as TColumns[K] extends SqliteDsl.ColumnDefinition<any, true> ? K : never]: {}
+    [K in keyof TColumns as TColumns[K]['default'] extends true ? K : never]: {}
   }
+
+  export type RequiredInsertColumnNames<TColumns extends SqliteDsl.Columns> =
+    SqliteDsl.FromColumns.RequiredInsertColumnNames<TColumns>
+
+  export type InsertRowDecoded<TColumns extends SqliteDsl.Columns> = SqliteDsl.FromColumns.InsertRowDecoded<TColumns>
 }

@@ -1,4 +1,5 @@
 import * as Schema from '@effect/schema/Schema'
+import type { Option } from 'effect'
 
 import { hashCode } from '../hash.js'
 
@@ -22,8 +23,8 @@ export type Column = {
   type: ColumnType.ColumnType
   primaryKey: boolean
   nullable: boolean
-  default: string | number | Uint8Array | null | undefined
-  codec: Schema.Schema<any>
+  default: Option.Option<any>
+  schema: Schema.Schema<any>
 }
 
 export const column = (props: Omit<Column, '_tag'>): Column => ({ _tag: 'column', ...props })
@@ -87,8 +88,4 @@ export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tabl
 export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number => hashCode(JSON.stringify(obj))
 
 export const structSchemaForTable = (tableDef: Table) =>
-  Schema.struct(
-    Object.fromEntries(
-      tableDef.columns.map((column) => [column.name, column.nullable ? Schema.nullable(column.codec) : column.codec]),
-    ),
-  )
+  Schema.struct(Object.fromEntries(tableDef.columns.map((column) => [column.name, column.schema])))

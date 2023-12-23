@@ -119,10 +119,10 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
   const columnTypeStr = column.type._tag
   const nullableStr = column.nullable === false ? 'not null' : ''
   const defaultValueStr = (() => {
-    if (column.default === undefined) return ''
+    if (column.default._tag === 'None') return ''
 
-    const encodeValue = EffectSchema.encodeSync(column.codec)
-    const encodedDefaultValue = encodeValue(column.default ?? null)
+    const encodeValue = EffectSchema.encodeSync(column.schema)
+    const encodedDefaultValue = encodeValue(column.default.value)
 
     return columnTypeStr === 'text' ? `default '${encodedDefaultValue}'` : `default ${encodedDefaultValue}`
   })()

@@ -13,7 +13,7 @@ const app = DbSchema.table(
   'app',
   {
     newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
+    filter: DbSchema.text({ schema: Filter, default: 'all' }),
   },
   { isSingleton: true },
 )

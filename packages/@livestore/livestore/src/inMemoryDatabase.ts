@@ -125,6 +125,9 @@ export class InMemoryDatabase {
       while (stmt.step()) {
         tablesUsed.add(stmt.get(0))
       }
+    } catch (e) {
+      console.error('Error getting tables used', e, 'for query', query)
+      return new Set<string>()
     } finally {
       stmt.reset()
     }
