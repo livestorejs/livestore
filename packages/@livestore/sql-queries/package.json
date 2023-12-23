@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sql-queries",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -17,8 +17,7 @@
     "effect": "2.0.0-next.61",
     "@effect/schema": "0.55.0"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "publishConfig": {
     "access": "public"
   }
