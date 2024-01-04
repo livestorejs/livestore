@@ -14,6 +14,7 @@
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
+    "@livestore/devtools-react": "latest",
     "effect": "2.0.0-next.62",
     "effect-db-schema": "workspace:*"
   },

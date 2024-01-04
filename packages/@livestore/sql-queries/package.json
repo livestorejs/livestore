@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sql-queries",
-  "version": "0.0.32",
+  "version": "0.0.34",
   "sideEffects": false,
   "type": "module",
   "exports": {

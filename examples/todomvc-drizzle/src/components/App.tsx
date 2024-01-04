@@ -1,7 +1,7 @@
 import 'todomvc-app-css/index.css'
 import '@livestore/devtools-react/style.css'
 
-import { AllTabsLazy, BottomDrawer } from '@livestore/devtools-react'
+import { DevtoolsLazy } from '@livestore/devtools-react'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
@@ -34,10 +34,6 @@ ReactDOM.createRoot(document.getElementById('react-app')!).render(
     boot={(db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all')`)}
   >
     <App />
-    <BottomDrawer>
-      <React.Suspense fallback={<div>Loading...</div>}>
-        <AllTabsLazy schema={schema} />
-      </React.Suspense>
-    </BottomDrawer>
+    <DevtoolsLazy schema={schema} />
   </LiveStoreProvider>,
 )
