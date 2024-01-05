@@ -4,6 +4,7 @@ import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
 
+import type { DbGraph } from '../index.js'
 import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
 import type { RowQueryArgs, RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
@@ -17,8 +18,12 @@ export type UseRowResult<TTableDef extends TableDef> = [
   query$: LiveStoreJSQuery<RowResult<TTableDef>>,
 ]
 
-export type UseRowOptions<TTableDef extends TableDef> = {
+export type UseRowOptionsDefaulValues<TTableDef extends TableDef> = {
   defaultValues?: Partial<RowResult<TTableDef>>
+}
+
+export type UseRowOptionsBase = {
+  dbGraph?: DbGraph
 }
 
 /**
@@ -33,20 +38,24 @@ export type UseRowOptions<TTableDef extends TableDef> = {
 export const useRow: {
   <TTableDef extends TableDef<DefaultSqliteTableDef, boolean, TableOptions & { isSingleton: true }>>(
     table: TTableDef,
+    options?: UseRowOptionsBase,
   ): UseRowResult<TTableDef>
   <TTableDef extends TableDef<DefaultSqliteTableDef, boolean, TableOptions & { isSingleton: false }>>(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string,
-    options?: UseRowOptions<TTableDef>,
+    options?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
   ): UseRowResult<TTableDef>
 } = <TTableDef extends TableDef>(
   table: TTableDef,
-  id?: string,
-  options?: UseRowOptions<TTableDef>,
+  idOrOptions?: string | UseRowOptionsBase,
+  options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.schema
-  const { defaultValues } = options ?? {}
+  const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
+  const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
+    typeof idOrOptions === 'string' ? options_ : idOrOptions
+  const { defaultValues, dbGraph } = options ?? {}
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['schema']['columns']>
 
   const { store } = useStore()
@@ -74,13 +83,13 @@ export const useRow: {
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     const query$ = table.options.isSingleton
-      ? rowQuery({ table, store, otelContext, defaultValues } as RowQueryArgs<TTableDef>)
-      : rowQuery({ table, store, id, otelContext, defaultValues } as RowQueryArgs<TTableDef>)
+      ? rowQuery({ table, store, otelContext, defaultValues, dbGraph } as RowQueryArgs<TTableDef>)
+      : rowQuery({ table, store, id, otelContext, defaultValues, dbGraph } as RowQueryArgs<TTableDef>)
 
     rcCache.set(table, id ?? 'singleton', query$, reactId, otelContext, span)
 
     return { query$, otelContext }
-  }, [table, id, reactId, store, defaultValues])
+  }, [table, id, reactId, store, defaultValues, dbGraph])
 
   React.useEffect(
     () => () => {

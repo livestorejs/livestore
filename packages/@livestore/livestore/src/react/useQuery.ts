@@ -22,6 +22,8 @@ export const useQueryRef = <TResult>(
 ): React.MutableRefObject<TResult> => {
   const { store } = useStore()
 
+  React.useDebugValue(`LiveStore:useQuery:${query.id}:${query.label}`)
+
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
     // eslint-disable-next-line unicorn/error-message

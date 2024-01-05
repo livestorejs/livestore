@@ -1,13 +1,13 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 
-import { dbGraph } from '../global-state.js'
+import { globalDbGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { Bindable } from '../utils/util.js'
 import { prepareBindValues } from '../utils/util.js'
-import type { DbContext, GetAtomResult } from './base-class.js'
+import type { DbContext, DbGraph, GetAtomResult } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import { LiveStoreJSQuery } from './js.js'
 
@@ -22,6 +22,7 @@ export const querySQL = <Row>(
     queriedTables?: Set<string>
     bindValues?: Bindable
     label?: string
+    dbGraph?: DbGraph
   },
 ) =>
   new LiveStoreSQLQuery<Row>({
@@ -29,6 +30,7 @@ export const querySQL = <Row>(
     genQueryString: query,
     queriedTables: options?.queriedTables,
     bindValues: options?.bindValues,
+    dbGraph: options?.dbGraph,
   })
 
 /* An object encapsulating a reactive SQL query */
@@ -43,24 +45,29 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
 
   label: string
 
+  protected dbGraph: DbGraph
+
   constructor({
     genQueryString,
     queriedTables,
     bindValues,
     label: label_,
+    dbGraph,
   }: {
     label?: string
     genQueryString: string | ((get: GetAtomResult) => string)
     queriedTables?: Set<string>
     bindValues?: Bindable
+    dbGraph?: DbGraph
   }) {
     super()
 
     const label = label_ ?? genQueryString.toString()
     this.label = `sql(${label})`
+    this.dbGraph = dbGraph ?? globalDbGraph
 
     // TODO don't even create a thunk if query string is static
-    const queryString$ = dbGraph.makeThunk(
+    const queryString$ = this.dbGraph.makeThunk(
       (get, setDebugInfo, { rootOtelContext }, otelContext) => {
         if (typeof genQueryString === 'function') {
           const startMs = performance.now()
@@ -81,7 +88,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
 
     const queriedTablesRef = { current: queriedTables }
 
-    const results$ = dbGraph.makeThunk<ReadonlyArray<Row>>(
+    const results$ = this.dbGraph.makeThunk<ReadonlyArray<Row>>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(
           'sql:...', // NOTE span name will be overridden further down
@@ -140,6 +147,7 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
       },
       label: `${this.label}:js`,
       onDestroy: () => this.destroy(),
+      dbGraph: this.dbGraph,
     })
 
   /** Returns a reactive query  */
@@ -156,10 +164,11 @@ export class LiveStoreSQLQuery<Row> extends LiveStoreQueryBase<ReadonlyArray<Row
       },
       label: `${this.label}:first`,
       onDestroy: () => this.destroy(),
+      dbGraph: this.dbGraph,
     })
 
   destroy = () => {
-    dbGraph.destroy(this.queryString$)
-    dbGraph.destroy(this.results$)
+    this.dbGraph.destroyNode(this.queryString$)
+    this.dbGraph.destroyNode(this.results$)
   }
 }

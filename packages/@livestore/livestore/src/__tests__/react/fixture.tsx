@@ -2,8 +2,9 @@ import type * as otel from '@opentelemetry/api'
 import React from 'react'
 import initSqlite3Wasm from 'sqlite-esm'
 
+import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeSchema, sql } from '../../index.js'
+import { createStore, DbSchema, makeDbGraph, makeSchema, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import { InMemoryStorage } from '../../storage/in-memory/index.js'
 
@@ -55,9 +56,11 @@ export const schema = makeSchema({
 export const makeTodoMvc = async ({
   otelTracer,
   otelContext,
+  useGlobalDbGraph = true,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
+  useGlobalDbGraph?: boolean
 } = {}) => {
   const AppComponentSchema = DbSchema.table('UserInfo', {
     username: DbSchema.text({ default: '' }),
@@ -68,11 +71,14 @@ export const makeTodoMvc = async ({
     printErr: (message) => console.error(`[livestore sqlite] ${message}`),
   })
 
+  const dbGraph = useGlobalDbGraph ? globalDbGraph : makeDbGraph()
+
   const store = await createStore({
     schema,
     loadStorage: () => InMemoryStorage.load(),
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
     sqlite3,
+    dbGraph,
     otelTracer,
     otelRootSpanContext: otelContext,
   })
@@ -83,5 +89,5 @@ export const makeTodoMvc = async ({
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>
   )
 
-  return { wrapper, AppComponentSchema, store }
+  return { wrapper, AppComponentSchema, store, dbGraph }
 }

@@ -7,6 +7,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    fs: {
+      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
+      // Feel free to remove this if you're just copying this example
+      allow: ['../../../..'],
+    },
+  },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/livestore', 'sqlite-esm'],

@@ -3,6 +3,6 @@ import { useQuery } from '@livestore/livestore/react'
 
 import type { AppState } from './schema.js'
 
-const appState = querySQL<AppState>(sql`SELECT newTodoText, filter FROM app;`).getFirstRow()
+const appState = querySQL<AppState>(sql`SELECT newTodoText, filter FROM app`).getFirstRow()
 
 export const useAppState = () => useQuery(appState)

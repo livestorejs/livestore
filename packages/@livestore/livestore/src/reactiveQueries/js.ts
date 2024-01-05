@@ -1,13 +1,14 @@
 import * as otel from '@opentelemetry/api'
 
-import { dbGraph } from '../global-state.js'
+import { globalDbGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import { type DbContext, type GetAtomResult, LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
+import type { DbContext, DbGraph, GetAtomResult } from './base-class.js'
+import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
-export const queryJS = <TResult>(fn: (get: GetAtomResult) => TResult, options: { label: string }) =>
-  new LiveStoreJSQuery<TResult>({ fn, label: options.label })
+export const queryJS = <TResult>(fn: (get: GetAtomResult) => TResult, options: { label: string; dbGraph?: DbGraph }) =>
+  new LiveStoreJSQuery<TResult>({ fn, label: options.label, dbGraph: options.dbGraph })
 
 export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag: 'js' = 'js'
@@ -16,6 +17,8 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   results$: Thunk<TResult, DbContext, RefreshReason>
 
   label: string
+
+  protected dbGraph: DbGraph
 
   /**
    * Currently only used for "nested destruction" of piped queries
@@ -29,20 +32,24 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     fn,
     label,
     onDestroy,
+    dbGraph,
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
     /** Currently only used for "nested destruction" of piped queries */
     onDestroy?: () => void
+    dbGraph?: DbGraph
   }) {
     super()
 
     this.onDestroy = onDestroy
     this.label = label
 
+    this.dbGraph = dbGraph ?? globalDbGraph
+
     const queryLabel = `${label}:results`
 
-    this.results$ = dbGraph.makeThunk(
+    this.results$ = this.dbGraph.makeThunk(
       (get, setDebugInfo, { otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? rootOtelContext, (span) => {
           const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -68,10 +75,11 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
       },
       label: `${this.label}:js`,
       onDestroy: () => this.destroy(),
+      dbGraph: this.dbGraph,
     })
 
   destroy = () => {
-    dbGraph.destroy(this.results$)
+    this.dbGraph.destroyNode(this.results$)
     this.onDestroy?.()
   }
 }

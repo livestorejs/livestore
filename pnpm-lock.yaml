@@ -87,6 +87,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.2.0)
       '@tailwindcss/forms':
         specifier: ^0.5.6
         version: 0.5.6(tailwindcss@3.4.0)
@@ -265,6 +268,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.2.0)
       effect:
         specifier: 2.0.0-next.62
         version: 2.0.0-next.62
@@ -2900,6 +2906,14 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@schickling/fps-meter@0.1.2(react@18.2.0):
+    resolution: {integrity: sha512-aNZbZTBj7EuHYrSg8Yainb0wlF35Oi53pacj/UIY5IV9TBp/KA0Od7uYtqwWYVifSQ6BMBhck8LI3xIsAkR53Q==}
+    peerDependencies:
+      react: '*'
+    dependencies:
+      react: 18.2.0
+    dev: false
 
   /@sinclair/typebox@0.27.8:
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}

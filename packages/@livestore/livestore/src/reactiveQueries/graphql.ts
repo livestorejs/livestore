@@ -3,19 +3,19 @@ import { assertNever, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
-import { dbGraph } from '../global-state.js'
+import { globalDbGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { DbContext, GetAtomResult } from './base-class.js'
+import type { DbContext, DbGraph, GetAtomResult } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 import { LiveStoreJSQuery } from './js.js'
 
 export const queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
   document: DocumentNode<TResult, TVariableValues>,
   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
-  { label }: { label?: string } = {},
-) => new LiveStoreGraphQLQuery({ document, genVariableValues, label })
+  { label, dbGraph }: { label?: string; dbGraph?: DbGraph } = {},
+) => new LiveStoreGraphQLQuery({ document, genVariableValues, label, dbGraph })
 
 export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
@@ -34,14 +34,18 @@ export class LiveStoreGraphQLQuery<
 
   label: string
 
+  protected dbGraph: DbGraph
+
   constructor({
     document,
     label,
     genVariableValues,
+    dbGraph,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
     label?: string
+    dbGraph?: DbGraph
   }) {
     super()
 
@@ -50,8 +54,10 @@ export class LiveStoreGraphQLQuery<
     this.label = labelWithDefault
     this.document = document
 
+    this.dbGraph = dbGraph ?? globalDbGraph
+
     // TODO don't even create a thunk if variables are static
-    const variableValues$ = dbGraph.makeThunk(
+    const variableValues$ = this.dbGraph.makeThunk(
       (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
         if (typeof genVariableValues === 'function') {
           return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
@@ -65,7 +71,7 @@ export class LiveStoreGraphQLQuery<
     this.variableValues$ = variableValues$
 
     const resultsLabel = `${labelWithDefault}:results`
-    this.results$ = dbGraph.makeThunk<TResult>(
+    this.results$ = this.dbGraph.makeThunk<TResult>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
         const variableValues = get(variableValues$)
         const { result, queriedTables, durationMs } = this.queryOnce({
@@ -104,6 +110,7 @@ export class LiveStoreGraphQLQuery<
       },
       label: `${this.label}:js`,
       onDestroy: () => this.destroy(),
+      dbGraph: this.dbGraph,
     })
 
   queryOnce = ({
@@ -163,7 +170,7 @@ export class LiveStoreGraphQLQuery<
   }
 
   destroy = () => {
-    dbGraph.destroy(this.variableValues$)
-    dbGraph.destroy(this.results$)
+    this.dbGraph.destroyNode(this.variableValues$)
+    this.dbGraph.destroyNode(this.results$)
   }
 }

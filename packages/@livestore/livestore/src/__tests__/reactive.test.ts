@@ -221,7 +221,7 @@ describe('a trivial graph', () => {
         expect(numberOfEffect2Runs).toBe(1)
         expect(numberOfRunsForC.runs).toBe(1)
 
-        graph.destroy(effect1)
+        graph.destroyNode(effect1)
 
         graph.runDeferredEffects()
 
@@ -229,6 +229,24 @@ describe('a trivial graph', () => {
         expect(numberOfEffect2Runs).toBe(2)
         expect(numberOfRunsForC.runs).toBe(2)
       })
+    })
+  })
+
+  describe('destroying nodes', () => {
+    it('marks super node as dirty when a sub node is destroyed', () => {
+      const { graph, b, c, d, e } = makeGraph()
+
+      e.computeResult()
+
+      graph.destroyNode(b)
+
+      expect(c.isDirty).toBe(true)
+      expect(d.isDirty).toBe(false)
+      expect(e.isDirty).toBe(true)
+
+      expect(() => c.computeResult()).toThrowErrorMatchingInlineSnapshot(
+        `[Error: This should never happen LiveStore Error: Attempted to compute destroyed atom]`,
+      )
     })
   })
 })
@@ -402,7 +420,7 @@ describe('error handling', () => {
     const a = graph.makeRef(1)
     const b = graph.makeThunk((get) => get(a) + 1)
     expect(() => b.computeResult()).toThrowErrorMatchingInlineSnapshot(
-      `[Error: LiveStore Error: \`context\` not set on ReactiveGraph]`,
+      `[Error: LiveStore Error: \`context\` not set on ReactiveGraph (graph-19)]`,
     )
   })
 })

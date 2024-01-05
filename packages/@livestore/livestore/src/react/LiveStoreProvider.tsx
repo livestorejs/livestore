@@ -1,3 +1,4 @@
+import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
@@ -8,7 +9,7 @@ import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } f
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { StorageInit } from '../storage/index.js'
-import type { BaseGraphQLContext, GraphQLOptions } from '../store.js'
+import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
@@ -68,10 +69,15 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   const [ctxValue, setCtxValue] = React.useState<StoreContext_ | undefined>()
 
   React.useEffect(() => {
+    let store: Store | undefined
+
+    // resetting the store context while we're creating a new store
+    setCtxValue(undefined)
+
     void (async () => {
       try {
         const sqlite3 = await sqlite3Promise
-        const store = await createStore({
+        store = await createStore({
           schema,
           loadStorage,
           graphQLOptions,
@@ -82,10 +88,13 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         })
         setCtxValue({ store })
       } catch (e) {
-        console.error(`Error creating LiveStore store:`, e)
-        throw e
+        shouldNeverHappen(`Error creating LiveStore store: ${e}`)
       }
     })()
+
+    return () => {
+      store?.destroy()
+    }
 
     // TODO: do we need to return any cleanup function here?
   }, [schema, loadStorage, graphQLOptions, otelTracer, otelRootSpanContext, boot])

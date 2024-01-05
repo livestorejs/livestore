@@ -5,11 +5,13 @@ import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateTable } from './migrations.js'
+import type { Ref } from './reactive.js'
+import type { DbContext, DbGraph } from './reactiveQueries/base-class.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import { SCHEMA_META_TABLE } from './schema/index.js'
 import type { TableDef } from './schema/table-def.js'
-import type { Store } from './store.js'
+import type { RefreshReason, Store } from './store.js'
 import { prepareBindValues, sql } from './utils/util.js'
 
 export type RowQueryArgs<TTableDef extends TableDef> = TTableDef['options']['isSingleton'] extends true
@@ -19,6 +21,7 @@ export type RowQueryArgs<TTableDef extends TableDef> = TTableDef['options']['isS
       otelContext?: otel.Context
       defaultValues: Partial<RowResult<TTableDef>>
       skipInsertDefaultRow?: boolean
+      dbGraph?: DbGraph
     }
   : {
       table: TTableDef
@@ -27,13 +30,14 @@ export type RowQueryArgs<TTableDef extends TableDef> = TTableDef['options']['isS
       id: string
       defaultValues: Partial<RowResult<TTableDef>>
       skipInsertDefaultRow?: boolean
+      dbGraph?: DbGraph
     }
 
 // TODO also allow other where clauses and multiple rows
 export const rowQuery = <TTableDef extends TableDef>(
   args: RowQueryArgs<TTableDef>,
 ): LiveStoreJSQuery<RowResult<TTableDef>> => {
-  const { table, store, defaultValues, skipInsertDefaultRow } = args
+  const { table, store, defaultValues, skipInsertDefaultRow, dbGraph } = args
   const otelContext = args.otelContext ?? store.otel.queriesSpanContext
   const id: string | undefined = (args as any).id
 
@@ -64,11 +68,19 @@ export const rowQuery = <TTableDef extends TableDef>(
       })
     }
 
-    store.tableRefs[componentTableName] = store.graph.makeRef(null, {
-      equal: () => false,
-      label: componentTableName,
-      meta: { liveStoreRefType: 'table' },
-    })
+    const label = `tableRef:${componentTableName}`
+
+    const existingTableRefFromGraph = Array.from(store.graph.atoms.values()).find(
+      (_) => _._tag === 'ref' && _.label === label,
+    ) as Ref<null, DbContext, RefreshReason> | undefined
+
+    store.tableRefs[componentTableName] =
+      existingTableRefFromGraph ??
+      store.graph.makeRef(null, {
+        equal: () => false,
+        label,
+        meta: { liveStoreRefType: 'table' },
+      })
   }
 
   if (skipInsertDefaultRow !== true) {
@@ -89,6 +101,7 @@ export const rowQuery = <TTableDef extends TableDef>(
     label: `localState:query:${stateSchema.name}${id === undefined ? '' : `:${id}`}`,
     genQueryString: queryStr,
     queriedTables: new Set([componentTableName]),
+    dbGraph,
   }).pipe<TComponentState>((results) => {
     if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
 

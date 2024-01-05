@@ -2,16 +2,25 @@ import { DbSchema, makeSchema, sql } from '@livestore/livestore'
 import { Priority, PriorityType, Status, StatusType } from '../types/issue'
 import { Schema } from '@effect/schema'
 
-const issue = DbSchema.table('issue', {
-  id: DbSchema.text({ primaryKey: true }),
-  title: DbSchema.text({ default: '' }),
-  creator: DbSchema.text({ default: '' }),
-  priority: DbSchema.text({ default: Priority.NONE }),
-  status: DbSchema.text({ default: Status.TODO }),
-  created: DbSchema.integer(),
-  modified: DbSchema.integer(),
-  kanbanorder: DbSchema.text({ nullable: false }),
-})
+const issue = DbSchema.table(
+  'issue',
+  {
+    id: DbSchema.text({ primaryKey: true }),
+    title: DbSchema.text({ default: '' }),
+    creator: DbSchema.text({ default: '' }),
+    priority: DbSchema.text({ default: Priority.NONE }),
+    status: DbSchema.text({ default: Status.TODO }),
+    created: DbSchema.integer(),
+    modified: DbSchema.integer(),
+    kanbanorder: DbSchema.text({ nullable: false }),
+  },
+  {
+    indexes: [
+      { name: 'issue_kanbanorder', columns: ['kanbanorder'] },
+      { name: 'issue_created', columns: ['created'] },
+    ],
+  },
+)
 
 const OrderDirection = Schema.literal('asc', 'desc')
 export type OrderDirection = Schema.Schema.To<typeof OrderDirection>

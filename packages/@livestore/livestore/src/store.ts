@@ -6,12 +6,12 @@ import type * as Sqlite from 'sqlite-esm'
 import { v4 as uuid } from 'uuid'
 
 import type { LiveStoreEvent } from './events.js'
-import { dbGraph, dynamicallyRegisteredTables } from './global-state.js'
+import { dynamicallyRegisteredTables, globalDbGraph } from './global-state.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
-import type { DbContext, ILiveStoreQuery } from './reactiveQueries/base-class.js'
+import type { DbContext, DbGraph, ILiveStoreQuery } from './reactiveQueries/base-class.js'
 import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
 import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
@@ -54,6 +54,7 @@ export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer: otel.Tracer
   otelRootSpanContext: otel.Context
+  dbGraph?: DbGraph
 }
 
 export type RefreshReason =
@@ -99,7 +100,11 @@ export type StoreOtel = {
   queriesSpanContext: otel.Context
 }
 
+let storeCount = 0
+const uniqueStoreId = () => `store-${++storeCount}`
+
 export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext> {
+  id = uniqueStoreId()
   graph: ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
   inMemoryDB: InMemoryDatabase
   // TODO refactor
@@ -124,6 +129,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     schema,
     storage,
     graphQLOptions,
+    dbGraph,
     otelTracer,
     otelRootSpanContext,
   }: StoreOptions<TGraphQLContext>) {
@@ -141,8 +147,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     const queriesSpan = otelTracer.startSpan('LiveStore:queries', {}, otelRootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
 
-    // TODO allow passing in a custom graph
-    this.graph = dbGraph
+    this.graph = dbGraph ?? globalDbGraph
     this.graph.context = { store: this, otelTracer, rootOtelContext: otelQueriesSpanContext }
 
     this.otel = {
@@ -157,12 +162,19 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       // TODO activate dynamic tables
       ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.schema.name),
     ])
+    const existingTableRefs = new Map(
+      Array.from(this.graph.atoms.values())
+        .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)
+        .map((_) => [_.label!.slice('tableRef:'.length), _] as const),
+    )
     for (const tableName of allTableNames) {
-      this.tableRefs[tableName] = this.graph.makeRef(null, {
-        equal: () => false,
-        label: tableName,
-        meta: { liveStoreRefType: 'table' },
-      })
+      this.tableRefs[tableName] =
+        existingTableRefs.get(tableName) ??
+        this.graph.makeRef(null, {
+          equal: () => false,
+          label: `tableRef:${tableName}`,
+          meta: { liveStoreRefType: 'table' },
+        })
     }
 
     if (graphQLOptions) {
@@ -214,7 +226,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
 
         const unsubscribe = () => {
           try {
-            this.graph.destroy(effect)
+            this.graph.destroyNode(effect)
             this.activeQueries.remove(query as LiveStoreQuery)
             onUnsubsubscribe?.()
           } finally {
@@ -232,12 +244,14 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * Currently only used when shutting down the app for debugging purposes (e.g. to close Otel spans).
    */
   destroy = () => {
-    Object.values(this.tableRefs).forEach((tableRef) => this.graph.destroy(tableRef))
+    for (const tableRef of Object.values(this.tableRefs)) {
+      for (const superComp of tableRef.super) {
+        this.graph.removeEdge(superComp, tableRef)
+      }
+    }
 
     otel.trace.getSpan(this.otel.applyEventsSpanContext)!.end()
     otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
-
-    // TODO destroy active subscriptions
   }
 
   /* Apply a single write event to the store, and refresh all queries in response */
@@ -533,16 +547,18 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   graphQLOptions,
   otelTracer = makeNoopTracer(),
   otelRootSpanContext = otel.context.active(),
-  boot,
   sqlite3,
+  boot,
+  dbGraph,
 }: {
   schema: LiveStoreSchema
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   sqlite3: Sqlite.Sqlite3Static
+  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
+  dbGraph?: DbGraph
 }): Promise<Store<TGraphQLContext>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
@@ -573,12 +589,17 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
 
       const db = InMemoryDatabase.load({ data: persistedData, otelTracer, otelRootSpanContext, sqlite3 })
 
+      const txnKeywords = ['begin transaction;', 'commit;', 'rollback;']
+      const isTxnQuery = (query: string) => txnKeywords.some((_) => query.toLowerCase().startsWith(_))
+
       // Proxy to `db` that also mirrors `execute` calls to `storage`
       const dbProxy = new Proxy(db, {
         get: (db, prop, receiver) => {
           if (prop === 'execute') {
             const execute: InMemoryDatabase['execute'] = (query, bindValues, writeTables, options) => {
-              storage.execute(query, bindValues, span)
+              if (isTxnQuery(query) === false) {
+                storage.execute(query, bindValues, span)
+              }
               return db.execute(query, bindValues, writeTables, options)
             }
             return execute
@@ -617,7 +638,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       // Think about what to do about this case.
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext>(
-        { db, dbProxy, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext },
+        { db, dbProxy, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph },
         span,
       )
     } finally {

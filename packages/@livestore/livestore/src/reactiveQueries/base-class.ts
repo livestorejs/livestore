@@ -1,10 +1,18 @@
 import type * as otel from '@opentelemetry/api'
+import ReactDOM from 'react-dom'
 
-import { dbGraph } from '../global-state.js'
 import type { StackInfo } from '../react/utils/stack-info.js'
-import { type Atom, type GetAtom, throwContextNotSetError, type Thunk } from '../reactive.js'
-import type { RefreshReason, Store } from '../store.js'
+import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
+import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'
 import type { LiveStoreJSQuery } from './js.js'
+
+export type DbGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
+
+export const makeDbGraph = (): DbGraph =>
+  new ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>({
+    // TODO also find a better way to only use this effects wrapper when used in a React app
+    effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
+  })
 
 export type DbContext = {
   store: Store
@@ -41,6 +49,8 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
 
   activeSubscriptions: Set<StackInfo> = new Set()
 
+  protected abstract dbGraph: DbGraph
+
   get runs() {
     return this.results$.recomputations
   }
@@ -61,7 +71,8 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
     onUnsubsubscribe?: () => void,
     options?: { label?: string; otelContext?: otel.Context } | undefined,
   ): (() => void) =>
-    dbGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ?? throwContextNotSetError()
+    this.dbGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ??
+    throwContextNotSetError(this.dbGraph)
 }
 
 export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveStoreJSQuery<T>) => T

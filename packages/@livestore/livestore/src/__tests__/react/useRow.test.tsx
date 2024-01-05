@@ -11,13 +11,13 @@ describe('useRow', () => {
   it('should update the data based on component key', async () => {
     let renderCount = 0
 
-    const { wrapper, AppComponentSchema, store } = await makeTodoMvc()
+    const { wrapper, AppComponentSchema, store, dbGraph } = await makeTodoMvc({ useGlobalDbGraph: false })
 
     const { result, rerender } = renderHook(
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -41,13 +41,13 @@ describe('useRow', () => {
   it('should update the data reactively - via setState', async () => {
     let renderCount = 0
 
-    const { wrapper, AppComponentSchema } = await makeTodoMvc()
+    const { wrapper, AppComponentSchema, dbGraph } = await makeTodoMvc({ useGlobalDbGraph: false })
 
     const { result } = renderHook(
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -67,13 +67,13 @@ describe('useRow', () => {
   it('should update the data reactively - via raw store update', async () => {
     let renderCount = 0
 
-    const { wrapper, AppComponentSchema, store } = await makeTodoMvc()
+    const { wrapper, AppComponentSchema, store, dbGraph } = await makeTodoMvc({ useGlobalDbGraph: false })
 
     const { result } = renderHook(
       (userId: string) => {
         renderCount++
 
-        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId)
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -95,9 +95,9 @@ describe('useRow', () => {
   })
 
   it('should work for a larger app', async () => {
-    const allTodos$ = LiveStore.querySQL<Todo>(`select * from todos`, { label: 'allTodos' })
+    const { wrapper, store, dbGraph } = await makeTodoMvc({ useGlobalDbGraph: false })
 
-    const { wrapper, store } = await makeTodoMvc()
+    const allTodos$ = LiveStore.querySQL<Todo>(`select * from todos`, { label: 'allTodos', dbGraph })
 
     const AppRouterSchema = LiveStore.DbSchema.table(
       'AppRouter',
@@ -112,7 +112,7 @@ describe('useRow', () => {
     const AppRouter: React.FC = () => {
       appRouterRenderCount++
 
-      const [state, setState] = LiveStoreReact.useRow(AppRouterSchema)
+      const [state, setState] = LiveStoreReact.useRow(AppRouterSchema, { dbGraph })
 
       globalSetState = setState
 
@@ -141,7 +141,7 @@ describe('useRow', () => {
 
     const TaskDetails: React.FC<{ id: string }> = ({ id }) => {
       const todo = LiveStoreReact.useTemporaryQuery(() =>
-        LiveStore.querySQL<Todo>(`select * from todos where id = '${id}' limit 1`).getFirstRow(),
+        LiveStore.querySQL<Todo>(`select * from todos where id = '${id}' limit 1`, { dbGraph }).getFirstRow(),
       )
       return <div role="content">{JSON.stringify(todo)}</div>
     }

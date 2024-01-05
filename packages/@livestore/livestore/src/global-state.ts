@@ -11,16 +11,9 @@
  *
  */
 
-import ReactDOM from 'react-dom'
-
-import { ReactiveGraph } from './reactive.js'
-import type { DbContext } from './reactiveQueries/base-class.js'
+import { makeDbGraph } from './reactiveQueries/base-class.js'
 import type { TableDef } from './schema/table-def.js'
-import type { QueryDebugInfo, RefreshReason } from './store.js'
 
-export const dbGraph = new ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>({
-  // TODO also find a better way to only use this effects wrapper when used in a React app
-  effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
-})
+export const globalDbGraph = makeDbGraph()
 
 export const dynamicallyRegisteredTables: Map<string, TableDef> = new Map()

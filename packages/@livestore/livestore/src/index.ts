@@ -7,13 +7,13 @@ export { InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './inMemoryData
 
 export type { Storage, StorageType, StorageInit } from './storage/index.js'
 
-export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom } from './reactive.js'
+export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom, Node, Ref, Effect } from './reactive.js'
 export { LiveStoreJSQuery, queryJS } from './reactiveQueries/js.js'
 export { LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
-export { type GetAtomResult } from './reactiveQueries/base-class.js'
+export { type GetAtomResult, type DbGraph, makeDbGraph } from './reactiveQueries/base-class.js'
 
-export { dbGraph } from './global-state.js'
+export { globalDbGraph } from './global-state.js'
 
 export { type RowResult, type RowResultEncoded, type RowQueryArgs, rowQuery } from './row-query.js'
 
