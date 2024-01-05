@@ -14,11 +14,11 @@
   },
   "dependencies": {
     "@effect/schema": "0.56.0",
-    "@schickling/fps-meter": "^0.1.2",
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^1.7.17",
     "@livestore/devtools-react": "latest",
     "@livestore/livestore": "latest",
+    "@schickling/fps-meter": "^0.1.2",
     "@tailwindcss/forms": "^0.5.6",
     "@tiptap/extension-placeholder": "^2.1.8",
     "@tiptap/extension-table": "^2.1.8",
