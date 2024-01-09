@@ -87,6 +87,9 @@ importers:
       expo:
         specifier: ~50.0.0-preview.8
         version: 50.0.0-preview.8(@babel/core@7.23.7)(@react-native/babel-preset@0.73.19)
+      expo-sqlite:
+        specifier: ~13.2.0
+        version: 13.2.0(expo@50.0.0-preview.8)
       expo-status-bar:
         specifier: ~1.11.1
         version: 1.11.1
@@ -2723,6 +2726,16 @@ packages:
     resolution: {integrity: sha512-5orm59pdnBQlovhU9k4DbjMUZBHNlku7IRgFY56f7pcaaCnXq9yaLJoOQl9sMwNdFzf4gnkTyHmR5uN10mI9rA==}
     dev: false
 
+  /@expo/websql@1.0.1:
+    resolution: {integrity: sha512-H9/t1V7XXyKC343FJz/LwaVBfDhs6IqhDtSYWpt8LNSQDVjf5NvVJLc5wp+KCpRidZx8+0+YeHJN45HOXmqjFA==}
+    dependencies:
+      argsarray: 0.0.1
+      immediate: 3.3.0
+      noop-fn: 1.0.0
+      pouchdb-collections: 1.0.1
+      tiny-queue: 0.2.1
+    dev: false
+
   /@expo/xcpretty@4.3.0:
     resolution: {integrity: sha512-whBbvHZ2Q10T5TNmN0z5NbO6C9ZDw+XUTu8h6vVMnMzQrbGexc9oaCCZfz+L3Q7TEL5vfr+9L86nY62c3Bsm+g==}
     hasBin: true
@@ -4922,6 +4935,10 @@ packages:
   /argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
+  /argsarray@0.0.1:
+    resolution: {integrity: sha512-u96dg2GcAKtpTrBdDoFIM7PjcBA+6rSP0OR94MOReNRyUECL6MtQt5XXmRr4qrftYaef9+l5hcpO5te7sML1Cg==}
+    dev: false
+
   /aria-query@5.1.3:
     resolution: {integrity: sha512-R5iJ5lkuHybztUfuOAznmboyjWq8O6sqNqtK7CLOqdydi54VNbORp49mb14KbWgG1QD3JFO9hJdZ+y4KutfdOQ==}
     dependencies:
@@ -7012,6 +7029,15 @@ packages:
       invariant: 2.2.4
     dev: false
 
+  /expo-sqlite@13.2.0(expo@50.0.0-preview.8):
+    resolution: {integrity: sha512-TYpX+a+2oJOxzChug8+TkIob0lipl7rluCRBGXbGKG68kG4Reb6OCruRiQTJTnbGiEgnN4S+B0cT8f4ZXPUxBg==}
+    peerDependencies:
+      expo: '*'
+    dependencies:
+      '@expo/websql': 1.0.1
+      expo: 50.0.0-preview.8(@babel/core@7.23.7)(@react-native/babel-preset@0.73.19)
+    dev: false
+
   /expo-status-bar@1.11.1:
     resolution: {integrity: sha512-ddQEtCOgYHTLlFUe/yH67dDBIoct5VIULthyT3LRJbEwdpzAgueKsX2FYK02ldh440V87PWKCamh7R9evk1rrg==}
     dev: false
@@ -7727,6 +7753,10 @@ packages:
     hasBin: true
     dependencies:
       queue: 6.0.2
+    dev: false
+
+  /immediate@3.3.0:
+    resolution: {integrity: sha512-HR7EVodfFUdQCTIeySw+WDRFJlPcLOJbXfwwZ7Oom6tjsvZ3bOkCDJHehQC3nxJrv7+f9XecwazynjU8e4Vw3Q==}
     dev: false
 
   /import-fresh@2.0.0:
@@ -9599,6 +9629,10 @@ packages:
     engines: {node: '>=0.12.0'}
     dev: false
 
+  /noop-fn@1.0.0:
+    resolution: {integrity: sha512-pQ8vODlgXt2e7A3mIbFDlizkr46r75V+BJxVAyat8Jl7YmI513gG5cfyRL0FedKraoZ+VAouI1h4/IWpus5pcQ==}
+    dev: false
+
   /normalize-package-data@2.5.0:
     resolution: {integrity: sha512-/5CMN3T0R4XTj4DcGaexo+roZSdSFW/0AOOTROrjxzCG1wrWXEsGbRKevjlIL+ZDE4sZlJr5ED4YW0yqmkK+eA==}
     dependencies:
@@ -10189,6 +10223,10 @@ packages:
       nanoid: 3.3.7
       picocolors: 1.0.0
       source-map-js: 1.0.2
+
+  /pouchdb-collections@1.0.1:
+    resolution: {integrity: sha512-31db6JRg4+4D5Yzc2nqsRqsA2oOkZS8DpFav3jf/qVNBxusKa2ClkEIZ2bJNpaDbMfWtnuSq59p6Bn+CipPMdg==}
+    dev: false
 
   /prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
@@ -11916,6 +11954,10 @@ packages:
 
   /tiny-invariant@1.3.1:
     resolution: {integrity: sha512-AD5ih2NlSssTCwsMznbvwMZpJ1cbhkGd2uueNxzv2jDlEeZdU04JQfRnggJQ8DrcVBGjAsCKwFBbDlVNtEMlzw==}
+    dev: false
+
+  /tiny-queue@0.2.1:
+    resolution: {integrity: sha512-EijGsv7kzd9I9g0ByCl6h42BWNGUZrlCSejfrb3AKeHC33SGbASu1VDf5O3rRiiUOhAC9CHdZxFPbZu0HmR70A==}
     dev: false
 
   /tinybench@2.5.1:
