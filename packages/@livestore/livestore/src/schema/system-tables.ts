@@ -1,3 +1,4 @@
+import { Schema as __Schema } from '@livestore/utils/effect'
 import { type SqliteAst as __SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { FromTable } from './table-def.js'

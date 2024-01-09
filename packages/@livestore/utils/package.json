@@ -11,6 +11,7 @@
     "./cuid": {
       "types": "./dist/cuid/cuid.node.d.ts",
       "node": "./dist/cuid/cuid.node.js",
+      "react-native": "./dist/cuid/cuid.browser.js",
       "browser": "./dist/cuid/cuid.browser.js"
     },
     "./effect": {

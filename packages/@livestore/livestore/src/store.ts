@@ -2,8 +2,8 @@ import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@l
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
-import type * as Sqlite from 'sqlite-esm'
 
+import type { DatabaseApi } from './effect/LiveStore.js'
 import { dynamicallyRegisteredTables, globalDbGraph } from './global-state.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
@@ -486,7 +486,7 @@ export const createStore = async <
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  sqlite3: Sqlite.Sqlite3Static
+  sqlite3: DatabaseApi
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   dbGraph?: DbGraph
 }): Promise<Store<TGraphQLContext, TSchema>> => {

@@ -14,3 +14,5 @@ export { useAtom } from './useAtom.js'
 
 // Needed to make TS happy
 export type { TypedDocumentNode } from '@graphql-typed-document-node/core'
+
+export type { DatabaseApi } from '../effect/LiveStore.js'

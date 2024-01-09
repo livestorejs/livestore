@@ -1,3 +1,4 @@
+import { Schema as __Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 import initSqlite3Wasm from 'sqlite-esm'
@@ -62,6 +63,7 @@ export const makeTodoMvc = async ({
     schema,
     loadStorage: () => InMemoryStorage.load(),
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
+    // @ts-expect-error TODO
     sqlite3,
     dbGraph,
     otelTracer,
