@@ -49,7 +49,8 @@ export const migrateDb = ({
     const dbSchemaHash = dbSchemaHashByTable[tableName]
     const schemaHash = SqliteAst.hash(tableAst)
     if (schemaHash !== dbSchemaHash) {
-      if (import.meta.env.VITE_LIVESTORE_SKIP_MIGRATIONS) {
+      if (false) {
+        // if (import.meta.env.VITE_LIVESTORE_SKIP_MIGRATIONS) {
         console.log(
           `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), skipping migration...`,
         )

@@ -9,5 +9,6 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
+  "exclude": ["node_modules", "dist", "src/__tests__"],
   "references": [{ "path": "../../effect-db-schema" }, { "path": "../sql-queries" }, { "path": "../utils" }]
 }

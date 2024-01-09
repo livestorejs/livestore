@@ -12,10 +12,13 @@ export type PartialIfNullable<T extends {}> = {
  */
 export const sql = (template: TemplateStringsArray, ...args: unknown[]): string => {
   let str = ''
+
   for (const [i, arg] of args.entries()) {
     str += template[i] + String(arg)
   }
-  return str + template.at(-1)
+
+  // eslint-disable-next-line unicorn/prefer-at
+  return str + template[template.length - 1]
 }
 
 export const objectEntries = <T extends Record<string, any>>(obj: T): [keyof T & string, T[keyof T]][] =>
