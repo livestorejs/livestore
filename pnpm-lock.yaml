@@ -15,9 +15,6 @@ patchedDependencies:
   drizzle-orm@0.28.6:
     hash: kfe6libf2ikzaf77deyqmybfsm
     path: patches/drizzle-orm@0.28.6.patch
-  effect@2.0.0-next.62:
-    hash: lerwqwtxshoixtgpgaej4bqfpa
-    path: patches/effect@2.0.0-next.62.patch
 
 importers:
 
@@ -93,15 +90,15 @@ importers:
       expo-status-bar:
         specifier: ~1.11.1
         version: 1.11.1
+      fast-text-encoding:
+        specifier: ^1.0.6
+        version: 1.0.6
       react:
         specifier: 18.2.0
         version: 18.2.0
       react-native:
         specifier: 0.73.1
         version: 0.73.1(@babel/core@7.23.7)(@babel/preset-env@7.23.7)(react@18.2.0)
-      text-encoding:
-        specifier: ^0.7.0
-        version: 0.7.0
     devDependencies:
       '@babel/core':
         specifier: ^7.20.0
@@ -316,7 +313,7 @@ importers:
         version: 0.1.2(react@18.2.0)
       effect:
         specifier: 2.0.0-next.62
-        version: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+        version: 2.0.0-next.62
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -374,7 +371,7 @@ importers:
         version: link:../../packages/@livestore/utils
       effect:
         specifier: 2.0.0-next.62
-        version: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+        version: 2.0.0-next.62
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -450,7 +447,7 @@ importers:
         version: 0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.7.0)
       effect:
         specifier: 2.0.0-next.62
-        version: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+        version: 2.0.0-next.62
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -575,7 +572,7 @@ importers:
         version: 0.56.0(effect@2.0.0-next.62)(fast-check@3.15.0)
       effect:
         specifier: 2.0.0-next.62
-        version: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+        version: 2.0.0-next.62
       effect-db-schema:
         specifier: workspace:*
         version: link:../../effect-db-schema
@@ -596,7 +593,7 @@ importers:
         version: 3.0.6
       effect:
         specifier: 2.0.0-next.62
-        version: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+        version: 2.0.0-next.62
       otel-websocket-exporter:
         specifier: ^0.0.27
         version: 0.0.27
@@ -624,7 +621,7 @@ importers:
         version: 1.0.8
       effect:
         specifier: 2.0.0-next.62
-        version: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+        version: 2.0.0-next.62
     devDependencies:
       drizzle-orm:
         specifier: ^0.28.6
@@ -2116,7 +2113,7 @@ packages:
       '@opentelemetry/api': 1.7.0
       '@opentelemetry/resources': 1.19.0(@opentelemetry/api@1.7.0)
       '@opentelemetry/semantic-conventions': 1.19.0
-      effect: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+      effect: 2.0.0-next.62
     dev: false
 
   /@effect/schema@0.56.0(effect@2.0.0-next.62)(fast-check@3.15.0):
@@ -2125,7 +2122,7 @@ packages:
       effect: 2.0.0-next.62
       fast-check: ^3.13.2
     dependencies:
-      effect: 2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa)
+      effect: 2.0.0-next.62
       fast-check: 3.15.0
     dev: false
 
@@ -6299,10 +6296,9 @@ packages:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
     dev: false
 
-  /effect@2.0.0-next.62(patch_hash=lerwqwtxshoixtgpgaej4bqfpa):
+  /effect@2.0.0-next.62:
     resolution: {integrity: sha512-fJhLzf5oouL4WZP314ZJgZz5Bel7OHTY+YFxO06sW1mSvqJz0s28y7jDHr5zhtTNM1YRvzbeLYUYfNaJYKqx1A==}
     dev: false
-    patched: true
 
   /ejs@3.1.9:
     resolution: {integrity: sha512-rC+QVNMJWv+MtPgkt0y+0rVEIdbtxVADApW9JXrUVlzHetgcyczP/E7DJmWJ4fJCZF2cPcBk0laWO9ZHMG3DmQ==}
@@ -7111,6 +7107,10 @@ packages:
   /fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
     dev: true
+
+  /fast-text-encoding@1.0.6:
+    resolution: {integrity: sha512-VhXlQgj9ioXCqGstD37E/HBeqEGV/qOD/kmbVG8h5xKBYvM1L3lR1Zn4555cQ8GkYbJa8aJSipLPndE1k6zK2w==}
+    dev: false
 
   /fast-xml-parser@4.3.2:
     resolution: {integrity: sha512-rmrXUXwbJedoXkStenj1kkljNF7ugn5ZjR9FJcwmCfcCbtOMDghPajbc+Tck6vE6F5XsDmx+Pr2le9fw8+pXBg==}
@@ -11912,11 +11912,6 @@ packages:
       acorn: 8.11.3
       commander: 2.20.3
       source-map-support: 0.5.21
-
-  /text-encoding@0.7.0:
-    resolution: {integrity: sha512-oJQ3f1hrOnbRLOcwKz0Liq2IcrvDeZRHXhd9RgLrsT+DjWY/nty1Hi7v3dtkaEYbPYe0mUoOfzRrMwfXXwgPUA==}
-    deprecated: no longer maintained
-    dev: false
 
   /text-table@0.2.0:
     resolution: {integrity: sha512-N+8UisAXDGk8PFXP4HAzVR9nbfmVJ3zYLAWiTIoqC5v5isinhr+r5uaO8+7r3BMfuNIufIsA7RdpVgacC2cSpw==}

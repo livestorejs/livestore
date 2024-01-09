@@ -41,8 +41,7 @@
   "packageManager": "pnpm@8.8.0",
   "pnpm": {
     "patchedDependencies": {
-      "drizzle-orm@0.28.6": "patches/drizzle-orm@0.28.6.patch",
-      "effect@2.0.0-next.62": "patches/effect@2.0.0-next.62.patch"
+      "drizzle-orm@0.28.6": "patches/drizzle-orm@0.28.6.patch"
     }
   }
 }

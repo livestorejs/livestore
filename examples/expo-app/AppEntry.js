@@ -1,5 +1,4 @@
-import applyGlobalPolyfills from './textEncodingPolyFill'
-applyGlobalPolyfills()
+import 'fast-text-encoding'
 
 import registerRootComponent from 'expo/build/launch/registerRootComponent'
 
