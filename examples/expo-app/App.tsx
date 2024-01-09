@@ -1,3 +1,4 @@
+import { sql } from '@livestore/livestore'
 import type { DatabaseApi } from '@livestore/livestore/react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import * as SQLite from 'expo-sqlite/next'
@@ -6,6 +7,7 @@ import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { schema } from './schema'
+import { Todos } from './Todos'
 
 // console.log(schema)
 
@@ -59,12 +61,14 @@ const App = () => {
           }
         }}
         fallback={<Text>Loading...</Text>}
-        // boot={(db) => {
-        //   console.log('booting')
-        //   return db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all')`)
-        // }}
+        boot={(db) => {
+          console.log('booting')
+          db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
+        }}
         sqlite3={sqlite3Instance}
-      ></LiveStoreProvider>
+      >
+        <Todos />
+      </LiveStoreProvider>
       <StatusBar style="auto" />
     </View>
   )
