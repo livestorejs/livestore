@@ -50,7 +50,16 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 }
 
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(tableDef: TTableDefinition) =>
-  Schema.struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema])))
+  Schema.struct(
+    Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema])),
+  ) as Schema.Schema<
+    {
+      [K in keyof TTableDefinition['columns']]: Schema.Schema.From<TTableDefinition['columns'][K]['schema']>
+    },
+    {
+      [K in keyof TTableDefinition['columns']]: Schema.Schema.To<TTableDefinition['columns'][K]['schema']>
+    }
+  >
 
 const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
   return Object.entries(columns).map(([name, column]) => {

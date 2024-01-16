@@ -5,17 +5,17 @@ import { mapValues } from 'lodash-es'
 import React from 'react'
 
 import type { DbGraph } from '../index.js'
-import type { LiveStoreJSQuery } from '../reactiveQueries/js.js'
-import type { RowQueryArgs, RowResult } from '../row-query.js'
+import type { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
+import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
-import type { DefaultSqliteTableDef, TableDef, TableOptions } from '../schema/table-def.js'
+import { type DefaultSqliteTableDef, type TableDef, tableIsSingleton, type TableOptions } from '../schema/table-def.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 
 export type UseRowResult<TTableDef extends TableDef> = [
   row: RowResult<TTableDef>,
   setRow: StateSetters<TTableDef>,
-  query$: LiveStoreJSQuery<RowResult<TTableDef>>,
+  query$: LiveStoreSQLQuery<RowResult<TTableDef>>,
 ]
 
 export type UseRowOptionsDefaulValues<TTableDef extends TableDef> = {
@@ -31,7 +31,7 @@ export type UseRowOptionsBase = {
  *
  *   - `row` is the current value of the row (fully decoded according to the table schema)
  *   - `setRow` is a function that can be used to update the row (values will be encoded according to the table schema)
- *   - `query$` is a `LiveStoreJSQuery` that e.g. can be used to subscribe to changes to the row
+ *   - `query$` is a `LiveStoreSQLQuery` that e.g. can be used to subscribe to changes to the row
  *
  * If the table is a singleton table, `useRow` can be called without an `id` argument. Otherwise, the `id` argument is required.
  */
@@ -69,7 +69,7 @@ export const useRow: {
       cachedItem.span.addEvent('new-subscriber', { reactId })
 
       return {
-        query$: cachedItem.query$ as LiveStoreJSQuery<RowResult<TTableDef>>,
+        query$: cachedItem.query$ as LiveStoreSQLQuery<RowResult<TTableDef>>,
         otelContext: cachedItem.otelContext,
       }
     }
@@ -82,9 +82,13 @@ export const useRow: {
 
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const query$ = table.options.isSingleton
-      ? rowQuery({ table, store, otelContext, defaultValues, dbGraph } as RowQueryArgs<TTableDef>)
-      : rowQuery({ table, store, id, otelContext, defaultValues, dbGraph } as RowQueryArgs<TTableDef>)
+    const query$ = tableIsSingleton(table)
+      ? (rowQuery(table, { otelContext, dbGraph }) as LiveStoreSQLQuery<RowResult<TTableDef>>)
+      : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
+          otelContext,
+          defaultValues: defaultValues!,
+          dbGraph,
+        }) as any as LiveStoreSQLQuery<RowResult<TTableDef>>)
 
     rcCache.set(table, id ?? 'singleton', query$, reactId, otelContext, span)
 
@@ -198,11 +202,11 @@ class RCCache {
         reactIds: Set<string>
         span: otel.Span
         otelContext: otel.Context
-        query$: LiveStoreJSQuery<any>
+        query$: LiveStoreSQLQuery<any>
       }
     >
   >()
-  private reverseCache = new Map<LiveStoreJSQuery<any>, [TableDef, string]>()
+  private reverseCache = new Map<LiveStoreSQLQuery<any>, [TableDef, string]>()
 
   get = (table: TableDef, id: string) => {
     const queries = this.cache.get(table)
@@ -213,7 +217,7 @@ class RCCache {
   set = (
     table: TableDef,
     id: string,
-    query$: LiveStoreJSQuery<any>,
+    query$: LiveStoreSQLQuery<any>,
     reactId: string,
     otelContext: otel.Context,
     span: otel.Span,
@@ -227,7 +231,7 @@ class RCCache {
     this.reverseCache.set(query$, [table, id])
   }
 
-  delete = (query$: LiveStoreJSQuery<any>) => {
+  delete = (query$: LiveStoreSQLQuery<any>) => {
     const item = this.reverseCache.get(query$)
     if (item === undefined) return
 

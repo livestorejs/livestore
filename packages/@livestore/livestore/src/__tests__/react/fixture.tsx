@@ -4,7 +4,7 @@ import initSqlite3Wasm from 'sqlite-esm'
 
 import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeDbGraph, makeSchema, sql } from '../../index.js'
+import { createStore, DbSchema, makeDbGraph, makeMutations, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import { InMemoryStorage } from '../../storage/in-memory/index.js'
 
@@ -21,13 +21,15 @@ export type AppState = {
   filter: Filter
 }
 
+export const todos = DbSchema.table('todos', {
+  id: DbSchema.text({ primaryKey: true }),
+  text: DbSchema.text({ default: '', nullable: false }),
+  completed: DbSchema.boolean({ default: false, nullable: false }),
+})
+
 export const schema = makeSchema({
   tables: {
-    todos: DbSchema.table('todos', {
-      id: DbSchema.text({ primaryKey: true }),
-      text: DbSchema.text({ default: '', nullable: false }),
-      completed: DbSchema.boolean({ default: false, nullable: false }),
-    }),
+    todos,
     app: DbSchema.table('app', {
       id: DbSchema.text({ primaryKey: true }),
       newTodoText: DbSchema.text({ default: '', nullable: true }),
@@ -52,6 +54,8 @@ export const schema = makeSchema({
     setFilter: { statement: { sql: sql`UPDATE app SET filter = $filter;`, writeTables: ['app'] } },
   },
 })
+
+export const parseTodos = ParseUtils.many(todos)
 
 export const makeTodoMvc = async ({
   otelTracer,
@@ -83,11 +87,13 @@ export const makeTodoMvc = async ({
     otelRootSpanContext: otelContext,
   })
 
+  const mutations = makeMutations(schema)
+
   const storeContext: LiveStoreContext = { store }
 
   const wrapper = ({ children }: any) => (
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>
   )
 
-  return { wrapper, AppComponentSchema, store, dbGraph }
+  return { wrapper, AppComponentSchema, store, dbGraph, mutations }
 }

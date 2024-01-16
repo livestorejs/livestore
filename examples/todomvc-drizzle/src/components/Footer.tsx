@@ -11,9 +11,7 @@ const incompleteCount$ = queryDrizzle((qb) =>
     .select({ incompleteCount: drizzle.sql<number>`count(*) as incompleteCount` })
     .from(t.todos)
     .where(drizzle.eq(t.todos.completed, false)),
-)
-  .getFirstRow()
-  .pipe(({ incompleteCount }) => incompleteCount)
+).pipe((rows) => rows[0]!.incompleteCount)
 
 export const Footer: React.FC = () => {
   const { store } = useStore()

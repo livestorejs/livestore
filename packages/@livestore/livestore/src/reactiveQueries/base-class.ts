@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom'
 
 import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
+import type { UpdatePathDesc } from '../row-state.js'
 import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'
 import type { LiveStoreJSQuery } from './js.js'
+import type { LiveStoreSQLQuery } from './sql.js'
 
 export type DbGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
 
@@ -37,6 +39,8 @@ export interface ILiveStoreQuery<TResult> {
   destroy(): void
 
   activeSubscriptions: Set<StackInfo>
+
+  updatePathDesc: UpdatePathDesc | undefined
 }
 
 export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TResult> {
@@ -50,6 +54,8 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
   activeSubscriptions: Set<StackInfo> = new Set()
 
   protected abstract dbGraph: DbGraph
+
+  updatePathDesc: UpdatePathDesc | undefined
 
   get runs() {
     return this.results$.recomputations
@@ -75,7 +81,7 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
     throwContextNotSetError(this.dbGraph)
 }
 
-export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveStoreJSQuery<T>) => T
+export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveStoreSQLQuery<T> | LiveStoreJSQuery<T>) => T
 
 export const makeGetAtomResult = (get: GetAtom, otelContext: otel.Context) => {
   const getAtom: GetAtomResult = (atom) => {

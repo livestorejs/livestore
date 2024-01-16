@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
@@ -112,6 +112,36 @@ export const table = <
 
   return tableDef as any
 }
+
+export const tableIsSingleton = <TTableDef extends TableDef>(
+  tableDef: TTableDef,
+): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
+
+export const getDefaultValuesEncoded = <TTableDef extends TableDef>(tableDef: TTableDef) =>
+  pipe(
+    tableDef.schema.columns,
+    ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.map((column, columnName) =>
+      column.default._tag === 'None'
+        ? column.nullable === true
+          ? null
+          : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+        : Schema.encodeSync(column.schema)(column.default.value),
+    ),
+  )
+
+export const getDefaultValuesDecoded = <TTableDef extends TableDef>(tableDef: TTableDef) =>
+  pipe(
+    tableDef.schema.columns,
+    ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.map((column, columnName) =>
+      column.default._tag === 'None'
+        ? column.nullable === true
+          ? null
+          : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+        : Schema.validateSync(column.schema)(column.default.value),
+    ),
+  )
 
 type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> = TColumns &
   (TOptions['disableAutomaticIdColumn'] extends true

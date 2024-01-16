@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { BsTrash3 as DeleteIcon } from 'react-icons/bs'
 import { BsXLg as CloseIcon } from 'react-icons/bs'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
@@ -11,28 +11,15 @@ import { PriorityDisplay, StatusDisplay } from '../../types/issue'
 import Editor from '../../components/editor/Editor'
 import DeleteModal from './DeleteModal'
 import Comments from './Comments'
-import { Issue } from '../../types'
-import { querySQL, sql } from '@livestore/livestore'
-import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
-
-// This would be best:
-// const issue$ = querySQL<Issue>((_) => sql`SELECT * FROM issue WHERE id = $id`).getFirstRow()
-// const issue = useQuery(issue$, { id })
+import { useRow, useStore } from '@livestore/livestore/react'
+import { tables } from '../../domain/schema'
 
 function IssuePage() {
   const navigate = useNavigate()
-  const { id } = useParams() || ''
+  const id = useParams().id ?? ''
 
-  const makeIssueQuery = useCallback(
-    () => querySQL<Issue>((_) => sql`SELECT * FROM issue WHERE id = '${id}'`).getFirstRow(),
-    [id],
-  )
-  const makeDescriptionQuery = useCallback(
-    () => querySQL<{ body: string }>((_) => sql`SELECT body FROM description WHERE id = '${id}'`).getFirstRow(),
-    [id],
-  )
-  const issue = useTemporaryQuery(makeIssueQuery)
-  const description = useTemporaryQuery(makeDescriptionQuery).body
+  const [issue] = useRow(tables.issue, id)
+  const [{ body: description }] = useRow(tables.description, id)
   const { store } = useStore()
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)

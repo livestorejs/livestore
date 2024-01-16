@@ -7,6 +7,7 @@ import type { TableDef } from './table-def.js'
 export * from './action.js'
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
+export * as ParseUtils from './parse-utils.js'
 
 // export { SqliteDsl as DbSchema } from 'effect-db-schema'
 

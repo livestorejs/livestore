@@ -3,8 +3,15 @@ import type { ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { queryJS, querySQL, sql } from '../../index.js'
-import { makeTodoMvc } from '../react/fixture.js'
+import { ParseUtils, queryJS, querySQL, sql } from '../../index.js'
+import { makeTodoMvc, todos } from '../react/fixture.js'
+
+/*
+TODO write tests for:
+
+- sql queries without and with `map` (incl. callback and schemas)
+- optional and explicit `queriedTables` argument
+*/
 
 describe('otel', () => {
   let cachedProvider: BasicTracerProvider | undefined
@@ -160,16 +167,17 @@ describe('otel', () => {
   it('with thunks', async () => {
     const { store, exporter, span } = await makeQuery()
 
-    const defaultTodo = { id: '', text: '', completed: 0 }
+    const defaultTodo = { id: '', text: '', completed: false }
 
     const filter = queryJS(() => `where completed = 0`, { label: 'where-filter' })
-    const query = querySQL((get) => `select * from todos ${get(filter)}`, { label: 'all todos' }).getFirstRow({
-      defaultValue: defaultTodo,
+    const query = querySQL((get) => `select * from todos ${get(filter)}`, {
+      label: 'all todos',
+      map: ParseUtils.firstRow(todos, defaultTodo),
     })
 
     expect(query.run()).toMatchInlineSnapshot(`
       {
-        "completed": 0,
+        "completed": false,
         "id": "",
         "text": "",
       }
@@ -182,7 +190,7 @@ describe('otel', () => {
 
     expect(query.run()).toMatchInlineSnapshot(`
       {
-        "completed": 0,
+        "completed": false,
         "id": "t1",
         "text": "buy milk",
       }
@@ -257,49 +265,39 @@ describe('otel', () => {
             "_name": "LiveStore:queries",
             "children": [
               {
-                "_name": "js:sql(all todos):first",
+                "_name": "sql:select * from todos where completed = 0",
+                "attributes": {
+                  "sql.query": "select * from todos where completed = 0",
+                  "sql.rowsCount": 0,
+                },
                 "children": [
                   {
-                    "_name": "sql:select * from todos where completed = 0",
+                    "_name": "js:where-filter",
+                  },
+                  {
+                    "_name": "sql-in-memory-select",
                     "attributes": {
+                      "sql.cached": false,
                       "sql.query": "select * from todos where completed = 0",
                       "sql.rowsCount": 0,
                     },
-                    "children": [
-                      {
-                        "_name": "js:where-filter",
-                      },
-                      {
-                        "_name": "sql-in-memory-select",
-                        "attributes": {
-                          "sql.cached": false,
-                          "sql.query": "select * from todos where completed = 0",
-                          "sql.rowsCount": 0,
-                        },
-                      },
-                    ],
                   },
                 ],
               },
               {
-                "_name": "js:sql(all todos):first",
+                "_name": "sql:select * from todos where completed = 0",
+                "attributes": {
+                  "sql.query": "select * from todos where completed = 0",
+                  "sql.rowsCount": 1,
+                },
                 "children": [
                   {
-                    "_name": "sql:select * from todos where completed = 0",
+                    "_name": "sql-in-memory-select",
                     "attributes": {
+                      "sql.cached": false,
                       "sql.query": "select * from todos where completed = 0",
                       "sql.rowsCount": 1,
                     },
-                    "children": [
-                      {
-                        "_name": "sql-in-memory-select",
-                        "attributes": {
-                          "sql.cached": false,
-                          "sql.query": "select * from todos where completed = 0",
-                          "sql.rowsCount": 1,
-                        },
-                      },
-                    ],
                   },
                 ],
               },

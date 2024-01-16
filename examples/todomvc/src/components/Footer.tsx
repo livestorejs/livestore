@@ -1,15 +1,17 @@
-import { querySQL } from '@livestore/livestore'
+import { Schema } from '@effect/schema'
+import { ParseUtils, querySQL } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
 
-const incompleteCount$ = querySQL<{ incompleteCount: number }>(
-  `select count(*) as incompleteCount from todos where completed = false;`,
+const QueryResult = ParseUtils.headUnsafe(
+  ParseUtils.pluck(Schema.struct({ incompleteCount: Schema.number }), 'incompleteCount'),
 )
-  .getFirstRow()
-  .pipe(({ incompleteCount }) => incompleteCount)
+const incompleteCount$ = querySQL(`select count(*) as incompleteCount from todos where completed = false;`, {
+  map: QueryResult,
+})
 
 export const Footer: React.FC = () => {
   const { store } = useStore()

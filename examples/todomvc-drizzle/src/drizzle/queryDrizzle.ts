@@ -22,7 +22,7 @@ const queryBuilder = new QueryBuilder()
 export const queryDrizzle = <TQueryBuilder extends TypedQueryBuilder<any, any>>(
   fn: (qb: QueryBuilder, get: GetAtomResult) => TQueryBuilder,
   options?: { queriedTables?: Set<string> },
-): LiveStoreSQLQuery<GetQueryRes<TQueryBuilder>> => {
+): LiveStoreSQLQuery<ReadonlyArray<GetQueryRes<TQueryBuilder>>> => {
   return querySQL((get) => {
     const query = fn(queryBuilder, get)
 

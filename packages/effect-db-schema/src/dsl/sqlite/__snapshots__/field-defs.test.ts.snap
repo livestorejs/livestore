@@ -135,26 +135,29 @@ exports[`FieldDefs > datetime 1`] = `
   "primaryKey": false,
   "schema": SchemaImpl {
     "ast": {
-      "_tag": "Transform",
-      "annotations": {},
-      "from": {
-        "_tag": "StringKeyword",
-        "annotations": {
-          Symbol(@effect/schema/annotation/Title): "string",
-          Symbol(@effect/schema/annotation/Description): "a string",
-        },
+      "_tag": "Refinement",
+      "annotations": {
+        Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+        Symbol(@effect/schema/annotation/Identifier): "Date",
+        Symbol(@effect/schema/annotation/Description): "a valid Date",
       },
-      "to": {
-        "_tag": "Refinement",
+      "filter": [Function],
+      "from": {
+        "_tag": "Transform",
         "annotations": {
-          Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-          Symbol(@effect/schema/annotation/Description): "a valid Date",
+          Symbol(@effect/schema/annotation/Identifier): "DateFromString",
         },
-        "filter": [Function],
         "from": {
+          "_tag": "StringKeyword",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Title): "string",
+            Symbol(@effect/schema/annotation/Description): "a string",
+          },
+        },
+        "to": {
           "_tag": "Declaration",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
             Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -182,11 +185,11 @@ exports[`FieldDefs > datetime 1`] = `
           },
           "typeParameters": [],
         },
-      },
-      "transformation": {
-        "_tag": "FinalTransformation",
-        "decode": [Function],
-        "encode": [Function],
+        "transformation": {
+          "_tag": "FinalTransformation",
+          "decode": [Function],
+          "encode": [Function],
+        },
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -208,26 +211,29 @@ exports[`FieldDefs > datetime 2`] = `
   "primaryKey": false,
   "schema": SchemaImpl {
     "ast": {
-      "_tag": "Transform",
-      "annotations": {},
-      "from": {
-        "_tag": "StringKeyword",
-        "annotations": {
-          Symbol(@effect/schema/annotation/Title): "string",
-          Symbol(@effect/schema/annotation/Description): "a string",
-        },
+      "_tag": "Refinement",
+      "annotations": {
+        Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+        Symbol(@effect/schema/annotation/Identifier): "Date",
+        Symbol(@effect/schema/annotation/Description): "a valid Date",
       },
-      "to": {
-        "_tag": "Refinement",
+      "filter": [Function],
+      "from": {
+        "_tag": "Transform",
         "annotations": {
-          Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-          Symbol(@effect/schema/annotation/Description): "a valid Date",
+          Symbol(@effect/schema/annotation/Identifier): "DateFromString",
         },
-        "filter": [Function],
         "from": {
+          "_tag": "StringKeyword",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Title): "string",
+            Symbol(@effect/schema/annotation/Description): "a string",
+          },
+        },
+        "to": {
           "_tag": "Declaration",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
             Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -255,11 +261,11 @@ exports[`FieldDefs > datetime 2`] = `
           },
           "typeParameters": [],
         },
-      },
-      "transformation": {
-        "_tag": "FinalTransformation",
-        "decode": [Function],
-        "encode": [Function],
+        "transformation": {
+          "_tag": "FinalTransformation",
+          "decode": [Function],
+          "encode": [Function],
+        },
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -286,31 +292,29 @@ exports[`FieldDefs > datetime 3`] = `
       "annotations": {},
       "types": [
         {
-          "_tag": "Literal",
-          "annotations": {},
-          "literal": null,
-        },
-        {
-          "_tag": "Transform",
-          "annotations": {},
-          "from": {
-            "_tag": "StringKeyword",
-            "annotations": {
-              Symbol(@effect/schema/annotation/Title): "string",
-              Symbol(@effect/schema/annotation/Description): "a string",
-            },
+          "_tag": "Refinement",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/annotation/Description): "a valid Date",
           },
-          "to": {
-            "_tag": "Refinement",
+          "filter": [Function],
+          "from": {
+            "_tag": "Transform",
             "annotations": {
-              Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-              Symbol(@effect/schema/annotation/Description): "a valid Date",
+              Symbol(@effect/schema/annotation/Identifier): "DateFromString",
             },
-            "filter": [Function],
             "from": {
+              "_tag": "StringKeyword",
+              "annotations": {
+                Symbol(@effect/schema/annotation/Title): "string",
+                Symbol(@effect/schema/annotation/Description): "a string",
+              },
+            },
+            "to": {
               "_tag": "Declaration",
               "annotations": {
-                Symbol(@effect/schema/annotation/Identifier): "Date",
+                Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
                 Symbol(@effect/schema/PrettyHookId): [Function],
                 Symbol(@effect/schema/ArbitraryHookId): [Function],
                 Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -338,12 +342,19 @@ exports[`FieldDefs > datetime 3`] = `
               },
               "typeParameters": [],
             },
+            "transformation": {
+              "_tag": "FinalTransformation",
+              "decode": [Function],
+              "encode": [Function],
+            },
           },
-          "transformation": {
-            "_tag": "FinalTransformation",
-            "decode": [Function],
-            "encode": [Function],
+        },
+        {
+          "_tag": "Literal",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "null",
           },
+          "literal": null,
         },
       ],
     },
@@ -367,26 +378,29 @@ exports[`FieldDefs > datetime 4`] = `
   "primaryKey": false,
   "schema": SchemaImpl {
     "ast": {
-      "_tag": "Transform",
-      "annotations": {},
-      "from": {
-        "_tag": "StringKeyword",
-        "annotations": {
-          Symbol(@effect/schema/annotation/Title): "string",
-          Symbol(@effect/schema/annotation/Description): "a string",
-        },
+      "_tag": "Refinement",
+      "annotations": {
+        Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
+        Symbol(@effect/schema/annotation/Identifier): "Date",
+        Symbol(@effect/schema/annotation/Description): "a valid Date",
       },
-      "to": {
-        "_tag": "Refinement",
+      "filter": [Function],
+      "from": {
+        "_tag": "Transform",
         "annotations": {
-          Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-          Symbol(@effect/schema/annotation/Description): "a valid Date",
+          Symbol(@effect/schema/annotation/Identifier): "DateFromString",
         },
-        "filter": [Function],
         "from": {
+          "_tag": "StringKeyword",
+          "annotations": {
+            Symbol(@effect/schema/annotation/Title): "string",
+            Symbol(@effect/schema/annotation/Description): "a string",
+          },
+        },
+        "to": {
           "_tag": "Declaration",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "Date",
+            Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
             Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -414,11 +428,11 @@ exports[`FieldDefs > datetime 4`] = `
           },
           "typeParameters": [],
         },
-      },
-      "transformation": {
-        "_tag": "FinalTransformation",
-        "decode": [Function],
-        "encode": [Function],
+        "transformation": {
+          "_tag": "FinalTransformation",
+          "decode": [Function],
+          "encode": [Function],
+        },
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -448,8 +462,9 @@ exports[`FieldDefs > json 1`] = `
         "from": {
           "_tag": "StringKeyword",
           "annotations": {
-            Symbol(@effect/schema/annotation/Title): "string",
-            Symbol(@effect/schema/annotation/Description): "a string",
+            Symbol(@effect/schema/annotation/Title): "JsonString",
+            Symbol(@effect/schema/annotation/Description): "a JSON string",
+            Symbol(@effect/schema/annotation/Identifier): "JsonString",
           },
         },
         "to": {
@@ -499,7 +514,9 @@ exports[`FieldDefs > json 2`] = `
       "types": [
         {
           "_tag": "Literal",
-          "annotations": {},
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "null",
+          },
           "literal": null,
         },
         {
@@ -511,8 +528,9 @@ exports[`FieldDefs > json 2`] = `
             "from": {
               "_tag": "StringKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "string",
-                Symbol(@effect/schema/annotation/Description): "a string",
+                Symbol(@effect/schema/annotation/Title): "JsonString",
+                Symbol(@effect/schema/annotation/Description): "a JSON string",
+                Symbol(@effect/schema/annotation/Identifier): "JsonString",
               },
             },
             "to": {
@@ -566,7 +584,9 @@ exports[`FieldDefs > json 3`] = `
       "types": [
         {
           "_tag": "Literal",
-          "annotations": {},
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "null",
+          },
           "literal": null,
         },
         {
@@ -578,8 +598,9 @@ exports[`FieldDefs > json 3`] = `
             "from": {
               "_tag": "StringKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "string",
-                Symbol(@effect/schema/annotation/Description): "a string",
+                Symbol(@effect/schema/annotation/Title): "JsonString",
+                Symbol(@effect/schema/annotation/Description): "a JSON string",
+                Symbol(@effect/schema/annotation/Identifier): "JsonString",
               },
             },
             "to": {
@@ -695,7 +716,9 @@ exports[`FieldDefs > text 3`] = `
       "types": [
         {
           "_tag": "Literal",
-          "annotations": {},
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "null",
+          },
           "literal": null,
         },
         {
@@ -732,7 +755,9 @@ exports[`FieldDefs > text 4`] = `
       "types": [
         {
           "_tag": "Literal",
-          "annotations": {},
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "null",
+          },
           "literal": null,
         },
         {
@@ -767,7 +792,9 @@ exports[`FieldDefs > text 5`] = `
       "types": [
         {
           "_tag": "Literal",
-          "annotations": {},
+          "annotations": {
+            Symbol(@effect/schema/annotation/Identifier): "null",
+          },
           "literal": null,
         },
         {

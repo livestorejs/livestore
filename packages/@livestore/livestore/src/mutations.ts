@@ -1,9 +1,10 @@
 import * as SqlQueries from '@livestore/sql-queries'
 import type { SqliteDsl } from 'effect-db-schema'
 
-import type { RowInsert, RowResult } from './row-query.js'
+import type { RowResult } from './row-query.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import type { TableDef } from './schema/table-def.js'
+import type { GetValForKey } from './utils/util.js'
 
 export const makeMutations = <TDbSchema extends SqliteDsl.DbSchema>(
   schema: LiveStoreSchema<TDbSchema>,
@@ -56,6 +57,10 @@ export type UpdateMutation<TTableDef extends TableDef> = (args: {
   where: Partial<RowResult<TTableDef>>
   values: Partial<RowResult<TTableDef>>
 }) => MutationEvent
+
+export type RowInsert<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
+  ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['schema']['columns']>, 'value'>
+  : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['schema']['columns']>
 
 export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => MutationEvent
 

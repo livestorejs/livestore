@@ -1,8 +1,6 @@
-import { querySQL, sql } from '@livestore/livestore'
-import { useQuery } from '@livestore/livestore/react'
+import { DbSchema as __DbSchema } from '@livestore/livestore'
+import { useRow } from '@livestore/livestore/react'
 
-import type { AppState } from './schema.js'
+import { tables } from './schema.js'
 
-const appState = querySQL<AppState>(sql`SELECT newTodoText, filter FROM app;`).getFirstRow()
-
-export const useAppState = () => useQuery(appState)
+export const useAppState = () => useRow(tables.app)[0]

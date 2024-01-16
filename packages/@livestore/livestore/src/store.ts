@@ -168,13 +168,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
         .map((_) => [_.label!.slice('tableRef:'.length), _] as const),
     )
     for (const tableName of allTableNames) {
-      this.tableRefs[tableName] =
-        existingTableRefs.get(tableName) ??
-        this.graph.makeRef(null, {
-          equal: () => false,
-          label: `tableRef:${tableName}`,
-          meta: { liveStoreRefType: 'table' },
-        })
+      this.tableRefs[tableName] = existingTableRefs.get(tableName) ?? this.makeTableRef(tableName)
     }
 
     if (graphQLOptions) {
@@ -538,6 +532,13 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   select = (query: string, params: ParamsObject = {}) => {
     return this.inMemoryDB.select(query, { bindValues: prepareBindValues(params, query) })
   }
+
+  makeTableRef = (tableName: string) =>
+    this.graph.makeRef(null, {
+      equal: () => false,
+      label: `tableRef:${tableName}`,
+      meta: { liveStoreRefType: 'table' },
+    })
 }
 
 /** Create a new LiveStore Store */

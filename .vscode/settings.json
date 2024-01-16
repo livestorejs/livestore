@@ -15,14 +15,14 @@
   "[typescript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[jsonc]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "eslint.validate": ["markdown", "javascript", "typescript"],
   "files.exclude": {
