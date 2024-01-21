@@ -3,7 +3,7 @@ import type { ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { ParseUtils, queryJS, querySQL, sql } from '../../index.js'
+import { computed, ParseUtils, querySQL, sql } from '../../index.js'
 import { makeTodoMvc, todos } from '../react/fixture.js'
 
 /*
@@ -169,10 +169,10 @@ describe('otel', () => {
 
     const defaultTodo = { id: '', text: '', completed: false }
 
-    const filter = queryJS(() => `where completed = 0`, { label: 'where-filter' })
+    const filter = computed(() => `where completed = 0`, { label: 'where-filter' })
     const query = querySQL((get) => `select * from todos ${get(filter)}`, {
       label: 'all todos',
-      map: ParseUtils.firstRow(todos, defaultTodo),
+      map: ParseUtils.first(todos, defaultTodo),
     })
 
     expect(query.run()).toMatchInlineSnapshot(`

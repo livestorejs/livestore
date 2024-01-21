@@ -9,13 +9,13 @@
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {
-    "@effect/schema": "0.59.1",
+    "@effect/schema": "0.60.6",
     "@livestore/devtools-react": "latest",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "latest",
     "@opentelemetry/api": "^1.7.0",
     "drizzle-orm": "^0.28.6",
-    "effect": "2.0.3",
+    "effect": "2.1.2",
     "effect-db-schema": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

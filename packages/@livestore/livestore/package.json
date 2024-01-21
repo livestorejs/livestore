@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.38",
+  "version": "0.0.39-dev.3",
   "type": "module",
   "exports": {
     ".": {
@@ -71,7 +71,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-trace-base": "1.19.0",
+    "@opentelemetry/sdk-trace-base": "1.20.0",
     "@tauri-apps/api": "^1.5.3",
     "@testing-library/react": "^14.1.2",
     "@types/lodash-es": "^4.17.12",
@@ -87,7 +87,7 @@
   },
   "peerDependencies": {
     "@tauri-apps/api": "^1.4.0",
-    "graphql": "^16.8.1",
+    "graphql": "16.x",
     "react": "^18",
     "react-dom": "^18"
   },

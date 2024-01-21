@@ -55,7 +55,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     schema: TNullable extends true
       ? Schema.Schema<NoInfer<TEncoded> | null, NoInfer<TDecoded> | null>
       : Schema.Schema<NoInfer<TEncoded>, NoInfer<TDecoded>>
-    default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
+    default: TDefault extends NoDefault ? Option.None<never> : Option.Some<NoInfer<TDefault>>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
   }

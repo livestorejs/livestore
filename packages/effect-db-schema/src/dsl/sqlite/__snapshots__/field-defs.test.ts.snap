@@ -158,6 +158,7 @@ exports[`FieldDefs > datetime 1`] = `
           "_tag": "Declaration",
           "annotations": {
             Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
+            Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
             Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -234,6 +235,7 @@ exports[`FieldDefs > datetime 2`] = `
           "_tag": "Declaration",
           "annotations": {
             Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
+            Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
             Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -315,6 +317,7 @@ exports[`FieldDefs > datetime 3`] = `
               "_tag": "Declaration",
               "annotations": {
                 Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
+                Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
                 Symbol(@effect/schema/PrettyHookId): [Function],
                 Symbol(@effect/schema/ArbitraryHookId): [Function],
                 Symbol(@effect/schema/EquivalenceHookId): [Function],
@@ -401,6 +404,7 @@ exports[`FieldDefs > datetime 4`] = `
           "_tag": "Declaration",
           "annotations": {
             Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
+            Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
             Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],

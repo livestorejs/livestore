@@ -10,6 +10,7 @@ export {
   type Dispatch,
   type UseRowResult as UseStateResult,
 } from './useRow.js'
+export { useAtom } from './useAtom.js'
 
 // Needed to make TS happy
 export type { TypedDocumentNode } from '@graphql-typed-document-node/core'

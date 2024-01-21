@@ -39,12 +39,12 @@ export const migrateDb = ({
   const tableDefs = new Set([
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
     ...systemTables,
-    ...Array.from(schema.tables.values()).filter((_) => _.schema.name !== SCHEMA_META_TABLE),
+    ...Array.from(schema.tables.values()).filter((_) => _.sqliteDef.name !== SCHEMA_META_TABLE),
     ...dynamicallyRegisteredTables.values(),
   ])
 
   for (const tableDef of tableDefs) {
-    const tableAst = tableDef.schema.ast
+    const tableAst = tableDef.sqliteDef.ast
     const tableName = tableAst.name
     const dbSchemaHash = dbSchemaHashByTable[tableName]
     const schemaHash = SqliteAst.hash(tableAst)

@@ -1,34 +1,43 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { assertNever, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen } from '@livestore/utils'
+import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
 import { globalDbGraph } from '../global-state.js'
+import type { QueryInfoNone } from '../query-info.js'
 import type { Thunk } from '../reactive.js'
 import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { DbContext, DbGraph, GetAtomResult } from './base-class.js'
+import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
-import { LiveStoreJSQuery } from './js.js'
 
-export const queryGraphQL = <TResult extends Record<string, any>, TVariableValues extends Record<string, any>>(
+export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<From, To>
+
+export const queryGraphQL = <
+  TResult extends Record<string, any>,
+  TVariableValues extends Record<string, any>,
+  TResultMapped extends Record<string, any> = TResult,
+>(
   document: DocumentNode<TResult, TVariableValues>,
   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
-  { label, dbGraph }: { label?: string; dbGraph?: DbGraph } = {},
-) => new LiveStoreGraphQLQuery({ document, genVariableValues, label, dbGraph })
+  { label, dbGraph, map }: { label?: string; dbGraph?: DbGraph; map?: MapResult<TResultMapped, TResult> } = {},
+): LiveQuery<TResultMapped, QueryInfoNone> =>
+  new LiveStoreGraphQLQuery({ document, genVariableValues, label, dbGraph, map })
 
 export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
   TVariableValues extends Record<string, any>,
   TContext extends BaseGraphQLContext,
-> extends LiveStoreQueryBase<TResult> {
+  TResultMapped extends Record<string, any> = TResult,
+> extends LiveStoreQueryBase<TResultMapped, QueryInfoNone> {
   _tag: 'graphql' = 'graphql'
 
   /** The abstract GraphQL query */
   document: DocumentNode<TResult, TVariableValues>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, DbContext, RefreshReason>
+  results$: Thunk<TResultMapped, DbContext, RefreshReason>
 
   variableValues$: Thunk<TVariableValues, DbContext, RefreshReason>
 
@@ -36,16 +45,22 @@ export class LiveStoreGraphQLQuery<
 
   protected dbGraph: DbGraph
 
+  queryInfo: QueryInfoNone = { _tag: 'None' }
+
+  private mapResult
+
   constructor({
     document,
     label,
     genVariableValues,
     dbGraph,
+    map,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
     label?: string
     dbGraph?: DbGraph
+    map?: MapResult<TResultMapped, TResult>
   }) {
     super()
 
@@ -55,6 +70,23 @@ export class LiveStoreGraphQLQuery<
     this.document = document
 
     this.dbGraph = dbGraph ?? globalDbGraph
+
+    this.mapResult =
+      map === undefined
+        ? (res: TResult) => res as any as TResultMapped
+        : Schema.isSchema(map)
+          ? (res: TResult) => {
+              const parseResult = Schema.parseEither(map)(res)
+              if (parseResult._tag === 'Left') {
+                console.error(`Error parsing GraphQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
+                return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
+              } else {
+                return parseResult.right as TResultMapped
+              }
+            }
+          : typeof map === 'function'
+            ? map
+            : shouldNeverHappen(`Invalid map function ${map}`)
 
     // TODO don't even create a thunk if variables are static
     const variableValues$ = this.dbGraph.makeThunk(
@@ -71,7 +103,7 @@ export class LiveStoreGraphQLQuery<
     this.variableValues$ = variableValues$
 
     const resultsLabel = `${labelWithDefault}:results`
-    this.results$ = this.dbGraph.makeThunk<TResult>(
+    this.results$ = this.dbGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
         const variableValues = get(variableValues$)
         const { result, queriedTables, durationMs } = this.queryOnce({
@@ -80,13 +112,13 @@ export class LiveStoreGraphQLQuery<
           otelContext: otelContext ?? rootOtelContext,
           otelTracer,
           store: store as Store<TContext>,
+          get: makeGetAtomResult(get, otelContext ?? rootOtelContext),
         })
 
         // Add dependencies on any tables that were used
         for (const tableName of queriedTables) {
-          const tableRef = store.tableRefs[tableName]
-          assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
-          get(tableRef!)
+          const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+          get(tableRef)
         }
 
         setDebugInfo({ _tag: 'graphql', label: resultsLabel, query: graphql.print(document), durationMs })
@@ -102,16 +134,16 @@ export class LiveStoreGraphQLQuery<
    * Returns a new reactive query that contains the result of
    * running an arbitrary JS computation on the results of this SQL query.
    */
-  pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
-    new LiveStoreJSQuery({
-      fn: (get) => {
-        const results = get(this.results$)
-        return fn(results, get)
-      },
-      label: `${this.label}:js`,
-      onDestroy: () => this.destroy(),
-      dbGraph: this.dbGraph,
-    })
+  // pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
+  //   new LiveStoreJSQuery({
+  //     fn: (get) => {
+  //       const results = get(this.results$)
+  //       return fn(results, get)
+  //     },
+  //     label: `${this.label}:js`,
+  //     onDestroy: () => this.destroy(),
+  //     dbGraph: this.dbGraph,
+  //   })
 
   queryOnce = ({
     document,
@@ -119,12 +151,14 @@ export class LiveStoreGraphQLQuery<
     otelTracer,
     variableValues,
     store,
+    get,
   }: {
     document: graphql.DocumentNode
     otelContext: otel.Context
     otelTracer: otel.Tracer
     variableValues: TVariableValues
     store: Store<TContext>
+    get: GetAtomResult
   }) => {
     const schema =
       store.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
@@ -159,10 +193,12 @@ export class LiveStoreGraphQLQuery<
 
       span.end()
 
+      const result = this.mapResult(res.data as unknown as TResult, get)
+
       const durationMs = getDurationMsFromSpan(span)
 
       return {
-        result: res.data as unknown as TResult,
+        result,
         queriedTables: Array.from(context.queriedTables.values()),
         durationMs,
       }

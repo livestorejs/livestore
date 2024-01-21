@@ -1,6 +1,6 @@
 {
   "name": "effect-db-schema",
-  "version": "0.0.38",
+  "version": "0.0.39-dev.3",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -25,9 +25,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@effect/schema": "0.59.1",
+    "@effect/schema": "0.60.6",
     "dprint-node": "^1.0.8",
-    "effect": "2.0.3"
+    "effect": "2.1.2"
   },
   "devDependencies": {
     "drizzle-orm": "^0.28.6",

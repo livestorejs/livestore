@@ -1,25 +1,25 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { globalDbGraph } from '../global-state.js'
+import type { QueryInfo, QueryInfoNone } from '../query-info.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { Bindable } from '../utils/util.js'
 import { prepareBindValues } from '../utils/util.js'
-import type { DbContext, DbGraph, GetAtomResult } from './base-class.js'
+import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
-import { LiveStoreJSQuery } from './js.js'
 
 export type MapRows<TResult, TRaw = any> =
   | ((rows: ReadonlyArray<TRaw>) => TResult)
   | Schema.Schema<ReadonlyArray<TRaw>, TResult>
 
-export const querySQL = <Result, TRaw = any>(
+export const querySQL = <TResult, TRaw = any>(
   query: string | ((get: GetAtomResult) => string),
   options?: {
-    map?: MapRows<Result, TRaw>
+    map?: MapRows<TResult, TRaw>
     /**
      * Can be provided explicitly to slightly speed up initial query performance
      *
@@ -30,25 +30,29 @@ export const querySQL = <Result, TRaw = any>(
     label?: string
     dbGraph?: DbGraph
   },
-) =>
-  new LiveStoreSQLQuery<Result>({
+): LiveQuery<TResult, QueryInfoNone> =>
+  new LiveStoreSQLQuery<TResult, QueryInfoNone>({
     label: options?.label,
     genQueryString: query,
     queriedTables: options?.queriedTables,
     bindValues: options?.bindValues,
     dbGraph: options?.dbGraph,
     map: options?.map,
+    queryInfo: { _tag: 'None' },
   })
 
 /* An object encapsulating a reactive SQL query */
-export class LiveStoreSQLQuery<Result> extends LiveStoreQueryBase<Result> {
+export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone> extends LiveStoreQueryBase<
+  TResult,
+  TQueryInfo
+> {
   _tag: 'sql' = 'sql'
 
   /** A reactive thunk representing the query text */
   queryString$: Thunk<string, DbContext, RefreshReason>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<Result, DbContext, RefreshReason>
+  results$: Thunk<TResult, DbContext, RefreshReason>
 
   label: string
 
@@ -59,6 +63,8 @@ export class LiveStoreSQLQuery<Result> extends LiveStoreQueryBase<Result> {
 
   private mapRows
 
+  queryInfo: TQueryInfo
+
   constructor({
     genQueryString,
     queriedTables,
@@ -67,14 +73,16 @@ export class LiveStoreSQLQuery<Result> extends LiveStoreQueryBase<Result> {
     dbGraph,
     map,
     execBeforeFirstRun,
+    queryInfo,
   }: {
     label?: string
     genQueryString: string | ((get: GetAtomResult) => string)
     queriedTables?: Set<string>
     bindValues?: Bindable
     dbGraph?: DbGraph
-    map?: MapRows<Result>
+    map?: MapRows<TResult>
     execBeforeFirstRun?: (ctx: DbContext) => void
+    queryInfo?: TQueryInfo
   }) {
     super()
 
@@ -82,12 +90,23 @@ export class LiveStoreSQLQuery<Result> extends LiveStoreQueryBase<Result> {
     this.label = `sql(${label})`
     this.dbGraph = dbGraph ?? globalDbGraph
     this.execBeforeFirstRun = execBeforeFirstRun
+    this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
     this.mapRows =
       map === undefined
-        ? (rows: any) => rows as Result
-        : typeof map === 'function'
-          ? map
-          : (rows: any) => Schema.parseSync(map)(rows)
+        ? (rows: any) => rows as TResult
+        : Schema.isSchema(map)
+          ? (rows: any) => {
+              const parseResult = Schema.parseEither(map)(rows)
+              if (parseResult._tag === 'Left') {
+                console.error(`Error parsing SQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
+                return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
+              } else {
+                return parseResult.right as TResult
+              }
+            }
+          : typeof map === 'function'
+            ? map
+            : shouldNeverHappen(`Invalid map function ${map}`)
 
     // TODO don't even create a thunk if query string is static
     const queryString$ = this.dbGraph.makeThunk(
@@ -111,7 +130,7 @@ export class LiveStoreSQLQuery<Result> extends LiveStoreQueryBase<Result> {
 
     const queriedTablesRef = { current: queriedTables }
 
-    const results$ = this.dbGraph.makeThunk<Result>(
+    const results$ = this.dbGraph.makeThunk<TResult>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(
           'sql:...', // NOTE span name will be overridden further down
@@ -169,16 +188,17 @@ export class LiveStoreSQLQuery<Result> extends LiveStoreQueryBase<Result> {
    * Returns a new reactive query that contains the result of
    * running an arbitrary JS computation on the results of this SQL query.
    */
-  pipe = <U>(fn: (result: Result, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
-    new LiveStoreJSQuery({
-      fn: (get) => {
-        const results = get(this.results$!)
-        return fn(results, get)
-      },
-      label: `${this.label}:js`,
-      onDestroy: () => this.destroy(),
-      dbGraph: this.dbGraph,
-    })
+  // pipe = <U>(fn: (result: Result, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
+  //   new LiveStoreJSQuery({
+  //     fn: (get) => {
+  //       const results = get(this.results$!)
+  //       return fn(results, get)
+  //     },
+  //     label: `${this.label}:js`,
+  //     onDestroy: () => this.destroy(),
+  //     dbGraph: this.dbGraph,
+  //     queryInfo: undefined,
+  //   })
 
   /** Returns a reactive query  */
   // getFirstRow = (args?: { defaultValue?: Result }) =>

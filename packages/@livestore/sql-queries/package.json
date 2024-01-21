@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sql-queries",
-  "version": "0.0.38",
+  "version": "0.0.39-dev.3",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -13,8 +13,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/schema": "0.59.1",
-    "effect": "2.0.3",
+    "@effect/schema": "0.60.6",
+    "effect": "2.1.2",
     "effect-db-schema": "workspace:*"
   },
   "publishConfig": {

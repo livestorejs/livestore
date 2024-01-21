@@ -8,11 +8,11 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.59.1",
+    "@effect/schema": "0.60.6",
     "@livestore/devtools-react": "latest",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "latest",
-    "effect": "2.0.3",
+    "effect": "2.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sqlite-esm": "3.42.0-build6",

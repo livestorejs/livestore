@@ -49,17 +49,17 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
   return { name, columns, indexes, ast }
 }
 
-export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(tableDef: TTableDefinition) =>
-  Schema.struct(
-    Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema])),
-  ) as Schema.Schema<
-    {
-      [K in keyof TTableDefinition['columns']]: Schema.Schema.From<TTableDefinition['columns'][K]['schema']>
-    },
-    {
-      [K in keyof TTableDefinition['columns']]: Schema.Schema.To<TTableDefinition['columns'][K]['schema']>
-    }
-  >
+export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
+
+export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.From<TCols[K]['schema']> }>,
+  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.To<TCols[K]['schema']> }>
+>
+
+export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
+  tableDef: TTableDefinition,
+): StructSchemaForColumns<TTableDefinition['columns']> =>
+  Schema.struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))) as any
 
 const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
   return Object.entries(columns).map(([name, column]) => {
@@ -91,6 +91,15 @@ export type TableDefinition<TName extends string, TColumns extends Columns> = {
 }
 
 export type Columns = Record<string, ColumnDefinition<any, any>>
+
+/**
+ * NOTE this is only needed to avoid a TS limitation where `StructSchemaForColumns` in the default case
+ * results in `Record<string, any>` instead of `any`. (Thanks to Andarist for the workaround)
+ *
+ * Hopefully this can be removed in the future
+ */
+
+export type ConstraintColumns = Record<string, ColumnDefinition<any, any>> & { __constrained?: never }
 
 export type Index = {
   name: string

@@ -11,34 +11,18 @@ import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
-import type { DbContext, DbGraph, ILiveStoreQuery } from './reactiveQueries/base-class.js'
-import type { LiveStoreGraphQLQuery } from './reactiveQueries/graphql.js'
-import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
-import type { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
+import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
 import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
 import { isPromise, prepareBindValues, sql } from './utils/util.js'
 
-export type LiveStoreQuery<TResult extends Record<string, any> = any> =
-  | LiveStoreSQLQuery<TResult>
-  | LiveStoreJSQuery<TResult>
-  | LiveStoreGraphQLQuery<TResult, any, any>
-
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
   /** Needed by Pothos Otel plugin for resolver tracing to work */
   otelContext?: otel.Context
 }
-
-export type QueryResult<TQuery> = TQuery extends LiveStoreSQLQuery<infer R>
-  ? ReadonlyArray<Readonly<R>>
-  : TQuery extends LiveStoreJSQuery<infer S>
-    ? Readonly<S>
-    : TQuery extends LiveStoreGraphQLQuery<infer Result, any, any>
-      ? Readonly<Result>
-      : never
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
@@ -120,7 +104,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   tableRefs: { [key: string]: Ref<null, DbContext, RefreshReason> }
 
   /** RC-based set to see which queries are currently subscribed to */
-  activeQueries: ReferenceCountedSet<LiveStoreQuery>
+  activeQueries: ReferenceCountedSet<LiveQuery<any>>
   storage?: Storage
 
   private constructor({
@@ -160,7 +144,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     const allTableNames = new Set([
       ...this.schema.tables.keys(),
       // TODO activate dynamic tables
-      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.schema.name),
+      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.sqliteDef.name),
     ])
     const existingTableRefs = new Map(
       Array.from(this.graph.atoms.values())
@@ -196,7 +180,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
    * Returns a function to cancel the subscription.
    */
   subscribe = <TResult>(
-    query: ILiveStoreQuery<TResult>,
+    query: LiveQuery<TResult, any>,
     onNewValue: (value: TResult) => void,
     onUnsubsubscribe?: () => void,
     options?: { label?: string; otelContext?: otel.Context; skipInitialRun?: boolean } | undefined,
@@ -211,7 +195,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
         const label = `subscribe:${options?.label}`
         const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$)), { label })
 
-        this.activeQueries.add(query as LiveStoreQuery)
+        this.activeQueries.add(query as LiveQuery<TResult>)
 
         // Running effect right away to get initial value (unless `skipInitialRun` is set)
         if (options?.skipInitialRun !== true) {
@@ -221,7 +205,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
         const unsubscribe = () => {
           try {
             this.graph.destroyNode(effect)
-            this.activeQueries.remove(query as LiveStoreQuery)
+            this.activeQueries.remove(query as LiveQuery<TResult>)
             onUnsubsubscribe?.()
           } finally {
             span.end()

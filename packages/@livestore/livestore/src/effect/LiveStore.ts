@@ -5,9 +5,10 @@ import type { GraphQLSchema } from 'graphql'
 import initSqlite3Wasm from 'sqlite-esm'
 
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
+import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { StorageInit } from '../storage/index.js'
-import type { BaseGraphQLContext, GraphQLOptions, LiveStoreQuery, Store } from '../store.js'
+import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
@@ -22,7 +23,7 @@ export type LiveStoreContext = {
   store: Store
 }
 
-export type QueryDefinition = (store: Store) => LiveStoreQuery
+export type QueryDefinition = <TResult>(store: Store) => LiveQuery<TResult>
 
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema

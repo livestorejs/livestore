@@ -1,11 +1,11 @@
-import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
 
-import type { DbGraph } from '../index.js'
-import type { LiveStoreSQLQuery } from '../reactiveQueries/sql.js'
+import type { DbGraph, LiveQuery } from '../index.js'
+import type { QueryInfo } from '../query-info.js'
+import { storeEventForQueryInfo } from '../query-info.js'
 import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
 import { type DefaultSqliteTableDef, type TableDef, tableIsSingleton, type TableOptions } from '../schema/table-def.js'
@@ -15,7 +15,7 @@ import { useQueryRef } from './useQuery.js'
 export type UseRowResult<TTableDef extends TableDef> = [
   row: RowResult<TTableDef>,
   setRow: StateSetters<TTableDef>,
-  query$: LiveStoreSQLQuery<RowResult<TTableDef>>,
+  query$: LiveQuery<RowResult<TTableDef>, QueryInfo>,
 ]
 
 export type UseRowOptionsDefaulValues<TTableDef extends TableDef> = {
@@ -31,7 +31,7 @@ export type UseRowOptionsBase = {
  *
  *   - `row` is the current value of the row (fully decoded according to the table schema)
  *   - `setRow` is a function that can be used to update the row (values will be encoded according to the table schema)
- *   - `query$` is a `LiveStoreSQLQuery` that e.g. can be used to subscribe to changes to the row
+ *   - `query$` is a `LiveQuery` that e.g. can be used to subscribe to changes to the row
  *
  * If the table is a singleton table, `useRow` can be called without an `id` argument. Otherwise, the `id` argument is required.
  */
@@ -51,12 +51,12 @@ export const useRow: {
   idOrOptions?: string | UseRowOptionsBase,
   options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
 ): UseRowResult<TTableDef> => {
-  const sqliteTableDef = table.schema
+  const sqliteTableDef = table.sqliteDef
   const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
     typeof idOrOptions === 'string' ? options_ : idOrOptions
   const { defaultValues, dbGraph } = options ?? {}
-  type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['schema']['columns']>
+  type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
   const { store } = useStore()
 
@@ -69,13 +69,13 @@ export const useRow: {
       cachedItem.span.addEvent('new-subscriber', { reactId })
 
       return {
-        query$: cachedItem.query$ as LiveStoreSQLQuery<RowResult<TTableDef>>,
+        query$: cachedItem.query$ as LiveQuery<RowResult<TTableDef>, QueryInfo>,
         otelContext: cachedItem.otelContext,
       }
     }
 
     const span = store.otel.tracer.startSpan(
-      `LiveStore:useState:${table.schema.name}${id === undefined ? '' : `:${id}`}`,
+      `LiveStore:useState:${table.sqliteDef.name}${id === undefined ? '' : `:${id}`}`,
       { attributes: { id } },
       store.otel.queriesSpanContext,
     )
@@ -83,12 +83,12 @@ export const useRow: {
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     const query$ = tableIsSingleton(table)
-      ? (rowQuery(table, { otelContext, dbGraph }) as LiveStoreSQLQuery<RowResult<TTableDef>>)
+      ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
       : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
           otelContext,
           defaultValues: defaultValues!,
           dbGraph,
-        }) as any as LiveStoreSQLQuery<RowResult<TTableDef>>)
+        }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>)
 
     rcCache.set(table, id ?? 'singleton', query$, reactId, otelContext, span)
 
@@ -109,7 +109,7 @@ export const useRow: {
     [table, id, reactId],
   )
 
-  const query$Ref = useQueryRef(query$, otelContext)
+  const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowResult<TTableDef>>
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {
     if (table.isSingleColumn) {
@@ -117,14 +117,7 @@ export const useRow: {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
-        const encodedValue = Schema.encodeSync(sqliteTableDef.columns['value']!.schema)(newValue)
-
-        store.applyEvent('livestore.UpdateComponentState', {
-          tableName: sqliteTableDef.name,
-          columnNames: ['value'],
-          id,
-          bindValues: { ['value']: encodedValue },
-        })
+        store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, { value: newValue })])
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
@@ -137,14 +130,7 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
 
-          const encodedValue = Schema.encodeSync(column.schema)(newValue)
-
-          store.applyEvent('livestore.UpdateComponentState', {
-            tableName: sqliteTableDef.name,
-            columnNames: [columnName],
-            id,
-            bindValues: { [columnName]: encodedValue },
-          })
+          store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, { [columnName]: newValue })])
         })
 
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
@@ -161,22 +147,12 @@ export const useRow: {
           return
         }
 
-        const columnNames = Object.keys(columnValues)
-        const bindValues = mapValues(columnValues, (value, columnName) =>
-          Schema.encodeSync(sqliteTableDef.columns[columnName]!.schema)(value),
-        )
-
-        store.applyEvent('livestore.UpdateComponentState', {
-          tableName: sqliteTableDef.name,
-          columnNames,
-          id,
-          bindValues,
-        })
+        store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, columnValues)])
       }
 
       return setState as any
     }
-  }, [table.isSingleColumn, id, sqliteTableDef.columns, sqliteTableDef.name, store, query$Ref])
+  }, [query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
 
   return [query$Ref.current, setState, query$]
 }
@@ -202,11 +178,11 @@ class RCCache {
         reactIds: Set<string>
         span: otel.Span
         otelContext: otel.Context
-        query$: LiveStoreSQLQuery<any>
+        query$: LiveQuery<any, any>
       }
     >
   >()
-  private reverseCache = new Map<LiveStoreSQLQuery<any>, [TableDef, string]>()
+  private reverseCache = new Map<LiveQuery<any, any>, [TableDef, string]>()
 
   get = (table: TableDef, id: string) => {
     const queries = this.cache.get(table)
@@ -217,7 +193,7 @@ class RCCache {
   set = (
     table: TableDef,
     id: string,
-    query$: LiveStoreSQLQuery<any>,
+    query$: LiveQuery<any, any>,
     reactId: string,
     otelContext: otel.Context,
     span: otel.Span,
@@ -231,7 +207,7 @@ class RCCache {
     this.reverseCache.set(query$, [table, id])
   }
 
-  delete = (query$: LiveStoreSQLQuery<any>) => {
+  delete = (query$: LiveQuery<any, any>) => {
     const item = this.reverseCache.get(query$)
     if (item === undefined) return
 

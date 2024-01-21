@@ -5,11 +5,12 @@ import { parseFilterStateString, tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/livestore/react'
 
-const filterClause$ = querySQL<{ value: string }[]>(`select value from filter_state`).pipe((filterStates) => {
-  // TODO this handling should be improved (see https://github.com/livestorejs/livestore/issues/22)
-  if (filterStates.length === 0) return ''
-  const filterStateObj = parseFilterStateString(filterStates[0].value)
-  return filterStateToWhere(filterStateObj) + ' ' + filterStateToOrder(filterStateObj)
+const filterClause$ = querySQL(`select value from filter_state`, {
+  map: ([value]) => {
+    if (value === undefined) return ''
+    const filterStateObj = parseFilterStateString(value)
+    return filterStateToWhere(filterStateObj) + ' ' + filterStateToOrder(filterStateObj)
+  },
 })
 const visibleIssues$ = querySQL((get) => sql`select * from issue ${get(filterClause$)}`, {
   map: ParseUtils.many(tables.issue),

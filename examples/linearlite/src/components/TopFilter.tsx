@@ -6,7 +6,7 @@ import { MenuContext } from '../App'
 import FilterMenu from './contextmenu/FilterMenu'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
-import { ParseUtils, querySQL, sql } from '@livestore/livestore'
+import { querySQL, sql } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
 import { useFilterState } from '../domain/queries'
 import { Schema } from '@effect/schema'
@@ -18,7 +18,7 @@ interface Props {
   title?: string
 }
 
-const IssueCountResult = ParseUtils.headUnsafe(ParseUtils.pluck(Schema.struct({ c: Schema.number }), 'c'))
+const IssueCountResult = Schema.pluck(Schema.struct({ c: Schema.number }), 'c').pipe(Schema.array, Schema.headOr)
 const issueCount$ = querySQL(sql`SELECT COUNT(id) AS c FROM issue`, { map: IssueCountResult })
 
 export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {

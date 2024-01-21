@@ -8,14 +8,14 @@
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish --no-git-checks",
-    "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
+    "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
     "test": "CI=true pnpm --parallel run test"
   },
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
     "@livestore/devtools-react": "latest",
-    "effect": "2.0.3",
+    "effect": "2.1.2",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {

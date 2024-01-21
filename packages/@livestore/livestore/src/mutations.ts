@@ -13,7 +13,7 @@ export const makeMutations = <TDbSchema extends SqliteDsl.DbSchema>(
 }
 
 const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [string, Mutation<TTableDef>] => {
-  const table = tableDef.schema
+  const table = tableDef.sqliteDef
   const writeTables = new Set([table.name])
   const api = {
     insert: (values) => {
@@ -44,7 +44,7 @@ const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [st
     },
   } satisfies Mutation<TTableDef>
 
-  return [tableDef.schema.name, api]
+  return [tableDef.sqliteDef.name, api]
 }
 
 export type MutationEvent = {
@@ -59,8 +59,8 @@ export type UpdateMutation<TTableDef extends TableDef> = (args: {
 }) => MutationEvent
 
 export type RowInsert<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
-  ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['schema']['columns']>, 'value'>
-  : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['schema']['columns']>
+  ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
+  : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>
 
 export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => MutationEvent
 

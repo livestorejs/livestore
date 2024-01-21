@@ -1,25 +1,23 @@
 import React from 'react'
 
-import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
+import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import { useQueryRef } from './useQuery.js'
 
 /**
  * This is needed because the `React.useMemo` call below, can sometimes be called multiple times 🤷.
  * The map entry is being removed again in the `React.useEffect` call below.
  */
-const queryCache = new Map<() => ILiveStoreQuery<any>, { reactIds: Set<string>; query$: ILiveStoreQuery<any> }>()
+const queryCache = new Map<() => LiveQuery<any>, { reactIds: Set<string>; query$: LiveQuery<any> }>()
 
 /**
  * Creates a query, subscribes and destroys it when the component unmounts.
  *
  * Make sure `makeQuery` is a memoized function.
  */
-export const useTemporaryQuery = <TResult>(makeQuery: () => ILiveStoreQuery<TResult>): TResult =>
+export const useTemporaryQuery = <TResult>(makeQuery: () => LiveQuery<TResult>): TResult =>
   useTemporaryQueryRef(makeQuery).current
 
-export const useTemporaryQueryRef = <TResult>(
-  makeQuery: () => ILiveStoreQuery<TResult>,
-): React.MutableRefObject<TResult> => {
+export const useTemporaryQueryRef = <TResult>(makeQuery: () => LiveQuery<TResult>): React.MutableRefObject<TResult> => {
   const reactId = React.useId()
 
   const query$ = React.useMemo(() => {

@@ -181,7 +181,7 @@ describe('useRow', () => {
           args: {
             id: 'singleton',
             columnNames: ['currentTaskId'],
-            tableName: AppRouterSchema.schema.name,
+            tableName: AppRouterSchema.sqliteDef.name,
             bindValues: { currentTaskId: 't2' },
           },
         },

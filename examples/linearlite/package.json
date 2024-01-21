@@ -13,7 +13,7 @@
     "vite": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.59.1",
+    "@effect/schema": "0.60.6",
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^1.7.18",
     "@livestore/devtools-react": "latest",
@@ -54,7 +54,7 @@
     "@tailwindcss/typography": "^0.5.10",
     "@types/jest": "^29.5.11",
     "@types/lodash.debounce": "^4.0.9",
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.11.5",
     "@types/react": "^18.2.47",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.2.18",
