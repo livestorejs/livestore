@@ -13,14 +13,12 @@ export * as drizzle from 'drizzle-orm'
 type GetQueryResNonOptional<TQueryBuilder extends TypedQueryBuilder<any, any>> =
   TQueryBuilder extends TypedQueryBuilder<infer _A, infer B> ? (B extends (infer B2)[] ? B2 : B) : never
 
-type GetQueryRes<TQueryBuilder extends TypedQueryBuilder<any, any>> = TQueryBuilder extends TypedQueryBuilder<
-  infer _A,
-  infer B
->
-  ? B extends (infer B2)[]
-    ? NullableFieldsToOptional<B2>
-    : NullableFieldsToOptional<B>
-  : never
+type GetQueryRes<TQueryBuilder extends TypedQueryBuilder<any, any>> =
+  TQueryBuilder extends TypedQueryBuilder<infer _A, infer B>
+    ? B extends (infer B2)[]
+      ? NullableFieldsToOptional<B2>
+      : NullableFieldsToOptional<B>
+    : never
 
 const queryBuilder = new QueryBuilder()
 

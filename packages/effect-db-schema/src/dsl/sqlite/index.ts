@@ -19,13 +19,12 @@ export type DbSchemaInput = Record<string, TableDefinition<any, any>> | Readonly
  * - array: we use the table name of each array item (= table definition) as the object key
  * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
  */
-export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> = TSchemaInput extends ReadonlyArray<
-  TableDefinition<any, any>
->
-  ? { [K in TSchemaInput[number] as K['name']]: K }
-  : TSchemaInput extends Record<string, TableDefinition<any, any>>
-    ? { [K in keyof TSchemaInput as TSchemaInput[K]['name']]: TSchemaInput[K] }
-    : never
+export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> =
+  TSchemaInput extends ReadonlyArray<TableDefinition<any, any>>
+    ? { [K in TSchemaInput[number] as K['name']]: K }
+    : TSchemaInput extends Record<string, TableDefinition<any, any>>
+      ? { [K in keyof TSchemaInput as TSchemaInput[K]['name']]: TSchemaInput[K] }
+      : never
 
 // TODO ensure via runtime check (possibly even via type-level check) that all index names are unique
 export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
