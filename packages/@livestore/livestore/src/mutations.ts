@@ -1,9 +1,10 @@
 import * as SqlQueries from '@livestore/sql-queries'
+import { pipe, ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import type { RowResult } from './row-query.js'
 import type { LiveStoreSchema } from './schema/index.js'
-import type { TableDef } from './schema/table-def.js'
+import { getDefaultValuesEncoded, type TableDef } from './schema/table-def.js'
 import type { GetValForKey } from './utils/util.js'
 
 export const makeMutations = <TDbSchema extends SqliteDsl.DbSchema>(
@@ -16,7 +17,13 @@ const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [st
   const table = tableDef.sqliteDef
   const writeTables = new Set([table.name])
   const api = {
-    insert: (values) => {
+    insert: (values_: any) => {
+      const defaultValues = getDefaultValuesEncoded(tableDef)
+      const values = pipe(
+        tableDef.sqliteDef.columns,
+        ReadonlyRecord.map((_, columnName) => values_?.[columnName] ?? defaultValues[columnName]),
+      )
+
       const [sql, bindValues] = SqlQueries.insertRow({
         tableName: table.name,
         columns: table.columns,

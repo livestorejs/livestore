@@ -13,7 +13,7 @@
     "vite": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.60.6",
+    "@effect/schema": "0.61.1",
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^1.7.18",
     "@livestore/devtools-react": "latest",

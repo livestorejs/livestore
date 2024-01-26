@@ -3,7 +3,7 @@ import { absurd, Option } from 'effect'
 
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType
-  readonly schema: Schema.Schema<TEncoded, TDecoded>
+  readonly schema: Schema.Schema<never, TEncoded, TDecoded>
   readonly default: Option.Option<TEncoded>
   /** @default false */
   readonly nullable: boolean
@@ -22,7 +22,7 @@ export const isColumnDefinition = (value: unknown): value is ColumnDefinition<an
 }
 
 export type ColumnDefinitionInput = {
-  readonly schema?: Schema.Schema<unknown, unknown>
+  readonly schema?: Schema.Schema<never, unknown, unknown>
   readonly default?: unknown | NoDefault
   readonly nullable?: boolean
   readonly primaryKey?: boolean
@@ -34,7 +34,7 @@ export type NoDefault = typeof NoDefault
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
     columnType: TColumnType
-    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>, DefaultEncodedForColumnType<TColumnType>>
+    schema: Schema.Schema<never, DefaultEncodedForColumnType<TColumnType>, DefaultEncodedForColumnType<TColumnType>>
     default: Option.None<never>
     nullable: false
     primaryKey: false
@@ -46,15 +46,15 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
     const TPrimaryKey extends boolean = false,
   >(args: {
-    schema?: Schema.Schema<TEncoded, TDecoded>
+    schema?: Schema.Schema<never, TEncoded, TDecoded>
     default?: TDefault
     nullable?: TNullable
     primaryKey?: TPrimaryKey
   }): {
     columnType: TColumnType
     schema: TNullable extends true
-      ? Schema.Schema<NoInfer<TEncoded> | null, NoInfer<TDecoded> | null>
-      : Schema.Schema<NoInfer<TEncoded>, NoInfer<TDecoded>>
+      ? Schema.Schema<never, NoInfer<TEncoded> | null, NoInfer<TDecoded> | null>
+      : Schema.Schema<never, NoInfer<TEncoded>, NoInfer<TDecoded>>
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<NoInfer<TDefault>>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
@@ -65,7 +65,7 @@ const makeColDef =
   <TColumnType extends FieldColumnType>(columnType: TColumnType): ColDefFn<TColumnType> =>
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
-    const schemaWithoutNull: Schema.Schema<any, any> = def?.schema ?? defaultSchemaForColumnType(columnType)
+    const schemaWithoutNull: Schema.Schema<never, any, any> = def?.schema ?? defaultSchemaForColumnType(columnType)
     const schema = nullable === true ? Schema.nullable(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
@@ -103,7 +103,7 @@ export type SpecializedColDefFn<
 > = {
   (): {
     columnType: TColumnType
-    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>
+    schema: Schema.Schema<never, DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>
     default: Option.None<never>
     nullable: false
     primaryKey: false
@@ -116,7 +116,7 @@ export type SpecializedColDefFn<
   >(
     args: TAllowsCustomSchema extends true
       ? {
-          schema?: Schema.Schema<any, TDecoded>
+          schema?: Schema.Schema<never, any, TDecoded>
           default?: TDefault
           nullable?: TNullable
           primaryKey?: TPrimaryKey
@@ -129,8 +129,8 @@ export type SpecializedColDefFn<
   ): {
     columnType: TColumnType
     schema: TNullable extends true
-      ? Schema.Schema<DefaultEncodedForColumnType<TColumnType> | null, NoInfer<TDecoded> | null>
-      : Schema.Schema<DefaultEncodedForColumnType<TColumnType>, NoInfer<TDecoded>>
+      ? Schema.Schema<never, DefaultEncodedForColumnType<TColumnType> | null, NoInfer<TDecoded> | null>
+      : Schema.Schema<never, DefaultEncodedForColumnType<TColumnType>, NoInfer<TDecoded>>
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
@@ -140,13 +140,13 @@ export type SpecializedColDefFn<
 type MakeSpecializedColDefFn = {
   <TColumnType extends FieldColumnType, TBaseDecoded>(
     columnType: TColumnType,
-    baseSchema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>,
+    baseSchema: Schema.Schema<never, DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>,
   ): SpecializedColDefFn<TColumnType, false, TBaseDecoded>
   <TColumnType extends FieldColumnType, TBaseDecoded>(
     columnType: TColumnType,
     baseSchema: <TDecoded>(
-      customSchema: Schema.Schema<TBaseDecoded, TDecoded> | undefined,
-    ) => Schema.Schema<DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>,
+      customSchema: Schema.Schema<never, TBaseDecoded, TDecoded> | undefined,
+    ) => Schema.Schema<never, DefaultEncodedForColumnType<TColumnType>, TBaseDecoded>,
   ): SpecializedColDefFn<TColumnType, true, TBaseDecoded>
 }
 
@@ -205,21 +205,21 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
 
 export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
   columnType: TColumnType,
-): Schema.Schema<DefaultEncodedForColumnType<TColumnType>, DefaultEncodedForColumnType<TColumnType>> => {
+): Schema.Schema<never, DefaultEncodedForColumnType<TColumnType>, DefaultEncodedForColumnType<TColumnType>> => {
   type T = DefaultEncodedForColumnType<TColumnType>
 
   switch (columnType) {
     case 'text': {
-      return Schema.string as any as Schema.Schema<T, T>
+      return Schema.string as any as Schema.Schema<never, T, T>
     }
     case 'integer': {
-      return Schema.number as any as Schema.Schema<T, T>
+      return Schema.number as any as Schema.Schema<never, T, T>
     }
     case 'real': {
-      return Schema.number as any as Schema.Schema<T, T>
+      return Schema.number as any as Schema.Schema<never, T, T>
     }
     case 'blob': {
-      return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T, T>
+      return Schema.Uint8ArrayFromSelf as any as Schema.Schema<never, T, T>
     }
     default: {
       return absurd(columnType)

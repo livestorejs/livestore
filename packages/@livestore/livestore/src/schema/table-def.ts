@@ -18,7 +18,7 @@ export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string,
 //   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
 //   TIsSingleColumn extends boolean = boolean,
 //   TOptions extends TableOptions = TableOptions,
-// > = TableDefBase<TSqliteDef, TIsSingleColumn, TOptions> & { schema: Schema.Schema<any, any> }
+// > = TableDefBase<TSqliteDef, TIsSingleColumn, TOptions> & { schema: Schema.Schema<never, any, any> }
 
 // /**
 //  * NOTE in the past we used to have a single `TableDef` but there are some TS issues when indroducing
@@ -44,6 +44,7 @@ export type TableDef<
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
   // as we don't want the alias type for users to show up
   TSchema = Schema.Schema<
+    never,
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
       { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.From<TSqliteDef['columns'][K]['schema']> }

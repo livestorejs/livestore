@@ -35,6 +35,7 @@ exports[`FieldDefs > boolean 1`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -76,6 +77,7 @@ exports[`FieldDefs > boolean 2`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -118,6 +120,7 @@ exports[`FieldDefs > boolean 3`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -159,31 +162,12 @@ exports[`FieldDefs > datetime 1`] = `
           "annotations": {
             Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
             Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-            Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
+            Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
           },
-          "decode": [Function],
-          "type": {
-            "_tag": "TypeLiteral",
-            "annotations": {},
-            "indexSignatures": [],
-            "propertySignatures": [
-              {
-                "annotations": {},
-                "isOptional": false,
-                "isReadonly": true,
-                "name": "valueOf",
-                "type": {
-                  "_tag": "NumberKeyword",
-                  "annotations": {
-                    Symbol(@effect/schema/annotation/Title): "number",
-                    Symbol(@effect/schema/annotation/Description): "a number",
-                  },
-                },
-              },
-            ],
-          },
+          "decodeUnknown": [Function],
+          "encodeUnknown": [Function],
           "typeParameters": [],
         },
         "transformation": {
@@ -195,6 +179,7 @@ exports[`FieldDefs > datetime 1`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -236,31 +221,12 @@ exports[`FieldDefs > datetime 2`] = `
           "annotations": {
             Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
             Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-            Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
+            Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
           },
-          "decode": [Function],
-          "type": {
-            "_tag": "TypeLiteral",
-            "annotations": {},
-            "indexSignatures": [],
-            "propertySignatures": [
-              {
-                "annotations": {},
-                "isOptional": false,
-                "isReadonly": true,
-                "name": "valueOf",
-                "type": {
-                  "_tag": "NumberKeyword",
-                  "annotations": {
-                    Symbol(@effect/schema/annotation/Title): "number",
-                    Symbol(@effect/schema/annotation/Description): "a number",
-                  },
-                },
-              },
-            ],
-          },
+          "decodeUnknown": [Function],
+          "encodeUnknown": [Function],
           "typeParameters": [],
         },
         "transformation": {
@@ -272,6 +238,7 @@ exports[`FieldDefs > datetime 2`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -318,31 +285,12 @@ exports[`FieldDefs > datetime 3`] = `
               "annotations": {
                 Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
                 Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-                Symbol(@effect/schema/PrettyHookId): [Function],
                 Symbol(@effect/schema/ArbitraryHookId): [Function],
+                Symbol(@effect/schema/PrettyHookId): [Function],
                 Symbol(@effect/schema/EquivalenceHookId): [Function],
               },
-              "decode": [Function],
-              "type": {
-                "_tag": "TypeLiteral",
-                "annotations": {},
-                "indexSignatures": [],
-                "propertySignatures": [
-                  {
-                    "annotations": {},
-                    "isOptional": false,
-                    "isReadonly": true,
-                    "name": "valueOf",
-                    "type": {
-                      "_tag": "NumberKeyword",
-                      "annotations": {
-                        Symbol(@effect/schema/annotation/Title): "number",
-                        Symbol(@effect/schema/annotation/Description): "a number",
-                      },
-                    },
-                  },
-                ],
-              },
+              "decodeUnknown": [Function],
+              "encodeUnknown": [Function],
               "typeParameters": [],
             },
             "transformation": {
@@ -363,6 +311,7 @@ exports[`FieldDefs > datetime 3`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -405,31 +354,12 @@ exports[`FieldDefs > datetime 4`] = `
           "annotations": {
             Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
             Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-            Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/ArbitraryHookId): [Function],
+            Symbol(@effect/schema/PrettyHookId): [Function],
             Symbol(@effect/schema/EquivalenceHookId): [Function],
           },
-          "decode": [Function],
-          "type": {
-            "_tag": "TypeLiteral",
-            "annotations": {},
-            "indexSignatures": [],
-            "propertySignatures": [
-              {
-                "annotations": {},
-                "isOptional": false,
-                "isReadonly": true,
-                "name": "valueOf",
-                "type": {
-                  "_tag": "NumberKeyword",
-                  "annotations": {
-                    Symbol(@effect/schema/annotation/Title): "number",
-                    Symbol(@effect/schema/annotation/Description): "a number",
-                  },
-                },
-              },
-            ],
-          },
+          "decodeUnknown": [Function],
+          "encodeUnknown": [Function],
           "typeParameters": [],
         },
         "transformation": {
@@ -441,6 +371,7 @@ exports[`FieldDefs > datetime 4`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -495,6 +426,7 @@ exports[`FieldDefs > json 1`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -563,6 +495,7 @@ exports[`FieldDefs > json 2`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -647,6 +580,7 @@ exports[`FieldDefs > json 3`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -672,6 +606,7 @@ exports[`FieldDefs > text 1`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -697,6 +632,7 @@ exports[`FieldDefs > text 2`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -736,6 +672,7 @@ exports[`FieldDefs > text 3`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -773,6 +710,7 @@ exports[`FieldDefs > text 4`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },
@@ -810,6 +748,7 @@ exports[`FieldDefs > text 5`] = `
     },
     Symbol(@effect/schema/Schema): {
       "From": [Function],
+      "R": [Function],
       "To": [Function],
     },
   },

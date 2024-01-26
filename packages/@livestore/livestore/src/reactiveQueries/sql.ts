@@ -14,7 +14,7 @@ import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
 export type MapRows<TResult, TRaw = any> =
   | ((rows: ReadonlyArray<TRaw>) => TResult)
-  | Schema.Schema<ReadonlyArray<TRaw>, TResult>
+  | Schema.Schema<never, ReadonlyArray<TRaw>, TResult>
 
 export const querySQL = <TResult, TRaw = any>(
   query: string | ((get: GetAtomResult) => string),
@@ -96,7 +96,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
         ? (rows: any) => rows as TResult
         : Schema.isSchema(map)
           ? (rows: any) => {
-              const parseResult = Schema.parseEither(map)(rows)
+              const parseResult = Schema.decodeEither(map as Schema.Schema<never, ReadonlyArray<any>, TResult>)(rows)
               if (parseResult._tag === 'Left') {
                 console.error(`Error parsing SQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
                 return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)

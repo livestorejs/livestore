@@ -259,10 +259,16 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
     objectEntries,
     ReadonlyArray.map(([columnName, columnDef]) => [
       columnName,
-      (value: any) =>
-        columnDef.nullable === true && (value === null || value === undefined)
-          ? null
-          : Schema.encodeSync(columnDef.schema)(value),
+      (value: any) => {
+        if (columnDef.nullable === true && (value === null || value === undefined)) return null
+        const res = Schema.encodeEither(columnDef.schema)(value)
+        if (res._tag === 'Left') {
+          debugger
+          throw res.left
+        } else {
+          return res.right
+        }
+      },
     ]),
     Object.fromEntries,
   )

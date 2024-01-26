@@ -51,6 +51,7 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
 
 export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+  never,
   AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.From<TCols[K]['schema']> }>,
   AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.To<TCols[K]['schema']> }>
 >

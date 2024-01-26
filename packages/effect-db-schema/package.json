@@ -25,9 +25,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@effect/schema": "0.60.6",
+    "@effect/schema": "0.61.1",
     "dprint-node": "^1.0.8",
-    "effect": "2.1.2"
+    "effect": "2.2.2"
   },
   "devDependencies": {
     "drizzle-orm": "^0.28.6",

@@ -8,7 +8,7 @@ overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
   '@livestore/devtools-react': latest
-  effect: 2.1.2
+  effect: 2.2.2
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -73,8 +73,8 @@ importers:
   examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
@@ -260,8 +260,8 @@ importers:
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       '@livestore/devtools-react':
         specifier: latest
         version: 0.0.35(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
@@ -272,8 +272,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.2.0)
       effect:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.2.2
+        version: 2.2.2
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -318,8 +318,8 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       '@livestore/devtools-react':
         specifier: latest
         version: 0.0.35(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
@@ -330,8 +330,8 @@ importers:
         specifier: latest
         version: link:../../packages/@livestore/utils
       effect:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.2.2
+        version: 2.2.2
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -388,8 +388,8 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       '@livestore/devtools-react':
         specifier: latest
         version: 0.0.35(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
@@ -406,8 +406,8 @@ importers:
         specifier: ^0.28.6
         version: 0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.7.0)
       effect:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.2.2
+        version: 2.2.2
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -528,11 +528,11 @@ importers:
   packages/@livestore/sql-queries:
     dependencies:
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       effect:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.2.2
+        version: 2.2.2
       effect-db-schema:
         specifier: workspace:*
         version: link:../../effect-db-schema
@@ -540,11 +540,11 @@ importers:
   packages/@livestore/utils:
     dependencies:
       '@effect/opentelemetry':
-        specifier: ^0.30.8
-        version: 0.30.8(@opentelemetry/api@1.7.0)(@opentelemetry/resources@1.20.0)(@opentelemetry/semantic-conventions@1.20.0)(effect@2.1.2)
+        specifier: ^0.30.11
+        version: 0.30.11(@opentelemetry/api@1.7.0)(@opentelemetry/resources@1.20.0)(@opentelemetry/semantic-conventions@1.20.0)(effect@2.2.2)
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       '@opentelemetry/api':
         specifier: ^1.7.0
         version: 1.7.0
@@ -552,8 +552,8 @@ importers:
         specifier: ^3.3.0
         version: 3.3.0
       effect:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.2.2
+        version: 2.2.2
       otel-websocket-exporter:
         specifier: ^0.0.27
         version: 0.0.27
@@ -574,14 +574,14 @@ importers:
   packages/effect-db-schema:
     dependencies:
       '@effect/schema':
-        specifier: 0.60.6
-        version: 0.60.6(effect@2.1.2)(fast-check@3.15.0)
+        specifier: 0.61.1
+        version: 0.61.1(effect@2.2.2)(fast-check@3.15.0)
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
       effect:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.2.2
+        version: 2.2.2
     devDependencies:
       drizzle-orm:
         specifier: ^0.28.6
@@ -2140,8 +2140,8 @@ packages:
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
     dev: false
 
-  /@effect/opentelemetry@0.30.8(@opentelemetry/api@1.7.0)(@opentelemetry/resources@1.20.0)(@opentelemetry/semantic-conventions@1.20.0)(effect@2.1.2):
-    resolution: {integrity: sha512-QFTcbIe18exHIDcl4ultSc9WV1IZdtvhkg7ojNhAR37SoLkcjF+oon/E8sdZ0i8u72o9Arqan2BFx/BhZHmtEg==}
+  /@effect/opentelemetry@0.30.11(@opentelemetry/api@1.7.0)(@opentelemetry/resources@1.20.0)(@opentelemetry/semantic-conventions@1.20.0)(effect@2.2.2):
+    resolution: {integrity: sha512-dziSvGI4t3j/OVABE2agqk3SiqDVgOupElx7OGy6EZqznxeaXWoKjt1Syn2eDEcRv/mcwKJZC85acdzxutdrDg==}
     peerDependencies:
       '@opentelemetry/api': ^1.6
       '@opentelemetry/resources': ^1.17
@@ -2150,7 +2150,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^1.17
       '@opentelemetry/sdk-trace-web': ^1.17
       '@opentelemetry/semantic-conventions': ^1.17
-      effect: 2.1.2
+      effect: 2.2.2
     peerDependenciesMeta:
       '@opentelemetry/sdk-metrics':
         optional: true
@@ -2164,16 +2164,16 @@ packages:
       '@opentelemetry/api': 1.7.0
       '@opentelemetry/resources': 1.20.0(@opentelemetry/api@1.7.0)
       '@opentelemetry/semantic-conventions': 1.20.0
-      effect: 2.1.2
+      effect: 2.2.2
     dev: false
 
-  /@effect/schema@0.60.6(effect@2.1.2)(fast-check@3.15.0):
-    resolution: {integrity: sha512-M9DE/7fE0pVRVt8ytMpbRFqyTSHG08Ww6vAj/4x710++kA9ijgAtRuDgzQTTa3dwoJnCX+78kAKTEAsZpdKB0A==}
+  /@effect/schema@0.61.1(effect@2.2.2)(fast-check@3.15.0):
+    resolution: {integrity: sha512-xeZcdTPry9+pT/63rY8R6Ef6cZAy0d4o0JrjEfw3LWXRDS1avGLvbcIA7nYPO2q6RhE3oVQUg8RtePdaT8aNzQ==}
     peerDependencies:
-      effect: 2.1.2
+      effect: 2.2.2
       fast-check: ^3.13.2
     dependencies:
-      effect: 2.1.2
+      effect: 2.2.2
       fast-check: 3.15.0
     dev: false
 
@@ -4028,7 +4028,6 @@ packages:
   /acorn@8.11.3:
     resolution: {integrity: sha512-Y9rRfJG5jcKOE0CLisYbojUjIrIEE7AGMzA/Sm4BslANhbS+cDMpgBdcPT91oJ7OuJ9hYJBx59RjbhxVnrF8Xg==}
     engines: {node: '>=0.4.0'}
-    hasBin: true
     dev: true
 
   /agent-base@7.1.0:
@@ -4227,7 +4226,6 @@ packages:
   /autoprefixer@10.4.17(postcss@8.4.33):
     resolution: {integrity: sha512-/cpVNRLSfhOtcGflT13P2794gVSgmPgTR+erw5ifnMLZb0UnSlkK4tquLmkd3BhA+nLo5tX8Cu0upUsGKvKbmg==}
     engines: {node: ^10 || ^12 || >=14}
-    hasBin: true
     peerDependencies:
       postcss: ^8.1.0
     dependencies:
@@ -4947,8 +4945,8 @@ packages:
       safe-buffer: 5.2.1
     dev: false
 
-  /effect@2.1.2:
-    resolution: {integrity: sha512-MCRgwL2CukG7ZhXwqCDOZqWtDBDmofzvho91OS3SgAhjuVW8BoZHWGfHYT7U5WoKsvX9t7pEa8vrwfJfWwhZ5w==}
+  /effect@2.2.2:
+    resolution: {integrity: sha512-hY/37Ssd2Zfn0r09vDe9tSYPVS5HZBbmW4DMBO7OIIvRADgp5cnWfLhY6pVy+Bm5DXV9luFycjDcB1731WGyTA==}
     dev: false
 
   /ejs@3.1.9:
@@ -5148,7 +5146,6 @@ packages:
   /esbuild@0.19.11:
     resolution: {integrity: sha512-HJ96Hev2hX/6i5cDVwcqiJBBtuo9+FeIJOtZ9W1kA5M6AMJRHUZlpYZ1/SbEwtO0ioNAW8rUooVpC/WehY2SfA==}
     engines: {node: '>=12'}
-    hasBin: true
     requiresBuild: true
     optionalDependencies:
       '@esbuild/aix-ppc64': 0.19.11
@@ -7502,7 +7499,6 @@ packages:
   /prettier@3.2.4:
     resolution: {integrity: sha512-FWu1oLHKCrtpO1ypU6J0SbK2d9Ckwysq6bHj/uaCP26DxrPpppCLQRGVuqAxSTvhF00AcvDRyYrLNW7ocBhFFQ==}
     engines: {node: '>=14'}
-    hasBin: true
     dev: true
 
   /pretty-bytes@5.6.0:
@@ -8114,7 +8110,6 @@ packages:
   /rollup@4.9.4:
     resolution: {integrity: sha512-2ztU7pY/lrQyXSCnnoU4ICjT/tCG9cdH3/G25ERqE3Lst6vl2BCM5hL2Nw+sslAvAf+ccKsAq1SkKQALyqhR7g==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
-    hasBin: true
     dependencies:
       '@types/estree': 1.0.5
     optionalDependencies:
@@ -8212,7 +8207,6 @@ packages:
 
   /semver@5.7.2:
     resolution: {integrity: sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==}
-    hasBin: true
     dev: true
 
   /semver@6.3.1:
@@ -9047,7 +9041,6 @@ packages:
   /vite-node@1.2.1:
     resolution: {integrity: sha512-fNzHmQUSOY+y30naohBvSW7pPn/xn3Ib/uqm+5wAJQJiqQsU0NBR78XdRJb04l4bOFKjpTWld0XAfkKlrDbySg==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     dependencies:
       cac: 6.7.14
       debug: 4.3.4
@@ -9101,7 +9094,6 @@ packages:
   /vite@5.0.12(@types/node@20.11.5):
     resolution: {integrity: sha512-4hsnEkG3q0N4Tzf1+t6NdN9dg/L3BM+q8SWgbSPnJvrgH2kgdyzfVJwbR1ic69/4uMJJ/3dqDZZE5/WwqW8U1w==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
@@ -9137,7 +9129,6 @@ packages:
   /vitest@1.2.1(jsdom@24.0.0):
     resolution: {integrity: sha512-TRph8N8rnSDa5M2wKWJCMnztCZS9cDcgVTQ6tsTFTG/odHJ4l5yNVqvbeDJYJRZ6is3uxaEpFs8LL6QM+YFSdA==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@types/node': ^18.0.0 || >=20.0.0
@@ -9307,7 +9298,6 @@ packages:
   /why-is-node-running@2.2.2:
     resolution: {integrity: sha512-6tSwToZxTOcotxHeA+qGCq1mVzKR3CwcJGmVcY+QE8SHy6TnpFnh8PAvPNHYr7EcuVeG0QSMxtYCuO1ta/G/oA==}
     engines: {node: '>=8'}
-    hasBin: true
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2

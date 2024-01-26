@@ -2,12 +2,7 @@ import type { Schema } from '@effect/schema'
 import type { Prettify, SqliteDsl } from 'effect-db-schema'
 
 export type DecodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = {
-  [K in keyof GetColumns<TSchema, TTableName>]: GetColumn<TSchema, TTableName, K>['schema'] extends Schema.Schema<
-    any,
-    infer TDecoded
-  >
-    ? TDecoded
-    : never
+  [K in keyof GetColumns<TSchema, TTableName>]: Schema.Schema.To<GetColumn<TSchema, TTableName, K>['schema']>
 }
 
 export type DecodedValuesForTablePretty<
@@ -43,12 +38,7 @@ export const isValidWhereOp = (op: string): op is WhereOp => {
 }
 
 export type EncodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = {
-  [K in keyof GetColumns<TSchema, TTableName>]: GetColumn<TSchema, TTableName, K>['schema'] extends Schema.Schema<
-    infer TEncoded,
-    any
-  >
-    ? TEncoded
-    : never
+  [K in keyof GetColumns<TSchema, TTableName>]: Schema.Schema.To<GetColumn<TSchema, TTableName, K>['schema']>
 }
 
 export type EncodedValuesForTable<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = Partial<
@@ -77,7 +67,7 @@ export type GetColumn<
 > = TSchema[TTableName]['columns'][TColumnName]
 
 export type DecodedValuesForColumnsAll<TColumns extends SqliteDsl.Columns> = {
-  [K in keyof TColumns]: TColumns[K]['schema'] extends Schema.Schema<any, infer TDecoded> ? TDecoded : never
+  [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['schema']>
 }
 
 export type DecodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partial<
@@ -86,7 +76,7 @@ export type DecodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partia
   Omit<DecodedValuesForColumnsAll<TColumns>, GetNullableColumnNames<TColumns>>
 
 export type EncodedValuesForColumnsAll<TColumns extends SqliteDsl.Columns> = {
-  [K in keyof TColumns]: TColumns[K]['schema'] extends Schema.Schema<any, infer TEncoded> ? TEncoded : never
+  [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['schema']>
 }
 
 export type EncodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partial<
@@ -95,7 +85,7 @@ export type EncodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partia
   Omit<EncodedValuesForColumnsAll<TColumns>, GetNullableColumnNames<TColumns>>
 
 export type WhereValuesForColumns<TColumns extends SqliteDsl.Columns> = PartialOrNull<{
-  [K in keyof EncodedValuesForColumns<TColumns>]: WhereValueForDecoded<EncodedValuesForColumnsAll<TColumns>[K]>
+  [K in keyof EncodedValuesForColumns<TColumns>]: WhereValueForDecoded<DecodedValuesForColumnsAll<TColumns>[K]>
 }>
 
 export type GetNullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {

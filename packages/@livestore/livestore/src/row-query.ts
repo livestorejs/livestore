@@ -85,7 +85,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends TableDef>(
       if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
 
       const componentStateEffectSchema = SqliteDsl.structSchemaForTable(stateSchema)
-      const parseResult = Schema.parseEither(componentStateEffectSchema)(results[0]!)
+      const parseResult = Schema.decodeEither(componentStateEffectSchema)(results[0]!)
 
       if (parseResult._tag === 'Left') {
         console.error('decode error', TreeFormatter.formatError(parseResult.left), 'results', results)
