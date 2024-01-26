@@ -16,7 +16,7 @@ export function useFilterState(): [FilterState, (state: Partial<FilterState>) =>
     .flat()
   const query = searchParams.get('query') ?? undefined
 
-  const state = Schema.decodeSync(FilterState)({
+  const state = Schema.decodeUnknownSync(FilterState)({
     orderBy,
     orderDirection,
     status,
