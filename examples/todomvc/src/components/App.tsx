@@ -25,7 +25,7 @@ export const App: React.FC = () => (
     fallback={<div>Loading...</div>}
     boot={(db) => {
       console.log('booting')
-      return db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all')`)
+      return db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('singleton', '', 'all')`)
     }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
