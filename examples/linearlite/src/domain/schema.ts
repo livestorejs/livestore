@@ -10,9 +10,9 @@ const issue = DbSchema.table(
     creator: DbSchema.text({ default: '' }),
     priority: DbSchema.text({ schema: PriorityType, default: Priority.NONE }),
     status: DbSchema.text({ schema: StatusType, default: Status.TODO }),
-    created: DbSchema.integer(),
-    modified: DbSchema.integer(),
-    kanbanorder: DbSchema.text({ nullable: false }),
+    created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
+    modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
+    kanbanorder: DbSchema.text({ nullable: false, default: '' }),
   },
   {
     indexes: [

@@ -138,18 +138,18 @@ const insertRowWithDefaultValuesOrIgnore = ({
   otelContext: otel.Context
   defaultValues: Partial<RowResult<TableDef>> | undefined
 }) => {
-  const columnNames = Object.keys(table.sqliteDef.columns)
-  const columnValues = columnNames.map((name) => `$${name}`).join(', ')
-
-  const tableName = table.sqliteDef.name
-  const insertQuery = sql`insert into ${tableName} (${columnNames.join(
-    ', ',
-  )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
-
   const defaultValues = pipe(
     getDefaultValuesEncoded(table),
     ReadonlyRecord.map((val, columnName) => explicitDefaultValues?.[columnName] ?? val),
   )
+
+  const defaultColumnNames = [...Object.keys(defaultValues), 'id']
+  const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')
+
+  const tableName = table.sqliteDef.name
+  const insertQuery = sql`insert into ${tableName} (${defaultColumnNames.join(
+    ', ',
+  )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
 
   db.execute(insertQuery, prepareBindValues({ ...defaultValues, id }, insertQuery), [tableName], { otelContext })
 }

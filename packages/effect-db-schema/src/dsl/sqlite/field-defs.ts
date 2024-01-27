@@ -31,6 +31,14 @@ export type ColumnDefinitionInput = {
 export const NoDefault = Symbol.for('NoDefault')
 export type NoDefault = typeof NoDefault
 
+export type SqlDefaultValue = {
+  readonly sql: string
+}
+
+export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
+  return typeof value === 'object' && value !== null && 'sql' in value && typeof value['sql'] === 'string'
+}
+
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
     columnType: TColumnType
@@ -43,7 +51,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     TEncoded extends DefaultEncodedForColumnType<TColumnType>,
     TDecoded = DefaultEncodedForColumnType<TColumnType>,
     const TNullable extends boolean = false,
-    const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TDefault extends TDecoded | SqlDefaultValue | NoDefault | (TNullable extends true ? null : never) = NoDefault,
     const TPrimaryKey extends boolean = false,
   >(args: {
     schema?: Schema.Schema<never, TEncoded, TDecoded>

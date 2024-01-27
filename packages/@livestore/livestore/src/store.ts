@@ -14,6 +14,7 @@ import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
 import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
+import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
 import { isPromise, prepareBindValues, sql } from './utils/util.js'
@@ -523,6 +524,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       label: `tableRef:${tableName}`,
       meta: { liveStoreRefType: 'table' },
     })
+
+  __devDownloadDb = () => {
+    const data = this.inMemoryDB.export()
+    downloadBlob(data, `livestore-${Date.now()}.db`)
+  }
 }
 
 /** Create a new LiveStore Store */

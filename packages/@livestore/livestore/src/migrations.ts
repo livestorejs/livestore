@@ -1,6 +1,6 @@
 import { Schema as EffectSchema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import { SqliteAst } from 'effect-db-schema'
+import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 import { memoize } from 'lodash-es'
 
 import { dynamicallyRegisteredTables } from './global-state.js'
@@ -121,10 +121,13 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
   const defaultValueStr = (() => {
     if (column.default._tag === 'None') return ''
 
+    if (SqliteDsl.isSqlDefaultValue(column.default.value)) return `default ${column.default.value.sql}`
+
     const encodeValue = EffectSchema.encodeSync(column.schema)
     const encodedDefaultValue = encodeValue(column.default.value)
 
-    return columnTypeStr === 'text' ? `default '${encodedDefaultValue}'` : `default ${encodedDefaultValue}`
+    if (columnTypeStr === 'text') return `default '${encodedDefaultValue}'`
+    if (columnTypeStr === 'integer') return `default ${encodedDefaultValue}`
   })()
 
   return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`

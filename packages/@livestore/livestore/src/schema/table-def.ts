@@ -160,6 +160,9 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDef>(tableDef: TT
   pipe(
     tableDef.sqliteDef.columns,
     ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.filter(
+      (col) => col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false,
+    ),
     ReadonlyRecord.map((column, columnName) =>
       column!.default._tag === 'None'
         ? column!.nullable === true
@@ -173,6 +176,9 @@ export const getDefaultValuesDecoded = <TTableDef extends TableDef>(tableDef: TT
   pipe(
     tableDef.sqliteDef.columns,
     ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.filter(
+      (col) => col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false,
+    ),
     ReadonlyRecord.map((column, columnName) =>
       column!.default._tag === 'None'
         ? column!.nullable === true
