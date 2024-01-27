@@ -127,7 +127,7 @@ const toSqliteColumnSpec = (column: SqliteAst.Column) => {
     const encodedDefaultValue = encodeValue(column.default.value)
 
     if (columnTypeStr === 'text') return `default '${encodedDefaultValue}'`
-    if (columnTypeStr === 'integer') return `default ${encodedDefaultValue}`
+    return `default ${encodedDefaultValue}`
   })()
 
   return `${column.name} ${columnTypeStr} ${nullableStr} ${defaultValueStr}`
