@@ -2,13 +2,13 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { createStore, querySQL, sql } from '@livestore/livestore'
+import { createStore, ParseUtils, querySQL, rowQuery, sql } from '@livestore/livestore'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
 import { uuid } from '@livestore/utils'
 import initSqlite3Wasm from 'sqlite-esm'
 
-import type { AppState, Todo } from './schema.js'
-import { schema } from './schema.js'
+import type { Todo } from './schema.js'
+import { schema, tables } from './schema.js'
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -27,8 +27,8 @@ const store = await createStore({
   sqlite3: await sqlite3Promise,
 })
 
-const appState$ = querySQL<AppState>(`select newTodoText, filter from app;`).getFirstRow()
-const todos$ = querySQL<Todo>(`select * from todos`)
+const appState$ = rowQuery(tables.app)
+const todos$ = querySQL(`select * from todos`, { map: ParseUtils.many(tables.todos) })
 
 const updateNewTodoText = (text: string) => store.applyEvent('updateNewTodoText', { text })
 

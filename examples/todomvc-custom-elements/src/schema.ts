@@ -13,7 +13,7 @@ const app = DbSchema.table(
   'app',
   {
     newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.textWithSchema(Filter, { default: 'all' }),
+    filter: DbSchema.text({ schema: Filter, default: 'all' }),
   },
   { isSingleton: true },
 )
@@ -22,8 +22,10 @@ export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
 export type Filter = Schema.Schema.To<typeof Filter>
 export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
+export const tables = { todos, app }
+
 export const schema = makeSchema({
-  tables: { todos, app },
+  tables,
   actions: {
     // TODO: fix these actions to make them have write annotatinos
     addTodo: {

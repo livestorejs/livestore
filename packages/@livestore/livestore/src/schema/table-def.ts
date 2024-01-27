@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
@@ -12,15 +12,53 @@ import { dynamicallyRegisteredTables } from '../global-state.js'
 export type StateType = 'singleton' | 'dynamic'
 
 export type DefaultSqliteTableDef = SqliteDsl.TableDefinition<string, SqliteDsl.Columns>
+export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string, SqliteDsl.ConstraintColumns>
+
+// export type TableDefConstraint<
+//   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
+//   TIsSingleColumn extends boolean = boolean,
+//   TOptions extends TableOptions = TableOptions,
+// > = TableDefBase<TSqliteDef, TIsSingleColumn, TOptions> & { schema: Schema.Schema<never, any, any> }
+
+// /**
+//  * NOTE in the past we used to have a single `TableDef` but there are some TS issues when indroducing
+//  * `schema: SqliteDsl.StructSchemaForColumns<TSqliteDef>` so we split it into two types
+//  * and only use `TableDefConstraint` in some places
+//  */
+// export type TableDefBase<
+//   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
+//   TIsSingleColumn extends boolean = boolean,
+//   TOptions extends TableOptions = TableOptions,
+// > = {
+//   sqliteDef: TSqliteDef
+//   // schema: SqliteDsl.StructSchemaForColumns<TSqliteDef>
+//   // schema: any;
+//   isSingleColumn: TIsSingleColumn
+//   options: TOptions
+// }
 
 export type TableDef<
-  TTableDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
+  TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TIsSingleColumn extends boolean = boolean,
   TOptions extends TableOptions = TableOptions,
+  // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
+  // as we don't want the alias type for users to show up
+  TSchema = Schema.Schema<
+    never,
+    SqliteDsl.AnyIfConstained<
+      TSqliteDef['columns'],
+      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.From<TSqliteDef['columns'][K]['schema']> }
+    >,
+    SqliteDsl.AnyIfConstained<
+      TSqliteDef['columns'],
+      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.To<TSqliteDef['columns'][K]['schema']> }
+    >
+  >,
 > = {
-  schema: TTableDef
+  sqliteDef: TSqliteDef
   isSingleColumn: TIsSingleColumn
   options: TOptions
+  schema: TSchema
 }
 
 export type TableOptionsInput = Partial<TableOptions & { indexes: SqliteDsl.Index[] }>
@@ -85,10 +123,10 @@ export const table = <
     }
   }
 
-  const schema = SqliteDsl.table(tablePath, columns, options?.indexes ?? [])
+  const sqliteDef = SqliteDsl.table(tablePath, columns, options?.indexes ?? [])
 
   if (options_.isSingleton) {
-    for (const column of schema.ast.columns) {
+    for (const column of sqliteDef.ast.columns) {
       if (column.nullable === false && column.default._tag === 'None') {
         shouldNeverHappen(
           `When creating a singleton table, each column must be either nullable or have a default value. Column '${column.name}' is neither.`,
@@ -99,11 +137,12 @@ export const table = <
 
   const isSingleColumn = SqliteDsl.isColumnDefinition(columnOrColumns) === true
 
-  const tableDef = { schema, isSingleColumn, options: options_ }
+  const schema = SqliteDsl.structSchemaForTable(sqliteDef)
+  const tableDef = { sqliteDef, isSingleColumn, options: options_, schema } satisfies TableDef
 
   if (dynamicallyRegisteredTables.has(tablePath)) {
-    if (SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!.schema.ast) !== SqliteAst.hash(schema.ast)) {
-      console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', schema.ast)
+    if (SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!.sqliteDef.ast) !== SqliteAst.hash(sqliteDef.ast)) {
+      console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', sqliteDef.ast)
       shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
     }
   } else {
@@ -112,6 +151,36 @@ export const table = <
 
   return tableDef as any
 }
+
+export const tableIsSingleton = <TTableDef extends TableDef>(
+  tableDef: TTableDef,
+): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
+
+export const getDefaultValuesEncoded = <TTableDef extends TableDef>(tableDef: TTableDef) =>
+  pipe(
+    tableDef.sqliteDef.columns,
+    ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.map((column, columnName) =>
+      column!.default._tag === 'None'
+        ? column!.nullable === true
+          ? null
+          : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+        : Schema.encodeSync(column!.schema)(column!.default.value),
+    ),
+  )
+
+export const getDefaultValuesDecoded = <TTableDef extends TableDef>(tableDef: TTableDef) =>
+  pipe(
+    tableDef.sqliteDef.columns,
+    ReadonlyRecord.filter((_, key) => key !== 'id'),
+    ReadonlyRecord.map((column, columnName) =>
+      column!.default._tag === 'None'
+        ? column!.nullable === true
+          ? null
+          : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+        : Schema.validateSync(column!.schema)(column!.default.value),
+    ),
+  )
 
 type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> = TColumns &
   (TOptions['disableAutomaticIdColumn'] extends true
@@ -138,15 +207,15 @@ export namespace FromTable {
   >
 
   export type NullableColumnNames<TTableDef extends TableDef> = FromColumns.NullableColumnNames<
-    TTableDef['schema']['columns']
+    TTableDef['sqliteDef']['columns']
   >
 
   export type Columns<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['schema']['columns']]: TTableDef['schema']['columns'][K]['columnType']
+    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['columnType']
   }
 
   export type RowEncodeNonNullable<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['schema']['columns']]: Schema.Schema.From<TTableDef['schema']['columns'][K]['schema']>
+    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.From<TTableDef['sqliteDef']['columns'][K]['schema']>
   }
 
   export type RowEncoded<TTableDef extends TableDef> = PrettifyFlat<
@@ -155,7 +224,7 @@ export namespace FromTable {
   >
 
   export type RowDecodedAll<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['schema']['columns']]: Schema.Schema.To<TTableDef['schema']['columns'][K]['schema']>
+    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.To<TTableDef['sqliteDef']['columns'][K]['schema']>
   }
 }
 

@@ -8,8 +8,8 @@ const issue = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     title: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
-    priority: DbSchema.text({ default: Priority.NONE }),
-    status: DbSchema.text({ default: Status.TODO }),
+    priority: DbSchema.text({ schema: PriorityType, default: Priority.NONE }),
+    status: DbSchema.text({ schema: StatusType, default: Status.TODO }),
     created: DbSchema.integer(),
     modified: DbSchema.integer(),
     kanbanorder: DbSchema.text({ nullable: false }),
@@ -36,7 +36,7 @@ export const FilterState = Schema.struct({
   query: Schema.optional(Schema.string),
 })
 
-export const parseFilterStateString = Schema.parseSync(Schema.compose(Schema.parseJson(), FilterState))
+export const parseFilterStateString = Schema.decodeSync(Schema.parseJson(FilterState))
 
 export type FilterState = Schema.Schema.To<typeof FilterState>
 
@@ -76,8 +76,9 @@ export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
 export type Description = DbSchema.FromTable.RowDecoded<typeof description>
 export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 
+export const tables = { issue, description, comment, filterStateTable }
 export const schema = makeSchema({
-  tables: [issue, description, comment, filterStateTable],
+  tables,
   actions: {
     createIssue: {
       statement: {

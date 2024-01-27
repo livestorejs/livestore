@@ -8,34 +8,34 @@
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish --no-git-checks",
-    "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
+    "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
     "test": "CI=true pnpm --parallel run test"
   },
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
     "@livestore/devtools-react": "latest",
-    "effect": "2.0.0-next.62",
+    "effect": "2.2.2",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {
     "@effect/language-service": "^0.1.0"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-only-warn": "^1.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-prettier": "^5.1.1",
+    "eslint-plugin-prettier": "^5.1.3",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
-    "eslint-plugin-unicorn": "^49.0.0",
-    "prettier": "^3.1.1",
-    "prettier-plugin-packagejson": "^2.4.7",
+    "eslint-plugin-unicorn": "^50.0.1",
+    "prettier": "^3.2.4",
+    "prettier-plugin-packagejson": "^2.4.9",
     "typescript": "^5.3.3"
   },
   "packageManager": "pnpm@8.8.0",

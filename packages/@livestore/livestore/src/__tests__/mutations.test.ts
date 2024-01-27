@@ -15,7 +15,7 @@ describe('mutations', () => {
             "id": "t1",
             "text": "Task 1",
           },
-          "sql": "INSERT  INTO todos (id, completed, text) VALUES ($id, $completed, $text)",
+          "sql": "INSERT  INTO todos (id, text, completed) VALUES ($id, $text, $completed)",
           "writeTables": Set {
             "todos",
           },

@@ -1,9 +1,11 @@
 import * as SqlQueries from '@livestore/sql-queries'
+import { pipe, ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
-import type { RowInsert, RowResult } from './row-query.js'
+import type { RowResult } from './row-query.js'
 import type { LiveStoreSchema } from './schema/index.js'
-import type { TableDef } from './schema/table-def.js'
+import { getDefaultValuesEncoded, type TableDef } from './schema/table-def.js'
+import type { GetValForKey } from './utils/util.js'
 
 export const makeMutations = <TDbSchema extends SqliteDsl.DbSchema>(
   schema: LiveStoreSchema<TDbSchema>,
@@ -12,10 +14,16 @@ export const makeMutations = <TDbSchema extends SqliteDsl.DbSchema>(
 }
 
 const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [string, Mutation<TTableDef>] => {
-  const table = tableDef.schema
+  const table = tableDef.sqliteDef
   const writeTables = new Set([table.name])
   const api = {
-    insert: (values) => {
+    insert: (values_: any) => {
+      const defaultValues = getDefaultValuesEncoded(tableDef)
+      const values = pipe(
+        tableDef.sqliteDef.columns,
+        ReadonlyRecord.map((_, columnName) => values_?.[columnName] ?? defaultValues[columnName]),
+      )
+
       const [sql, bindValues] = SqlQueries.insertRow({
         tableName: table.name,
         columns: table.columns,
@@ -43,7 +51,7 @@ const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [st
     },
   } satisfies Mutation<TTableDef>
 
-  return [tableDef.schema.name, api]
+  return [tableDef.sqliteDef.name, api]
 }
 
 export type MutationEvent = {
@@ -56,6 +64,10 @@ export type UpdateMutation<TTableDef extends TableDef> = (args: {
   where: Partial<RowResult<TTableDef>>
   values: Partial<RowResult<TTableDef>>
 }) => MutationEvent
+
+export type RowInsert<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
+  ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
+  : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>
 
 export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => MutationEvent
 

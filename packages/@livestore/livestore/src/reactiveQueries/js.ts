@@ -1,16 +1,32 @@
 import * as otel from '@opentelemetry/api'
 
 import { globalDbGraph } from '../global-state.js'
+import type { QueryInfo, QueryInfoNone } from '../query-info.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { DbContext, DbGraph, GetAtomResult } from './base-class.js'
+import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
-export const queryJS = <TResult>(fn: (get: GetAtomResult) => TResult, options: { label: string; dbGraph?: DbGraph }) =>
-  new LiveStoreJSQuery<TResult>({ fn, label: options.label, dbGraph: options.dbGraph })
+export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfoNone>(
+  fn: (get: GetAtomResult) => TResult,
+  options?: {
+    label: string
+    dbGraph?: DbGraph
+    queryInfo?: TQueryInfo
+  },
+): LiveQuery<TResult, TQueryInfo> =>
+  new LiveStoreJSQuery<TResult, TQueryInfo>({
+    fn,
+    label: options?.label ?? fn.toString(),
+    dbGraph: options?.dbGraph,
+    queryInfo: options?.queryInfo,
+  })
 
-export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
+export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone> extends LiveStoreQueryBase<
+  TResult,
+  TQueryInfo
+> {
   _tag: 'js' = 'js'
 
   /** A reactive thunk representing the query results */
@@ -19,6 +35,8 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
   label: string
 
   protected dbGraph: DbGraph
+
+  queryInfo: TQueryInfo
 
   /**
    * Currently only used for "nested destruction" of piped queries
@@ -33,12 +51,14 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     label,
     onDestroy,
     dbGraph,
+    queryInfo,
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
     /** Currently only used for "nested destruction" of piped queries */
     onDestroy?: () => void
     dbGraph?: DbGraph
+    queryInfo?: TQueryInfo
   }) {
     super()
 
@@ -46,6 +66,7 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     this.label = label
 
     this.dbGraph = dbGraph ?? globalDbGraph
+    this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
 
     const queryLabel = `${label}:results`
 
@@ -67,16 +88,16 @@ export class LiveStoreJSQuery<TResult> extends LiveStoreQueryBase<TResult> {
     )
   }
 
-  pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
-    new LiveStoreJSQuery({
-      fn: (get) => {
-        const results = get(this.results$)
-        return fn(results, get)
-      },
-      label: `${this.label}:js`,
-      onDestroy: () => this.destroy(),
-      dbGraph: this.dbGraph,
-    })
+  // pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
+  //   new LiveStoreJSQuery({
+  //     fn: (get) => {
+  //       const results = get(this.results$)
+  //       return fn(results, get)
+  //     },
+  //     label: `${this.label}:js`,
+  //     onDestroy: () => this.destroy(),
+  //     dbGraph: this.dbGraph,
+  //   })
 
   destroy = () => {
     this.dbGraph.destroyNode(this.results$)

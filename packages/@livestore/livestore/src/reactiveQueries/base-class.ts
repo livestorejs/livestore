@@ -1,10 +1,10 @@
 import type * as otel from '@opentelemetry/api'
 import ReactDOM from 'react-dom'
 
+import type { QueryInfo, QueryInfoNone } from '../query-info.js'
 import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
 import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'
-import type { LiveStoreJSQuery } from './js.js'
 
 export type DbGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
 
@@ -22,10 +22,18 @@ export type DbContext = {
 
 export type UnsubscribeQuery = () => void
 
+export type GetResult<TQuery extends LiveQueryAny> = TQuery extends LiveQuery<infer TResult> ? TResult : unknown
+
 let queryIdCounter = 0
 
-export interface ILiveStoreQuery<TResult> {
+export type LiveQueryAny = LiveQuery<any, QueryInfo>
+
+export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone> {
   id: number
+  _tag: 'js' | 'sql' | 'graphql'
+
+  /** This should only be used on a type-level and doesn't hold any value during runtime */
+  '__result!': TResult
 
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, DbContext, RefreshReason>
@@ -34,13 +42,29 @@ export interface ILiveStoreQuery<TResult> {
 
   run: (otelContext?: otel.Context, debugRefreshReason?: RefreshReason) => TResult
 
+  runAndDestroy: (otelContext?: otel.Context, debugRefreshReason?: RefreshReason) => TResult
+
   destroy(): void
 
+  subscribe(
+    onNewValue: (value: TResult) => void,
+    onUnsubsubscribe?: () => void,
+    options?: { label?: string; otelContext?: otel.Context },
+  ): () => void
+
   activeSubscriptions: Set<StackInfo>
+
+  queryInfo: TQueryInfo
+
+  runs: number
 }
 
-export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TResult> {
+export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
+  implements LiveQuery<TResult, TQueryInfo>
+{
+  '__result!'!: TResult
   id = queryIdCounter++
+  abstract _tag: 'js' | 'sql' | 'graphql'
 
   /** Human-readable label for the query for debugging */
   abstract label: string
@@ -50,6 +74,8 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
   activeSubscriptions: Set<StackInfo> = new Set()
 
   protected abstract dbGraph: DbGraph
+
+  abstract queryInfo: TQueryInfo
 
   get runs() {
     return this.results$.recomputations
@@ -75,7 +101,7 @@ export abstract class LiveStoreQueryBase<TResult> implements ILiveStoreQuery<TRe
     throwContextNotSetError(this.dbGraph)
 }
 
-export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveStoreJSQuery<T>) => T
+export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveQuery<T, any>) => T
 
 export const makeGetAtomResult = (get: GetAtom, otelContext: otel.Context) => {
   const getAtom: GetAtomResult = (atom) => {

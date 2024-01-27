@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import * as LiveStore from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import type { Todo } from './fixture.js'
-import { makeTodoMvc } from './fixture.js'
+import { makeTodoMvc, todos } from './fixture.js'
 
 describe('useRow', () => {
   it('should update the data based on component key', async () => {
@@ -97,7 +97,7 @@ describe('useRow', () => {
   it('should work for a larger app', async () => {
     const { wrapper, store, dbGraph } = await makeTodoMvc({ useGlobalDbGraph: false })
 
-    const allTodos$ = LiveStore.querySQL<Todo>(`select * from todos`, { label: 'allTodos', dbGraph })
+    const allTodos$ = LiveStore.querySQL<Todo[]>(`select * from todos`, { label: 'allTodos', dbGraph })
 
     const AppRouterSchema = LiveStore.DbSchema.table(
       'AppRouter',
@@ -140,9 +140,7 @@ describe('useRow', () => {
     }
 
     const TaskDetails: React.FC<{ id: string }> = ({ id }) => {
-      const todo = LiveStoreReact.useTemporaryQuery(() =>
-        LiveStore.querySQL<Todo>(`select * from todos where id = '${id}' limit 1`, { dbGraph }).getFirstRow(),
-      )
+      const [todo] = LiveStoreReact.useRow(todos, id, { dbGraph })
       return <div role="content">{JSON.stringify(todo)}</div>
     }
 
@@ -164,7 +162,7 @@ describe('useRow', () => {
 
     expect(appRouterRenderCount).toBe(2)
     expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
-      `"{"id":"t1","text":"buy milk","completed":0}"`,
+      `"{"id":"t1","text":"buy milk","completed":false}"`,
     )
 
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
@@ -183,7 +181,7 @@ describe('useRow', () => {
           args: {
             id: 'singleton',
             columnNames: ['currentTaskId'],
-            tableName: AppRouterSchema.schema.name,
+            tableName: AppRouterSchema.sqliteDef.name,
             bindValues: { currentTaskId: 't2' },
           },
         },

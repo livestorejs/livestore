@@ -4,17 +4,15 @@ import { describe, expect, it } from 'vitest'
 
 import * as LiveStoreReact from '../../react/index.js'
 import { querySQL } from '../../reactiveQueries/sql.js'
-import { sql } from '../../utils/util.js'
-import type { Todo } from './fixture.js'
-import { makeTodoMvc } from './fixture.js'
+import { makeTodoMvc, parseTodos } from './fixture.js'
 
 describe('useQuery', () => {
   it('simple', async () => {
     let renderCount = 0
 
-    const { wrapper, store } = await makeTodoMvc()
+    const { wrapper, store, mutations } = await makeTodoMvc()
 
-    const allTodos$ = querySQL<Todo>(`select * from todos`)
+    const allTodos$ = querySQL(`select * from todos`, { map: parseTodos })
 
     const { result } = renderHook(
       () => {
@@ -28,12 +26,7 @@ describe('useQuery', () => {
     expect(result.current.length).toBe(0)
     expect(renderCount).toBe(1)
 
-    act(() =>
-      store.applyEvent('livestore.RawSql', {
-        sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-        writeTables: ['todos'],
-      }),
-    )
+    act(() => store.applyEvents([mutations.todos.insert({ id: 't1', text: 'buy milk', completed: false })]))
 
     expect(result.current.length).toBe(1)
     expect(result.current[0]!.text).toBe('buy milk')
@@ -43,20 +36,15 @@ describe('useQuery', () => {
   it('same `useQuery` hook invoked with different queries', async () => {
     let renderCount = 0
 
-    const { wrapper, store } = await makeTodoMvc()
+    const { wrapper, store, mutations } = await makeTodoMvc()
 
-    const todo1$ = querySQL<Todo>(`select * from todos where id = 't1'`, { label: 'libraryTracksView1' })
-    const todo2$ = querySQL<Todo>(`select * from todos where id = 't2'`, { label: 'libraryTracksView2' })
+    const todo1$ = querySQL(`select * from todos where id = 't1'`, { label: 'libraryTracksView1', map: parseTodos })
+    const todo2$ = querySQL(`select * from todos where id = 't2'`, { label: 'libraryTracksView2', map: parseTodos })
 
-    store.applyEvent('livestore.RawSql', {
-      sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-      writeTables: ['todos'],
-    })
-
-    store.applyEvent('livestore.RawSql', {
-      sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
-      writeTables: ['todos'],
-    })
+    store.applyEvents([
+      mutations.todos.insert({ id: 't1', text: 'buy milk', completed: false }),
+      mutations.todos.insert({ id: 't2', text: 'buy eggs', completed: false }),
+    ])
 
     const { result, rerender } = renderHook(
       (todoId: string) => {
@@ -72,12 +60,7 @@ describe('useQuery', () => {
     expect(result.current).toBe('buy milk')
     expect(renderCount).toBe(1)
 
-    act(() =>
-      store.applyEvent('livestore.RawSql', {
-        sql: sql`UPDATE todos SET text = 'buy soy milk' WHERE id = 't1'`,
-        writeTables: ['todos'],
-      }),
-    )
+    act(() => store.applyEvents([mutations.todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })]))
 
     expect(result.current).toBe('buy soy milk')
     expect(renderCount).toBe(2)

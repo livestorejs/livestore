@@ -7,6 +7,7 @@ import type { TableDef } from './table-def.js'
 export * from './action.js'
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
+export * as ParseUtils from './parse-utils.js'
 
 // export { SqliteDsl as DbSchema } from 'effect-db-schema'
 
@@ -36,11 +37,11 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   for (const tableDef of inputTables) {
     // TODO validate tables (e.g. index names are unique)
-    tables.set(tableDef.schema.ast.name, tableDef)
+    tables.set(tableDef.sqliteDef.ast.name, tableDef)
   }
 
   for (const tableDef of systemTables) {
-    tables.set(tableDef.schema.name, tableDef)
+    tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
   return {
@@ -57,7 +58,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
  */
 export type DbSchemaFromInputSchemaTables<TTables extends InputSchema['tables']> =
   TTables extends ReadonlyArray<TableDef>
-    ? { [K in TTables[number] as K['schema']['name']]: K['schema'] }
+    ? { [K in TTables[number] as K['sqliteDef']['name']]: K['sqliteDef'] }
     : TTables extends Record<string, TableDef>
-      ? { [K in keyof TTables as TTables[K]['schema']['name']]: TTables[K]['schema'] }
+      ? { [K in keyof TTables as TTables[K]['sqliteDef']['name']]: TTables[K]['sqliteDef'] }
       : never

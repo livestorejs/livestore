@@ -15,7 +15,7 @@ export const User = Schema.struct({
   name: Schema.string,
 })
 
-const user: User = Schema.parse({
+const user: User = Schema.decodeSnyc({
   id: 'bob',
   name: 'Bob',
 })(User)

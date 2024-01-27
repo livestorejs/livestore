@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.35",
+  "version": "0.0.39-dev.3",
   "type": "module",
   "exports": {
     ".": {
@@ -35,6 +35,15 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "storage/web-worker": [
+        "./dist/storage/web-worker/index.d.ts"
+      ],
+      "storage/in-memory": [
+        "./dist/storage/in-memory/index.d.ts"
+      ],
+      "storage/tauri": [
+        "./dist/storage/tauri/index.d.ts"
+      ],
       "react": [
         "./dist/react/index.d.ts"
       ],
@@ -52,8 +61,8 @@
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
-    "@livestore/utils": "workspace:*",
     "@livestore/sql-queries": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.7.0",
     "comlink": "^4.4.1",
     "effect-db-schema": "workspace:*",
@@ -62,23 +71,23 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-trace-base": "1.19.0",
+    "@opentelemetry/sdk-trace-base": "1.20.0",
     "@tauri-apps/api": "^1.5.3",
     "@testing-library/react": "^14.1.2",
     "@types/lodash-es": "^4.17.12",
-    "@types/react": "^18.2.45",
+    "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@types/uuid": "^9.0.7",
-    "jsdom": "^23.0.1",
+    "jsdom": "^24.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "5.3.3",
-    "vite": "5.0.10",
-    "vitest": "^1.1.0"
+    "vite": "5.0.12",
+    "vitest": "^1.2.1"
   },
   "peerDependencies": {
     "@tauri-apps/api": "^1.4.0",
-    "graphql": "^16.8.1",
+    "graphql": "16.x",
     "react": "^18",
     "react-dom": "^18"
   },

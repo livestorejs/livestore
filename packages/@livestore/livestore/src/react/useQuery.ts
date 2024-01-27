@@ -2,7 +2,7 @@ import * as otel from '@opentelemetry/api'
 import { isEqual } from 'lodash-es'
 import React from 'react'
 
-import type { ILiveStoreQuery } from '../reactiveQueries/base-class.js'
+import type { GetResult, LiveQueryAny } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
 import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
@@ -12,14 +12,14 @@ import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInp
  * so we need to "cache" the fact that we've already started a span for this component.
  * The map entry is being removed again in the `React.useEffect` call below.
  */
-const spanAlreadyStartedCache = new Map<ILiveStoreQuery<any>, { span: otel.Span; otelContext: otel.Context }>()
+const spanAlreadyStartedCache = new Map<LiveQueryAny, { span: otel.Span; otelContext: otel.Context }>()
 
-export const useQuery = <TResult>(query: ILiveStoreQuery<TResult>): TResult => useQueryRef(query).current
+export const useQuery = <TQuery extends LiveQueryAny>(query: TQuery): GetResult<TQuery> => useQueryRef(query).current
 
-export const useQueryRef = <TResult>(
-  query: ILiveStoreQuery<TResult>,
+export const useQueryRef = <TQuery extends LiveQueryAny>(
+  query: TQuery,
   parentOtelContext?: otel.Context,
-): React.MutableRefObject<TResult> => {
+): React.MutableRefObject<GetResult<TQuery>> => {
   const { store } = useStore()
 
   React.useDebugValue(`LiveStore:useQuery:${query.id}:${query.label}`)
@@ -62,7 +62,7 @@ export const useQueryRef = <TResult>(
   )
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)
+  const [valueRef, setValue] = useStateRefWithReactiveInput<GetResult<TQuery>>(initialResult)
 
   React.useEffect(
     () => () => {

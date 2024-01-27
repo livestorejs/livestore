@@ -144,7 +144,7 @@ export const printSqliteDrizzleTables = (tables: SqliteAst.Table[]): string => {
               mode = ', { mode: "boolean" }'
             } else if (SchemaAST.isDeclaration(to)) {
               const opt = SchemaAST.getAnnotation(SchemaAST.IdentifierAnnotationId)(to)
-              if (opt._tag === 'Some' && opt.value === 'Date') {
+              if (opt._tag === 'Some' && opt.value === 'DateFromSelf') {
                 mode = ', { mode: "timestamp" }'
                 isTimeStamp = true
               }

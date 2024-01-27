@@ -4,10 +4,11 @@ import Editor from '../../components/editor/Editor'
 import Avatar from '../../components/Avatar'
 import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
-import { Comment, Issue } from '../../types'
+import { Issue } from '../../types'
 import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
-import { querySQL, sql } from '@livestore/livestore'
+import { ParseUtils, querySQL, sql } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
+import { tables } from '../../domain/schema'
 
 export interface CommentsProps {
   issue: Issue
@@ -16,7 +17,10 @@ export interface CommentsProps {
 function Comments({ issue }: CommentsProps) {
   const [newCommentBody, setNewCommentBody] = useState<string>('')
   const makeCommentQuery = useCallback(
-    () => querySQL<Comment>(() => sql`SELECT * FROM comment WHERE issueId = '${issue.id}' ORDER BY created ASC`),
+    () =>
+      querySQL(() => sql`SELECT * FROM comment WHERE issueId = '${issue.id}' ORDER BY created ASC`, {
+        map: ParseUtils.many(tables.comment),
+      }),
     [issue.id],
   )
   const comments = useTemporaryQuery(makeCommentQuery)

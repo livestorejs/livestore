@@ -54,14 +54,17 @@ export default defineConfig({
       name: 'configure-response-headers',
       configureServer: (server) => {
         server.middlewares.use((_req, res, next) => {
-          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
+          Object.entries(credentiallessHeaders).forEach(([key, value]) => res.setHeader(key, value))
           next()
         })
       },
     },
     shouldAnalyze
-      ? visualizer({ filename: path.resolve('./tmp/stats/index.html'), gzipSize: true, brotliSize: true })
+      ? (visualizer({
+          filename: path.resolve('./node_modules/.stats/index.html'),
+          gzipSize: true,
+          brotliSize: true,
+        }) as any)
       : undefined,
   ],
 })

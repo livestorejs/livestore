@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.35",
+  "version": "0.0.39-dev.3",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -26,18 +26,18 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/opentelemetry": "^0.29.0",
-    "@effect/schema": "0.56.0",
+    "@effect/opentelemetry": "^0.30.11",
+    "@effect/schema": "0.61.1",
     "@opentelemetry/api": "^1.7.0",
-    "date-fns": "^3.0.6",
-    "effect": "2.0.0-next.62",
+    "date-fns": "^3.3.0",
+    "effect": "2.2.2",
     "otel-websocket-exporter": "^0.0.27",
     "pretty-bytes": "^6.1.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
-    "@types/web": "^0.0.130"
+    "@types/web": "^0.0.135"
   },
   "publishConfig": {
     "access": "public"

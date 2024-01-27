@@ -1,3 +1,4 @@
+import { Schema } from '@effect/schema'
 import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
@@ -6,14 +7,16 @@ import * as t from '../drizzle/schema.js'
 import type { Filter } from '../schema.js'
 import { useAppState } from '../useAppState.js'
 
-const incompleteCount$ = queryDrizzle((qb) =>
-  qb
-    .select({ incompleteCount: drizzle.sql<number>`count(*) as incompleteCount` })
-    .from(t.todos)
-    .where(drizzle.eq(t.todos.completed, false)),
+const incompleteCount$ = queryDrizzle(
+  (qb) =>
+    qb
+      .select({ c: drizzle.sql<number>`count(*) as c` })
+      .from(t.todos)
+      .where(drizzle.eq(t.todos.completed, false)),
+  {
+    map: Schema.struct({ c: Schema.number }).pipe(Schema.pluck('c'), Schema.array, Schema.headOr),
+  },
 )
-  .getFirstRow()
-  .pipe(({ incompleteCount }) => incompleteCount)
 
 export const Footer: React.FC = () => {
   const { store } = useStore()

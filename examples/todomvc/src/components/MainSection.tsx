@@ -1,23 +1,31 @@
+import { Schema } from '@effect/schema'
 import { querySQL, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
-import type { AppState, Todo } from '../schema.js'
+import { tables, type Todo } from '../schema.js'
 
 // Define the reactive queries for this component
 
 // First, we create a reactive query which defines the filter clause for the SQL query.
 // It gets all the rows from the app table, and pipes them into a transform function.
 // The result is a reactive query whose value is a string containing the filter clause.
-const filterClause$ = querySQL<AppState>(`select * from app;`)
-  .getFirstRow()
-  .pipe((appState) => (appState.filter === 'all' ? '' : `where completed = ${appState.filter === 'completed'}`))
+const filterClause$ = querySQL(sql`select filter from app`, {
+  map: (rows) => {
+    const { filter } = Schema.decodeSync(tables.app.schema.pipe(Schema.pick('filter'), Schema.array, Schema.headOr))(
+      rows,
+    )
+    return filter === 'all' ? '' : `where completed = ${filter === 'completed'}`
+  },
+})
 
 // Next, we create the actual query for the visible todos.
 // We create a new reactive SQL query which interpolates the filterClause.
 // Notice how we call filterClause() as a function--
 // that gets the latest value of that reactive query.
-const visibleTodos$ = querySQL<Todo>((get) => sql`select * from todos ${get(filterClause$)}`)
+const visibleTodos$ = querySQL((get) => sql`select * from todos ${get(filterClause$)}`, {
+  map: Schema.array(tables.todos.schema),
+})
 
 export const MainSection: React.FC = () => {
   const visibleTodos = useQuery(visibleTodos$)

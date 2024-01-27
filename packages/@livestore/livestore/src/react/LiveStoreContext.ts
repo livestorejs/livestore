@@ -1,14 +1,6 @@
 import React, { useContext } from 'react'
 
 import type { LiveStoreContext as LiveStoreContext_ } from '../effect/LiveStore.js'
-import type { LiveStoreQuery } from '../store.js'
-
-declare global {
-  // NOTE Can be extended
-  interface LiveStoreQueryTypes {
-    [key: string]: LiveStoreQuery
-  }
-}
 
 export const LiveStoreContext = React.createContext<LiveStoreContext_ | undefined>(undefined)
 
