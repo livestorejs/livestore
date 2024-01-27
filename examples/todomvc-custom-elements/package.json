@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@effect/schema": "0.61.1",
-    "@livestore/devtools-react": "latest",
-    "@livestore/livestore": "workspace:*",
+    "@livestore/devtools-react": "^0.0.39",
+    "@livestore/livestore": "latest",
     "@livestore/utils": "latest",
     "effect": "2.2.2",
     "react": "^18.2.0",
