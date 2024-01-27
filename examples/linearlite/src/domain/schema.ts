@@ -28,18 +28,6 @@ export type OrderDirection = Schema.Schema.To<typeof OrderDirection>
 const OrderBy = Schema.literal('priority', 'status', 'created', 'modified')
 export type OrderBy = Schema.Schema.To<typeof OrderBy>
 
-export const FilterState = Schema.struct({
-  orderBy: OrderBy,
-  orderDirection: OrderDirection,
-  status: Schema.optional(Schema.array(StatusType)),
-  priority: Schema.optional(Schema.array(PriorityType)),
-  query: Schema.optional(Schema.string),
-})
-
-export const parseFilterStateString = Schema.decodeSync(Schema.parseJson(FilterState))
-
-export type FilterState = Schema.Schema.To<typeof FilterState>
-
 const description = DbSchema.table('description', {
   // TODO: id is also a foreign key to issue
   id: DbSchema.text({ primaryKey: true }),
@@ -65,6 +53,18 @@ const comment = DbSchema.table(
     ],
   },
 )
+
+export const FilterState = Schema.struct({
+  orderBy: OrderBy,
+  orderDirection: OrderDirection,
+  status: Schema.optional(Schema.array(StatusType)),
+  priority: Schema.optional(Schema.array(PriorityType)),
+  query: Schema.optional(Schema.string),
+})
+
+export const parseFilterStateString = Schema.decodeSync(Schema.parseJson(FilterState))
+
+export type FilterState = Schema.Schema.To<typeof FilterState>
 
 export const filterStateTable = DbSchema.table(
   'filter_state',

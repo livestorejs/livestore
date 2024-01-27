@@ -20,7 +20,7 @@ const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
 // https://vitejs.dev/config
 export default defineConfig({
   server: {
-    port: 8082,
+    port: 60_002,
     hmr: process.env.DISABLE_HMR === undefined ? true : false,
     headers: credentiallessHeaders,
     fs: {
@@ -63,6 +63,7 @@ export default defineConfig({
         })
       },
     },
+    // @ts-expect-error plugin types seem to be wrong
     shouldAnalyze
       ? visualizer({ filename: path.resolve('./tmp/stats/index.html'), gzipSize: true, brotliSize: true })
       : undefined,

@@ -12,3 +12,6 @@ dist
 *.db
 
 .direnv
+
+# self-signed certs
+/certs

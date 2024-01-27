@@ -1,0 +1,24 @@
+{
+	auto_https disable_redirects
+	admin off
+	http_port 80
+	https_port 443
+}
+
+*.livestore.localhost {
+	tls {$DEV_SSL_CERT} {$DEV_SSL_KEY}
+}
+
+linearlite.livestore.localhost {
+	reverse_proxy localhost:60000
+}
+
+todomvc.livestore.localhost {
+	reverse_proxy localhost:60001
+}
+
+# header * {
+# 	Cross-Origin-Embedder-Policy: require-corp
+# 	Cross-Origin-Opener-Policy: same-origin
+# 	Service-Worker-Allowed: /
+# }

@@ -32,6 +32,35 @@
       }
     },
     {
+      "label": "dev:proxy",
+      "type": "shell",
+      "command": "direnv exec . fkill --silent :443 && caddy run",
+      "problemMatcher": {
+        "owner": "caddy",
+        "pattern": {
+          "regexp": "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} ERROR\\s+(.*)$",
+          "severity": 1,
+          "message": 2
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Caddyfile.*$",
+          "endsPattern": "^.*serving initial configuration.*$"
+        }
+      },
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}/.infra"
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "dev:proxy",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
       "label": "dev:ts",
       "type": "shell",
       "command": "direnv exec . pnpm dev:ts",
@@ -41,6 +70,27 @@
         "focus": false,
         "panel": "shared",
         "group": "dev",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "dev:example:linearlite",
+      "dependsOn": [
+        "dev:ts",
+        "dev:proxy",
+      ],
+      "type": "shell",
+      "command": "direnv exec . pnpm dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/examples/linearlite"
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples:linearlite",
         "showReuseMessage": false,
         "clear": false
       }

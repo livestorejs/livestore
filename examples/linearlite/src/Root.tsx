@@ -16,7 +16,7 @@ export default function Root() {
       fallback={<div>Loading...</div>}
       boot={seed}
     >
-      <FPSMeter className="absolute right-0 top-0 bg-black/30" height={40} />
+      <FPSMeter className="absolute right-0 bottom-0 bg-black/30" height={40} />
       <App />
       <DevtoolsLazy schema={schema} />
     </LiveStoreProvider>

@@ -8,7 +8,7 @@ import { useQuery } from '@livestore/livestore/react'
 import { parseFilterStateString } from '../../domain/schema'
 
 const filterClause$ = querySQL(`select value from filter_state`, {
-  map: ([value]) => (value ? filterStateToWhere(parseFilterStateString(value)) : ''),
+  map: ([{ value }]) => (value ? filterStateToWhere(parseFilterStateString(value)) : ''),
 })
 const issues$ = querySQL<Issue[]>((get) => sql`SELECT * FROM issue ${get(filterClause$)} ORDER BY kanbanorder ASC`)
 

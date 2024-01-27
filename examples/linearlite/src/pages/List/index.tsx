@@ -6,7 +6,7 @@ import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/livestore/react'
 
 const filterClause$ = querySQL(`select value from filter_state`, {
-  map: ([value]) => {
+  map: ([{ value }]) => {
     if (value === undefined) return ''
     const filterStateObj = parseFilterStateString(value)
     return filterStateToWhere(filterStateObj) + ' ' + filterStateToOrder(filterStateObj)

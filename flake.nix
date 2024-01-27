@@ -22,6 +22,7 @@
             nodejs_20
             corepack
             pkgsUnstable.bun
+            caddy
           ];
         };
 
