@@ -13,7 +13,7 @@
     "vite": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.61.1",
+    "@effect/schema": "0.61.5",
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^1.7.18",
     "@livestore/devtools-react": "^0.0.39",
@@ -54,15 +54,15 @@
     "@tailwindcss/typography": "^0.5.10",
     "@types/jest": "^29.5.11",
     "@types/lodash.debounce": "^4.0.9",
-    "@types/node": "^20.11.5",
+    "@types/node": "^20.11.13",
     "@types/react": "^18.2.48",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.2.18",
     "@types/react-router-dom": "^5.3.3",
     "@types/react-window": "^1.8.8",
-    "@types/uuid": "^9.0.7",
-    "@typescript-eslint/eslint-plugin": "^6.19.0",
-    "@typescript-eslint/parser": "^6.19.0",
+    "@types/uuid": "^9.0.8",
+    "@typescript-eslint/eslint-plugin": "^6.20.0",
+    "@typescript-eslint/parser": "^6.20.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
@@ -74,7 +74,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
-    "vite-plugin-pwa": "^0.17.4",
+    "vite-plugin-pwa": "^0.17.5",
     "vite-plugin-svgr": "^4.2.0"
   }
 }
