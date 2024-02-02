@@ -10,7 +10,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
 const credentiallessHeaders = {
   // https://developer.chrome.com/blog/coep-credentialless-origin-trial/
-  'Cross-Origin-Embedder-Policy': 'credentialless',
+  // 'Cross-Origin-Embedder-Policy': 'credentialless',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Service-Worker-Allowed': '/',
 }
