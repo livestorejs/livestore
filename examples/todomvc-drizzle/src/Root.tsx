@@ -1,14 +1,14 @@
 import { DevtoolsLazy } from '@livestore/devtools-react'
-import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
 import { FPSMeter } from '@schickling/fps-meter'
 import React from 'react'
 
-import { schema } from '../schema.js'
-import { Footer } from './Footer.js'
-import { Header } from './Header.js'
-import { MainSection } from './MainSection.js'
+import { Footer } from './components/Footer.js'
+import { Header } from './components/Header.js'
+import { MainSection } from './components/MainSection.js'
+import LiveStoreWorker from './livestore.worker?worker'
+import { schema } from './schema/index.js'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -21,12 +21,8 @@ const AppBody: React.FC = () => (
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
-    loadStorage={() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs' })}
+    loadStorage={() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })}
     fallback={<div>Loading...</div>}
-    boot={(db) => {
-      console.log('booting')
-      return db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('singleton', '', 'all')`)
-    }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

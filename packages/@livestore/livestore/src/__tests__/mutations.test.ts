@@ -20,7 +20,7 @@ describe('mutations', () => {
             "todos",
           },
         },
-        "eventType": "livestore.RawSql",
+        "mutation": "livestore.RawSql",
       }
     `)
 
@@ -36,7 +36,7 @@ describe('mutations', () => {
             "todos",
           },
         },
-        "eventType": "livestore.RawSql",
+        "mutation": "livestore.RawSql",
       }
     `)
   })

@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { type QueryInfoCol, type QueryInfoRow, storeEventForQueryInfo } from '../query-info.js'
+import { mutationForQueryInfo, type QueryInfoCol, type QueryInfoRow } from '../query-info.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
@@ -17,7 +17,7 @@ export const useAtom = <TQuery extends LiveQuery<any, QueryInfoRow<any> | QueryI
     return (newValueOrFn: any) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
 
-      store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, newValue)])
+      store.mutate(mutationForQueryInfo(query$.queryInfo!, newValue))
     }
   }, [query$.queryInfo, query$Ref, store])
 

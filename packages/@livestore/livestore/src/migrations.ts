@@ -26,7 +26,7 @@ export const migrateDb = ({
     // TODO use schema migration definition from schema.ts instead
     sql`create table if not exists ${SCHEMA_META_TABLE} (tableName text primary key, schemaHash text, updatedAt text);`,
     undefined,
-    [],
+    new Set(),
     { otelContext },
   )
 
@@ -80,11 +80,11 @@ export const migrateTable = ({
   const columnSpec = makeColumnSpec(tableAst)
 
   // TODO need to possibly handle cascading deletes due to foreign keys
-  db.execute(sql`drop table if exists ${tableName}`, undefined, [], { otelContext })
-  db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, [], { otelContext })
+  db.execute(sql`drop table if exists ${tableName}`, undefined, new Set(), { otelContext })
+  db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, new Set(), { otelContext })
 
   for (const index of tableAst.indexes) {
-    db.execute(createIndexFromDefinition(tableName, index), undefined, [], { otelContext })
+    db.execute(createIndexFromDefinition(tableName, index), undefined, new Set(), { otelContext })
   }
 
   const updatedAt = getMemoizedTimestamp()
@@ -94,7 +94,7 @@ export const migrateTable = ({
         ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
     `,
     { $tableName: tableName, $schemaHash: schemaHash, $updatedAt: updatedAt } as unknown as PreparedBindValues,
-    [],
+    new Set(),
     { otelContext },
   )
 }

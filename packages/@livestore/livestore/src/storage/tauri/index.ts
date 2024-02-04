@@ -2,6 +2,7 @@ import { getTraceParentHeader } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { invoke } from '@tauri-apps/api'
 
+import type { MutationArgs } from '../../schema/mutations.js'
 import type { PreparedBindValues } from '../../utils/util.js'
 import { prepareBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
@@ -37,6 +38,8 @@ export class TauriStorage implements Storage {
       otelData: this.getOtelData(parentSpan),
     })
   }
+
+  mutate = (_mutationArgsEncoded: MutationArgs.Any, _parentSpan?: otel.Span | undefined) => {}
 
   getPersistedData = async (parentSpan?: otel.Span): Promise<Uint8Array> => {
     const headers = new Headers()

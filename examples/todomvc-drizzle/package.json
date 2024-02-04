@@ -13,6 +13,7 @@
     "@livestore/devtools-react": "^0.0.39",
     "@livestore/livestore": "latest",
     "@livestore/utils": "latest",
+    "@schickling/fps-meter": "^0.1.2",
     "@opentelemetry/api": "^1.7.0",
     "drizzle-orm": "^0.28.6",
     "effect": "2.2.3",

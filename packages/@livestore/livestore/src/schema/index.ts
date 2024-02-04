@@ -1,6 +1,9 @@
+import type { ReadonlyArray } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
+import { isReadonlyArray } from '../utils/util.js'
 import type { ActionDefinitions } from './action.js'
+import type { MutationDef, MutationDefMap, MutationDefRecord, RawSqlMutation } from './mutations.js'
 import { systemTables } from './system-tables.js'
 import type { TableDef } from './table-def.js'
 
@@ -8,26 +11,37 @@ export * from './action.js'
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
 export * as ParseUtils from './parse-utils.js'
+export * from './mutations.js'
 
 // export { SqliteDsl as DbSchema } from 'effect-db-schema'
 
-export type LiveStoreSchema<TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema> = {
+export type LiveStoreSchema<
+  TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
+  TMutationsDefRecord extends MutationDefRecord = MutationDefRecord,
+> = {
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
+  /** Only used on type-level */
+  readonly _MutationDefMapType: TMutationsDefRecord & { 'livestore.RawSql': RawSqlMutation }
 
   readonly tables: Map<string, TableDef>
   readonly actions: ActionDefinitions<any>
+  readonly mutations: MutationDefMap
 }
 
 export type InputSchema = {
   tables: Record<string, TableDef> | ReadonlyArray<TableDef>
-  actions: ActionDefinitions<any>
+  actions?: ActionDefinitions<any>
+  mutations?: ReadonlyArray<MutationDef.Any> | MutationDefRecord
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
   /** Note when using the object-notation for tables, the object keys are ignored and not used as table names */
   schema: TInputSchema,
-): LiveStoreSchema<DbSchemaFromInputSchemaTables<TInputSchema['tables']>> => {
+): LiveStoreSchema<
+  DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
+  MutationDefRecordFromInputSchemaMutations<TInputSchema['mutations']>
+> => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(schema.tables)
     ? schema.tables
     : // TODO validate that table names are unique in this case
@@ -44,10 +58,24 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
+  const mutations = new Map<string, MutationDef.Any>()
+
+  if (isReadonlyArray(schema.mutations)) {
+    for (const mutation of schema.mutations) {
+      mutations.set(mutation.name, mutation)
+    }
+  } else {
+    for (const [name, mutation] of Object.entries(schema.mutations ?? {})) {
+      mutations.set(name, mutation)
+    }
+  }
+
   return {
     _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
+    _MutationDefMapType: Symbol('livestore.MutationDefMapType') as any,
     tables,
-    actions: schema.actions,
+    actions: schema.actions ?? {},
+    mutations,
   } satisfies LiveStoreSchema
 }
 
@@ -62,3 +90,20 @@ export type DbSchemaFromInputSchemaTables<TTables extends InputSchema['tables']>
     : TTables extends Record<string, TableDef>
       ? { [K in keyof TTables as TTables[K]['sqliteDef']['name']]: TTables[K]['sqliteDef'] }
       : never
+
+export type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSchema['mutations']> =
+  TMutations extends ReadonlyArray<MutationDef.Any>
+    ? { [K in TMutations[number] as K['name']]: K }
+    : TMutations extends MutationDefRecord
+      ? TMutations
+      : never
+
+export interface Register {
+  // schema: Router
+}
+
+export type RegisteredSchema = Register extends {
+  schema: infer TSchema extends LiveStoreSchema
+}
+  ? TSchema
+  : LiveStoreSchema

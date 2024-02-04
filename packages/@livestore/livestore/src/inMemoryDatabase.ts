@@ -138,7 +138,7 @@ export class InMemoryDatabase {
   execute(
     query: string,
     bindValues?: PreparedBindValues,
-    writeTables?: ReadonlyArray<string>,
+    writeTables?: ReadonlySet<string>,
     options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
   ): { durationMs: number } {
     // console.debug('in-memory-db:execute', query, bindValues)
@@ -170,12 +170,7 @@ export class InMemoryDatabase {
             stmt.reset() // Reset is needed for next execution
           }
         } catch (error) {
-          shouldNeverHappen(
-            `Error executing query: ${error} \n ${JSON.stringify({
-              query,
-              bindValues,
-            })}`,
-          )
+          shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify({ query, bindValues })}`)
         }
 
         if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(query)) {

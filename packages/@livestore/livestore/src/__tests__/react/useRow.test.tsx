@@ -3,6 +3,7 @@ import React from 'react'
 import { describe, expect, it } from 'vitest'
 
 import * as LiveStore from '../../index.js'
+import { mutationForQueryInfo } from '../../query-info.js'
 import * as LiveStoreReact from '../../react/index.js'
 import type { Todo } from './fixture.js'
 import { makeTodoMvc, todos } from './fixture.js'
@@ -27,9 +28,7 @@ describe('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount).toBe(1)
 
-    act(() => {
-      void store.execute(LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2');`)
-    })
+    act(() => store.execute(LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`))
 
     rerender('u2')
 
@@ -85,9 +84,7 @@ describe('useRow', () => {
 
     act(() => result.current.setState.username('username_u1_hello'))
 
-    act(() => {
-      void store.execute(LiveStore.sql`UPDATE UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`)
-    })
+    act(() => store.execute(LiveStore.sql`UPDATE UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`))
 
     expect(result.current.state.id).toBe('u1')
     expect(result.current.state.username).toBe('username_u1_hello')
@@ -149,10 +146,11 @@ describe('useRow', () => {
     expect(appRouterRenderCount).toBe(1)
 
     act(() =>
-      store.applyEvent('livestore.RawSql', {
-        sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
-        writeTables: ['todos'],
-      }),
+      store.mutate(
+        LiveStore.rawSqlMutation({
+          sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
+        }),
+      ),
     )
 
     expect(appRouterRenderCount).toBe(1)
@@ -168,31 +166,15 @@ describe('useRow', () => {
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
     act(() =>
-      store.applyEvents([
-        {
-          eventType: 'livestore.RawSql',
-          args: {
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0);`,
-            writeTables: ['todos'],
-          },
-        },
-        {
-          eventType: 'livestore.UpdateComponentState',
-          args: {
-            id: 'singleton',
-            columnNames: ['currentTaskId'],
-            tableName: AppRouterSchema.sqliteDef.name,
-            bindValues: { currentTaskId: 't2' },
-          },
-        },
-        {
-          eventType: 'livestore.RawSql',
-          args: {
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0);`,
-            writeTables: ['todos'],
-          },
-        },
-      ]),
+      store.mutate(
+        LiveStore.rawSqlMutation({
+          sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
+        }),
+        mutationForQueryInfo({ _tag: 'Col', table: AppRouterSchema, column: 'currentTaskId', id: 'singleton' }, 't2'),
+        LiveStore.rawSqlMutation({
+          sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0)`,
+        }),
+      ),
     )
 
     expect(appRouterRenderCount).toBe(3)

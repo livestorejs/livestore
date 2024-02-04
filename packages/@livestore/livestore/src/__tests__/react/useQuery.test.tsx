@@ -26,7 +26,7 @@ describe('useQuery', () => {
     expect(result.current.length).toBe(0)
     expect(renderCount).toBe(1)
 
-    act(() => store.applyEvents([mutations.todos.insert({ id: 't1', text: 'buy milk', completed: false })]))
+    act(() => store.mutate(mutations.todos.insert({ id: 't1', text: 'buy milk', completed: false })))
 
     expect(result.current.length).toBe(1)
     expect(result.current[0]!.text).toBe('buy milk')
@@ -41,10 +41,10 @@ describe('useQuery', () => {
     const todo1$ = querySQL(`select * from todos where id = 't1'`, { label: 'libraryTracksView1', map: parseTodos })
     const todo2$ = querySQL(`select * from todos where id = 't2'`, { label: 'libraryTracksView2', map: parseTodos })
 
-    store.applyEvents([
+    store.mutate(
       mutations.todos.insert({ id: 't1', text: 'buy milk', completed: false }),
       mutations.todos.insert({ id: 't2', text: 'buy eggs', completed: false }),
-    ])
+    )
 
     const { result, rerender } = renderHook(
       (todoId: string) => {
@@ -60,7 +60,7 @@ describe('useQuery', () => {
     expect(result.current).toBe('buy milk')
     expect(renderCount).toBe(1)
 
-    act(() => store.applyEvents([mutations.todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })]))
+    act(() => store.mutate(mutations.todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
 
     expect(result.current).toBe('buy soy milk')
     expect(renderCount).toBe(2)

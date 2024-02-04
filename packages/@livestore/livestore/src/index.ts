@@ -19,17 +19,29 @@ export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from 
 
 export * from './mutations.js'
 
-export { defineAction, defineActions, makeSchema, DbSchema, ParseUtils } from './schema/index.js'
+export {
+  defineAction,
+  defineActions,
+  makeSchema,
+  DbSchema,
+  ParseUtils,
+  defineMutation,
+  rawSqlMutation,
+} from './schema/index.js'
 
 export type {
   LiveStoreSchema,
   InputSchema,
-  GetActionArgs,
   GetApplyEventArgs,
   ActionDefinition,
   ActionDefinitions,
   SQLWriteStatement,
   SchemaMetaRow,
+  MutationDef,
+  MutationArgs,
+  MutationDefMap,
+  RegisteredSchema,
+  Register,
 } from './schema/index.js'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'

@@ -5,7 +5,7 @@ import React from 'react'
 
 import type { DbGraph, LiveQuery } from '../index.js'
 import type { QueryInfo } from '../query-info.js'
-import { storeEventForQueryInfo } from '../query-info.js'
+import { mutationForQueryInfo } from '../query-info.js'
 import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
 import { type DefaultSqliteTableDef, type TableDef, tableIsSingleton, type TableOptions } from '../schema/table-def.js'
@@ -117,7 +117,7 @@ export const useRow: {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
-        store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, { value: newValue })])
+        store.mutate(mutationForQueryInfo(query$.queryInfo!, { value: newValue }))
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
@@ -130,7 +130,7 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
 
-          store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, { [columnName]: newValue })])
+          store.mutate(mutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
         })
 
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
@@ -147,7 +147,7 @@ export const useRow: {
           return
         }
 
-        store.applyEvents([storeEventForQueryInfo(query$.queryInfo!, columnValues)])
+        store.mutate(mutationForQueryInfo(query$.queryInfo!, columnValues))
       }
 
       return setState as any

@@ -17,6 +17,14 @@ todomvc.livestore.localhost {
 	reverse_proxy localhost:60001
 }
 
+todomvc-webcomponents.livestore.localhost {
+	reverse_proxy localhost:60002
+}
+
+todomvc-drizzle.livestore.localhost {
+	reverse_proxy localhost:60003
+}
+
 # header * {
 # 	Cross-Origin-Embedder-Policy: require-corp
 # 	Cross-Origin-Opener-Policy: same-origin

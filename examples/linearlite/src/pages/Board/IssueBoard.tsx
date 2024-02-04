@@ -5,6 +5,7 @@ import IssueCol from './IssueCol'
 import { Issue } from '../../types'
 import { useStore } from '@livestore/livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
+import { mutations } from '../../domain/schema'
 
 export interface IssueBoardProps {
   issues: readonly Issue[]
@@ -19,6 +20,7 @@ interface MovedIssues {
 
 export default function IssueBoard({ issues }: IssueBoardProps) {
   const { store } = useStore()
+  // TODO move this into LiveStore
   const [movedIssues, setMovedIssues] = useState<MovedIssues>({})
 
   // Issues are coming from a live query, this may not have updated before we rerender
@@ -120,18 +122,9 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
     // Keep track of moved issues so we can override the kanbanorder when sorting
     // We do this due to the momentary lag between updating the database and the live
     // query updating the issues.
-    setMovedIssues((prev) => ({
-      ...prev,
-      [issue.id]: {
-        kanbanorder: kanbanorder,
-      },
-    }))
+    setMovedIssues((prev) => ({ ...prev, [issue.id]: { kanbanorder: kanbanorder } }))
 
-    // Update the issue in the database
-    store.applyEvent('updateIssueKanbanOrder', {
-      id: issue.id,
-      kanbanorder,
-    })
+    store.mutate(mutations.updateIssueKanbanOrder({ id: issue.id, kanbanorder }))
 
     // Return the new kanbanorder
     return kanbanorder
@@ -171,21 +164,13 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
       // Keep track of moved issues so we can override the status and kanbanorder when
       // sorting issues into columns.
       const modified = new Date()
+      const status = destination.droppableId as StatusType
       setMovedIssues((prev) => ({
         ...prev,
-        [draggableId]: {
-          status: destination.droppableId as StatusType,
-          kanbanorder,
-          modified,
-        },
+        [draggableId]: { status, kanbanorder, modified },
       }))
 
-      // Update the issue in the database
-      store.applyEvent('moveIssue', {
-        id: draggableId,
-        status: destination.droppableId,
-        kanbanorder,
-      })
+      store.mutate(mutations.moveIssue({ id: draggableId, status, kanbanorder }))
     }
   }
 

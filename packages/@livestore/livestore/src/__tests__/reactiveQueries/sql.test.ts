@@ -3,7 +3,7 @@ import type { ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { computed, ParseUtils, querySQL, sql } from '../../index.js'
+import { computed, ParseUtils, querySQL, rawSqlMutation, sql } from '../../index.js'
 import { makeTodoMvc, todos } from '../react/fixture.js'
 
 /*
@@ -40,10 +40,7 @@ describe('otel', () => {
     const query = querySQL(`select * from todos`, { queriedTables: new Set(['todos']) })
     expect(query.run()).toMatchInlineSnapshot('[]')
 
-    store.applyEvent('livestore.RawSql', {
-      sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
-      writeTables: ['todos'],
-    })
+    store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
     expect(query.run()).toMatchInlineSnapshot(`
       [
@@ -91,28 +88,36 @@ describe('otel', () => {
             },
           },
           {
-            "_name": "LiveStore:applyEvents",
+            "_name": "LiveStore:mutations",
             "children": [
               {
-                "_name": "LiveStore:applyEvent",
+                "_name": "LiveStore:mutate",
+                "attributes": {
+                  "livestore.mutateLabel": "mutate",
+                },
                 "children": [
                   {
-                    "_name": "LiveStore:applyEventWithoutRefresh",
+                    "_name": "LiveStore:processWrites",
                     "attributes": {
-                      "livestore.actionType": "livestore.RawSql",
-                      "livestore.args": "{
-        "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);",
-        "writeTables": [
-          "todos"
-        ]
-      }",
+                      "livestore.mutateLabel": "mutate",
                     },
                     "children": [
                       {
-                        "_name": "livestore.in-memory-db:execute",
+                        "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
-                          "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);",
+                          "livestore.args": "{
+        "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"
+      }",
+                          "livestore.mutation": "livestore.RawSql",
                         },
+                        "children": [
+                          {
+                            "_name": "livestore.in-memory-db:execute",
+                            "attributes": {
+                              "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
+                            },
+                          },
+                        ],
                       },
                     ],
                   },
@@ -183,10 +188,7 @@ describe('otel', () => {
       }
     `)
 
-    store.applyEvent('livestore.RawSql', {
-      sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`,
-      writeTables: ['todos'],
-    })
+    store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
     expect(query.run()).toMatchInlineSnapshot(`
       {
@@ -232,28 +234,36 @@ describe('otel', () => {
             },
           },
           {
-            "_name": "LiveStore:applyEvents",
+            "_name": "LiveStore:mutations",
             "children": [
               {
-                "_name": "LiveStore:applyEvent",
+                "_name": "LiveStore:mutate",
+                "attributes": {
+                  "livestore.mutateLabel": "mutate",
+                },
                 "children": [
                   {
-                    "_name": "LiveStore:applyEventWithoutRefresh",
+                    "_name": "LiveStore:processWrites",
                     "attributes": {
-                      "livestore.actionType": "livestore.RawSql",
-                      "livestore.args": "{
-        "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);",
-        "writeTables": [
-          "todos"
-        ]
-      }",
+                      "livestore.mutateLabel": "mutate",
                     },
                     "children": [
                       {
-                        "_name": "livestore.in-memory-db:execute",
+                        "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
-                          "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);",
+                          "livestore.args": "{
+        "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"
+      }",
+                          "livestore.mutation": "livestore.RawSql",
                         },
+                        "children": [
+                          {
+                            "_name": "livestore.in-memory-db:execute",
+                            "attributes": {
+                              "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
+                            },
+                          },
+                        ],
                       },
                     ],
                   },

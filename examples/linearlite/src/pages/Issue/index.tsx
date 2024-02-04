@@ -7,12 +7,12 @@ import StatusMenu from '../../components/contextmenu/StatusMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
 import Avatar from '../../components/Avatar'
-import { PriorityDisplay, StatusDisplay } from '../../types/issue'
+import { PriorityDisplay, PriorityType, StatusDisplay, StatusType } from '../../types/issue'
 import Editor from '../../components/editor/Editor'
 import DeleteModal from './DeleteModal'
 import Comments from './Comments'
 import { useRow, useStore } from '@livestore/livestore/react'
-import { tables } from '../../domain/schema'
+import { mutations, tables } from '../../domain/schema'
 
 function IssuePage() {
   const navigate = useNavigate()
@@ -30,45 +30,21 @@ function IssuePage() {
     return <div className="p-8 w-full text-center">Issue not found</div>
   }
 
-  const handleStatusChange = (status: string) => {
-    store.applyEvent('updateIssueStatus', {
-      id: issue.id,
-      status,
-    })
-  }
+  const handleStatusChange = (status: StatusType) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
 
-  const handlePriorityChange = (priority: string) => {
-    store.applyEvent('updateIssuePriority', {
-      id: issue.id,
-      priority,
-    })
-  }
+  const handlePriorityChange = (priority: PriorityType) =>
+    store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
-  const handleTitleChange = (title: string) => {
-    store.applyEvent('updateIssueTitle', {
-      id: issue.id,
-      title,
-    })
-  }
+  const handleTitleChange = (title: string) => store.mutate(mutations.updateIssueTitle({ id: issue.id, title }))
 
-  const handleDescriptionChange = (body: string) => {
-    store.applyEvent('updateDescription', {
-      id: issue.id,
-      body,
-    })
-  }
+  const handleDescriptionChange = (body: string) => store.mutate(mutations.updateDescription({ id: issue.id, body }))
 
   const handleDelete = () => {
-    // TODO: how to create a tx?
-    store.applyEvent('deleteIssue', {
-      id: issue.id,
-    })
-    store.applyEvent('deleteDescription', {
-      id: issue.id,
-    })
-    store.applyEvent('deleteCommentsByIssueId', {
-      issueId: issue.id,
-    })
+    store.mutate(
+      mutations.deleteIssue({ id: issue.id }),
+      mutations.deleteDescription({ id: issue.id }),
+      mutations.deleteCommentsByIssueId({ issueId: issue.id }),
+    )
     handleClose()
   }
 

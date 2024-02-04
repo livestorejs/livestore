@@ -53,6 +53,7 @@ export const schema = makeSchema({
     updateNewTodoText: { statement: { sql: sql`UPDATE app SET newTodoText = $text;`, writeTables: ['app'] } },
     setFilter: { statement: { sql: sql`UPDATE app SET filter = $filter;`, writeTables: ['app'] } },
   },
+  mutations: {},
 })
 
 export const parseTodos = ParseUtils.many(todos)
@@ -89,7 +90,7 @@ export const makeTodoMvc = async ({
 
   const mutations = makeMutations(schema)
 
-  const storeContext: LiveStoreContext = { store }
+  const storeContext: LiveStoreContext = { store } as TODO
 
   const wrapper = ({ children }: any) => (
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>

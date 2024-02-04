@@ -69,3 +69,5 @@ export const objectToString = (error: any): string => {
 }
 
 export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
+
+export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is ReadonlyArray<I> => Array.isArray(value)
