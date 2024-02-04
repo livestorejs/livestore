@@ -2,12 +2,10 @@ import type { ReadonlyArray } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import { isReadonlyArray } from '../utils/util.js'
-import type { ActionDefinitions } from './action.js'
 import type { MutationDef, MutationDefMap, MutationDefRecord, RawSqlMutation } from './mutations.js'
 import { systemTables } from './system-tables.js'
 import type { TableDef } from './table-def.js'
 
-export * from './action.js'
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
 export * as ParseUtils from './parse-utils.js'
@@ -25,13 +23,11 @@ export type LiveStoreSchema<
   readonly _MutationDefMapType: TMutationsDefRecord & { 'livestore.RawSql': RawSqlMutation }
 
   readonly tables: Map<string, TableDef>
-  readonly actions: ActionDefinitions<any>
   readonly mutations: MutationDefMap
 }
 
 export type InputSchema = {
   tables: Record<string, TableDef> | ReadonlyArray<TableDef>
-  actions?: ActionDefinitions<any>
   mutations?: ReadonlyArray<MutationDef.Any> | MutationDefRecord
 }
 
@@ -74,7 +70,6 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
     _MutationDefMapType: Symbol('livestore.MutationDefMapType') as any,
     tables,
-    actions: schema.actions ?? {},
     mutations,
   } satisfies LiveStoreSchema
 }
