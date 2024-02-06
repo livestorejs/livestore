@@ -325,7 +325,11 @@ export class Store<
             tablesToUpdate.push([tableRef!, null])
           }
 
-          const debugRefreshReason = { _tag: 'mutate' as const, mutations: mutationArgs, writeTables: [...writeTables] }
+          const debugRefreshReason = {
+            _tag: 'mutate' as const,
+            mutations: mutationArgs,
+            writeTables: Array.from(writeTables),
+          }
 
           // Update all table refs together in a batch, to only trigger one reactive update
           this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })

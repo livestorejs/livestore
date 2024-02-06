@@ -24,7 +24,7 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import type { PrettifyFlat } from '@livestore/utils'
-import { pick, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { isEqual } from 'lodash-es'
 
@@ -135,7 +135,7 @@ const unknownRefreshReason = () => {
 
 export type SerializedAtom = Readonly<
   PrettifyFlat<
-    Pick<Atom<unknown, unknown, any>, '_tag' | 'id' | 'label' | 'meta'> & {
+    Pick<Atom<unknown, unknown, any>, '_tag' | 'id' | 'label' | 'meta' | 'isDirty'> & {
       sub: ReadonlyArray<string>
       super: ReadonlyArray<string>
     }
@@ -161,17 +161,6 @@ let nodeIdCounter = 0
 const uniqueNodeId = () => `node-${++nodeIdCounter}`
 let refreshInfoIdCounter = 0
 const uniqueRefreshInfoId = () => `refresh-info-${++refreshInfoIdCounter}`
-
-const serializeAtom = (atom: Atom<any, unknown, any>): SerializedAtom => ({
-  ...pick(atom, ['_tag', 'id', 'label', 'meta', 'isDirty']),
-  sub: Array.from(atom.sub).map((a) => a.id),
-  super: Array.from(atom.super).map((a) => a.id),
-})
-
-const serializeEffect = (effect: Effect): SerializedEffect => ({
-  ...pick(effect, ['_tag', 'id', 'label']),
-  sub: Array.from(effect.sub).map((a) => a.id),
-})
 
 let globalGraphIdCounter = 0
 const uniqueGraphId = () => `graph-${++globalGraphIdCounter}`
@@ -515,11 +504,25 @@ export class ReactiveGraph<
     subComp.super.delete(superComp)
   }
 
-  getSnapshot = (): ReactiveGraphSnapshot => ({
-    atoms: Array.from(this.atoms).map(serializeAtom),
-    effects: Array.from(this.effects).map(serializeEffect),
-    deferredEffects: Array.from(this.deferredEffects.keys()).map((_) => _.id),
-  })
+  // NOTE This function is performance-optimized (i.e. not using `Array.from`)
+  getSnapshot = (): ReactiveGraphSnapshot => {
+    const atoms: SerializedAtom[] = []
+    for (const atom of this.atoms) {
+      atoms.push(serializeAtom(atom))
+    }
+
+    const effects: SerializedEffect[] = []
+    for (const effect of this.effects) {
+      effects.push(serializeEffect(effect))
+    }
+
+    const deferredEffects: string[] = []
+    for (const [effect] of this.deferredEffects) {
+      deferredEffects.push(effect.id)
+    }
+
+    return { atoms, effects, deferredEffects }
+  }
 
   subscribeToRefresh = (cb: () => void) => {
     this.refreshCallbacks.add(cb)
@@ -560,4 +563,42 @@ const markSuperCompDirtyRec = <T>(atom: Atom<T, unknown, any>, effectsToRefresh:
 
 export const throwContextNotSetError = (graph: ReactiveGraph<any, any, any>): never => {
   throw new Error(`LiveStore Error: \`context\` not set on ReactiveGraph (${graph.id})`)
+}
+
+// NOTE This function is performance-optimized (i.e. not using `pick` and `Array.from`)
+const serializeAtom = (atom: Atom<any, unknown, any>): SerializedAtom => {
+  const sub: string[] = []
+  for (const a of atom.sub) {
+    sub.push(a.id)
+  }
+
+  const super_: string[] = []
+  for (const a of atom.super) {
+    super_.push(a.id)
+  }
+
+  return {
+    _tag: atom._tag,
+    id: atom.id,
+    label: atom.label,
+    meta: atom.meta,
+    isDirty: atom.isDirty,
+    sub,
+    super: super_,
+  }
+}
+
+// NOTE This function is performance-optimized (i.e. not using `pick` and `Array.from`)
+const serializeEffect = (effect: Effect): SerializedEffect => {
+  const sub: string[] = []
+  for (const a of effect.sub) {
+    sub.push(a.id)
+  }
+
+  return {
+    _tag: effect._tag,
+    id: effect.id,
+    label: effect.label,
+    sub,
+  }
 }
