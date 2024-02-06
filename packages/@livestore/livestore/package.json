@@ -15,6 +15,10 @@
       "types": "./dist/storage/web-worker/make-worker.d.ts",
       "default": "./dist/storage/web-worker/make-worker.js"
     },
+    "./storage/web-worker/vite-dev-polyfill": {
+      "types": "./dist/storage/web-worker/vite-dev-polyfill.d.ts",
+      "default": "./dist/storage/web-worker/vite-dev-polyfill.js"
+    },
     "./storage/in-memory": {
       "types": "./dist/storage/in-memory/index.d.ts",
       "default": "./dist/storage/in-memory/index.js"
@@ -44,6 +48,9 @@
       ],
       "storage/web-worker/worker": [
         "./dist/storage/web-worker/make-worker.d.ts"
+      ],
+      "storage/web-worker/vite-dev-polyfill": [
+        "./dist/storage/web-worker/vite-dev-polyfill.d.ts"
       ],
       "storage/in-memory": [
         "./dist/storage/in-memory/index.d.ts"

@@ -2,12 +2,12 @@ import { casesHandled } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
-import type { MutationArgs } from '../../index.js'
+import type { MutationEvent } from '../../index.js'
 import type { PreparedBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 import { IDB } from '../utils/idb.js'
 import type { ExecutionBacklogItem } from './common.js'
-import type { WrappedWorker } from './worker.js'
+import type { WrappedWorker } from './make-worker.js'
 
 export type StorageType = 'opfs' | 'indexeddb'
 
@@ -15,7 +15,7 @@ export type StorageOptionsWeb = {
   /** Specifies where to persist data for this storage */
   type: StorageType
   fileName: string
-  worker?: new () => Worker
+  worker: new (options?: { name: string }) => Worker
 }
 
 export class WebWorkerStorage implements Storage {
@@ -46,13 +46,8 @@ export class WebWorkerStorage implements Storage {
   }
 
   static load = (options: StorageOptionsWeb) => {
-    // TODO: Importing the worker like this only works with Vite;
-    // should this really be inside the LiveStore library?
-    // Doesn't work with Firefox right now during dev https://bugzilla.mozilla.org/show_bug.cgi?id=1247687
-    const worker = options.worker
-      ? new options.worker()
-      : new Worker(new URL('./worker.js', import.meta.url), { type: 'module' })
-
+    const worker = new options.worker({ name: 'livestore-worker' })
+    // TODO replace Comlink with Effect worker
     const wrappedWorker = Comlink.wrap<WrappedWorker>(worker)
 
     return ({ otelTracer }: StorageOtelProps) =>
@@ -69,7 +64,7 @@ export class WebWorkerStorage implements Storage {
     this.scheduleExecution()
   }
 
-  mutate = (mutationArgsEncoded: MutationArgs.Any, _parentSpan?: otel.Span | undefined) => {
+  mutate = (mutationArgsEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {
     this.executionBacklog.push({ _tag: 'mutate', mutationArgsEncoded })
     this.scheduleExecution()
   }

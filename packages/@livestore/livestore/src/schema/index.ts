@@ -2,7 +2,13 @@ import type { ReadonlyArray } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import { isReadonlyArray } from '../utils/util.js'
-import type { MutationDef, MutationDefMap, MutationDefRecord, RawSqlMutation } from './mutations.js'
+import {
+  type MutationDef,
+  type MutationDefMap,
+  type MutationDefRecord,
+  type RawSqlMutation,
+  rawSqlMutation,
+} from './mutations.js'
 import { systemTables } from './system-tables.js'
 import type { TableDef } from './table-def.js'
 
@@ -20,7 +26,7 @@ export type LiveStoreSchema<
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
-  readonly _MutationDefMapType: TMutationsDefRecord & { 'livestore.RawSql': RawSqlMutation }
+  readonly _MutationDefMapType: TMutationsDefRecord
 
   readonly tables: Map<string, TableDef>
   readonly mutations: MutationDefMap
@@ -28,7 +34,7 @@ export type LiveStoreSchema<
 
 export type InputSchema = {
   tables: Record<string, TableDef> | ReadonlyArray<TableDef>
-  mutations?: ReadonlyArray<MutationDef.Any> | MutationDefRecord
+  mutations?: ReadonlyArray<MutationDef.Any> | { [name: string]: MutationDef.Any }
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
@@ -54,7 +60,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
-  const mutations = new Map<string, MutationDef.Any>()
+  const mutations: MutationDefMap = new Map()
 
   if (isReadonlyArray(schema.mutations)) {
     for (const mutation of schema.mutations) {
@@ -65,6 +71,8 @@ export const makeSchema = <TInputSchema extends InputSchema>(
       mutations.set(name, mutation)
     }
   }
+
+  mutations.set('livestore.RawSql', rawSqlMutation)
 
   return {
     _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
@@ -88,9 +96,9 @@ export type DbSchemaFromInputSchemaTables<TTables extends InputSchema['tables']>
 
 export type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSchema['mutations']> =
   TMutations extends ReadonlyArray<MutationDef.Any>
-    ? { [K in TMutations[number] as K['name']]: K }
-    : TMutations extends MutationDefRecord
-      ? TMutations
+    ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlMutation }
+    : TMutations extends { [name: string]: MutationDef.Any }
+      ? { [K in keyof TMutations]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
       : never
 
 export interface Register {

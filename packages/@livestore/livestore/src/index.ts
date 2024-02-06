@@ -19,14 +19,22 @@ export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from 
 
 export * from './mutations.js'
 
-export { makeSchema, DbSchema, ParseUtils, defineMutation, rawSqlMutation } from './schema/index.js'
+export {
+  makeSchema,
+  DbSchema,
+  ParseUtils,
+  defineMutation,
+  rawSqlMutation,
+  makeMutationEventSchema,
+  makeMutationDefRecord,
+} from './schema/index.js'
 
 export type {
   LiveStoreSchema,
   InputSchema,
   SchemaMetaRow,
   MutationDef,
-  MutationArgs,
+  MutationEvent,
   MutationDefMap,
   RegisteredSchema,
   Register,

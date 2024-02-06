@@ -11,7 +11,7 @@ import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
-import { type LiveStoreSchema, makeMutationArgsSchema, type MutationArgs, rawSqlMutation } from './schema/index.js'
+import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
@@ -50,7 +50,7 @@ export type RefreshReason =
   | {
       _tag: 'mutate'
       /** The mutations that were applied */
-      mutations: ReadonlyArray<MutationArgs.Any>
+      mutations: ReadonlyArray<MutationEvent.Any>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -119,10 +119,8 @@ export class Store<
     this._proxyDb = dbProxy
     this.schema = schema
 
-    schema.mutations.set(rawSqlMutation.name, rawSqlMutation)
-
     // TODO refactor
-    this.mutationArgsSchema = makeMutationArgsSchema(Object.fromEntries(schema.mutations.entries()))
+    this.mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -238,26 +236,20 @@ export class Store<
   }
 
   mutate: {
-    <const TMutationArg extends ReadonlyArray<MutationArgs<TSchema['_MutationDefMapType']>>>(
-      ...list: TMutationArg
-    ): void
+    <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg): void
     (
-      txn: <const TMutationArg extends ReadonlyArray<MutationArgs<TSchema['_MutationDefMapType']>>>(
-        ...list: TMutationArg
-      ) => void,
+      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
-    <const TMutationArg extends ReadonlyArray<MutationArgs<TSchema['_MutationDefMapType']>>>(
+    <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(
       options: { label?: string; skipRefresh?: boolean },
       ...list: TMutationArg
     ): void
     (
       options: { label?: string; skipRefresh?: boolean },
-      txn: <const TMutationArg extends ReadonlyArray<MutationArgs<TSchema['_MutationDefMapType']>>>(
-        ...list: TMutationArg
-      ) => void,
+      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
-    let mutationArgs: MutationArgs<TSchema['_MutationDefMapType']>[]
+    let mutationArgs: MutationEvent.ForSchema<TSchema>[]
     let options: { label?: string; skipRefresh?: boolean } | undefined
 
     if (typeof firstMutationOrTxnFnOrOptions === 'function') {
@@ -373,7 +365,7 @@ export class Store<
    * the caller must refresh queries after calling this method.
    */
   private mutateWithoutRefresh = (
-    mutationArgs: MutationArgs<TSchema['_MutationDefMapType']>,
+    mutationArgs: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
@@ -401,11 +393,14 @@ export class Store<
             ? this.inMemoryDB.getTablesUsed(statementSql)
             : statementRes.writeTables ?? this.inMemoryDB.getTablesUsed(statementSql)
 
-        const bindValues = typeof statementRes === 'string' ? mutationArgs.args : statementRes.bindValues
+        const bindValues =
+          typeof statementRes === 'string'
+            ? Schema.encodeUnknownSync(mutationDef.schema)(mutationArgs.args)
+            : statementRes.bindValues
 
         const { durationMs } = this.inMemoryDB.execute(
           statementSql,
-          prepareBindValues(bindValues, statementSql),
+          prepareBindValues(bindValues ?? {}, statementSql),
           writeTables,
           { otelContext },
         )

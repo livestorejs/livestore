@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { MutationArgs } from '../../index.js'
+import type { MutationEvent } from '../../index.js'
 import type { PreparedBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 
@@ -18,7 +18,7 @@ export class InMemoryStorage implements Storage {
 
   execute = (_query: string, _bindValues?: PreparedBindValues): void => {}
 
-  mutate = (_mutationArgsEncoded: MutationArgs.Any, _parentSpan?: otel.Span | undefined) => {}
+  mutate = (_mutationArgsEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
 
   getPersistedData = async (): Promise<Uint8Array> => new Uint8Array()
 }

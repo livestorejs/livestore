@@ -8,7 +8,7 @@
 
 import type * as otel from '@opentelemetry/api'
 
-import type { MutationArgs } from '../index.js'
+import type { MutationEvent } from '../index.js'
 import type { PreparedBindValues } from '../utils/util.js'
 
 export type StorageInit = (otelProps: StorageOtelProps) => Promise<Storage> | Storage
@@ -18,7 +18,7 @@ export interface Storage {
   execute(query: string, bindValues?: PreparedBindValues, parentSpan?: otel.Span): void
 
   // TODO consider transferables for `bindValues` (e.g. Uint8Array values)
-  mutate(mutationArgsEncoded: MutationArgs.Any, parentSpan?: otel.Span): void
+  mutate(mutationArgsEncoded: MutationEvent.Any, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
   getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>

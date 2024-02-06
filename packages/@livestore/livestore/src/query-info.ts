@@ -1,7 +1,7 @@
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { RawSqlMutationArgs } from './schema/mutations.js'
+import { rawSqlMutation, type RawSqlMutationEvent } from './schema/mutations.js'
 import type { FromTable, TableDef } from './schema/table-def.js'
 
 /**
@@ -61,7 +61,7 @@ export type UpdateValueForPath<TPath extends QueryInfo> = TPath extends { _tag: 
 export const mutationForQueryInfo = <const TPath extends QueryInfo>(
   updatePath: TPath,
   value: UpdateValueForPath<TPath>,
-): RawSqlMutationArgs => {
+): RawSqlMutationEvent => {
   if (updatePath._tag === 'ColJsonValue' || updatePath._tag === 'None') {
     return notYetImplemented('TODO')
   }
@@ -95,5 +95,5 @@ export const mutationForQueryInfo = <const TPath extends QueryInfo>(
   const sql = `UPDATE ${sqliteTableDef.name} SET ${updateClause} ${whereClause}`
   const writeTables = new Set<string>([updatePath.table.sqliteDef.name])
 
-  return { mutation: 'livestore.RawSql', args: { sql, bindValues, writeTables } }
+  return rawSqlMutation({ sql, bindValues, writeTables })
 }

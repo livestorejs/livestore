@@ -6,14 +6,15 @@ import * as Comlink from 'comlink'
 import type * as SqliteWasm from 'sqlite-esm'
 import sqlite3InitModule from 'sqlite-esm'
 
-import { makeMutationArgsSchema, type MutationDefRecord, rawSqlMutation } from '../../schema/mutations.js'
+import type { LiveStoreSchema } from '../../index.js'
+import { makeMutationEventSchema } from '../../schema/mutations.js'
 // import { v4 as uuid } from 'uuid'
 import { casesHandled, prepareBindValues, sql } from '../../utils/util.js'
 import { IDB } from '../utils/idb.js'
 import type { ExecutionBacklogItem } from './common.js'
 import type { StorageOptionsWeb } from './index.js'
 
-export const makeWorker = (mutations_?: MutationDefRecord) => {
+export const makeWorker = (schema: LiveStoreSchema) => {
   // A global variable to hold the database connection.
   let db: SqliteWasm.DatabaseApi
 
@@ -21,16 +22,15 @@ export const makeWorker = (mutations_?: MutationDefRecord) => {
 
   let sqlite3: SqliteWasm.Sqlite3Static
 
-  const mutations = { ...mutations_, 'livestore.RawSql': rawSqlMutation } as MutationDefRecord
-
-  const mutationArgsSchema = makeMutationArgsSchema(mutations)
-  const schemaHashMap = new Map(Object.entries(mutations ?? {}).map(([k, v]) => [k, Schema.hash(v.schema)] as const))
+  // TODO refactor
+  const mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+  const schemaHashMap = new Map([...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const))
 
   // TODO get rid of this in favour of a "proper" IDB SQLite storage
   let idb: IDB | undefined
 
   /** The location where this database storage persists its data */
-  let options_: StorageOptionsWeb
+  let options_: Omit<StorageOptionsWeb, 'worker'>
 
   const configureConnection = () =>
     db.exec(sql`
@@ -41,7 +41,7 @@ export const makeWorker = (mutations_?: MutationDefRecord) => {
 
   /** A full virtual filename in the IDB FS */
 
-  const initialize = async (options: StorageOptionsWeb) => {
+  const initialize = async (options: Omit<StorageOptionsWeb, 'worker'>) => {
     options_ = options
 
     sqlite3 = await sqlite3InitModule({
@@ -121,21 +121,22 @@ export const makeWorker = (mutations_?: MutationDefRecord) => {
           } else {
             const { mutation, args } = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationArgsEncoded)
 
-            const mutationDef = mutations![mutation]!
+            const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
             const statementRes = typeof mutationDef.sql === 'function' ? mutationDef.sql(args) : mutationDef.sql
             const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
 
-            const bindValues = typeof statementRes === 'string' ? args : statementRes.bindValues
+            const bindValues =
+              typeof statementRes === 'string' ? item.mutationArgsEncoded.args : statementRes.bindValues
 
-            db.exec({ sql: statementSql, bind: prepareBindValues(bindValues, statementSql) as TODO })
+            db.exec({ sql: statementSql, bind: prepareBindValues(bindValues ?? {}, statementSql) as TODO })
 
             // write to mutation_log
             if (options_.type === 'opfs' && mutation !== 'livestore.RawSql') {
               const id = uuid()
               const schemaHash = schemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
-              const argsJson = JSON.stringify(item.mutationArgsEncoded.args)
+              const argsJson = JSON.stringify(item.mutationArgsEncoded.args ?? {})
 
               dbLog.exec({
                 sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -186,3 +187,5 @@ export const makeWorker = (mutations_?: MutationDefRecord) => {
 
   return wrappedWorker
 }
+
+export type WrappedWorker = ReturnType<typeof makeWorker>

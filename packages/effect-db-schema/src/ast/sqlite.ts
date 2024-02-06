@@ -85,6 +85,7 @@ export type DbSchema = {
 export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tables })
 
 // TODO refine hashing implementation to only hash the relevant parts of the schema
+// i.e. only columns, indexes, and foreign keys but not schema on top
 export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number => hashCode(JSON.stringify(obj))
 
 export const structSchemaForTable = (tableDef: Table) =>

@@ -3,7 +3,7 @@ import { pipe, ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import type { RowResult } from './row-query.js'
-import { type LiveStoreSchema, rawSqlMutation, type RawSqlMutationArgs } from './schema/index.js'
+import { type LiveStoreSchema, rawSqlMutation, type RawSqlMutationEvent } from './schema/index.js'
 import { getDefaultValuesEncoded, type TableDef } from './schema/table-def.js'
 import type { GetValForKey } from './utils/util.js'
 
@@ -58,17 +58,17 @@ export type UpdateMutation<TTableDef extends TableDef> = (args: {
   // TODO also allow `id` if present in `TTableDef`
   where: Partial<RowResult<TTableDef>>
   values: Partial<RowResult<TTableDef>>
-}) => RawSqlMutationArgs
+}) => RawSqlMutationEvent
 
 export type RowInsert<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
   ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
   : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>
 
-export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => RawSqlMutationArgs
+export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => RawSqlMutationEvent
 
 export type DeleteMutation<TTableDef extends TableDef> = (args: {
   where: Partial<RowResult<TTableDef>>
-}) => RawSqlMutationArgs
+}) => RawSqlMutationEvent
 
 export type Mutation<TTableDef extends TableDef> = {
   insert: InsertMutation<TTableDef>
