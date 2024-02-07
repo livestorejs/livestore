@@ -17,8 +17,6 @@ export * as DbSchema from './table-def.js'
 export * as ParseUtils from './parse-utils.js'
 export * from './mutations.js'
 
-// export { SqliteDsl as DbSchema } from 'effect-db-schema'
-
 export type LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
   TMutationsDefRecord extends MutationDefRecord = MutationDefRecord,
@@ -33,12 +31,12 @@ export type LiveStoreSchema<
 }
 
 export type InputSchema = {
-  tables: Record<string, TableDef> | ReadonlyArray<TableDef>
-  mutations?: ReadonlyArray<MutationDef.Any> | { [name: string]: MutationDef.Any }
+  readonly tables: Record<string, TableDef> | ReadonlyArray<TableDef>
+  readonly mutations?: ReadonlyArray<MutationDef.Any> | Record<string, MutationDef.Any>
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
-  /** Note when using the object-notation for tables, the object keys are ignored and not used as table names */
+  /** Note when using the object-notation for tables/mutations, the object keys are ignored and not used as table/mutation names */
   schema: TInputSchema,
 ): LiveStoreSchema<
   DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
@@ -100,13 +98,3 @@ export type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSc
     : TMutations extends { [name: string]: MutationDef.Any }
       ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
       : never
-
-export interface Register {
-  // schema: Router
-}
-
-export type RegisteredSchema = Register extends {
-  schema: infer TSchema extends LiveStoreSchema
-}
-  ? TSchema
-  : LiveStoreSchema

@@ -36,8 +36,6 @@ export type {
   MutationDef,
   MutationEvent,
   MutationDefMap,
-  RegisteredSchema,
-  Register,
 } from './schema/index.js'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'

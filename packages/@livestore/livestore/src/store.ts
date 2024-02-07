@@ -32,7 +32,6 @@ export type GraphQLOptions<TContext> = {
 export type StoreOptions<
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
-  // TSchema extends LiveStoreSchema = RegisteredSchema,
 > = {
   db: InMemoryDatabase
   /** A `Proxy`d version of `db` except that it also mirrors `execute` calls to the storage */
@@ -82,7 +81,6 @@ const uniqueStoreId = () => `store-${++storeCount}`
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
-  // TSchema extends LiveStoreSchema = RegisteredSchema,
 > {
   id = uniqueStoreId()
   graph: ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
@@ -163,7 +161,6 @@ export class Store<
     }
   }
 
-  // static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = RegisteredSchema>(
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
     storeOptions: StoreOptions<TGraphQLContext, TSchema>,
     parentSpan: otel.Span,
@@ -465,7 +462,6 @@ export class Store<
 export const createStore = async <
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
-  // TSchema extends LiveStoreSchema = RegisteredSchema,
 >({
   schema,
   loadStorage,

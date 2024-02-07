@@ -1,6 +1,6 @@
 // TODO: create types for these libraries? SQL.js already should have types;
 // we just need the types to apply to the fork.
-import { shouldNeverHappen, uuid } from '@livestore/utils'
+import { memoize, shouldNeverHappen, uuid } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as Comlink from 'comlink'
 import type * as SqliteWasm from 'sqlite-esm'
@@ -120,7 +120,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
   const executeBulk = (executionItems: ExecutionBacklogItem[]): void => {
     let batchItems: ExecutionBacklogItem[] = []
 
-    const createdAt = new Date().toISOString()
+    const createdAtMemo = memoize(() => new Date().toISOString())
 
     while (executionItems.length > 0) {
       try {
@@ -157,7 +157,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
               dbLog.exec({
                 sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
-                bind: [id, item.mutationArgsEncoded.mutation, argsJson, schemaHash, createdAt],
+                bind: [id, item.mutationArgsEncoded.mutation, argsJson, schemaHash, createdAtMemo()],
               })
             }
           }

@@ -77,9 +77,3 @@ export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 export const tables = { issue, description, comment, filterStateTable }
 
 export const schema = makeSchema({ tables, mutations })
-
-declare module '@livestore/livestore' {
-  interface Register {
-    schema: typeof schema
-  }
-}
