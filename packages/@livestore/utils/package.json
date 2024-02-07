@@ -8,6 +8,11 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./cuid": {
+      "types": "./dist/cuid/cuid.node.d.ts",
+      "node": "./dist/cuid/cuid.node.js",
+      "browser": "./dist/cuid/cuid.browser.js"
+    },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
       "default": "./dist/effect/index.js"
@@ -19,6 +24,9 @@
     "*": {
       "effect": [
         "./dist/effect"
+      ],
+      "./cuid": [
+        "./dist/cuid/cuid.node.d.ts"
       ]
     }
   },
@@ -32,12 +40,11 @@
     "date-fns": "^3.3.1",
     "effect": "2.2.3",
     "otel-websocket-exporter": "^0.0.27",
-    "pretty-bytes": "^6.1.1",
-    "uuid": "^9.0.1"
+    "pretty-bytes": "^6.1.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.8",
-    "@types/web": "^0.0.136"
+    "@types/web": "^0.0.136",
+    "@types/node": "^20.11.16"
   },
   "publishConfig": {
     "access": "public"

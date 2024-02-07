@@ -1,6 +1,6 @@
 // TODO: create types for these libraries? SQL.js already should have types;
 // we just need the types to apply to the fork.
-import { memoize, shouldNeverHappen, uuid } from '@livestore/utils'
+import { memoize, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as Comlink from 'comlink'
 import type * as SqliteWasm from 'sqlite-esm'
@@ -8,7 +8,6 @@ import sqlite3InitModule from 'sqlite-esm'
 
 import type { LiveStoreSchema } from '../../index.js'
 import { makeMutationEventSchema } from '../../schema/mutations.js'
-// import { v4 as uuid } from 'uuid'
 import { casesHandled, prepareBindValues, sql } from '../../utils/util.js'
 import { IDB } from '../utils/idb.js'
 import type { ExecutionBacklogItem } from './common.js'
@@ -136,7 +135,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else {
-            const { mutation, args } = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationArgsEncoded)
+            const { mutation, args } = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationEventEncoded)
 
             const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
@@ -144,20 +143,25 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
             const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
 
             const bindValues =
-              typeof statementRes === 'string' ? item.mutationArgsEncoded.args : statementRes.bindValues
+              typeof statementRes === 'string' ? item.mutationEventEncoded.args : statementRes.bindValues
 
             db.exec({ sql: statementSql, bind: prepareBindValues(bindValues ?? {}, statementSql) as TODO })
 
             // write to mutation_log
             if (options_.type === 'opfs' && mutationLogExclude.has(mutation) === false) {
-              const id = uuid()
               const schemaHash = schemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
-              const argsJson = JSON.stringify(item.mutationArgsEncoded.args ?? {})
+              const argsJson = JSON.stringify(item.mutationEventEncoded.args ?? {})
 
               dbLog.exec({
                 sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
-                bind: [id, item.mutationArgsEncoded.mutation, argsJson, schemaHash, createdAtMemo()],
+                bind: [
+                  item.mutationEventEncoded.id,
+                  item.mutationEventEncoded.mutation,
+                  argsJson,
+                  schemaHash,
+                  createdAtMemo(),
+                ],
               })
             }
           }

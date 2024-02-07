@@ -1,5 +1,5 @@
 import type { BindValues } from '@livestore/sql-queries'
-import { uuid } from '@livestore/utils'
+import { cuid } from '@livestore/utils/cuid'
 import { Schema } from '@livestore/utils/effect'
 
 import type { LiveStoreSchema } from './index.js'
@@ -8,6 +8,13 @@ export type MutationDefMap = Map<string | 'livestore.RawSql', MutationDef.Any>
 export type MutationDefRecord = {
   'livestore.RawSql': RawSqlMutation
   [name: string]: MutationDef.Any
+}
+
+export type InternalMutationSchema<TRecord extends MutationDefRecord = MutationDefRecord> = {
+  _DefRecord: TRecord
+
+  map: Map<keyof TRecord, TRecord[keyof TRecord]>
+  schemaHashMap: Map<keyof TRecord, number>
 }
 
 export type MutationDef<TName extends string, TFrom, TTo> = {
@@ -32,12 +39,13 @@ export namespace MutationDef {
   export type Any = MutationDef<string, any, any>
 }
 
+// TODO possibly also allow for mutation event subsumption behaviour
 export const defineMutation = <TName extends string, TFrom, TTo>(
   name: TName,
   schema: Schema.Schema<never, TFrom, TTo>,
   sql: string | ((args: TTo) => string | { sql: string; bindValues: BindValues; writeTables?: ReadonlySet<string> }),
 ): MutationDef<TName, TFrom, TTo> => {
-  const makeEvent = (args: TTo) => ({ mutation: name, args, id: uuid() })
+  const makeEvent = (args: TTo) => ({ mutation: name, args, id: cuid() })
 
   Object.defineProperty(makeEvent, 'name', { value: name })
   Object.defineProperty(makeEvent, 'schema', { value: schema })

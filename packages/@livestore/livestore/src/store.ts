@@ -245,19 +245,19 @@ export class Store<
       txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
-    let mutationArgs: MutationEvent.ForSchema<TSchema>[]
+    let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
     let options: { label?: string; skipRefresh?: boolean } | undefined
 
     if (typeof firstMutationOrTxnFnOrOptions === 'function') {
-      mutationArgs = firstMutationOrTxnFnOrOptions((arg: any) => mutationArgs.push(arg))
+      mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
     } else if (
       firstMutationOrTxnFnOrOptions?.label !== undefined ||
       firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined
     ) {
       options = firstMutationOrTxnFnOrOptions
-      mutationArgs = restMutations
+      mutationsEvents = restMutations
     } else {
-      mutationArgs = [firstMutationOrTxnFnOrOptions, ...restMutations]
+      mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
     }
 
     const label = options?.label ?? 'mutate'
@@ -287,19 +287,19 @@ export class Store<
                 const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
                 const applyMutations = () => {
-                  for (const event of mutationArgs) {
+                  for (const mutationEvent of mutationsEvents) {
                     try {
-                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(event, otelContext)
+                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(mutationEvent, otelContext)
                       for (const tableName of writeTablesForEvent) {
                         writeTables.add(tableName)
                       }
                     } catch (e: any) {
-                      console.error(e, event)
+                      console.error(e, mutationEvent)
                     }
                   }
                 }
 
-                if (mutationArgs.length > 1) {
+                if (mutationsEvents.length > 1) {
                   // TODO: what to do about storage transaction here?
                   this.inMemoryDB.txn(applyMutations)
                 } else {
@@ -323,7 +323,7 @@ export class Store<
 
           const debugRefreshReason = {
             _tag: 'mutate' as const,
-            mutations: mutationArgs,
+            mutations: mutationsEvents,
             writeTables: Array.from(writeTables),
           }
 
@@ -365,15 +365,15 @@ export class Store<
    * the caller must refresh queries after calling this method.
    */
   private mutateWithoutRefresh = (
-    mutationArgs: MutationEvent.ForSchema<TSchema>,
+    mutationEvent: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutatetWithoutRefresh',
       {
         attributes: {
-          'livestore.mutation': mutationArgs.mutation,
-          'livestore.args': JSON.stringify(mutationArgs.args, null, 2),
+          'livestore.mutation': mutationEvent.mutation,
+          'livestore.args': JSON.stringify(mutationEvent.args, null, 2),
         },
       },
       otelContext,
@@ -381,11 +381,11 @@ export class Store<
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const mutationDef =
-          this.schema.mutations.get(mutationArgs.mutation) ??
-          shouldNeverHappen(`Unknown mutation type: ${mutationArgs.mutation}`)
+          this.schema.mutations.get(mutationEvent.mutation) ??
+          shouldNeverHappen(`Unknown mutation type: ${mutationEvent.mutation}`)
 
         const statementRes =
-          typeof mutationDef.sql === 'function' ? mutationDef.sql(mutationArgs.args) : mutationDef.sql
+          typeof mutationDef.sql === 'function' ? mutationDef.sql(mutationEvent.args) : mutationDef.sql
 
         const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
         const writeTables =
@@ -395,7 +395,7 @@ export class Store<
 
         const bindValues =
           typeof statementRes === 'string'
-            ? Schema.encodeUnknownSync(mutationDef.schema)(mutationArgs.args)
+            ? Schema.encodeUnknownSync(mutationDef.schema)(mutationEvent.args)
             : statementRes.bindValues
 
         const { durationMs } = this.inMemoryDB.execute(
@@ -407,8 +407,8 @@ export class Store<
 
         // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
         if (this.storage !== undefined) {
-          const mutationArgsEncoded = Schema.encodeUnknownSync(this.mutationArgsSchema)(mutationArgs)
-          this.storage.mutate(mutationArgsEncoded, span)
+          const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationArgsSchema)(mutationEvent)
+          this.storage.mutate(mutationEventEncoded, span)
         }
 
         // Uncomment to print a list of queries currently registered on the store

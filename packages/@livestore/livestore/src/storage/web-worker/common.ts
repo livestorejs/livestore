@@ -3,4 +3,4 @@ import type { PreparedBindValues } from '../../utils/util.js'
 
 export type ExecutionBacklogItem =
   | { _tag: 'execute'; query: string; bindValues?: PreparedBindValues }
-  | { _tag: 'mutate'; mutationArgsEncoded: MutationEvent.Any }
+  | { _tag: 'mutate'; mutationEventEncoded: MutationEvent.Any }

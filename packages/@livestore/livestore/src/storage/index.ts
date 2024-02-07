@@ -18,7 +18,7 @@ export interface Storage {
   execute(query: string, bindValues?: PreparedBindValues, parentSpan?: otel.Span): void
 
   // TODO consider transferables for `bindValues` (e.g. Uint8Array values)
-  mutate(mutationArgsEncoded: MutationEvent.Any, parentSpan?: otel.Span): void
+  mutate(mutationEventEncoded: MutationEvent.Any, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
   getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>

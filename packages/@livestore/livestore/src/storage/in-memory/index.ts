@@ -18,7 +18,7 @@ export class InMemoryStorage implements Storage {
 
   execute = (_query: string, _bindValues?: PreparedBindValues): void => {}
 
-  mutate = (_mutationArgsEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
+  mutate = (_mutationEventEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
 
   getPersistedData = async (): Promise<Uint8Array> => new Uint8Array()
 }

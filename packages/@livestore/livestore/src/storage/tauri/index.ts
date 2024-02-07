@@ -39,7 +39,7 @@ export class TauriStorage implements Storage {
     })
   }
 
-  mutate = (_mutationArgsEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
+  mutate = (_mutationEventEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
 
   getPersistedData = async (parentSpan?: otel.Span): Promise<Uint8Array> => {
     const headers = new Headers()

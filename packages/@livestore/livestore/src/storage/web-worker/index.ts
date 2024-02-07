@@ -64,8 +64,8 @@ export class WebWorkerStorage implements Storage {
     this.scheduleExecution()
   }
 
-  mutate = (mutationArgsEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {
-    this.executionBacklog.push({ _tag: 'mutate', mutationArgsEncoded })
+  mutate = (mutationEventEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {
+    this.executionBacklog.push({ _tag: 'mutate', mutationEventEncoded })
     this.scheduleExecution()
   }
 

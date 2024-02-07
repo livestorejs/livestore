@@ -4,7 +4,7 @@
 
 import { createStore, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
-import { uuid } from '@livestore/utils'
+import { cuid } from '@livestore/utils/cuid'
 import initSqlite3Wasm from 'sqlite-esm'
 
 import LiveStoreWorker from './livestore.worker?worker'
@@ -33,7 +33,7 @@ const todos$ = querySQL(`select * from todos`, { map: ParseUtils.many(tables.tod
 const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
 
 const addTodo = (newTodoText: string) => {
-  store.mutate(mutations.addTodo({ id: uuid(), text: newTodoText }))
+  store.mutate(mutations.addTodo({ id: cuid(), text: newTodoText }))
   store.mutate(mutations.updateNewTodoText({ text: '' }))
 }
 
