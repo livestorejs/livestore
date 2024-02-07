@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ReactiveGraph } from '../reactive.js'
+import { ReactiveGraph } from './reactive.js'
 
 describe('a trivial graph', () => {
   const makeGraph = () => {

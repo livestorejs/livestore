@@ -14,13 +14,30 @@ import { IDB } from '../utils/idb.js'
 import type { ExecutionBacklogItem } from './common.js'
 import type { StorageOptionsWeb } from './index.js'
 
-export const makeWorker = (schema: LiveStoreSchema) => {
+export type WorkerOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
+  schema: TSchema
+  mutationLog?: {
+    /**
+     * Mutations to exclude in the mutation log
+     *
+     * @default new Set(['livestore.RawSql'])
+     */
+    exclude?: ReadonlySet<keyof TSchema['_MutationDefMapType']>
+  }
+}
+
+export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
+  schema,
+  mutationLog,
+}: WorkerOptions<TSchema>) => {
   // A global variable to hold the database connection.
   let db: SqliteWasm.DatabaseApi
 
   let dbLog: SqliteWasm.DatabaseApi
 
   let sqlite3: SqliteWasm.Sqlite3Static
+
+  const mutationLogExclude = mutationLog?.exclude ?? new Set(['livestore.RawSql'])
 
   // TODO refactor
   const mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
@@ -132,7 +149,7 @@ export const makeWorker = (schema: LiveStoreSchema) => {
             db.exec({ sql: statementSql, bind: prepareBindValues(bindValues ?? {}, statementSql) as TODO })
 
             // write to mutation_log
-            if (options_.type === 'opfs' && mutation !== 'livestore.RawSql') {
+            if (options_.type === 'opfs' && mutationLogExclude.has(mutation) === false) {
               const id = uuid()
               const schemaHash = schemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 

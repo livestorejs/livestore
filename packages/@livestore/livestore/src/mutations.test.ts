@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
 
-import type { MutationEvent } from '../index.js'
-import { makeMutations } from '../mutations.js'
-import { schema } from './react/fixture.js'
+import { schema } from './__tests__/react/fixture.js'
+import type { MutationEvent } from './index.js'
+import { makeMutations } from './mutations.js'
 
 describe('mutations', () => {
   const mutations = makeMutations(schema)

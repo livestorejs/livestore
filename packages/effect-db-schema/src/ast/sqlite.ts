@@ -1,5 +1,5 @@
 import * as Schema from '@effect/schema/Schema'
-import type { Option } from 'effect'
+import { type Option } from 'effect'
 
 import { hashCode } from '../hash.js'
 
@@ -84,9 +84,60 @@ export type DbSchema = {
 
 export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tables })
 
-// TODO refine hashing implementation to only hash the relevant parts of the schema
-// i.e. only columns, indexes, and foreign keys but not schema on top
-export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number => hashCode(JSON.stringify(obj))
+/**
+ * NOTE we're only including SQLite-relevant information in the hash (which excludes the schema mapping)
+ */
+export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number =>
+  hashCode(JSON.stringify(trimInfoForHasing(obj)))
+
+const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema): Record<string, any> => {
+  switch (obj._tag) {
+    case 'table': {
+      return {
+        _tag: 'table',
+        name: obj.name,
+        columns: obj.columns.map((column) => trimInfoForHasing(column)),
+        indexes: obj.indexes.map((index) => trimInfoForHasing(index)),
+      }
+    }
+    case 'column': {
+      return {
+        _tag: 'column',
+        name: obj.name,
+        type: obj.type._tag,
+        primaryKey: obj.primaryKey,
+        nullable: obj.nullable,
+        default: obj.default,
+      }
+    }
+    case 'index': {
+      return {
+        _tag: 'index',
+        columns: obj.columns,
+        name: obj.name,
+        unique: obj.unique,
+        primaryKey: obj.primaryKey,
+      }
+    }
+    case 'foreignKey': {
+      return {
+        _tag: 'foreignKey',
+        references: obj.references,
+        key: obj.key,
+        columns: obj.columns,
+      }
+    }
+    case 'dbSchema': {
+      return {
+        _tag: 'dbSchema',
+        tables: obj.tables.map(trimInfoForHasing),
+      }
+    }
+    default: {
+      throw new Error(`Unreachable: ${obj}`)
+    }
+  }
+}
 
 export const structSchemaForTable = (tableDef: Table) =>
   Schema.struct(Object.fromEntries(tableDef.columns.map((column) => [column.name, column.schema])))

@@ -98,7 +98,7 @@ export type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSc
   TMutations extends ReadonlyArray<MutationDef.Any>
     ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlMutation }
     : TMutations extends { [name: string]: MutationDef.Any }
-      ? { [K in keyof TMutations]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
+      ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
       : never
 
 export interface Register {

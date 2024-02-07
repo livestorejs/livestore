@@ -3,8 +3,8 @@ import type { ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { computed, ParseUtils, querySQL, rawSqlMutation, sql } from '../../index.js'
-import { makeTodoMvc, todos } from '../react/fixture.js'
+import { makeTodoMvc, todos } from '../__tests__/react/fixture.js'
+import { computed, ParseUtils, querySQL, rawSqlMutation, sql } from '../index.js'
 
 /*
 TODO write tests for:

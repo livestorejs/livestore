@@ -2,11 +2,11 @@ import { act, render, renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import * as LiveStore from '../../index.js'
-import { mutationForQueryInfo } from '../../query-info.js'
-import * as LiveStoreReact from '../../react/index.js'
-import type { Todo } from './fixture.js'
-import { makeTodoMvc, todos } from './fixture.js'
+import type { Todo } from '../__tests__/react/fixture.js'
+import { makeTodoMvc, todos } from '../__tests__/react/fixture.js'
+import * as LiveStore from '../index.js'
+import { mutationForQueryInfo } from '../query-info.js'
+import * as LiveStoreReact from './index.js'
 
 describe('useRow', () => {
   it('should update the data based on component key', async () => {

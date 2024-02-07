@@ -2,9 +2,9 @@ import { act, renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import * as LiveStoreReact from '../../react/index.js'
-import { querySQL } from '../../reactiveQueries/sql.js'
-import { makeTodoMvc, parseTodos } from './fixture.js'
+import { makeTodoMvc, parseTodos } from '../__tests__/react/fixture.js'
+import { querySQL } from '../reactiveQueries/sql.js'
+import * as LiveStoreReact from './index.js'
 
 describe('useQuery', () => {
   it('simple', async () => {
