@@ -1,7 +1,6 @@
 import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
-import type { SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 import type { GraphQLSchema } from 'graphql'
 import type * as Sqlite from 'sqlite-esm'
 

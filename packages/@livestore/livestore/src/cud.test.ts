@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest'
 
-import { schema } from './__tests__/react/fixture.js'
+import { tables } from './__tests__/react/fixture.js'
+import { makeCudMutations } from './cud.js'
 import type { MutationEvent } from './index.js'
-import { makeMutations } from './mutations.js'
 
-describe('mutations', () => {
-  const mutations = makeMutations(schema)
+describe('cud mutations', () => {
+  const cud = makeCudMutations(tables)
 
   test('basic', () => {
-    expect(patchId(mutations.todos.insert({ id: 't1', completed: true, text: 'Task 1' }))).toMatchInlineSnapshot(`
+    expect(patchId(cud.todos.insert({ id: 't1', completed: true, text: 'Task 1' }))).toMatchInlineSnapshot(`
       {
         "args": {
           "bindValues": {
@@ -26,7 +26,7 @@ describe('mutations', () => {
       }
     `)
 
-    expect(patchId(mutations.todos.update({ where: { id: 't1' }, values: { text: 'Task 1 - fixed' } })))
+    expect(patchId(cud.todos.update({ where: { id: 't1' }, values: { text: 'Task 1 - fixed' } })))
       .toMatchInlineSnapshot(`
         {
           "args": {

@@ -4,7 +4,7 @@ import initSqlite3Wasm from 'sqlite-esm'
 
 import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeDbGraph, makeMutations, makeSchema, ParseUtils, sql } from '../../index.js'
+import { createStore, DbSchema, makeCudMutations, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 import { InMemoryStorage } from '../../storage/in-memory/index.js'
 
@@ -27,34 +27,14 @@ export const todos = DbSchema.table('todos', {
   completed: DbSchema.boolean({ default: false, nullable: false }),
 })
 
-export const schema = makeSchema({
-  tables: {
-    todos,
-    app: DbSchema.table('app', {
-      id: DbSchema.text({ primaryKey: true }),
-      newTodoText: DbSchema.text({ default: '', nullable: true }),
-      filter: DbSchema.text({ default: 'all', nullable: false }),
-    }),
-  },
-  actions: {
-    // TODO: fix these actions to make them have write annotatinos
-    addTodo: {
-      statement: {
-        sql: sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false);`,
-        writeTables: ['app'],
-      },
-    },
-    completeTodo: { statement: { sql: sql`UPDATE todos SET completed = true WHERE id = $id;`, writeTables: ['app'] } },
-    uncompleteTodo: {
-      statement: { sql: sql`UPDATE todos SET completed = false WHERE id = $id;`, writeTables: ['app'] },
-    },
-    deleteTodo: { statement: { sql: sql`DELETE FROM todos WHERE id = $id;`, writeTables: ['app'] } },
-    clearCompleted: { statement: { sql: sql`DELETE FROM todos WHERE completed = true;`, writeTables: ['app'] } },
-    updateNewTodoText: { statement: { sql: sql`UPDATE app SET newTodoText = $text;`, writeTables: ['app'] } },
-    setFilter: { statement: { sql: sql`UPDATE app SET filter = $filter;`, writeTables: ['app'] } },
-  },
-  mutations: {},
+export const app = DbSchema.table('app', {
+  id: DbSchema.text({ primaryKey: true }),
+  newTodoText: DbSchema.text({ default: '', nullable: true }),
+  filter: DbSchema.text({ default: 'all', nullable: false }),
 })
+
+export const tables = { todos, app }
+export const schema = makeSchema({ tables })
 
 export const parseTodos = ParseUtils.many(todos)
 
@@ -88,13 +68,14 @@ export const makeTodoMvc = async ({
     otelRootSpanContext: otelContext,
   })
 
-  const mutations = makeMutations(schema)
+  const cud = makeCudMutations(tables)
 
+  // TODO improve typing of `LiveStoreContext`
   const storeContext: LiveStoreContext = { store } as TODO
 
   const wrapper = ({ children }: any) => (
     <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>
   )
 
-  return { wrapper, AppComponentSchema, store, dbGraph, mutations }
+  return { wrapper, AppComponentSchema, store, dbGraph, cud }
 }
