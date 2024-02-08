@@ -7,7 +7,7 @@ settings:
 overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
-  '@livestore/devtools-react': 0.0.40-dev.3
+  '@livestore/devtools-react': 0.0.40
   effect: 2.2.5
   effect-db-schema: workspace:*
 
@@ -82,8 +82,8 @@ importers:
         specifier: ^1.7.18
         version: 1.7.18(react-dom@18.2.0)(react@18.2.0)
       '@livestore/devtools-react':
-        specifier: 0.0.40-dev.3
-        version: 0.0.40-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.40
+        version: 0.0.40(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -260,8 +260,8 @@ importers:
         specifier: 0.61.7
         version: 0.61.7(effect@2.2.5)(fast-check@3.15.0)
       '@livestore/devtools-react':
-        specifier: 0.0.40-dev.3
-        version: 0.0.40-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.40
+        version: 0.0.40(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -318,8 +318,8 @@ importers:
         specifier: 0.61.7
         version: 0.61.7(effect@2.2.5)(fast-check@3.15.0)
       '@livestore/devtools-react':
-        specifier: 0.0.40-dev.3
-        version: 0.0.40-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.40
+        version: 0.0.40(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -388,8 +388,8 @@ importers:
         specifier: 0.61.7
         version: 0.61.7(effect@2.2.5)(fast-check@3.15.0)
       '@livestore/devtools-react':
-        specifier: 0.0.40-dev.3
-        version: 0.0.40-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.40
+        version: 0.0.40(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -2530,8 +2530,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@livestore/devtools-react@0.0.40-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-3AoTpWDqGBv4ft8JffET4srTbOGf4X/81wQi21Qviq/4STuWFQlAUTVycpoGOXTXvIpPA/rWC0GHgAu5DNdrjA==}
+  /@livestore/devtools-react@0.0.40(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-8HGOEAKUssWXB5d1fajfHqrThqIeh3/LJnkGV5xN+2HVe5lDCdhgygbTMSY9mqr/T1eTTyhUtQHCDFt1E2uT9A==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
@@ -4164,6 +4164,7 @@ packages:
   /autoprefixer@10.4.17(postcss@8.4.35):
     resolution: {integrity: sha512-/cpVNRLSfhOtcGflT13P2794gVSgmPgTR+erw5ifnMLZb0UnSlkK4tquLmkd3BhA+nLo5tX8Cu0upUsGKvKbmg==}
     engines: {node: ^10 || ^12 || >=14}
+    hasBin: true
     peerDependencies:
       postcss: ^8.1.0
     dependencies:
@@ -5122,6 +5123,7 @@ packages:
 
   /eslint-config-prettier@9.1.0(eslint@8.56.0):
     resolution: {integrity: sha512-NSWl5BFQWEPi1j4TjVNItzYV7dZXZ+wP6I6ZhrBGpChQhZRUaElihE9uRRkcbRnNb76UMKDF3r+WTmNcGPKsqw==}
+    hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
     dependencies:
@@ -7952,6 +7954,7 @@ packages:
   /rollup-plugin-visualizer@5.12.0(rollup@2.79.1):
     resolution: {integrity: sha512-8/NU9jXcHRs7Nnj07PF2o4gjxmm9lXIrZ8r175bT9dK8qoLlvKTwRMArRCMgpMGlq8CTLugRvEmyMeMXIU2pNQ==}
     engines: {node: '>=14'}
+    hasBin: true
     peerDependencies:
       rollup: 2.x || 3.x || 4.x
     peerDependenciesMeta:
@@ -8818,6 +8821,7 @@ packages:
 
   /update-browserslist-db@1.0.13(browserslist@4.22.1):
     resolution: {integrity: sha512-xebP81SNcPuNpPP3uzeW1NYXxI3rxyJzF3pD6sH4jE7o/IX+WtSpwnVU+qIsDPyk0d3hmFQ7mjqc6AtV604hbg==}
+    hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
     dependencies:
@@ -8828,6 +8832,7 @@ packages:
 
   /update-browserslist-db@1.0.13(browserslist@4.22.2):
     resolution: {integrity: sha512-xebP81SNcPuNpPP3uzeW1NYXxI3rxyJzF3pD6sH4jE7o/IX+WtSpwnVU+qIsDPyk0d3hmFQ7mjqc6AtV604hbg==}
+    hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
     dependencies:
@@ -8953,6 +8958,7 @@ packages:
   /vite@5.1.0(@types/node@20.11.16):
     resolution: {integrity: sha512-STmSFzhY4ljuhz14bg9LkMTk3d98IO6DIArnTY6MeBwiD1Za2StcQtz7fzOUnRCqrHSD5+OS2reg4HOz1eoLnw==}
     engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
@@ -8988,6 +8994,7 @@ packages:
   /vitest@1.2.2(jsdom@24.0.0):
     resolution: {integrity: sha512-d5Ouvrnms3GD9USIK36KG8OZ5bEvKEkITFtnGv56HFaSlbItJuYr7hv2Lkn903+AvRAgSixiamozUVfORUekjw==}
     engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@types/node': ^18.0.0 || >=20.0.0
