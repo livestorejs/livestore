@@ -10,6 +10,7 @@ import { formatDate } from '../../utils/date'
 import { Issue } from '../../types'
 import { PriorityType, StatusType } from '../../types/issue'
 import { useStore } from '@livestore/livestore/react'
+import { mutations } from '../../domain/schema'
 
 interface Props {
   issue: Issue
@@ -21,19 +22,10 @@ function IssueRow({ issue, style }: Props) {
   const navigate = useNavigate()
   const { store } = useStore()
 
-  const handleChangeStatus = (status: StatusType) => {
-    store.applyEvent('updateIssueStatus', {
-      id: issue.id,
-      status,
-    })
-  }
+  const handleChangeStatus = (status: StatusType) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
 
-  const handleChangePriority = (priority: PriorityType) => {
-    store.applyEvent('updateIssuePriority', {
-      id: issue.id,
-      priority,
-    })
-  }
+  const handleChangePriority = (priority: PriorityType) =>
+    store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   return (
     <div

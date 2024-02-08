@@ -1,23 +1,21 @@
 import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
-import { identity } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import type * as Sqlite from 'sqlite-esm'
-import { v4 as uuid } from 'uuid'
 
-import type { LiveStoreEvent } from './events.js'
 import { dynamicallyRegisteredTables, globalDbGraph } from './global-state.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
-import type { ActionDefinition, GetActionArgs, LiveStoreSchema, SQLWriteStatement } from './schema/index.js'
+import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from './schema/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
-import { isPromise, prepareBindValues, sql } from './utils/util.js'
+import { isPromise, prepareBindValues } from './utils/util.js'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
@@ -30,11 +28,14 @@ export type GraphQLOptions<TContext> = {
   makeContext: (db: InMemoryDatabase, tracer: otel.Tracer) => TContext
 }
 
-export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
+export type StoreOptions<
+  TGraphQLContext extends BaseGraphQLContext,
+  TSchema extends LiveStoreSchema = LiveStoreSchema,
+> = {
   db: InMemoryDatabase
   /** A `Proxy`d version of `db` except that it also mirrors `execute` calls to the storage */
   dbProxy: InMemoryDatabase
-  schema: LiveStoreSchema
+  schema: TSchema
   storage?: Storage
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer: otel.Tracer
@@ -45,21 +46,9 @@ export type StoreOptions<TGraphQLContext extends BaseGraphQLContext> = {
 export type RefreshReason =
   | DebugRefreshReasonBase
   | {
-      _tag: 'applyEvent'
-      /** The event that was applied */
-      // note: we omit ID because it's annoying to read it given where it gets generated,
-      // but it would be useful to have in the debugger
-      event: Omit<LiveStoreEvent, 'id'>
-
-      /** The tables that were written to by the event */
-      writeTables: ReadonlyArray<string>
-    }
-  | {
-      _tag: 'applyEvents'
-      /** The events that was applied */
-      // note: we omit ID because it's annoying to read it given where it gets generated,
-      // but it would be useful to have in the debugger
-      events: Omit<LiveStoreEvent, 'id'>[]
+      _tag: 'mutate'
+      /** The mutations that were applied */
+      mutations: ReadonlyArray<MutationEvent.Any>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -81,14 +70,17 @@ export type QueryDebugInfo = {
 
 export type StoreOtel = {
   tracer: otel.Tracer
-  applyEventsSpanContext: otel.Context
+  mutationsSpanContext: otel.Context
   queriesSpanContext: otel.Context
 }
 
 let storeCount = 0
 const uniqueStoreId = () => `store-${++storeCount}`
 
-export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext> {
+export class Store<
+  TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
+  TSchema extends LiveStoreSchema = LiveStoreSchema,
+> {
   id = uniqueStoreId()
   graph: ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
   inMemoryDB: InMemoryDatabase
@@ -108,6 +100,8 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
   storage?: Storage
 
+  private mutationArgsSchema
+
   private constructor({
     db,
     dbProxy,
@@ -117,27 +111,31 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     dbGraph,
     otelTracer,
     otelRootSpanContext,
-  }: StoreOptions<TGraphQLContext>) {
+  }: StoreOptions<TGraphQLContext, TSchema>) {
     this.inMemoryDB = db
     this._proxyDb = dbProxy
     this.schema = schema
+
+    // TODO refactor
+    this.mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
     this.activeQueries = new ReferenceCountedSet()
     this.storage = storage
 
-    const applyEventsSpan = otelTracer.startSpan('LiveStore:applyEvents', {}, otelRootSpanContext)
-    const otelApplyEventsSpanContext = otel.trace.setSpan(otel.context.active(), applyEventsSpan)
+    const mutationsSpan = otelTracer.startSpan('LiveStore:mutations', {}, otelRootSpanContext)
+    const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
 
     const queriesSpan = otelTracer.startSpan('LiveStore:queries', {}, otelRootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
 
     this.graph = dbGraph ?? globalDbGraph
-    this.graph.context = { store: this, otelTracer, rootOtelContext: otelQueriesSpanContext }
+    this.graph.context = { store: this as any, otelTracer, rootOtelContext: otelQueriesSpanContext }
 
     this.otel = {
       tracer: otelTracer,
-      applyEventsSpanContext: otelApplyEventsSpanContext,
+      mutationsSpanContext: otelMuationsSpanContext,
       queriesSpanContext: otelQueriesSpanContext,
     }
 
@@ -162,10 +160,10 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     }
   }
 
-  static createStore = <TGraphQLContext extends BaseGraphQLContext>(
-    storeOptions: StoreOptions<TGraphQLContext>,
+  static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
+    storeOptions: StoreOptions<TGraphQLContext, TSchema>,
     parentSpan: otel.Span,
-  ): Store<TGraphQLContext> => {
+  ): Store<TGraphQLContext, TSchema> => {
     const ctx = otel.trace.setSpan(otel.context.active(), parentSpan)
     return storeOptions.otelTracer.startActiveSpan('LiveStore:store-constructor', {}, ctx, (span) => {
       try {
@@ -229,92 +227,51 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
       }
     }
 
-    otel.trace.getSpan(this.otel.applyEventsSpanContext)!.end()
+    otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
     otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
   }
 
-  /* Apply a single write event to the store, and refresh all queries in response */
-  applyEvent = <TEventType extends string & keyof LiveStoreActionDefinitionsTypes>(
-    eventType: TEventType,
-    args: GetActionArgs<LiveStoreActionDefinitionsTypes[TEventType]> = {},
-    options?: { skipRefresh?: boolean },
-  ): { durationMs: number } => {
-    const skipRefresh = options?.skipRefresh ?? false
-    // console.log('applyEvent', { eventType, args, skipRefresh })
+  mutate: {
+    <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg): void
+    (
+      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
+    ): void
+    <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(
+      options: { label?: string; skipRefresh?: boolean },
+      ...list: TMutationArg
+    ): void
+    (
+      options: { label?: string; skipRefresh?: boolean },
+      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
+    ): void
+  } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
+    let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
+    let options: { label?: string; skipRefresh?: boolean } | undefined
 
-    const applyEventsSpan = otel.trace.getSpan(this.otel.applyEventsSpanContext)!
-    applyEventsSpan.addEvent('applyEvent')
+    if (typeof firstMutationOrTxnFnOrOptions === 'function') {
+      mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
+    } else if (
+      firstMutationOrTxnFnOrOptions?.label !== undefined ||
+      firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined
+    ) {
+      options = firstMutationOrTxnFnOrOptions
+      mutationsEvents = restMutations
+    } else {
+      mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
+    }
 
-    return this.otel.tracer.startActiveSpan(
-      'LiveStore:applyEvent',
-      { attributes: {} },
-      this.otel.applyEventsSpanContext,
-      (span) => {
-        try {
-          const otelContext = otel.trace.setSpan(otel.context.active(), span)
-          const writeTables = this.applyEventWithoutRefresh(eventType, args, otelContext).writeTables
-
-          const tablesToUpdate = [] as [Ref<null, DbContext, RefreshReason>, null][]
-          for (const tableName of writeTables) {
-            const tableRef = this.tableRefs[tableName]
-            assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
-            tablesToUpdate.push([tableRef!, null])
-          }
-
-          const debugRefreshReason = {
-            _tag: 'applyEvent' as const,
-            event: { type: eventType, args },
-            writeTables: [...writeTables],
-          }
-
-          // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext })
-
-          if (skipRefresh === false) {
-            // TODO update the graph
-            // this.graph.refresh(
-            //   {
-            //     otelHint: 'applyEvents',
-            //     debugRefreshReason,
-            //   },
-            //   otelContext,
-            // )
-          }
-        } catch (e: any) {
-          span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-
-          console.error(e)
-          shouldNeverHappen(`Error applying event (${eventType}): ${e.toString()}`)
-        } finally {
-          span.end()
-
-          return { durationMs: getDurationMsFromSpan(span) }
-        }
-      },
-    )
-  }
-
-  /**
-   * Apply multiple write events to the store, and refresh all queries in response.
-   * This is faster than calling applyEvent many times in quick succession because
-   * we can do a single refresh after all the events.
-   */
-  applyEvents = (
-    // TODO make args type-safe in polymorphic array case
-    events: Iterable<{ eventType: string; args: any }>,
-    options?: { label?: string; skipRefresh?: boolean },
-  ): { durationMs: number } => {
-    const label = options?.label ?? 'applyEvents'
+    const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
 
-    const applyEventsSpan = otel.trace.getSpan(this.otel.applyEventsSpanContext)!
-    applyEventsSpan.addEvent('applyEvents')
+    const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
+    mutationsSpan.addEvent('mutate')
 
-    // console.log('applyEvents', { skipRefresh, events: [...events] })
+    // console.debug('LiveStore.mutate', { skipRefresh, events: [...events] })
+
     return this.otel.tracer.startActiveSpan(
-      'LiveStore:applyEvents',
-      { attributes: { 'livestore.applyEventsLabel': label } },
-      this.otel.applyEventsSpanContext,
+      'LiveStore:mutate',
+      { attributes: { 'livestore.mutateLabel': label } },
+      this.otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
@@ -323,29 +280,31 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
 
           this.otel.tracer.startActiveSpan(
             'LiveStore:processWrites',
-            { attributes: { 'livestore.applyEventsLabel': label } },
+            { attributes: { 'livestore.mutateLabel': label } },
             otel.trace.setSpan(otel.context.active(), span),
             (span) => {
               try {
                 const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-                // TODO: what to do about storage transaction here?
-                this.inMemoryDB.txn(() => {
-                  for (const event of events) {
+                const applyMutations = () => {
+                  for (const mutationEvent of mutationsEvents) {
                     try {
-                      const { writeTables: writeTablesForEvent } = this.applyEventWithoutRefresh(
-                        event.eventType,
-                        event.args,
-                        otelContext,
-                      )
+                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(mutationEvent, otelContext)
                       for (const tableName of writeTablesForEvent) {
                         writeTables.add(tableName)
                       }
                     } catch (e: any) {
-                      console.error(e, event)
+                      console.error(e, mutationEvent)
                     }
                   }
-                })
+                }
+
+                if (mutationsEvents.length > 1) {
+                  // TODO: what to do about storage transaction here?
+                  this.inMemoryDB.txn(applyMutations)
+                } else {
+                  applyMutations()
+                }
               } catch (e: any) {
                 console.error(e)
                 span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
@@ -363,10 +322,11 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
           }
 
           const debugRefreshReason = {
-            _tag: 'applyEvents' as const,
-            events: [...events].map((e) => ({ type: e.eventType, args: e.args })),
-            writeTables: [...writeTables],
+            _tag: 'mutate' as const,
+            mutations: mutationsEvents,
+            writeTables: Array.from(writeTables),
           }
+
           // Update all table refs together in a batch, to only trigger one reactive update
           this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
         } catch (e: any) {
@@ -381,7 +341,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   }
 
   /**
-   * This can be used in combination with `skipRefresh` when applying events.
+   * This can be used in combination with `skipRefresh` when applying mutations.
    * We might need a better solution for this. Let's see.
    */
   manualRefresh = (options?: { label?: string }) => {
@@ -389,7 +349,7 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     this.otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
       { attributes: { 'livestore.manualRefreshLabel': label } },
-      this.otel.applyEventsSpanContext,
+      this.otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
         this.graph.runDeferredEffects({ otelContext })
@@ -399,98 +359,64 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   }
 
   /**
-   * Apply an event to the store.
+   * Apply a mutation to the store.
    * Returns the tables that were affected by the event.
    * This is an internal method that doesn't trigger a refresh;
    * the caller must refresh queries after calling this method.
    */
-  private applyEventWithoutRefresh = (
-    eventType: string,
-    args: any = {},
+  private mutateWithoutRefresh = (
+    mutationEvent: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
-  ): { writeTables: ReadonlyArray<string>; durationMs: number } => {
+  ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
-      'LiveStore:applyEventWithoutRefresh',
+      'LiveStore:mutatetWithoutRefresh',
       {
         attributes: {
-          'livestore.actionType': eventType,
-          'livestore.args': JSON.stringify(args, null, 2),
+          'livestore.mutation': mutationEvent.mutation,
+          'livestore.args': JSON.stringify(mutationEvent.args, null, 2),
         },
       },
       otelContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const actionDefinitions: { [key: string]: ActionDefinition } = {
-          ...this.schema.actions,
+        const mutationDef =
+          this.schema.mutations.get(mutationEvent.mutation) ??
+          shouldNeverHappen(`Unknown mutation type: ${mutationEvent.mutation}`)
 
-          // Special LiveStore:defined actions
-          'livestore.UpdateComponentState': {
-            statement: ({
-              id,
-              columnNames,
-              tableName,
-            }: {
-              id?: string
-              columnNames: ReadonlyArray<string>
-              tableName: string
-            }) => {
-              const whereClause = id === undefined ? '' : `where id = '${id}'`
-              const updateClause = columnNames.map((columnName) => `${columnName} = $${columnName}`).join(', ')
-              const stmt = sql`update ${tableName} set ${updateClause} ${whereClause}`
+        const statementRes =
+          typeof mutationDef.sql === 'function' ? mutationDef.sql(mutationEvent.args) : mutationDef.sql
 
-              return {
-                sql: stmt,
-                writeTables: [tableName],
-              }
-            },
-            prepareBindValues: ({ bindValues }) => bindValues ?? {},
-          },
+        const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
+        const writeTables =
+          typeof statementRes === 'string'
+            ? this.inMemoryDB.getTablesUsed(statementSql)
+            : statementRes.writeTables ?? this.inMemoryDB.getTablesUsed(statementSql)
 
-          'livestore.RawSql': {
-            statement: ({ sql, writeTables }: { sql: string; writeTables: ReadonlyArray<string> }) => ({
-              sql,
-              writeTables,
-              argsAlreadyBound: false,
-            }),
-            prepareBindValues: ({ bindValues }) => bindValues ?? {},
-          },
-        }
+        const bindValues =
+          typeof statementRes === 'string'
+            ? Schema.encodeUnknownSync(mutationDef.schema)(mutationEvent.args)
+            : statementRes.bindValues
 
-        const actionDefinition = actionDefinitions[eventType] ?? shouldNeverHappen(`Unknown event type: ${eventType}`)
-
-        // Generate a fresh ID for the event
-        const eventWithId: LiveStoreEvent = { id: uuid(), type: eventType, args }
-
-        // Synchronously apply the event to the in-memory database
-        // const { durationMs } = this.inMemoryDB.applyEvent(eventWithId, actionDefinition, otelContext)
-        const { statement, bindValues } = eventToSql(eventWithId, actionDefinition)
         const { durationMs } = this.inMemoryDB.execute(
-          statement.sql,
-          prepareBindValues(bindValues, statement.sql),
-          statement.writeTables,
-          {
-            otelContext,
-          },
+          statementSql,
+          prepareBindValues(bindValues ?? {}, statementSql),
+          writeTables,
+          { otelContext },
         )
 
-        // Asynchronously apply the event to a persistent storage (we're not awaiting this promise here)
+        // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
         if (this.storage !== undefined) {
-          // this.storage.applyEvent(eventWithId, actionDefinition, span)
-          this.storage.execute(statement.sql, prepareBindValues(bindValues, statement.sql), span)
+          const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationArgsSchema)(mutationEvent)
+          this.storage.mutate(mutationEventEncoded, span)
         }
 
         // Uncomment to print a list of queries currently registered on the store
-        // console.log(JSON.parse(JSON.stringify([...this.queries].map((q) => `${labelForKey(q.componentKey)}/${q.label}`))))
-
-        // const statement =
-        //   typeof actionDefinition.statement === 'function'
-        //     ? actionDefinition.statement(args)
-        //     : actionDefinition.statement
+        // console.debug(JSON.parse(JSON.stringify([...this.queries].map((q) => `${labelForKey(q.componentKey)}/${q.label}`))))
 
         span.end()
 
-        return { writeTables: statement.writeTables, durationMs }
+        return { writeTables, durationMs }
       },
     )
   }
@@ -498,12 +424,12 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
   /**
    * Directly execute a SQL query on the Store.
    * This should only be used for framework-internal purposes;
-   * all app writes should go through applyEvent.
+   * all app writes should go through mutate.
    */
   execute = (
     query: string,
     params: ParamsObject = {},
-    writeTables?: ReadonlyArray<string>,
+    writeTables?: ReadonlySet<string>,
     otelContext?: otel.Context,
   ) => {
     this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
@@ -529,10 +455,23 @@ export class Store<TGraphQLContext extends BaseGraphQLContext = BaseGraphQLConte
     const data = this.inMemoryDB.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
   }
+
+  __devDownloadMutationLogDb = async () => {
+    const data = await this.storage?.getMutationLogData()
+    if (data !== undefined) {
+      downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
+    }
+  }
+
+  // TODO allow for graceful store reset without requiring a full page reload
+  dangerouslyResetStorage = () => this.storage?.dangerouslyReset()
 }
 
 /** Create a new LiveStore Store */
-export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
+export const createStore = async <
+  TGraphQLContext extends BaseGraphQLContext,
+  TSchema extends LiveStoreSchema = LiveStoreSchema,
+>({
   schema,
   loadStorage,
   graphQLOptions,
@@ -542,7 +481,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   boot,
   dbGraph,
 }: {
-  schema: LiveStoreSchema
+  schema: TSchema
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
@@ -550,7 +489,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
   sqlite3: Sqlite.Sqlite3Static
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   dbGraph?: DbGraph
-}): Promise<Store<TGraphQLContext>> => {
+}): Promise<Store<TGraphQLContext, TSchema>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -628,7 +567,7 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       // TODO: we can't apply the schema at this point, we've already loaded persisted data!
       // Think about what to do about this case.
       // await applySchema(db, schema)
-      return Store.createStore<TGraphQLContext>(
+      return Store.createStore<TGraphQLContext, TSchema>(
         { db, dbProxy, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph },
         span,
       )
@@ -636,21 +575,6 @@ export const createStore = async <TGraphQLContext extends BaseGraphQLContext>({
       span.end()
     }
   })
-}
-
-const eventToSql = (
-  event: LiveStoreEvent,
-  eventDefinition: ActionDefinition,
-): { statement: SQLWriteStatement; bindValues: ParamsObject } => {
-  const statement =
-    typeof eventDefinition.statement === 'function' ? eventDefinition.statement(event.args) : eventDefinition.statement
-
-  const prepareBindValues = eventDefinition.prepareBindValues ?? identity
-
-  const bindValues =
-    typeof eventDefinition.statement === 'function' && statement.argsAlreadyBound ? {} : prepareBindValues(event.args)
-
-  return { statement, bindValues }
 }
 
 class ReferenceCountedSet<T> {

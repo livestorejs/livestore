@@ -1,6 +1,9 @@
-import { DbSchema, makeSchema, sql } from '@livestore/livestore'
+import { DbSchema, makeSchema } from '@livestore/livestore'
 import { Priority, PriorityType, Status, StatusType } from '../types/issue'
 import { Schema } from '@effect/schema'
+import * as mutations from './mutations'
+
+export { mutations }
 
 const issue = DbSchema.table(
   'issue',
@@ -45,12 +48,7 @@ const comment = DbSchema.table(
     created: DbSchema.integer(),
   },
   {
-    indexes: [
-      {
-        name: 'issue_id',
-        columns: ['issueId'],
-      },
-    ],
+    indexes: [{ name: 'issue_id', columns: ['issueId'] }],
   },
 )
 
@@ -77,94 +75,5 @@ export type Description = DbSchema.FromTable.RowDecoded<typeof description>
 export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 
 export const tables = { issue, description, comment, filterStateTable }
-export const schema = makeSchema({
-  tables,
-  actions: {
-    createIssue: {
-      statement: {
-        sql: sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder")
-          VALUES ($id, $title, $priority, $status, $created, $modified, $kanbanorder)`,
-        writeTables: ['issue'],
-      },
-    },
-    createDescription: {
-      statement: {
-        sql: sql`INSERT INTO description ("id", "body") VALUES ($id, $body)`,
-        writeTables: ['description'],
-      },
-    },
-    createComment: {
-      statement: {
-        sql: sql`INSERT INTO comment ("id", "body", "issueId", "created", "creator")
-          VALUES ($id, $body, $issueId, $created, $creator)`,
-        writeTables: ['comment'],
-      },
-    },
-    deleteIssue: {
-      statement: {
-        sql: sql`DELETE FROM issue WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    deleteDescriptin: {
-      statement: {
-        sql: sql`DELETE FROM description WHERE id = $id`,
-        writeTables: ['description'],
-      },
-    },
-    deleteComment: {
-      statement: {
-        sql: sql`DELETE FROM comment WHERE id = $id`,
-        writeTables: ['comment'],
-      },
-    },
-    deleteCommentsByIssueId: {
-      statement: {
-        sql: sql`DELETE FROM comment WHERE issueId = $issueId`,
-        writeTables: ['comment'],
-      },
-    },
-    updateIssue: {
-      statement: {
-        sql: sql`UPDATE issue SET title = $title, priority = $priority, status = $status, modified = $modified WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    updateIssueStatus: {
-      statement: {
-        sql: sql`UPDATE issue SET status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    updateIssueKanbanOrder: {
-      statement: {
-        sql: sql`UPDATE issue SET kanbanorder = $kanbanorder, modified = unixepoch() * 1000 WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    updateIssueTitle: {
-      statement: {
-        sql: sql`UPDATE issue SET title = $title, modified = unixepoch() * 1000 WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    moveIssue: {
-      statement: {
-        sql: sql`UPDATE issue SET kanbanorder = $kanbanorder, status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    updateIssuePriority: {
-      statement: {
-        sql: sql`UPDATE issue SET priority = $priority, modified = unixepoch() * 1000 WHERE id = $id`,
-        writeTables: ['issue'],
-      },
-    },
-    updateDescription: {
-      statement: {
-        sql: sql`UPDATE description SET body = $body WHERE id = $id`,
-        writeTables: ['description'],
-      },
-    },
-  },
-})
+
+export const schema = makeSchema({ tables, mutations })

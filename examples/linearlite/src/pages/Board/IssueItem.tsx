@@ -8,6 +8,7 @@ import PriorityIcon from '../../components/PriorityIcon'
 import { Issue } from '../../types'
 import { PriorityType } from '../../types/issue'
 import { useStore } from '@livestore/livestore/react'
+import { mutations } from '../../domain/schema'
 
 interface IssueProps {
   issue: Issue
@@ -37,12 +38,8 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
     </span>
   )
 
-  const updatePriority = (priority: PriorityType) => {
-    store.applyEvent('updateIssuePriority', {
-      id: issue.id,
-      priority,
-    })
-  }
+  const updatePriority = (priority: PriorityType) =>
+    store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   return (
     <div

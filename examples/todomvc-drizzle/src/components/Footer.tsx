@@ -1,11 +1,11 @@
 import { Schema } from '@effect/schema'
-import { useQuery, useStore } from '@livestore/livestore/react'
+import { useQuery, useRow, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'
 import * as t from '../drizzle/schema.js'
-import type { Filter } from '../schema.js'
-import { useAppState } from '../useAppState.js'
+import { mutations, tables } from '../schema/index.js'
+import type { Filter } from '../types.js'
 
 const incompleteCount$ = queryDrizzle(
   (qb) =>
@@ -20,11 +20,11 @@ const incompleteCount$ = queryDrizzle(
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
-  const { filter } = useAppState()
+  const [{ filter }] = useRow(tables.app)
 
   const incompleteCount = useQuery(incompleteCount$)
 
-  const setFilter = (filter: Filter) => store.applyEvent('setFilter', { filter })
+  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter }))
 
   return (
     <footer className="footer">
@@ -46,7 +46,7 @@ export const Footer: React.FC = () => {
           </a>
         </li>
       </ul>
-      <button className="clear-completed" onClick={() => store.applyEvent('clearCompleted')}>
+      <button className="clear-completed" onClick={() => store.mutate(mutations.clearCompleted())}>
         Clear completed
       </button>
     </footer>

@@ -16,6 +16,7 @@ import { Priority, Status, PriorityDisplay, StatusType, PriorityType } from '../
 import { showInfo, showWarning } from '../utils/notification'
 import { useStore } from '@livestore/livestore/react'
 import { nanoid } from 'nanoid'
+import { mutations } from '../domain/schema'
 
 interface Props {
   isOpen: boolean
@@ -42,20 +43,11 @@ function IssueModal({ isOpen, onDismiss }: Props) {
 
     const date = Date.now()
     const id = nanoid()
-    store.applyEvent('createIssue', {
-      id,
-      title: title,
-      username: 'testuser',
-      priority: priority,
-      status: status,
-      modified: date,
-      created: date,
-      kanbanorder,
-    })
-    store.applyEvent('createDescription', {
-      id,
-      body: description ?? '',
-    })
+
+    store.mutate(
+      mutations.createIssue({ id, title, priority, status, modified: date, created: date, kanbanorder }),
+      mutations.createDescription({ id, body: description ?? '' }),
+    )
 
     if (onDismiss) onDismiss()
     reset()

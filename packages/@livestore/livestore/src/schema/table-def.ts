@@ -5,7 +5,7 @@ import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
-export { type SqliteDsl as __SqliteDsl } from 'effect-db-schema'
+export { type SqliteDsl } from 'effect-db-schema'
 
 import { dynamicallyRegisteredTables } from '../global-state.js'
 

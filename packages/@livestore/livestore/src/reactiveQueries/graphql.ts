@@ -197,6 +197,8 @@ export class LiveStoreGraphQLQuery<
 
       const durationMs = getDurationMsFromSpan(span)
 
+      this.executionTimes.push(durationMs)
+
       return {
         result,
         queriedTables: Array.from(context.queriedTables.values()),

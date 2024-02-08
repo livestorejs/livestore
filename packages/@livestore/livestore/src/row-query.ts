@@ -151,7 +151,9 @@ const insertRowWithDefaultValuesOrIgnore = ({
     ', ',
   )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
 
-  db.execute(insertQuery, prepareBindValues({ ...defaultValues, id }, insertQuery), [tableName], { otelContext })
+  db.execute(insertQuery, prepareBindValues({ ...defaultValues, id }, insertQuery), new Set([tableName]), {
+    otelContext,
+  })
 }
 
 const makeExecBeforeFirstRun =

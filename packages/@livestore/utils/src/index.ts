@@ -10,8 +10,6 @@ export * from './Deferred.js'
 export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
 
-export { v4 as uuid } from 'uuid'
-
 import type * as otel from '@opentelemetry/api'
 
 export * as dateFns from 'date-fns'

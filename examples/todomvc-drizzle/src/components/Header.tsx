@@ -1,18 +1,16 @@
-import { useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/livestore/react'
 import React from 'react'
 import { v4 as uuid } from 'uuid'
 
-import { useAppState } from '../useAppState.js'
+import { mutations, tables } from '../schema/index.js'
 
 export const Header: React.FC = () => {
   const { store } = useStore()
-  const { newTodoText } = useAppState()
+  const [{ newTodoText }] = useRow(tables.app)
 
-  const updateNewTodoText = (text: string) => store.applyEvent('updateNewTodoText', { text })
-  const addTodo = () => {
-    store.applyEvent('addTodo', { id: uuid(), text: newTodoText })
-    store.applyEvent('updateNewTodoText', { text: '' })
-  }
+  const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
+  const addTodo = () =>
+    store.mutate(mutations.addTodo({ id: uuid(), text: newTodoText }), mutations.updateNewTodoText({ text: '' }))
 
   return (
     <header className="header">

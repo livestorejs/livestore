@@ -5,17 +5,8 @@
 	https_port 443
 }
 
-*.livestore.localhost {
-	tls {$DEV_SSL_CERT} {$DEV_SSL_KEY}
-}
-
-linearlite.livestore.localhost {
-	reverse_proxy localhost:60000
-}
-
-todomvc.livestore.localhost {
-	reverse_proxy localhost:60001
-}
+# NOTE This file is split into 2 files, so the `Caddyfile-hosts` file can be imported from somewhere else
+import ./Caddyfile-hosts
 
 # header * {
 # 	Cross-Origin-Embedder-Policy: require-corp

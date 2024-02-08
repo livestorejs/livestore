@@ -57,6 +57,8 @@ export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone
   queryInfo: TQueryInfo
 
   runs: number
+
+  executionTimes: number[]
 }
 
 export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
@@ -80,6 +82,8 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
   get runs() {
     return this.results$.recomputations
   }
+
+  executionTimes: number[] = []
 
   abstract destroy: () => void
 

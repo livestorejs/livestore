@@ -3,17 +3,28 @@ import { pipe, ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import type { RowResult } from './row-query.js'
-import type { LiveStoreSchema } from './schema/index.js'
+import { rawSqlMutation, type RawSqlMutationEvent } from './schema/index.js'
 import { getDefaultValuesEncoded, type TableDef } from './schema/table-def.js'
-import type { GetValForKey } from './utils/util.js'
+import { type GetValForKey, isIterable } from './utils/util.js'
 
-export const makeMutations = <TDbSchema extends SqliteDsl.DbSchema>(
-  schema: LiveStoreSchema<TDbSchema>,
-): Mutations<TDbSchema> => {
-  return Object.fromEntries(Array.from(schema.tables.values()).map(mutationsForTable)) as any
+export const makeCudMutations = <TTableDef extends TableDef>(
+  tables: Iterable<TTableDef> | Record<string, TTableDef>,
+): CudMutations<TTableDef> => {
+  const cudMutationRecord: CudMutations<TTableDef> = {} as any
+
+  const tables_ = isIterable(tables) ? tables : Object.values(tables)
+
+  for (const tableDef of tables_) {
+    const [tableName, cudMutation] = cudMutationsForTable(tableDef)
+    cudMutationRecord[tableName] = cudMutation as any
+  }
+
+  return cudMutationRecord
 }
 
-const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [string, Mutation<TTableDef>] => {
+const cudMutationsForTable = <TTableDef extends TableDef>(
+  tableDef: TTableDef,
+): [TTableDef['sqliteDef']['name'], CudMutation<TTableDef>] => {
   const table = tableDef.sqliteDef
   const writeTables = new Set([table.name])
   const api = {
@@ -30,7 +41,7 @@ const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [st
         options: { orReplace: false },
         values: values as any,
       })
-      return { eventType: 'livestore.RawSql', args: { sql, bindValues, writeTables } }
+      return rawSqlMutation({ sql, bindValues, writeTables })
     },
     update: ({ where, values }) => {
       const [sql, bindValues] = SqlQueries.updateRows({
@@ -39,7 +50,7 @@ const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [st
         where: where,
         updateValues: values,
       })
-      return { eventType: 'livestore.RawSql', args: { sql, bindValues, writeTables } }
+      return rawSqlMutation({ sql, bindValues, writeTables })
     },
     delete: ({ where }) => {
       const [sql, bindValues] = SqlQueries.deleteRows({
@@ -47,40 +58,35 @@ const mutationsForTable = <TTableDef extends TableDef>(tableDef: TTableDef): [st
         columns: table.columns,
         where: where,
       })
-      return { eventType: 'livestore.RawSql', args: { sql, bindValues, writeTables } }
+      return rawSqlMutation({ sql, bindValues, writeTables })
     },
-  } satisfies Mutation<TTableDef>
+  } satisfies CudMutation<TTableDef>
 
   return [tableDef.sqliteDef.name, api]
-}
-
-export type MutationEvent = {
-  eventType: 'livestore.RawSql'
-  args: { sql: string; bindValues: SqlQueries.BindValues; writeTables: Set<string> }
 }
 
 export type UpdateMutation<TTableDef extends TableDef> = (args: {
   // TODO also allow `id` if present in `TTableDef`
   where: Partial<RowResult<TTableDef>>
   values: Partial<RowResult<TTableDef>>
-}) => MutationEvent
+}) => RawSqlMutationEvent
 
 export type RowInsert<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
   ? GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
   : SqliteDsl.FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>
 
-export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => MutationEvent
+export type InsertMutation<TTableDef extends TableDef> = (values: RowInsert<TTableDef>) => RawSqlMutationEvent
 
 export type DeleteMutation<TTableDef extends TableDef> = (args: {
   where: Partial<RowResult<TTableDef>>
-}) => MutationEvent
+}) => RawSqlMutationEvent
 
-export type Mutation<TTableDef extends TableDef> = {
+export type CudMutation<TTableDef extends TableDef> = {
   insert: InsertMutation<TTableDef>
   update: UpdateMutation<TTableDef>
   delete: DeleteMutation<TTableDef>
 }
 
-export type Mutations<TDbSchema extends SqliteDsl.DbSchema> = {
-  [TTableName in keyof TDbSchema]: Mutation<TableDef<TDbSchema[TTableName]>>
+export type CudMutations<TTableDef extends TableDef> = {
+  [TTableName in TTableDef['sqliteDef']['name']]: CudMutation<Extract<TTableDef, { sqliteDef: { name: TTableName } }>>
 }

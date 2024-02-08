@@ -8,13 +8,14 @@ import { Issue } from '../../types'
 import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
 import { ParseUtils, querySQL, sql } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
-import { tables } from '../../domain/schema'
+import { mutations, tables } from '../../domain/schema'
 
 export interface CommentsProps {
   issue: Issue
 }
 
 function Comments({ issue }: CommentsProps) {
+  // TODO move this into LiveStore
   const [newCommentBody, setNewCommentBody] = useState<string>('')
   const makeCommentQuery = useCallback(
     () =>
@@ -49,13 +50,16 @@ function Comments({ issue }: CommentsProps) {
       return
     }
 
-    store.applyEvent('createComment', {
-      id: nanoid(),
-      body: newCommentBody,
-      issueId: issue.id,
-      created: Date.now(),
-      creator: 'testuser',
-    })
+    store.mutate(
+      mutations.createComment({
+        id: nanoid(),
+        body: newCommentBody,
+        issueId: issue.id,
+        created: Date.now(),
+        creator: 'testuser',
+      }),
+    )
+
     setNewCommentBody('')
   }
 

@@ -80,6 +80,8 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
 
           const durationMs = getDurationMsFromSpan(span)
 
+          this.executionTimes.push(durationMs)
+
           setDebugInfo({ _tag: 'js', label, query: fn.toString(), durationMs })
 
           return res

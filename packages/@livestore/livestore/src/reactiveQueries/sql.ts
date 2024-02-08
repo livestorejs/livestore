@@ -173,6 +173,8 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
 
             const durationMs = getDurationMsFromSpan(span)
 
+            this.executionTimes.push(durationMs)
+
             setDebugInfo({ _tag: 'sql', label, query: sqlString, durationMs })
 
             return result

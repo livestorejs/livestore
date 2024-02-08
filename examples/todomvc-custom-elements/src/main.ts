@@ -2,13 +2,14 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { createStore, ParseUtils, querySQL, rowQuery, sql } from '@livestore/livestore'
+import { createStore, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
-import { uuid } from '@livestore/utils'
+import { cuid } from '@livestore/utils/cuid'
 import initSqlite3Wasm from 'sqlite-esm'
 
+import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'
-import { schema, tables } from './schema.js'
+import { mutations, schema, tables } from './schema.js'
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -22,31 +23,30 @@ const sqlite3Promise = initSqlite3Wasm({
 
 const store = await createStore({
   schema,
-  loadStorage: () => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs' }),
-  boot: async (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all')`),
+  loadStorage: () => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker }),
   sqlite3: await sqlite3Promise,
 })
 
 const appState$ = rowQuery(tables.app)
 const todos$ = querySQL(`select * from todos`, { map: ParseUtils.many(tables.todos) })
 
-const updateNewTodoText = (text: string) => store.applyEvent('updateNewTodoText', { text })
+const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
 
 const addTodo = (newTodoText: string) => {
-  store.applyEvent('addTodo', { id: uuid(), text: newTodoText })
-  store.applyEvent('updateNewTodoText', { text: '' })
+  store.mutate(mutations.addTodo({ id: cuid(), text: newTodoText }))
+  store.mutate(mutations.updateNewTodoText({ text: '' }))
 }
 
 const toggleTodo = (todo: Todo) => {
   if (todo.completed) {
-    store.applyEvent('uncompleteTodo', { id: todo.id })
+    store.mutate(mutations.uncompleteTodo({ id: todo.id }))
   } else {
-    store.applyEvent('completeTodo', { id: todo.id })
+    store.mutate(mutations.completeTodo({ id: todo.id }))
   }
 }
 
 const deleteTodo = (todo: Todo) => {
-  store.applyEvent('deleteTodo', { id: todo.id })
+  store.mutate(mutations.deleteTodo({ id: todo.id }))
 }
 
 const TodoItemTemplate = html`

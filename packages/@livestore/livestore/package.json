@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.39",
+  "version": "0.0.40",
   "type": "module",
   "exports": {
     ".": {
@@ -10,6 +10,14 @@
     "./storage/web-worker": {
       "types": "./dist/storage/web-worker/index.d.ts",
       "default": "./dist/storage/web-worker/index.js"
+    },
+    "./storage/web-worker/worker": {
+      "types": "./dist/storage/web-worker/make-worker.d.ts",
+      "default": "./dist/storage/web-worker/make-worker.js"
+    },
+    "./storage/web-worker/vite-dev-polyfill": {
+      "types": "./dist/storage/web-worker/vite-dev-polyfill.d.ts",
+      "default": "./dist/storage/web-worker/vite-dev-polyfill.js"
     },
     "./storage/in-memory": {
       "types": "./dist/storage/in-memory/index.d.ts",
@@ -37,6 +45,12 @@
     "*": {
       "storage/web-worker": [
         "./dist/storage/web-worker/index.d.ts"
+      ],
+      "storage/web-worker/worker": [
+        "./dist/storage/web-worker/make-worker.d.ts"
+      ],
+      "storage/web-worker/vite-dev-polyfill": [
+        "./dist/storage/web-worker/vite-dev-polyfill.d.ts"
       ],
       "storage/in-memory": [
         "./dist/storage/in-memory/index.d.ts"
@@ -67,22 +81,20 @@
     "comlink": "^4.4.1",
     "effect-db-schema": "workspace:*",
     "lodash-es": "^4.17.21",
-    "sqlite-esm": "3.42.0-build6",
-    "uuid": "^9.0.1"
+    "sqlite-esm": "3.42.0-build6"
   },
   "devDependencies": {
     "@opentelemetry/sdk-trace-base": "1.21.0",
     "@tauri-apps/api": "^1.5.3",
-    "@testing-library/react": "^14.2.0",
+    "@testing-library/react": "^14.2.1",
     "@types/lodash-es": "^4.17.12",
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18",
-    "@types/uuid": "^9.0.8",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
     "jsdom": "^24.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "5.3.3",
-    "vite": "5.0.12",
+    "vite": "5.1.0",
     "vitest": "^1.2.2"
   },
   "peerDependencies": {
