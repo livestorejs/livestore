@@ -43,8 +43,8 @@
     "pretty-bytes": "^6.1.1"
   },
   "devDependencies": {
-    "@types/web": "^0.0.136",
-    "@types/node": "^20.11.16"
+    "@types/node": "^20.11.16",
+    "@types/web": "^0.0.138"
   },
   "publishConfig": {
     "access": "public"

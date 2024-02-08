@@ -8,11 +8,11 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.61.5",
+    "@effect/schema": "0.61.7",
     "@livestore/devtools-react": "0.0.40-dev.3",
     "@livestore/livestore": "latest",
     "@livestore/utils": "latest",
-    "effect": "2.2.3",
+    "effect": "2.2.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sqlite-esm": "3.42.0-build6",
@@ -21,16 +21,16 @@
     "workbox-window": "^7.0.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
     "@types/uuid": "^9.0.8",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.33",
+    "postcss": "^8.4.35",
     "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12",
+    "vite": "^5.1.0",
     "vite-plugin-pwa": "^0.17.5"
   }
 }
