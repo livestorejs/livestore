@@ -52,7 +52,6 @@
     "@svgr/plugin-jsx": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "@tailwindcss/typography": "^0.5.10",
-    "@types/jest": "^29.5.11",
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20.11.13",
     "@types/react": "^18.2.48",

@@ -34,11 +34,11 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/opentelemetry": "^0.30.12",
-    "@effect/schema": "0.61.5",
+    "@effect/opentelemetry": "^0.30.14",
+    "@effect/schema": "0.61.7",
     "@opentelemetry/api": "^1.7.0",
     "date-fns": "^3.3.1",
-    "effect": "2.2.3",
+    "effect": "2.2.5",
     "otel-websocket-exporter": "^0.0.27",
     "pretty-bytes": "^6.1.1"
   },
