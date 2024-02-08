@@ -13,8 +13,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/schema": "0.61.5",
-    "effect": "2.2.3",
+    "@effect/schema": "0.61.7",
+    "effect": "2.2.5",
     "effect-db-schema": "workspace:*"
   },
   "publishConfig": {

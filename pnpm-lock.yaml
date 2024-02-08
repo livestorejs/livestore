@@ -522,8 +522,8 @@ importers:
   packages/@livestore/sql-queries:
     dependencies:
       '@effect/schema':
-        specifier: 0.61.5
-        version: 0.61.5(effect@2.2.5)(fast-check@3.15.0)
+        specifier: 0.61.7
+        version: 0.61.7(effect@2.2.5)(fast-check@3.15.0)
       effect:
         specifier: 2.2.5
         version: 2.2.5
@@ -2157,16 +2157,6 @@ packages:
       '@opentelemetry/resources': 1.21.0(@opentelemetry/api@1.7.0)
       '@opentelemetry/semantic-conventions': 1.21.0
       effect: 2.2.5
-    dev: false
-
-  /@effect/schema@0.61.5(effect@2.2.5)(fast-check@3.15.0):
-    resolution: {integrity: sha512-Z+16tlYGSMQIcurMsIyhR1zlJnIRKxKc+/a0+sTums9VN52FXjQcDEhfhInYUWjhI81k8QkeG4TV6B3GyFKKMw==}
-    peerDependencies:
-      effect: 2.2.5
-      fast-check: ^3.13.2
-    dependencies:
-      effect: 2.2.5
-      fast-check: 3.15.0
     dev: false
 
   /@effect/schema@0.61.7(effect@2.2.5)(fast-check@3.15.0):
@@ -5089,7 +5079,6 @@ packages:
   /esbuild@0.19.11:
     resolution: {integrity: sha512-HJ96Hev2hX/6i5cDVwcqiJBBtuo9+FeIJOtZ9W1kA5M6AMJRHUZlpYZ1/SbEwtO0ioNAW8rUooVpC/WehY2SfA==}
     engines: {node: '>=12'}
-    hasBin: true
     requiresBuild: true
     optionalDependencies:
       '@esbuild/aix-ppc64': 0.19.11
@@ -6304,19 +6293,16 @@ packages:
 
   /jsesc@0.5.0:
     resolution: {integrity: sha512-uZz5UnB7u4T9LvwmFqXii7pZSouaRPorGs5who1Ip7VO0wxanFvBL7GkM6dTHlgX+jhBApRetaWpnDabOeTcnA==}
-    hasBin: true
     dev: true
 
   /jsesc@2.5.2:
     resolution: {integrity: sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==}
     engines: {node: '>=4'}
-    hasBin: true
     dev: true
 
   /jsesc@3.0.2:
     resolution: {integrity: sha512-xKqzzWXDttJuOcawBt4KnKHHIf5oQ/Cxax+0PWFG+DFDgHNAdi+TXECADI+RYiFUMmx8792xsMbbgXj4CwnP4g==}
     engines: {node: '>=6'}
-    hasBin: true
     dev: true
 
   /json-buffer@3.0.1:
@@ -6559,7 +6545,6 @@ packages:
 
   /lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
-    hasBin: true
     dev: true
 
   /magic-string@0.25.9:
@@ -6932,12 +6917,10 @@ packages:
   /nanoid@3.3.7:
     resolution: {integrity: sha512-eSRppjcPIatRIMC1U6UngP8XFcz8MQWGQdt1MTBQ7NaAmvXDfvNxbvWV3x2y6CdEUciCSsDHDQZbhYaB8QEo2g==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
 
   /nanoid@5.0.5:
     resolution: {integrity: sha512-/Veqm+QKsyMY3kqi4faWplnY1u+VuKO3dD2binyPIybP31DRO29bPF+1mszgLnrR2KqSLceFLBNw0zmvDzN1QQ==}
     engines: {node: ^18 || >=20}
-    hasBin: true
     dev: false
 
   /natural-compare@1.4.0:
@@ -7381,7 +7364,6 @@ packages:
   /prettier@3.2.5:
     resolution: {integrity: sha512-3/GWa9aOC0YeD7LUfvOG2NiDyhOWRvt1k+rcKhOuYnMY24iiCphgneUfJDyFXd6rZCAnuLBv6UeAULtrhT/F4A==}
     engines: {node: '>=14'}
-    hasBin: true
     dev: true
 
   /pretty-bytes@5.6.0:
@@ -7850,7 +7832,6 @@ packages:
 
   /regexp-tree@0.1.27:
     resolution: {integrity: sha512-iETxpjK6YoRWJG5o6hXLwvjYAoW+FEZn9os0PD/b6AP6xQwsa/Y7lCVgIixBbUPMfhu+i2LtdeAqVTgGlQarfA==}
-    hasBin: true
     dev: true
 
   /regexp.prototype.flags@1.5.1:
@@ -7876,7 +7857,6 @@ packages:
 
   /regjsparser@0.10.0:
     resolution: {integrity: sha512-qx+xQGZVsy55CH0a1hiVwHmqjLryfh7wQyF5HO07XJ9f7dQMY/gPQHhlyDkIzJKC+x2fUCpCcUODUUUFrm7SHA==}
-    hasBin: true
     dependencies:
       jsesc: 0.5.0
     dev: true
@@ -7996,7 +7976,6 @@ packages:
   /rollup@4.9.4:
     resolution: {integrity: sha512-2ztU7pY/lrQyXSCnnoU4ICjT/tCG9cdH3/G25ERqE3Lst6vl2BCM5hL2Nw+sslAvAf+ccKsAq1SkKQALyqhR7g==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
-    hasBin: true
     dependencies:
       '@types/estree': 1.0.5
     optionalDependencies:
@@ -8094,7 +8073,6 @@ packages:
 
   /semver@5.7.2:
     resolution: {integrity: sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==}
-    hasBin: true
     dev: true
 
   /semver@6.3.1:
@@ -8104,7 +8082,6 @@ packages:
   /semver@7.5.4:
     resolution: {integrity: sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==}
     engines: {node: '>=10'}
-    hasBin: true
     dependencies:
       lru-cache: 6.0.0
 
@@ -8976,7 +8953,6 @@ packages:
   /vite@5.1.0(@types/node@20.11.16):
     resolution: {integrity: sha512-STmSFzhY4ljuhz14bg9LkMTk3d98IO6DIArnTY6MeBwiD1Za2StcQtz7fzOUnRCqrHSD5+OS2reg4HOz1eoLnw==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
