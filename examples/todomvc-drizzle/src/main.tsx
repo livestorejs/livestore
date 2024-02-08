@@ -1,5 +1,4 @@
 import 'todomvc-app-css/index.css'
-import '@livestore/devtools-react/style.css'
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
