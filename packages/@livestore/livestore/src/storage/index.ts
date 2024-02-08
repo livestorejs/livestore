@@ -22,6 +22,10 @@ export interface Storage {
 
   /** Return a snapshot of persisted data from the storage */
   getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>
+
+  getMutationLogData(parentSpan?: otel.Span): Promise<Uint8Array>
+
+  dangerouslyReset(): Promise<void>
 }
 
 export type StorageType = 'tauri' | 'web' | 'web-in-memory'

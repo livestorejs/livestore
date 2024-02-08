@@ -21,4 +21,8 @@ export class InMemoryStorage implements Storage {
   mutate = (_mutationEventEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
 
   getPersistedData = async (): Promise<Uint8Array> => new Uint8Array()
+
+  getMutationLogData = async (): Promise<Uint8Array> => new Uint8Array()
+
+  dangerouslyReset = async () => {}
 }

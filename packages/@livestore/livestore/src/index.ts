@@ -13,7 +13,7 @@ export { LiveStoreSQLQuery, querySQL, type MapRows } from './reactiveQueries/sql
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 export { type GetAtomResult, type DbGraph, makeDbGraph, type LiveQuery } from './reactiveQueries/base-class.js'
 
-export { globalDbGraph } from './global-state.js'
+export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
 
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 

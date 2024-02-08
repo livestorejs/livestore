@@ -128,6 +128,8 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
         batchItems = executionItems.splice(0, 50)
 
+        // console.debug('livestore-webworker: executing batch', batchItems)
+
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item

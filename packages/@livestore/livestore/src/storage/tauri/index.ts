@@ -50,6 +50,13 @@ export class TauriStorage implements Storage {
     )
   }
 
+  // TODO
+  getMutationLogData = async (): Promise<Uint8Array> => new Uint8Array()
+
+  dangerouslyReset = async () => {
+    // TODO
+  }
+
   private getOtelData = (parentSpan?: otel.Span) => getOtelData_(parentSpan ?? this.parentSpan)!
 }
 

@@ -68,4 +68,18 @@ export class IDB {
       }
     })
   }
+
+  public async deleteDb(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const deleteRequest = indexedDB.deleteDatabase(this.dbName)
+
+      deleteRequest.onsuccess = () => {
+        resolve()
+      }
+
+      deleteRequest.onerror = () => {
+        reject(new Error('Failed to delete database.'))
+      }
+    })
+  }
 }

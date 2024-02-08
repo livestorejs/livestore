@@ -138,7 +138,7 @@ export function* createIssues(numTasks: number): Generator<[Issue, Description]>
       modified: Date.now() - i * 2 * 24 * 60 * 60 * 1000,
       status: getRandomItem(statuses),
       priority: getRandomItem(priorities),
-      kanbanorder: '1',
+      kanbanorder: 'a1',
     }
     yield [
       task,

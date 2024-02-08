@@ -455,6 +455,16 @@ export class Store<
     const data = this.inMemoryDB.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
   }
+
+  __devDownloadMutationLogDb = async () => {
+    const data = await this.storage?.getMutationLogData()
+    if (data !== undefined) {
+      downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
+    }
+  }
+
+  // TODO allow for graceful store reset without requiring a full page reload
+  dangerouslyResetStorage = () => this.storage?.dangerouslyReset()
 }
 
 /** Create a new LiveStore Store */
