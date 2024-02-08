@@ -1,4 +1,4 @@
-import { DbSchema, makeCudMutations, makeSchema } from '@livestore/livestore'
+import { DbSchema, makeSchema } from '@livestore/livestore'
 import { Priority, PriorityType, Status, StatusType } from '../types/issue'
 import { Schema } from '@effect/schema'
 import * as mutations from './mutations'
