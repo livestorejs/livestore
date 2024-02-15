@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyRecord, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
@@ -138,10 +138,7 @@ const insertRowWithDefaultValuesOrIgnore = ({
   otelContext: otel.Context
   defaultValues: Partial<RowResult<TableDef>> | undefined
 }) => {
-  const defaultValues = pipe(
-    getDefaultValuesEncoded(table),
-    ReadonlyRecord.map((val, columnName) => explicitDefaultValues?.[columnName] ?? val),
-  )
+  const defaultValues = getDefaultValuesEncoded(table, explicitDefaultValues)
 
   const defaultColumnNames = [...Object.keys(defaultValues), 'id']
   const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')

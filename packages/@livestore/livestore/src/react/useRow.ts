@@ -11,6 +11,7 @@ import { rowQuery } from '../row-query.js'
 import { type DefaultSqliteTableDef, type TableDef, tableIsSingleton, type TableOptions } from '../schema/table-def.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
+import { useCleanup } from './utils/useCleanup.js'
 
 export type UseRowResult<TTableDef extends TableDef> = [
   row: RowResult<TTableDef>,
@@ -95,8 +96,8 @@ export const useRow: {
     return { query$, otelContext }
   }, [table, id, reactId, store, defaultValues, dbGraph])
 
-  React.useEffect(
-    () => () => {
+  useCleanup(
+    React.useCallback(() => {
       const cachedItem = rcCache.get(table, id ?? 'singleton')!
 
       cachedItem.reactIds.delete(reactId)
@@ -105,8 +106,7 @@ export const useRow: {
         cachedItem.query$.destroy()
         cachedItem.span.end()
       }
-    },
-    [table, id, reactId],
+    }, [table, id, reactId]),
   )
 
   const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowResult<TTableDef>>

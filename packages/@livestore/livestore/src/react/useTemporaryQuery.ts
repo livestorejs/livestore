@@ -2,6 +2,7 @@ import React from 'react'
 
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import { useQueryRef } from './useQuery.js'
+import { useCleanup } from './utils/useCleanup.js'
 
 /**
  * This is needed because the `React.useMemo` call below, can sometimes be called multiple times 🤷.
@@ -35,8 +36,8 @@ export const useTemporaryQueryRef = <TResult>(makeQuery: () => LiveQuery<TResult
     return query$
   }, [reactId, makeQuery])
 
-  React.useEffect(
-    () => () => {
+  useCleanup(
+    React.useCallback(() => {
       const cachedItem = queryCache.get(makeQuery)!
 
       cachedItem.reactIds.delete(reactId)
@@ -45,8 +46,7 @@ export const useTemporaryQueryRef = <TResult>(makeQuery: () => LiveQuery<TResult
         cachedItem.query$.destroy()
         queryCache.delete(makeQuery)
       }
-    },
-    [makeQuery, reactId],
+    }, [makeQuery, reactId]),
   )
 
   return useQueryRef(query$)
