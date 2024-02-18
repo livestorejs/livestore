@@ -14,8 +14,8 @@
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
-    "@livestore/devtools-react": "0.0.40",
-    "effect": "2.3.6",
+    "@livestore/devtools-react": "0.0.41-dev.0",
+    "effect": "2.3.7",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {
@@ -35,7 +35,7 @@
     "eslint-plugin-simple-import-sort": "^12.0.0",
     "eslint-plugin-unicorn": "^51.0.1",
     "prettier": "^3.2.5",
-    "prettier-plugin-packagejson": "^2.4.10",
+    "prettier-plugin-packagejson": "^2.4.11",
     "typescript": "^5.3.3"
   },
   "packageManager": "pnpm@8.8.0",
