@@ -12,7 +12,7 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 // The result is a reactive query whose value is a string containing the filter clause.
 const filterClause$ = querySQL(sql`select filter from app`, {
   map: (rows) => {
-    const { filter } = Schema.decodeSync(tables.app.schema.pipe(Schema.pick('filter'), Schema.array, Schema.headOr))(
+    const { filter } = Schema.decodeSync(tables.app.schema.pipe(Schema.pick('filter'), Schema.array, Schema.headOr()))(
       rows,
     )
     return filter === 'all' ? '' : `where completed = ${filter === 'completed'}`

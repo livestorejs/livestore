@@ -7,7 +7,7 @@ import { mutations, tables } from '../schema/index.js'
 import type { Filter } from '../types.js'
 
 const incompleteCount$ = querySQL(`select count(*) as c from todos where completed = false;`, {
-  map: Schema.pluck(Schema.struct({ c: Schema.number }), 'c').pipe(Schema.array, Schema.headOr),
+  map: Schema.struct({ c: Schema.number }).pipe(Schema.pluck('c'), Schema.array, Schema.headOr()),
 })
 
 export const Footer: React.FC = () => {
