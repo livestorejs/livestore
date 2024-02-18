@@ -19,7 +19,7 @@ export type InternalMutationSchema<TRecord extends MutationDefRecord = MutationD
 
 export type MutationDef<TName extends string, TFrom, TTo> = {
   name: TName
-  schema: Schema.Schema<never, TFrom, TTo>
+  schema: Schema.Schema<TTo, TFrom>
   sql:
     | string
     | ((args: TTo) =>
@@ -42,7 +42,7 @@ export namespace MutationDef {
 // TODO possibly also allow for mutation event subsumption behaviour
 export const defineMutation = <TName extends string, TFrom, TTo>(
   name: TName,
-  schema: Schema.Schema<never, TFrom, TTo>,
+  schema: Schema.Schema<TTo, TFrom>,
   sql: string | ((args: TTo) => string | { sql: string; bindValues: BindValues; writeTables?: ReadonlySet<string> }),
 ): MutationDef<TName, TFrom, TTo> => {
   const makeEvent = (args: TTo) => ({ mutation: name, args, id: cuid() })
@@ -98,18 +98,17 @@ export namespace MutationEvent {
 }
 
 export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
-  never,
   {
     [K in keyof TMutationsDefRecord]: {
       mutation: K
-      args: Schema.Schema.From<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.To<TMutationsDefRecord[K]['schema']>
       id: string
     }
   }[keyof TMutationsDefRecord],
   {
     [K in keyof TMutationsDefRecord]: {
       mutation: K
-      args: Schema.Schema.To<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.From<TMutationsDefRecord[K]['schema']>
       id: string
     }
   }[keyof TMutationsDefRecord]

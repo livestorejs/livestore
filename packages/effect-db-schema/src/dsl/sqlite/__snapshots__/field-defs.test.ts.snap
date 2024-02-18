@@ -34,9 +34,9 @@ exports[`FieldDefs > boolean 1`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -76,9 +76,9 @@ exports[`FieldDefs > boolean 2`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -119,9 +119,9 @@ exports[`FieldDefs > boolean 3`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -178,9 +178,9 @@ exports[`FieldDefs > datetime 1`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -237,9 +237,9 @@ exports[`FieldDefs > datetime 2`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -310,9 +310,9 @@ exports[`FieldDefs > datetime 3`] = `
       ],
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -370,9 +370,9 @@ exports[`FieldDefs > datetime 4`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -425,9 +425,9 @@ exports[`FieldDefs > json 1`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -494,9 +494,9 @@ exports[`FieldDefs > json 2`] = `
       ],
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -579,9 +579,9 @@ exports[`FieldDefs > json 3`] = `
       ],
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -605,9 +605,9 @@ exports[`FieldDefs > text 1`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -631,9 +631,9 @@ exports[`FieldDefs > text 2`] = `
       },
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -671,9 +671,9 @@ exports[`FieldDefs > text 3`] = `
       ],
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -709,9 +709,9 @@ exports[`FieldDefs > text 4`] = `
       ],
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }
@@ -747,9 +747,9 @@ exports[`FieldDefs > text 5`] = `
       ],
     },
     Symbol(@effect/schema/Schema): {
-      "From": [Function],
-      "R": [Function],
-      "To": [Function],
+      "_A": [Function],
+      "_I": [Function],
+      "_R": [Function],
     },
   },
 }

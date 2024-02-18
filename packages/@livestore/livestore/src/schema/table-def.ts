@@ -18,7 +18,7 @@ export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string,
 //   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
 //   TIsSingleColumn extends boolean = boolean,
 //   TOptions extends TableOptions = TableOptions,
-// > = TableDefBase<TSqliteDef, TIsSingleColumn, TOptions> & { schema: Schema.Schema<never, any, any> }
+// > = TableDefBase<TSqliteDef, TIsSingleColumn, TOptions> & { schema: Schema.Schema<any> }
 
 // /**
 //  * NOTE in the past we used to have a single `TableDef` but there are some TS issues when indroducing
@@ -44,14 +44,13 @@ export type TableDef<
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
   // as we don't want the alias type for users to show up
   TSchema = Schema.Schema<
-    never,
-    SqliteDsl.AnyIfConstained<
-      TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.From<TSqliteDef['columns'][K]['schema']> }
-    >,
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
       { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.To<TSqliteDef['columns'][K]['schema']> }
+    >,
+    SqliteDsl.AnyIfConstained<
+      TSqliteDef['columns'],
+      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.From<TSqliteDef['columns'][K]['schema']> }
     >
   >,
 > = {
@@ -156,19 +155,25 @@ export const tableIsSingleton = <TTableDef extends TableDef>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
 
-export const getDefaultValuesEncoded = <TTableDef extends TableDef>(tableDef: TTableDef) =>
+export const getDefaultValuesEncoded = <TTableDef extends TableDef>(
+  tableDef: TTableDef,
+  fallbackValues?: Record<string, any>,
+) =>
   pipe(
     tableDef.sqliteDef.columns,
-    ReadonlyRecord.filter((_, key) => key !== 'id'),
-    ReadonlyRecord.filter(
-      (col) => col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false,
-    ),
+    ReadonlyRecord.filter((col, key) => {
+      if (fallbackValues?.[key] !== undefined) return true
+      if (key === 'id') return false
+      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
+    }),
     ReadonlyRecord.map((column, columnName) =>
-      column!.default._tag === 'None'
-        ? column!.nullable === true
-          ? null
-          : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
-        : Schema.encodeSync(column!.schema)(column!.default.value),
+      fallbackValues?.[columnName] === undefined
+        ? column!.default._tag === 'None'
+          ? column!.nullable === true
+            ? null
+            : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
+          : Schema.encodeSync(column!.schema)(column!.default.value)
+        : fallbackValues[columnName],
     ),
   )
 

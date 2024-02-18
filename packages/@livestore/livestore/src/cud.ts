@@ -1,5 +1,4 @@
 import * as SqlQueries from '@livestore/sql-queries'
-import { pipe, ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import type { RowResult } from './row-query.js'
@@ -29,11 +28,7 @@ const cudMutationsForTable = <TTableDef extends TableDef>(
   const writeTables = new Set([table.name])
   const api = {
     insert: (values_: any) => {
-      const defaultValues = getDefaultValuesEncoded(tableDef)
-      const values = pipe(
-        tableDef.sqliteDef.columns,
-        ReadonlyRecord.map((_, columnName) => values_?.[columnName] ?? defaultValues[columnName]),
-      )
+      const values = getDefaultValuesEncoded(tableDef, values_)
 
       const [sql, bindValues] = SqlQueries.insertRow({
         tableName: table.name,

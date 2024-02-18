@@ -12,7 +12,7 @@ import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
-export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<never, From, To>
+export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<To, From>
 
 export const queryGraphQL = <
   TResult extends Record<string, any>,
@@ -76,7 +76,7 @@ export class LiveStoreGraphQLQuery<
         ? (res: TResult) => res as any as TResultMapped
         : Schema.isSchema(map)
           ? (res: TResult) => {
-              const parseResult = Schema.decodeEither(map as Schema.Schema<never, TResult, TResultMapped>)(res)
+              const parseResult = Schema.decodeEither(map as Schema.Schema<TResultMapped, TResult>)(res)
               if (parseResult._tag === 'Left') {
                 console.error(`Error parsing GraphQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
                 return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
