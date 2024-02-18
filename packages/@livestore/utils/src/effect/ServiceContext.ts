@@ -35,7 +35,7 @@ export const make = <TStaticData, Ctx>(
     close: close,
     closePromise: () => Effect.runPromise(close),
     staticData,
-  };
+  }
 }
 
 export interface ServiceContext<Ctx, TStaticData> {

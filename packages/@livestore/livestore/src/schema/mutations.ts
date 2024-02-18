@@ -97,19 +97,22 @@ export namespace MutationEvent {
   }[keyof TSchema['_MutationDefMapType']]
 }
 
-export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<{
-  [K in keyof TMutationsDefRecord]: {
-    mutation: K
-    args: Schema.Schema.To<TMutationsDefRecord[K]['schema']>
-    id: string
-  }
-}[keyof TMutationsDefRecord], {
-  [K in keyof TMutationsDefRecord]: {
-    mutation: K
-    args: Schema.Schema.From<TMutationsDefRecord[K]['schema']>
-    id: string
-  }
-}[keyof TMutationsDefRecord]>
+export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
+  {
+    [K in keyof TMutationsDefRecord]: {
+      mutation: K
+      args: Schema.Schema.To<TMutationsDefRecord[K]['schema']>
+      id: string
+    }
+  }[keyof TMutationsDefRecord],
+  {
+    [K in keyof TMutationsDefRecord]: {
+      mutation: K
+      args: Schema.Schema.From<TMutationsDefRecord[K]['schema']>
+      id: string
+    }
+  }[keyof TMutationsDefRecord]
+>
 
 export const makeMutationEventSchema = <TMutationsDefRecord extends MutationDefRecord>(
   mutationDefRecord: TMutationsDefRecord,
