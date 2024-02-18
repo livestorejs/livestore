@@ -10,20 +10,15 @@ export const useCleanup = (
   cleanupCallback: () => void,
 ) => {
   const callbackRef = React.useRef(cleanupCallback)
-  const alreadyRun = React.useRef(false)
 
   if (callbackRef.current !== cleanupCallback) {
     callbackRef.current()
     callbackRef.current = cleanupCallback
-    alreadyRun.current = true
   }
 
   React.useEffect(
     () => () => {
-      if (alreadyRun.current === false) {
-        callbackRef.current()
-        alreadyRun.current = true
-      }
+      callbackRef.current()
     },
     [],
   )

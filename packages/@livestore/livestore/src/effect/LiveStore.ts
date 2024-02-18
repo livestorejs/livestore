@@ -34,11 +34,11 @@ export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContex
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
 }
 
-export const LiveStoreContext = Context.Tag<LiveStoreContext>('@livestore/livestore/LiveStoreContext')
+export const LiveStoreContext = Context.GenericTag<LiveStoreContext>('@livestore/livestore/LiveStoreContext')
 
-export type DeferredStoreContext = Deferred.Deferred<never, LiveStoreContext>
-export const DeferredStoreContext = Context.Tag<DeferredStoreContext>(
-  Symbol.for('@livestore/livestore/DeferredStoreContext'),
+export type DeferredStoreContext = Deferred.Deferred<LiveStoreContext>
+export const DeferredStoreContext = Context.GenericTag<DeferredStoreContext>(
+  '@livestore/livestore/DeferredStoreContext',
 )
 
 // export const DeferredStoreContext = Effect.cached(Effect.flatMap(StoreContext, (_) => Effect.succeed(_)))
@@ -47,21 +47,21 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
   loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: {
-    schema: Effect.Effect<otel.Tracer, never, GraphQLSchema>
+    schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
     makeContext: (db: InMemoryDatabase) => GraphQLContext
   }
-  boot?: (db: InMemoryDatabase) => Effect.Effect<never, never, void>
+  boot?: (db: InMemoryDatabase) => Effect.Effect<void>
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
   props: LiveStoreContextProps<GraphQLContext>,
-): Layer.Layer<otel.Tracer, never, LiveStoreContext> =>
+): Layer.Layer<LiveStoreContext, never, otel.Tracer> =>
   Layer.scoped(LiveStoreContext, makeLiveStoreContext(props)).pipe(
     Layer.withSpan('LiveStore'),
     Layer.provide(LiveStoreContextDeferred),
   )
 
-export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Deferred.make<never, LiveStoreContext>())
+export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Deferred.make<LiveStoreContext>())
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
   schema,
@@ -69,9 +69,9 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   graphQLOptions: graphQLOptions_,
   boot: boot_,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
-  DeferredStoreContext | Scope.Scope | otel.Tracer,
+  LiveStoreContext,
   never,
-  LiveStoreContext
+  DeferredStoreContext | Scope.Scope | otel.Tracer
 > =>
   pipe(
     Effect.gen(function* ($) {

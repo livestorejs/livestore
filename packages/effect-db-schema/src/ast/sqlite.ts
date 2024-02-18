@@ -24,7 +24,7 @@ export type Column = {
   primaryKey: boolean
   nullable: boolean
   default: Option.Option<any>
-  schema: Schema.Schema<never, any>
+  schema: Schema.Schema<any>
 }
 
 export const column = (props: Omit<Column, '_tag'>): Column => ({ _tag: 'column', ...props })

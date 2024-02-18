@@ -2,11 +2,11 @@ import type { Runtime } from 'effect'
 import { Cause, Effect, Exit, Fiber, Layer, pipe, Scope } from 'effect'
 
 export interface MainLayer<Ctx> {
-  layer: Layer.Layer<never, never, Ctx>
-  close: Effect.Effect<never, never, void>
+  layer: Layer.Layer<Ctx>
+  close: Effect.Effect<void>
 }
 
-export const unsafeMainLayer = <Ctx>(original: Layer.Layer<never, never, Ctx>): MainLayer<Ctx> => {
+export const unsafeMainLayer = <Ctx>(original: Layer.Layer<Ctx>): MainLayer<Ctx> => {
   const scope = Effect.runSync(Scope.make())
   const layer = pipe(
     original,
@@ -21,56 +21,56 @@ export const unsafeMainLayer = <Ctx>(original: Layer.Layer<never, never, Ctx>): 
 export const make = <TStaticData, Ctx>(
   staticData: TStaticData,
   runtime: Runtime.Runtime<Ctx>,
-  close: Effect.Effect<never, never, void> = Effect.dieMessage('close not implemented'),
+  close: Effect.Effect<void> = Effect.dieMessage('close not implemented'),
 ): ServiceContext<Ctx, TStaticData> => {
   return {
     provide: (self) => Effect.provide(runtime)(self),
-    runWithErrorLog: <E, A>(self: Effect.Effect<Ctx, E, A>) => runWithErrorLog(Effect.provide(runtime)(self)),
-    runSync: <E, A>(self: Effect.Effect<Ctx, E, A>) => Effect.runSync(Effect.provide(runtime)(self)),
-    runPromiseWithErrorLog: <E, A>(self: Effect.Effect<Ctx, E, A>) =>
+    runWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) => runWithErrorLog(Effect.provide(runtime)(self)),
+    runSync: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runSync(Effect.provide(runtime)(self)),
+    runPromiseWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) =>
       runPromiseWithErrorLog(Effect.provide(runtime)(self)),
-    runPromiseExit: <E, A>(self: Effect.Effect<Ctx, E, A>) => Effect.runPromiseExit(Effect.provide(runtime)(self)),
-    runPromise: <E, A>(self: Effect.Effect<Ctx, E, A>) => Effect.runPromise(Effect.provide(runtime)(self)),
+    runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromiseExit(Effect.provide(runtime)(self)),
+    runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromise(Effect.provide(runtime)(self)),
     withRuntime: (fn) => fn(runtime),
     close: close,
     closePromise: () => Effect.runPromise(close),
     staticData,
-  }
+  };
 }
 
 export interface ServiceContext<Ctx, TStaticData> {
-  readonly provide: <E, A>(self: Effect.Effect<Ctx, E, A>) => Effect.Effect<never, E, A>
+  readonly provide: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.Effect<A, E>
 
   /**
    * Fire and Forget. Errors are logged however.
    */
-  readonly runWithErrorLog: <E, A>(self: Effect.Effect<Ctx, E, A>) => AbortCallback
+  readonly runWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) => AbortCallback
 
-  readonly runSync: <E, A>(self: Effect.Effect<Ctx, E, A>) => A
+  readonly runSync: <E, A>(self: Effect.Effect<A, E, Ctx>) => A
 
   /**
    * Fire and Forget. A promise that never fails nor returns any value.
    * Errors are logged however.
    */
-  readonly runPromiseWithErrorLog: <E, A>(self: Effect.Effect<Ctx, E, A>) => Promise<A | undefined>
+  readonly runPromiseWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) => Promise<A | undefined>
 
   /**
    * A Promise that never fails, the Resolved value is an Exit result that can be either Success or Failed
    */
-  readonly runPromiseExit: <E, A>(self: Effect.Effect<Ctx, E, A>) => Promise<Exit.Exit<E, A>>
-  readonly runPromise: <E, A>(self: Effect.Effect<Ctx, E, A>) => Promise<A>
+  readonly runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Promise<Exit.Exit<A, E>>
+  readonly runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Promise<A>
 
   readonly withRuntime: (fn: (runtime: Runtime.Runtime<Ctx>) => void) => void
 
   /** Closes the ServiceContext and closing all its layers */
-  readonly close: Effect.Effect<never, never, void>
+  readonly close: Effect.Effect<void>
   readonly closePromise: () => Promise<void>
   readonly staticData: TStaticData
 }
 
 export type AbortCallback = () => void
 
-export const runWithErrorLog = <E, A>(self: Effect.Effect<never, E, A>) => {
+export const runWithErrorLog = <E, A>(self: Effect.Effect<A, E>) => {
   const fiber = Effect.runFork(self)
   fiber.addObserver((ex) => {
     if (ex._tag === 'Failure' && Cause.isInterruptedOnly(ex.cause) === false) {
@@ -82,7 +82,7 @@ export const runWithErrorLog = <E, A>(self: Effect.Effect<never, E, A>) => {
   }
 }
 
-export const runPromiseWithErrorLog = <E, A>(self: Effect.Effect<never, E, A>) =>
+export const runPromiseWithErrorLog = <E, A>(self: Effect.Effect<A, E>) =>
   Effect.runPromiseExit(self).then((ex) => {
     if (ex._tag === 'Failure') {
       console.error(Cause.pretty(ex.cause))

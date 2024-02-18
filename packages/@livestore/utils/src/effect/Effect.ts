@@ -5,23 +5,23 @@ import { isNonEmptyString } from '../index.js'
 
 export * from 'effect/Effect'
 
-export const log = <A>(message: A, ...rest: any[]): Effect.Effect<never, never, void> =>
+export const log = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
   Effect.sync(() => {
     console.log(message, ...rest)
   })
 
-export const logWarn = <A>(message: A, ...rest: any[]): Effect.Effect<never, never, void> =>
+export const logWarn = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
   Effect.sync(() => {
     console.warn(message, ...rest)
   })
 
-export const logError = <A>(message: A, ...rest: any[]): Effect.Effect<never, never, void> =>
+export const logError = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
   Effect.sync(() => {
     console.error(message, ...rest)
   })
 
 /** Logs both on errors and defects */
-export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (err) => {
     if (Cause.isInterruptedOnly(err)) {
       return Effect.unit
@@ -35,10 +35,10 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<R, E, A>): Effect.
 
 export const tapSync =
   <A>(tapFn: (a: A) => unknown) =>
-  <R, E>(eff: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+  <R, E>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.tap(eff, (a) => Effect.sync(() => tapFn(a)))
 
-export const debugLogEnv = (msg?: string): Effect.Effect<never, never, Context.Context<never>> =>
+export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>> =>
   pipe(
     Effect.context<never>(),
     Effect.tap((env) => log(msg ?? 'debugLogEnv', env)),
