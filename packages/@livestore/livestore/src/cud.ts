@@ -3,7 +3,7 @@ import type { SqliteDsl } from 'effect-db-schema'
 
 import type { RowResult } from './row-query.js'
 import { rawSqlMutation, type RawSqlMutationEvent } from './schema/index.js'
-import { getDefaultValuesEncoded, type TableDef } from './schema/table-def.js'
+import { getDefaultValuesDecoded, type TableDef } from './schema/table-def.js'
 import { type GetValForKey, isIterable } from './utils/util.js'
 
 export const makeCudMutations = <TTableDef extends TableDef>(
@@ -28,7 +28,7 @@ const cudMutationsForTable = <TTableDef extends TableDef>(
   const writeTables = new Set([table.name])
   const api = {
     insert: (values_: any) => {
-      const values = getDefaultValuesEncoded(tableDef, values_)
+      const values = getDefaultValuesDecoded(tableDef, values_)
 
       const [sql, bindValues] = SqlQueries.insertRow({
         tableName: table.name,
