@@ -34,17 +34,17 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/opentelemetry": "^0.31.8",
-    "@effect/schema": "0.62.8",
+    "@effect/opentelemetry": "^0.31.10",
+    "@effect/schema": "0.63.0",
     "@opentelemetry/api": "^1.7.0",
     "date-fns": "^3.3.1",
-    "effect": "2.3.7",
+    "effect": "2.4.0",
     "otel-websocket-exporter": "^0.0.27",
     "pretty-bytes": "^6.1.1"
   },
   "devDependencies": {
-    "@types/node": "^20.11.19",
-    "@types/web": "^0.0.139"
+    "@types/node": "^20.11.20",
+    "@types/web": "^0.0.140"
   },
   "publishConfig": {
     "access": "public"
