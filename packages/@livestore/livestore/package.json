@@ -47,6 +47,9 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "wasm": [
+        "./dist/database-wasm.d.ts"
+      ],
       "storage/web-worker": [
         "./dist/storage/web-worker/index.d.ts"
       ],
