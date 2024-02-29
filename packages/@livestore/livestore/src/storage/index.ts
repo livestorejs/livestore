@@ -21,7 +21,7 @@ export interface Storage {
   mutate(mutationEventEncoded: MutationEvent.Any, parentSpan?: otel.Span): void
 
   /** Return a snapshot of persisted data from the storage */
-  getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array>
+  getPersistedData(parentSpan?: otel.Span): Promise<Uint8Array | undefined>
 
   getMutationLogData(parentSpan?: otel.Span): Promise<Uint8Array>
 

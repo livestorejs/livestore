@@ -4,7 +4,7 @@
   "include": [],
   "references": [
     // { "path": "./examples/linearlite" },
-    // { "path": "./examples/todomvc" },
+    { "path": "./examples/todomvc" },
     // { "path": "./examples/todomvc-drizzle" },
     { "path": "./examples/expo-app" },
     { "path": "./packages/effect-db-schema" }

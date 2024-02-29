@@ -7,6 +7,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./wasm": {
+      "types": "./dist/database-wasm.d.ts",
+      "default": "./dist/database-wasm.js"
+    },
     "./storage/web-worker": {
       "types": "./dist/storage/web-worker/index.d.ts",
       "default": "./dist/storage/web-worker/index.js"

@@ -1,6 +1,7 @@
 import { DevtoolsLazy } from '@livestore/devtools-react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
+import { makeSqlite3 } from '@livestore/livestore/wasm'
 import { FPSMeter } from '@schickling/fps-meter'
 import React from 'react'
 
@@ -23,6 +24,7 @@ export const App: React.FC = () => (
     schema={schema}
     loadStorage={() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })}
     fallback={<div>Loading...</div>}
+    sqlite3={makeSqlite3}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

@@ -3,13 +3,9 @@ import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
-// import initSqlite3Wasm from 'sqlite-esm'
+import type { DatabaseFactory } from '../database.js'
 // TODO refactor so the `react` module doesn't depend on `effect` module
-import type {
-  DatabaseApi,
-  LiveStoreContext as StoreContext_,
-  LiveStoreCreateStoreOptions,
-} from '../effect/LiveStore.js'
+import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
 import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { StorageInit } from '../storage/index.js'
@@ -17,22 +13,15 @@ import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
-// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
-// so that it's ready when we need it
-// const sqlite3Promise = initSqlite3Wasm({
-//   print: (message) => console.log(`[livestore sqlite] ${message}`),
-//   printErr: (message) => console.error(`[livestore sqlite] ${message}`),
-// })
-
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
-  loadStorage: () => StorageInit | Promise<StorageInit>
+  loadStorage?: () => StorageInit | Promise<StorageInit>
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
   fallback: ReactElement
-  sqlite3: DatabaseApi
+  sqlite3: DatabaseFactory
 }
 
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
@@ -84,7 +73,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
 
     void (async () => {
       try {
-        // const sqlite3 = await sqlite3Promise
         store = await createStore({
           schema,
           loadStorage,
@@ -103,9 +91,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     return () => {
       store?.destroy()
     }
-
-    // TODO: do we need to return any cleanup function here?
-  }, [schema, loadStorage, graphQLOptions, otelTracer, otelRootSpanContext, boot])
+  }, [schema, loadStorage, graphQLOptions, otelTracer, otelRootSpanContext, boot, sqlite3])
 
   return ctxValue
 }

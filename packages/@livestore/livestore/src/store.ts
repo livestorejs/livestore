@@ -3,7 +3,7 @@ import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import type { DatabaseApi } from './effect/LiveStore.js'
+import type { DatabaseFactory } from './database.js'
 import { dynamicallyRegisteredTables, globalDbGraph } from './global-state.js'
 import { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateDb } from './migrations.js'
@@ -11,6 +11,7 @@ import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
 import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from './schema/index.js'
+import { InMemoryStorage } from './storage/in-memory/index.js'
 import type { Storage, StorageInit } from './storage/index.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
@@ -477,16 +478,16 @@ export const createStore = async <
   graphQLOptions,
   otelTracer = makeNoopTracer(),
   otelRootSpanContext = otel.context.active(),
-  sqlite3,
+  sqlite3: sqlite3Factory,
   boot,
   dbGraph,
 }: {
   schema: TSchema
-  loadStorage: () => StorageInit | Promise<StorageInit>
+  loadStorage?: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  sqlite3: DatabaseApi
+  sqlite3: DatabaseFactory
   boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
   dbGraph?: DbGraph
 }): Promise<Store<TGraphQLContext, TSchema>> => {
@@ -496,7 +497,7 @@ export const createStore = async <
 
       const storage = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
         try {
-          const init = await loadStorage()
+          const init = loadStorage ? await loadStorage() : InMemoryStorage.load()
           const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
           return init({ otelTracer, parentSpan })
         } finally {
@@ -517,7 +518,10 @@ export const createStore = async <
         },
       )
 
-      const db = InMemoryDatabase.load({ data: persistedData, otelTracer, otelRootSpanContext, sqlite3 })
+      const sqlite3Promise = sqlite3Factory('todo.db', persistedData)
+      const sqlite3 = sqlite3Promise instanceof Promise ? await sqlite3Promise : sqlite3Promise
+
+      const db = InMemoryDatabase.load({ otelTracer, otelRootSpanContext, sqlite3 })
 
       const txnKeywords = ['begin transaction;', 'commit;', 'rollback;']
       const isTxnQuery = (query: string) => txnKeywords.some((_) => query.toLowerCase().startsWith(_))

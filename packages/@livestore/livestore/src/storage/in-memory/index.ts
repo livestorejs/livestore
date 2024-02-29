@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { MutationEvent } from '../../index.js'
+import type { MutationEvent, StorageInit } from '../../index.js'
 import type { PreparedBindValues } from '../../utils/util.js'
 import type { Storage, StorageOtelProps } from '../index.js'
 
@@ -12,9 +12,10 @@ export type StorageOptionsWebInMemory = {
 export class InMemoryStorage implements Storage {
   constructor(readonly otelTracer: otel.Tracer) {}
 
-  static load = async (_options?: StorageOptionsWebInMemory) => {
-    return ({ otelTracer }: StorageOtelProps) => new InMemoryStorage(otelTracer)
-  }
+  static load =
+    (_options?: StorageOptionsWebInMemory): StorageInit =>
+    ({ otelTracer }: StorageOtelProps) =>
+      new InMemoryStorage(otelTracer)
 
   execute = (_query: string, _bindValues?: PreparedBindValues): void => {}
 

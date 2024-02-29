@@ -30,7 +30,7 @@ const globalCount = Object.keys(env).length
 
 // To make it work in React Native https://github.com/paralleldrive/cuid/issues/54#issuecomment-222957293
 const clientId =
-  global.navigator.product === 'ReactNative'
+  navigator.product === 'ReactNative'
     ? 'rn'
     : pad(navigator.userAgent.length.toString(36) + globalCount.toString(36), 4)
 

@@ -10,38 +10,33 @@ import { ListTodos } from './components/ListTodos.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { schema } from './schema/index.ts'
 
-export const notYetImplemented = (msg?: string): never => {
-  throw new Error(`Not yet implemented ${msg}`)
-}
-
-const db = SQLite.openDatabaseSync('databaseName5.db')
+const dbFilename = 'databaseName6.db'
+const db = SQLite.openDatabaseSync(dbFilename)
 
 const sqlite3Instance: DatabaseApi = {
-  filename: 'whatever',
-  pointer: 0,
-  exec: () => notYetImplemented(),
-  prepare: (value) => db.prepareSync(value),
-  isOpen: () => notYetImplemented(),
-  affirmOpen: () => notYetImplemented(),
-  close: () => notYetImplemented(),
-  changes: () => notYetImplemented(),
-
-  dbFilename: () => notYetImplemented(),
-  dbName: () => notYetImplemented(),
-  dbVfsName: (_dbName: any) => notYetImplemented(),
-  createFunction: () => notYetImplemented(),
-
-  selectValue: () => notYetImplemented(),
-  selectValues: () => notYetImplemented(),
-  selectArray: () => notYetImplemented(),
-  selectObject: () => notYetImplemented(),
-  selectArrays: () => notYetImplemented(),
-  selectObjects: () => notYetImplemented(),
-
-  openStatementCount: () => notYetImplemented(),
-  transaction: () => notYetImplemented(),
-  savepoint: () => notYetImplemented(),
-  checkRc: () => notYetImplemented(),
+  filename: dbFilename,
+  prepare: (value) => {
+    const stmt = db.prepareSync(value)
+    return {
+      execute: (bindValues) => {
+        const res = stmt.executeSync(bindValues ?? [])
+        res.resetSync()
+      },
+      select: (bindValues) => {
+        const res = stmt.executeSync(bindValues ?? [])
+        try {
+          return res.getAllSync() as any
+        } finally {
+          res.resetSync()
+        }
+      },
+      finalize: () => stmt.finalizeSync(),
+    }
+  },
+  export: () => {
+    console.error(`export not yet implemented`)
+    return new Uint8Array([])
+  },
 }
 
 export const App = () => {
@@ -49,20 +44,11 @@ export const App = () => {
     <View style={styles.container}>
       <LiveStoreProvider
         schema={schema}
-        loadStorage={() => () => {
-          return {
-            execute: () => undefined,
-            mutate: () => undefined,
-            getPersistedData: () => Promise.resolve(new Uint8Array()),
-            getMutationLogData: () => Promise.resolve(new Uint8Array()),
-            dangerouslyReset: () => Promise.resolve(),
-          }
-        }}
         fallback={<Text>Loading...</Text>}
         boot={(db) => {
           db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
         }}
-        sqlite3={sqlite3Instance}
+        sqlite3={() => sqlite3Instance}
       >
         <NewTodo />
         <ListTodos />
