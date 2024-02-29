@@ -10,7 +10,7 @@ import { ListTodos } from './components/ListTodos.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { schema } from './schema/index.ts'
 
-const dbFilename = 'databaseName6.db'
+const dbFilename = 'databaseName7.db'
 const db = SQLite.openDatabaseSync(dbFilename)
 
 const sqlite3Instance: DatabaseApi = {

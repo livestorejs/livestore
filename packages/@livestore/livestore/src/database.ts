@@ -1,7 +1,5 @@
 import type { PreparedBindValues } from './utils/util.js'
 
-export type SQLiteBindValue = string | number | null | boolean | Uint8Array
-
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined): void
   select<T>(bindValues: PreparedBindValues | undefined): ReadonlyArray<T>

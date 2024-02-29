@@ -13,7 +13,7 @@ config.resolver.unstable_enablePackageExports = true
 // console.log('config', config)
 
 // Needed for monorepo setup (can be removed in standalone projects)
-config.watchFolders = [path.join(__dirname, '../../')]
+config.watchFolders = [path.join(__dirname, '../..')]
 
 // throw new Error('stop')
 

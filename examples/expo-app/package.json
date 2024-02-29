@@ -5,7 +5,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios:go": "expo start --clear --ios",
+    "ios:go": "expo start --clear --ios --dev-client",
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
