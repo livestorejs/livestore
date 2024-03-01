@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dev.livestore.expo"
+      "bundleIdentifier": "dev.livestore.livestore-expo"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +29,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "095842ba-736f-4f87-b3c8-282cf993027a"
+        "projectId": "a9d0eb9f-acf5-4cf1-ac11-bde0cc766e6f"
       }
     }
   }
