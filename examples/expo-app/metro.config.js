@@ -10,11 +10,15 @@ const config = getDefaultConfig(__dirname)
 config.resolver.unstable_enableSymlinks = true
 config.resolver.unstable_enablePackageExports = true
 
-// console.log('config', config)
-
 // Needed for monorepo setup (can be removed in standalone projects)
-config.watchFolders = [path.join(__dirname, '../..')]
+const projectRoot = __dirname
+const monorepoRoot = path.resolve(projectRoot, '../..')
 
-// throw new Error('stop')
+config.watchFolders = [monorepoRoot]
+
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+]
 
 module.exports = config

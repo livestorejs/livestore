@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",
+    "@babel/runtime": "^7.23.9",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "@types/react": "~18.2.60",
     "typescript": "^5.1.3"

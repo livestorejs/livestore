@@ -19,8 +19,7 @@
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {
-    "@effect/language-service": "^0.1.0",
-    "@livestore/livestore": "workspace:*"
+    "@effect/language-service": "^0.1.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.2",
