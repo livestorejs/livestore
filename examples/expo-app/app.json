@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "expo-app",
-    "slug": "expo-app",
+    "name": "livestore-expo",
+    "slug": "livestore-expo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dev.livestore.expo-app"
+      "bundleIdentifier": "dev.livestore.expo"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,6 +26,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "095842ba-736f-4f87-b3c8-282cf993027a"
+      }
     }
   }
 }
