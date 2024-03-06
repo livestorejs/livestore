@@ -1,0 +1,29 @@
+{
+  "name": "@livestore/tauri",
+  "version": "0.0.41",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.7.0",
+    "@livestore/utils": "workspace:*",
+    "@livestore/common": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^1.4.0"
+  },
+  "peerDependencies": {
+    "@tauri-apps/api": "^1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

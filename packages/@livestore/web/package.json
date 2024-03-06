@@ -22,10 +22,6 @@
     "./storage/in-memory": {
       "types": "./dist/storage/in-memory/index.d.ts",
       "default": "./dist/storage/in-memory/index.js"
-    },
-    "./storage/tauri": {
-      "types": "./dist/storage/tauri/index.d.ts",
-      "default": "./dist/storage/tauri/index.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -42,9 +38,6 @@
       ],
       "storage/in-memory": [
         "./dist/storage/in-memory/index.d.ts"
-      ],
-      "storage/tauri": [
-        "./dist/storage/tauri/index.d.ts"
       ]
     }
   },
@@ -59,15 +52,8 @@
     "sqlite-esm": "3.42.0-build6"
   },
   "devDependencies": {
-    "@tauri-apps/api": "^1.4.0"
   },
   "peerDependencies": {
-    "@tauri-apps/api": "^1.4.0"
-  },
-  "peerDependenciesMeta": {
-    "@tauri-apps/api": {
-      "optional": true
-    }
   },
   "publishConfig": {
     "access": "public"

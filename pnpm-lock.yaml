@@ -629,6 +629,22 @@ importers:
         specifier: ^1.3.1
         version: 1.3.1(jsdom@24.0.0)
 
+  packages/@livestore/tauri:
+    dependencies:
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: ^1.7.0
+        version: 1.7.0
+    devDependencies:
+      '@tauri-apps/api':
+        specifier: ^1.4.0
+        version: 1.5.3
+
   packages/@livestore/utils:
     dependencies:
       '@effect/opentelemetry':
@@ -680,10 +696,6 @@ importers:
       sqlite-esm:
         specifier: 3.42.0-build6
         version: 3.42.0-build6
-    devDependencies:
-      '@tauri-apps/api':
-        specifier: ^1.4.0
-        version: 1.5.3
 
   packages/effect-db-schema:
     dependencies:
