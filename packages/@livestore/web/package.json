@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.41",
+  "version": "0.0.42",
   "type": "module",
   "exports": {
     ".": {
@@ -51,10 +51,8 @@
     "comlink": "^4.4.1",
     "sqlite-esm": "3.42.0-build6"
   },
-  "devDependencies": {
-  },
-  "peerDependencies": {
-  },
+  "devDependencies": {},
+  "peerDependencies": {},
   "publishConfig": {
     "access": "public"
   }
