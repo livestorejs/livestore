@@ -16,6 +16,8 @@ export const ListTodos: React.FC = () => {
       data={todosData}
       renderItem={({ item }) => <Todo {...item} />}
       keyExtractor={(item) => item.id.toString()}
+      initialNumToRender={20}
+      maxToRenderPerBatch={20}
     />
   )
 }
