@@ -1,6 +1,6 @@
 import type { DatabaseFactory, DatabaseImpl, MainDatabase, PreparedBindValues } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from '@livestore/common/schema'
-import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
@@ -14,7 +14,7 @@ import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
-import { isPromise, prepareBindValues } from './utils/util.js'
+import { prepareBindValues } from './utils/util.js'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>

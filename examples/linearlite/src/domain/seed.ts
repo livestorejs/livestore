@@ -17,7 +17,7 @@ export function seed(db: BootDb) {
     return
   }
   let howMany = parseInt(seedParam)
-  const rows = db.select<any>(sql`SELECT count(*) as c FROM issue`)
+  const rows = db.select<{ c: number }>(sql`SELECT count(*) as c FROM issue`)
   if (rows[0].c >= howMany) {
     return
   }

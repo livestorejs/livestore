@@ -1,7 +1,7 @@
+import { isReadonlyArray } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
-import { isReadonlyArray } from '../util.js'
 import {
   type MutationDef,
   type MutationDefMap,

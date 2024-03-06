@@ -29,33 +29,3 @@ export const prepareBindValues = (values: Bindable, statement: string): Prepared
 
   return result as PreparedBindValues
 }
-
-/**
- * Use this to make assertion at end of if-else chain that all members of a
- * union have been accounted for.
- */
-/* eslint-disable-next-line prefer-arrow/prefer-arrow-functions */
-export function casesHandled(x: never): never {
-  throw new Error(`A case was not handled for value: ${objectToString(x)}`)
-}
-
-export const objectToString = (error: any): string => {
-  const stack = typeof process !== 'undefined' && process.env.CL_DEBUG ? error.stack : undefined
-  const str = error.toString()
-  const stackStr = stack ? `\n${stack}` : ''
-  if (str !== '[object Object]') return str + stackStr
-
-  try {
-    return JSON.stringify({ ...error, stack }, null, 2)
-  } catch (e: any) {
-    console.log(error)
-
-    return 'Error while printing error: ' + e
-  }
-}
-
-export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
-
-export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is ReadonlyArray<I> => Array.isArray(value)
-
-export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'

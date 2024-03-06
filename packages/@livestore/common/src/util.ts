@@ -2,8 +2,6 @@
 
 import type { Brand } from '@livestore/utils/effect'
 
-export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
-
 export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array | null
 
@@ -46,5 +44,3 @@ export const prepareBindValues = (values: Bindable, statement: string): Prepared
 
   return result as PreparedBindValues
 }
-
-export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is ReadonlyArray<I> => Array.isArray(value)

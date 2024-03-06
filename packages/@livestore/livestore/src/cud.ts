@@ -1,10 +1,11 @@
 import { deleteRows, insertRow, updateRows } from '@livestore/common'
 import type { RawSqlMutationEvent } from '@livestore/common/schema'
 import { DbSchema, rawSqlMutation } from '@livestore/common/schema'
+import { isIterable } from '@livestore/utils'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import type { RowResult } from './row-query.js'
-import { type GetValForKey, isIterable } from './utils/util.js'
+import { type GetValForKey } from './utils/util.js'
 
 export const makeCudMutations = <TTableDef extends DbSchema.TableDef>(
   tables: Iterable<TTableDef> | Record<string, TTableDef>,
