@@ -1,5 +1,6 @@
 ## Notes
 
+- We currently need a `"expo-sqlite@13.2.2": "patches/expo-sqlite@13.2.2.patch"` patch
 - Doesn't yet support Expo Web
   - [ ] Missing support for `expo-sqlite/next` on web
   - [ ] Bug: No support for `import.meta` on web (even when using babel plugin)
@@ -14,6 +15,13 @@ Set `export RCT_NEW_ARCH_ENABLED=1` in your shell
 
 - Until Expo properly supports PNPM we also need the following
   - Some workarounds in `metra.config.js` + `@babel/runtime` in `package.json`
+  - Extra dependencies in `package.json` for iOS `Release` builds
+    ```json
+    "expo-asset": "^9.0.2",
+    "@react-native/assets-registry": "^0.74.0",
+    "babel-preset-expo": "^10.0.1",
+    ```
+  - `"expo-modules-autolinking@1.10.3": "patches/expo-modules-autolinking@1.10.3.patch"`
 
 ## Running
 

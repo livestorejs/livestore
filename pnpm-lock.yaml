@@ -96,9 +96,18 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@react-native/assets-registry':
+        specifier: ^0.74.0
+        version: 0.74.0
+      babel-preset-expo:
+        specifier: ^10.0.1
+        version: 10.0.1(@babel/core@7.23.9)
       expo:
         specifier: ~50.0.8
         version: 50.0.8(@babel/core@7.23.9)(@react-native/babel-preset@0.73.21)
+      expo-asset:
+        specifier: ^9.0.2
+        version: 9.0.2(expo@50.0.8)
       expo-crypto:
         specifier: ~12.8.1
         version: 12.8.1(expo@50.0.8)
@@ -3578,6 +3587,11 @@ packages:
   /@react-native/assets-registry@0.73.1:
     resolution: {integrity: sha512-2FgAbU7uKM5SbbW9QptPPZx8N9Ke2L7bsHb+EhAanZjFZunA9PaYtyjUQ1s7HD+zDVqOQIvjkpXSv7Kejd2tqg==}
     engines: {node: '>=18'}
+
+  /@react-native/assets-registry@0.74.0:
+    resolution: {integrity: sha512-I8Yy6bCKU5R4qZX4jfXsAPsHyuGHlulbnbG3NqO9JgZ3T2DJxJiZE39rHORP0trLnRh0rIeRcs4Mc14fAE6hrw==}
+    engines: {node: '>=18'}
+    dev: false
 
   /@react-native/babel-plugin-codegen@0.73.4(@babel/preset-env@7.23.9):
     resolution: {integrity: sha512-XzRd8MJGo4Zc5KsphDHBYJzS1ryOHg8I2gOZDAUCGcwLFhdyGu1zBNDJYH2GFyDrInn9TzAbRIf3d4O+eltXQQ==}
