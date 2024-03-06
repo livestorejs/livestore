@@ -16,7 +16,6 @@
     "@livestore/devtools-react": "latest",
     "@livestore/expo": "latest",
     "@livestore/livestore": "latest",
-    "@shopify/flash-list": "^1.6.3",
     "expo": "~50.0.8",
     "expo-sqlite": "~13.2.2",
     "expo-status-bar": "~1.11.1",

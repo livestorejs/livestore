@@ -42,7 +42,8 @@
   "pnpm": {
     "patchedDependencies": {
       "drizzle-orm@0.28.6": "patches/drizzle-orm@0.28.6.patch",
-      "expo-sqlite@13.2.2": "patches/expo-sqlite@13.2.2.patch"
+      "expo-sqlite@13.2.2": "patches/expo-sqlite@13.2.2.patch",
+      "expo-modules-autolinking@1.10.3": "patches/expo-modules-autolinking@1.10.3.patch"
     }
   }
 }

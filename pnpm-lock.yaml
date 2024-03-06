@@ -15,6 +15,9 @@ patchedDependencies:
   drizzle-orm@0.28.6:
     hash: kfe6libf2ikzaf77deyqmybfsm
     path: patches/drizzle-orm@0.28.6.patch
+  expo-modules-autolinking@1.10.3:
+    hash: 4arxhw3ycvijbvobkbsci2ieam
+    path: patches/expo-modules-autolinking@1.10.3.patch
   expo-sqlite@13.2.2:
     hash: rpyqlmbthmkxv4xd6strijliu4
     path: patches/expo-sqlite@13.2.2.patch
@@ -93,9 +96,6 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
-      '@shopify/flash-list':
-        specifier: ^1.6.3
-        version: 1.6.3(@babel/runtime@7.24.0)(react-native@0.73.4)(react@18.2.0)
       expo:
         specifier: ~50.0.8
         version: 50.0.8(@babel/core@7.23.9)(@react-native/babel-preset@0.73.21)
@@ -2820,7 +2820,7 @@ packages:
       '@expo/image-utils': 0.4.1
       '@expo/json-file': 8.3.0
       debug: 4.3.4(supports-color@8.1.1)
-      expo-modules-autolinking: 1.10.3
+      expo-modules-autolinking: 1.10.3(patch_hash=4arxhw3ycvijbvobkbsci2ieam)
       fs-extra: 9.1.0
       resolve-from: 5.0.0
       semver: 7.5.3
@@ -2841,7 +2841,7 @@ packages:
       '@expo/image-utils': 0.4.1
       '@expo/json-file': 8.3.0
       debug: 4.3.4(supports-color@8.1.1)
-      expo-modules-autolinking: 1.10.3
+      expo-modules-autolinking: 1.10.3(patch_hash=4arxhw3ycvijbvobkbsci2ieam)
       fs-extra: 9.1.0
       resolve-from: 5.0.0
       semver: 7.5.3
@@ -3995,20 +3995,6 @@ packages:
     dependencies:
       component-type: 1.2.2
       join-component: 1.1.0
-
-  /@shopify/flash-list@1.6.3(@babel/runtime@7.24.0)(react-native@0.73.4)(react@18.2.0):
-    resolution: {integrity: sha512-XM2iu4CeD9SOEUxaGG3UkxfUxGPWG9yacga1yQSgskAjUsRDFTsD3y4Dyon9n8MfDwgrRpEwuijd+7NeQQoWaQ==}
-    peerDependencies:
-      '@babel/runtime': '*'
-      react: '*'
-      react-native: '*'
-    dependencies:
-      '@babel/runtime': 7.24.0
-      react: 18.2.0
-      react-native: 0.73.4(@babel/core@7.23.9)(@babel/preset-env@7.23.9)(react@18.2.0)
-      recyclerlistview: 4.2.0(react-native@0.73.4)(react@18.2.0)
-      tslib: 2.4.0
-    dev: false
 
   /@sideway/address@4.1.5:
     resolution: {integrity: sha512-IqO/DUQHUkPeixNQ8n0JA6102hT9CmaljNTPmQ1u8MEhBo/R4Q8eKLN/vGZxuebwOroDB4cbpjheD4+/sKFK4Q==}
@@ -7339,7 +7325,7 @@ packages:
     dependencies:
       expo: 50.0.8(@babel/core@7.23.9)(@react-native/babel-preset@0.73.21)
 
-  /expo-modules-autolinking@1.10.3:
+  /expo-modules-autolinking@1.10.3(patch_hash=4arxhw3ycvijbvobkbsci2ieam):
     resolution: {integrity: sha512-pn4n2Dl4iRh/zUeiChjRIe1C7EqOw1qhccr85viQV7W6l5vgRpY0osE51ij5LKg/kJmGRcJfs12+PwbdTplbKw==}
     hasBin: true
     dependencies:
@@ -7351,6 +7337,7 @@ packages:
       fs-extra: 9.1.0
     transitivePeerDependencies:
       - supports-color
+    patched: true
 
   /expo-modules-core@1.11.9:
     resolution: {integrity: sha512-GTUb81vcPaF+5MtlBI1u9IjrZbGdF1ZUwz3u8Gc+rOLBblkZ7pYsj2mU/tu+k0khTckI9vcH4ZBksXWvE1ncjQ==}
@@ -7385,7 +7372,7 @@ packages:
       expo-file-system: 16.0.7(expo@50.0.8)
       expo-font: 11.10.3(expo@50.0.8)
       expo-keep-awake: 12.8.2(expo@50.0.8)
-      expo-modules-autolinking: 1.10.3
+      expo-modules-autolinking: 1.10.3(patch_hash=4arxhw3ycvijbvobkbsci2ieam)
       expo-modules-core: 1.11.9
       fbemitter: 3.0.0
       whatwg-url-without-unicode: 8.0.0-3
@@ -11290,19 +11277,6 @@ packages:
       source-map: 0.6.1
       tslib: 2.6.2
 
-  /recyclerlistview@4.2.0(react-native@0.73.4)(react@18.2.0):
-    resolution: {integrity: sha512-uuBCi0c+ggqHKwrzPX4Z/mJOzsBbjZEAwGGmlwpD/sD7raXixdAbdJ6BTcAmuWG50Cg4ru9p12M94Njwhr/27A==}
-    peerDependencies:
-      react: '>= 15.2.1'
-      react-native: '>= 0.30.0'
-    dependencies:
-      lodash.debounce: 4.0.8
-      prop-types: 15.8.1
-      react: 18.2.0
-      react-native: 0.73.4(@babel/core@7.23.9)(@babel/preset-env@7.23.9)(react@18.2.0)
-      ts-object-utils: 0.0.5
-    dev: false
-
   /redeyed@2.1.1:
     resolution: {integrity: sha512-FNpGGo1DycYAdnrKFxCMmKYgo/mILAqtRYbkdQD8Ep/Hk2PQ5+aEAEx+IU713RTDmuBaH0c8P5ZozurNu5ObRQ==}
     dependencies:
@@ -12558,10 +12532,6 @@ packages:
       yn: 3.1.1
     dev: true
 
-  /ts-object-utils@0.0.5:
-    resolution: {integrity: sha512-iV0GvHqOmilbIKJsfyfJY9/dNHCs969z3so90dQWsO1eMMozvTpnB1MEaUbb3FYtZTGjv5sIy/xmslEz0Rg2TA==}
-    dev: false
-
   /tsconfig-paths@3.15.0:
     resolution: {integrity: sha512-2Ac2RgzDe/cn48GvOe3M+o82pEFewD3UPbyoUHHdKasHwJKjds4fLXWf/Ux5kATBKN20oaFGu+jbElp1pos0mg==}
     dependencies:
@@ -12570,10 +12540,6 @@ packages:
       minimist: 1.2.8
       strip-bom: 3.0.0
     dev: true
-
-  /tslib@2.4.0:
-    resolution: {integrity: sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==}
-    dev: false
 
   /tslib@2.4.1:
     resolution: {integrity: sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==}
