@@ -99,6 +99,9 @@ importers:
       expo:
         specifier: ~50.0.8
         version: 50.0.8(@babel/core@7.23.9)(@react-native/babel-preset@0.73.21)
+      expo-crypto:
+        specifier: ~12.8.1
+        version: 12.8.1(expo@50.0.8)
       expo-sqlite:
         specifier: ~13.2.2
         version: 13.2.2(patch_hash=rpyqlmbthmkxv4xd6strijliu4)(expo@50.0.8)
@@ -114,9 +117,6 @@ importers:
       react-native:
         specifier: 0.73.4
         version: 0.73.4(@babel/core@7.23.9)(@babel/preset-env@7.23.9)(react@18.2.0)
-      react-native-get-random-values:
-        specifier: 1.8.0
-        version: 1.8.0(react-native@0.73.4)
       react-native-web:
         specifier: ~0.19.6
         version: 0.19.10(react-dom@18.2.0)(react@18.2.0)
@@ -7303,6 +7303,15 @@ packages:
     transitivePeerDependencies:
       - supports-color
 
+  /expo-crypto@12.8.1(expo@50.0.8):
+    resolution: {integrity: sha512-EJEzmfBUSkGfALTlZRKUbh1RMKF7mWI12vkhO2w6bhGO4bjgGB8XzUHgLfrvSjphDFMx/lwaR6bAQDmXKO9UkQ==}
+    peerDependencies:
+      expo: '*'
+    dependencies:
+      base64-js: 1.5.1
+      expo: 50.0.8(@babel/core@7.23.9)(@react-native/babel-preset@0.73.21)
+    dev: false
+
   /expo-file-system@16.0.7(expo@50.0.8):
     resolution: {integrity: sha512-BELr1Agj6WK0PKVMcD0rqC3fP5unKfp2KW8/sNhtTHgdzQ/F0Pylq9pTk9u7KEu0ZbEdTpk5EMarLMPwffi3og==}
     peerDependencies:
@@ -7393,10 +7402,6 @@ packages:
     resolution: {integrity: sha512-GipyPsXO1anza0AOZdy69Im7hGFCNB7Y/NGjDlZGJ3GJJLtwNSb2vrzYrTYJRrRloVx7pl+bhUaTB8yiccPvFQ==}
     engines: {node: '> 0.1.90'}
     dev: true
-
-  /fast-base64-decode@1.0.0:
-    resolution: {integrity: sha512-qwaScUgUGBYeDNRnbc/KyllVU88Jk1pRHPStuF/lO7B0/RTRLj7U0lkdTAutlBblY08rwZDff6tNU9cjv6j//Q==}
-    dev: false
 
   /fast-check@3.15.1:
     resolution: {integrity: sha512-GutOXZ+SCxGaFWfHe0Pbeq8PrkpGtPxA9/hdkI3s9YzqeMlrq5RdJ+QfYZ/S93jMX+tAyqgW0z5c9ppD+vkGUw==}
@@ -11021,15 +11026,6 @@ packages:
       vfile: 5.3.7
     transitivePeerDependencies:
       - supports-color
-    dev: false
-
-  /react-native-get-random-values@1.8.0(react-native@0.73.4):
-    resolution: {integrity: sha512-H/zghhun0T+UIJLmig3+ZuBCvF66rdbiWUfRSNS6kv5oDSpa1ZiVyvRWtuPesQpT8dXj+Bv7WJRQOUP+5TB1sA==}
-    peerDependencies:
-      react-native: '>=0.56'
-    dependencies:
-      fast-base64-decode: 1.0.0
-      react-native: 0.73.4(@babel/core@7.23.9)(@babel/preset-env@7.23.9)(react@18.2.0)
     dev: false
 
   /react-native-web@0.19.10(react-dom@18.2.0)(react@18.2.0):

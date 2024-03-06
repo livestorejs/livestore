@@ -7,6 +7,7 @@
 
 ## Setup requirements
 
+Set `export RCT_NEW_ARCH_ENABLED=1` in your shell
 - Until Expo supports the bytecode SQLite flag out of the box, you have to use the dev build of the app (i.e. Expo Go is not yet supported).
   - `pnpm expo prebuild -p ios` (generates the `ios` Xcode project)
   - Optional: `xed ios` (to open the project in Xcode)

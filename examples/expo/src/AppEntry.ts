@@ -1,5 +1,4 @@
-import 'fast-text-encoding'
-import 'react-native-get-random-values'
+import './polyfill.ts'
 
 import { registerRootComponent } from 'expo'
 

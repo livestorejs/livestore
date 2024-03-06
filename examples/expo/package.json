@@ -17,12 +17,12 @@
     "@livestore/expo": "latest",
     "@livestore/livestore": "latest",
     "expo": "~50.0.8",
+    "expo-crypto": "~12.8.1",
     "expo-sqlite": "~13.2.2",
     "expo-status-bar": "~1.11.1",
     "fast-text-encoding": "^1.0.6",
     "react": "18.2.0",
     "react-native": "0.73.4",
-    "react-native-get-random-values": "1.8.0",
     "react-native-web": "~0.19.6"
   },
   "devDependencies": {
