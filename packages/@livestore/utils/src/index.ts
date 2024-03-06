@@ -87,6 +87,8 @@ export const errorToString = objectToString
 
 export const capitalizeFirstLetter = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1)
 
+export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is ReadonlyArray<I> => Array.isArray(value)
+
 /**
  * Use this to make assertion at end of if-else chain that all members of a
  * union have been accounted for.
@@ -213,3 +215,7 @@ export const memoize = <T extends (...args: any[]) => any>(fn: T): T => {
 }
 
 export const isNonEmptyString = (str: string | undefined | null) => str === undefined || str === null || str === ''
+
+export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
+
+export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'

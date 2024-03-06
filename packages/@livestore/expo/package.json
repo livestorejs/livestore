@@ -1,0 +1,27 @@
+{
+  "name": "@livestore/expo",
+  "version": "0.0.42",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*"
+  },
+  "devDependencies": {
+    "expo-sqlite": "^13.2.2"
+  },
+  "peerDependencies": {
+    "expo-sqlite": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

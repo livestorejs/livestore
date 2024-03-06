@@ -1,0 +1,37 @@
+{
+  "name": "@livestore/common",
+  "version": "0.0.42",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "default": "./dist/schema/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "schema": [
+        "./dist/schema/index.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.7.0",
+    "@livestore/utils": "workspace:*",
+    "effect-db-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@livestore/utils": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

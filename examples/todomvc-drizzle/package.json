@@ -12,6 +12,7 @@
     "@effect/schema": "0.63.0",
     "@livestore/devtools-react": "0.0.41",
     "@livestore/livestore": "latest",
+    "@livestore/web": "latest",
     "@livestore/utils": "latest",
     "@opentelemetry/api": "^1.7.0",
     "@schickling/fps-meter": "^0.1.2",

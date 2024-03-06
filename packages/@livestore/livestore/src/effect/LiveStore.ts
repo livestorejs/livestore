@@ -1,22 +1,13 @@
+import type { DatabaseFactory, MainDatabase } from '@livestore/common'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
-import initSqlite3Wasm from 'sqlite-esm'
 
-import type { InMemoryDatabase } from '../inMemoryDatabase.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
-import type { LiveStoreSchema } from '../schema/index.js'
-import type { StorageInit } from '../storage/index.js'
-import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
+import type { BaseGraphQLContext, BootDb, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
-
-// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
-// so that it's ready when we need it
-const sqlite3Promise = initSqlite3Wasm({
-  print: (message) => console.log(`[livestore sqlite] ${message}`),
-  printErr: (message) => console.error(`[livestore sqlite] ${message}`),
-})
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
 export type LiveStoreContext = {
@@ -27,11 +18,12 @@ export type QueryDefinition = <TResult>(store: Store) => LiveQuery<TResult>
 
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
-  loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
+  makeDb: DatabaseFactory
+  batchUpdates?: (run: () => void) => void
 }
 
 export const LiveStoreContext = Context.GenericTag<LiveStoreContext>('@livestore/livestore/LiveStoreContext')
@@ -45,12 +37,12 @@ export const DeferredStoreContext = Context.GenericTag<DeferredStoreContext>(
 
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
-  loadStorage: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
-    makeContext: (db: InMemoryDatabase) => GraphQLContext
+    makeContext: (db: MainDatabase) => GraphQLContext
   }
-  boot?: (db: InMemoryDatabase) => Effect.Effect<void>
+  boot?: (db: BootDb) => Effect.Effect<void>
+  makeDb: DatabaseFactory
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
@@ -65,9 +57,9 @@ export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Defer
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
   schema,
-  loadStorage,
   graphQLOptions: graphQLOptions_,
   boot: boot_,
+  makeDb,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
   LiveStoreContext,
   never,
@@ -88,22 +80,18 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
       )
 
       const boot = boot_
-        ? (db: InMemoryDatabase) =>
-            boot_(db).pipe(Effect.withSpan('boot'), Effect.tapCauseLogPretty, Runtime.runPromise(runtime))
+        ? (db: BootDb) => boot_(db).pipe(Effect.withSpan('boot'), Effect.tapCauseLogPretty, Runtime.runPromise(runtime))
         : undefined
-
-      const sqlite3 = yield* $(Effect.promise(() => sqlite3Promise))
 
       const store = yield* $(
         Effect.tryPromise(() =>
           createStore({
             schema,
-            loadStorage,
             graphQLOptions,
             otelTracer,
             otelRootSpanContext,
             boot,
-            sqlite3,
+            makeDb,
           }),
         ),
         Effect.acquireRelease((store) => Effect.sync(() => store.destroy())),

@@ -3,9 +3,9 @@
 // import './index.css'
 
 import { createStore, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
-import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
 import { cuid } from '@livestore/utils/cuid'
-import initSqlite3Wasm from 'sqlite-esm'
+import { makeDb } from '@livestore/web'
+import { WebWorkerStorage } from '@livestore/web/storage/web-worker'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'
@@ -16,15 +16,9 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
   parseTemplate(String.raw({ raw: strings }, ...values))
 export const css = (strings: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: strings }, ...values)
 
-const sqlite3Promise = initSqlite3Wasm({
-  print: (message) => console.log(`[livestore sqlite] ${message}`),
-  printErr: (message) => console.error(`[livestore sqlite] ${message}`),
-})
-
 const store = await createStore({
   schema,
-  loadStorage: () => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker }),
-  sqlite3: await sqlite3Promise,
+  makeDb: makeDb(() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })),
 })
 
 const appState$ = rowQuery(tables.app)

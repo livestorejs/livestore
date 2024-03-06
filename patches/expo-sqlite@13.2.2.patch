@@ -1,0 +1,21 @@
+diff --git a/package.json b/package.json
+index 0f4966d54a57a1e5e1b4cbd455375c2f41d6b0ec..8e6f50eca08c0ac575535c02a262d301db3a41e4 100644
+--- a/package.json
++++ b/package.json
+@@ -5,6 +5,16 @@
+   "main": "build/index.js",
+   "types": "build/index.d.ts",
+   "sideEffects": false,
++  "exports": {
++    ".": {
++      "default": "./build/index.js",
++      "types": "./build/index.d.ts"
++    },
++    "./next": {
++      "default": "./build/next/index.js",
++      "types": "./build/next/index.d.ts"
++    }
++  },
+   "scripts": {
+     "build": "expo-module build",
+     "clean": "expo-module clean",

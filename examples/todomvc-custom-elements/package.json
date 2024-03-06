@@ -11,11 +11,11 @@
     "@effect/schema": "0.63.0",
     "@livestore/devtools-react": "0.0.41",
     "@livestore/livestore": "latest",
+    "@livestore/web": "latest",
     "@livestore/utils": "latest",
     "effect": "2.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "sqlite-esm": "3.42.0-build6",
     "todomvc-app-css": "^2.4.3",
     "uuid": "^9.0.1",
     "workbox-window": "^7.0.0"

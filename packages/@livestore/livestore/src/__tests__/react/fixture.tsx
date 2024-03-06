@@ -1,12 +1,12 @@
+import { Schema as __Schema } from '@livestore/utils/effect'
+import { makeDb } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
-import initSqlite3Wasm from 'sqlite-esm'
 
 import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
 import { createStore, DbSchema, makeCudMutations, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
-import { InMemoryStorage } from '../../storage/in-memory/index.js'
 
 export type Todo = {
   id: string
@@ -51,18 +51,12 @@ export const makeTodoMvc = async ({
     username: DbSchema.text({ default: '' }),
   })
 
-  const sqlite3 = await initSqlite3Wasm({
-    print: (message) => console.log(`[livestore sqlite] ${message}`),
-    printErr: (message) => console.error(`[livestore sqlite] ${message}`),
-  })
-
   const dbGraph = useGlobalDbGraph ? globalDbGraph : makeDbGraph()
 
   const store = await createStore({
     schema,
-    loadStorage: () => InMemoryStorage.load(),
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
-    sqlite3,
+    makeDb: makeDb(),
     dbGraph,
     otelTracer,
     otelRootSpanContext: otelContext,

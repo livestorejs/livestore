@@ -1,6 +1,7 @@
 import { DevtoolsLazy } from '@livestore/devtools-react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
-import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
+import { makeDb } from '@livestore/web'
+import { WebWorkerStorage } from '@livestore/web/storage/web-worker'
 import { FPSMeter } from '@schickling/fps-meter'
 import React from 'react'
 
@@ -21,8 +22,8 @@ const AppBody: React.FC = () => (
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
-    loadStorage={() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })}
     fallback={<div>Loading...</div>}
+    makeDb={makeDb(() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker }))}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

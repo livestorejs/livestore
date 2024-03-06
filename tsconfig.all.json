@@ -3,8 +3,10 @@
   "compilerOptions": {},
   "include": [],
   "references": [
+    { "path": "./examples/expo" },
     { "path": "./examples/linearlite" },
     { "path": "./examples/todomvc" },
+    { "path": "./examples/todomvc-custom-elements" },
     { "path": "./examples/todomvc-drizzle" },
     { "path": "./packages/effect-db-schema" }
   ]

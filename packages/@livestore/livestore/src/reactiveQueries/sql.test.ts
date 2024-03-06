@@ -31,11 +31,19 @@ describe('otel', () => {
 
     const { store } = await makeTodoMvc({ otelTracer: tracer, otelContext })
 
-    return { store, tracer, exporter, span, provider }
+    return {
+      [Symbol.dispose]: () => store.destroy(),
+      store,
+      tracer,
+      exporter,
+      span,
+      provider,
+    }
   }
 
   it('otel', async () => {
-    const { store, exporter, span } = await makeQuery()
+    using inputs = await makeQuery()
+    const { store, exporter, span } = inputs
 
     const query = querySQL(`select * from todos`, { queriedTables: new Set(['todos']) })
     expect(query.run()).toMatchInlineSnapshot('[]')
@@ -71,20 +79,6 @@ describe('otel', () => {
             PRAGMA temp_store='MEMORY';
             PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
           ",
-            },
-          },
-          {
-            "_name": "sql-in-memory-select",
-            "attributes": {
-              "sql.cached": false,
-              "sql.query": "SELECT * FROM __livestore_schema",
-              "sql.rowsCount": 0,
-            },
-          },
-          {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');",
             },
           },
           {
@@ -170,7 +164,8 @@ describe('otel', () => {
   })
 
   it('with thunks', async () => {
-    const { store, exporter, span } = await makeQuery()
+    using inputs = await makeQuery()
+    const { store, exporter, span } = inputs
 
     const defaultTodo = { id: '', text: '', completed: false }
 
@@ -217,20 +212,6 @@ describe('otel', () => {
             PRAGMA temp_store='MEMORY';
             PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
           ",
-            },
-          },
-          {
-            "_name": "sql-in-memory-select",
-            "attributes": {
-              "sql.cached": false,
-              "sql.query": "SELECT * FROM __livestore_schema",
-              "sql.rowsCount": 0,
-            },
-          },
-          {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');",
             },
           },
           {

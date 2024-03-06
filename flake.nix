@@ -23,6 +23,9 @@
             corepack
             pkgsUnstable.bun
             caddy
+
+            # needed for Expo
+            cocoapods
           ];
         };
 

@@ -11,9 +11,10 @@
  *
  */
 
+import type { DbSchema } from '@livestore/common/schema'
+
 import { makeDbGraph } from './reactiveQueries/base-class.js'
-import type { TableDef } from './schema/table-def.js'
 
 export const globalDbGraph = makeDbGraph()
 
-export const dynamicallyRegisteredTables: Map<string, TableDef> = new Map()
+export const dynamicallyRegisteredTables: Map<string, DbSchema.TableDef> = new Map()

@@ -8,5 +8,5 @@
   },
   "include": ["./src"],
   "exclude": ["node_modules"],
-  "references": [{ "path": "../../packages/@livestore/livestore" }]
+  "references": [{ "path": "../../packages/@livestore/livestore" }, { "path": "../../packages/@livestore/utils" }, { "path": "../../packages/@livestore/web" }]
 }

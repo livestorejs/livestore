@@ -1,16 +1,42 @@
+import { type DatabaseImpl, sql } from '@livestore/common'
+import type { LiveStoreSchema, SchemaMetaRow } from '@livestore/common/schema'
+import { SCHEMA_META_TABLE, systemTables } from '@livestore/common/schema'
 import { Schema as EffectSchema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 import { memoize } from 'lodash-es'
 
-import { dynamicallyRegisteredTables } from './global-state.js'
-import type { InMemoryDatabase } from './index.js'
-import type { LiveStoreSchema, SchemaMetaRow } from './schema/index.js'
-import { SCHEMA_META_TABLE, systemTables } from './schema/index.js'
-import type { PreparedBindValues } from './utils/util.js'
-import { sql } from './utils/util.js'
+import type { ParamsObject } from './utils/util.js'
+import { prepareBindValues } from './utils/util.js'
 
 const getMemoizedTimestamp = memoize(() => new Date().toISOString())
+
+// TODO bring back statement caching
+// const cachedStmts = new Map<string, PreparedStatement>()
+
+const dbExecute = (db: DatabaseImpl, queryStr: string, bindValues?: ParamsObject) => {
+  // let stmt = cachedStmts.get(queryStr)
+  // if (!stmt) {
+  const stmt = db.mainDb.prepare(queryStr)
+  // cachedStmts.set(queryStr, stmt)
+  // }
+
+  const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
+
+  stmt.execute(preparedBindValues)
+
+  void db.storageDb.execute(queryStr, preparedBindValues, undefined)
+}
+
+const dbSelect = <T>(db: DatabaseImpl, queryStr: string, bindValues?: ParamsObject) => {
+  // let stmt = cachedStmts.get(queryStr)
+  // if (!stmt) {
+  const stmt = db.mainDb.prepare(queryStr)
+  // cachedStmts.set(queryStr, stmt)
+  // }
+
+  return stmt.select<T>(bindValues ? prepareBindValues(bindValues, queryStr) : undefined)
+}
 
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 export const migrateDb = ({
@@ -18,19 +44,17 @@ export const migrateDb = ({
   otelContext,
   schema,
 }: {
-  db: InMemoryDatabase
+  db: DatabaseImpl
   otelContext: otel.Context
   schema: LiveStoreSchema
 }) => {
-  db.execute(
+  dbExecute(
+    db,
     // TODO use schema migration definition from schema.ts instead
     sql`create table if not exists ${SCHEMA_META_TABLE} (tableName text primary key, schemaHash text, updatedAt text);`,
-    undefined,
-    new Set(),
-    { otelContext },
   )
 
-  const schemaMetaRows = db.select<SchemaMetaRow>(sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
+  const schemaMetaRows = dbSelect<SchemaMetaRow>(db, sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
 
   const dbSchemaHashByTable = Object.fromEntries(
     schemaMetaRows.map(({ tableName, schemaHash }) => [tableName, schemaHash]),
@@ -40,7 +64,6 @@ export const migrateDb = ({
     // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
     ...systemTables,
     ...Array.from(schema.tables.values()).filter((_) => _.sqliteDef.name !== SCHEMA_META_TABLE),
-    ...dynamicallyRegisteredTables.values(),
   ])
 
   for (const tableDef of tableDefs) {
@@ -48,18 +71,12 @@ export const migrateDb = ({
     const tableName = tableAst.name
     const dbSchemaHash = dbSchemaHashByTable[tableName]
     const schemaHash = SqliteAst.hash(tableAst)
-    if (schemaHash !== dbSchemaHash) {
-      if (import.meta.env.VITE_LIVESTORE_SKIP_MIGRATIONS) {
-        console.log(
-          `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), skipping migration...`,
-        )
-      } else {
-        console.log(
-          `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
-        )
+    if (schemaHash !== dbSchemaHash && import.meta.env.VITE_LIVESTORE_SKIP_MIGRATIONS === undefined) {
+      console.log(
+        `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
+      )
 
-        migrateTable({ db, tableAst, otelContext, schemaHash })
-      }
+      migrateTable({ db, tableAst, otelContext, schemaHash })
     }
   }
 }
@@ -67,10 +84,10 @@ export const migrateDb = ({
 export const migrateTable = ({
   db,
   tableAst,
-  otelContext,
+  // otelContext,
   schemaHash,
 }: {
-  db: InMemoryDatabase
+  db: DatabaseImpl
   tableAst: SqliteAst.Table
   otelContext: otel.Context
   schemaHash: number
@@ -80,22 +97,22 @@ export const migrateTable = ({
   const columnSpec = makeColumnSpec(tableAst)
 
   // TODO need to possibly handle cascading deletes due to foreign keys
-  db.execute(sql`drop table if exists ${tableName}`, undefined, new Set(), { otelContext })
-  db.execute(sql`create table if not exists ${tableName} (${columnSpec});`, undefined, new Set(), { otelContext })
+  dbExecute(db, sql`drop table if exists ${tableName}`)
+  dbExecute(db, sql`create table if not exists ${tableName} (${columnSpec})`)
 
   for (const index of tableAst.indexes) {
-    db.execute(createIndexFromDefinition(tableName, index), undefined, new Set(), { otelContext })
+    dbExecute(db, createIndexFromDefinition(tableName, index))
   }
 
   const updatedAt = getMemoizedTimestamp()
-  db.execute(
+
+  dbExecute(
+    db,
     sql`
       INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
         ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
     `,
-    { $tableName: tableName, $schemaHash: schemaHash, $updatedAt: updatedAt } as unknown as PreparedBindValues,
-    new Set(),
-    { otelContext },
+    { tableName, schemaHash, updatedAt },
   )
 }
 

@@ -147,7 +147,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
             const sqlString = get(queryString$, otelContext)
 
             if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store.inMemoryDB.getTablesUsed(sqlString)
+              queriedTablesRef.current = store.mainDbWrapper.getTablesUsed(sqlString)
             }
 
             // Establish a reactive dependency on the tables used in the query
@@ -159,7 +159,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
             span.setAttribute('sql.query', sqlString)
             span.updateName(`sql:${sqlString.slice(0, 50)}`)
 
-            const rawResults = store.inMemoryDB.select<any>(sqlString, {
+            const rawResults = store.mainDbWrapper.select<any>(sqlString, {
               queriedTables,
               bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               otelContext,

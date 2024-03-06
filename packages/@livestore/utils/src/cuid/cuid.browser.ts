@@ -27,7 +27,12 @@ const pad = (num: number | string, size: number) => {
 
 const env = typeof window === 'object' ? window : self
 const globalCount = Object.keys(env).length
-const clientId = pad(navigator.userAgent.length.toString(36) + globalCount.toString(36), 4)
+
+// To make it work in React Native https://github.com/paralleldrive/cuid/issues/54#issuecomment-222957293
+const clientId =
+  navigator.product === 'ReactNative'
+    ? 'rn'
+    : pad(navigator.userAgent.length.toString(36) + globalCount.toString(36), 4)
 
 const fingerprint = () => clientId
 
