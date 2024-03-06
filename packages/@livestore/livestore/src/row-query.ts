@@ -1,9 +1,10 @@
+import { sql } from '@livestore/common'
+import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { InMemoryDatabase } from './inMemoryDatabase.js'
 import { migrateTable } from './migrations.js'
 import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from './query-info.js'
 import type { Ref } from './reactive.js'
@@ -11,16 +12,8 @@ import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQuer
 import { computed } from './reactiveQueries/js.js'
 // import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import { SCHEMA_META_TABLE } from './schema/index.js'
-import {
-  type DefaultSqliteTableDef,
-  getDefaultValuesEncoded,
-  type TableDef,
-  type TableOptions,
-} from './schema/table-def.js'
-import type { RefreshReason } from './store.js'
+import type { RefreshReason, Store } from './store.js'
 import type { GetValForKey } from './utils/util.js'
-import { prepareBindValues, sql } from './utils/util.js'
 
 export type RowQueryOptions = {
   otelContext?: otel.Context
@@ -28,16 +21,28 @@ export type RowQueryOptions = {
   dbGraph?: DbGraph
 }
 
-export type RowQueryOptionsDefaulValues<TTableDef extends TableDef> = {
+export type RowQueryOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
   defaultValues: Partial<RowResult<TTableDef>>
 }
 
 export type MakeRowQuery = {
-  <TTableDef extends TableDef<DefaultSqliteTableDef, boolean, TableOptions & { isSingleton: true }>>(
+  <
+    TTableDef extends DbSchema.TableDef<
+      DbSchema.DefaultSqliteTableDef,
+      boolean,
+      DbSchema.TableOptions & { isSingleton: true }
+    >,
+  >(
     table: TTableDef,
     options?: RowQueryOptions,
   ): LiveQuery<RowResult<TTableDef>, QueryInfoRow<TTableDef>>
-  <TTableDef extends TableDef<DefaultSqliteTableDef, boolean, TableOptions & { isSingleton: false }>>(
+  <
+    TTableDef extends DbSchema.TableDef<
+      DbSchema.DefaultSqliteTableDef,
+      boolean,
+      DbSchema.TableOptions & { isSingleton: false }
+    >,
+  >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string,
@@ -46,7 +51,7 @@ export type MakeRowQuery = {
 }
 
 // TODO also allow other where clauses and multiple rows
-export const rowQuery: MakeRowQuery = <TTableDef extends TableDef>(
+export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
   table: TTableDef,
   idOrOptions?: string | RowQueryOptions,
   options_?: RowQueryOptions & RowQueryOptionsDefaulValues<TTableDef>,
@@ -98,11 +103,11 @@ export const rowQuery: MakeRowQuery = <TTableDef extends TableDef>(
   })
 }
 
-export type RowResult<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
+export type RowResult<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
   ? GetValForKey<SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
   : SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
-export type RowResultEncoded<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
+export type RowResultEncoded<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
   ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>, 'value'>
   : SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>
 
@@ -126,19 +131,19 @@ export const deriveColQuery: {
 }
 
 const insertRowWithDefaultValuesOrIgnore = ({
-  db,
+  store,
   id,
   table,
   otelContext,
   defaultValues: explicitDefaultValues,
 }: {
-  db: InMemoryDatabase
+  store: Store
   id: string
-  table: TableDef
+  table: DbSchema.TableDef
   otelContext: otel.Context
-  defaultValues: Partial<RowResult<TableDef>> | undefined
+  defaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
 }) => {
-  const defaultValues = getDefaultValuesEncoded(table, explicitDefaultValues)
+  const defaultValues = DbSchema.getDefaultValuesEncoded(table, explicitDefaultValues)
 
   const defaultColumnNames = [...Object.keys(defaultValues), 'id']
   const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')
@@ -148,9 +153,7 @@ const insertRowWithDefaultValuesOrIgnore = ({
     ', ',
   )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
 
-  db.execute(insertQuery, prepareBindValues({ ...defaultValues, id }, insertQuery), new Set([tableName]), {
-    otelContext,
-  })
+  store.execute(insertQuery, { ...defaultValues, id }, new Set([tableName]), otelContext)
 }
 
 const makeExecBeforeFirstRun =
@@ -167,7 +170,7 @@ const makeExecBeforeFirstRun =
     skipInsertDefaultRow?: boolean
     otelContext?: otel.Context
     componentTableName: string
-    table: TableDef
+    table: DbSchema.TableDef
   }) =>
   ({ store }: DbContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
@@ -175,12 +178,12 @@ const makeExecBeforeFirstRun =
     // TODO find a better solution for this
     if (store.tableRefs[componentTableName] === undefined) {
       const schemaHash = SqliteAst.hash(table.sqliteDef.ast)
-      const res = store.inMemoryDB.select<{ schemaHash: number }>(
+      const res = store.mainDbWrapper.select<{ schemaHash: number }>(
         sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
       )
       if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
         migrateTable({
-          db: store._proxyDb,
+          db: store.db,
           tableAst: table.sqliteDef.ast,
           otelContext,
           schemaHash,
@@ -200,7 +203,7 @@ const makeExecBeforeFirstRun =
     if (skipInsertDefaultRow !== true) {
       // TODO find a way to only do this if necessary
       insertRowWithDefaultValuesOrIgnore({
-        db: store._proxyDb,
+        store,
         id: id ?? 'singleton',
         table,
         otelContext,

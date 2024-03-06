@@ -3,9 +3,9 @@
 // import './index.css'
 
 import { createStore, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
-import { WebWorkerStorage } from '@livestore/livestore/storage/web-worker'
-import { makeSqlite3 } from '@livestore/livestore/wasm'
 import { cuid } from '@livestore/utils/cuid'
+import { makeDb } from '@livestore/web'
+import { WebWorkerStorage } from '@livestore/web/storage/web-worker'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'
@@ -18,8 +18,7 @@ export const css = (strings: TemplateStringsArray, ...values: unknown[]) => Stri
 
 const store = await createStore({
   schema,
-  loadStorage: () => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker }),
-  sqlite3: makeSqlite3,
+  makeDb: makeDb(() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })),
 })
 
 const appState$ = rowQuery(tables.app)

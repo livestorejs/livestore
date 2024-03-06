@@ -1,4 +1,4 @@
-import { InMemoryDatabase, prepareBindValues, sql } from '@livestore/livestore'
+import { BootDb, sql } from '@livestore/livestore'
 
 import { nanoid } from 'nanoid'
 import { Description, Issue } from './schema'
@@ -10,14 +10,14 @@ export const labels = ['frontend', 'backend', 'ux', 'research', 'design', 'bug',
 export const priorities = ['none', 'low', 'medium', 'high', 'urgent'] satisfies PriorityType[]
 export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled'] satisfies StatusType[]
 
-export function seed(db: InMemoryDatabase) {
+export function seed(db: BootDb) {
   const urlParams = new URLSearchParams(window.location.search)
   const seedParam = urlParams.get('seed')
   if (seedParam == null) {
     return
   }
   let howMany = parseInt(seedParam)
-  const rows = db.select(sql`SELECT count(*) as c FROM issue`)
+  const rows = db.select<any>(sql`SELECT count(*) as c FROM issue`)
   if (rows[0].c >= howMany) {
     return
   }
@@ -33,10 +33,8 @@ export function seed(db: InMemoryDatabase) {
   const insertDesc = `INSERT INTO description (id, body) VALUES ($id, $body)`
   db.txn(() => {
     for (const [issue, description] of createIssues(howMany)) {
-      const issueBinds = prepareBindValues(issue, insertIssue)
-      db.execute(insertIssue, issueBinds)
-      const descBinds = prepareBindValues(description, insertDesc)
-      db.execute(insertDesc, descBinds)
+      db.execute(insertIssue, issue)
+      db.execute(insertDesc, description)
     }
   })
 }

@@ -1,3 +1,4 @@
+import { DbSchema } from '@livestore/common/schema'
 import * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
@@ -8,18 +9,17 @@ import type { QueryInfo } from '../query-info.js'
 import { mutationForQueryInfo } from '../query-info.js'
 import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
-import { type DefaultSqliteTableDef, type TableDef, tableIsSingleton, type TableOptions } from '../schema/table-def.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 import { useCleanup } from './utils/useCleanup.js'
 
-export type UseRowResult<TTableDef extends TableDef> = [
+export type UseRowResult<TTableDef extends DbSchema.TableDef> = [
   row: RowResult<TTableDef>,
   setRow: StateSetters<TTableDef>,
   query$: LiveQuery<RowResult<TTableDef>, QueryInfo>,
 ]
 
-export type UseRowOptionsDefaulValues<TTableDef extends TableDef> = {
+export type UseRowOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
   defaultValues?: Partial<RowResult<TTableDef>>
 }
 
@@ -37,17 +37,29 @@ export type UseRowOptionsBase = {
  * If the table is a singleton table, `useRow` can be called without an `id` argument. Otherwise, the `id` argument is required.
  */
 export const useRow: {
-  <TTableDef extends TableDef<DefaultSqliteTableDef, boolean, TableOptions & { isSingleton: true }>>(
+  <
+    TTableDef extends DbSchema.TableDef<
+      DbSchema.DefaultSqliteTableDef,
+      boolean,
+      DbSchema.TableOptions & { isSingleton: true }
+    >,
+  >(
     table: TTableDef,
     options?: UseRowOptionsBase,
   ): UseRowResult<TTableDef>
-  <TTableDef extends TableDef<DefaultSqliteTableDef, boolean, TableOptions & { isSingleton: false }>>(
+  <
+    TTableDef extends DbSchema.TableDef<
+      DbSchema.DefaultSqliteTableDef,
+      boolean,
+      DbSchema.TableOptions & { isSingleton: false }
+    >,
+  >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string,
     options?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
   ): UseRowResult<TTableDef>
-} = <TTableDef extends TableDef>(
+} = <TTableDef extends DbSchema.TableDef>(
   table: TTableDef,
   idOrOptions?: string | UseRowOptionsBase,
   options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
@@ -83,7 +95,7 @@ export const useRow: {
 
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const query$ = tableIsSingleton(table)
+    const query$ = DbSchema.tableIsSingleton(table)
       ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
       : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
           otelContext,
@@ -160,7 +172,7 @@ export const useRow: {
 export type Dispatch<A> = (action: A) => void
 export type SetStateAction<S> = S | ((previousValue: S) => S)
 
-export type StateSetters<TTableDef extends TableDef> = TTableDef['isSingleColumn'] extends true
+export type StateSetters<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
   ? Dispatch<SetStateAction<RowResult<TTableDef>>>
   : {
       [K in keyof RowResult<TTableDef>]: Dispatch<SetStateAction<RowResult<TTableDef>[K]>>
@@ -171,7 +183,7 @@ export type StateSetters<TTableDef extends TableDef> = TTableDef['isSingleColumn
 /** Reference counted cache for `query$` and otel context */
 class RCCache {
   private readonly cache = new Map<
-    TableDef,
+    DbSchema.TableDef,
     Map<
       string,
       {
@@ -182,16 +194,16 @@ class RCCache {
       }
     >
   >()
-  private reverseCache = new Map<LiveQuery<any, any>, [TableDef, string]>()
+  private reverseCache = new Map<LiveQuery<any, any>, [DbSchema.TableDef, string]>()
 
-  get = (table: TableDef, id: string) => {
+  get = (table: DbSchema.TableDef, id: string) => {
     const queries = this.cache.get(table)
     if (queries === undefined) return undefined
     return queries.get(id)
   }
 
   set = (
-    table: TableDef,
+    table: DbSchema.TableDef,
     id: string,
     query$: LiveQuery<any, any>,
     reactId: string,

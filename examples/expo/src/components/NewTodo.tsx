@@ -13,6 +13,12 @@ export const NewTodo: React.FC = () => {
       mutations.addTodo({ id: new Date().toISOString(), text: newTodoText }),
       mutations.updateNewTodoText({ text: '' }),
     )
+  const addRandom50 = () => {
+    const idPrefix = new Date().toISOString()
+    const todos = Array.from({ length: 50 }, (_, i) => ({ id: `${idPrefix}-${i}`, text: `Todo ${i}` }))
+    store.mutate(...todos.map((todo) => mutations.addTodo(todo)))
+  }
+  const reset = () => store.mutate(mutations.clearAll())
 
   return (
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
@@ -25,6 +31,12 @@ export const NewTodo: React.FC = () => {
         />
         <Pressable onPress={addTodo}>
           <Text style={styles.submit}>Add</Text>
+        </Pressable>
+        <Pressable onPress={addRandom50}>
+          <Text style={styles.submit}>Random (50)</Text>
+        </Pressable>
+        <Pressable onPress={reset}>
+          <Text style={styles.submit}>Clear</Text>
         </Pressable>
       </View>
     </TouchableWithoutFeedback>
@@ -40,7 +52,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: 'center',
     padding: 10,
-    width: 300,
+    width: 400,
   },
   input: {
     height: 40,
@@ -50,8 +62,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   submit: {
-    padding: 10,
+    padding: 4,
     // backgroundColor: 'blue',
     borderRadius: 6,
+    fontSize: 12,
   },
 })

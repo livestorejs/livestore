@@ -33,6 +33,8 @@ export const clearCompleted = defineMutation(
   sql`DELETE FROM todos WHERE completed = true`,
 )
 
+export const clearAll = defineMutation('clearAll', Schema.void, sql`DELETE FROM todos`)
+
 export const updateNewTodoText = defineMutation(
   'updateNewTodoText',
   Schema.struct({ text: Schema.string }),

@@ -1,7 +1,7 @@
 import { querySQL } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
+import { FlashList } from '@shopify/flash-list'
 import * as React from 'react'
-import { FlatList } from 'react-native'
 
 import type { Todo as ITodo } from '../schema'
 import { Todo } from './Todo.tsx'
@@ -12,10 +12,11 @@ export const ListTodos: React.FC = () => {
   const todosData = useQuery(todos$)
 
   return (
-    <FlatList
+    <FlashList
       data={todosData}
       renderItem={({ item }) => <Todo {...item} />}
       keyExtractor={(item) => item.id.toString()}
+      estimatedItemSize={todosData.length}
     />
   )
 }

@@ -1,18 +1,16 @@
-import { assertNever, makeNoopSpan, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import type { DatabaseFactory, DatabaseImpl, MainDatabase, PreparedBindValues } from '@livestore/common'
+import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from '@livestore/common/schema'
+import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import type { DatabaseFactory } from './database.js'
 import { dynamicallyRegisteredTables, globalDbGraph } from './global-state.js'
-import { InMemoryDatabase } from './inMemoryDatabase.js'
+import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
-import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from './schema/index.js'
-import { InMemoryStorage } from './storage/in-memory/index.js'
-import type { Storage, StorageInit } from './storage/index.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 import type { ParamsObject } from './utils/util.js'
@@ -26,22 +24,21 @@ export type BaseGraphQLContext = {
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
-  makeContext: (db: InMemoryDatabase, tracer: otel.Tracer) => TContext
+  makeContext: (db: MainDatabase, tracer: otel.Tracer) => TContext
 }
 
 export type StoreOptions<
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > = {
-  db: InMemoryDatabase
-  /** A `Proxy`d version of `db` except that it also mirrors `execute` calls to the storage */
-  dbProxy: InMemoryDatabase
+  db: DatabaseImpl
+  // /** A `Proxy`d version of `db` except that it also mirrors `execute` calls to the storage */
+  // dbProxy: InMemoryDatabase
   schema: TSchema
-  storage?: Storage
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer: otel.Tracer
   otelRootSpanContext: otel.Context
-  dbGraph?: DbGraph
+  dbGraph: DbGraph
 }
 
 export type RefreshReason =
@@ -78,15 +75,23 @@ export type StoreOtel = {
 let storeCount = 0
 const uniqueStoreId = () => `store-${++storeCount}`
 
+export type BootDb = {
+  execute(queryStr: string, bindValues?: ParamsObject): void
+  select<T>(queryStr: string, bindValues?: ParamsObject): ReadonlyArray<T>
+  txn(callback: () => void): void
+}
+
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > {
   id = uniqueStoreId()
   graph: ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
-  inMemoryDB: InMemoryDatabase
+  mainDbWrapper: MainDatabaseWrapper
   // TODO refactor
-  _proxyDb: InMemoryDatabase
+  // _proxyDb: InMemoryDatabase
+  // TODO
+  db: DatabaseImpl
   schema: LiveStoreSchema
   graphQLSchema?: GraphQLSchema
   graphQLContext?: TGraphQLContext
@@ -99,22 +104,21 @@ export class Store<
 
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
-  storage?: Storage
 
   private mutationArgsSchema
 
   private constructor({
     db,
-    dbProxy,
+    // dbProxy,
     schema,
-    storage,
     graphQLOptions,
     dbGraph,
     otelTracer,
     otelRootSpanContext,
   }: StoreOptions<TGraphQLContext, TSchema>) {
-    this.inMemoryDB = db
-    this._proxyDb = dbProxy
+    this.mainDbWrapper = new MainDatabaseWrapper({ otelTracer, otelRootSpanContext, db: db.mainDb })
+    this.db = db
+    // this._proxyDb = dbProxy
     this.schema = schema
 
     // TODO refactor
@@ -123,7 +127,7 @@ export class Store<
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
     this.activeQueries = new ReferenceCountedSet()
-    this.storage = storage
+    // this.storage = storage
 
     const mutationsSpan = otelTracer.startSpan('LiveStore:mutations', {}, otelRootSpanContext)
     const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
@@ -131,7 +135,7 @@ export class Store<
     const queriesSpan = otelTracer.startSpan('LiveStore:queries', {}, otelRootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
 
-    this.graph = dbGraph ?? globalDbGraph
+    this.graph = dbGraph
     this.graph.context = { store: this as any, otelTracer, rootOtelContext: otelQueriesSpanContext }
 
     this.otel = {
@@ -157,7 +161,7 @@ export class Store<
 
     if (graphQLOptions) {
       this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(db, this.otel.tracer)
+      this.graphQLContext = graphQLOptions.makeContext(db.mainDb, this.otel.tracer)
     }
   }
 
@@ -295,6 +299,7 @@ export class Store<
                         writeTables.add(tableName)
                       }
                     } catch (e: any) {
+                      debugger
                       console.error(e, mutationEvent)
                     }
                   }
@@ -302,7 +307,7 @@ export class Store<
 
                 if (mutationsEvents.length > 1) {
                   // TODO: what to do about storage transaction here?
-                  this.inMemoryDB.txn(applyMutations)
+                  this.mainDbWrapper.txn(applyMutations)
                 } else {
                   applyMutations()
                 }
@@ -391,15 +396,15 @@ export class Store<
         const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
         const writeTables =
           typeof statementRes === 'string'
-            ? this.inMemoryDB.getTablesUsed(statementSql)
-            : statementRes.writeTables ?? this.inMemoryDB.getTablesUsed(statementSql)
+            ? this.mainDbWrapper.getTablesUsed(statementSql)
+            : statementRes.writeTables ?? this.mainDbWrapper.getTablesUsed(statementSql)
 
         const bindValues =
           typeof statementRes === 'string'
             ? Schema.encodeUnknownSync(mutationDef.schema)(mutationEvent.args)
             : statementRes.bindValues
 
-        const { durationMs } = this.inMemoryDB.execute(
+        const { durationMs } = this.mainDbWrapper.execute(
           statementSql,
           prepareBindValues(bindValues ?? {}, statementSql),
           writeTables,
@@ -407,10 +412,8 @@ export class Store<
         )
 
         // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-        if (this.storage !== undefined) {
-          const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationArgsSchema)(mutationEvent)
-          this.storage.mutate(mutationEventEncoded, span)
-        }
+        const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationArgsSchema)(mutationEvent)
+        this.db.storageDb.mutate(mutationEventEncoded, span)
 
         // Uncomment to print a list of queries currently registered on the store
         // console.debug(JSON.parse(JSON.stringify([...this.queries].map((q) => `${labelForKey(q.componentKey)}/${q.label}`))))
@@ -433,16 +436,14 @@ export class Store<
     writeTables?: ReadonlySet<string>,
     otelContext?: otel.Context,
   ) => {
-    this.inMemoryDB.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
+    this.mainDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
-    if (this.storage !== undefined) {
-      const parentSpan = otel.trace.getSpan(otel.context.active())
-      this.storage.execute(query, prepareBindValues(params, query), parentSpan)
-    }
+    const parentSpan = otel.trace.getSpan(otel.context.active())
+    this.db.storageDb.execute(query, prepareBindValues(params, query), parentSpan)
   }
 
   select = (query: string, params: ParamsObject = {}) => {
-    return this.inMemoryDB.select(query, { bindValues: prepareBindValues(params, query) })
+    return this.mainDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
   }
 
   makeTableRef = (tableName: string) =>
@@ -453,19 +454,17 @@ export class Store<
     })
 
   __devDownloadDb = () => {
-    const data = this.inMemoryDB.export()
+    const data = this.mainDbWrapper.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
   }
 
   __devDownloadMutationLogDb = async () => {
-    const data = await this.storage?.getMutationLogData()
-    if (data !== undefined) {
-      downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
-    }
+    const data = await this.db.storageDb.getMutationLogData()
+    downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
   }
 
-  // TODO allow for graceful store reset without requiring a full page reload
-  dangerouslyResetStorage = () => this.storage?.dangerouslyReset()
+  // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
+  dangerouslyResetStorage = () => this.db.storageDb.dangerouslyReset()
 }
 
 /** Create a new LiveStore Store */
@@ -474,94 +473,86 @@ export const createStore = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >({
   schema,
-  loadStorage,
   graphQLOptions,
   otelTracer = makeNoopTracer(),
   otelRootSpanContext = otel.context.active(),
-  sqlite3: sqlite3Factory,
+  makeDb,
   boot,
-  dbGraph,
+  dbGraph = globalDbGraph,
+  batchUpdates,
 }: {
   schema: TSchema
-  loadStorage?: () => StorageInit | Promise<StorageInit>
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
-  sqlite3: DatabaseFactory
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
+  makeDb: DatabaseFactory
+  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   dbGraph?: DbGraph
+  batchUpdates?: (run: () => void) => void
 }): Promise<Store<TGraphQLContext, TSchema>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      const storage = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
-        try {
-          const init = loadStorage ? await loadStorage() : InMemoryStorage.load()
-          const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
-          return init({ otelTracer, parentSpan })
-        } finally {
-          span.end()
-        }
-      })
+      const dbPromise = makeDb({ otelTracer, otelContext })
+      const db = dbPromise instanceof Promise ? await dbPromise : dbPromise
 
-      const persistedData = await otelTracer.startActiveSpan(
-        'storage:getPersistedData',
-        {},
-        otelContext,
-        async (span) => {
-          try {
-            return await storage.getPersistedData(span)
-          } finally {
-            span.end()
-          }
-        },
-      )
-
-      const sqlite3Promise = sqlite3Factory('todo.db', persistedData)
-      const sqlite3 = sqlite3Promise instanceof Promise ? await sqlite3Promise : sqlite3Promise
-
-      const db = InMemoryDatabase.load({ otelTracer, otelRootSpanContext, sqlite3 })
-
-      const txnKeywords = ['begin transaction;', 'commit;', 'rollback;']
-      const isTxnQuery = (query: string) => txnKeywords.some((_) => query.toLowerCase().startsWith(_))
-
-      // Proxy to `db` that also mirrors `execute` calls to `storage`
-      const dbProxy = new Proxy(db, {
-        get: (db, prop, receiver) => {
-          if (prop === 'execute') {
-            const execute: InMemoryDatabase['execute'] = (query, bindValues, writeTables, options) => {
-              if (isTxnQuery(query) === false) {
-                storage.execute(query, bindValues, span)
-              }
-              return db.execute(query, bindValues, writeTables, options)
-            }
-            return execute
-          } else if (prop === 'select') {
-            // NOTE we're even proxying `select` calls here as some apps (e.g. Overtone) currently rely on this
-            // TODO remove this once we've migrated all apps to use `execute` instead of `select`
-            const select: InMemoryDatabase['select'] = (query, options = {}) => {
-              storage.execute(query, options.bindValues as any)
-              return db.select(query, options)
-            }
-            return select
-          } else {
-            return Reflect.get(db, prop, receiver)
-          }
-        },
-      })
-
-      otelTracer.startActiveSpan('migrateDb', {}, otelContext, async (span) => {
+      otelTracer.startActiveSpan('migrateDb', {}, otelContext, (span) => {
         try {
           const otelContext = otel.trace.setSpan(otel.context.active(), span)
-          migrateDb({ db: dbProxy, schema, otelContext })
+          migrateDb({ db, schema, otelContext })
         } finally {
           span.end()
         }
       })
 
+      if (batchUpdates !== undefined) {
+        dbGraph.effectsWrapper = batchUpdates
+      }
+
       if (boot !== undefined) {
-        const booting = boot(dbProxy, span)
+        let isInTxn = false
+        const txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
+
+        const bootDbImpl: BootDb = {
+          execute: (queryStr, bindValues) => {
+            const stmt = db.mainDb.prepare(queryStr)
+            const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
+            stmt.execute(preparedBindValues)
+
+            if (isInTxn === true) {
+              void db.storageDb.execute(queryStr, preparedBindValues, undefined)
+            } else {
+              txnExecuteStmnts.push([queryStr, preparedBindValues])
+            }
+          },
+          select: (queryStr, bindValues) => {
+            const stmt = db.mainDb.prepare(queryStr)
+            const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
+            return stmt.select(preparedBindValues)
+          },
+          txn: (callback) => {
+            try {
+              isInTxn = true
+              db.mainDb.execute('BEGIN', undefined)
+
+              callback()
+
+              db.mainDb.execute('COMMIT', undefined)
+
+              db.storageDb.execute('BEGIN', undefined, undefined)
+              for (const [queryStr, bindValues] of txnExecuteStmnts) {
+                db.storageDb.execute(queryStr, bindValues, undefined)
+              }
+              db.storageDb.execute('COMMIT', undefined, undefined)
+            } catch (e: any) {
+              db.mainDb.execute('ROLLBACK', undefined)
+              throw e
+            }
+          },
+        }
+
+        const booting = boot(bootDbImpl, span)
         // NOTE only awaiting if it's actually a promise to avoid unnecessary async/await
         if (isPromise(booting)) {
           await booting
@@ -572,7 +563,7 @@ export const createStore = async <
       // Think about what to do about this case.
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext, TSchema>(
-        { db, dbProxy, schema, storage, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph },
+        { db, schema, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph },
         span,
       )
     } finally {

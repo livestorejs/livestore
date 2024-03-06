@@ -1,43 +1,14 @@
+import { makeDb } from '@livestore/expo'
 import { sql } from '@livestore/livestore'
-import type { DatabaseApi } from '@livestore/livestore/react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
-import * as SQLite from 'expo-sqlite/next'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, unstable_batchedUpdates, View } from 'react-native'
 
 import { ListTodos } from './components/ListTodos.tsx'
+import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { schema } from './schema/index.ts'
-
-const dbFilename = 'databaseName7.db'
-const db = SQLite.openDatabaseSync(dbFilename)
-
-const sqlite3Instance: DatabaseApi = {
-  filename: dbFilename,
-  prepare: (value) => {
-    const stmt = db.prepareSync(value)
-    return {
-      execute: (bindValues) => {
-        const res = stmt.executeSync(bindValues ?? [])
-        res.resetSync()
-      },
-      select: (bindValues) => {
-        const res = stmt.executeSync(bindValues ?? [])
-        try {
-          return res.getAllSync() as any
-        } finally {
-          res.resetSync()
-        }
-      },
-      finalize: () => stmt.finalizeSync(),
-    }
-  },
-  export: () => {
-    console.error(`export not yet implemented`)
-    return new Uint8Array([])
-  },
-}
 
 export const App = () => {
   return (
@@ -48,9 +19,12 @@ export const App = () => {
         boot={(db) => {
           db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
         }}
-        sqlite3={() => sqlite3Instance}
+        makeDb={makeDb('app.db')}
+        // NOTE This is currently necessary to properly batch updates in React Native
+        batchUpdates={(run) => unstable_batchedUpdates(() => run())}
       >
         <NewTodo />
+        <Meta />
         <ListTodos />
       </LiveStoreProvider>
       <StatusBar style="auto" />

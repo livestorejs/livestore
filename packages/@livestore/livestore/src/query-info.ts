@@ -1,8 +1,6 @@
+import { type DbSchema, rawSqlMutation, type RawSqlMutationEvent } from '@livestore/common/schema'
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
-
-import { rawSqlMutation, type RawSqlMutationEvent } from './schema/mutations.js'
-import type { FromTable, TableDef } from './schema/table-def.js'
 
 /**
  * Semantic information about a query with supported cases being:
@@ -10,7 +8,7 @@ import type { FromTable, TableDef } from './schema/table-def.js'
  * - a single column value
  * - a sub value in a JSON column
  */
-export type QueryInfo<TTableDef extends TableDef = TableDef> =
+export type QueryInfo<TTableDef extends DbSchema.TableDef = DbSchema.TableDef> =
   | QueryInfoNone
   | QueryInfoRow<TTableDef>
   | QueryInfoColJsonValue<TTableDef, GetJsonColumn<TTableDef>>
@@ -20,20 +18,23 @@ export type QueryInfoNone = {
   _tag: 'None'
 }
 
-export type QueryInfoRow<TTableDef extends TableDef> = {
+export type QueryInfoRow<TTableDef extends DbSchema.TableDef> = {
   _tag: 'Row'
   table: TTableDef
   id: string
 }
 
-export type QueryInfoCol<TTableDef extends TableDef, TColName extends keyof TTableDef['sqliteDef']['columns']> = {
+export type QueryInfoCol<
+  TTableDef extends DbSchema.TableDef,
+  TColName extends keyof TTableDef['sqliteDef']['columns'],
+> = {
   _tag: 'Col'
   table: TTableDef
   id: string
   column: TColName
 }
 
-export type QueryInfoColJsonValue<TTableDef extends TableDef, TColName extends GetJsonColumn<TTableDef>> = {
+export type QueryInfoColJsonValue<TTableDef extends DbSchema.TableDef, TColName extends GetJsonColumn<TTableDef>> = {
   _tag: 'ColJsonValue'
   table: TTableDef
   id: string
@@ -44,14 +45,14 @@ export type QueryInfoColJsonValue<TTableDef extends TableDef, TColName extends G
   jsonPath: string
 }
 
-type GetJsonColumn<TTableDef extends TableDef> = keyof {
+type GetJsonColumn<TTableDef extends DbSchema.TableDef> = keyof {
   [ColName in keyof TTableDef['sqliteDef']['columns'] as TTableDef['sqliteDef']['columns'][ColName]['columnType'] extends 'text'
     ? ColName
     : never]: {}
 }
 
 export type UpdateValueForPath<TPath extends QueryInfo> = TPath extends { _tag: 'Row' }
-  ? Partial<FromTable.RowDecodedAll<TPath['table']>>
+  ? Partial<DbSchema.FromTable.RowDecodedAll<TPath['table']>>
   : TPath extends { _tag: 'Col' }
     ? Schema.Schema.To<TPath['table']['sqliteDef']['columns'][TPath['column']]['schema']>
     : TPath extends { _tag: 'ColJsonValue' }

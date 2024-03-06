@@ -1,67 +1,65 @@
+import type { DatabaseFactory } from '@livestore/common'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
-import type { DatabaseFactory } from '../database.js'
 // TODO refactor so the `react` module doesn't depend on `effect` module
 import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
-import type { InMemoryDatabase } from '../inMemoryDatabase.js'
-import type { LiveStoreSchema } from '../schema/index.js'
-import type { StorageInit } from '../storage/index.js'
-import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
+import type { BaseGraphQLContext, BootDb, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
-  loadStorage?: () => StorageInit | Promise<StorageInit>
-  boot?: (db: InMemoryDatabase, parentSpan: otel.Span) => unknown | Promise<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
   fallback: ReactElement
-  sqlite3: DatabaseFactory
+  makeDb: DatabaseFactory
+  batchUpdates?: (run: () => void) => void
 }
 
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   fallback,
-  loadStorage,
   graphQLOptions,
   otelTracer,
   otelRootSpanContext,
   children,
   schema,
   boot,
-  sqlite3,
+  makeDb,
+  batchUpdates,
 }: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
-  const store = useCreateStore({
+  const storeCtx = useCreateStore({
     schema,
-    loadStorage,
     graphQLOptions,
     otelTracer,
     otelRootSpanContext,
     boot,
-    sqlite3,
+    makeDb,
+    batchUpdates,
   })
 
-  if (store === undefined) {
+  if (storeCtx === undefined) {
     return fallback
   }
 
-  window.__debugLiveStore = store.store
+  window.__debugLiveStore = storeCtx.store
 
-  return <LiveStoreContext.Provider value={store}>{children}</LiveStoreContext.Provider>
+  return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
 }
 
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   schema,
-  loadStorage,
   graphQLOptions,
   otelTracer,
   otelRootSpanContext,
   boot,
-  sqlite3,
+  makeDb,
+  batchUpdates,
 }: LiveStoreCreateStoreOptions<GraphQLContext>) => {
   const [ctxValue, setCtxValue] = React.useState<StoreContext_ | undefined>()
 
@@ -75,12 +73,12 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       try {
         store = await createStore({
           schema,
-          loadStorage,
           graphQLOptions,
           otelTracer,
           otelRootSpanContext,
           boot,
-          sqlite3,
+          makeDb,
+          batchUpdates,
         })
         setCtxValue({ store })
       } catch (e) {
@@ -91,7 +89,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     return () => {
       store?.destroy()
     }
-  }, [schema, loadStorage, graphQLOptions, otelTracer, otelRootSpanContext, boot, sqlite3])
+  }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, makeDb, batchUpdates])
 
   return ctxValue
 }

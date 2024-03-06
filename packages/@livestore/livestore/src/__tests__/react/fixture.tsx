@@ -1,8 +1,8 @@
 import { Schema as __Schema } from '@livestore/utils/effect'
+import { makeDb } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { makeSqlite3 } from '../../database-wasm.js'
 import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
 import { createStore, DbSchema, makeCudMutations, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
@@ -56,7 +56,7 @@ export const makeTodoMvc = async ({
   const store = await createStore({
     schema,
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
-    sqlite3: makeSqlite3,
+    makeDb: makeDb(),
     dbGraph,
     otelTracer,
     otelRootSpanContext: otelContext,

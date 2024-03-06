@@ -23,11 +23,11 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "effect": [
-        "./dist/effect"
-      ],
       "./cuid": [
         "./dist/cuid/cuid.node.d.ts"
+      ],
+      "effect": [
+        "./dist/effect"
       ]
     }
   },
@@ -38,6 +38,7 @@
     "@effect/opentelemetry": "^0.31.10",
     "@effect/schema": "0.63.0",
     "@opentelemetry/api": "^1.7.0",
+    "effect-db-schema": "workspace:*",
     "date-fns": "^3.3.1",
     "effect": "2.4.0",
     "otel-websocket-exporter": "^0.0.27",
