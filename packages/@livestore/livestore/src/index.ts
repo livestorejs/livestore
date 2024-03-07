@@ -3,7 +3,7 @@ export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason, BootDb } from '
 
 export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
 
-export { MainDatabaseWrapper as InMemoryDatabase, type DebugInfo, emptyDebugInfo } from './MainDatabaseWrapper.js'
+export { MainDatabaseWrapper, type DebugInfo, emptyDebugInfo } from './MainDatabaseWrapper.js'
 
 export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom, Node, Ref, Effect } from './reactive.js'
 export { LiveStoreJSQuery, computed } from './reactiveQueries/js.js'

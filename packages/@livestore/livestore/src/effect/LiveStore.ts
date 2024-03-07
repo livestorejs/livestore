@@ -1,10 +1,11 @@
-import type { DatabaseFactory, MainDatabase } from '@livestore/common'
+import type { DatabaseFactory } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
+import type { MainDatabaseWrapper } from '../MainDatabaseWrapper.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import type { BaseGraphQLContext, BootDb, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
@@ -39,7 +40,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
-    makeContext: (db: MainDatabase) => GraphQLContext
+    makeContext: (db: MainDatabaseWrapper) => GraphQLContext
   }
   boot?: (db: BootDb) => Effect.Effect<void>
   makeDb: DatabaseFactory

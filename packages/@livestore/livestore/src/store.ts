@@ -1,11 +1,11 @@
-import type { DatabaseFactory, DatabaseImpl, MainDatabase, PreparedBindValues } from '@livestore/common'
+import type { DatabaseFactory, DatabaseImpl, PreparedBindValues } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import { dynamicallyRegisteredTables, globalDbGraph } from './global-state.js'
+import { globalDbGraph } from './global-state.js'
 import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
@@ -24,7 +24,7 @@ export type BaseGraphQLContext = {
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
-  makeContext: (db: MainDatabase, tracer: otel.Tracer) => TContext
+  makeContext: (db: MainDatabaseWrapper, tracer: otel.Tracer) => TContext
 }
 
 export type StoreOptions<
@@ -145,11 +145,11 @@ export class Store<
     }
 
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
-    const allTableNames = new Set([
-      ...this.schema.tables.keys(),
+    const allTableNames = new Set(
+      this.schema.tables.keys(),
       // TODO activate dynamic tables
-      ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.sqliteDef.name),
-    ])
+      // ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.sqliteDef.name),
+    )
     const existingTableRefs = new Map(
       Array.from(this.graph.atoms.values())
         .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)
@@ -161,7 +161,7 @@ export class Store<
 
     if (graphQLOptions) {
       this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(db.mainDb, this.otel.tracer)
+      this.graphQLContext = graphQLOptions.makeContext(this.mainDbWrapper, this.otel.tracer)
     }
   }
 

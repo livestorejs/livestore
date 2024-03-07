@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@effect/schema": "0.63.0",
-    "@livestore/devtools-react": "0.0.41",
+    "@livestore/devtools-react": "0.0.43",
     "@livestore/livestore": "latest",
     "@livestore/web": "latest",
     "@livestore/utils": "latest",

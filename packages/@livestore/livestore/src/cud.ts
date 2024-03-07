@@ -1,6 +1,6 @@
-import { deleteRows, insertRow, updateRows } from '@livestore/common'
 import type { RawSqlMutationEvent } from '@livestore/common/schema'
 import { DbSchema, rawSqlMutation } from '@livestore/common/schema'
+import { deleteRows, insertRow, updateRows } from '@livestore/common/sql-queries'
 import { isIterable } from '@livestore/utils'
 import type { SqliteDsl } from 'effect-db-schema'
 
