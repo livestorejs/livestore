@@ -36,6 +36,10 @@ export default defineConfig({
   build: {
     sourcemap: true,
   },
+  optimizeDeps: {
+    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
+    exclude: ['@livestore/sqlite-wasm'],
+  },
   plugins: [
     react(),
     VitePWA({
