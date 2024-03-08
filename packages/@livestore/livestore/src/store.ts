@@ -512,7 +512,7 @@ export const createStore = async <
 
       if (boot !== undefined) {
         let isInTxn = false
-        const txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
+        let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
 
         const bootDbImpl: BootDb = {
           execute: (queryStr, bindValues) => {
@@ -521,9 +521,9 @@ export const createStore = async <
             stmt.execute(preparedBindValues)
 
             if (isInTxn === true) {
-              void db.storageDb.execute(queryStr, preparedBindValues, undefined)
-            } else {
               txnExecuteStmnts.push([queryStr, preparedBindValues])
+            } else {
+              void db.storageDb.execute(queryStr, preparedBindValues, undefined)
             }
           },
           select: (queryStr, bindValues) => {
@@ -548,6 +548,9 @@ export const createStore = async <
             } catch (e: any) {
               db.mainDb.execute('ROLLBACK', undefined)
               throw e
+            } finally {
+              isInTxn = false
+              txnExecuteStmnts = []
             }
           },
         }
