@@ -77,8 +77,12 @@ export const mutationForQueryInfo = <const TPath extends QueryInfo>(
       const partialStructSchema = updatePath.table.schema.pipe(Schema.pick(...columnNames))
 
       // const columnNames = Object.keys(value)
-      const bindValues = Schema.encodeSync(partialStructSchema)(value)
-      return { columnNames, bindValues }
+      const encodedBindValues = Schema.encodeEither(partialStructSchema)(value)
+      if (encodedBindValues._tag === 'Left') {
+        return shouldNeverHappen(encodedBindValues.left.toString())
+      } else {
+        return { columnNames, bindValues: encodedBindValues.right }
+      }
     } else if (updatePath._tag === 'Col') {
       const columnName = updatePath.column
       const columnSchema =
