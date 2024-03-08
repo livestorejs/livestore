@@ -1,19 +1,29 @@
+(common_headers) {
+  header Cross-Origin-Embedder-Policy "require-corp"
+  header Cross-Origin-Opener-Policy "same-origin"
+  header Service-Worker-Allowed "/"
+}
+
 *.livestore.localhost {
 	tls {$DEV_SSL_CERT} {$DEV_SSL_KEY}
 }
 
 linearlite.livestore.localhost {
 	reverse_proxy localhost:60000
+	import common_headers
 }
 
 todomvc.livestore.localhost {
 	reverse_proxy localhost:60001
+	import common_headers
 }
 
 todomvc-webcomponents.livestore.localhost {
 	reverse_proxy localhost:60002
+	import common_headers
 }
 
 todomvc-drizzle.livestore.localhost {
 	reverse_proxy localhost:60003
+	import common_headers
 }

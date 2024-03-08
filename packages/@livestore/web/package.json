@@ -49,7 +49,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/common": "workspace:*",
     "comlink": "^4.4.1",
-    "sqlite-esm": "3.42.0-build6"
+    "@livestore/sqlite-wasm": "3.46.0-build2"
   },
   "devDependencies": {},
   "peerDependencies": {},

@@ -39,11 +39,6 @@ export default defineConfig({
   esbuild: {
     target: 'esnext',
   },
-  optimizeDeps: {
-    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/livestore', 'sqlite-esm'],
-    include: ['react', 'react-dom'],
-  },
   plugins: [
     react(),
     VitePWA({

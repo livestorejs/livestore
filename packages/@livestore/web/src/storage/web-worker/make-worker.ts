@@ -3,11 +3,11 @@
 import { prepareBindValues, sql } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
+import type * as SqliteWasm from '@livestore/sqlite-wasm'
+import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { casesHandled, memoize, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as Comlink from 'comlink'
-import type * as SqliteWasm from 'sqlite-esm'
-import sqlite3InitModule from 'sqlite-esm'
 
 import { IDB } from '../utils/idb.js'
 import type { ExecutionBacklogItem } from './common.js'
@@ -30,9 +30,9 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
   mutationLog,
 }: WorkerOptions<TSchema>) => {
   // A global variable to hold the database connection.
-  let db: SqliteWasm.DatabaseApi
+  let db: SqliteWasm.Database
 
-  let dbLog: SqliteWasm.DatabaseApi
+  let dbLog: SqliteWasm.Database
 
   let sqlite3: SqliteWasm.Sqlite3Static
 
@@ -68,9 +68,9 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
     switch (options.type) {
       case 'opfs': {
         try {
-          db = new sqlite3.oo1.OpfsDb(options.fileName) // , 'c'
+          db = new sqlite3.oo1.OpfsDb(options.fileName, 'c')
 
-          dbLog = new sqlite3.oo1.OpfsDb(options.fileName + '-log.db') // , 'c'
+          dbLog = new sqlite3.oo1.OpfsDb(options.fileName + '-log.db', 'c')
         } catch (e) {
           debugger
         }
@@ -87,7 +87,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
             // Based on https://sqlite.org/forum/forumpost/2119230da8ac5357a13b731f462dc76e08621a4a29724f7906d5f35bb8508465
             // TODO find cleaner way to do this once possible in sqlite3-wasm
             const p = sqlite3.wasm.allocFromTypedArray(bytes)
-            const _rc = sqlite3.capi.sqlite3_deserialize(db.pointer, 'main', p, bytes.length, bytes.length, 0)
+            const _rc = sqlite3.capi.sqlite3_deserialize(db.pointer!, 'main', p, bytes.length, bytes.length, 0)
           }
         } catch (e) {
           debugger
@@ -190,7 +190,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
       }
 
       idbPersistTimeout = setTimeout(() => {
-        const data = sqlite3.capi.sqlite3_js_db_export(db.pointer) as Uint8Array
+        const data = sqlite3.capi.sqlite3_js_db_export(db.pointer!)
 
         void idb!.put('db', data)
       }, 1000)

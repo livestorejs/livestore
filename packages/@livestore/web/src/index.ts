@@ -1,8 +1,8 @@
 import { type DatabaseFactory, type DatabaseImpl, type MainDatabase, type PreparedBindValues } from '@livestore/common'
+import type * as Sqlite from '@livestore/sqlite-wasm'
+import initSqlite3Wasm from '@livestore/sqlite-wasm'
 import { makeNoopSpan } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
-import type * as Sqlite from 'sqlite-esm'
-import initSqlite3Wasm from 'sqlite-esm'
 
 import { InMemoryStorage } from './storage/in-memory/index.js'
 import type { StorageInit } from './storage/index.js'
@@ -52,7 +52,7 @@ export const makeDb =
     const bytes = persistedData
     const p = sqlite3.wasm.allocFromTypedArray(bytes)
     const _rc = sqlite3.capi.sqlite3_deserialize(
-      db.pointer,
+      db.pointer!,
       'main',
       p,
       bytes.length,
@@ -115,7 +115,7 @@ export const makeDb =
           finalize: () => stmt.finalize(),
         }
       },
-      export: () => db.capi.sqlite3_js_db_export(db.pointer),
+      export: () => db.capi.sqlite3_js_db_export(db.pointer!),
       execute: (queryStr, bindValues) => {
         const stmt = db.prepare(queryStr)
 
@@ -130,7 +130,7 @@ export const makeDb =
         }
       },
       dangerouslyReset: async () => {
-        db.capi.sqlite3_close_v2(db.pointer)
+        db.capi.sqlite3_close_v2(db.pointer!)
 
         db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as Sqlite.Database & { capi: Sqlite.CAPI }
       },
