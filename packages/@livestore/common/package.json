@@ -1,6 +1,6 @@
 {
   "name": "@livestore/common",
-  "version": "0.0.43",
+  "version": "0.0.45",
   "type": "module",
   "exports": {
     ".": {
@@ -31,8 +31,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.7.0",
     "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "^1.8.0",
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {

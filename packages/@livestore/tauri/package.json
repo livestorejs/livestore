@@ -1,6 +1,6 @@
 {
   "name": "@livestore/tauri",
-  "version": "0.0.43",
+  "version": "0.0.45",
   "type": "module",
   "exports": {
     ".": {
@@ -13,9 +13,9 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.7.0",
+    "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/common": "workspace:*"
+    "@opentelemetry/api": "^1.8.0"
   },
   "devDependencies": {
     "@tauri-apps/api": "^1.4.0"

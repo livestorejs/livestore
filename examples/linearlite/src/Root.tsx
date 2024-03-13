@@ -9,12 +9,16 @@ import { seed } from './domain/seed'
 import LiveStoreWorker from './livestore.worker?worker'
 
 export default function Root() {
+  console.log('root')
   return (
     <LiveStoreProvider
       schema={schema}
       fallback={<div>Loading...</div>}
       boot={seed}
-      makeDb={makeDb(() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker }))}
+      makeDb={makeDb(() => {
+        console.log('loading db')
+        return WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })
+      })}
     >
       <FPSMeter className="absolute left-1/2 z-50 top-0 bg-black/30" height={40} />
       <App />

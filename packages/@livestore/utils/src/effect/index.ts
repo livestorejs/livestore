@@ -45,7 +45,7 @@ export {
   Match,
 } from 'effect'
 
-export { Schema, TreeFormatter, AST as SchemaAST } from '@effect/schema'
+export { Schema, TreeFormatter, AST as SchemaAST, Pretty as SchemaPretty } from '@effect/schema'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export * as Effect from './Effect.js'

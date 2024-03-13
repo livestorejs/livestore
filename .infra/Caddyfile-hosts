@@ -1,7 +1,7 @@
 (common_headers) {
-  header Cross-Origin-Embedder-Policy "require-corp"
-  header Cross-Origin-Opener-Policy "same-origin"
-  header Service-Worker-Allowed "/"
+	header_down Cross-Origin-Embedder-Policy "require-corp"
+	header_down Cross-Origin-Opener-Policy "same-origin"
+	header_down Service-Worker-Allowed "/"
 }
 
 *.livestore.localhost {
@@ -9,21 +9,25 @@
 }
 
 linearlite.livestore.localhost {
-	reverse_proxy localhost:60000
-	import common_headers
+	reverse_proxy localhost:60000 {
+		import common_headers
+	}
 }
 
 todomvc.livestore.localhost {
-	reverse_proxy localhost:60001
-	import common_headers
+	reverse_proxy localhost:60001 {
+		import common_headers
+	}
 }
 
 todomvc-webcomponents.livestore.localhost {
-	reverse_proxy localhost:60002
-	import common_headers
+	reverse_proxy localhost:60002 {
+		import common_headers
+	}
 }
 
 todomvc-drizzle.livestore.localhost {
-	reverse_proxy localhost:60003
-	import common_headers
+	reverse_proxy localhost:60003 {
+		import common_headers
+	}
 }

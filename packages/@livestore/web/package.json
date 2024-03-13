@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.43",
+  "version": "0.0.45",
   "type": "module",
   "exports": {
     ".": {
@@ -45,14 +45,12 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.7.0",
-    "@livestore/utils": "workspace:*",
     "@livestore/common": "workspace:*",
-    "comlink": "^4.4.1",
-    "@livestore/sqlite-wasm": "3.46.0-build2"
+    "@livestore/sqlite-wasm": "3.46.0-build2",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "^1.8.0",
+    "comlink": "^4.4.1"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "publishConfig": {
     "access": "public"
   }

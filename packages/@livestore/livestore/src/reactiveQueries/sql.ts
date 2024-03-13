@@ -95,10 +95,28 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
       map === undefined
         ? (rows: any) => rows as TResult
         : Schema.isSchema(map)
-          ? (rows: any) => {
+          ? (rows: any, opts: { sqlString: string }) => {
               const parseResult = Schema.decodeEither(map as Schema.Schema<TResult, ReadonlyArray<any>>)(rows)
               if (parseResult._tag === 'Left') {
-                console.error(`Error parsing SQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
+                const parseErrorStr = TreeFormatter.formatError(parseResult.left)
+                const expectedSchemaStr = String(map.ast)
+                const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
+
+                console.error(
+                  `\
+Error parsing SQL query result.
+
+Query: ${opts.sqlString}\
+${bindValuesStr}
+
+Expected schema: ${expectedSchemaStr}
+
+Error: ${parseErrorStr}
+
+Result:`,
+                  rows,
+                )
+                // console.error(`Error parsing SQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
                 return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
               } else {
                 return parseResult.right as TResult
@@ -167,7 +185,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
 
             span.setAttribute('sql.rowsCount', rawResults.length)
 
-            const result = this.mapRows(rawResults)
+            const result = this.mapRows(rawResults, { sqlString })
 
             span.end()
 

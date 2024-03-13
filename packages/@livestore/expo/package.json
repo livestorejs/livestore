@@ -1,6 +1,6 @@
 {
   "name": "@livestore/expo",
-  "version": "0.0.43",
+  "version": "0.0.45",
   "type": "module",
   "exports": {
     ".": {
@@ -16,7 +16,7 @@
     "@livestore/common": "workspace:*"
   },
   "devDependencies": {
-    "expo-sqlite": "^13.2.2"
+    "expo-sqlite": "^13.3.0"
   },
   "peerDependencies": {
     "expo-sqlite": "*"
