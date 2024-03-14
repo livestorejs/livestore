@@ -9,7 +9,6 @@ import { seed } from './domain/seed'
 import LiveStoreWorker from './livestore.worker?worker'
 
 export default function Root() {
-  console.log('root')
   return (
     <LiveStoreProvider
       schema={schema}
