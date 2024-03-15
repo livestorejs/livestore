@@ -326,6 +326,9 @@ export class Store<
 
           const tablesToUpdate = [] as [Ref<null, DbContext, RefreshReason>, null][]
           for (const tableName of writeTables) {
+            if (tableName.startsWith("_electric_") || tableName.startsWith("sqlite_")) {
+              continue
+            }
             const tableRef = this.tableRefs[tableName]
             assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
             tablesToUpdate.push([tableRef!, null])

@@ -123,8 +123,8 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
     while (executionItems.length > 0) {
       try {
-        db.exec('BEGIN TRANSACTION') // Start the transaction
-        dbLog.exec('BEGIN TRANSACTION') // Start the transaction
+        // db.exec('BEGIN TRANSACTION') // Start the transaction
+        // dbLog.exec('BEGIN TRANSACTION') // Start the transaction
 
         batchItems = executionItems.splice(0, 50)
 
@@ -169,12 +169,12 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
           }
         }
 
-        db.exec('COMMIT') // Commit the transaction
-        dbLog.exec('COMMIT') // Commit the transaction
+        // db.exec('COMMIT') // Commit the transaction
+        // dbLog.exec('COMMIT') // Commit the transaction
       } catch (error) {
         try {
-          db.exec('ROLLBACK') // Rollback in case of an error
-          dbLog.exec('ROLLBACK') // Rollback in case of an error
+          // db.exec('ROLLBACK') // Rollback in case of an error
+          // dbLog.exec('ROLLBACK') // Rollback in case of an error
         } catch (e) {
           console.error('Error rolling back transaction', e)
         }
