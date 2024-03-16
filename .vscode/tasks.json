@@ -75,6 +75,79 @@
       }
     },
     {
+      "label": "dev:example",
+      "dependsOn": [
+        "dev:example:todomvc",
+        "dev:example:todomvc-drizzle",
+        "dev:example:todomvc-custom-elements",
+        "dev:example:linearlite",
+      ],
+      "problemMatcher": [],
+    },
+    {
+      "label": "dev:example:todomvc",
+      "dependsOn": [
+        "dev:ts",
+        "dev:proxy",
+      ],
+      "type": "shell",
+      "command": "direnv exec . pnpm dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/examples/todomvc"
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples:todomvc",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "dev:example:todomvc-drizzle",
+      "dependsOn": [
+        "dev:ts",
+        "dev:proxy",
+      ],
+      "type": "shell",
+      "command": "direnv exec . pnpm dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/examples/todomvc-drizzle"
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples:todomvc-drizzle",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "dev:example:todomvc-custom-elements",
+      "dependsOn": [
+        "dev:ts",
+        "dev:proxy",
+      ],
+      "type": "shell",
+      "command": "direnv exec . pnpm dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/examples/todomvc-custom-elements"
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples:todomvc-custom-elements",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
       "label": "dev:example:linearlite",
       "dependsOn": [
         "dev:ts",

@@ -3,7 +3,7 @@ import * as Schema from '@effect/schema/Schema'
 import * as sqlite from './dsl/sqlite/index.js'
 
 const main = () => {
-  class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
+  class UserMetaInfo extends Schema.Class<UserMetaInfo>('UserMetaInfo')({
     createdAt: Schema.Date,
     updatedAt: Schema.Date,
   }) {}

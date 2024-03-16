@@ -9,28 +9,51 @@ exports[`FieldDefs > boolean 1`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $transformOrFail {
     "ast": {
-      "_tag": "Transform",
+      "_tag": "Transformation",
       "annotations": {},
       "from": {
         "_tag": "NumberKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "number",
-          Symbol(@effect/schema/annotation/Description): "a number",
+          "Symbol(@effect/schema/annotation/Description)": "a number",
+          "Symbol(@effect/schema/annotation/Title)": "number",
         },
       },
       "to": {
         "_tag": "BooleanKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "boolean",
-          Symbol(@effect/schema/annotation/Description): "a boolean",
+          "Symbol(@effect/schema/annotation/Description)": "a boolean",
+          "Symbol(@effect/schema/annotation/Title)": "boolean",
         },
       },
-      "transformation": {
-        "_tag": "FinalTransformation",
-        "decode": [Function],
-        "encode": [Function],
+    },
+    "from": Schema {
+      "ast": {
+        "_tag": "NumberKeyword",
+        "annotations": {
+          "Symbol(@effect/schema/annotation/Description)": "a number",
+          "Symbol(@effect/schema/annotation/Title)": "number",
+        },
+      },
+      Symbol(@effect/schema/Schema): {
+        "_A": [Function],
+        "_I": [Function],
+        "_R": [Function],
+      },
+    },
+    "to": Schema {
+      "ast": {
+        "_tag": "BooleanKeyword",
+        "annotations": {
+          "Symbol(@effect/schema/annotation/Description)": "a boolean",
+          "Symbol(@effect/schema/annotation/Title)": "boolean",
+        },
+      },
+      Symbol(@effect/schema/Schema): {
+        "_A": [Function],
+        "_I": [Function],
+        "_R": [Function],
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -51,28 +74,51 @@ exports[`FieldDefs > boolean 2`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $transformOrFail {
     "ast": {
-      "_tag": "Transform",
+      "_tag": "Transformation",
       "annotations": {},
       "from": {
         "_tag": "NumberKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "number",
-          Symbol(@effect/schema/annotation/Description): "a number",
+          "Symbol(@effect/schema/annotation/Description)": "a number",
+          "Symbol(@effect/schema/annotation/Title)": "number",
         },
       },
       "to": {
         "_tag": "BooleanKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "boolean",
-          Symbol(@effect/schema/annotation/Description): "a boolean",
+          "Symbol(@effect/schema/annotation/Description)": "a boolean",
+          "Symbol(@effect/schema/annotation/Title)": "boolean",
         },
       },
-      "transformation": {
-        "_tag": "FinalTransformation",
-        "decode": [Function],
-        "encode": [Function],
+    },
+    "from": Schema {
+      "ast": {
+        "_tag": "NumberKeyword",
+        "annotations": {
+          "Symbol(@effect/schema/annotation/Description)": "a number",
+          "Symbol(@effect/schema/annotation/Title)": "number",
+        },
+      },
+      Symbol(@effect/schema/Schema): {
+        "_A": [Function],
+        "_I": [Function],
+        "_R": [Function],
+      },
+    },
+    "to": Schema {
+      "ast": {
+        "_tag": "BooleanKeyword",
+        "annotations": {
+          "Symbol(@effect/schema/annotation/Description)": "a boolean",
+          "Symbol(@effect/schema/annotation/Title)": "boolean",
+        },
+      },
+      Symbol(@effect/schema/Schema): {
+        "_A": [Function],
+        "_I": [Function],
+        "_R": [Function],
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -94,28 +140,51 @@ exports[`FieldDefs > boolean 3`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $transformOrFail {
     "ast": {
-      "_tag": "Transform",
+      "_tag": "Transformation",
       "annotations": {},
       "from": {
         "_tag": "NumberKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "number",
-          Symbol(@effect/schema/annotation/Description): "a number",
+          "Symbol(@effect/schema/annotation/Description)": "a number",
+          "Symbol(@effect/schema/annotation/Title)": "number",
         },
       },
       "to": {
         "_tag": "BooleanKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "boolean",
-          Symbol(@effect/schema/annotation/Description): "a boolean",
+          "Symbol(@effect/schema/annotation/Description)": "a boolean",
+          "Symbol(@effect/schema/annotation/Title)": "boolean",
         },
       },
-      "transformation": {
-        "_tag": "FinalTransformation",
-        "decode": [Function],
-        "encode": [Function],
+    },
+    "from": Schema {
+      "ast": {
+        "_tag": "NumberKeyword",
+        "annotations": {
+          "Symbol(@effect/schema/annotation/Description)": "a number",
+          "Symbol(@effect/schema/annotation/Title)": "number",
+        },
+      },
+      Symbol(@effect/schema/Schema): {
+        "_A": [Function],
+        "_I": [Function],
+        "_R": [Function],
+      },
+    },
+    "to": Schema {
+      "ast": {
+        "_tag": "BooleanKeyword",
+        "annotations": {
+          "Symbol(@effect/schema/annotation/Description)": "a boolean",
+          "Symbol(@effect/schema/annotation/Title)": "boolean",
+        },
+      },
+      Symbol(@effect/schema/Schema): {
+        "_A": [Function],
+        "_I": [Function],
+        "_R": [Function],
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -136,44 +205,36 @@ exports[`FieldDefs > datetime 1`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": Schema {
     "ast": {
       "_tag": "Refinement",
       "annotations": {
-        Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-        Symbol(@effect/schema/annotation/Identifier): "Date",
-        Symbol(@effect/schema/annotation/Description): "a valid Date",
+        "Symbol(@effect/schema/annotation/Description)": "a valid Date",
+        "Symbol(@effect/schema/annotation/Identifier)": "Date",
+        "Symbol(@effect/schema/annotation/Type)": Symbol(@effect/schema/TypeId/ValidDate),
       },
-      "filter": [Function],
       "from": {
-        "_tag": "Transform",
+        "_tag": "Transformation",
         "annotations": {
-          Symbol(@effect/schema/annotation/Identifier): "DateFromString",
+          "Symbol(@effect/schema/annotation/Identifier)": "DateFromString",
         },
         "from": {
           "_tag": "StringKeyword",
           "annotations": {
-            Symbol(@effect/schema/annotation/Title): "string",
-            Symbol(@effect/schema/annotation/Description): "a string",
+            "Symbol(@effect/schema/annotation/Description)": "a string",
+            "Symbol(@effect/schema/annotation/Title)": "string",
           },
         },
         "to": {
           "_tag": "Declaration",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
-            Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-            Symbol(@effect/schema/ArbitraryHookId): [Function],
-            Symbol(@effect/schema/PrettyHookId): [Function],
-            Symbol(@effect/schema/EquivalenceHookId): [Function],
+            "Symbol(@effect/schema/ArbitraryHookId)": [Function],
+            "Symbol(@effect/schema/EquivalenceHookId)": [Function],
+            "Symbol(@effect/schema/PrettyHookId)": [Function],
+            "Symbol(@effect/schema/annotation/Description)": "a potentially invalid Date instance",
+            "Symbol(@effect/schema/annotation/Identifier)": "DateFromSelf",
           },
-          "decodeUnknown": [Function],
-          "encodeUnknown": [Function],
           "typeParameters": [],
-        },
-        "transformation": {
-          "_tag": "FinalTransformation",
-          "decode": [Function],
-          "encode": [Function],
         },
       },
     },
@@ -195,44 +256,36 @@ exports[`FieldDefs > datetime 2`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": Schema {
     "ast": {
       "_tag": "Refinement",
       "annotations": {
-        Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-        Symbol(@effect/schema/annotation/Identifier): "Date",
-        Symbol(@effect/schema/annotation/Description): "a valid Date",
+        "Symbol(@effect/schema/annotation/Description)": "a valid Date",
+        "Symbol(@effect/schema/annotation/Identifier)": "Date",
+        "Symbol(@effect/schema/annotation/Type)": Symbol(@effect/schema/TypeId/ValidDate),
       },
-      "filter": [Function],
       "from": {
-        "_tag": "Transform",
+        "_tag": "Transformation",
         "annotations": {
-          Symbol(@effect/schema/annotation/Identifier): "DateFromString",
+          "Symbol(@effect/schema/annotation/Identifier)": "DateFromString",
         },
         "from": {
           "_tag": "StringKeyword",
           "annotations": {
-            Symbol(@effect/schema/annotation/Title): "string",
-            Symbol(@effect/schema/annotation/Description): "a string",
+            "Symbol(@effect/schema/annotation/Description)": "a string",
+            "Symbol(@effect/schema/annotation/Title)": "string",
           },
         },
         "to": {
           "_tag": "Declaration",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
-            Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-            Symbol(@effect/schema/ArbitraryHookId): [Function],
-            Symbol(@effect/schema/PrettyHookId): [Function],
-            Symbol(@effect/schema/EquivalenceHookId): [Function],
+            "Symbol(@effect/schema/ArbitraryHookId)": [Function],
+            "Symbol(@effect/schema/EquivalenceHookId)": [Function],
+            "Symbol(@effect/schema/PrettyHookId)": [Function],
+            "Symbol(@effect/schema/annotation/Description)": "a potentially invalid Date instance",
+            "Symbol(@effect/schema/annotation/Identifier)": "DateFromSelf",
           },
-          "decodeUnknown": [Function],
-          "encodeUnknown": [Function],
           "typeParameters": [],
-        },
-        "transformation": {
-          "_tag": "FinalTransformation",
-          "decode": [Function],
-          "encode": [Function],
         },
       },
     },
@@ -255,7 +308,7 @@ exports[`FieldDefs > datetime 3`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $union {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -263,52 +316,99 @@ exports[`FieldDefs > datetime 3`] = `
         {
           "_tag": "Refinement",
           "annotations": {
-            Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-            Symbol(@effect/schema/annotation/Identifier): "Date",
-            Symbol(@effect/schema/annotation/Description): "a valid Date",
+            "Symbol(@effect/schema/annotation/Description)": "a valid Date",
+            "Symbol(@effect/schema/annotation/Identifier)": "Date",
+            "Symbol(@effect/schema/annotation/Type)": Symbol(@effect/schema/TypeId/ValidDate),
           },
-          "filter": [Function],
           "from": {
-            "_tag": "Transform",
+            "_tag": "Transformation",
             "annotations": {
-              Symbol(@effect/schema/annotation/Identifier): "DateFromString",
+              "Symbol(@effect/schema/annotation/Identifier)": "DateFromString",
             },
             "from": {
               "_tag": "StringKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "string",
-                Symbol(@effect/schema/annotation/Description): "a string",
+                "Symbol(@effect/schema/annotation/Description)": "a string",
+                "Symbol(@effect/schema/annotation/Title)": "string",
               },
             },
             "to": {
               "_tag": "Declaration",
               "annotations": {
-                Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
-                Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-                Symbol(@effect/schema/ArbitraryHookId): [Function],
-                Symbol(@effect/schema/PrettyHookId): [Function],
-                Symbol(@effect/schema/EquivalenceHookId): [Function],
+                "Symbol(@effect/schema/ArbitraryHookId)": [Function],
+                "Symbol(@effect/schema/EquivalenceHookId)": [Function],
+                "Symbol(@effect/schema/PrettyHookId)": [Function],
+                "Symbol(@effect/schema/annotation/Description)": "a potentially invalid Date instance",
+                "Symbol(@effect/schema/annotation/Identifier)": "DateFromSelf",
               },
-              "decodeUnknown": [Function],
-              "encodeUnknown": [Function],
               "typeParameters": [],
-            },
-            "transformation": {
-              "_tag": "FinalTransformation",
-              "decode": [Function],
-              "encode": [Function],
             },
           },
         },
         {
           "_tag": "Literal",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "null",
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
           },
           "literal": null,
         },
       ],
     },
+    "members": [
+      Schema {
+        "ast": {
+          "_tag": "Refinement",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Description)": "a valid Date",
+            "Symbol(@effect/schema/annotation/Identifier)": "Date",
+            "Symbol(@effect/schema/annotation/Type)": Symbol(@effect/schema/TypeId/ValidDate),
+          },
+          "from": {
+            "_tag": "Transformation",
+            "annotations": {
+              "Symbol(@effect/schema/annotation/Identifier)": "DateFromString",
+            },
+            "from": {
+              "_tag": "StringKeyword",
+              "annotations": {
+                "Symbol(@effect/schema/annotation/Description)": "a string",
+                "Symbol(@effect/schema/annotation/Title)": "string",
+              },
+            },
+            "to": {
+              "_tag": "Declaration",
+              "annotations": {
+                "Symbol(@effect/schema/ArbitraryHookId)": [Function],
+                "Symbol(@effect/schema/EquivalenceHookId)": [Function],
+                "Symbol(@effect/schema/PrettyHookId)": [Function],
+                "Symbol(@effect/schema/annotation/Description)": "a potentially invalid Date instance",
+                "Symbol(@effect/schema/annotation/Identifier)": "DateFromSelf",
+              },
+              "typeParameters": [],
+            },
+          },
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+      Schema {
+        "ast": {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
+          },
+          "literal": null,
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+    ],
     Symbol(@effect/schema/Schema): {
       "_A": [Function],
       "_I": [Function],
@@ -328,44 +428,36 @@ exports[`FieldDefs > datetime 4`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": Schema {
     "ast": {
       "_tag": "Refinement",
       "annotations": {
-        Symbol(@effect/schema/annotation/Type): Symbol(@effect/schema/TypeId/ValidDate),
-        Symbol(@effect/schema/annotation/Identifier): "Date",
-        Symbol(@effect/schema/annotation/Description): "a valid Date",
+        "Symbol(@effect/schema/annotation/Description)": "a valid Date",
+        "Symbol(@effect/schema/annotation/Identifier)": "Date",
+        "Symbol(@effect/schema/annotation/Type)": Symbol(@effect/schema/TypeId/ValidDate),
       },
-      "filter": [Function],
       "from": {
-        "_tag": "Transform",
+        "_tag": "Transformation",
         "annotations": {
-          Symbol(@effect/schema/annotation/Identifier): "DateFromString",
+          "Symbol(@effect/schema/annotation/Identifier)": "DateFromString",
         },
         "from": {
           "_tag": "StringKeyword",
           "annotations": {
-            Symbol(@effect/schema/annotation/Title): "string",
-            Symbol(@effect/schema/annotation/Description): "a string",
+            "Symbol(@effect/schema/annotation/Description)": "a string",
+            "Symbol(@effect/schema/annotation/Title)": "string",
           },
         },
         "to": {
           "_tag": "Declaration",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "DateFromSelf",
-            Symbol(@effect/schema/annotation/Description): "a potentially invalid Date instance",
-            Symbol(@effect/schema/ArbitraryHookId): [Function],
-            Symbol(@effect/schema/PrettyHookId): [Function],
-            Symbol(@effect/schema/EquivalenceHookId): [Function],
+            "Symbol(@effect/schema/ArbitraryHookId)": [Function],
+            "Symbol(@effect/schema/EquivalenceHookId)": [Function],
+            "Symbol(@effect/schema/PrettyHookId)": [Function],
+            "Symbol(@effect/schema/annotation/Description)": "a potentially invalid Date instance",
+            "Symbol(@effect/schema/annotation/Identifier)": "DateFromSelf",
           },
-          "decodeUnknown": [Function],
-          "encodeUnknown": [Function],
           "typeParameters": [],
-        },
-        "transformation": {
-          "_tag": "FinalTransformation",
-          "decode": [Function],
-          "encode": [Function],
         },
       },
     },
@@ -387,41 +479,33 @@ exports[`FieldDefs > json 1`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": Schema {
     "ast": {
-      "_tag": "Transform",
+      "_tag": "Transformation",
       "annotations": {},
       "from": {
-        "_tag": "Transform",
+        "_tag": "Transformation",
         "annotations": {},
         "from": {
           "_tag": "StringKeyword",
           "annotations": {
-            Symbol(@effect/schema/annotation/Title): "JsonString",
-            Symbol(@effect/schema/annotation/Description): "a JSON string",
-            Symbol(@effect/schema/annotation/Identifier): "JsonString",
+            "Symbol(@effect/schema/annotation/Description)": "a JSON string",
+            "Symbol(@effect/schema/annotation/Identifier)": "JsonString",
+            "Symbol(@effect/schema/annotation/Title)": "JsonString",
           },
         },
         "to": {
           "_tag": "UnknownKeyword",
           "annotations": {
-            Symbol(@effect/schema/annotation/Title): "unknown",
+            "Symbol(@effect/schema/annotation/Title)": "unknown",
           },
-        },
-        "transformation": {
-          "_tag": "FinalTransformation",
-          "decode": [Function],
-          "encode": [Function],
         },
       },
       "to": {
         "_tag": "AnyKeyword",
         "annotations": {
-          Symbol(@effect/schema/annotation/Title): "any",
+          "Symbol(@effect/schema/annotation/Title)": "any",
         },
-      },
-      "transformation": {
-        "_tag": "ComposeTransformation",
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -443,56 +527,99 @@ exports[`FieldDefs > json 2`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $union {
     "ast": {
       "_tag": "Union",
       "annotations": {},
       "types": [
         {
-          "_tag": "Literal",
-          "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "null",
-          },
-          "literal": null,
-        },
-        {
-          "_tag": "Transform",
+          "_tag": "Transformation",
           "annotations": {},
           "from": {
-            "_tag": "Transform",
+            "_tag": "Transformation",
             "annotations": {},
             "from": {
               "_tag": "StringKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "JsonString",
-                Symbol(@effect/schema/annotation/Description): "a JSON string",
-                Symbol(@effect/schema/annotation/Identifier): "JsonString",
+                "Symbol(@effect/schema/annotation/Description)": "a JSON string",
+                "Symbol(@effect/schema/annotation/Identifier)": "JsonString",
+                "Symbol(@effect/schema/annotation/Title)": "JsonString",
               },
             },
             "to": {
               "_tag": "UnknownKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "unknown",
+                "Symbol(@effect/schema/annotation/Title)": "unknown",
               },
-            },
-            "transformation": {
-              "_tag": "FinalTransformation",
-              "decode": [Function],
-              "encode": [Function],
             },
           },
           "to": {
             "_tag": "AnyKeyword",
             "annotations": {
-              Symbol(@effect/schema/annotation/Title): "any",
+              "Symbol(@effect/schema/annotation/Title)": "any",
             },
           },
-          "transformation": {
-            "_tag": "ComposeTransformation",
+        },
+        {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
           },
+          "literal": null,
         },
       ],
     },
+    "members": [
+      Schema {
+        "ast": {
+          "_tag": "Transformation",
+          "annotations": {},
+          "from": {
+            "_tag": "Transformation",
+            "annotations": {},
+            "from": {
+              "_tag": "StringKeyword",
+              "annotations": {
+                "Symbol(@effect/schema/annotation/Description)": "a JSON string",
+                "Symbol(@effect/schema/annotation/Identifier)": "JsonString",
+                "Symbol(@effect/schema/annotation/Title)": "JsonString",
+              },
+            },
+            "to": {
+              "_tag": "UnknownKeyword",
+              "annotations": {
+                "Symbol(@effect/schema/annotation/Title)": "unknown",
+              },
+            },
+          },
+          "to": {
+            "_tag": "AnyKeyword",
+            "annotations": {
+              "Symbol(@effect/schema/annotation/Title)": "any",
+            },
+          },
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+      Schema {
+        "ast": {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
+          },
+          "literal": null,
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+    ],
     Symbol(@effect/schema/Schema): {
       "_A": [Function],
       "_I": [Function],
@@ -514,42 +641,30 @@ exports[`FieldDefs > json 3`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $union {
     "ast": {
       "_tag": "Union",
       "annotations": {},
       "types": [
         {
-          "_tag": "Literal",
-          "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "null",
-          },
-          "literal": null,
-        },
-        {
-          "_tag": "Transform",
+          "_tag": "Transformation",
           "annotations": {},
           "from": {
-            "_tag": "Transform",
+            "_tag": "Transformation",
             "annotations": {},
             "from": {
               "_tag": "StringKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "JsonString",
-                Symbol(@effect/schema/annotation/Description): "a JSON string",
-                Symbol(@effect/schema/annotation/Identifier): "JsonString",
+                "Symbol(@effect/schema/annotation/Description)": "a JSON string",
+                "Symbol(@effect/schema/annotation/Identifier)": "JsonString",
+                "Symbol(@effect/schema/annotation/Title)": "JsonString",
               },
             },
             "to": {
               "_tag": "UnknownKeyword",
               "annotations": {
-                Symbol(@effect/schema/annotation/Title): "unknown",
+                "Symbol(@effect/schema/annotation/Title)": "unknown",
               },
-            },
-            "transformation": {
-              "_tag": "FinalTransformation",
-              "decode": [Function],
-              "encode": [Function],
             },
           },
           "to": {
@@ -565,19 +680,88 @@ exports[`FieldDefs > json 3`] = `
                 "type": {
                   "_tag": "StringKeyword",
                   "annotations": {
-                    Symbol(@effect/schema/annotation/Title): "string",
-                    Symbol(@effect/schema/annotation/Description): "a string",
+                    "Symbol(@effect/schema/annotation/Description)": "a string",
+                    "Symbol(@effect/schema/annotation/Title)": "string",
                   },
                 },
               },
             ],
           },
-          "transformation": {
-            "_tag": "ComposeTransformation",
+        },
+        {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
           },
+          "literal": null,
         },
       ],
     },
+    "members": [
+      Schema {
+        "ast": {
+          "_tag": "Transformation",
+          "annotations": {},
+          "from": {
+            "_tag": "Transformation",
+            "annotations": {},
+            "from": {
+              "_tag": "StringKeyword",
+              "annotations": {
+                "Symbol(@effect/schema/annotation/Description)": "a JSON string",
+                "Symbol(@effect/schema/annotation/Identifier)": "JsonString",
+                "Symbol(@effect/schema/annotation/Title)": "JsonString",
+              },
+            },
+            "to": {
+              "_tag": "UnknownKeyword",
+              "annotations": {
+                "Symbol(@effect/schema/annotation/Title)": "unknown",
+              },
+            },
+          },
+          "to": {
+            "_tag": "TypeLiteral",
+            "annotations": {},
+            "indexSignatures": [],
+            "propertySignatures": [
+              {
+                "annotations": {},
+                "isOptional": false,
+                "isReadonly": true,
+                "name": "name",
+                "type": {
+                  "_tag": "StringKeyword",
+                  "annotations": {
+                    "Symbol(@effect/schema/annotation/Description)": "a string",
+                    "Symbol(@effect/schema/annotation/Title)": "string",
+                  },
+                },
+              },
+            ],
+          },
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+      Schema {
+        "ast": {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
+          },
+          "literal": null,
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+    ],
     Symbol(@effect/schema/Schema): {
       "_A": [Function],
       "_I": [Function],
@@ -596,12 +780,12 @@ exports[`FieldDefs > text 1`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": Schema {
     "ast": {
       "_tag": "StringKeyword",
       "annotations": {
-        Symbol(@effect/schema/annotation/Title): "string",
-        Symbol(@effect/schema/annotation/Description): "a string",
+        "Symbol(@effect/schema/annotation/Description)": "a string",
+        "Symbol(@effect/schema/annotation/Title)": "string",
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -622,12 +806,12 @@ exports[`FieldDefs > text 2`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": Schema {
     "ast": {
       "_tag": "StringKeyword",
       "annotations": {
-        Symbol(@effect/schema/annotation/Title): "string",
-        Symbol(@effect/schema/annotation/Description): "a string",
+        "Symbol(@effect/schema/annotation/Description)": "a string",
+        "Symbol(@effect/schema/annotation/Title)": "string",
       },
     },
     Symbol(@effect/schema/Schema): {
@@ -649,27 +833,57 @@ exports[`FieldDefs > text 3`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $union {
     "ast": {
       "_tag": "Union",
       "annotations": {},
       "types": [
         {
+          "_tag": "StringKeyword",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Description)": "a string",
+            "Symbol(@effect/schema/annotation/Title)": "string",
+          },
+        },
+        {
           "_tag": "Literal",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "null",
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
           },
           "literal": null,
         },
-        {
-          "_tag": "StringKeyword",
-          "annotations": {
-            Symbol(@effect/schema/annotation/Title): "string",
-            Symbol(@effect/schema/annotation/Description): "a string",
-          },
-        },
       ],
     },
+    "members": [
+      Schema {
+        "ast": {
+          "_tag": "StringKeyword",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Description)": "a string",
+            "Symbol(@effect/schema/annotation/Title)": "string",
+          },
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+      Schema {
+        "ast": {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
+          },
+          "literal": null,
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+    ],
     Symbol(@effect/schema/Schema): {
       "_A": [Function],
       "_I": [Function],
@@ -689,25 +903,56 @@ exports[`FieldDefs > text 4`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $union {
     "ast": {
       "_tag": "Union",
       "annotations": {},
       "types": [
         {
           "_tag": "Literal",
+          "annotations": {},
+          "literal": "foo",
+        },
+        {
+          "_tag": "Literal",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "null",
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
           },
           "literal": null,
         },
-        {
+      ],
+    },
+    "members": [
+      $literal {
+        "ast": {
           "_tag": "Literal",
           "annotations": {},
           "literal": "foo",
         },
-      ],
-    },
+        "literals": [
+          "foo",
+        ],
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+      Schema {
+        "ast": {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
+          },
+          "literal": null,
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+    ],
     Symbol(@effect/schema/Schema): {
       "_A": [Function],
       "_I": [Function],
@@ -727,25 +972,56 @@ exports[`FieldDefs > text 5`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": SchemaImpl {
+  "schema": $union {
     "ast": {
       "_tag": "Union",
       "annotations": {},
       "types": [
         {
           "_tag": "Literal",
+          "annotations": {},
+          "literal": "foo",
+        },
+        {
+          "_tag": "Literal",
           "annotations": {
-            Symbol(@effect/schema/annotation/Identifier): "null",
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
           },
           "literal": null,
         },
-        {
+      ],
+    },
+    "members": [
+      $literal {
+        "ast": {
           "_tag": "Literal",
           "annotations": {},
           "literal": "foo",
         },
-      ],
-    },
+        "literals": [
+          "foo",
+        ],
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+      Schema {
+        "ast": {
+          "_tag": "Literal",
+          "annotations": {
+            "Symbol(@effect/schema/annotation/Identifier)": "null",
+          },
+          "literal": null,
+        },
+        Symbol(@effect/schema/Schema): {
+          "_A": [Function],
+          "_I": [Function],
+          "_R": [Function],
+        },
+      },
+    ],
     Symbol(@effect/schema/Schema): {
       "_A": [Function],
       "_I": [Function],

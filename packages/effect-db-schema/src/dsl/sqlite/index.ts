@@ -51,8 +51,8 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
 
 export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
-  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.To<TCols[K]['schema']> }>,
-  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.From<TCols[K]['schema']> }>
+  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.Type<TCols[K]['schema']> }>,
+  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.Encoded<TCols[K]['schema']> }>
 >
 
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
@@ -123,7 +123,7 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.From<TTableDefinition['columns'][K]['schema']>
+    [K in keyof TTableDefinition['columns']]: Schema.Schema.Encoded<TTableDefinition['columns'][K]['schema']>
   }
 
   export type RowEncoded<TTableDefinition extends TableDefinition<any, any>> = PrettifyFlat<
@@ -140,7 +140,7 @@ export namespace FromTable {
   // >
 
   export type RowDecodedAll<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.To<TTableDefinition['columns'][K]['schema']>
+    [K in keyof TTableDefinition['columns']]: Schema.Schema.Type<TTableDefinition['columns'][K]['schema']>
   }
 }
 
@@ -152,7 +152,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends Columns> = {
-    [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['schema']>
+    [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
   }
 
   export type RowEncoded<TColumns extends Columns> = PrettifyFlat<
@@ -161,7 +161,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends Columns> = {
-    [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['schema']>
+    [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {

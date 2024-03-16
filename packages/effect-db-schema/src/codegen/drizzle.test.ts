@@ -12,7 +12,7 @@ import { printSqliteDbSchema, printSqliteDrizzleTables } from './drizzle.js'
 
 describe('drizzle sqlite printer', () => {
   test('should print sqlite with raw ast', () => {
-    class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
+    class UserMetaInfo extends Schema.Class<UserMetaInfo>('UserMetaInfo')({
       createdAt: Schema.Date,
       updatedAt: Schema.Date,
     }) {}
@@ -118,7 +118,7 @@ describe('drizzle sqlite printer', () => {
   })
 
   test('should print sqlite with dsl', () => {
-    class UserMetaInfo extends Schema.Class<UserMetaInfo>()({
+    class UserMetaInfo extends Schema.Class<UserMetaInfo>('UserMetaInfo')({
       createdAt: Schema.Date,
       updatedAt: Schema.Date,
     }) {}

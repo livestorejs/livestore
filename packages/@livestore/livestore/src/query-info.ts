@@ -54,7 +54,7 @@ type GetJsonColumn<TTableDef extends DbSchema.TableDef> = keyof {
 export type UpdateValueForPath<TPath extends QueryInfo> = TPath extends { _tag: 'Row' }
   ? Partial<DbSchema.FromTable.RowDecodedAll<TPath['table']>>
   : TPath extends { _tag: 'Col' }
-    ? Schema.Schema.To<TPath['table']['sqliteDef']['columns'][TPath['column']]['schema']>
+    ? Schema.Schema.Type<TPath['table']['sqliteDef']['columns'][TPath['column']]['schema']>
     : TPath extends { _tag: 'ColJsonValue' }
       ? { TODO: true }
       : never

@@ -8,7 +8,6 @@ overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
   '@livestore/devtools-react': 0.0.45
-  effect: 2.4.3
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -76,8 +75,8 @@ importers:
   examples/expo:
     dependencies:
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       '@expo/metro-runtime':
         specifier: ~3.1.3
         version: 3.1.3(react-native@0.73.6)
@@ -149,8 +148,8 @@ importers:
   examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
@@ -270,8 +269,8 @@ importers:
         specifier: ^4.0.9
         version: 4.0.9
       '@types/node':
-        specifier: ^20.11.26
-        version: 20.11.26
+        specifier: ^20.11.27
+        version: 20.11.27
       '@types/react':
         specifier: ^18.2.65
         version: 18.2.65
@@ -279,8 +278,8 @@ importers:
         specifier: ^13.1.8
         version: 13.1.8
       '@types/react-dom':
-        specifier: ^18.2.21
-        version: 18.2.21
+        specifier: ^18.2.22
+        version: 18.2.22
       '@types/react-router-dom':
         specifier: ^5.3.3
         version: 5.3.3
@@ -339,8 +338,8 @@ importers:
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       '@livestore/devtools-react':
         specifier: 0.0.45
         version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
@@ -354,8 +353,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.2.0)
       effect:
-        specifier: 2.4.3
-        version: 2.4.3
+        specifier: 2.4.6
+        version: 2.4.6
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -376,8 +375,8 @@ importers:
         specifier: ^18.2.65
         version: 18.2.65
       '@types/react-dom':
-        specifier: ^18.2.21
-        version: 18.2.21
+        specifier: ^18.2.22
+        version: 18.2.22
       '@types/uuid':
         specifier: ^9.0.8
         version: 9.0.8
@@ -400,8 +399,8 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       '@livestore/devtools-react':
         specifier: 0.0.45
         version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
@@ -415,8 +414,8 @@ importers:
         specifier: latest
         version: link:../../packages/@livestore/web
       effect:
-        specifier: 2.4.3
-        version: 2.4.3
+        specifier: 2.4.6
+        version: 2.4.6
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -437,8 +436,8 @@ importers:
         specifier: ^18.2.65
         version: 18.2.65
       '@types/react-dom':
-        specifier: ^18.2.21
-        version: 18.2.21
+        specifier: ^18.2.22
+        version: 18.2.22
       '@types/uuid':
         specifier: ^9.0.8
         version: 9.0.8
@@ -470,8 +469,8 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       '@livestore/devtools-react':
         specifier: 0.0.45
         version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
@@ -494,8 +493,8 @@ importers:
         specifier: ^0.28.6
         version: 0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.8.0)
       effect:
-        specifier: 2.4.3
-        version: 2.4.3
+        specifier: 2.4.6
+        version: 2.4.6
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -519,8 +518,8 @@ importers:
         specifier: ^18.2.65
         version: 18.2.65
       '@types/react-dom':
-        specifier: ^18.2.21
-        version: 18.2.21
+        specifier: ^18.2.22
+        version: 18.2.22
       '@types/uuid':
         specifier: ^9.0.8
         version: 9.0.8
@@ -605,8 +604,8 @@ importers:
         specifier: ^18.2.65
         version: 18.2.65
       '@types/react-dom':
-        specifier: ^18.2.21
-        version: 18.2.21
+        specifier: ^18.2.22
+        version: 18.2.22
       jsdom:
         specifier: ^24.0.0
         version: 24.0.0
@@ -645,11 +644,11 @@ importers:
   packages/@livestore/utils:
     dependencies:
       '@effect/opentelemetry':
-        specifier: ^0.31.13
-        version: 0.31.13(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.22.0)(@opentelemetry/semantic-conventions@1.22.0)(effect@2.4.3)
+        specifier: ^0.31.16
+        version: 0.31.16(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.22.0)(@opentelemetry/semantic-conventions@1.22.0)(effect@2.4.6)
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       '@opentelemetry/api':
         specifier: ^1.8.0
         version: 1.8.0
@@ -657,8 +656,8 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
       effect:
-        specifier: 2.4.3
-        version: 2.4.3
+        specifier: 2.4.6
+        version: 2.4.6
       effect-db-schema:
         specifier: workspace:*
         version: link:../../effect-db-schema
@@ -670,8 +669,8 @@ importers:
         version: 6.1.1
     devDependencies:
       '@types/node':
-        specifier: ^20.11.26
-        version: 20.11.26
+        specifier: ^20.11.27
+        version: 20.11.27
       '@types/web':
         specifier: ^0.0.142
         version: 0.0.142
@@ -697,14 +696,14 @@ importers:
   packages/effect-db-schema:
     dependencies:
       '@effect/schema':
-        specifier: 0.63.4
-        version: 0.63.4(effect@2.4.3)(fast-check@3.15.1)
+        specifier: 0.64.2
+        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
       effect:
-        specifier: 2.4.3
-        version: 2.4.3
+        specifier: 2.4.6
+        version: 2.4.6
     devDependencies:
       drizzle-orm:
         specifier: ^0.28.6
@@ -798,7 +797,7 @@ packages:
       '@babel/traverse': 7.24.0
       '@babel/types': 7.24.0
       convert-source-map: 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -872,7 +871,7 @@ packages:
       '@babel/core': 7.24.0
       '@babel/helper-compilation-targets': 7.23.6
       '@babel/helper-plugin-utils': 7.22.5
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -2106,7 +2105,7 @@ packages:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.24.0
       '@babel/types': 7.24.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -2135,8 +2134,8 @@ packages:
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
     dev: false
 
-  /@effect/opentelemetry@0.31.13(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.22.0)(@opentelemetry/semantic-conventions@1.22.0)(effect@2.4.3):
-    resolution: {integrity: sha512-klJtW8vlyKLN+iQjN/1L7v3tmCOs87L6OsD6sGvPz2zbTJsaNNO+MpfwQ/soPR2M8LaF5BgZIXu9O1t3GA+jJA==}
+  /@effect/opentelemetry@0.31.16(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.22.0)(@opentelemetry/semantic-conventions@1.22.0)(effect@2.4.6):
+    resolution: {integrity: sha512-EkkIshDdJNYExwzUr6B18axg8Ds+aFMpY6JgUr3M9lv0VR5y6RLB874daQr5XWBFPe6M6Cxmbf6mYv1Mzh7/tw==}
     peerDependencies:
       '@opentelemetry/api': ^1.6
       '@opentelemetry/resources': ^1.17
@@ -2145,7 +2144,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^1.17
       '@opentelemetry/sdk-trace-web': ^1.17
       '@opentelemetry/semantic-conventions': ^1.17
-      effect: 2.4.3
+      effect: ^2.4.6
     peerDependenciesMeta:
       '@opentelemetry/sdk-metrics':
         optional: true
@@ -2159,17 +2158,17 @@ packages:
       '@opentelemetry/api': 1.8.0
       '@opentelemetry/resources': 1.22.0(@opentelemetry/api@1.8.0)
       '@opentelemetry/semantic-conventions': 1.22.0
-      effect: 2.4.3
+      effect: 2.4.6
     dev: false
 
-  /@effect/schema@0.63.4(effect@2.4.3)(fast-check@3.15.1):
-    resolution: {integrity: sha512-59b7N0XntkfivwhTSutyP13t1utlbJ9wDWDwEdAivNPpXBfpUlAWnZw7MAi86qI8J1LVz3ZDlz5p0pkDSu7p9g==}
+  /@effect/schema@0.64.2(effect@2.4.6)(fast-check@3.16.0):
+    resolution: {integrity: sha512-0Rz81HIG0CkJGjGlUuYlUFZmOkyVsqxmlZigfg3BHMjyDjp8NdPQHfT9pGZbenZH6DHUvtEckV8AccbGTzONMA==}
     peerDependencies:
-      effect: 2.4.3
+      effect: ^2.4.6
       fast-check: ^3.13.2
     dependencies:
-      effect: 2.4.3
-      fast-check: 3.15.1
+      effect: 2.4.6
+      fast-check: 3.16.0
     dev: false
 
   /@esbuild/aix-ppc64@0.19.11:
@@ -2459,7 +2458,7 @@ packages:
       chalk: 4.1.2
       ci-info: 3.9.0
       connect: 3.7.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       env-editor: 0.4.2
       find-yarn-workspace-root: 2.0.0
       form-data: 3.0.1
@@ -2533,7 +2532,7 @@ packages:
       '@expo/sdk-runtime-versions': 1.0.0
       '@react-native/normalize-color': 2.1.0
       chalk: 4.1.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       find-up: 5.0.0
       getenv: 1.0.0
       glob: 7.1.6
@@ -2613,7 +2612,7 @@ packages:
     resolution: {integrity: sha512-m9nGuaSpzdvMzevQ1H60FWgf4PG5s4J0dfKUzdAGnDu7sMUerY/yUeDaA4+OBo3vBwGVQ+UHcQS9vPSMBNaPcg==}
     dependencies:
       chalk: 4.1.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       dotenv: 16.0.3
       dotenv-expand: 10.0.0
       getenv: 1.0.0
@@ -2625,7 +2624,7 @@ packages:
     dependencies:
       '@expo/spawn-async': 1.7.2
       chalk: 4.1.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       find-up: 5.0.0
       minimatch: 3.1.2
       p-limit: 3.1.0
@@ -2687,7 +2686,7 @@ packages:
       '@react-native/babel-preset': 0.73.21(@babel/core@7.24.0)(@babel/preset-env@7.23.9)
       babel-preset-fbjs: 3.4.0(@babel/core@7.24.0)
       chalk: 4.1.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       find-yarn-workspace-root: 2.0.0
       fs-extra: 9.1.0
       getenv: 1.0.0
@@ -2847,7 +2846,7 @@ packages:
       '@expo/config-types': 50.0.0
       '@expo/image-utils': 0.4.1
       '@expo/json-file': 8.3.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       expo-modules-autolinking: 1.10.3(patch_hash=4arxhw3ycvijbvobkbsci2ieam)
       fs-extra: 9.1.0
       resolve-from: 5.0.0
@@ -4692,6 +4691,11 @@ packages:
     dependencies:
       undici-types: 5.26.5
 
+  /@types/node@20.11.27:
+    resolution: {integrity: sha512-qyUZfMnCg1KEz57r7pzFtSGt49f6RPkPBis3Vo4PbS7roQEDn22hiHzl/Lo1q4i4hDEgBJmBF/NTNg2XR0HbFg==}
+    dependencies:
+      undici-types: 5.26.5
+
   /@types/normalize-package-data@2.4.4:
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
     dev: true
@@ -4715,6 +4719,12 @@ packages:
 
   /@types/react-dom@18.2.21:
     resolution: {integrity: sha512-gnvBA/21SA4xxqNXEwNiVcP0xSGHh/gi1VhWv9Bl46a0ItbTT5nFY+G9VSQpaG/8N/qdJpJ+vftQ4zflTtnjLw==}
+    dependencies:
+      '@types/react': 18.2.65
+    dev: true
+
+  /@types/react-dom@18.2.22:
+    resolution: {integrity: sha512-fHkBXPeNtfvri6gdsMYyW+dW7RXFo6Ad09nLFK0VQWR7yGLai/Cyvyj696gbwYvBnhGtevUG9cET0pmUbMtoPQ==}
     dependencies:
       '@types/react': 18.2.65
     dev: true
@@ -5086,7 +5096,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -5823,7 +5833,7 @@ packages:
     resolution: {integrity: sha512-zdLEwNo3aUVzIhKhTtXfxhdvZhUghrnmkvcAq2NoDd+LeOHKf03H5jwZ8T/STsAlzyALkBVK552iaG1fGf1xVQ==}
     engines: {node: '>=12.13.0'}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -5833,7 +5843,7 @@ packages:
   /chromium-edge-launcher@1.0.0:
     resolution: {integrity: sha512-pgtgjNKZ7i5U++1g1PWv75umkHvhVTDOQIZ+sjeUX9483S7Y6MUvO0lrd7ShGlQlFHMN4SwKTCq/X8hWrbv2KA==}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -6249,6 +6259,17 @@ packages:
         optional: true
     dependencies:
       ms: 2.1.3
+
+  /debug@4.3.4:
+    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+    dependencies:
+      ms: 2.1.2
 
   /debug@4.3.4(supports-color@8.1.1):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
@@ -6693,8 +6714,8 @@ packages:
   /ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  /effect@2.4.3:
-    resolution: {integrity: sha512-OmIgfNgQMZsQt5l7qLQqLOUxIXq7ku8/RK3Wv3LqxSE2zMyU1mHXof5QeyCt7m9sXv3Vui52Urk1vVsEd2szMQ==}
+  /effect@2.4.6:
+    resolution: {integrity: sha512-gaZC+aopWvS67SX8RFT3mirabjpVBk5qshj/Z3IKW35DjzpQ8WhAE7VWwfBBWWMBuQ/B0RsbzKR8YGN2AivIgQ==}
     dev: false
 
   /ejs@3.1.9:
@@ -7427,8 +7448,8 @@ packages:
     engines: {node: '> 0.1.90'}
     dev: true
 
-  /fast-check@3.15.1:
-    resolution: {integrity: sha512-GutOXZ+SCxGaFWfHe0Pbeq8PrkpGtPxA9/hdkI3s9YzqeMlrq5RdJ+QfYZ/S93jMX+tAyqgW0z5c9ppD+vkGUw==}
+  /fast-check@3.16.0:
+    resolution: {integrity: sha512-k8GtQHi4pJoRQ1gVDFQno+/FVkowo/ehiz/aCj9O/D7HRWb1sSFzNrw+iPVU8QlWtH+jNwbuN+dDVg3QkS56DQ==}
     engines: {node: '>=8.0.0'}
     dependencies:
       pure-rand: 6.0.4
@@ -8082,7 +8103,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -8719,6 +8740,7 @@ packages:
 
   /jscodeshift@0.14.0(@babel/preset-env@7.23.9):
     resolution: {integrity: sha512-7eCC1knD7bLUPuSCwXsMZUH51O8jIcoVyKtI6P0XM0IVzlGjckPy3FIwQlorzbN0Sg79oK+RlohN32Mqf/lrYA==}
+    hasBin: true
     peerDependencies:
       '@babel/preset-env': ^7.1.6
     dependencies:
@@ -12785,6 +12807,7 @@ packages:
 
   /update-browserslist-db@1.0.13(browserslist@4.23.0):
     resolution: {integrity: sha512-xebP81SNcPuNpPP3uzeW1NYXxI3rxyJzF3pD6sH4jE7o/IX+WtSpwnVU+qIsDPyk0d3hmFQ7mjqc6AtV604hbg==}
+    hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
     dependencies:

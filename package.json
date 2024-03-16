@@ -15,7 +15,6 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
     "@livestore/devtools-react": "0.0.45",
-    "effect": "2.4.3",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {

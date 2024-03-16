@@ -85,7 +85,7 @@ export type RawSqlMutationEvent = ReturnType<typeof rawSqlMutation>
 
 export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
-  args: Schema.Schema.To<TMutationsDef['schema']>
+  args: Schema.Schema.Type<TMutationsDef['schema']>
   id: string
 }
 
@@ -101,14 +101,14 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
   {
     [K in keyof TMutationsDefRecord]: {
       mutation: K
-      args: Schema.Schema.To<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
       id: string
     }
   }[keyof TMutationsDefRecord],
   {
     [K in keyof TMutationsDefRecord]: {
       mutation: K
-      args: Schema.Schema.From<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
       id: string
     }
   }[keyof TMutationsDefRecord]

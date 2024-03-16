@@ -44,11 +44,11 @@ export type TableDef<
   TSchema = Schema.Schema<
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.To<TSqliteDef['columns'][K]['schema']> }
+      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.Type<TSqliteDef['columns'][K]['schema']> }
     >,
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.From<TSqliteDef['columns'][K]['schema']> }
+      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.Encoded<TSqliteDef['columns'][K]['schema']> }
     >
   >,
 > = {
@@ -230,7 +230,9 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.From<TTableDef['sqliteDef']['columns'][K]['schema']>
+    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Encoded<
+      TTableDef['sqliteDef']['columns'][K]['schema']
+    >
   }
 
   export type RowEncoded<TTableDef extends TableDef> = PrettifyFlat<
@@ -239,7 +241,7 @@ export namespace FromTable {
   >
 
   export type RowDecodedAll<TTableDef extends TableDef> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.To<TTableDef['sqliteDef']['columns'][K]['schema']>
+    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Type<TTableDef['sqliteDef']['columns'][K]['schema']>
   }
 }
 
@@ -251,7 +253,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.To<TColumns[K]['schema']>
+    [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
   }
 
   export type RowEncoded<TColumns extends SqliteDsl.Columns> = PrettifyFlat<
@@ -260,7 +262,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.From<TColumns[K]['schema']>
+    [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
   }
 
   export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {

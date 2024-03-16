@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.45",
+  "version": "0.0.46-dev.2",
   "type": "module",
   "exports": {
     ".": {
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/sqlite-wasm": "3.46.0-build2",
+    "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.8.0",
     "comlink": "^4.4.1"

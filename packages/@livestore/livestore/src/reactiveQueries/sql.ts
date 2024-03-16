@@ -14,7 +14,7 @@ import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
 export type MapRows<TResult, TRaw = any> =
   | ((rows: ReadonlyArray<TRaw>) => TResult)
-  | Schema.Schema<TResult, ReadonlyArray<TRaw>>
+  | Schema.Schema<TResult, ReadonlyArray<TRaw>, unknown>
 
 export const querySQL = <TResult, TRaw = any>(
   query: string | ((get: GetAtomResult) => string),

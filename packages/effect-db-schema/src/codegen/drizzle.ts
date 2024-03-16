@@ -219,5 +219,5 @@ const unpackNullableAst = (ast: SchemaAST.AST): Option.Option<SchemaAST.AST> => 
     return Option.some(filteredTypes[0]!)
   }
 
-  return Option.some(SchemaAST.createUnion(filteredTypes))
+  return Option.some(SchemaAST.Union.make(filteredTypes))
 }

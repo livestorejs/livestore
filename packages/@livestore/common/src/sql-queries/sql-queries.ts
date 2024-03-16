@@ -1,4 +1,4 @@
-import { pipe, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
 import { sql } from '../util.js'
@@ -263,6 +263,20 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
         if (columnDef.nullable === true && (value === null || value === undefined)) return null
         const res = Schema.encodeEither(columnDef.schema)(value)
         if (res._tag === 'Left') {
+          const parseErrorStr = TreeFormatter.formatError(res.left)
+          const expectedSchemaStr = String(columnDef.schema.ast)
+
+          console.error(
+            `\
+Error making bind values for SQL query for column "${columnName}".
+
+Expected schema: ${expectedSchemaStr}
+
+Error: ${parseErrorStr}
+
+Value:`,
+            value,
+          )
           debugger
           throw res.left
         } else {
