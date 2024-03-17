@@ -1,6 +1,6 @@
 {
   "name": "@livestore/common",
-  "version": "0.0.46-dev.2",
+  "version": "0.0.46-dev.4",
   "type": "module",
   "exports": {
     ".": {

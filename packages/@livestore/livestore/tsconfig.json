@@ -9,5 +9,10 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../../effect-db-schema" }, { "path": "../common" }, { "path": "../web" }, { "path": "../utils" }]
+  "references": [
+    { "path": "../../effect-db-schema" },
+    { "path": "../common" },
+    { "path": "../web" },
+    { "path": "../utils" }
+  ]
 }

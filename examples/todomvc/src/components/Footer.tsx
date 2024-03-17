@@ -1,12 +1,12 @@
 import { Schema } from '@effect/schema'
-import { querySQL } from '@livestore/livestore'
+import { querySQL, sql } from '@livestore/livestore'
 import { useQuery, useRow, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import { mutations, tables } from '../schema/index.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = querySQL(`select count(*) as c from todos where completed = false;`, {
+const incompleteCount$ = querySQL(sql`select count(*) as c from todos where completed = false`, {
   map: Schema.struct({ c: Schema.number }).pipe(Schema.pluck('c'), Schema.array, Schema.headOrElse()),
 })
 

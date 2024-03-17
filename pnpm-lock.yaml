@@ -7,7 +7,7 @@ settings:
 overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
-  '@livestore/devtools-react': 0.0.45
+  '@livestore/devtools-react': 0.0.46-dev.4
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -75,8 +75,8 @@ importers:
   examples/expo:
     dependencies:
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       '@expo/metro-runtime':
         specifier: ~3.1.3
         version: 3.1.3(react-native@0.73.6)
@@ -84,8 +84,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0
       '@livestore/devtools-react':
-        specifier: 0.0.45
-        version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.46-dev.4
+        version: 0.0.46-dev.4(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/expo':
         specifier: latest
         version: link:../../packages/@livestore/expo
@@ -140,7 +140,7 @@ importers:
         version: 1.0.3
       eas-cli:
         specifier: ^7.5.0
-        version: 7.5.0(@types/node@20.11.26)(expo-modules-autolinking@1.10.3)(typescript@5.4.2)
+        version: 7.5.0(@types/node@20.11.27)(expo-modules-autolinking@1.10.3)(typescript@5.4.2)
       typescript:
         specifier: ^5.4.2
         version: 5.4.2
@@ -148,8 +148,8 @@ importers:
   examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
@@ -157,8 +157,8 @@ importers:
         specifier: ^1.7.18
         version: 1.7.18(react-dom@18.2.0)(react@18.2.0)
       '@livestore/devtools-react':
-        specifier: 0.0.45
-        version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.46-dev.4
+        version: 0.0.46-dev.4(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -308,8 +308,8 @@ importers:
         specifier: ^4.6.0
         version: 4.6.0(eslint@8.57.0)
       eslint-plugin-react-refresh:
-        specifier: ^0.4.5
-        version: 0.4.5(eslint@8.57.0)
+        specifier: ^0.4.6
+        version: 0.4.6(eslint@8.57.0)
       fs-extra:
         specifier: ^11.2.0
         version: 11.2.0
@@ -327,7 +327,7 @@ importers:
         version: 5.4.2
       vite:
         specifier: ^5.1.6
-        version: 5.1.6(@types/node@20.11.26)
+        version: 5.1.6(@types/node@20.11.27)
       vite-plugin-pwa:
         specifier: ^0.19.2
         version: 0.19.2(vite@5.1.6)(workbox-build@7.0.0)(workbox-window@7.0.0)
@@ -338,11 +338,11 @@ importers:
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       '@livestore/devtools-react':
-        specifier: 0.0.45
-        version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.46-dev.4
+        version: 0.0.46-dev.4(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -391,7 +391,7 @@ importers:
         version: 5.4.2
       vite:
         specifier: ^5.1.6
-        version: 5.1.6(@types/node@20.11.26)
+        version: 5.1.6(@types/node@20.11.27)
       vite-plugin-pwa:
         specifier: ^0.19.2
         version: 0.19.2(vite@5.1.6)(workbox-build@7.0.0)(workbox-window@7.0.0)
@@ -399,11 +399,11 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       '@livestore/devtools-react':
-        specifier: 0.0.45
-        version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.46-dev.4
+        version: 0.0.46-dev.4(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -461,7 +461,7 @@ importers:
         version: 5.4.2
       vite:
         specifier: ^5.1.6
-        version: 5.1.6(@types/node@20.11.26)
+        version: 5.1.6(@types/node@20.11.27)
       vite-plugin-pwa:
         specifier: ^0.19.2
         version: 0.19.2(vite@5.1.6)(workbox-build@7.0.0)(workbox-window@7.0.0)
@@ -469,11 +469,11 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       '@livestore/devtools-react':
-        specifier: 0.0.45
-        version: 0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.46-dev.4
+        version: 0.0.46-dev.4(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -534,7 +534,7 @@ importers:
         version: 5.4.2
       vite:
         specifier: ^5.1.6
-        version: 5.1.6(@types/node@20.11.26)
+        version: 5.1.6(@types/node@20.11.27)
       vite-plugin-pwa:
         specifier: ^0.19.2
         version: 0.19.2(vite@5.1.6)(workbox-build@7.0.0)(workbox-window@7.0.0)
@@ -620,7 +620,7 @@ importers:
         version: 5.4.2
       vite:
         specifier: 5.1.6
-        version: 5.1.6(@types/node@20.11.26)
+        version: 5.1.6(@types/node@20.11.27)
       vitest:
         specifier: ^1.3.1
         version: 1.3.1(jsdom@24.0.0)
@@ -647,8 +647,8 @@ importers:
         specifier: ^0.31.16
         version: 0.31.16(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.22.0)(@opentelemetry/semantic-conventions@1.22.0)(effect@2.4.6)
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       '@opentelemetry/api':
         specifier: ^1.8.0
         version: 1.8.0
@@ -681,8 +681,8 @@ importers:
         specifier: workspace:*
         version: link:../common
       '@livestore/sqlite-wasm':
-        specifier: 3.46.0-build2
-        version: 3.46.0-build2
+        specifier: 3.46.0-build4
+        version: 3.46.0-build4
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -696,8 +696,8 @@ importers:
   packages/effect-db-schema:
     dependencies:
       '@effect/schema':
-        specifier: 0.64.2
-        version: 0.64.2(effect@2.4.6)(fast-check@3.16.0)
+        specifier: 0.64.3
+        version: 0.64.3(effect@2.4.6)(fast-check@3.16.0)
       dprint-node:
         specifier: ^1.0.8
         version: 1.0.8
@@ -710,7 +710,7 @@ importers:
         version: 0.28.6(patch_hash=kfe6libf2ikzaf77deyqmybfsm)(@opentelemetry/api@1.8.0)
       vite:
         specifier: ^5.1.6
-        version: 5.1.6(@types/node@20.11.26)
+        version: 5.1.6(@types/node@20.11.27)
       vitest:
         specifier: ^1.3.1
         version: 1.3.1(jsdom@24.0.0)
@@ -797,7 +797,7 @@ packages:
       '@babel/traverse': 7.24.0
       '@babel/types': 7.24.0
       convert-source-map: 2.0.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -871,7 +871,7 @@ packages:
       '@babel/core': 7.24.0
       '@babel/helper-compilation-targets': 7.23.6
       '@babel/helper-plugin-utils': 7.22.5
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -2105,7 +2105,7 @@ packages:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.24.0
       '@babel/types': 7.24.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -2161,8 +2161,8 @@ packages:
       effect: 2.4.6
     dev: false
 
-  /@effect/schema@0.64.2(effect@2.4.6)(fast-check@3.16.0):
-    resolution: {integrity: sha512-0Rz81HIG0CkJGjGlUuYlUFZmOkyVsqxmlZigfg3BHMjyDjp8NdPQHfT9pGZbenZH6DHUvtEckV8AccbGTzONMA==}
+  /@effect/schema@0.64.3(effect@2.4.6)(fast-check@3.16.0):
+    resolution: {integrity: sha512-Pn/IG+X9GTXLVvDtdjptr3QWxpcH+m7LEgM6loLWk7DP8SPKqWdo3rFaZiILpJFci8QWEk7K23C3IJZOnMfTtA==}
     peerDependencies:
       effect: ^2.4.6
       fast-check: ^3.13.2
@@ -2458,7 +2458,7 @@ packages:
       chalk: 4.1.2
       ci-info: 3.9.0
       connect: 3.7.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       env-editor: 0.4.2
       find-yarn-workspace-root: 2.0.0
       form-data: 3.0.1
@@ -2532,7 +2532,7 @@ packages:
       '@expo/sdk-runtime-versions': 1.0.0
       '@react-native/normalize-color': 2.1.0
       chalk: 4.1.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       find-up: 5.0.0
       getenv: 1.0.0
       glob: 7.1.6
@@ -2612,7 +2612,7 @@ packages:
     resolution: {integrity: sha512-m9nGuaSpzdvMzevQ1H60FWgf4PG5s4J0dfKUzdAGnDu7sMUerY/yUeDaA4+OBo3vBwGVQ+UHcQS9vPSMBNaPcg==}
     dependencies:
       chalk: 4.1.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       dotenv: 16.0.3
       dotenv-expand: 10.0.0
       getenv: 1.0.0
@@ -2624,7 +2624,7 @@ packages:
     dependencies:
       '@expo/spawn-async': 1.7.2
       chalk: 4.1.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       find-up: 5.0.0
       minimatch: 3.1.2
       p-limit: 3.1.0
@@ -2686,7 +2686,7 @@ packages:
       '@react-native/babel-preset': 0.73.21(@babel/core@7.24.0)(@babel/preset-env@7.23.9)
       babel-preset-fbjs: 3.4.0(@babel/core@7.24.0)
       chalk: 4.1.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       find-yarn-workspace-root: 2.0.0
       fs-extra: 9.1.0
       getenv: 1.0.0
@@ -2783,11 +2783,11 @@ packages:
       base64-js: 1.5.1
       xmlbuilder: 14.0.0
 
-  /@expo/plugin-help@5.1.23(@types/node@20.11.26)(typescript@5.4.2):
+  /@expo/plugin-help@5.1.23(@types/node@20.11.27)(typescript@5.4.2):
     resolution: {integrity: sha512-s0uH6cPplLj73ZVie40EYUhl7X7q9kRR+8IfZWDod3wUtVGOFInxuCPX9Jpv1UwwBgbRu2cLisqr8m45LrFgxw==}
     engines: {node: '>=12.0.0'}
     dependencies:
-      '@oclif/core': 2.15.0(@types/node@20.11.26)(typescript@5.4.2)
+      '@oclif/core': 2.15.0(@types/node@20.11.27)(typescript@5.4.2)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -2795,11 +2795,11 @@ packages:
       - typescript
     dev: true
 
-  /@expo/plugin-warn-if-update-available@2.5.1(@types/node@20.11.26)(typescript@5.4.2):
+  /@expo/plugin-warn-if-update-available@2.5.1(@types/node@20.11.27)(typescript@5.4.2):
     resolution: {integrity: sha512-B65QSIZ+TgFHnVXsTw+1Q6djsJByWwnIjYfoG8ZV9wizOC01gbAw1cOZ/YtrJ2BrDnzFQtM8qecjlmZ7C3MPLw==}
     engines: {node: '>=12.0.0'}
     dependencies:
-      '@oclif/core': 2.15.0(@types/node@20.11.26)(typescript@5.4.2)
+      '@oclif/core': 2.15.0(@types/node@20.11.27)(typescript@5.4.2)
       chalk: 4.1.2
       debug: 4.3.4(supports-color@8.1.1)
       ejs: 3.1.9
@@ -2846,7 +2846,7 @@ packages:
       '@expo/config-types': 50.0.0
       '@expo/image-utils': 0.4.1
       '@expo/json-file': 8.3.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       expo-modules-autolinking: 1.10.3(patch_hash=4arxhw3ycvijbvobkbsci2ieam)
       fs-extra: 9.1.0
       resolve-from: 5.0.0
@@ -3039,7 +3039,7 @@ packages:
     dependencies:
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       jest-mock: 29.7.0
     dev: false
 
@@ -3049,7 +3049,7 @@ packages:
     dependencies:
       '@jest/types': 29.6.3
       '@sinonjs/fake-timers': 10.3.0
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       jest-message-util: 29.7.0
       jest-mock: 29.7.0
       jest-util: 29.7.0
@@ -3067,7 +3067,7 @@ packages:
     dependencies:
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       '@types/yargs': 15.0.19
       chalk: 4.1.2
     dev: false
@@ -3079,7 +3079,7 @@ packages:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       '@types/yargs': 17.0.32
       chalk: 4.1.2
     dev: false
@@ -3122,8 +3122,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@livestore/devtools-react@0.0.45(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-LJA67UtMw5sFzwm4cT/mayABMfvf78hHTrDQ/gbEbFtpXKruHLut6WNI7Eo0nkURHn1Wp7DF/fuILCbhlb6hiw==}
+  /@livestore/devtools-react@0.0.46-dev.4(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-CxIvAQNZAh+m24Z3Bf2ru8/7AIdAjV6F16Z4GWjmA/kdykl47qPiuTBP5ruUcLaC8TOpzO3LXdSMxhKm9XQEhg==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
@@ -3134,8 +3134,8 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
     dev: false
 
-  /@livestore/sqlite-wasm@3.46.0-build2:
-    resolution: {integrity: sha512-sFKqXKB1C94iJUBbofXpOEz6D7rTCew35z9FLNixnZNvL12KRZRwjH5IBjHafytJfRlSlHB8TUmBWM5EBolcfA==}
+  /@livestore/sqlite-wasm@3.46.0-build4:
+    resolution: {integrity: sha512-0UHmVXjWWY2XK0pj4yhruERRObiJVZomIMdMDM7HLTY1hW8s9rSMXmHBbnMpaD0sXMWHCoBDaZuSviRJtOhKqQ==}
     dev: false
 
   /@nodelib/fs.scandir@2.1.5:
@@ -3203,7 +3203,7 @@ packages:
       wrap-ansi: 7.0.0
     dev: true
 
-  /@oclif/core@2.15.0(@types/node@20.11.26)(typescript@5.4.2):
+  /@oclif/core@2.15.0(@types/node@20.11.27)(typescript@5.4.2):
     resolution: {integrity: sha512-fNEMG5DzJHhYmI3MgpByTvltBOMyFcnRIUMxbiz2ai8rhaYgaTHMG3Q38HcosfIvtw9nCjxpcQtC8MN8QtVCcA==}
     engines: {node: '>=14.0.0'}
     dependencies:
@@ -3230,7 +3230,7 @@ packages:
       strip-ansi: 6.0.1
       supports-color: 8.1.1
       supports-hyperlinks: 2.3.0
-      ts-node: 10.9.2(@types/node@20.11.26)(typescript@5.4.2)
+      ts-node: 10.9.2(@types/node@20.11.27)(typescript@5.4.2)
       tslib: 2.6.2
       widest-line: 3.1.0
       wordwrap: 1.0.0
@@ -3246,11 +3246,11 @@ packages:
     resolution: {integrity: sha512-Ups2dShK52xXa8w6iBWLgcjPJWjais6KPJQq3gQ/88AY6BXoTX+MIGFPrWQO1KLMiQfoTpcLnUwloN4brrVUHw==}
     dev: true
 
-  /@oclif/plugin-autocomplete@2.3.10(@types/node@20.11.26)(typescript@5.4.2):
+  /@oclif/plugin-autocomplete@2.3.10(@types/node@20.11.27)(typescript@5.4.2):
     resolution: {integrity: sha512-Ow1AR8WtjzlyCtiWWPgzMyT8SbcDJFr47009riLioHa+MHX2BCDtVn2DVnN/E6b9JlPV5ptQpjefoRSNWBesmg==}
     engines: {node: '>=12.0.0'}
     dependencies:
-      '@oclif/core': 2.15.0(@types/node@20.11.26)(typescript@5.4.2)
+      '@oclif/core': 2.15.0(@types/node@20.11.27)(typescript@5.4.2)
       chalk: 4.1.2
       debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
@@ -4226,7 +4226,7 @@ packages:
     dependencies:
       '@babel/runtime': 7.24.0
       '@testing-library/dom': 9.3.3
-      '@types/react-dom': 18.2.21
+      '@types/react-dom': 18.2.22
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
     dev: true
@@ -4581,13 +4581,13 @@ packages:
   /@types/bunyan@1.8.11:
     resolution: {integrity: sha512-758fRH7umIMk5qt5ELmRMff4mLDlN+xyYzC+dkPTdKwbSkJFvz6xwyScrytPU0QIBbRRwbiE8/BIg8bpajerNQ==}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
     dev: true
 
   /@types/cli-progress@3.11.5:
     resolution: {integrity: sha512-D4PbNRbviKyppS5ivBGyFO29POlySLmA2HyUFE4p5QGazAMM3CwkKWcvTl8gvElSuxRh6FPKL8XmidX873ou4g==}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
     dev: true
 
   /@types/debug@4.1.12:
@@ -4686,11 +4686,6 @@ packages:
     resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
     dev: false
 
-  /@types/node@20.11.26:
-    resolution: {integrity: sha512-YwOMmyhNnAWijOBQweOJnQPl068Oqd4K3OFbTc6AHJwzweUwwWG3GIFY74OKks2PJUDkQPeddOQES9mLn1CTEQ==}
-    dependencies:
-      undici-types: 5.26.5
-
   /@types/node@20.11.27:
     resolution: {integrity: sha512-qyUZfMnCg1KEz57r7pzFtSGt49f6RPkPBis3Vo4PbS7roQEDn22hiHzl/Lo1q4i4hDEgBJmBF/NTNg2XR0HbFg==}
     dependencies:
@@ -4713,12 +4708,6 @@ packages:
 
   /@types/react-beautiful-dnd@13.1.8:
     resolution: {integrity: sha512-E3TyFsro9pQuK4r8S/OL6G99eq7p8v29sX0PM7oT8Z+PJfZvSQTx4zTQbUJ+QZXioAF0e7TGBEcA1XhYhCweyQ==}
-    dependencies:
-      '@types/react': 18.2.65
-    dev: true
-
-  /@types/react-dom@18.2.21:
-    resolution: {integrity: sha512-gnvBA/21SA4xxqNXEwNiVcP0xSGHh/gi1VhWv9Bl46a0ItbTT5nFY+G9VSQpaG/8N/qdJpJ+vftQ4zflTtnjLw==}
     dependencies:
       '@types/react': 18.2.65
     dev: true
@@ -4769,7 +4758,7 @@ packages:
   /@types/resolve@1.17.1:
     resolution: {integrity: sha512-yy7HuzQhj0dhGpD8RLXSZWEkLsV9ibvxvi6EiJ3bkqLAO1RGo0WbkWQiwpRlSFymTJRz0d3k5LM3kkx8ArDbLw==}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
     dev: true
 
   /@types/scheduler@0.16.8:
@@ -5009,7 +4998,7 @@ packages:
       '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.24.0)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.0
-      vite: 5.1.6(@types/node@20.11.26)
+      vite: 5.1.6(@types/node@20.11.27)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -5096,7 +5085,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -5413,6 +5402,7 @@ packages:
   /autoprefixer@10.4.18(postcss@8.4.35):
     resolution: {integrity: sha512-1DKbDfsr6KUElM6wg+0zRNkB/Q7WcKYAaK+pzXn+Xqmszm/5Xa9coeNdtP88Vi+dPzZnMjhge8GIV49ZQkDa+g==}
     engines: {node: ^10 || ^12 || >=14}
+    hasBin: true
     peerDependencies:
       postcss: ^8.1.0
     dependencies:
@@ -6260,17 +6250,6 @@ packages:
     dependencies:
       ms: 2.1.3
 
-  /debug@4.3.4:
-    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-    dependencies:
-      ms: 2.1.2
-
   /debug@4.3.4(supports-color@8.1.1):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
@@ -6614,7 +6593,7 @@ packages:
     dev: true
     optional: true
 
-  /eas-cli@7.5.0(@types/node@20.11.26)(expo-modules-autolinking@1.10.3)(typescript@5.4.2):
+  /eas-cli@7.5.0(@types/node@20.11.27)(expo-modules-autolinking@1.10.3)(typescript@5.4.2):
     resolution: {integrity: sha512-GA1kK0fPKMJ2r1y0CCJjMLObzvynEpg0T0CZi+vKxmQnqGueSAeQ8AuhE2NkQBN8HDJiJgQKQ86rn27y/VjOvQ==}
     engines: {node: '>=16.0.0'}
     dependencies:
@@ -6631,8 +6610,8 @@ packages:
       '@expo/package-manager': 1.1.2
       '@expo/pkcs12': 0.0.8
       '@expo/plist': 0.0.20
-      '@expo/plugin-help': 5.1.23(@types/node@20.11.26)(typescript@5.4.2)
-      '@expo/plugin-warn-if-update-available': 2.5.1(@types/node@20.11.26)(typescript@5.4.2)
+      '@expo/plugin-help': 5.1.23(@types/node@20.11.27)(typescript@5.4.2)
+      '@expo/plugin-warn-if-update-available': 2.5.1(@types/node@20.11.27)(typescript@5.4.2)
       '@expo/prebuild-config': 6.7.3(expo-modules-autolinking@1.10.3)
       '@expo/results': 1.0.0
       '@expo/rudder-sdk-node': 1.1.1
@@ -6640,7 +6619,7 @@ packages:
       '@expo/steps': 1.0.83
       '@expo/timeago.js': 1.0.0
       '@oclif/core': 1.26.2
-      '@oclif/plugin-autocomplete': 2.3.10(@types/node@20.11.26)(typescript@5.4.2)
+      '@oclif/plugin-autocomplete': 2.3.10(@types/node@20.11.27)(typescript@5.4.2)
       '@segment/ajv-human-errors': 2.12.0(ajv@8.11.0)
       '@urql/core': 4.0.11(graphql@16.8.1)
       '@urql/exchange-retry': 1.2.0(graphql@16.8.1)
@@ -6972,6 +6951,7 @@ packages:
 
   /eslint-config-prettier@9.1.0(eslint@8.57.0):
     resolution: {integrity: sha512-NSWl5BFQWEPi1j4TjVNItzYV7dZXZ+wP6I6ZhrBGpChQhZRUaElihE9uRRkcbRnNb76UMKDF3r+WTmNcGPKsqw==}
+    hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
     dependencies:
@@ -7095,8 +7075,8 @@ packages:
       eslint: 8.57.0
     dev: true
 
-  /eslint-plugin-react-refresh@0.4.5(eslint@8.57.0):
-    resolution: {integrity: sha512-D53FYKJa+fDmZMtriODxvhwrO+IOqrxoEo21gMA0sjHdU6dPVH4OhyFip9ypl8HOF5RV5KdTo+rBQLvnY2cO8w==}
+  /eslint-plugin-react-refresh@0.4.6(eslint@8.57.0):
+    resolution: {integrity: sha512-NjGXdm7zgcKRkKMua34qVO9doI7VOxZ6ancSvBELJSSoX97jyndXcSoa8XBh69JoB31dNz3EEzlMcizZl7LaMA==}
     peerDependencies:
       eslint: '>=7'
     dependencies:
@@ -8103,7 +8083,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -8600,7 +8580,7 @@ packages:
       '@jest/environment': 29.7.0
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       jest-mock: 29.7.0
       jest-util: 29.7.0
     dev: false
@@ -8630,7 +8610,7 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       jest-util: 29.7.0
     dev: false
 
@@ -8639,7 +8619,7 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -8662,7 +8642,7 @@ packages:
     resolution: {integrity: sha512-KWYVV1c4i+jbMpaBC+U++4Va0cp8OisU185o73T1vo99hqi7w8tSJfUXYswwqqrjzwxa6KpRK54WhPvwf5w6PQ==}
     engines: {node: '>= 10.13.0'}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       merge-stream: 2.0.0
       supports-color: 7.2.0
     dev: true
@@ -8671,7 +8651,7 @@ packages:
     resolution: {integrity: sha512-eIz2msL/EzL9UFTFFx7jBTkeZfku0yUAyZZZmJ93H2TYEiroIx2PQjEXcwYtYl8zXCxb+PAmA2hLIt/6ZEkPHw==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       jest-util: 29.7.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
@@ -11076,6 +11056,7 @@ packages:
   /react-native@0.73.6(@babel/core@7.24.0)(@babel/preset-env@7.23.9)(react@18.2.0):
     resolution: {integrity: sha512-oqmZe8D2/VolIzSPZw+oUd6j/bEmeRHwsLn1xLA5wllEYsZ5zNuMsDus235ONOnCRwexqof/J3aztyQswSmiaA==}
     engines: {node: '>=18'}
+    hasBin: true
     peerDependencies:
       react: 18.2.0
     dependencies:
@@ -11528,6 +11509,7 @@ packages:
   /rollup-plugin-visualizer@5.12.0(rollup@2.79.1):
     resolution: {integrity: sha512-8/NU9jXcHRs7Nnj07PF2o4gjxmm9lXIrZ8r175bT9dK8qoLlvKTwRMArRCMgpMGlq8CTLugRvEmyMeMXIU2pNQ==}
     engines: {node: '>=14'}
+    hasBin: true
     peerDependencies:
       rollup: 2.x || 3.x || 4.x
     peerDependenciesMeta:
@@ -12507,8 +12489,9 @@ packages:
   /ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
 
-  /ts-node@10.9.2(@types/node@20.11.26)(typescript@5.4.2):
+  /ts-node@10.9.2(@types/node@20.11.27)(typescript@5.4.2):
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
+    hasBin: true
     peerDependencies:
       '@swc/core': '>=1.2.50'
       '@swc/wasm': '>=1.2.50'
@@ -12525,7 +12508,7 @@ packages:
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       acorn: 8.11.3
       acorn-walk: 8.3.2
       arg: 4.1.3
@@ -12913,7 +12896,7 @@ packages:
       debug: 4.3.4(supports-color@8.1.1)
       pathe: 1.1.2
       picocolors: 1.0.0
-      vite: 5.1.6(@types/node@20.11.26)
+      vite: 5.1.6(@types/node@20.11.27)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -12940,7 +12923,7 @@ packages:
       debug: 4.3.4(supports-color@8.1.1)
       fast-glob: 3.3.2
       pretty-bytes: 6.1.1
-      vite: 5.1.6(@types/node@20.11.26)
+      vite: 5.1.6(@types/node@20.11.27)
       workbox-build: 7.0.0
       workbox-window: 7.0.0
     transitivePeerDependencies:
@@ -12955,16 +12938,17 @@ packages:
       '@rollup/pluginutils': 5.0.5(rollup@2.79.1)
       '@svgr/core': 8.1.0(typescript@5.4.2)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0)
-      vite: 5.1.6(@types/node@20.11.26)
+      vite: 5.1.6(@types/node@20.11.27)
     transitivePeerDependencies:
       - rollup
       - supports-color
       - typescript
     dev: true
 
-  /vite@5.1.6(@types/node@20.11.26):
+  /vite@5.1.6(@types/node@20.11.27):
     resolution: {integrity: sha512-yYIAZs9nVfRJ/AiOLCA91zzhjsHUgMjB+EigzFb6W2XTLO8JixBCKCjvhKZaye+NKYHCrkv3Oh50dH9EdLU2RA==}
     engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
@@ -12989,7 +12973,7 @@ packages:
       terser:
         optional: true
     dependencies:
-      '@types/node': 20.11.26
+      '@types/node': 20.11.27
       esbuild: 0.19.11
       postcss: 8.4.35
       rollup: 4.9.4
@@ -13000,6 +12984,7 @@ packages:
   /vitest@1.3.1(jsdom@24.0.0):
     resolution: {integrity: sha512-/1QJqXs8YbCrfv/GPQ05wAZf2eakUPLPa18vkJAKE7RXOKfVHqMZZ1WlTjiwl6Gcn65M5vpNUB6EFLnEdRdEXQ==}
     engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@types/node': ^18.0.0 || >=20.0.0
@@ -13039,7 +13024,7 @@ packages:
       strip-literal: 2.0.0
       tinybench: 2.5.1
       tinypool: 0.8.2
-      vite: 5.1.6(@types/node@20.11.26)
+      vite: 5.1.6(@types/node@20.11.27)
       vite-node: 1.3.1
       why-is-node-running: 2.2.2
     transitivePeerDependencies:

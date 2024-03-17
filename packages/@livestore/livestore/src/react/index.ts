@@ -12,5 +12,7 @@ export {
 } from './useRow.js'
 export { useAtom } from './useAtom.js'
 
+export { LiveList, type LiveListProps } from './components/LiveList.js'
+
 // Needed to make TS happy
 export type { TypedDocumentNode } from '@graphql-typed-document-node/core'
