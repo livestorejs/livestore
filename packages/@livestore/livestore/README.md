@@ -10,6 +10,16 @@ cd examples/todomvc
 pnpm dev
 ```
 
+## Caveats
+
+- Only supports recent browser versions (Safari 17+, ...)
+- Doesn't yet run in Next.js (easiest to use with Vite right now)
+
+## Features
+
+- Synchronous, transactional reads and writes
+- Otel tracing built-in
+
 ## Concepts
 
 LiveStore provides a highly structured data model for your React components. It helps you clearly reason about data dependencies, leverage the relational model and the power of SQLite, and persist UI state.

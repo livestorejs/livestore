@@ -49,7 +49,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
   _tag: 'sql' = 'sql'
 
   /** A reactive thunk representing the query text */
-  queryString$: Thunk<string, DbContext, RefreshReason>
+  queryString$: Thunk<string, DbContext, RefreshReason> | undefined
 
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, DbContext, RefreshReason>
@@ -126,23 +126,23 @@ Result:`,
             ? map
             : shouldNeverHappen(`Invalid map function ${map}`)
 
-    // TODO don't even create a thunk if query string is static
-    const queryString$ = this.dbGraph.makeThunk(
-      (get, setDebugInfo, { rootOtelContext }, otelContext) => {
-        if (typeof genQueryString === 'function') {
+    let queryString$OrQueryString: string | Thunk<string, DbContext, RefreshReason>
+    if (typeof genQueryString === 'function') {
+      queryString$OrQueryString = this.dbGraph.makeThunk(
+        (get, setDebugInfo, { rootOtelContext }, otelContext) => {
           const startMs = performance.now()
           const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? rootOtelContext))
           const durationMs = performance.now() - startMs
           setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
           return queryString
-        } else {
-          return genQueryString
-        }
-      },
-      { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
-    )
+        },
+        { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
+      )
 
-    this.queryString$ = queryString$
+      this.queryString$ = queryString$OrQueryString
+    } else {
+      queryString$OrQueryString = genQueryString
+    }
 
     const queryLabel = `${label}:results`
 
@@ -162,7 +162,10 @@ Result:`,
               this.execBeforeFirstRun = undefined
             }
 
-            const sqlString = get(queryString$, otelContext)
+            const sqlString =
+              typeof queryString$OrQueryString === 'string'
+                ? queryString$OrQueryString
+                : get(queryString$OrQueryString, otelContext)
 
             if (queriedTablesRef.current === undefined) {
               queriedTablesRef.current = store.mainDbWrapper.getTablesUsed(sqlString)
@@ -238,7 +241,10 @@ Result:`,
   //   })
 
   destroy = () => {
-    this.dbGraph.destroyNode(this.queryString$)
+    if (this.queryString$ !== undefined) {
+      this.dbGraph.destroyNode(this.queryString$)
+    }
+
     this.dbGraph.destroyNode(this.results$)
   }
 }

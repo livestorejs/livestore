@@ -22,7 +22,8 @@ export type DbContext = {
 
 export type UnsubscribeQuery = () => void
 
-export type GetResult<TQuery extends LiveQueryAny> = TQuery extends LiveQuery<infer TResult> ? TResult : unknown
+export type GetResult<TQuery extends LiveQueryAny> =
+  TQuery extends LiveQuery<infer TResult, infer _1> ? TResult : unknown
 
 let queryIdCounter = 0
 

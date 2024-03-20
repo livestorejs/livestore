@@ -61,13 +61,44 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   makeDb,
   batchUpdates,
 }: LiveStoreCreateStoreOptions<GraphQLContext>) => {
-  const [ctxValue, setCtxValue] = React.useState<StoreContext_ | undefined>()
+  const [_, rerender] = React.useState(0)
+  const ctxValueRef = React.useRef<StoreContext_ | undefined>(undefined)
+  const inputPropsCacheRef = React.useRef({
+    schema,
+    graphQLOptions,
+    otelTracer,
+    otelRootSpanContext,
+    boot,
+    makeDb,
+    batchUpdates,
+  })
+  const oldStoreAlreadyDestroyedRef = React.useRef(false)
+
+  if (
+    inputPropsCacheRef.current.schema !== schema ||
+    inputPropsCacheRef.current.graphQLOptions !== graphQLOptions ||
+    inputPropsCacheRef.current.otelTracer !== otelTracer ||
+    inputPropsCacheRef.current.otelRootSpanContext !== otelRootSpanContext ||
+    inputPropsCacheRef.current.boot !== boot ||
+    inputPropsCacheRef.current.makeDb !== makeDb ||
+    inputPropsCacheRef.current.batchUpdates !== batchUpdates
+  ) {
+    inputPropsCacheRef.current = {
+      schema,
+      graphQLOptions,
+      otelTracer,
+      otelRootSpanContext,
+      boot,
+      makeDb,
+      batchUpdates,
+    }
+    ctxValueRef.current?.store.destroy()
+    oldStoreAlreadyDestroyedRef.current = true
+    ctxValueRef.current = undefined
+  }
 
   React.useEffect(() => {
     let store: Store | undefined
-
-    // resetting the store context while we're creating a new store
-    setCtxValue(undefined)
 
     void (async () => {
       try {
@@ -80,16 +111,20 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           makeDb,
           batchUpdates,
         })
-        setCtxValue({ store })
+        ctxValueRef.current = { store }
+        oldStoreAlreadyDestroyedRef.current = false
+        rerender((c) => c + 1)
       } catch (e) {
         shouldNeverHappen(`Error creating LiveStore store: ${e}`)
       }
     })()
 
     return () => {
-      store?.destroy()
+      if (oldStoreAlreadyDestroyedRef.current === false) {
+        store?.destroy()
+      }
     }
   }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, makeDb, batchUpdates])
 
-  return ctxValue
+  return ctxValueRef.current
 }

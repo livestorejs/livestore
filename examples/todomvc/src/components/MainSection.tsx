@@ -53,7 +53,7 @@ export const MainSection: React.FC = () => {
 
   return (
     <section className="main">
-      <ul className="todo-list">
+      <ul className="todo-list" style={{ marginTop: 13 }}>
         <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} />
       </ul>
     </section>

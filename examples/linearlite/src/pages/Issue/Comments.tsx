@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Editor from '../../components/editor/Editor'
 import Avatar from '../../components/Avatar'
@@ -17,14 +17,13 @@ export interface CommentsProps {
 function Comments({ issue }: CommentsProps) {
   // TODO move this into LiveStore
   const [newCommentBody, setNewCommentBody] = useState<string>('')
-  const makeCommentQuery = useCallback(
+  const comments = useTemporaryQuery(
     () =>
       querySQL(() => sql`SELECT * FROM comment WHERE issueId = '${issue.id}' ORDER BY created ASC`, {
         map: ParseUtils.many(tables.comment),
       }),
     [issue.id],
   )
-  const comments = useTemporaryQuery(makeCommentQuery)
   const { store } = useStore()
 
   const commentList = () => {

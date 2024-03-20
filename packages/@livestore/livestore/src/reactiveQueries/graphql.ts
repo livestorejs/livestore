@@ -6,7 +6,7 @@ import * as graphql from 'graphql'
 
 import { globalDbGraph } from '../global-state.js'
 import type { QueryInfoNone } from '../query-info.js'
-import type { Thunk } from '../reactive.js'
+import { isThunk, type Thunk } from '../reactive.js'
 import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
@@ -39,7 +39,7 @@ export class LiveStoreGraphQLQuery<
   /** A reactive thunk representing the query results */
   results$: Thunk<TResultMapped, DbContext, RefreshReason>
 
-  variableValues$: Thunk<TVariableValues, DbContext, RefreshReason>
+  variableValues$: Thunk<TVariableValues, DbContext, RefreshReason> | undefined
 
   label: string
 
@@ -89,23 +89,26 @@ export class LiveStoreGraphQLQuery<
             : shouldNeverHappen(`Invalid map function ${map}`)
 
     // TODO don't even create a thunk if variables are static
-    const variableValues$ = this.dbGraph.makeThunk(
-      (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
-        if (typeof genVariableValues === 'function') {
-          return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
-        } else {
-          return genVariableValues
-        }
-      },
-      { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
-    )
+    let variableValues$OrvariableValues
 
-    this.variableValues$ = variableValues$
+    if (typeof genVariableValues === 'function') {
+      variableValues$OrvariableValues = this.dbGraph.makeThunk(
+        (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
+          return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
+        },
+        { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
+      )
+      this.variableValues$ = variableValues$OrvariableValues
+    } else {
+      variableValues$OrvariableValues = genVariableValues
+    }
 
     const resultsLabel = `${labelWithDefault}:results`
     this.results$ = this.dbGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
-        const variableValues = get(variableValues$)
+        const variableValues = isThunk(variableValues$OrvariableValues)
+          ? (get(variableValues$OrvariableValues) as TVariableValues)
+          : (variableValues$OrvariableValues as TVariableValues)
         const { result, queriedTables, durationMs } = this.queryOnce({
           document,
           variableValues,
@@ -208,7 +211,10 @@ export class LiveStoreGraphQLQuery<
   }
 
   destroy = () => {
-    this.dbGraph.destroyNode(this.variableValues$)
+    if (this.variableValues$ !== undefined) {
+      this.dbGraph.destroyNode(this.variableValues$)
+    }
+
     this.dbGraph.destroyNode(this.results$)
   }
 }

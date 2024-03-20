@@ -29,6 +29,7 @@ export type StorageDatabase = {
   dangerouslyReset(): Promise<void>
   export(span: otel.Span | undefined): Promise<Uint8Array | undefined>
   getMutationLogData(): Promise<Uint8Array>
+  shutdown(): Promise<void>
 }
 
 export type DatabaseFactory = (opts: {

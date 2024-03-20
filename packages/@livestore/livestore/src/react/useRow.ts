@@ -1,5 +1,4 @@
 import { DbSchema } from '@livestore/common/schema'
-import * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
@@ -11,7 +10,7 @@ import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
-import { useCleanup } from './utils/useCleanup.js'
+import { useMakeTemporaryQuery } from './useTemporaryQuery.js'
 
 export type UseRowResult<TTableDef extends DbSchema.TableDef> = [
   row: RowResult<TTableDef>,
@@ -73,52 +72,24 @@ export const useRow: {
 
   const { store } = useStore()
 
-  const reactId = React.useId()
+  // console.debug('useRow', table.sqliteDef.name, id)
 
-  const { query$, otelContext } = React.useMemo(() => {
-    const cachedItem = rcCache.get(table, id ?? 'singleton')
-    if (cachedItem !== undefined) {
-      cachedItem.reactIds.add(reactId)
-      cachedItem.span.addEvent('new-subscriber', { reactId })
-
-      return {
-        query$: cachedItem.query$ as LiveQuery<RowResult<TTableDef>, QueryInfo>,
-        otelContext: cachedItem.otelContext,
-      }
-    }
-
-    const span = store.otel.tracer.startSpan(
-      `LiveStore:useState:${table.sqliteDef.name}${id === undefined ? '' : `:${id}`}`,
-      { attributes: { id } },
-      store.otel.queriesSpanContext,
-    )
-
-    const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-    const query$ = DbSchema.tableIsSingleton(table)
-      ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
-      : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
-          otelContext,
-          defaultValues: defaultValues!,
-          dbGraph,
-        }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>)
-
-    rcCache.set(table, id ?? 'singleton', query$, reactId, otelContext, span)
-
-    return { query$, otelContext }
-  }, [table, id, reactId, store, defaultValues, dbGraph])
-
-  useCleanup(
-    React.useCallback(() => {
-      const cachedItem = rcCache.get(table, id ?? 'singleton')!
-
-      cachedItem.reactIds.delete(reactId)
-      if (cachedItem.reactIds.size === 0) {
-        rcCache.delete(cachedItem.query$)
-        cachedItem.query$.destroy()
-        cachedItem.span.end()
-      }
-    }, [table, id, reactId]),
+  const { query$, otelContext } = useMakeTemporaryQuery(
+    (otelContext) =>
+      DbSchema.tableIsSingleton(table)
+        ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
+        : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
+            otelContext,
+            defaultValues: defaultValues!,
+            dbGraph,
+          }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
+    [id!, table.sqliteDef.name],
+    {
+      otel: {
+        spanName: `LiveStore:useRow:${table.sqliteDef.name}${id === undefined ? '' : `:${id}`}`,
+        attributes: { id },
+      },
+    },
   )
 
   const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowResult<TTableDef>>
@@ -179,62 +150,3 @@ export type StateSetters<TTableDef extends DbSchema.TableDef> = TTableDef['isSin
     } & {
       setMany: Dispatch<SetStateAction<Partial<RowResult<TTableDef>>>>
     }
-
-/** Reference counted cache for `query$` and otel context */
-class RCCache {
-  private readonly cache = new Map<
-    DbSchema.TableDef,
-    Map<
-      string,
-      {
-        reactIds: Set<string>
-        span: otel.Span
-        otelContext: otel.Context
-        query$: LiveQuery<any, any>
-      }
-    >
-  >()
-  private reverseCache = new Map<LiveQuery<any, any>, [DbSchema.TableDef, string]>()
-
-  get = (table: DbSchema.TableDef, id: string) => {
-    const queries = this.cache.get(table)
-    if (queries === undefined) return undefined
-    return queries.get(id)
-  }
-
-  set = (
-    table: DbSchema.TableDef,
-    id: string,
-    query$: LiveQuery<any, any>,
-    reactId: string,
-    otelContext: otel.Context,
-    span: otel.Span,
-  ) => {
-    let queries = this.cache.get(table)
-    if (queries === undefined) {
-      queries = new Map()
-      this.cache.set(table, queries)
-    }
-    queries.set(id, { query$, otelContext, span, reactIds: new Set([reactId]) })
-    this.reverseCache.set(query$, [table, id])
-  }
-
-  delete = (query$: LiveQuery<any, any>) => {
-    const item = this.reverseCache.get(query$)
-    if (item === undefined) return
-
-    const [table, id] = item
-    const queries = this.cache.get(table)
-    if (queries === undefined) return
-
-    queries.delete(id)
-
-    if (queries.size === 0) {
-      this.cache.delete(table)
-    }
-
-    this.reverseCache.delete(query$)
-  }
-}
-
-const rcCache = new RCCache()

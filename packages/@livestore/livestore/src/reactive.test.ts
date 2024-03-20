@@ -245,7 +245,7 @@ describe('a trivial graph', () => {
       expect(e.isDirty).toBe(true)
 
       expect(() => c.computeResult()).toThrowErrorMatchingInlineSnapshot(
-        `[Error: This should never happen LiveStore Error: Attempted to compute destroyed atom]`,
+        `[Error: This should never happen LiveStore Error: Attempted to compute destroyed ref (node-58): b]`,
       )
     })
   })

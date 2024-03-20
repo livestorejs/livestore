@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import * as F from './field-defs.js'
 
-describe('FieldDefs', () => {
+describe.concurrent('FieldDefs', () => {
   test('text', () => {
     expect(F.text()).toMatchSnapshot()
     expect(F.text({})).toMatchSnapshot()

@@ -42,16 +42,34 @@ export const makeTodoMvc = async ({
   otelTracer,
   otelContext,
   useGlobalDbGraph = true,
+  strictMode = process.env.REACT_STRICT_MODE !== undefined,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
   useGlobalDbGraph?: boolean
+  strictMode?: boolean
 } = {}) => {
   const AppComponentSchema = DbSchema.table('UserInfo', {
     username: DbSchema.text({ default: '' }),
+    text: DbSchema.text({ default: '' }),
   })
 
   const dbGraph = useGlobalDbGraph ? globalDbGraph : makeDbGraph()
+
+  const makeRenderCount = () => {
+    let val = 0
+
+    const inc = () => {
+      val += strictMode ? 0.5 : 1
+    }
+
+    return {
+      get val() {
+        return val
+      },
+      inc,
+    }
+  }
 
   const store = await createStore({
     schema,
@@ -67,9 +85,24 @@ export const makeTodoMvc = async ({
   // TODO improve typing of `LiveStoreContext`
   const storeContext: LiveStoreContext = { store } as TODO
 
+  const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
+
   const wrapper = ({ children }: any) => (
-    <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>{children}</LiveStoreReact.LiveStoreContext.Provider>
+    <MaybeStrictMode>
+      <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>
+        {children}
+      </LiveStoreReact.LiveStoreContext.Provider>
+    </MaybeStrictMode>
   )
 
-  return { wrapper, AppComponentSchema, store, dbGraph, cud }
+  return {
+    [Symbol.dispose]: () => store.destroy(),
+    wrapper,
+    AppComponentSchema,
+    store,
+    dbGraph,
+    cud,
+    makeRenderCount,
+    strictMode,
+  }
 }
