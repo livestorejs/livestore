@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isProdBuild = process.env.NODE_ENV === 'production'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -15,6 +17,7 @@ export default defineConfig({
       allow: ['../../../..'],
     },
   },
+  worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/sqlite-wasm'],

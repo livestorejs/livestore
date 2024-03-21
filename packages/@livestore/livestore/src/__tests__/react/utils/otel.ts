@@ -1,10 +1,17 @@
+import { identity } from '@livestore/utils/effect'
+import type { Attributes } from '@opentelemetry/api'
 import type { InMemorySpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base'
 
 type SimplifiedNestedSpan = { _name: string; attributes: any; children: SimplifiedNestedSpan[] }
 
-export const getSimplifiedRootSpan = (exporter: InMemorySpanExporter) => {
+export const getSimplifiedRootSpan = (
+  exporter: InMemorySpanExporter,
+  mapAttributes?: (attributes: Attributes) => Attributes,
+) => {
   const spans = exporter.getFinishedSpans()
   const spansMap = new Map<string, NestedSpan>(spans.map((span) => [span.spanContext().spanId, { span, children: [] }]))
+
+  const mapAttributesfn = mapAttributes ?? identity
 
   spansMap.forEach((nestedSpan) => {
     const parentSpan = nestedSpan.span.parentSpanId ? spansMap.get(nestedSpan.span.parentSpanId) : undefined
@@ -19,7 +26,7 @@ export const getSimplifiedRootSpan = (exporter: InMemorySpanExporter) => {
   const simplifySpan = (span: NestedSpan): SimplifiedNestedSpan =>
     omitEmpty({
       _name: span.span.name,
-      attributes: span.span.attributes,
+      attributes: mapAttributesfn(span.span.attributes),
       children: span.children
         .filter((_) => _.span.name !== 'createStore')
         // .sort((a, b) => compareHrTime(a.span.startTime, b.span.startTime))

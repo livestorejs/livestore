@@ -1,3 +1,4 @@
+import { ReadonlyRecord } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { act, render, renderHook } from '@testing-library/react'
@@ -10,6 +11,7 @@ import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
 import * as LiveStore from '../index.js'
 import { mutationForQueryInfo } from '../query-info.js'
 import * as LiveStoreReact from './index.js'
+import type { StackInfo } from './utils/stack-info.js'
 
 // NOTE running tests concurrently doesn't work with the default global db graph
 describe.concurrent('useRow', () => {
@@ -305,8 +307,25 @@ describe.concurrent('useRow', () => {
       store.destroy()
       span.end()
 
+      const mapAttributes = (attributes: otel.Attributes) => {
+        return ReadonlyRecord.map(attributes, (val, key) => {
+          if (key === 'stackInfo') {
+            const stackInfo = JSON.parse(val as string) as StackInfo
+            // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
+            stackInfo.frames.forEach((_) => {
+              if (_.name.includes('renderHook.wrapper')) {
+                _.name = 'renderHook.wrapper'
+              }
+              _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+            })
+            return JSON.stringify(stackInfo)
+          }
+          return val
+        })
+      }
+
       if (strictMode) {
-        expect(getSimplifiedRootSpan(exporter)).toMatchInlineSnapshot(`
+        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchInlineSnapshot(`
           {
             "_name": "test",
             "children": [
@@ -405,7 +424,7 @@ describe.concurrent('useRow', () => {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
                         "attributes": {
                           "label": "sql(rowQuery:query:UserInfo:u1)",
-                          "stackInfo": "{"frames":[{"name":"__vite_ssr_import_2__.renderHook.wrapper.wrapper","filePath":"/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/src/react/useRow.test.tsx:280:52"},{"name":"useRow","filePath":"/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/src/react/useRow.ts:95:21"}]}",
+                          "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
                         },
                         "children": [
                           {
@@ -450,7 +469,7 @@ describe.concurrent('useRow', () => {
         `)
         // Below: Strict mode disabled
       } else {
-        expect(getSimplifiedRootSpan(exporter)).toMatchInlineSnapshot(`
+        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchInlineSnapshot(`
           {
             "_name": "test",
             "children": [
@@ -549,7 +568,7 @@ describe.concurrent('useRow', () => {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
                         "attributes": {
                           "label": "sql(rowQuery:query:UserInfo:u1)",
-                          "stackInfo": "{"frames":[{"name":"__vite_ssr_import_2__.renderHook.wrapper.wrapper","filePath":"/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/src/react/useRow.test.tsx:280:52"},{"name":"useRow","filePath":"/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/src/react/useRow.ts:95:21"}]}",
+                          "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
                         },
                         "children": [
                           {
@@ -596,7 +615,7 @@ describe.concurrent('useRow', () => {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u2)",
                         "attributes": {
                           "label": "sql(rowQuery:query:UserInfo:u2)",
-                          "stackInfo": "{"frames":[{"name":"__vite_ssr_import_2__.renderHook.wrapper.wrapper","filePath":"/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/src/react/useRow.test.tsx:280:52"},{"name":"useRow","filePath":"/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/livestore/src/react/useRow.ts:95:21"}]}",
+                          "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
                         },
                         "children": [
                           {
