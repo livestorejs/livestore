@@ -25,7 +25,7 @@ export type DepKey = string | number | ReadonlyArray<string | number>
 /**
  * Creates a query, subscribes and destroys it when the component unmounts.
  *
- * Make sure `makeQuery` is a memoized function.
+ * The `key` is used to determine whether the a new query should be created or if the existing one should be reused.
  */
 export const useTemporaryQuery = <TResult>(makeQuery: () => LiveQuery<TResult>, key: DepKey): TResult =>
   useTemporaryQueryRef(makeQuery, key).current
