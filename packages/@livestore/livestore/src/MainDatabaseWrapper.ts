@@ -251,6 +251,10 @@ export class MainDatabaseWrapper {
 
     return this.db.export()
   }
+
+  invalidateCache(tableNames: Iterable<string>) {
+    this.resultCache.invalidate(tableNames)
+  }
 }
 
 /** Set up SQLite performance; hasn't been super carefully optimized yet. */

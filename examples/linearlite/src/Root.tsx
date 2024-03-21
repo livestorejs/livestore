@@ -17,7 +17,7 @@ export const { ElectricLiveStoreProvider, useElectric } = makeElectricLiveStoreC
 
 const electricConfig = {
   debug: import.meta.env.DEV,
-  url: import.meta.env.ELECTRIC_URL
+  url: import.meta.env.VITE_ELECTRIC_SERVICE,
 }
 
 const electricAuthToken = insecureAuthToken({ sub: uuid() })

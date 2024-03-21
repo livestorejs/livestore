@@ -20,57 +20,61 @@ interface ElectricLiveStoreContext<S extends ElectricClient<DbSchema<any>>> {
   ElectricLiveStoreProvider: ({ children, config }: ElectricLiveStoreProviderProps<S>) => JSX.Element
 }
 
-export function makeElectricLiveStoreContext<
-  S extends ElectricClient<DbSchema<any>>
->(): ElectricLiveStoreContext<S> {
-  const {ElectricContext: ctx, useElectric, ElectricProvider} = makeElectricContextBase<S>()
+export function makeElectricLiveStoreContext<S extends ElectricClient<DbSchema<any>>>(): ElectricLiveStoreContext<S> {
+  const { ElectricContext: ctx, useElectric, ElectricProvider } = makeElectricContextBase<S>()
 
-  const ElectricReactivity = (
-    { electric, dbSchema, store, children }: {
-      electric: S
-      dbSchema: DbSchema<any>
-      store: Store
-      children: React.ReactNode
-    }
-  ) => {
-    let notifyingElectric = false
+  const ElectricReactivity = ({
+    electric,
+    dbSchema,
+    store,
+    children,
+  }: {
+    electric: S
+    dbSchema: DbSchema<any>
+    store: Store
+    children: React.ReactNode
+  }) => {
+    const notifyingElectric = false
 
     electric.notifier.subscribeToDataChanges((notification) => {
       console.log('Electric change notification', notifyingElectric, notification)
       if (!notifyingElectric) {
         notification.changes.forEach((change) => {
           console.log(`${change.qualifiedTablename.tablename} changed by Electric`)
+          store.mainDbWrapper.invalidateCache([change.qualifiedTablename.tablename])
           store.graph.setRef(store.tableRefs[change.qualifiedTablename.tablename]!, null)
         })
       }
     })
 
-    Object.keys(dbSchema.tables).forEach((tableName) => {
+    for (const tableName in dbSchema.tables) {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
       useTemporaryQuery(() => {
-        return computed(
-          (get) => {
-            get(store.tableRefs[tableName] as any)
-            console.log(`${tableName} changed by LiveStore`)
-            notifyingElectric = true
-            electric.notifier.potentiallyChanged()
-            notifyingElectric = false
-          }
-        )
-      }, Object.keys(dbSchema.tables))
-    })
+        return computed((get) => {
+          get(store.tableRefs[tableName] as any)
+          console.log(`${tableName} changed by LiveStore`)
+        })
+      }, tableName)
+    }
 
     return <>{children}</>
   }
 
-  const ElectricLiveStoreProvider = ({ children, config, dbSchema, fallback, init }: ElectricLiveStoreProviderProps<S>) => {
+  const ElectricLiveStoreProvider = ({
+    children,
+    config,
+    dbSchema,
+    fallback,
+    init,
+  }: ElectricLiveStoreProviderProps<S>) => {
     const { store } = useStore()
-    let [electric, setElectric] = useState<S>()
+    const [electric, setElectric] = useState<S>()
 
     useEffect(() => {
       let ignore = false
 
       const runInit = async () => {
-        const electric = await electrify(store, dbSchema, config) as S
+        const electric = (await electrify(store, dbSchema, config)) as S
 
         // If the user has provided an init function, call it
         // this is where they can authenticate, subscribe to shapes, etc.
@@ -88,15 +92,17 @@ export function makeElectricLiveStoreContext<
         // TODO: disconnect electric!
         ignore = true
       }
-    }, [store])
+    }, [config, dbSchema, init, store])
 
     return (
       <ElectricProvider db={electric}>
-        {electric ? 
+        {electric ? (
           <ElectricReactivity electric={electric} dbSchema={dbSchema} store={store}>
             {children}
           </ElectricReactivity>
-        : fallback}
+        ) : (
+          fallback
+        )}
       </ElectricProvider>
     )
   }
