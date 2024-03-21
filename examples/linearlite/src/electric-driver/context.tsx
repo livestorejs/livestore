@@ -51,6 +51,9 @@ export function makeElectricLiveStoreContext<
           (get) => {
             get(store.tableRefs[tableName] as any)
             console.log(`${tableName} changed by LiveStore`)
+            notifyingElectric = true
+            electric.notifier.potentiallyChanged()
+            notifyingElectric = false
           }
         )
       }, Object.keys(dbSchema.tables))
