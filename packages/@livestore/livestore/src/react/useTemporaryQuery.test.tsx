@@ -1,5 +1,4 @@
 import { renderHook } from '@testing-library/react'
-import React from 'react'
 import { describe, expect, it } from 'vitest'
 
 import { makeTodoMvc, parseTodos } from '../__tests__/react/fixture.js'
@@ -9,43 +8,45 @@ import * as LiveStoreReact from './index.js'
 
 describe('useTemporaryQuery', () => {
   it('simple', async () => {
-    let renderCount = 0
+    const { wrapper, store, cud, makeRenderCount } = await makeTodoMvc()
 
-    const { wrapper, store, cud } = await makeTodoMvc()
+    const renderCount = makeRenderCount()
 
     store.mutate(
       cud.todos.insert({ id: 't1', text: 'buy milk', completed: false }),
       cud.todos.insert({ id: 't2', text: 'buy bread', completed: false }),
     )
 
-    const queryMap = new Map<string, LiveStore.LiveQuery<any, any>>()
+    const queryMap = new Map<string, LiveStore.LiveQuery<any>>()
 
-    const { rerender, result } = renderHook(
+    const { rerender, result, unmount } = renderHook(
       (id: string) => {
-        renderCount++
+        renderCount.inc()
 
-        return LiveStoreReact.useTemporaryQuery(
-          React.useCallback(() => {
-            const query$ = querySQL(`select * from todos where id = '${id}'`, { map: parseTodos })
-            queryMap.set(id, query$)
-            return query$
-          }, [id]),
-        )
+        return LiveStoreReact.useTemporaryQuery(() => {
+          const query$ = querySQL(`select * from todos where id = '${id}'`, { map: parseTodos })
+          queryMap.set(id, query$)
+          return query$
+        }, id)
       },
       { wrapper, initialProps: 't1' },
     )
 
     expect(result.current.length).toBe(1)
     expect(result.current[0]!.text).toBe('buy milk')
-    expect(renderCount).toBe(1)
+    expect(renderCount.val).toBe(1)
     expect(queryMap.get('t1')!.runs).toBe(1)
 
     rerender('t2')
 
     expect(result.current.length).toBe(1)
     expect(result.current[0]!.text).toBe('buy bread')
-    expect(renderCount).toBe(2)
+    expect(renderCount.val).toBe(2)
     expect(queryMap.get('t1')!.runs).toBe(1)
+    expect(queryMap.get('t2')!.runs).toBe(1)
+
+    unmount()
+
     expect(queryMap.get('t2')!.runs).toBe(1)
   })
 })

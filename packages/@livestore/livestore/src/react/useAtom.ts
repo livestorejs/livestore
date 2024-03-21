@@ -8,7 +8,7 @@ import type { Dispatch, SetStateAction } from './useRow.js'
 
 export const useAtom = <TQuery extends LiveQuery<any, QueryInfoRow<any> | QueryInfoCol<any, any>>>(
   query$: TQuery,
-): [value: TQuery['__result!'], setValue: Dispatch<SetStateAction<TQuery['__result!']>>] => {
+): [value: TQuery['__result!'], setValue: Dispatch<SetStateAction<Partial<TQuery['__result!']>>>] => {
   const query$Ref = useQueryRef(query$)
 
   const { store } = useStore()

@@ -4,10 +4,6 @@ import type * as otel from '@opentelemetry/api'
 
 import type { StorageInit, StorageOtelProps } from '../index.js'
 
-export type StorageOptionsWebInMemory = {
-  type: 'web-in-memory'
-}
-
 /** NOTE: This storage is currently only used for testing */
 export class InMemoryStorage implements StorageDatabase {
   filename = ':memory:'
@@ -15,7 +11,7 @@ export class InMemoryStorage implements StorageDatabase {
   constructor(readonly otelTracer: otel.Tracer) {}
 
   static load =
-    (_options?: StorageOptionsWebInMemory): StorageInit =>
+    (): StorageInit =>
     ({ otelTracer }: StorageOtelProps) =>
       new InMemoryStorage(otelTracer)
 
@@ -28,4 +24,5 @@ export class InMemoryStorage implements StorageDatabase {
   getMutationLogData = async (): Promise<Uint8Array> => new Uint8Array()
 
   dangerouslyReset = async () => {}
+  shutdown = async () => {}
 }

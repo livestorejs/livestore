@@ -197,7 +197,21 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
     }
   }
 
-  const wrappedWorker = { initialize, executeBulk }
+  const shutdown = () => {
+    try {
+      db.close()
+      dbLog.close()
+    } catch (e) {
+      console.error('Error closing database', e)
+      debugger
+    }
+
+    if (idbPersistTimeout !== undefined) {
+      clearTimeout(idbPersistTimeout)
+    }
+  }
+
+  const wrappedWorker = { initialize, executeBulk, shutdown }
 
   Comlink.expose(wrappedWorker)
 

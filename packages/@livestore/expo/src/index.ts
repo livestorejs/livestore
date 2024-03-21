@@ -52,6 +52,7 @@ export const makeDb =
       dangerouslyReset: async () => {},
       // TODO actually implement this
       getMutationLogData: async () => new Uint8Array([]),
+      shutdown: async () => {},
     } satisfies StorageDatabase
 
     return { mainDb, storageDb } satisfies DatabaseImpl

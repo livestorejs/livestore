@@ -88,6 +88,12 @@ export type Node<T, TContext, TDebugRefreshReason extends DebugRefreshReason> =
   | Atom<T, TContext, TDebugRefreshReason>
   | Effect
 
+export const isThunk = <T, TContext, TDebugRefreshReason extends DebugRefreshReason>(
+  obj: unknown,
+): obj is Thunk<T, TContext, TDebugRefreshReason> => {
+  return typeof obj === 'object' && obj !== null && '_tag' in obj && (obj as any)._tag === 'thunk'
+}
+
 export type DebugThunkInfo<T extends string = string> = {
   _tag: T
   durationMs: number
@@ -133,9 +139,31 @@ const unknownRefreshReason = () => {
   return { _tag: 'unknown' as const }
 }
 
-export type SerializedAtom = Readonly<
+export type EncodedOption<A> = { _tag: 'Some'; value?: A } | { _tag: 'None' }
+const encodedOptionSome = <A>(value: A): EncodedOption<A> => ({ _tag: 'Some', value })
+const encodedOptionNone = <A>(): EncodedOption<A> => ({ _tag: 'None' })
+
+export type SerializedAtom = SerializedRef | SerializedThunk
+
+export type SerializedRef = Readonly<
   PrettifyFlat<
-    Pick<Atom<unknown, unknown, any>, '_tag' | 'id' | 'label' | 'meta' | 'isDirty'> & {
+    Pick<Ref<unknown, unknown, any>, '_tag' | 'id' | 'label' | 'meta' | 'isDirty' | 'isDestroyed' | 'refreshes'> & {
+      /** Is `None` if `getSnapshot` was called with `includeResults: false` which is the default */
+      previousResult: EncodedOption<string>
+      sub: ReadonlyArray<string>
+      super: ReadonlyArray<string>
+    }
+  >
+>
+
+export type SerializedThunk = Readonly<
+  PrettifyFlat<
+    Pick<
+      Thunk<unknown, unknown, any>,
+      '_tag' | 'id' | 'label' | 'meta' | 'isDirty' | 'isDestroyed' | 'recomputations'
+    > & {
+      /** Is `None` if `getSnapshot` was called with `includeResults: false` which is the default */
+      previousResult: EncodedOption<string>
       sub: ReadonlyArray<string>
       super: ReadonlyArray<string>
     }
@@ -144,13 +172,13 @@ export type SerializedAtom = Readonly<
 
 export type SerializedEffect = Readonly<
   PrettifyFlat<
-    Pick<Effect, '_tag' | 'id' | 'label'> & {
+    Pick<Effect, '_tag' | 'id' | 'label' | 'invocations' | 'isDestroyed'> & {
       sub: ReadonlyArray<string>
     }
   >
 >
 
-type ReactiveGraphSnapshot = {
+export type ReactiveGraphSnapshot = {
   readonly atoms: ReadonlyArray<SerializedAtom>
   readonly effects: ReadonlyArray<SerializedEffect>
   /** IDs of deferred effects */
@@ -267,7 +295,7 @@ export class ReactiveGraph<
           const resultChanged = thunk.equal(thunk.previousResult as T, result) === false
 
           const debugInfoForAtom = {
-            atom: serializeAtom(thunk),
+            atom: serializeAtom(thunk, false),
             resultChanged,
             debugInfo: debugInfo ?? (unknownRefreshReason() as TDebugThunkInfo),
           } satisfies AtomDebugInfo<TDebugThunkInfo>
@@ -290,7 +318,7 @@ export class ReactiveGraph<
               refreshedAtoms,
               durationMs,
               completedTimestamp: Date.now(),
-              graphSnapshot: this.getSnapshot(),
+              graphSnapshot: this.getSnapshot({ includeResults: false }),
             })
           }
 
@@ -455,13 +483,11 @@ export class ReactiveGraph<
         refreshedAtoms,
         durationMs,
         completedTimestamp: Date.now(),
-        graphSnapshot: this.getSnapshot(),
+        graphSnapshot: this.getSnapshot({ includeResults: false }),
       }
       this.debugRefreshInfos.push(refreshDebugInfo)
 
-      for (const cb of this.refreshCallbacks) {
-        cb()
-      }
+      this.runRefreshCallbacks()
     })
   }
 
@@ -481,12 +507,20 @@ export class ReactiveGraph<
     }
   }
 
+  runRefreshCallbacks = () => {
+    for (const cb of this.refreshCallbacks) {
+      cb()
+    }
+  }
+
   addEdge(
     superComp: Thunk<any, TContext, TDebugRefreshReason> | Effect,
     subComp: Atom<any, TContext, TDebugRefreshReason>,
   ) {
     superComp.sub.add(subComp)
     subComp.super.add(superComp)
+
+    this.runRefreshCallbacks()
   }
 
   removeEdge(
@@ -502,13 +536,16 @@ export class ReactiveGraph<
     }
 
     subComp.super.delete(superComp)
+
+    this.runRefreshCallbacks()
   }
 
   // NOTE This function is performance-optimized (i.e. not using `Array.from`)
-  getSnapshot = (): ReactiveGraphSnapshot => {
+  getSnapshot = (opts?: { includeResults: boolean }): ReactiveGraphSnapshot => {
+    const { includeResults = false } = opts ?? {}
     const atoms: SerializedAtom[] = []
     for (const atom of this.atoms) {
-      atoms.push(serializeAtom(atom))
+      atoms.push(serializeAtom(atom, includeResults))
     }
 
     const effects: SerializedEffect[] = []
@@ -535,7 +572,7 @@ export class ReactiveGraph<
 const compute = <T>(atom: Atom<T, unknown, any>, otelContext: otel.Context): T => {
   // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
   if (atom.isDestroyed) {
-    shouldNeverHappen(`LiveStore Error: Attempted to compute destroyed atom`)
+    shouldNeverHappen(`LiveStore Error: Attempted to compute destroyed ${atom._tag} (${atom.id}): ${atom.label ?? ''}`)
   }
 
   if (atom.isDirty) {
@@ -566,7 +603,7 @@ export const throwContextNotSetError = (graph: ReactiveGraph<any, any, any>): ne
 }
 
 // NOTE This function is performance-optimized (i.e. not using `pick` and `Array.from`)
-const serializeAtom = (atom: Atom<any, unknown, any>): SerializedAtom => {
+const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): SerializedAtom => {
   const sub: string[] = []
   for (const a of atom.sub) {
     sub.push(a.id)
@@ -577,14 +614,36 @@ const serializeAtom = (atom: Atom<any, unknown, any>): SerializedAtom => {
     super_.push(a.id)
   }
 
+  const previousResult: EncodedOption<string> = includeResult
+    ? encodedOptionSome(JSON.stringify(atom.previousResult))
+    : encodedOptionNone()
+
+  if (atom._tag === 'ref') {
+    return {
+      _tag: atom._tag,
+      id: atom.id,
+      label: atom.label,
+      meta: atom.meta,
+      isDirty: atom.isDirty,
+      sub,
+      super: super_,
+      isDestroyed: atom.isDestroyed,
+      refreshes: atom.refreshes,
+      previousResult,
+    }
+  }
+
   return {
-    _tag: atom._tag,
+    _tag: 'thunk',
     id: atom.id,
     label: atom.label,
     meta: atom.meta,
     isDirty: atom.isDirty,
     sub,
     super: super_,
+    isDestroyed: atom.isDestroyed,
+    recomputations: atom.recomputations,
+    previousResult,
   }
 }
 
@@ -600,5 +659,7 @@ const serializeEffect = (effect: Effect): SerializedEffect => {
     id: effect.id,
     label: effect.label,
     sub,
+    invocations: effect.invocations,
+    isDestroyed: effect.isDestroyed,
   }
 }

@@ -184,22 +184,23 @@ export class Store<
    * Returns a function to cancel the subscription.
    */
   subscribe = <TResult>(
-    query: LiveQuery<TResult, any>,
+    query$: LiveQuery<TResult, any>,
     onNewValue: (value: TResult) => void,
     onUnsubsubscribe?: () => void,
     options?: { label?: string; otelContext?: otel.Context; skipInitialRun?: boolean } | undefined,
   ): (() => void) =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: query.label } },
+      { attributes: { label: options?.label, queryLabel: query$.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
+        // console.log('store sub', query$.label)
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const label = `subscribe:${options?.label}`
-        const effect = this.graph.makeEffect((get) => onNewValue(get(query.results$)), { label })
+        const effect = this.graph.makeEffect((get) => onNewValue(get(query$.results$)), { label })
 
-        this.activeQueries.add(query as LiveQuery<TResult>)
+        this.activeQueries.add(query$ as LiveQuery<TResult>)
 
         // Running effect right away to get initial value (unless `skipInitialRun` is set)
         if (options?.skipInitialRun !== true) {
@@ -207,9 +208,10 @@ export class Store<
         }
 
         const unsubscribe = () => {
+          // console.log('store unsub', query$.label)
           try {
             this.graph.destroyNode(effect)
-            this.activeQueries.remove(query as LiveQuery<TResult>)
+            this.activeQueries.remove(query$ as LiveQuery<TResult>)
             onUnsubsubscribe?.()
           } finally {
             span.end()
@@ -225,7 +227,7 @@ export class Store<
    *
    * Currently only used when shutting down the app for debugging purposes (e.g. to close Otel spans).
    */
-  destroy = () => {
+  destroy = async () => {
     for (const tableRef of Object.values(this.tableRefs)) {
       for (const superComp of tableRef.super) {
         this.graph.removeEdge(superComp, tableRef)
@@ -234,6 +236,8 @@ export class Store<
 
     otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
     otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
+
+    await this.db.storageDb.shutdown()
   }
 
   mutate: {
@@ -540,11 +544,11 @@ export const createStore = async <
 
               db.mainDb.execute('COMMIT', undefined)
 
-              db.storageDb.execute('BEGIN', undefined, undefined)
+              // db.storageDb.execute('BEGIN', undefined, undefined)
               for (const [queryStr, bindValues] of txnExecuteStmnts) {
                 db.storageDb.execute(queryStr, bindValues, undefined)
               }
-              db.storageDb.execute('COMMIT', undefined, undefined)
+              // db.storageDb.execute('COMMIT', undefined, undefined)
             } catch (e: any) {
               db.mainDb.execute('ROLLBACK', undefined)
               throw e

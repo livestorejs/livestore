@@ -17,6 +17,7 @@ const credentiallessHeaders = {
 }
 
 const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
+const isProdBuild = process.env.NODE_ENV === 'production'
 
 // https://vitejs.dev/config
 export default defineConfig({
@@ -39,6 +40,7 @@ export default defineConfig({
   esbuild: {
     target: 'esnext',
   },
+  worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/sqlite-wasm'],

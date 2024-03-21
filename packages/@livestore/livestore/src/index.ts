@@ -5,7 +5,18 @@ export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } f
 
 export { MainDatabaseWrapper, type DebugInfo, emptyDebugInfo } from './MainDatabaseWrapper.js'
 
-export type { GetAtom, AtomDebugInfo, RefreshDebugInfo, SerializedAtom, Atom, Node, Ref, Effect } from './reactive.js'
+export type {
+  GetAtom,
+  AtomDebugInfo,
+  RefreshDebugInfo,
+  ReactiveGraphSnapshot,
+  SerializedAtom,
+  SerializedEffect,
+  Atom,
+  Node,
+  Ref,
+  Effect,
+} from './reactive.js'
 export { LiveStoreJSQuery, computed } from './reactiveQueries/js.js'
 export { LiveStoreSQLQuery, querySQL, type MapRows } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'

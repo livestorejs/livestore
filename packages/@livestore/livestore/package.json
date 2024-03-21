@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest"
+    "test": "vitest && REACT_STRICT_MODE=1 vitest"
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",

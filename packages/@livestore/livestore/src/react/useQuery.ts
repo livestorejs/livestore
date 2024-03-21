@@ -8,6 +8,11 @@ import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/stac
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 /**
+ * NOTE Some folks have suggested to use `React.useSyncExternalStore`, however, it's not doing anything special
+ * for what's needed here, so we handle everything manually.
+ */
+
+/**
  * This is needed because the `React.useMemo` call below, can sometimes be called multiple times 🤷,
  * so we need to "cache" the fact that we've already started a span for this component.
  * The map entry is being removed again in the `React.useEffect` call below.
@@ -16,13 +21,16 @@ const spanAlreadyStartedCache = new Map<LiveQueryAny, { span: otel.Span; otelCon
 
 export const useQuery = <TQuery extends LiveQueryAny>(query: TQuery): GetResult<TQuery> => useQueryRef(query).current
 
+/**
+ *
+ */
 export const useQueryRef = <TQuery extends LiveQueryAny>(
-  query: TQuery,
+  query$: TQuery,
   parentOtelContext?: otel.Context,
 ): React.MutableRefObject<GetResult<TQuery>> => {
   const { store } = useStore()
 
-  React.useDebugValue(`LiveStore:useQuery:${query.id}:${query.label}`)
+  React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
@@ -34,31 +42,31 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
 
   // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
   const { span, otelContext } = React.useMemo(() => {
-    const existingSpan = spanAlreadyStartedCache.get(query)
+    const existingSpan = spanAlreadyStartedCache.get(query$)
     if (existingSpan !== undefined) return existingSpan
 
     const span = store.otel.tracer.startSpan(
-      `LiveStore:useQuery:${query.label}`,
-      { attributes: { label: query.label, stackInfo: JSON.stringify(stackInfo) } },
+      `LiveStore:useQuery:${query$.label}`,
+      { attributes: { label: query$.label, stackInfo: JSON.stringify(stackInfo) } },
       parentOtelContext ?? store.otel.queriesSpanContext,
     )
 
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    spanAlreadyStartedCache.set(query, { span, otelContext })
+    spanAlreadyStartedCache.set(query$, { span, otelContext })
 
     return { span, otelContext }
-  }, [parentOtelContext, query, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
+  }, [parentOtelContext, query$, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
 
   const initialResult = React.useMemo(
     () =>
-      query.run(otelContext, {
+      query$.run(otelContext, {
         _tag: 'react',
         api: 'useQuery',
-        label: query.label,
+        label: query$.label,
         stackInfo,
       }),
-    [otelContext, query, stackInfo],
+    [otelContext, query$, stackInfo],
   )
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
@@ -66,17 +74,18 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
 
   React.useEffect(
     () => () => {
-      spanAlreadyStartedCache.delete(query)
+      spanAlreadyStartedCache.delete(query$)
       span.end()
     },
-    [query, span],
+    [query$, span],
   )
 
   // Subscribe to future updates for this query
   React.useEffect(() => {
-    query.activeSubscriptions.add(stackInfo)
-    const unsubFromStore = store.subscribe(
-      query,
+    query$.activeSubscriptions.add(stackInfo)
+
+    return store.subscribe(
+      query$,
       (newValue) => {
         // NOTE: we return a reference to the result object within LiveStore;
         // this implies that app code must not mutate the results, or else
@@ -85,14 +94,12 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
           setValue(newValue)
         }
       },
-      undefined,
-      { label: query.label, otelContext },
+      () => {
+        query$.activeSubscriptions.delete(stackInfo)
+      },
+      { label: query$.label, otelContext },
     )
-    return () => {
-      query.activeSubscriptions.delete(stackInfo)
-      unsubFromStore()
-    }
-  }, [stackInfo, query, setValue, store, valueRef, otelContext, span])
+  }, [stackInfo, query$, setValue, store, valueRef, otelContext, span])
 
   return valueRef
 }

@@ -107,6 +107,18 @@ export class WebWorkerStorage implements StorageDatabase {
     this.worker.terminate()
     await resetPersistedData(this.options)
   }
+
+  shutdown = async () => {
+    const gracefulTimeout = setTimeout(() => {
+      console.error('Worker did not gracefully shutdown in time, terminating it')
+      this.worker.terminate()
+    }, 1000)
+
+    await this.wrappedWorker.shutdown()
+    clearTimeout(gracefulTimeout)
+
+    this.worker.terminate()
+  }
 }
 
 const getPersistedData = async (options: StorageOptionsWeb) => {

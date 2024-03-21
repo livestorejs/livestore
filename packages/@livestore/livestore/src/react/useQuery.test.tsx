@@ -8,15 +8,15 @@ import * as LiveStoreReact from './index.js'
 
 describe('useQuery', () => {
   it('simple', async () => {
-    let renderCount = 0
+    const { wrapper, store, cud, makeRenderCount } = await makeTodoMvc()
 
-    const { wrapper, store, cud } = await makeTodoMvc()
+    const renderCount = makeRenderCount()
 
     const allTodos$ = querySQL(`select * from todos`, { map: parseTodos })
 
     const { result } = renderHook(
       () => {
-        renderCount++
+        renderCount.inc()
 
         return LiveStoreReact.useQuery(allTodos$)
       },
@@ -24,19 +24,19 @@ describe('useQuery', () => {
     )
 
     expect(result.current.length).toBe(0)
-    expect(renderCount).toBe(1)
+    expect(renderCount.val).toBe(1)
 
     act(() => store.mutate(cud.todos.insert({ id: 't1', text: 'buy milk', completed: false })))
 
     expect(result.current.length).toBe(1)
     expect(result.current[0]!.text).toBe('buy milk')
-    expect(renderCount).toBe(2)
+    expect(renderCount.val).toBe(2)
   })
 
   it('same `useQuery` hook invoked with different queries', async () => {
-    let renderCount = 0
+    const { wrapper, store, cud, makeRenderCount } = await makeTodoMvc()
 
-    const { wrapper, store, cud } = await makeTodoMvc()
+    const renderCount = makeRenderCount()
 
     const todo1$ = querySQL(`select * from todos where id = 't1'`, { label: 'libraryTracksView1', map: parseTodos })
     const todo2$ = querySQL(`select * from todos where id = 't2'`, { label: 'libraryTracksView2', map: parseTodos })
@@ -48,7 +48,7 @@ describe('useQuery', () => {
 
     const { result, rerender } = renderHook(
       (todoId: string) => {
-        renderCount++
+        renderCount.inc()
 
         const query$ = React.useMemo(() => (todoId === 't1' ? todo1$ : todo2$), [todoId])
 
@@ -58,16 +58,16 @@ describe('useQuery', () => {
     )
 
     expect(result.current).toBe('buy milk')
-    expect(renderCount).toBe(1)
+    expect(renderCount.val).toBe(1)
 
     act(() => store.mutate(cud.todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
 
     expect(result.current).toBe('buy soy milk')
-    expect(renderCount).toBe(2)
+    expect(renderCount.val).toBe(2)
 
     rerender('t2')
 
     expect(result.current).toBe('buy eggs')
-    expect(renderCount).toBe(3)
+    expect(renderCount.val).toBe(3)
   })
 })
