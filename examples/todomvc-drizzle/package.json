@@ -9,7 +9,7 @@
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {
-    "@effect/schema": "0.64.3",
+    "@effect/schema": "0.64.11",
     "@livestore/devtools-react": "0.0.46",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "latest",
@@ -17,7 +17,7 @@
     "@opentelemetry/api": "^1.8.0",
     "@schickling/fps-meter": "^0.1.2",
     "drizzle-orm": "^0.28.6",
-    "effect": "2.4.6",
+    "effect": "2.4.11",
     "effect-db-schema": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -26,13 +26,13 @@
     "workbox-window": "^7.0.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.65",
+    "@types/react": "^18.2.67",
     "@types/react-dom": "^18.2.22",
     "@types/uuid": "^9.0.8",
     "@vitejs/plugin-react": "^4.2.1",
     "rollup-plugin-visualizer": "^5.12.0",
-    "typescript": "^5.4.2",
-    "vite": "^5.1.6",
-    "vite-plugin-pwa": "^0.19.2"
+    "typescript": "^5.4.3",
+    "vite": "^5.2.2",
+    "vite-plugin-pwa": "^0.19.6"
   }
 }
