@@ -26,5 +26,5 @@ dist-ssr
 public/wa-sqlite-async.mjs
 public/wa-sqlite-async.wasm
 
-src/generated/
-db/data/
+# src/generated/ # Commited for now as we have pinned versions of the generated files, there is a bug in the generator that prevents it working in a pnpm workspace
+backend/data/
