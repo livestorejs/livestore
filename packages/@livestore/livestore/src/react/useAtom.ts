@@ -17,7 +17,11 @@ export const useAtom = <TQuery extends LiveQuery<any, QueryInfoRow<any> | QueryI
     return (newValueOrFn: any) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
 
-      store.mutate(mutationForQueryInfo(query$.queryInfo!, newValue))
+      if (query$.queryInfo._tag === 'Row' && query$.queryInfo.table.isSingleColumn) {
+        store.mutate(mutationForQueryInfo(query$.queryInfo!, { value: newValue }))
+      } else {
+        store.mutate(mutationForQueryInfo(query$.queryInfo!, newValue))
+      }
     }
   }, [query$.queryInfo, query$Ref, store])
 
