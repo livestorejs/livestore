@@ -1,6 +1,5 @@
 ## Notes
 
-- We currently need a `"expo-sqlite@13.2.2": "patches/expo-sqlite@13.2.2.patch"` patch
 - Doesn't yet support Expo Web
   - [ ] Missing support for `expo-sqlite/next` on web
   - [ ] Bug: No support for `import.meta` on web (even when using babel plugin)
