@@ -34,13 +34,11 @@ export function makeElectricLiveStoreContext<S extends ElectricClient<DbSchema<a
     store: Store
     children: React.ReactNode
   }) => {
-    const notifyingElectric = false
+    let notifyingElectric = false
 
-    electric.notifier.subscribeToDataChanges((notification) => {
-      console.log('Electric change notification', notifyingElectric, notification)
+    electric.notifier.subscribeToDataChanges((notification: any) => { // TODO: type this
       if (!notifyingElectric) {
-        notification.changes.forEach((change) => {
-          console.log(`${change.qualifiedTablename.tablename} changed by Electric`)
+        notification.changes.forEach((change: any) => { // TODO: type this
           store.mainDbWrapper.invalidateCache([change.qualifiedTablename.tablename])
           store.graph.setRef(store.tableRefs[change.qualifiedTablename.tablename]!, null)
         })
@@ -52,7 +50,9 @@ export function makeElectricLiveStoreContext<S extends ElectricClient<DbSchema<a
       useTemporaryQuery(() => {
         return computed((get) => {
           get(store.tableRefs[tableName] as any)
-          console.log(`${tableName} changed by LiveStore`)
+          notifyingElectric = true
+          electric.notifier.potentiallyChanged()
+          notifyingElectric = false
         })
       }, tableName)
     }
@@ -66,7 +66,7 @@ export function makeElectricLiveStoreContext<S extends ElectricClient<DbSchema<a
     dbSchema,
     fallback,
     init,
-  }: ElectricLiveStoreProviderProps<S>) => {
+  }: ElectricLiveStoreProviderProps<S>): JSX.Element => {
     const { store } = useStore()
     const [electric, setElectric] = useState<S>()
 
