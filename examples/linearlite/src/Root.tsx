@@ -16,8 +16,8 @@ import { Electric, schema as electricSchema } from './generated/client/index.js'
 export const { ElectricLiveStoreProvider, useElectric } = makeElectricLiveStoreContext<Electric>()
 
 const electricConfig = {
-  debug: import.meta.env.DEV,
-  url: import.meta.env.VITE_ELECTRIC_SERVICE,
+  // debug: import.meta.env.DEV,
+  url: import.meta.env.ELECTRIC_SERVICE,
 }
 
 const electricAuthToken = insecureAuthToken({ sub: uuid() })
@@ -31,7 +31,8 @@ export default function Root() {
         comment: true,
       },
     })
-    await synced
+    // We don't need to wait for the sync to finish, but we can if we want to
+    // await synced
   }
 
   return (

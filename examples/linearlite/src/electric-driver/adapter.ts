@@ -43,9 +43,8 @@ export class DatabaseAdapter<DB extends DbSchema<TableSchemas>> implements LiveS
   // Fully synchronous version of the run function
   #run({ sql, args }: Statement): RunResult {
     const params = args ? (args as PreparedBindValues) : undefined
-    console.log('Running SQL:', sql, 'with params:', params)
+    // console.log('Running SQL:', sql, 'with params:', params)
     const stmt = this.mainDb.prepare(sql)
-    console.log('Prepared statement:', stmt)
     stmt.execute(params)
     stmt.finalize()
     // TODO: only run on storageDb if the query is not read-only
@@ -120,7 +119,6 @@ export class DatabaseAdapter<DB extends DbSchema<TableSchemas>> implements LiveS
         },
       }
       fn(tx, (res: T) => {
-        console.log('Setting result:', res)
         result = res
       })
       this.#run({ sql: 'COMMIT;' })

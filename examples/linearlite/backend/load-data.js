@@ -2,10 +2,10 @@ import createPool, { sql } from '@databases/pg'
 import fs from 'fs'
 import path from 'path'
 import * as url from 'url'
+import { getConfig } from 'electric-sql/cli'
 
 const dirname = url.fileURLToPath(new URL('.', import.meta.url))
-const DATABASE_URL =
-  process.env.ELECTRIC_DATABASE_URL || process.env.DATABASE_URL
+const { DATABASE_URL } = getConfig()
 const DATA_DIR = process.env.DATA_DIR || path.resolve(dirname, 'data')
 const ISSUES_TO_LOAD = process.env.ISSUES_TO_LOAD || 112
 
@@ -50,7 +50,7 @@ async function importComment(db, comment) {
     body: comment.body,
     creator: comment.username,
     issueId: comment.issue_id,
-    created: (new Date(comment.created)).getTime(),
+    created: (new Date(comment.created_at)).getTime(),
   })
 }
 

@@ -38,7 +38,6 @@ export const electrify = async <T extends Store, DB extends DbSchema<any>>(
   const socketFactory = opts?.socketFactory || WebSocketWeb
 
   const electric = await baseElectrify(dbName, dbDescription, adapter, socketFactory, config, opts)
-  console.log((electric.satellite as any).opts.pollingInterval)
 
   // Hack to disable polling
   ;(electric.satellite as any).opts.pollingInterval = Infinity
