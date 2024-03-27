@@ -5,6 +5,7 @@ import { ElectricContext, makeElectricContext as makeElectricContextBase } from 
 import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
 import { electrify, DatabaseAdapter } from './index'
 import { Store, computed } from '@livestore/livestore'
+import { set } from 'zod'
 
 export interface ElectricLiveStoreProviderProps<S extends ElectricClient<DbSchema<any>>> {
   children?: React.ReactNode
@@ -45,17 +46,22 @@ export function makeElectricLiveStoreContext<S extends ElectricClient<DbSchema<a
       }
     })
 
-    for (const tableName in dbSchema.tables) {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      useTemporaryQuery(() => {
-        return computed((get) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useTemporaryQuery(() => {
+      return computed((get) => {
+        if (notifyingElectric) return
+        for (const tableName in dbSchema.tables) {
           get(store.tableRefs[tableName] as any)
-          notifyingElectric = true
+        }
+        notifyingElectric = true
+        // We want to move the electric snapshot to the next tick after any rendering
+        // so we use a setTimeout with 0ms to schedule a (non-micro) task.
+        setTimeout(() => {
           electric.notifier.potentiallyChanged()
           notifyingElectric = false
-        })
-      }, tableName)
-    }
+        }, 0)
+      })
+    }, dbSchema.tables)
 
     return <>{children}</>
   }

@@ -1,7 +1,7 @@
 import { Row, Statement, QualifiedTablename } from 'electric-sql/util'
 import { DatabaseAdapter as DatabaseAdapterInterface, RunResult, Transaction as Tx } from 'electric-sql/electric'
 import { ElectricClient, DbSchema } from 'electric-sql/client/model'
-import { Store, MainDatabaseWrapper, DatabaseImpl, computed } from '@livestore/livestore'
+import { Store, MainDatabaseWrapper, DatabaseImpl, computed, PreparedStatement } from '@livestore/livestore'
 import { PreparedBindValues } from '@livestore/livestore/util'
 
 export interface LiveStoreDatabaseAdapterInterface extends DatabaseAdapterInterface {
@@ -31,6 +31,7 @@ export class DatabaseAdapter<DB extends DbSchema<TableSchemas>> implements LiveS
   readonly mainDb: DatabaseImpl['mainDb']
   readonly storageDb: DatabaseImpl['storageDb']
   readonly dbSchema: DB
+  private cache: StatementLRUCache;
 
   constructor(store: Store, dbSchema: DB) {
     this.store = store
@@ -38,15 +39,18 @@ export class DatabaseAdapter<DB extends DbSchema<TableSchemas>> implements LiveS
     this.dbWrapper = store.mainDbWrapper
     this.mainDb = store.db.mainDb
     this.storageDb = store.db.storageDb
+    this.cache = new StatementLRUCache(100);
   }
 
   // Fully synchronous version of the run function
   #run({ sql, args }: Statement): RunResult {
     const params = args ? (args as PreparedBindValues) : undefined
-    // console.log('Running SQL:', sql, 'with params:', params)
-    const stmt = this.mainDb.prepare(sql)
+    let stmt: PreparedStatement | undefined = this.cache.get(sql)
+    if (stmt === undefined) {
+      stmt = this.mainDb.prepare(sql);
+      this.cache.put(sql, stmt);
+    }
     stmt.execute(params)
-    stmt.finalize()
     // TODO: only run on storageDb if the query is not read-only
     this.storageDb.execute(sql, params, undefined) // This is an async function but we don't need to wait for it to finish
     return {
@@ -62,9 +66,12 @@ export class DatabaseAdapter<DB extends DbSchema<TableSchemas>> implements LiveS
   // Fully synchronous version of the query function
   #query({ sql, args }: Statement): Row[] {
     const params = args ? (args as PreparedBindValues) : undefined
-    const stmt = this.mainDb.prepare(sql)
+    let stmt: PreparedStatement | undefined = this.cache.get(sql)
+    if (stmt === undefined) {
+      stmt = this.mainDb.prepare(sql);
+      this.cache.put(sql, stmt);
+    }
     const rows = stmt.select<Row>(params)
-    stmt.finalize()
     // TODO: only run on storageDb if the query is not read-only
     this.storageDb.execute(sql, params, undefined) // This is an async function but we don't need to wait for it to finish
     return rows as Row[]
@@ -140,5 +147,37 @@ export class DatabaseAdapter<DB extends DbSchema<TableSchemas>> implements LiveS
         return new QualifiedTablename('main', name)
       }
     })
+  }
+}
+
+class StatementLRUCache {
+  private cache: Map<string, PreparedStatement>;
+  private capacity: number;
+
+  constructor(capacity: number) {
+    this.cache = new Map();
+    this.capacity = capacity;
+  }
+
+  get(sql: string) {
+    if (!this.cache.has(sql)) return undefined;
+
+    let statement = this.cache.get(sql)!;
+
+    this.cache.delete(sql);
+    this.cache.set(sql, statement);
+
+    return statement;
+  }
+
+  put(sql: string, statement: PreparedStatement) {
+    this.cache.delete(sql);
+    if (this.cache.size === this.capacity) {
+      const sql = this.cache.keys().next().value;
+      const statementToDelete = this.cache.get(sql);
+      this.cache.delete(sql);
+      statementToDelete?.finalize();
+    }
+    this.cache.set(sql, statement);
   }
 }

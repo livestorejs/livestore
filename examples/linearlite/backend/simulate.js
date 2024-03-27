@@ -1,10 +1,13 @@
 import createPool, { sql } from '@databases/pg'
 import { getConfig } from 'electric-sql/cli'
 import { nanoid } from 'nanoid'
+import crypto from 'crypto'
 
 const { DATABASE_URL } = getConfig()
-const INTERVAL = parseInt(process.env.INTERVAL) || 1000
+const INTERVAL = process.env.INTERVAL ?? parseInt(process.env.INTERVAL)
 const INTERVAL_JITTER = parseFloat(process.env.JITTER) || 0.2
+const BATCH = parseInt(process.env.BATCH) || 1
+const CONTENT_SIZE = parseInt(process.env.CONTENT_SIZE) || 10
 
 console.info(`Connecting to Postgres..`)
 const db = createPool(DATABASE_URL)
@@ -39,33 +42,39 @@ async function importIssue(db, issueData) {
   })
 }
 
-let issueCount = 0
+let insertCount = 0
 
-function makeRandomIssue() {
+function makeRandomIssue(i) {
   const priority = Math.random() < 0.5 ? 'low' : 'medium'
   const status = Math.random() < 0.9 ? 'todo' : 'in_progress'
+  const timestamp = Date.now()
   return {
-    title: `Issue ${issueCount}`,
+    title: `Issue ${timestamp} ${i}`,
     username: 'test',
     priority,
     status,
-    description: 'This is a description',
+    description: crypto.randomBytes(Math.ceil(CONTENT_SIZE / 2)).toString('hex').slice(0, CONTENT_SIZE),
   }
 }
 
 async function main() {
   console.info(`Simulating issue creation..`)
-  console.info(`Interval: ${INTERVAL}ms ± ${INTERVAL_JITTER * 100}%`)
+  if (INTERVAL) console.info(`Interval: ${INTERVAL}ms ± ${INTERVAL_JITTER * 100}%`)
   console.log('')
   while (true) {
     await db.tx(async (db) => {
-      // process.stdout.write(`Creating issue ${issueCount}\r`)
-      await importIssue(db, makeRandomIssue())
+      process.stdout.write(`Creating inset ${insertCount}\r`)
+      for (let i = 0; i < BATCH; i++) {
+        await importIssue(db, makeRandomIssue(i))
+      }
     })
-    issueCount++
-    const interval = INTERVAL + (Math.random() - 0.5) * INTERVAL_JITTER * INTERVAL
-    console.log(`Created issue ${issueCount}, waiting ${interval}ms`)
-    await new Promise((resolve) => setTimeout(resolve, interval))
+    insertCount++
+    if (INTERVAL) {
+      const interval = INTERVAL + (Math.random() - 0.5) * INTERVAL_JITTER * INTERVAL
+      await new Promise((resolve) => setTimeout(resolve, interval))
+    } else {
+      break
+    }
   }
 }
 
