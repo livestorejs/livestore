@@ -1,4 +1,4 @@
-import type { DatabaseFactory } from '@livestore/common'
+import type { DatabaseFactory, MigrationStrategy } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
@@ -24,6 +24,7 @@ export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContex
   otelRootSpanContext?: otel.Context
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   makeDb: DatabaseFactory
+  migrationStrategy?: MigrationStrategy
   batchUpdates?: (run: () => void) => void
 }
 
@@ -44,6 +45,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   }
   boot?: (db: BootDb) => Effect.Effect<void>
   makeDb: DatabaseFactory
+  migrationStrategy?: MigrationStrategy
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
@@ -61,6 +63,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   graphQLOptions: graphQLOptions_,
   boot: boot_,
   makeDb,
+  migrationStrategy,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
   LiveStoreContext,
   never,
@@ -93,6 +96,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
             otelRootSpanContext,
             boot,
             makeDb,
+            migrationStrategy,
           }),
         ),
         Effect.acquireRelease((store) => Effect.sync(() => store.destroy())),

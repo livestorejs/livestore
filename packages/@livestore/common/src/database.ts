@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { MutationEvent } from './schema/index.js'
+import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
@@ -32,7 +32,22 @@ export type StorageDatabase = {
   shutdown(): Promise<void>
 }
 
+export type MigrationStrategy =
+  | {
+      _tag: 'from-mutation-log'
+    }
+  | {
+      _tag: 'hard-reset'
+    }
+  | {
+      _tag: 'manual'
+      migrate: (oldDb: Uint8Array) => Promise<Uint8Array> | Uint8Array
+    }
+
 export type DatabaseFactory = (opts: {
   otelTracer: otel.Tracer
   otelContext: otel.Context
+  /** "hard-reset" is currently the default */
+  migrationStrategy: MigrationStrategy
+  schema: LiveStoreSchema
 }) => DatabaseImpl | Promise<DatabaseImpl>

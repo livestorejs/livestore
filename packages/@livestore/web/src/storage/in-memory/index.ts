@@ -2,7 +2,7 @@ import type { PreparedBindValues, StorageDatabase } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import type * as otel from '@opentelemetry/api'
 
-import type { StorageInit, StorageOtelProps } from '../index.js'
+import type { StorageInit } from '../index.js'
 
 /** NOTE: This storage is currently only used for testing */
 export class InMemoryStorage implements StorageDatabase {
@@ -12,8 +12,8 @@ export class InMemoryStorage implements StorageDatabase {
 
   static load =
     (): StorageInit =>
-    ({ otelTracer }: StorageOtelProps) =>
-      new InMemoryStorage(otelTracer)
+    ({ otel }) =>
+      new InMemoryStorage(otel.otelTracer)
 
   execute = async (_query: string, _bindValues?: PreparedBindValues) => {}
 

@@ -31,7 +31,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.3",
     "@babel/runtime": "^7.24.1",
-    "@types/react": "~18.2.67",
+    "@types/react": "~18.2.69",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^7.6.0",
     "typescript": "^5.4.3"

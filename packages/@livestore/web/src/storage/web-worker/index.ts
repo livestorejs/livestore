@@ -4,7 +4,7 @@ import { casesHandled, notYetImplemented } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Comlink from 'comlink'
 
-import type { StorageOtelProps } from '../index.js'
+import type { StorageInit } from '../index.js'
 import { IDB } from '../utils/idb.js'
 import type { ExecutionBacklogItem } from './common.js'
 import type { WrappedWorker } from './make-worker.js'
@@ -53,19 +53,22 @@ export class WebWorkerStorage implements StorageDatabase {
     executionPromise.then(() => this.executeBacklog())
   }
 
-  static load = (options: StorageOptionsWeb) => {
+  static load = (options: StorageOptionsWeb): StorageInit => {
     const worker = options.worker instanceof Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
     // TODO replace Comlink with Effect worker
     const wrappedWorker = Comlink.wrap<WrappedWorker>(worker)
 
-    return ({ otelTracer }: StorageOtelProps) =>
+    return ({ otel: { otelTracer }, data }) =>
       new WebWorkerStorage({
         filename: options.fileName,
         worker,
         wrappedWorker,
         options,
         otelTracer,
-        executionPromise: wrappedWorker.initialize({ fileName: options.fileName, type: options.type }),
+        executionPromise: Comlink.transfer(
+          wrappedWorker.initialize({ fileName: options.fileName, type: options.type, data }),
+          data?.buffer ? [data.buffer] : [],
+        ),
       })
   }
 
@@ -114,7 +117,7 @@ export class WebWorkerStorage implements StorageDatabase {
       this.worker.terminate()
     }, 1000)
 
-    await this.wrappedWorker.shutdown()
+    await this.wrappedWorker.shutdown().catch(console.error)
     clearTimeout(gracefulTimeout)
 
     this.worker.terminate()
@@ -157,7 +160,8 @@ const getMutationLogData = async (options: StorageOptionsWeb): Promise<Uint8Arra
     case 'opfs': {
       try {
         const rootHandle = await navigator.storage.getDirectory()
-        const fileHandle = await rootHandle.getFileHandle(`${options.fileName}-log.db`)
+        // const fileHandle = await rootHandle.getFileHandle(`${options.fileName}-log.db`)
+        const fileHandle = await rootHandle.getFileHandle(`livestore-mutation-log.db`)
         const file = await fileHandle.getFile()
         const buffer = await file.arrayBuffer()
         const data = new Uint8Array(buffer)

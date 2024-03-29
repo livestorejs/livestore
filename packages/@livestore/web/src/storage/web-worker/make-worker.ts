@@ -1,6 +1,4 @@
-// TODO: create types for these libraries? SQL.js already should have types;
-// we just need the types to apply to the fork.
-import { prepareBindValues, sql } from '@livestore/common'
+import { getExecArgsFromMutation, sql } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
@@ -57,7 +55,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
   /** A full virtual filename in the IDB FS */
 
-  const initialize = async (options: Omit<StorageOptionsWeb, 'worker'>) => {
+  const initialize = async (options: Omit<StorageOptionsWeb, 'worker'> & { data: Uint8Array | undefined }) => {
     options_ = options
 
     sqlite3 = await sqlite3InitModule({
@@ -68,9 +66,19 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
     switch (options.type) {
       case 'opfs': {
         try {
+          if (options.data !== undefined) {
+            // overwrite the OPFS file with the new data
+            const rootHandle = await navigator.storage.getDirectory()
+            const fileHandle = await rootHandle.getFileHandle(options.fileName, { create: true })
+            const writable = await fileHandle.createWritable()
+            await writable.write(options.data)
+            await writable.close()
+          }
+
           db = new sqlite3.oo1.OpfsDb(options.fileName, 'c')
 
-          dbLog = new sqlite3.oo1.OpfsDb(options.fileName + '-log.db', 'c')
+          // dbLog = new sqlite3.oo1.OpfsDb(options.fileName + '-log.db', 'c')
+          dbLog = new sqlite3.oo1.OpfsDb('livestore-mutation-log.db', 'c')
         } catch (e) {
           debugger
         }
@@ -80,6 +88,10 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
         try {
           db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' })
           idb = new IDB(options.fileName)
+
+          if (options.data !== undefined) {
+            await idb.put('db', options.data)
+          }
 
           const bytes = await idb.get('db')
 
@@ -137,34 +149,59 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else {
-            const { mutation, args } = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationEventEncoded)
+            const mutationEventDecoded = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationEventEncoded)
 
+            const mutation = mutationEventDecoded.mutation
             const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
-            const statementRes = typeof mutationDef.sql === 'function' ? mutationDef.sql(args) : mutationDef.sql
-            const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
+            const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-            const bindValues =
-              typeof statementRes === 'string' ? item.mutationEventEncoded.args : statementRes.bindValues
-
-            db.exec({ sql: statementSql, bind: prepareBindValues(bindValues ?? {}, statementSql) as TODO })
+            for (const { statementSql, bindValues } of execArgsArr) {
+              try {
+                db.exec({ sql: statementSql, bind: bindValues })
+              } catch (e) {
+                console.error('Error executing query', e, statementSql, bindValues)
+                debugger
+                throw e
+              }
+            }
 
             // write to mutation_log
-            if (options_.type === 'opfs' && mutationLogExclude.has(mutation) === false) {
+            if (
+              options_.type === 'opfs' &&
+              mutationLogExclude.has(mutation) === false &&
+              execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
+            ) {
               const schemaHash = schemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
               const argsJson = JSON.stringify(item.mutationEventEncoded.args ?? {})
 
-              dbLog.exec({
-                sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
-                bind: [
+              try {
+                dbLog.exec({
+                  sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
+                  bind: [
+                    item.mutationEventEncoded.id,
+                    item.mutationEventEncoded.mutation,
+                    argsJson,
+                    schemaHash,
+                    createdAtMemo(),
+                  ],
+                })
+              } catch (e) {
+                console.error(
+                  'Error writing to mutation_log',
+                  e,
                   item.mutationEventEncoded.id,
                   item.mutationEventEncoded.mutation,
                   argsJson,
                   schemaHash,
                   createdAtMemo(),
-                ],
-              })
+                )
+                debugger
+                throw e
+              }
+            } else {
+              //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
             }
           }
         }
@@ -199,8 +236,8 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
   const shutdown = () => {
     try {
-      db.close()
-      dbLog.close()
+      db?.close()
+      dbLog?.close()
     } catch (e) {
       console.error('Error closing database', e)
       debugger

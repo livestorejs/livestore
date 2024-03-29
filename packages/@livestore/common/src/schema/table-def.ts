@@ -198,15 +198,17 @@ export const getDefaultValuesDecoded = <TTableDef extends TableDef>(
   )
 
 type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> = TColumns &
-  (TOptions['disableAutomaticIdColumn'] extends true
+  ('id' extends keyof TColumns
     ? {}
-    : TOptions['isSingleton'] extends true
-      ? {
-          id: SqliteDsl.ColumnDefinition<'singleton', 'singleton'>
-        }
-      : {
-          id: SqliteDsl.ColumnDefinition<string, string>
-        })
+    : TOptions['disableAutomaticIdColumn'] extends true
+      ? {}
+      : TOptions['isSingleton'] extends true
+        ? {
+            id: SqliteDsl.ColumnDefinition<'singleton', 'singleton'>
+          }
+        : {
+            id: SqliteDsl.ColumnDefinition<string, string>
+          })
 
 type WithDefaults<TOptionsInput extends TableOptionsInput> = {
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
