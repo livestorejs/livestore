@@ -16,6 +16,7 @@ import { makeMainDb } from '../../make-main-db.js'
 import { rehydrateFromMutationLog } from '../../rehydrate-from-mutationlog.js'
 import { importBytesToDb } from '../utils/sqlite-utils.js'
 import {
+  configureConnection,
   getAppDbFileName,
   getAppDbIdbStoreName,
   getMutationlogDbFileName,
@@ -376,10 +377,3 @@ const executeBulk = ({
       }
     }
   })
-
-const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fkEnabled: boolean }) =>
-  db.exec(sql`
-    PRAGMA page_size=8192;
-    PRAGMA journal_mode=MEMORY;
-    ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
-  `)

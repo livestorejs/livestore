@@ -1,3 +1,6 @@
+import { sql } from '@livestore/common'
+import type * as SqliteWasm from '@livestore/sqlite-wasm'
+
 export const getAppDbFileName = (prefix: string | undefined = 'livestore', schemaHash: number) => {
   return `${prefix}-${schemaHash}.db`
 }
@@ -14,7 +17,8 @@ export const getMutationlogDbIdbStoreName = (prefix: string | undefined = 'lives
   return `${prefix}-mutationlog`
 }
 
-const rootHandlePromise = navigator.storage.getDirectory()
+const rootHandlePromise =
+  navigator.storage === undefined ? Promise.resolve(null as any) : navigator.storage.getDirectory()
 
 export const getOpfsDirHandle = async (directory: string | undefined) => {
   const rootHandle = await rootHandlePromise
@@ -28,3 +32,10 @@ export const getOpfsDirHandle = async (directory: string | undefined) => {
 
   return dirHandle
 }
+
+export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fkEnabled: boolean }) =>
+  db.exec(sql`
+    PRAGMA page_size=8192;
+    PRAGMA journal_mode=MEMORY;
+    ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
+  `)

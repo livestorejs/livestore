@@ -3,7 +3,7 @@ import { Schema as EffectSchema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { DatabaseImpl, MainDatabase } from './database.js'
+import type { MainDatabase } from './database.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import type { SchemaMetaRow } from './schema/system-tables.js'
 import { SCHEMA_META_TABLE, systemTables } from './schema/system-tables.js'
@@ -13,6 +13,7 @@ import { prepareBindValues, sql } from './util.js'
 const getMemoizedTimestamp = memoize(() => new Date().toISOString())
 
 // TODO bring back statement caching
+// will require proper scope-aware cleanup etc (for testing and apps with multiple LiveStore instances)
 // const cachedStmts = new Map<string, PreparedStatement>()
 
 const dbExecute = (db: MainDatabase, queryStr: string, bindValues?: ParamsObject) => {

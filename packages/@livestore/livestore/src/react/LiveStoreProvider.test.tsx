@@ -1,6 +1,6 @@
-import type { StorageDatabase } from '@livestore/common'
 import { sql } from '@livestore/common'
 import { makeDb } from '@livestore/web'
+import { InMemoryStorage } from '@livestore/web/storage/in-memory'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
@@ -10,27 +10,6 @@ import { querySQL } from '../reactiveQueries/sql.js'
 import type { BootDb, Store } from '../store.js'
 import * as LiveStoreReact from './index.js'
 import { LiveStoreProvider } from './LiveStoreProvider.js'
-
-class TestInMemoryStorage implements StorageDatabase {
-  filename = '__test__in-memory__'
-
-  constructor() {}
-
-  execute = async () => {}
-
-  mutate = async () => {}
-
-  export = async () => undefined
-
-  getInitialSnapshot = async () => new Uint8Array()
-
-  getMutationLogData = async () => new Uint8Array()
-
-  dangerouslyReset = async () => {}
-  shutdown = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-}
 
 describe('LiveStoreProvider', () => {
   it('simple', async () => {
@@ -56,7 +35,7 @@ describe('LiveStoreProvider', () => {
         [],
       )
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      const makeDbMemo = React.useMemo(() => makeDb(() => () => new TestInMemoryStorage()), [forceUpdate])
+      const makeDbMemo = React.useMemo(() => makeDb(() => InMemoryStorage.load()), [forceUpdate])
       return (
         <LiveStoreProvider schema={schema} fallback={<div>Loading LiveStore</div>} makeDb={makeDbMemo} boot={bootCb}>
           <App />
