@@ -1,8 +1,9 @@
-import type { MainDatabase } from '@livestore/common'
-import { getExecArgsFromMutation } from '@livestore/common'
-import { type LiveStoreSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
+
+import type { MainDatabase } from './database.js'
+import { getExecArgsFromMutation } from './mutation.js'
+import type { LiveStoreSchema } from './schema/index.js'
 
 type MutationLogRow = {
   id: string

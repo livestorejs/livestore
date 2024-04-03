@@ -19,7 +19,7 @@ export const App = () => {
         boot={(db) => {
           db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
         }}
-        makeDb={makeDb('app.db')}
+        makeDb={makeDb({ migrations: { strategy: 'from-mutation-log' } })}
         // NOTE This is currently necessary to properly batch updates in React Native
         batchUpdates={(run) => unstable_batchedUpdates(() => run())}
       >

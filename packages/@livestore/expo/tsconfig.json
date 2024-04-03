@@ -6,5 +6,5 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../common" }]
+  "references": [{ "path": "../common" } ,{ "path": "../utils" }]
 }

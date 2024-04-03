@@ -553,6 +553,12 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: ^1.8.0
+        version: 1.8.0
     devDependencies:
       expo-sqlite:
         specifier: ^13.4.0

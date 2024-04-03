@@ -1,5 +1,11 @@
 import type { MigrationOptions } from '@livestore/common'
-import { getExecArgsFromMutation, initializeSingletonTables, migrateDb, sql } from '@livestore/common'
+import {
+  getExecArgsFromMutation,
+  initializeSingletonTables,
+  migrateDb,
+  rehydrateFromMutationLog,
+  sql,
+} from '@livestore/common'
 import {
   type LiveStoreSchema,
   makeMutationEventSchema,
@@ -13,7 +19,6 @@ import { BrowserWorkerRunner, Context, Effect, Layer, Schema, WorkerRunner } fro
 import * as otel from '@opentelemetry/api'
 
 import { makeMainDb } from '../../make-main-db.js'
-import { rehydrateFromMutationLog } from '../../rehydrate-from-mutationlog.js'
 import { importBytesToDb } from '../utils/sqlite-utils.js'
 import {
   configureConnection,
@@ -55,7 +60,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
         : new Set(['livestore.RawSql'])
 
     // TODO refactor
-    const mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+    const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
     const mutationDefSchemaHashMap = new Map(
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
@@ -152,7 +157,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
       ExecuteBulk: ({ items }) =>
         executeBulk({
           executionItems: items,
-          mutationArgsSchema,
+          mutationEventSchema,
           mutationLogExclude,
           mutationDefSchemaHashMap,
           schema,
@@ -265,13 +270,13 @@ class WorkerCtx extends Context.Tag('WorkerCtx')<
 
 const executeBulk = ({
   executionItems,
-  mutationArgsSchema,
+  mutationEventSchema,
   mutationLogExclude,
   mutationDefSchemaHashMap,
   schema,
 }: {
   executionItems: ReadonlyArray<ExecutionBacklogItem>
-  mutationArgsSchema: MutationEventSchema<any>
+  mutationEventSchema: MutationEventSchema<any>
   mutationLogExclude: ReadonlySet<string>
   mutationDefSchemaHashMap: Map<string, number>
   schema: LiveStoreSchema
@@ -304,7 +309,7 @@ const executeBulk = ({
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
-            const mutationEventDecoded = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationEventEncoded)
+            const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(item.mutationEventEncoded)
 
             const mutation = mutationEventDecoded.mutation
             const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
