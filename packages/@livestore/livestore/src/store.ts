@@ -1,5 +1,11 @@
-import type { DatabaseFactory, DatabaseImpl, PreparedBindValues } from '@livestore/common'
-import { type LiveStoreSchema, makeMutationEventSchema, type MutationEvent } from '@livestore/common/schema'
+import {
+  type DatabaseFactory,
+  type DatabaseImpl,
+  getExecArgsFromMutation,
+  type PreparedBindValues,
+} from '@livestore/common'
+import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
+import { makeMutationEventSchema } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -7,7 +13,6 @@ import type { GraphQLSchema } from 'graphql'
 
 import { globalDbGraph } from './global-state.js'
 import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
-import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
@@ -39,6 +44,7 @@ export type StoreOptions<
   otelTracer: otel.Tracer
   otelRootSpanContext: otel.Context
   dbGraph: DbGraph
+  mutationEventSchema: MutationEventSchema<any>
 }
 
 export type RefreshReason =
@@ -77,6 +83,7 @@ const uniqueStoreId = () => `store-${++storeCount}`
 
 export type BootDb = {
   execute(queryStr: string, bindValues?: ParamsObject): void
+  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
   select<T>(queryStr: string, bindValues?: ParamsObject): ReadonlyArray<T>
   txn(callback: () => void): void
 }
@@ -105,7 +112,7 @@ export class Store<
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
-  private mutationArgsSchema
+  private mutationEventSchema
 
   private constructor({
     db,
@@ -115,6 +122,7 @@ export class Store<
     dbGraph,
     otelTracer,
     otelRootSpanContext,
+    mutationEventSchema,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     this.mainDbWrapper = new MainDatabaseWrapper({ otelTracer, otelRootSpanContext, db: db.mainDb })
     this.db = db
@@ -122,7 +130,8 @@ export class Store<
     this.schema = schema
 
     // TODO refactor
-    this.mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+    this.mutationEventSchema = mutationEventSchema
+    // this.mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -375,48 +384,43 @@ export class Store<
    * the caller must refresh queries after calling this method.
    */
   private mutateWithoutRefresh = (
-    mutationEvent: MutationEvent.ForSchema<TSchema>,
+    mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutatetWithoutRefresh',
       {
         attributes: {
-          'livestore.mutation': mutationEvent.mutation,
-          'livestore.args': JSON.stringify(mutationEvent.args, null, 2),
+          'livestore.mutation': mutationEventDecoded.mutation,
+          'livestore.args': JSON.stringify(mutationEventDecoded.args, null, 2),
         },
       },
       otelContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
+        const allWriteTables = new Set<string>()
+        let durationMsTotal = 0
+
         const mutationDef =
-          this.schema.mutations.get(mutationEvent.mutation) ??
-          shouldNeverHappen(`Unknown mutation type: ${mutationEvent.mutation}`)
+          this.schema.mutations.get(mutationEventDecoded.mutation) ??
+          shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
 
-        const statementRes =
-          typeof mutationDef.sql === 'function' ? mutationDef.sql(mutationEvent.args) : mutationDef.sql
+        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-        const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
-        const writeTables =
-          typeof statementRes === 'string'
-            ? this.mainDbWrapper.getTablesUsed(statementSql)
-            : statementRes.writeTables ?? this.mainDbWrapper.getTablesUsed(statementSql)
-
-        const bindValues =
-          typeof statementRes === 'string'
-            ? Schema.encodeUnknownSync(mutationDef.schema)(mutationEvent.args)
-            : statementRes.bindValues
-
-        const { durationMs } = this.mainDbWrapper.execute(
+        for (const {
           statementSql,
-          prepareBindValues(bindValues ?? {}, statementSql),
-          writeTables,
-          { otelContext },
-        )
+          bindValues,
+          writeTables = this.mainDbWrapper.getTablesUsed(statementSql),
+        } of execArgsArr) {
+          const { durationMs } = this.mainDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
+
+          durationMsTotal += durationMs
+          writeTables.forEach((table) => allWriteTables.add(table))
+        }
 
         // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-        const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationArgsSchema)(mutationEvent)
+        const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationEventSchema)(mutationEventDecoded)
         this.db.storageDb.mutate(mutationEventEncoded, span)
 
         // Uncomment to print a list of queries currently registered on the store
@@ -424,7 +428,7 @@ export class Store<
 
         span.end()
 
-        return { writeTables, durationMs }
+        return { writeTables: allWriteTables, durationMs: durationMsTotal }
       },
     )
   }
@@ -496,24 +500,21 @@ export const createStore = async <
 }): Promise<Store<TGraphQLContext, TSchema>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
+      performance.mark('livestore:db-creating')
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      const dbPromise = makeDb({ otelTracer, otelContext })
+      const dbPromise = makeDb({ otelTracer, otelContext, schema })
       const db = dbPromise instanceof Promise ? await dbPromise : dbPromise
-
-      otelTracer.startActiveSpan('migrateDb', {}, otelContext, (span) => {
-        try {
-          const otelContext = otel.trace.setSpan(otel.context.active(), span)
-          migrateDb({ db, schema, otelContext })
-        } finally {
-          span.end()
-        }
-      })
+      performance.mark('livestore:db-created')
+      performance.measure('livestore:db-create', 'livestore:db-creating', 'livestore:db-created')
 
       if (batchUpdates !== undefined) {
         dbGraph.effectsWrapper = batchUpdates
       }
 
+      const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+
+      // TODO consider moving booting into the storage backend
       if (boot !== undefined) {
         let isInTxn = false
         let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
@@ -528,6 +529,23 @@ export const createStore = async <
               txnExecuteStmnts.push([queryStr, preparedBindValues])
             } else {
               void db.storageDb.execute(queryStr, preparedBindValues, undefined)
+            }
+          },
+          mutate: (...list) => {
+            for (const mutationEventDecoded of list) {
+              const mutationDef =
+                schema.mutations.get(mutationEventDecoded.mutation) ??
+                shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
+
+              const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+              // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+              for (const { statementSql, bindValues } of execArgsArr) {
+                db.mainDb.execute(statementSql, bindValues)
+              }
+
+              const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
+              void db.storageDb.mutate(mutationEventEncoded, span)
             }
           },
           select: (queryStr, bindValues) => {
@@ -570,7 +588,7 @@ export const createStore = async <
       // Think about what to do about this case.
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext, TSchema>(
-        { db, schema, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph },
+        { db, schema, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph, mutationEventSchema },
         span,
       )
     } finally {

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/expo",
-  "version": "0.0.46",
+  "version": "0.0.47",
   "type": "module",
   "exports": {
     ".": {
@@ -13,7 +13,9 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*"
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "^1.8.0"
   },
   "devDependencies": {
     "expo-sqlite": "^13.4.0"

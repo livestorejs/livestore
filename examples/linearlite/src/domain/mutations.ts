@@ -2,8 +2,8 @@ import { Schema } from '@effect/schema'
 import { defineMutation, sql } from '@livestore/livestore'
 import { PriorityType, StatusType } from '../types/issue'
 
-export const createIssue = defineMutation(
-  'createIssue',
+export const createIssueWithDescription = defineMutation(
+  'createIssueWithDescription',
   Schema.struct({
     id: Schema.string,
     title: Schema.string,
@@ -12,15 +12,13 @@ export const createIssue = defineMutation(
     created: Schema.number,
     modified: Schema.number,
     kanbanorder: Schema.string,
+    description: Schema.string,
   }),
-  sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder")
+  [
+    sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder")
                         VALUES ($id, $title, $priority, $status, $created, $modified, $kanbanorder)`,
-)
-
-export const createDescription = defineMutation(
-  'createDescription',
-  Schema.struct({ id: Schema.string, body: Schema.string }),
-  sql`INSERT INTO description ("id", "body") VALUES ($id, $body)`,
+    sql`INSERT INTO description ("id", "body") VALUES ($id, $description)`,
+  ],
 )
 
 export const createComment = defineMutation(

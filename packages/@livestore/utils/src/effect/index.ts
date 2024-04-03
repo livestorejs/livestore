@@ -37,7 +37,6 @@ export {
   MutableHashSet,
   Option,
   Layer,
-  Stream,
   Channel,
   SubscriptionRef,
   pipe,
@@ -45,10 +44,16 @@ export {
   Match,
 } from 'effect'
 
-export { Schema, TreeFormatter, AST as SchemaAST, Pretty as SchemaPretty } from '@effect/schema'
+export * as Stream from './Stream.js'
+
+export { Schema, TreeFormatter, AST as SchemaAST, Pretty as SchemaPretty, Serializable } from '@effect/schema'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
+
+export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal } from '@effect/platform'
+export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'
 export * from './Error.js'
 export * as ServiceContext from './ServiceContext.js'
+export * as WebLock from './WebLock.js'

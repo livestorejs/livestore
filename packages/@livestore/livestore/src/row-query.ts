@@ -78,6 +78,9 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     genQueryString: queryStr,
     queriedTables: new Set([componentTableName]),
     dbGraph: options?.dbGraph,
+    // TODO remove this once the LiveStore Devtools are no longer relying on it
+    // as the defaults rows are now already being inserted during store initialization
+    // and the tables need to be registered during initialization
     execBeforeFirstRun: makeExecBeforeFirstRun({
       otelContext: options?.otelContext,
       table,
@@ -201,7 +204,6 @@ const makeExecBeforeFirstRun =
     }
 
     if (skipInsertDefaultRow !== true) {
-      // TODO find a way to only do this if necessary
       insertRowWithDefaultValuesOrIgnore({
         store,
         id: id ?? 'singleton',

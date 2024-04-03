@@ -18,7 +18,7 @@ export const css = (strings: TemplateStringsArray, ...values: unknown[]) => Stri
 
 const store = await createStore({
   schema,
-  makeDb: makeDb(() => WebWorkerStorage.load({ fileName: 'app.db', type: 'opfs', worker: LiveStoreWorker })),
+  makeDb: makeDb(() => WebWorkerStorage.load({ type: 'opfs', worker: LiveStoreWorker })),
 })
 
 const appState$ = rowQuery(tables.app)

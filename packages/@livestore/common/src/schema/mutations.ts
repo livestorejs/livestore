@@ -17,19 +17,24 @@ export type InternalMutationSchema<TRecord extends MutationDefRecord = MutationD
   schemaHashMap: Map<keyof TRecord, number>
 }
 
+export type MutationDefSqlResult<TTo> =
+  | SingleOrReadonlyArray<string>
+  | ((args: TTo) => SingleOrReadonlyArray<
+      | string
+      | {
+          sql: string
+          /** Note args need to be manually encoded to `BindValues` when returning this argument */
+          bindValues: BindValues
+          writeTables?: ReadonlySet<string>
+        }
+    >)
+
+export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
+
 export type MutationDef<TName extends string, TFrom, TTo> = {
   name: TName
   schema: Schema.Schema<TTo, TFrom>
-  sql:
-    | string
-    | ((args: TTo) =>
-        | string
-        | {
-            sql: string
-            /** Note args need to be manually encoded to `BindValues` when returning this argument */
-            bindValues: BindValues
-            writeTables?: ReadonlySet<string>
-          })
+  sql: MutationDefSqlResult<TTo>
 
   /** Helper function to construct mutation event */
   (args: TTo): { mutation: TName; args: TTo; id: string }
@@ -43,7 +48,7 @@ export namespace MutationDef {
 export const defineMutation = <TName extends string, TFrom, TTo>(
   name: TName,
   schema: Schema.Schema<TTo, TFrom>,
-  sql: string | ((args: TTo) => string | { sql: string; bindValues: BindValues; writeTables?: ReadonlySet<string> }),
+  sql: MutationDefSqlResult<TTo>,
 ): MutationDef<TName, TFrom, TTo> => {
   const makeEvent = (args: TTo) => ({ mutation: name, args, id: cuid() })
 

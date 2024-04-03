@@ -1,2 +1,6 @@
 export * from './util.js'
 export * from './database.js'
+export * from './migrations.js'
+export * from './mutation.js'
+export * from './init-singleton-tables.js'
+export * from './rehydrate-from-mutationlog.js'

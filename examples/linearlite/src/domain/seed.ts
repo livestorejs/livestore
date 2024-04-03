@@ -1,7 +1,7 @@
 import { BootDb, sql } from '@livestore/livestore'
 
 import { nanoid } from 'nanoid'
-import { Description, Issue } from './schema'
+import { Issue, mutations } from './schema'
 import { PriorityType, StatusType } from '../types/issue'
 
 export const names = ['John', 'Jane', 'Sam', 'Anna', 'Michael', 'Sarah', 'Chris', 'Jessica']
@@ -26,20 +26,14 @@ export function seed(db: BootDb) {
 
   console.log('SEEDING WITH ', howMany, ' ADDITIONAL ROWS')
 
-  const insertIssue = `INSERT INTO issue
-  (id, title, creator, priority, status, created, modified, kanbanorder)
-  VALUES 
-  ($id, $title, $creator, $priority, $status, $created, $modified, $kanbanorder)`
-  const insertDesc = `INSERT INTO description (id, body) VALUES ($id, $body)`
   db.txn(() => {
-    for (const [issue, description] of createIssues(howMany)) {
-      db.execute(insertIssue, issue)
-      db.execute(insertDesc, description)
+    for (const issueWithDescription of createIssues(howMany)) {
+      db.mutate(mutations.createIssueWithDescription(issueWithDescription))
     }
   })
 }
 
-export function* createIssues(numTasks: number): Generator<[Issue, Description]> {
+export function* createIssues(numTasks: number): Generator<Issue & { description: string }> {
   const actionPhrases = [
     'Implement',
     'Develop',
@@ -127,7 +121,7 @@ export function* createIssues(numTasks: number): Generator<[Issue, Description]>
 
   for (let i = 0; i < numTasks; i++) {
     const [title, description] = generateText()
-    const task = {
+    const issue = {
       id: nanoid(),
       // id: ++issueId,
       creator: getRandomItem(names),
@@ -137,13 +131,8 @@ export function* createIssues(numTasks: number): Generator<[Issue, Description]>
       status: getRandomItem(statuses),
       priority: getRandomItem(priorities),
       kanbanorder: 'a1',
+      description,
     }
-    yield [
-      task,
-      {
-        id: task.id,
-        body: description,
-      },
-    ]
+    yield issue
   }
 }

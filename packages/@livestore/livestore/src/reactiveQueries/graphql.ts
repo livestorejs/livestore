@@ -191,7 +191,11 @@ export class LiveStoreGraphQLQuery<
         span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
         span.setAttribute('graphql.error', res.errors.join('\n'))
         span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
-        console.error(`graphql error (${operationName})`, res.errors)
+        console.error(`graphql error (${operationName}) - ${res.errors.length} errors`)
+        for (const error of res.errors) {
+          console.error(error)
+        }
+        debugger
       }
 
       span.end()

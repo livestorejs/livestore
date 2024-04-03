@@ -1,202 +1,219 @@
-import type { PreparedBindValues, StorageDatabase } from '@livestore/common'
-import type { MutationEvent } from '@livestore/common/schema'
-import { casesHandled, notYetImplemented } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
-import * as Comlink from 'comlink'
+import type { StorageDatabase } from '@livestore/common'
+import { makeSchemaHash } from '@livestore/common/schema'
+import { casesHandled, omit } from '@livestore/utils'
+import type { Duration } from '@livestore/utils/effect'
+import { BrowserWorker, Deferred, Effect, Exit, FiberId, Queue, Scope, WebLock, Worker } from '@livestore/utils/effect'
 
-import type { StorageOtelProps } from '../index.js'
 import { IDB } from '../utils/idb.js'
-import type { ExecutionBacklogItem } from './common.js'
-import type { WrappedWorker } from './make-worker.js'
-
-export type StorageType = 'opfs' | 'indexeddb'
+import type { StorageInit } from '../utils/types.js'
+import {
+  getAppDbFileName,
+  getAppDbIdbStoreName,
+  getMutationlogDbFileName,
+  getMutationlogDbIdbStoreName,
+  getOpfsDirHandle,
+} from './common.js'
+import * as WorkerSchema from './schema.js'
 
 export type StorageOptionsWeb = {
   /** Specifies where to persist data for this storage */
-  type: StorageType
-  fileName: string
   worker: Worker | (new (options?: { name: string }) => Worker)
+} & WorkerSchema.StorageType
+
+export const WebWorkerStorage = {
+  load: (options: StorageOptionsWeb): StorageInit => createStorage(options),
 }
 
-export class WebWorkerStorage implements StorageDatabase {
-  filename: string
-  worker: Worker
-  wrappedWorker: Comlink.Remote<WrappedWorker>
-  options: StorageOptionsWeb
-  otelTracer: otel.Tracer
+const LIVESTORE_TAB_LOCK = 'livestore-tab-lock'
 
-  executionBacklog: ExecutionBacklogItem[] = []
-  executionPromise: Promise<void> | undefined
+export const createStorage =
+  (options: StorageOptionsWeb): StorageInit =>
+  ({ otel: {}, schema }) => {
+    const manualScope = Effect.runSync(Scope.make())
 
-  private constructor({
-    filename,
-    worker,
-    wrappedWorker,
-    options,
-    otelTracer,
-    executionPromise,
-  }: {
-    filename: string
-    worker: Worker
-    wrappedWorker: Comlink.Remote<WrappedWorker>
-    options: StorageOptionsWeb
-    otelTracer: otel.Tracer
-    executionPromise: Promise<void>
-  }) {
-    this.filename = filename
-    this.worker = worker
-    this.wrappedWorker = wrappedWorker
-    this.options = options
-    this.otelTracer = otelTracer
-    this.executionPromise = executionPromise
+    return Effect.gen(function* ($) {
+      const executionBacklogQueue = yield* $(
+        Queue.unbounded<WorkerSchema.ExecutionBacklogItem>(),
+        Effect.acquireRelease(Queue.shutdown),
+      )
 
-    executionPromise.then(() => this.executeBacklog())
+      const lockDeferred = yield* $(Deferred.make<void>())
+
+      const worker =
+        options.worker instanceof globalThis.Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
+
+      const storageOptions = omit(options, ['worker'])
+
+      const workerDeferred = yield* $(
+        Worker.makePoolSerialized<WorkerSchema.Request>({
+          size: 1,
+          permits: 10,
+          initialMessage: () => new WorkerSchema.InitialMessage({ storage: storageOptions }),
+        }).pipe(Effect.provide(BrowserWorker.layer(() => worker)), Effect.toForkedDeferred),
+      )
+
+      const runInWorker = <TReq extends WorkerSchema.Request>(req: TReq) =>
+        Effect.andThen(Deferred.await(workerDeferred), (worker) => worker.executeEffect(req))
+
+      yield* $(
+        Deferred.await(workerDeferred),
+        Effect.andThen(() =>
+          queueTakeTimeout(executionBacklogQueue, 100, 100).pipe(
+            Effect.tap((items) => runInWorker(new WorkerSchema.ExecuteBulk({ items }))),
+            Effect.forever,
+            Effect.interruptible,
+          ),
+        ),
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+
+      const schemaHash = makeSchemaHash(schema)
+
+      const storage = {
+        getInitialSnapshot: () =>
+          Effect.gen(function* ($) {
+            // TODO replace with a proper multi-tab syncing/lock-transfer mechanism
+            yield* $(
+              WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK),
+              Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
+            )
+
+            // NOTE here we're trying to access the persisted data directly from the main thread which
+            // ususally speeds up the init process as we don't have to wait for the worker to be ready
+            // This will only work for the first tab though
+            const dataFromFile = yield* $(Effect.promise(() => getPersistedData(storageOptions, schemaHash)))
+            if (dataFromFile !== undefined) return dataFromFile
+
+            return yield* $(runInWorker(new WorkerSchema.Setup()))
+          }).pipe(Effect.withPerformanceMeasure('@livestore/web:getInitialSnapshot'), Effect.runPromise),
+
+        export: () => runInWorker(new WorkerSchema.Export()).pipe(Effect.runPromise),
+
+        dangerouslyReset: () =>
+          Effect.gen(function* ($) {
+            yield* $(runInWorker(new WorkerSchema.Shutdown({})))
+
+            yield* $(Effect.promise(() => resetPersistedData(storageOptions, schemaHash)))
+          }).pipe(Effect.runPromise),
+
+        execute: async (query, bindValues) => {
+          await Queue.offer(executionBacklogQueue, { _tag: 'execute', query, bindValues }).pipe(Effect.runPromise)
+        },
+
+        mutate: async (mutationEventEncoded) => {
+          await Queue.offer(executionBacklogQueue, { _tag: 'mutate', mutationEventEncoded }).pipe(Effect.runPromise)
+        },
+
+        getMutationLogData: () => runInWorker(new WorkerSchema.ExportMutationlog()).pipe(Effect.runPromise),
+
+        shutdown: () =>
+          Effect.gen(function* ($) {
+            yield* $(
+              runInWorker(new WorkerSchema.Shutdown({})).pipe(Effect.andThen(() => worker.terminate())),
+              // In case the graceful shutdown didn't finish in time, we terminate the worker
+              Effect.race(
+                Effect.sync(() => {
+                  console.warn('[livestore] Worker did not gracefully shutdown in time, terminating it')
+                  worker.terminate()
+                }).pipe(Effect.delay(1000)),
+              ),
+            )
+
+            yield* $(Deferred.succeed(lockDeferred, undefined))
+
+            yield* $(Scope.close(manualScope, Exit.interrupt(FiberId.none)))
+          }).pipe(Effect.runPromise),
+      } satisfies StorageDatabase
+
+      return storage
+    }).pipe(Scope.extend(manualScope), Effect.runPromise)
   }
 
-  static load = (options: StorageOptionsWeb) => {
-    const worker = options.worker instanceof Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
-    // TODO replace Comlink with Effect worker
-    const wrappedWorker = Comlink.wrap<WrappedWorker>(worker)
+const getPersistedData = async (storage: WorkerSchema.StorageType, schemaHash: number) => {
+  try {
+    performance.mark('@livestore/web:getPersistedData:start')
+    switch (storage.type) {
+      case 'opfs': {
+        try {
+          const dirHandle = await getOpfsDirHandle(storage.directory)
+          const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, schemaHash))
+          const file = await fileHandle.getFile()
+          const buffer = await file.arrayBuffer()
+          const data = new Uint8Array(buffer)
 
-    return ({ otelTracer }: StorageOtelProps) =>
-      new WebWorkerStorage({
-        filename: options.fileName,
-        worker,
-        wrappedWorker,
-        options,
-        otelTracer,
-        executionPromise: wrappedWorker.initialize({ fileName: options.fileName, type: options.type }),
-      })
-  }
+          return data
+        } catch (error: any) {
+          if (error instanceof DOMException && error.name === 'NotFoundError') {
+            return undefined
+          }
 
-  execute = async (query: string, bindValues?: PreparedBindValues, _parentSpan?: otel.Span | undefined) => {
-    this.executionBacklog.push({ _tag: 'execute', query, bindValues })
-    this.scheduleExecution()
-  }
-
-  mutate = async (mutationEventEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {
-    this.executionBacklog.push({ _tag: 'mutate', mutationEventEncoded })
-    this.scheduleExecution()
-  }
-
-  private scheduleExecution = () => {
-    // Instead of sending the queries to the worker immediately, we wait a bit and batch them up (which reduces the number of messages sent to the worker)
-    if (this.executionPromise === undefined) {
-      this.executionPromise = new Promise((resolve) => {
-        setTimeout(() => {
-          this.executeBacklog()
-
-          resolve()
-        }, 10)
-      })
-    }
-  }
-
-  private executeBacklog = () => {
-    void this.wrappedWorker.executeBulk(this.executionBacklog)
-    this.executionBacklog = []
-    this.executionPromise = undefined
-  }
-
-  export = async (_parentSpan?: otel.Span) => getPersistedData(this.options)
-
-  getMutationLogData = async (_parentSpan?: otel.Span) => getMutationLogData(this.options)
-
-  dangerouslyReset = async () => {
-    // TODO implement graceful shutdown
-    this.worker.terminate()
-    await resetPersistedData(this.options)
-  }
-
-  shutdown = async () => {
-    const gracefulTimeout = setTimeout(() => {
-      console.error('Worker did not gracefully shutdown in time, terminating it')
-      this.worker.terminate()
-    }, 1000)
-
-    await this.wrappedWorker.shutdown()
-    clearTimeout(gracefulTimeout)
-
-    this.worker.terminate()
-  }
-}
-
-const getPersistedData = async (options: StorageOptionsWeb) => {
-  switch (options.type) {
-    case 'opfs': {
-      try {
-        const rootHandle = await navigator.storage.getDirectory()
-        const fileHandle = await rootHandle.getFileHandle(options.fileName)
-        const file = await fileHandle.getFile()
-        const buffer = await file.arrayBuffer()
-        const data = new Uint8Array(buffer)
-
-        return data
-      } catch (error: any) {
-        if (error instanceof DOMException && error.name === 'NotFoundError') {
-          return undefined
+          throw error
         }
+      }
 
-        throw error
+      case 'indexeddb': {
+        const idb = new IDB(
+          storage.databaseName ?? 'livestore',
+          getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+        )
+
+        return await idb.get('db')
+      }
+      default: {
+        casesHandled(storage)
       }
     }
-
-    case 'indexeddb': {
-      const idb = new IDB(options.fileName)
-
-      return (await idb.get('db')) ?? new Uint8Array()
-    }
-    default: {
-      casesHandled(options.type)
-    }
+  } finally {
+    performance.mark('@livestore/web:getPersistedData:end')
+    performance.measure(
+      '@livestore/web:getPersistedData',
+      '@livestore/web:getPersistedData:start',
+      '@livestore/web:getPersistedData:end',
+    )
   }
 }
 
-const getMutationLogData = async (options: StorageOptionsWeb): Promise<Uint8Array> => {
-  switch (options.type) {
+const resetPersistedData = async (storage: WorkerSchema.StorageType, schemaHash: number) => {
+  switch (storage.type) {
     case 'opfs': {
-      try {
-        const rootHandle = await navigator.storage.getDirectory()
-        const fileHandle = await rootHandle.getFileHandle(`${options.fileName}-log.db`)
-        const file = await fileHandle.getFile()
-        const buffer = await file.arrayBuffer()
-        const data = new Uint8Array(buffer)
-
-        return data
-      } catch (error: any) {
-        if (error instanceof DOMException && error.name === 'NotFoundError') {
-          return new Uint8Array()
-        }
-
-        throw error
-      }
-    }
-
-    case 'indexeddb': {
-      return notYetImplemented()
-    }
-    default: {
-      casesHandled(options.type)
-    }
-  }
-}
-
-const resetPersistedData = async (options: StorageOptionsWeb) => {
-  switch (options.type) {
-    case 'opfs': {
-      const rootHandle = await navigator.storage.getDirectory()
-      await rootHandle.removeEntry(options.fileName)
-      await rootHandle.removeEntry(`${options.fileName}-log.db`)
+      const dirHandle = await getOpfsDirHandle(storage.directory)
+      await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, schemaHash))
+      await dirHandle.removeEntry(getMutationlogDbFileName(storage.filePrefix))
       break
     }
 
     case 'indexeddb': {
-      const idb = new IDB(options.fileName)
-      await idb.deleteDb()
+      const idbApp = new IDB(
+        storage.databaseName ?? 'livestore',
+        getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+      )
+      await idbApp.deleteDb()
+
+      const idbMutationLog = new IDB(
+        storage.databaseName ?? 'livestore',
+        getMutationlogDbIdbStoreName(storage.storeNamePrefix),
+      )
+      await idbMutationLog.deleteDb()
+
       break
     }
     default: {
-      casesHandled(options.type)
+      casesHandled(storage)
     }
   }
 }
+
+const queueTakeTimeout = <A>(queue: Queue.Queue<A>, upToItems: number, timeout: Duration.DurationInput) =>
+  Effect.gen(function* ($) {
+    const itemsFromFirstTake = yield* $(Queue.takeUpTo(queue, upToItems))
+    if (itemsFromFirstTake.length === upToItems) return [...itemsFromFirstTake]
+
+    const missingItems = upToItems - itemsFromFirstTake.length
+
+    yield* $(Effect.sleep(timeout))
+
+    const itemsFromSecondTake = yield* $(Queue.takeUpTo(queue, missingItems))
+
+    return [...itemsFromFirstTake, ...itemsFromSecondTake]
+  })
