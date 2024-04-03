@@ -1,7 +1,9 @@
-import type { Context } from 'effect'
-import { Cause, Effect, pipe } from 'effect'
+import type { Context, Duration } from 'effect'
+import { Cause, Deferred, Effect, pipe } from 'effect'
+import type { LazyArg } from 'effect/Function'
 
 import { isNonEmptyString } from '../index.js'
+import { UnknownError } from './Error.js'
 
 export * from 'effect/Effect'
 
@@ -43,3 +45,44 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
     Effect.context<never>(),
     Effect.tap((env) => log(msg ?? 'debugLogEnv', env)),
   )
+
+export const timeoutDie =
+  <E1>(options: { onTimeout: LazyArg<E1>; duration: Duration.DurationInput }) =>
+  <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.orDie(Effect.timeoutFail(options)(self))
+
+export const timeoutDieMsg =
+  (options: { error: string; duration: Duration.DurationInput }) =>
+  <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.orDie(
+      Effect.timeoutFail({ onTimeout: () => new UnknownError({ error: options.error }), duration: options.duration })(
+        self,
+      ),
+    )
+
+export const toForkedDeferred = <R, E, A>(
+  eff: Effect.Effect<A, E, R>,
+): Effect.Effect<Deferred.Deferred<A, E>, never, R> =>
+  pipe(
+    Deferred.make<A, E>(),
+    Effect.tap((deferred) =>
+      pipe(
+        Effect.exit(eff),
+        Effect.flatMap((ex) => Deferred.done(deferred, ex)),
+        Effect.forkDaemon,
+      ),
+    ),
+  )
+
+export const withPerformanceMeasure =
+  (meaureLabel: string) =>
+  <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => performance.mark(`${meaureLabel}:start`)),
+      () => eff,
+      () =>
+        Effect.sync(() => {
+          performance.mark(`${meaureLabel}:end`)
+          performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
+        }),
+    )

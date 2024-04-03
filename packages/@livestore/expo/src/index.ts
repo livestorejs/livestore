@@ -7,7 +7,6 @@ export const makeDb =
     const db = SQLite.openDatabaseSync(dbFilename)
 
     const mainDb = {
-      filename: dbFilename,
       prepare: (value) => {
         const stmt = db.prepareSync(value)
         return {
@@ -44,11 +43,12 @@ export const makeDb =
     } satisfies MainDatabase
 
     const storageDb = {
-      filename: '__unused__',
       execute: async () => {},
       // TODO actually implement this
       mutate: async () => {},
       export: async () => undefined,
+      // TODO actually implement this
+      getInitialSnapshot: async () => new Uint8Array(),
       dangerouslyReset: async () => {},
       // TODO actually implement this
       getMutationLogData: async () => new Uint8Array([]),

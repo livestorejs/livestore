@@ -22,7 +22,9 @@ class TestInMemoryStorage implements StorageDatabase {
 
   export = async () => undefined
 
-  getMutationLogData = async (): Promise<Uint8Array> => new Uint8Array()
+  getInitialSnapshot = async () => new Uint8Array()
+
+  getMutationLogData = async () => new Uint8Array()
 
   dangerouslyReset = async () => {}
   shutdown = async () => {

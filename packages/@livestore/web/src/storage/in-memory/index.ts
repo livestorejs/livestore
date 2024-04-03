@@ -2,7 +2,7 @@ import type { PreparedBindValues, StorageDatabase } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import type * as otel from '@opentelemetry/api'
 
-import type { StorageInit } from '../index.js'
+import type { StorageInit } from '../utils/types.js'
 
 /** NOTE: This storage is currently only used for testing */
 export class InMemoryStorage implements StorageDatabase {
@@ -21,7 +21,9 @@ export class InMemoryStorage implements StorageDatabase {
 
   export = async () => undefined
 
-  getMutationLogData = async (): Promise<Uint8Array> => new Uint8Array()
+  getInitialSnapshot = async () => new Uint8Array()
+
+  getMutationLogData = async () => new Uint8Array()
 
   dangerouslyReset = async () => {}
   shutdown = async () => {}

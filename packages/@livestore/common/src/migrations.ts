@@ -3,7 +3,7 @@ import { Schema as EffectSchema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { DatabaseImpl } from './database.js'
+import type { DatabaseImpl, MainDatabase } from './database.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import type { SchemaMetaRow } from './schema/system-tables.js'
 import { SCHEMA_META_TABLE, systemTables } from './schema/system-tables.js'
@@ -15,24 +15,22 @@ const getMemoizedTimestamp = memoize(() => new Date().toISOString())
 // TODO bring back statement caching
 // const cachedStmts = new Map<string, PreparedStatement>()
 
-const dbExecute = (db: DatabaseImpl, queryStr: string, bindValues?: ParamsObject) => {
+const dbExecute = (db: MainDatabase, queryStr: string, bindValues?: ParamsObject) => {
   // let stmt = cachedStmts.get(queryStr)
   // if (!stmt) {
-  const stmt = db.mainDb.prepare(queryStr)
+  const stmt = db.prepare(queryStr)
   // cachedStmts.set(queryStr, stmt)
   // }
 
   const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
 
   stmt.execute(preparedBindValues)
-
-  void db.storageDb.execute(queryStr, preparedBindValues, undefined)
 }
 
-const dbSelect = <T>(db: DatabaseImpl, queryStr: string, bindValues?: ParamsObject) => {
+const dbSelect = <T>(db: MainDatabase, queryStr: string, bindValues?: ParamsObject) => {
   // let stmt = cachedStmts.get(queryStr)
   // if (!stmt) {
-  const stmt = db.mainDb.prepare(queryStr)
+  const stmt = db.prepare(queryStr)
   // cachedStmts.set(queryStr, stmt)
   // }
 
@@ -45,7 +43,7 @@ export const migrateDb = ({
   otelContext,
   schema,
 }: {
-  db: DatabaseImpl
+  db: MainDatabase
   otelContext: otel.Context
   schema: LiveStoreSchema
 }) => {
@@ -92,7 +90,7 @@ export const migrateTable = ({
   // otelContext,
   schemaHash,
 }: {
-  db: DatabaseImpl
+  db: MainDatabase
   tableAst: SqliteAst.Table
   otelContext: otel.Context
   schemaHash: number

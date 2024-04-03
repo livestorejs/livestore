@@ -35,6 +35,9 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
+    "@effect/experimental": "^0.14.0",
+    "@effect/platform": "0.48.15",
+    "@effect/platform-browser": "0.31.15",
     "@effect/opentelemetry": "^0.31.21",
     "@effect/schema": "0.64.11",
     "@opentelemetry/api": "^1.8.0",

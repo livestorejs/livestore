@@ -6,7 +6,6 @@ export const makeMainDb = (
   db: Sqlite.Database & { capi: Sqlite.CAPI },
 ): MainDatabase => {
   return {
-    filename: ':memory:',
     prepare: (queryStr) => {
       const stmt = db.prepare(queryStr)
 

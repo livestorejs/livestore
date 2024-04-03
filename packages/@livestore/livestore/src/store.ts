@@ -2,8 +2,6 @@ import {
   type DatabaseFactory,
   type DatabaseImpl,
   getExecArgsFromMutation,
-  initializeSingletonTables,
-  type MigrationStrategy,
   type PreparedBindValues,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
@@ -15,7 +13,6 @@ import type { GraphQLSchema } from 'graphql'
 
 import { globalDbGraph } from './global-state.js'
 import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
-import { migrateDb } from './migrations.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
@@ -491,7 +488,6 @@ export const createStore = async <
   boot,
   dbGraph = globalDbGraph,
   batchUpdates,
-  migrationStrategy = { _tag: 'hard-reset' },
 }: {
   schema: TSchema
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
@@ -501,25 +497,16 @@ export const createStore = async <
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   dbGraph?: DbGraph
   batchUpdates?: (run: () => void) => void
-  migrationStrategy?: MigrationStrategy
 }): Promise<Store<TGraphQLContext, TSchema>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
+      performance.mark('livestore:db-creating')
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      const dbPromise = makeDb({ otelTracer, otelContext, migrationStrategy, schema })
+      const dbPromise = makeDb({ otelTracer, otelContext, schema })
       const db = dbPromise instanceof Promise ? await dbPromise : dbPromise
-
-      otelTracer.startActiveSpan('migrateDb', {}, otelContext, (span) => {
-        try {
-          const otelContext = otel.trace.setSpan(otel.context.active(), span)
-          migrateDb({ db, schema, otelContext })
-        } finally {
-          span.end()
-        }
-      })
-
-      initializeSingletonTables(schema, db)
+      performance.mark('livestore:db-created')
+      performance.measure('livestore:db-create', 'livestore:db-creating', 'livestore:db-created')
 
       if (batchUpdates !== undefined) {
         dbGraph.effectsWrapper = batchUpdates
@@ -527,6 +514,7 @@ export const createStore = async <
 
       const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
 
+      // TODO consider moving booting into the storage backend
       if (boot !== undefined) {
         let isInTxn = false
         let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []

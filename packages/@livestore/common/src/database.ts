@@ -15,7 +15,6 @@ export type DatabaseImpl = {
 }
 
 export type MainDatabase = {
-  filename: string
   prepare(queryStr: string): PreparedStatement
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): void
   dangerouslyReset(): Promise<void>
@@ -23,31 +22,39 @@ export type MainDatabase = {
 }
 
 export type StorageDatabase = {
-  filename: string
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
   mutate(mutationEventEncoded: MutationEvent.Any, span: otel.Span): Promise<void>
   dangerouslyReset(): Promise<void>
   export(span: otel.Span | undefined): Promise<Uint8Array | undefined>
+  /**
+   * This is different from `export` since in `getInitialSnapshot` is usually the place for migrations etc to happen
+   */
+  getInitialSnapshot(): Promise<Uint8Array>
   getMutationLogData(): Promise<Uint8Array>
   shutdown(): Promise<void>
 }
 
-export type MigrationStrategy =
+// TODO possibly allow a combination of these options
+export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =
   | {
-      _tag: 'from-mutation-log'
+      strategy: 'from-mutation-log'
+      /**
+       * Mutations to exclude in the mutation log
+       *
+       * @default new Set(['livestore.RawSql'])
+       */
+      excludeMutations?: ReadonlySet<keyof TSchema['_MutationDefMapType'] & string>
     }
   | {
-      _tag: 'hard-reset'
+      strategy: 'hard-reset'
     }
   | {
-      _tag: 'manual'
+      strategy: 'manual'
       migrate: (oldDb: Uint8Array) => Promise<Uint8Array> | Uint8Array
     }
 
 export type DatabaseFactory = (opts: {
   otelTracer: otel.Tracer
   otelContext: otel.Context
-  /** "hard-reset" is currently the default */
-  migrationStrategy: MigrationStrategy
   schema: LiveStoreSchema
 }) => DatabaseImpl | Promise<DatabaseImpl>

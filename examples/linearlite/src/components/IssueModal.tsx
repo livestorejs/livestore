@@ -27,7 +27,7 @@ interface Props {
 function IssueModal({ isOpen, onDismiss }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState<string>()
+  const [description, setDescription] = useState<string>('')
   const [priority, setPriority] = useState<PriorityType>(Priority.NONE)
   const [status, setStatus] = useState<StatusType>(Status.BACKLOG)
   const { store } = useStore()
@@ -45,8 +45,16 @@ function IssueModal({ isOpen, onDismiss }: Props) {
     const id = nanoid()
 
     store.mutate(
-      mutations.createIssue({ id, title, priority, status, modified: date, created: date, kanbanorder }),
-      mutations.createDescription({ id, body: description ?? '' }),
+      mutations.createIssueWithDescription({
+        id,
+        title,
+        priority,
+        status,
+        modified: date,
+        created: date,
+        kanbanorder,
+        description,
+      }),
     )
 
     if (onDismiss) onDismiss()

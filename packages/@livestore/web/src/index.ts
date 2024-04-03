@@ -5,9 +5,9 @@ import { makeNoopSpan } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 
 import { makeMainDb } from './make-main-db.js'
-import { rehydrateFromMutationLog } from './rehydrate-from-mutationlog.js'
 import { InMemoryStorage } from './storage/in-memory/index.js'
-import type { StorageInit } from './storage/index.js'
+import { importBytesToDb } from './storage/utils/sqlite-utils.js'
+import type { StorageInit } from './storage/utils/types.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
 const sqlite3Promise = initSqlite3Wasm({
@@ -17,14 +17,14 @@ const sqlite3Promise = initSqlite3Wasm({
 
 export const makeDb =
   (loadStorage?: () => StorageInit | Promise<StorageInit>): DatabaseFactory =>
-  async ({ otelTracer, otelContext, migrationStrategy, schema }) => {
+  async ({ otelTracer, otelContext, schema }) => {
     const sqlite3 = await sqlite3Promise
 
     const storageDb = await otelTracer.startActiveSpan('storage:load', {}, otelContext, async (span) => {
       try {
         const init = loadStorage ? await loadStorage() : InMemoryStorage.load()
         const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
-        return init({ otel: { otelTracer, parentSpan }, data: undefined })
+        return init({ otel: { otelTracer, parentSpan }, schema })
       } finally {
         span.end()
       }
@@ -36,22 +36,7 @@ export const makeDb =
       otelContext,
       async (span) => {
         try {
-          const data = await storageDb.export(span)
-          // NOTE we're always returning a Uint8Array here, to make sure th `sqlite3` object is always
-          // re-initialized with an empty database (e.g. during tests)
-
-          if (data === undefined && migrationStrategy._tag === 'from-mutation-log') {
-            return rehydrateFromMutationLog({
-              sqlite3,
-              storageDbRef: { current: storageDb },
-              otelTracer,
-              otelContext,
-              schema,
-              loadStorage,
-            })
-          }
-
-          return data ?? new Uint8Array()
+          return await storageDb.getInitialSnapshot()
         } finally {
           span.end()
         }
@@ -61,18 +46,7 @@ export const makeDb =
     const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as Sqlite.Database & { capi: Sqlite.CAPI }
     db.capi = sqlite3.capi
 
-    // Based on https://sqlite.org/forum/forumpost/2119230da8ac5357a13b731f462dc76e08621a4a29724f7906d5f35bb8508465
-    // TODO find cleaner way to do this once possible in sqlite3-wasm
-    const bytes = persistedData
-    const p = sqlite3.wasm.allocFromTypedArray(bytes)
-    const _rc = sqlite3.capi.sqlite3_deserialize(
-      db.pointer!,
-      'main',
-      p,
-      bytes.length,
-      bytes.length,
-      sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE && sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE,
-    )
+    importBytesToDb(sqlite3, db, persistedData)
 
     return { mainDb: makeMainDb(sqlite3, db), storageDb } satisfies DatabaseImpl
   }

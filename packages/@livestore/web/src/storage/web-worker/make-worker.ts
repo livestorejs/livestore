@@ -1,118 +1,115 @@
-import { getExecArgsFromMutation, sql } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { makeMutationEventSchema } from '@livestore/common/schema'
+import type { MigrationOptions } from '@livestore/common'
+import { getExecArgsFromMutation, initializeSingletonTables, migrateDb, sql } from '@livestore/common'
+import {
+  type LiveStoreSchema,
+  makeMutationEventSchema,
+  makeSchemaHash,
+  type MutationEventSchema,
+} from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { casesHandled, memoize, shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
-import * as Comlink from 'comlink'
+import { BrowserWorkerRunner, Context, Effect, Layer, Schema, WorkerRunner } from '@livestore/utils/effect'
+import * as otel from '@opentelemetry/api'
 
-import { IDB } from '../utils/idb.js'
-import type { ExecutionBacklogItem } from './common.js'
-import type { StorageOptionsWeb } from './index.js'
+import { makeMainDb } from '../../make-main-db.js'
+import { rehydrateFromMutationLog } from '../../rehydrate-from-mutationlog.js'
+import { importBytesToDb } from '../utils/sqlite-utils.js'
+import {
+  getAppDbFileName,
+  getAppDbIdbStoreName,
+  getMutationlogDbFileName,
+  getMutationlogDbIdbStoreName,
+  getOpfsDirHandle,
+} from './common.js'
+import { makePersistedSqliteIndexedDb, makePersistedSqliteOpfs } from './persisted-sqlite.js'
+import type { ExecutionBacklogItem, StorageType } from './schema.js'
+import { Request, UnexpectedError } from './schema.js'
+
+const sqlite3Promise = sqlite3InitModule({
+  print: (message) => console.log(`[sql-client] ${message}`),
+  printErr: (message) => console.error(`[sql-client] ${message}`),
+})
 
 export type WorkerOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   schema: TSchema
-  mutationLog?: {
-    /**
-     * Mutations to exclude in the mutation log
-     *
-     * @default new Set(['livestore.RawSql'])
-     */
-    exclude?: ReadonlySet<keyof TSchema['_MutationDefMapType']>
-  }
+  /** "hard-reset" is currently the default strategy */
+  migrations?: MigrationOptions<TSchema>
 }
 
-export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
-  schema,
-  mutationLog,
-}: WorkerOptions<TSchema>) => {
-  // A global variable to hold the database connection.
-  let db: SqliteWasm.Database
+export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>(options: WorkerOptions<TSchema>) => {
+  makeWorkerRunner(options as unknown as WorkerOptions).pipe(
+    Layer.launch,
+    Effect.scoped,
+    Effect.tapCauseLogPretty,
+    Effect.runFork,
+  )
+}
 
-  let dbLog: SqliteWasm.Database
+const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: WorkerOptions) =>
+  Effect.gen(function* (_$) {
+    const mutationLogExclude =
+      migrations.strategy === 'from-mutation-log'
+        ? migrations.excludeMutations ?? new Set(['livestore.RawSql'])
+        : new Set(['livestore.RawSql'])
 
-  let sqlite3: SqliteWasm.Sqlite3Static
+    // TODO refactor
+    const mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+    const mutationDefSchemaHashMap = new Map(
+      [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
+    )
 
-  const mutationLogExclude = mutationLog?.exclude ?? new Set(['livestore.RawSql'])
+    const schemaHash = makeSchemaHash(schema)
 
-  // TODO refactor
-  const mutationArgsSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
-  const schemaHashMap = new Map([...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const))
+    return WorkerRunner.layerSerialized(Request, {
+      InitialMessage: ({ storage }) =>
+        Effect.gen(function* ($) {
+          const sqlite3 = yield* $(Effect.tryPromise(() => sqlite3Promise))
 
-  // TODO get rid of this in favour of a "proper" IDB SQLite storage
-  let idb: IDB | undefined
+          const makeDb = Effect.gen(function* ($) {
+            const db =
+              storage.type === 'opfs'
+                ? yield* $(
+                    makePersistedSqliteOpfs(
+                      sqlite3,
+                      storage.directory,
+                      getAppDbFileName(storage.filePrefix, schemaHash),
+                    ),
+                  )
+                : yield* $(
+                    makePersistedSqliteIndexedDb(
+                      sqlite3,
+                      storage.databaseName ?? 'livestore',
+                      getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+                    ),
+                  )
 
-  /** The location where this database storage persists its data */
-  let options_: Omit<StorageOptionsWeb, 'worker'>
+            configureConnection(db, { fkEnabled: true })
 
-  const configureConnection = () =>
-    db.exec(sql`
-    PRAGMA page_size=8192;
-    PRAGMA journal_mode=MEMORY;
-    PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
-  `)
+            const dbWasEmptyWhenOpened =
+              db.exec({ sql: 'SELECT 1 FROM sqlite_master', returnValue: 'resultRows' }).length === 0
 
-  /** A full virtual filename in the IDB FS */
+            return { db, dbWasEmptyWhenOpened }
+          })
 
-  const initialize = async (options: Omit<StorageOptionsWeb, 'worker'> & { data: Uint8Array | undefined }) => {
-    options_ = options
+          const makeDbLog = Effect.gen(function* ($) {
+            const dbLog =
+              storage.type === 'opfs'
+                ? yield* $(
+                    makePersistedSqliteOpfs(sqlite3, storage.directory, getMutationlogDbFileName(storage.filePrefix)),
+                  )
+                : yield* $(
+                    makePersistedSqliteIndexedDb(
+                      sqlite3,
+                      storage.databaseName ?? 'livestore',
+                      getMutationlogDbIdbStoreName(storage.storeNamePrefix),
+                    ),
+                  )
 
-    sqlite3 = await sqlite3InitModule({
-      print: (message) => console.log(`[sql-client] ${message}`),
-      printErr: (message) => console.error(`[sql-client] ${message}`),
-    })
+            configureConnection(dbLog, { fkEnabled: false })
 
-    switch (options.type) {
-      case 'opfs': {
-        try {
-          if (options.data !== undefined) {
-            // overwrite the OPFS file with the new data
-            const rootHandle = await navigator.storage.getDirectory()
-            const fileHandle = await rootHandle.getFileHandle(options.fileName, { create: true })
-            const writable = await fileHandle.createWritable()
-            await writable.write(options.data)
-            await writable.close()
-          }
-
-          db = new sqlite3.oo1.OpfsDb(options.fileName, 'c')
-
-          // dbLog = new sqlite3.oo1.OpfsDb(options.fileName + '-log.db', 'c')
-          dbLog = new sqlite3.oo1.OpfsDb('livestore-mutation-log.db', 'c')
-        } catch (e) {
-          debugger
-        }
-        break
-      }
-      case 'indexeddb': {
-        try {
-          db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' })
-          idb = new IDB(options.fileName)
-
-          if (options.data !== undefined) {
-            await idb.put('db', options.data)
-          }
-
-          const bytes = await idb.get('db')
-
-          if (bytes !== undefined) {
-            // Based on https://sqlite.org/forum/forumpost/2119230da8ac5357a13b731f462dc76e08621a4a29724f7906d5f35bb8508465
-            // TODO find cleaner way to do this once possible in sqlite3-wasm
-            const p = sqlite3.wasm.allocFromTypedArray(bytes)
-            const _rc = sqlite3.capi.sqlite3_deserialize(db.pointer!, 'main', p, bytes.length, bytes.length, 0)
-          }
-        } catch (e) {
-          debugger
-        }
-        break
-      }
-      default: {
-        casesHandled(options.type)
-      }
-    }
-
-    // Creates `mutation_log` table if it doesn't exist
-    dbLog.exec(sql`
+            // Creates `mutation_log` table if it doesn't exist
+            dbLog.exec(sql`
       CREATE TABLE IF NOT EXISTS mutation_log (
         id TEXT PRIMARY KEY NOT NULL,
         mutation TEXT NOT NULL,
@@ -122,33 +119,190 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
       );
     `)
 
-    configureConnection()
+            return dbLog
+          })
+
+          const [{ db, dbWasEmptyWhenOpened }, dbLog] = yield* $(Effect.all([makeDb, makeDbLog], { concurrency: 2 }))
+
+          return Layer.succeed(WorkerCtx, {
+            storage,
+            sqlite3,
+            dbRef: { current: db },
+            dbWasEmptyWhenOpened,
+            dbLog,
+          })
+        }).pipe(
+          Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
+          Effect.catchAllCause((error) => new UnexpectedError({ error })),
+          Layer.unwrapScoped,
+        ),
+      Export: () =>
+        Effect.gen(function* ($) {
+          const {
+            dbRef: { current: db },
+          } = yield* $(WorkerCtx)
+          return db.capi.sqlite3_js_db_export(db.pointer!)
+        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+      ExportMutationlog: () =>
+        Effect.gen(function* ($) {
+          const { dbLog } = yield* $(WorkerCtx)
+          return dbLog.capi.sqlite3_js_db_export(dbLog.pointer!)
+        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+      ExecuteBulk: ({ items }) =>
+        executeBulk({
+          executionItems: items,
+          mutationArgsSchema,
+          mutationLogExclude,
+          mutationDefSchemaHashMap,
+          schema,
+        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+      Setup: () =>
+        Effect.gen(function* ($) {
+          const { dbRef, dbWasEmptyWhenOpened, dbLog, sqlite3, storage } = yield* $(WorkerCtx)
+          if (dbWasEmptyWhenOpened === false) {
+            return dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer!)
+          }
+
+          const otelContext = otel.context.active()
+
+          // NOTE to speed up the operations below, we're creating a temporary in-memory database
+          // and later we'll overwrite the persisted database with the new data
+          const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+          tmpDb.capi = sqlite3.capi
+          configureConnection(tmpDb, { fkEnabled: true })
+          const tmpMainDb = makeMainDb(sqlite3, tmpDb)
+
+          const mainDbLog = makeMainDb(sqlite3, dbLog)
+
+          migrateDb({ db: tmpMainDb, otelContext, schema })
+
+          initializeSingletonTables(schema, tmpMainDb)
+
+          switch (migrations.strategy) {
+            case 'from-mutation-log': {
+              rehydrateFromMutationLog({
+                db: tmpMainDb,
+                logDb: mainDbLog,
+                schema,
+              })
+
+              break
+            }
+            case 'hard-reset': {
+              // This is already the case by note doing anything now
+
+              break
+            }
+            case 'manual': {
+              // const migrateFn = migrationStrategy.migrate
+              console.warn('Manual migration strategy not implemented yet')
+
+              // TODO figure out a way to get previous database file to pass to the migration function
+
+              break
+            }
+            default: {
+              casesHandled(migrations)
+            }
+          }
+
+          const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
+          tmpDb.close()
+
+          if (storage.type === 'opfs') {
+            dbRef.current.close()
+
+            const opfsFileName = getAppDbFileName(storage.filePrefix, schemaHash)
+
+            yield* $(
+              Effect.promise(async () => {
+                // overwrite the OPFS file with the new data
+                const dirHandle = await getOpfsDirHandle(storage.directory)
+                const fileHandle = await dirHandle.getFileHandle(opfsFileName, { create: true })
+                const writable = await fileHandle.createWritable()
+                await writable.write(snapshotFromTmpDb)
+                await writable.close()
+              }),
+            )
+
+            dbRef.current = yield* $(makePersistedSqliteOpfs(sqlite3, storage.directory, opfsFileName))
+            configureConnection(dbRef.current, { fkEnabled: true })
+          } else if (storage.type === 'indexeddb') {
+            importBytesToDb(sqlite3, dbRef.current, snapshotFromTmpDb)
+
+            // trigger persisting the data to IndexedDB
+            dbRef.current.exec('SELECT 1')
+          }
+
+          return snapshotFromTmpDb
+        }).pipe(
+          Effect.withPerformanceMeasure('@livestore/web:worker:Setup'),
+          Effect.catchAllCause((error) => new UnexpectedError({ error })),
+        ),
+      Shutdown: ({}) =>
+        Effect.gen(function* ($) {
+          const { dbRef, dbLog } = yield* $(WorkerCtx)
+          dbRef.current.close()
+          dbLog.close()
+        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+    })
+  }).pipe(Layer.unwrapScoped, Layer.provide(BrowserWorkerRunner.layer))
+
+class WorkerCtx extends Context.Tag('WorkerCtx')<
+  WorkerCtx,
+  {
+    storage: StorageType
+    /** NOTE We're keeping a ref here since we need to re-assign it during `Setup` */
+    dbRef: { current: SqliteWasm.Database & { capi: SqliteWasm.CAPI } }
+    dbWasEmptyWhenOpened: boolean
+
+    dbLog: SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+
+    sqlite3: SqliteWasm.Sqlite3Static
   }
+>() {}
 
-  // TODO get rid of this in favour of a "proper" IDB SQLite storage
-  let idbPersistTimeout: number | undefined
-
-  const executeBulk = (executionItems: ExecutionBacklogItem[]): void => {
+const executeBulk = ({
+  executionItems,
+  mutationArgsSchema,
+  mutationLogExclude,
+  mutationDefSchemaHashMap,
+  schema,
+}: {
+  executionItems: ReadonlyArray<ExecutionBacklogItem>
+  mutationArgsSchema: MutationEventSchema<any>
+  mutationLogExclude: ReadonlySet<string>
+  mutationDefSchemaHashMap: Map<string, number>
+  schema: LiveStoreSchema
+}) =>
+  Effect.gen(function* ($) {
     let batchItems: ExecutionBacklogItem[] = []
+    const {
+      dbRef: { current: db },
+      dbLog,
+    } = yield* $(WorkerCtx)
 
     const createdAtMemo = memoize(() => new Date().toISOString())
 
-    while (executionItems.length > 0) {
+    let offset = 0
+
+    while (offset < executionItems.length) {
       try {
         db.exec('BEGIN TRANSACTION') // Start the transaction
         dbLog.exec('BEGIN TRANSACTION') // Start the transaction
 
-        batchItems = executionItems.splice(0, 50)
+        batchItems = executionItems.slice(offset, offset + 50)
+        offset += 50
 
         // console.debug('livestore-webworker: executing batch', batchItems)
 
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item
-            db.exec({ sql: query, bind: bindValues as TODO })
+            db.exec({ sql: query, bind: bindValues })
 
             // NOTE we're not writing `execute` events to the mutation_log
-          } else {
+          } else if (item._tag === 'mutate') {
             const mutationEventDecoded = Schema.decodeUnknownSync(mutationArgsSchema)(item.mutationEventEncoded)
 
             const mutation = mutationEventDecoded.mutation
@@ -168,11 +322,11 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
 
             // write to mutation_log
             if (
-              options_.type === 'opfs' &&
               mutationLogExclude.has(mutation) === false &&
               execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
             ) {
-              const schemaHash = schemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
+              const mutationDefSchemaHash =
+                mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
               const argsJson = JSON.stringify(item.mutationEventEncoded.args ?? {})
 
@@ -183,7 +337,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
                     item.mutationEventEncoded.id,
                     item.mutationEventEncoded.mutation,
                     argsJson,
-                    schemaHash,
+                    mutationDefSchemaHash,
                     createdAtMemo(),
                   ],
                 })
@@ -194,7 +348,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
                   item.mutationEventEncoded.id,
                   item.mutationEventEncoded.mutation,
                   argsJson,
-                  schemaHash,
+                  mutationDefSchemaHash,
                   createdAtMemo(),
                 )
                 debugger
@@ -203,6 +357,8 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
             } else {
               //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
             }
+          } else {
+            // TODO handle txn
           }
         }
 
@@ -219,47 +375,11 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>({
         shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify(batchItems)}`)
       }
     }
+  })
 
-    // TODO get rid of this in favour of a "proper" IDB SQLite storage
-    if (options_.type === 'indexeddb') {
-      if (idbPersistTimeout !== undefined) {
-        clearTimeout(idbPersistTimeout)
-      }
-
-      idbPersistTimeout = setTimeout(() => {
-        const data = sqlite3.capi.sqlite3_js_db_export(db.pointer!)
-
-        void idb!.put('db', data)
-      }, 1000)
-    }
-  }
-
-  const shutdown = () => {
-    try {
-      db?.close()
-      dbLog?.close()
-    } catch (e) {
-      console.error('Error closing database', e)
-      debugger
-    }
-
-    if (idbPersistTimeout !== undefined) {
-      clearTimeout(idbPersistTimeout)
-    }
-  }
-
-  const wrappedWorker = { initialize, executeBulk, shutdown }
-
-  Comlink.expose(wrappedWorker)
-
-  // NOTE keep this around for debugging
-  // db.exec({
-  //   sql: `select * from sqlite_master where name = 'library_tracks'`,
-  //   callback: (_: TODO) => console.log(_),
-  //   rowMode: 'object',
-  // } as TODO)
-
-  return wrappedWorker
-}
-
-export type WrappedWorker = ReturnType<typeof makeWorker>
+const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fkEnabled: boolean }) =>
+  db.exec(sql`
+    PRAGMA page_size=8192;
+    PRAGMA journal_mode=MEMORY;
+    ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
+  `)

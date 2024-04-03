@@ -1,6 +1,6 @@
 import { isReadonlyArray } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
-import type { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
 import {
   type MutationDef,
@@ -79,6 +79,12 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     mutations,
   } satisfies LiveStoreSchema
 }
+
+export const makeSchemaHash = (schema: LiveStoreSchema) =>
+  SqliteAst.hash({
+    _tag: 'dbSchema',
+    tables: [...schema.tables.values()].map((_) => _.sqliteDef.ast),
+  })
 
 /**
  * In case of ...
