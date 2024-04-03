@@ -7,7 +7,7 @@ settings:
 overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
-  '@livestore/devtools-react': 0.0.46
+  '@livestore/devtools-react': 0.0.47
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -81,8 +81,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0
       '@livestore/devtools-react':
-        specifier: 0.0.46
-        version: 0.0.46(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.47
+        version: 0.0.47(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/expo':
         specifier: latest
         version: link:../../packages/@livestore/expo
@@ -154,8 +154,8 @@ importers:
         specifier: ^1.7.18
         version: 1.7.18(react-dom@18.2.0)(react@18.2.0)
       '@livestore/devtools-react':
-        specifier: 0.0.46
-        version: 0.0.46(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.47
+        version: 0.0.47(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -338,8 +338,8 @@ importers:
         specifier: 0.64.11
         version: 0.64.11(effect@2.4.11)(fast-check@3.16.0)
       '@livestore/devtools-react':
-        specifier: 0.0.46
-        version: 0.0.46(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.47
+        version: 0.0.47(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -399,8 +399,8 @@ importers:
         specifier: 0.64.11
         version: 0.64.11(effect@2.4.11)(fast-check@3.16.0)
       '@livestore/devtools-react':
-        specifier: 0.0.46
-        version: 0.0.46(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.47
+        version: 0.0.47(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -469,8 +469,8 @@ importers:
         specifier: 0.64.11
         version: 0.64.11(effect@2.4.11)(fast-check@3.16.0)
       '@livestore/devtools-react':
-        specifier: 0.0.46
-        version: 0.0.46(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 0.0.47
+        version: 0.0.47(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -3194,8 +3194,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@livestore/devtools-react@0.0.46(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-QGYzNJLfpTOouri0j1/ZQ40KNNPbtHVydNA34+zrlFG9oTEBkm2OWHkckSBErzDf3rCZSSUu7uRiv6QvoEkrPQ==}
+  /@livestore/devtools-react@0.0.47(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-xGC6NStTUGb+WJR0c2JVf1dmkK9DLIuj1LEkTG1yUsOag/FrkqDfeAt+l3+eq60vMLTkPqzLmnvO2tDepKDJ9w==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
@@ -5528,7 +5528,6 @@ packages:
   /autoprefixer@10.4.19(postcss@8.4.38):
     resolution: {integrity: sha512-BaENR2+zBZ8xXhM4pUaKUxlVdxZ0EZhjvbopwnXmxRUfqDmwSpC2lAi/QXvx7NRdPCo1WKEcEF6mV64si1z4Ew==}
     engines: {node: ^10 || ^12 || >=14}
-    hasBin: true
     peerDependencies:
       postcss: ^8.1.0
     dependencies:
@@ -7128,7 +7127,6 @@ packages:
 
   /eslint-config-prettier@9.1.0(eslint@8.57.0):
     resolution: {integrity: sha512-NSWl5BFQWEPi1j4TjVNItzYV7dZXZ+wP6I6ZhrBGpChQhZRUaElihE9uRRkcbRnNb76UMKDF3r+WTmNcGPKsqw==}
-    hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
     dependencies:
@@ -8932,7 +8930,6 @@ packages:
 
   /jscodeshift@0.14.0(@babel/preset-env@7.24.3):
     resolution: {integrity: sha512-7eCC1knD7bLUPuSCwXsMZUH51O8jIcoVyKtI6P0XM0IVzlGjckPy3FIwQlorzbN0Sg79oK+RlohN32Mqf/lrYA==}
-    hasBin: true
     peerDependencies:
       '@babel/preset-env': ^7.1.6
     dependencies:
@@ -10099,7 +10096,6 @@ packages:
 
   /msgpackr-extract@3.0.2:
     resolution: {integrity: sha512-SdzXp4kD/Qf8agZ9+iTu6eql0m3kWm1A2y1hkpTeVNENutaB0BwHlSvAIaMxwntmRUAUjon2V4L8Z/njd0Ct8A==}
-    hasBin: true
     requiresBuild: true
     dependencies:
       node-gyp-build-optional-packages: 5.0.7
@@ -10241,7 +10237,6 @@ packages:
 
   /node-gyp-build-optional-packages@5.0.7:
     resolution: {integrity: sha512-YlCCc6Wffkx0kHkmam79GKvDQ6x+QZkMjFGrIMxgFNILFvGSbCp2fCBC55pGTT9gVaz8Na5CLmxt/urtzRv36w==}
-    hasBin: true
     requiresBuild: true
     dev: false
     optional: true
@@ -11306,7 +11301,6 @@ packages:
   /react-native@0.73.6(@babel/core@7.24.3)(@babel/preset-env@7.24.3)(react@18.2.0):
     resolution: {integrity: sha512-oqmZe8D2/VolIzSPZw+oUd6j/bEmeRHwsLn1xLA5wllEYsZ5zNuMsDus235ONOnCRwexqof/J3aztyQswSmiaA==}
     engines: {node: '>=18'}
-    hasBin: true
     peerDependencies:
       react: 18.2.0
     dependencies:
@@ -11760,7 +11754,6 @@ packages:
   /rollup-plugin-visualizer@5.12.0(rollup@2.79.1):
     resolution: {integrity: sha512-8/NU9jXcHRs7Nnj07PF2o4gjxmm9lXIrZ8r175bT9dK8qoLlvKTwRMArRCMgpMGlq8CTLugRvEmyMeMXIU2pNQ==}
     engines: {node: '>=14'}
-    hasBin: true
     peerDependencies:
       rollup: 2.x || 3.x || 4.x
     peerDependenciesMeta:
@@ -12763,7 +12756,6 @@ packages:
 
   /ts-node@10.9.2(@types/node@20.11.30)(typescript@5.4.3):
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
-    hasBin: true
     peerDependencies:
       '@swc/core': '>=1.2.50'
       '@swc/wasm': '>=1.2.50'
@@ -13062,7 +13054,6 @@ packages:
 
   /update-browserslist-db@1.0.13(browserslist@4.23.0):
     resolution: {integrity: sha512-xebP81SNcPuNpPP3uzeW1NYXxI3rxyJzF3pD6sH4jE7o/IX+WtSpwnVU+qIsDPyk0d3hmFQ7mjqc6AtV604hbg==}
-    hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
     dependencies:
@@ -13220,7 +13211,6 @@ packages:
   /vite@5.2.2:
     resolution: {integrity: sha512-FWZbz0oSdLq5snUI0b6sULbz58iXFXdvkZfZWR/F0ZJuKTSPO7v72QPXt6KqYeMFb0yytNp6kZosxJ96Nr/wDQ==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
@@ -13255,7 +13245,6 @@ packages:
   /vite@5.2.4(@types/node@20.11.30):
     resolution: {integrity: sha512-vjFghvHWidBTinu5TCymJk/lRHlR5ljqB83yugr0HA1xspUPdOZHqbqDLnZ8f9/jINrtFHTCYYyIUi+o+Q5iyg==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
@@ -13291,7 +13280,6 @@ packages:
   /vitest@1.4.0(jsdom@24.0.0):
     resolution: {integrity: sha512-gujzn0g7fmwf83/WzrDTnncZt2UiXP41mHuFYFrdwaLRVQ6JYQEiME2IfEjU3vcFL3VKa75XhI3lFgn+hfVsQw==}
     engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@types/node': ^18.0.0 || >=20.0.0
