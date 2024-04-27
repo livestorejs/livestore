@@ -9,7 +9,7 @@ exports[`FieldDefs > boolean 1`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": Schema {
+  "schema": SchemaImpl {
     "ast": {
       "_tag": "StringKeyword",
       "annotations": {
@@ -35,7 +35,7 @@ exports[`FieldDefs > boolean 2`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": Schema {
+  "schema": SchemaImpl {
     "ast": {
       "_tag": "StringKeyword",
       "annotations": {
@@ -62,7 +62,7 @@ exports[`FieldDefs > boolean 3`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": $union {
+  "schema": UnionImpl {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -84,7 +84,7 @@ exports[`FieldDefs > boolean 3`] = `
       ],
     },
     "members": [
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "StringKeyword",
           "annotations": {
@@ -98,7 +98,7 @@ exports[`FieldDefs > boolean 3`] = `
           "_R": [Function],
         },
       },
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {
@@ -132,7 +132,7 @@ exports[`FieldDefs > boolean 4`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": $union {
+  "schema": UnionImpl {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -152,7 +152,7 @@ exports[`FieldDefs > boolean 4`] = `
       ],
     },
     "members": [
-      $literal {
+      LiteralImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {},
@@ -167,7 +167,7 @@ exports[`FieldDefs > boolean 4`] = `
           "_R": [Function],
         },
       },
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {
@@ -201,7 +201,7 @@ exports[`FieldDefs > boolean 5`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": $union {
+  "schema": UnionImpl {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -221,7 +221,7 @@ exports[`FieldDefs > boolean 5`] = `
       ],
     },
     "members": [
-      $literal {
+      LiteralImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {},
@@ -236,7 +236,7 @@ exports[`FieldDefs > boolean 5`] = `
           "_R": [Function],
         },
       },
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {
@@ -269,7 +269,7 @@ exports[`FieldDefs > boolean 6`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": Schema {
+  "schema": SchemaImpl {
     "ast": {
       "_tag": "Transformation",
       "annotations": {},
@@ -317,7 +317,7 @@ exports[`FieldDefs > boolean 7`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": $union {
+  "schema": UnionImpl {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -360,7 +360,7 @@ exports[`FieldDefs > boolean 7`] = `
       ],
     },
     "members": [
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Transformation",
           "annotations": {},
@@ -395,7 +395,7 @@ exports[`FieldDefs > boolean 7`] = `
           "_R": [Function],
         },
       },
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {
@@ -431,7 +431,7 @@ exports[`FieldDefs > boolean 8`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": $union {
+  "schema": UnionImpl {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -488,7 +488,7 @@ exports[`FieldDefs > boolean 8`] = `
       ],
     },
     "members": [
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Transformation",
           "annotations": {},
@@ -537,7 +537,7 @@ exports[`FieldDefs > boolean 8`] = `
           "_R": [Function],
         },
       },
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {
@@ -570,7 +570,7 @@ exports[`FieldDefs > boolean 9`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": Schema {
+  "schema": SchemaImpl {
     "ast": {
       "_tag": "Refinement",
       "annotations": {
@@ -621,7 +621,7 @@ exports[`FieldDefs > boolean 10`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": Schema {
+  "schema": SchemaImpl {
     "ast": {
       "_tag": "Refinement",
       "annotations": {
@@ -673,7 +673,7 @@ exports[`FieldDefs > boolean 11`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": $union {
+  "schema": UnionImpl {
     "ast": {
       "_tag": "Union",
       "annotations": {},
@@ -720,7 +720,7 @@ exports[`FieldDefs > boolean 11`] = `
       ],
     },
     "members": [
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Refinement",
           "annotations": {
@@ -759,7 +759,7 @@ exports[`FieldDefs > boolean 11`] = `
           "_R": [Function],
         },
       },
-      Schema {
+      SchemaImpl {
         "ast": {
           "_tag": "Literal",
           "annotations": {
@@ -793,7 +793,7 @@ exports[`FieldDefs > boolean 12`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": Schema {
+  "schema": SchemaImpl {
     "ast": {
       "_tag": "Refinement",
       "annotations": {
@@ -844,7 +844,7 @@ exports[`FieldDefs > boolean 13`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": $transformOrFail {
+  "schema": transformOrFailImpl {
     "ast": {
       "_tag": "Transformation",
       "annotations": {},
@@ -863,7 +863,7 @@ exports[`FieldDefs > boolean 13`] = `
         },
       },
     },
-    "from": Schema {
+    "from": SchemaImpl {
       "ast": {
         "_tag": "NumberKeyword",
         "annotations": {
@@ -877,7 +877,7 @@ exports[`FieldDefs > boolean 13`] = `
         "_R": [Function],
       },
     },
-    "to": Schema {
+    "to": SchemaImpl {
       "ast": {
         "_tag": "BooleanKeyword",
         "annotations": {
@@ -909,7 +909,7 @@ exports[`FieldDefs > boolean 14`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": $transformOrFail {
+  "schema": transformOrFailImpl {
     "ast": {
       "_tag": "Transformation",
       "annotations": {},
@@ -928,7 +928,7 @@ exports[`FieldDefs > boolean 14`] = `
         },
       },
     },
-    "from": Schema {
+    "from": SchemaImpl {
       "ast": {
         "_tag": "NumberKeyword",
         "annotations": {
@@ -942,7 +942,7 @@ exports[`FieldDefs > boolean 14`] = `
         "_R": [Function],
       },
     },
-    "to": Schema {
+    "to": SchemaImpl {
       "ast": {
         "_tag": "BooleanKeyword",
         "annotations": {
@@ -975,7 +975,7 @@ exports[`FieldDefs > boolean 15`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": $transformOrFail {
+  "schema": transformOrFailImpl {
     "ast": {
       "_tag": "Transformation",
       "annotations": {},
@@ -994,7 +994,7 @@ exports[`FieldDefs > boolean 15`] = `
         },
       },
     },
-    "from": Schema {
+    "from": SchemaImpl {
       "ast": {
         "_tag": "NumberKeyword",
         "annotations": {
@@ -1008,7 +1008,7 @@ exports[`FieldDefs > boolean 15`] = `
         "_R": [Function],
       },
     },
-    "to": Schema {
+    "to": SchemaImpl {
       "ast": {
         "_tag": "BooleanKeyword",
         "annotations": {
