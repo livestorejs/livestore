@@ -8,7 +8,7 @@ const main = () => {
     updatedAt: Schema.Date,
   }) {}
 
-  const State = Schema.union(Schema.literal('active'), Schema.literal('inactive'))
+  const State = Schema.Union(Schema.Literal('active'), Schema.Literal('inactive'))
 
   const users = sqlite.table('users', {
     id: sqlite.text({ primaryKey: true }),

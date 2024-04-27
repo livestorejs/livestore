@@ -8,15 +8,15 @@ describe.concurrent('FieldDefs', () => {
     expect(F.text()).toMatchSnapshot()
     expect(F.text({})).toMatchSnapshot()
     expect(F.text({ default: null, nullable: true })).toMatchSnapshot()
-    expect(F.text({ schema: Schema.literal('foo'), nullable: true, default: 'foo' })).toMatchSnapshot()
-    expect(F.text({ schema: Schema.union(Schema.literal('foo')), nullable: true, default: 'foo' })).toMatchSnapshot()
+    expect(F.text({ schema: Schema.Literal('foo'), nullable: true, default: 'foo' })).toMatchSnapshot()
+    expect(F.text({ schema: Schema.Union(Schema.Literal('foo')), nullable: true, default: 'foo' })).toMatchSnapshot()
   })
 
   test('json', () => {
     expect(F.json()).toMatchSnapshot()
     expect(F.json({ default: null, nullable: true })).toMatchSnapshot()
     expect(
-      F.json({ schema: Schema.struct({ name: Schema.string }), default: { name: 'Bob' }, nullable: true }),
+      F.json({ schema: Schema.Struct({ name: Schema.String }), default: { name: 'Bob' }, nullable: true }),
     ).toMatchSnapshot()
   })
 

@@ -7,7 +7,7 @@ const todos = DbSchema.table('todos', {
   completed: DbSchema.boolean({ default: false }),
 })
 
-const Filter = Schema.literal('all', 'active', 'completed')
+const Filter = Schema.Literal('all', 'active', 'completed')
 
 const app = DbSchema.table(
   'app',
@@ -26,37 +26,37 @@ export const tables = { todos, app }
 
 const addTodo = defineMutation(
   'addTodo',
-  Schema.struct({ id: Schema.string, text: Schema.string }),
+  Schema.Struct({ id: Schema.String, text: Schema.String }),
   sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
 )
 
 const completeTodo = defineMutation(
   'completeTodo',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = true WHERE id = $id`,
 )
 
 const uncompleteTodo = defineMutation(
   'uncompleteTodo',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = false WHERE id = $id`,
 )
 
 const deleteTodo = defineMutation(
   'deleteTodo',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`DELETE FROM todos WHERE id = $id`,
 )
 
-const clearCompleted = defineMutation('clearCompleted', Schema.void, sql`DELETE FROM todos WHERE completed = true`)
+const clearCompleted = defineMutation('clearCompleted', Schema.Void, sql`DELETE FROM todos WHERE completed = true`)
 
 const updateNewTodoText = defineMutation(
   'updateNewTodoText',
-  Schema.struct({ text: Schema.string }),
+  Schema.Struct({ text: Schema.String }),
   sql`UPDATE app SET newTodoText = $text`,
 )
 
-const setFilter = defineMutation('setFilter', Schema.struct({ filter: Filter }), sql`UPDATE app SET filter = $filter`)
+const setFilter = defineMutation('setFilter', Schema.Struct({ filter: Filter }), sql`UPDATE app SET filter = $filter`)
 
 export const mutations = {
   addTodo,

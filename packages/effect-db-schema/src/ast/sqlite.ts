@@ -140,4 +140,4 @@ const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema):
 }
 
 export const structSchemaForTable = (tableDef: Table) =>
-  Schema.struct(Object.fromEntries(tableDef.columns.map((column) => [column.name, column.schema])))
+  Schema.Struct(Object.fromEntries(tableDef.columns.map((column) => [column.name, column.schema])))

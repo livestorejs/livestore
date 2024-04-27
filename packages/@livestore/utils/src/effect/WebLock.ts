@@ -35,7 +35,7 @@ export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName:
   Effect.async<void>((cb, signal) => {
     navigator.locks.request(lockName, { signal, mode: 'exclusive', ifAvailable: false }, async (_lock) => {
       // immediately continuing calling Effect since we have the lock
-      cb(Effect.unit)
+      cb(Effect.void)
 
       // the code below is still running
 

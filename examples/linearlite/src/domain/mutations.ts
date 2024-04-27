@@ -4,15 +4,15 @@ import { PriorityType, StatusType } from '../types/issue'
 
 export const createIssueWithDescription = defineMutation(
   'createIssueWithDescription',
-  Schema.struct({
-    id: Schema.string,
-    title: Schema.string,
+  Schema.Struct({
+    id: Schema.String,
+    title: Schema.String,
     priority: PriorityType,
     status: StatusType,
-    created: Schema.number,
-    modified: Schema.number,
-    kanbanorder: Schema.string,
-    description: Schema.string,
+    created: Schema.Number,
+    modified: Schema.Number,
+    kanbanorder: Schema.String,
+    description: Schema.String,
   }),
   [
     sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder")
@@ -23,12 +23,12 @@ export const createIssueWithDescription = defineMutation(
 
 export const createComment = defineMutation(
   'createComment',
-  Schema.struct({
-    id: Schema.string,
-    body: Schema.string,
-    issueId: Schema.string,
-    created: Schema.number,
-    creator: Schema.string,
+  Schema.Struct({
+    id: Schema.String,
+    body: Schema.String,
+    issueId: Schema.String,
+    created: Schema.Number,
+    creator: Schema.String,
   }),
   sql`INSERT INTO comment ("id", "body", "issueId", "created", "creator")
                         VALUES ($id, $body, $issueId, $created, $creator)`,
@@ -36,72 +36,72 @@ export const createComment = defineMutation(
 
 export const deleteIssue = defineMutation(
   'deleteIssue',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`DELETE FROM issue WHERE id = $id`,
 )
 
 export const deleteDescription = defineMutation(
   'deleteDescription',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`DELETE FROM description WHERE id = $id`,
 )
 
 export const deleteComment = defineMutation(
   'deleteComment',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`DELETE FROM comment WHERE id = $id`,
 )
 
 export const deleteCommentsByIssueId = defineMutation(
   'deleteCommentsByIssueId',
-  Schema.struct({ issueId: Schema.string }),
+  Schema.Struct({ issueId: Schema.String }),
   sql`DELETE FROM comment WHERE issueId = $issueId`,
 )
 
 export const updateIssue = defineMutation(
   'updateIssue',
-  Schema.struct({
-    id: Schema.string,
-    title: Schema.string,
+  Schema.Struct({
+    id: Schema.String,
+    title: Schema.String,
     priority: PriorityType,
     status: StatusType,
-    modified: Schema.number,
+    modified: Schema.Number,
   }),
   sql`UPDATE issue SET title = $title, priority = $priority, status = $status, modified = $modified WHERE id = $id`,
 )
 
 export const updateIssueStatus = defineMutation(
   'updateIssueStatus',
-  Schema.struct({ id: Schema.string, status: StatusType }),
+  Schema.Struct({ id: Schema.String, status: StatusType }),
   sql`UPDATE issue SET status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const updateIssueKanbanOrder = defineMutation(
   'updateIssueKanbanOrder',
-  Schema.struct({ id: Schema.string, kanbanorder: Schema.string }),
+  Schema.Struct({ id: Schema.String, kanbanorder: Schema.String }),
   sql`UPDATE issue SET kanbanorder = $kanbanorder, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const updateIssueTitle = defineMutation(
   'updateIssueTitle',
-  Schema.struct({ id: Schema.string, title: Schema.string }),
+  Schema.Struct({ id: Schema.String, title: Schema.String }),
   sql`UPDATE issue SET title = $title, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const moveIssue = defineMutation(
   'moveIssue',
-  Schema.struct({ id: Schema.string, kanbanorder: Schema.string, status: StatusType }),
+  Schema.Struct({ id: Schema.String, kanbanorder: Schema.String, status: StatusType }),
   sql`UPDATE issue SET kanbanorder = $kanbanorder, status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const updateIssuePriority = defineMutation(
   'updateIssuePriority',
-  Schema.struct({ id: Schema.string, priority: PriorityType }),
+  Schema.Struct({ id: Schema.String, priority: PriorityType }),
   sql`UPDATE issue SET priority = $priority, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const updateDescription = defineMutation(
   'updateDescription',
-  Schema.struct({ id: Schema.string, body: Schema.string }),
+  Schema.Struct({ id: Schema.String, body: Schema.String }),
   sql`UPDATE description SET body = $body WHERE id = $id`,
 )

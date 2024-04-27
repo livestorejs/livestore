@@ -114,7 +114,7 @@ export const table = <
     }
   } else if (columns.id === undefined && ReadonlyRecord.some(columns, (_) => _.primaryKey === true) === false) {
     if (options_.isSingleton) {
-      columns.id = SqliteDsl.text({ schema: Schema.literal('singleton'), primaryKey: true, default: 'singleton' })
+      columns.id = SqliteDsl.text({ schema: Schema.Literal('singleton'), primaryKey: true, default: 'singleton' })
     } else {
       columns.id = SqliteDsl.text({ primaryKey: true })
     }

@@ -14,7 +14,7 @@ const incompleteCount$ = queryDrizzle(
       .from(t.todos)
       .where(drizzle.eq(t.todos.completed, false)),
   {
-    map: Schema.struct({ c: Schema.number }).pipe(Schema.pluck('c'), Schema.array, Schema.headOrElse()),
+    map: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
   },
 )
 

@@ -25,10 +25,10 @@ const issue = DbSchema.table(
   },
 )
 
-const OrderDirection = Schema.literal('asc', 'desc')
+const OrderDirection = Schema.Literal('asc', 'desc')
 export type OrderDirection = Schema.Schema.Type<typeof OrderDirection>
 
-const OrderBy = Schema.literal('priority', 'status', 'created', 'modified')
+const OrderBy = Schema.Literal('priority', 'status', 'created', 'modified')
 export type OrderBy = Schema.Schema.Type<typeof OrderBy>
 
 const description = DbSchema.table('description', {
@@ -52,12 +52,12 @@ const comment = DbSchema.table(
   },
 )
 
-export const FilterState = Schema.struct({
+export const FilterState = Schema.Struct({
   orderBy: OrderBy,
   orderDirection: OrderDirection,
-  status: Schema.optional(Schema.array(StatusType)),
-  priority: Schema.optional(Schema.array(PriorityType)),
-  query: Schema.optional(Schema.string),
+  status: Schema.optional(Schema.Array(StatusType)),
+  priority: Schema.optional(Schema.Array(PriorityType)),
+  query: Schema.optional(Schema.String),
 })
 
 export const parseFilterStateString = Schema.decodeSync(Schema.parseJson(FilterState))

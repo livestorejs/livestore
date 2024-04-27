@@ -77,10 +77,10 @@ export const makeMutationDefRecord = <TInputRecord extends Record<string, Mutati
 
 export const rawSqlMutation = defineMutation(
   'livestore.RawSql',
-  Schema.struct({
-    sql: Schema.string,
-    bindValues: Schema.optional(Schema.record(Schema.string, Schema.any)),
-    writeTables: Schema.optional(Schema.readonlySet(Schema.string)),
+  Schema.Struct({
+    sql: Schema.String,
+    bindValues: Schema.optional(Schema.Record(Schema.String, Schema.Any)),
+    writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
   }),
   ({ sql, bindValues, writeTables }) => ({ sql, bindValues: bindValues ?? {}, writeTables }),
 )
@@ -122,12 +122,12 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
 export const makeMutationEventSchema = <TMutationsDefRecord extends MutationDefRecord>(
   mutationDefRecord: TMutationsDefRecord,
 ): MutationEventSchema<TMutationsDefRecord> =>
-  Schema.union(
+  Schema.Union(
     ...Object.values(mutationDefRecord).map((def) =>
-      Schema.struct({
-        mutation: Schema.literal(def.name),
+      Schema.Struct({
+        mutation: Schema.Literal(def.name),
         args: def.schema,
-        id: Schema.string,
+        id: Schema.String,
       }),
     ),
   ) as any

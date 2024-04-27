@@ -21,7 +21,7 @@ export const Priority = {
   MEDIUM: 'medium',
 } as const
 
-export const PriorityType = Schema.literal(Priority.NONE, Priority.URGENT, Priority.HIGH, Priority.LOW, Priority.MEDIUM)
+export const PriorityType = Schema.Literal(Priority.NONE, Priority.URGENT, Priority.HIGH, Priority.LOW, Priority.MEDIUM)
 export type PriorityType = Schema.Schema.Type<typeof PriorityType>
 
 export const PriorityDisplay = {
@@ -60,7 +60,7 @@ export const Status = {
   CANCELED: 'canceled',
 } as const
 
-export const StatusType = Schema.literal(Status.BACKLOG, Status.TODO, Status.IN_PROGRESS, Status.DONE, Status.CANCELED)
+export const StatusType = Schema.Literal(Status.BACKLOG, Status.TODO, Status.IN_PROGRESS, Status.DONE, Status.CANCELED)
 export type StatusType = Schema.Schema.Type<typeof StatusType>
 
 export const StatusDisplay = {

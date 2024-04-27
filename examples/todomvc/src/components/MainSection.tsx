@@ -14,7 +14,7 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 const filterClause$ = querySQL(sql`select filter from app`, {
   map: (rows) => {
     const { filter } = Schema.decodeSync(
-      Schema.array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),
+      Schema.Array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),
     )(rows)
     return filter === 'all' ? '' : `where completed = ${filter === 'completed'}`
   },
@@ -25,7 +25,7 @@ const filterClause$ = querySQL(sql`select filter from app`, {
 // Notice how we call filterClause() as a function--
 // that gets the latest value of that reactive query.
 const visibleTodos$ = querySQL((get) => sql`select * from todos ${get(filterClause$)}`, {
-  map: Schema.array(tables.todos.schema),
+  map: Schema.Array(tables.todos.schema),
 })
 
 export const MainSection: React.FC = () => {

@@ -136,7 +136,7 @@ export const printSqliteDrizzleTables = (tables: SqliteAst.Table[]): string => {
 
           const unpackedAst = unpackNullableAst(ast).pipe(Option.getOrElse(() => ast))
 
-          if (SchemaAST.isTransform(unpackedAst)) {
+          if (SchemaAST.isTransformation(unpackedAst)) {
             const { to: to_ } = unpackedAst
             const to = SchemaAST.isRefinement(to_) ? to_.from : to_
 

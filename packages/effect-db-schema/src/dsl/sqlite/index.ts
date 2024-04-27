@@ -58,7 +58,7 @@ export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Sch
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,
 ): StructSchemaForColumns<TTableDefinition['columns']> =>
-  Schema.struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))) as any
+  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))) as any
 
 const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
   return Object.entries(columns).map(([name, column]) => {

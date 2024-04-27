@@ -74,7 +74,7 @@ const makeColDef =
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
     const schemaWithoutNull: Schema.Schema<any> = def?.schema ?? defaultSchemaForColumnType(columnType)
-    const schema = nullable === true ? Schema.nullable(schemaWithoutNull) : schemaWithoutNull
+    const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
     return {
@@ -161,7 +161,7 @@ type MakeSpecializedColDefFn = {
 const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, baseSchema) => (def?: ColumnDefinitionInput) => {
   const nullable = def?.nullable ?? false
   const schemaWithoutNull = typeof baseSchema === 'function' ? baseSchema(def?.schema as any) : baseSchema
-  const schema = nullable === true ? Schema.nullable(schemaWithoutNull) : schemaWithoutNull
+  const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
   return {
@@ -174,29 +174,25 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, baseSchema) 
 }
 
 export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedColDef('text', (customSchema) =>
-  Schema.parseJson(customSchema ?? Schema.any),
+  Schema.parseJson(customSchema ?? Schema.Any),
 )
 
 export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', Schema.Date)
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef(
   'integer',
-  Schema.transform(
-    Schema.number,
-    Schema.DateFromSelf,
-    (x) => new Date(x),
-    (x) => x.getTime(),
-  ),
+  Schema.transform(Schema.Number, Schema.DateFromSelf, {
+    decode: (ms) => new Date(ms),
+    encode: (date) => date.getTime(),
+  }),
 )
 
 export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef(
   'integer',
-  Schema.transform(
-    Schema.number,
-    Schema.boolean,
-    (_) => _ === 1,
-    (_) => (_ ? 1 : 0),
-  ),
+  Schema.transform(Schema.Number, Schema.Boolean, {
+    decode: (_) => _ === 1,
+    encode: (_) => (_ ? 1 : 0),
+  }),
 )
 
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
@@ -218,13 +214,13 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
 
   switch (columnType) {
     case 'text': {
-      return Schema.string as any as Schema.Schema<T>
+      return Schema.String as any as Schema.Schema<T>
     }
     case 'integer': {
-      return Schema.number as any as Schema.Schema<T>
+      return Schema.Number as any as Schema.Schema<T>
     }
     case 'real': {
-      return Schema.number as any as Schema.Schema<T>
+      return Schema.Number as any as Schema.Schema<T>
     }
     case 'blob': {
       return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T>

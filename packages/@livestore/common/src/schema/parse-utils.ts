@@ -8,7 +8,7 @@ import { type FromColumns, type FromTable, getDefaultValuesDecoded, type TableDe
 export const many = <TTableDef extends TableDef>(
   table: TTableDef,
 ): ((rawRows: ReadonlyArray<any>) => ReadonlyArray<FromTable.RowDecoded<TTableDef>>) => {
-  return Schema.decodeSync(Schema.array(table.schema)) as TODO
+  return Schema.decodeSync(Schema.Array(table.schema)) as TODO
 }
 
 export const first =
@@ -17,7 +17,7 @@ export const first =
     fallback?: FromColumns.InsertRowDecoded<TTableDef['sqliteDef']['columns']>,
   ) =>
   (rawRows: ReadonlyArray<any>) => {
-    const rows = Schema.decodeSync(Schema.array(table.schema))(rawRows)
+    const rows = Schema.decodeSync(Schema.Array(table.schema))(rawRows)
 
     if (rows.length === 0) {
       const schemaDefaultValues = getDefaultValuesDecoded(table)

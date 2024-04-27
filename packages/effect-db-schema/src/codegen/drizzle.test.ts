@@ -27,7 +27,7 @@ describe('drizzle sqlite printer', () => {
           default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          schema: Schema.string,
+          schema: Schema.String,
         },
         {
           _tag: 'column',
@@ -45,12 +45,10 @@ describe('drizzle sqlite printer', () => {
           default: Option.none(),
           nullable: false,
           type: { _tag: 'integer' },
-          schema: Schema.transform(
-            Schema.number,
-            Schema.boolean,
-            (_) => _ === 1,
-            (_) => (_ ? 1 : 0),
-          ),
+          schema: Schema.transform(Schema.Number, Schema.Boolean, {
+            decode: (_) => _ === 1,
+            encode: (_) => (_ ? 1 : 0),
+          }),
         },
       ],
       [
@@ -73,7 +71,7 @@ describe('drizzle sqlite printer', () => {
           default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          schema: Schema.string,
+          schema: Schema.String,
         },
         {
           _tag: 'column',
@@ -82,7 +80,7 @@ describe('drizzle sqlite printer', () => {
           default: Option.none(),
           nullable: false,
           type: { _tag: 'text' },
-          schema: Schema.string,
+          schema: Schema.String,
         },
         {
           _tag: 'column',
@@ -91,12 +89,10 @@ describe('drizzle sqlite printer', () => {
           default: Option.none(),
           nullable: false,
           type: { _tag: 'integer' },
-          schema: Schema.transform(
-            Schema.number,
-            Schema.boolean,
-            (_) => _ === 1,
-            (_) => (_ ? 1 : 0),
-          ),
+          schema: Schema.transform(Schema.Number, Schema.Boolean, {
+            decode: (_) => _ === 1,
+            encode: (_) => (_ ? 1 : 0),
+          }),
         },
       ],
       [

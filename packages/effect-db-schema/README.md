@@ -10,9 +10,9 @@
 ### High-level API
 
 ```ts
-export const User = Schema.struct({
-  id: Schema.string,
-  name: Schema.string,
+export const User = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
 })
 
 const user: User = Schema.decodeSnyc({

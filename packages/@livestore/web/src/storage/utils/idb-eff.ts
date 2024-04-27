@@ -3,7 +3,7 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
 export class IdbBinaryError extends Schema.TaggedError<IdbBinaryError>()('IDBError', {
-  error: Schema.any,
+  error: Schema.Any,
 }) {}
 
 /**
@@ -87,7 +87,7 @@ export class IdbBinary {
     const deleteRequest = indexedDB.deleteDatabase(this.dbName)
 
     deleteRequest.onsuccess = () => {
-      cb(Effect.unit)
+      cb(Effect.void)
     }
 
     deleteRequest.onerror = () => {

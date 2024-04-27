@@ -15,7 +15,7 @@ export const unsafeMainLayer = <Ctx>(original: Layer.Layer<Ctx>): MainLayer<Ctx>
     Effect.provideService(Scope.Scope, scope),
     Effect.runSync,
   )
-  return { layer, close: Scope.close(scope, Exit.unit) }
+  return { layer, close: Scope.close(scope, Exit.void) }
 }
 
 export const make = <TStaticData, Ctx>(

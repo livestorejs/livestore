@@ -86,7 +86,7 @@ Here's how writes and reads are annotated.
 ```ts
 export const completeTodo = defineMutation(
   'completeTodo',
-  Schema.struct({ id: Schema.string }),
+  Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = true WHERE id = $id`,
 )
 ```
