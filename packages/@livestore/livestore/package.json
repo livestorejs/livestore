@@ -48,18 +48,18 @@
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.22.0",
-    "@tauri-apps/api": "^1.5.3",
-    "@testing-library/react": "^14.2.2",
+    "@opentelemetry/sdk-trace-base": "1.24.0",
+    "@tauri-apps/api": "^1.5.4",
+    "@testing-library/react": "^15.0.5",
     "@types/lodash-es": "^4.17.12",
-    "@types/react": "^18.2.69",
-    "@types/react-dom": "^18.2.22",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
     "jsdom": "^24.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "typescript": "5.4.3",
-    "vite": "5.2.4",
-    "vitest": "^1.4.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "5.4.5",
+    "vite": "5.2.10",
+    "vitest": "^1.5.2"
   },
   "peerDependencies": {
     "@tauri-apps/api": "^1.4.0",

@@ -44,12 +44,12 @@
     "date-fns": "^3.6.0",
     "effect": "3.0.7",
     "effect-db-schema": "workspace:*",
-    "otel-websocket-exporter": "^0.0.27",
+    "otel-websocket-exporter": "^0.0.29",
     "pretty-bytes": "^6.1.1"
   },
   "devDependencies": {
-    "@types/node": "^20.11.30",
-    "@types/web": "^0.0.142"
+    "@types/node": "^20.12.7",
+    "@types/web": "^0.0.143"
   },
   "publishConfig": {
     "access": "public"

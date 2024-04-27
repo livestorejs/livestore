@@ -17,24 +17,24 @@
     "@livestore/expo": "latest",
     "@livestore/livestore": "workspace:*",
     "@react-native/assets-registry": "0.75.0-main",
-    "babel-preset-expo": "^10.0.1",
-    "expo": "~50.0.14",
+    "babel-preset-expo": "^10.0.2",
+    "expo": "~50.0.17",
     "expo-asset": "^9.0.2",
     "expo-crypto": "~12.8.1",
     "expo-sqlite": "~13.4.0",
     "expo-status-bar": "~1.11.1",
     "fast-text-encoding": "^1.0.6",
-    "react": "18.2.0",
-    "react-native": "0.73.6",
-    "react-native-web": "~0.19.6"
+    "react": "18.3.1",
+    "react-native": "0.74.0",
+    "react-native-web": "~0.19.11"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.3",
-    "@babel/runtime": "^7.24.1",
-    "@types/react": "~18.2.69",
+    "@babel/core": "^7.24.4",
+    "@babel/runtime": "^7.24.4",
+    "@types/react": "~18.3.1",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "eas-cli": "^7.6.0",
-    "typescript": "^5.4.3"
+    "eas-cli": "^7.8.5",
+    "typescript": "^5.4.5"
   },
   "private": true
 }
