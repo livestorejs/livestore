@@ -267,6 +267,7 @@ export class Store<
     let options: { label?: string; skipRefresh?: boolean } | undefined
 
     if (typeof firstMutationOrTxnFnOrOptions === 'function') {
+      // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
       mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
     } else if (
       firstMutationOrTxnFnOrOptions?.label !== undefined ||

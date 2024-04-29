@@ -101,13 +101,13 @@ export function casesHandled(unexpectedCase: never): never {
 
 export const shouldNeverHappen = (msg?: string): never => {
   debugger
-  throw new Error(`This should never happen ${msg}`)
+  throw new Error(`This should never happen: ${msg}`)
 }
 
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
   if (failIfFalse === false) {
     debugger
-    throw new Error(`This should never happen ${msg}`)
+    throw new Error(`This should never happen: ${msg}`)
   }
 }
 
@@ -126,7 +126,7 @@ const truncate = (str: string, length: number): string => {
 
 export const notYetImplemented = (msg?: string): never => {
   debugger
-  throw new Error(`Not yet implemented ${msg}`)
+  throw new Error(`Not yet implemented: ${msg}`)
 }
 
 export const noop = () => {}

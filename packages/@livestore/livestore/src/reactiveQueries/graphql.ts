@@ -196,6 +196,7 @@ export class LiveStoreGraphQLQuery<
           console.error(error)
         }
         debugger
+        shouldNeverHappen(`GraphQL error: ${res.errors.join('\n')}`)
       }
 
       span.end()
