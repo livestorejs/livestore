@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { dirname, join } from 'node:path'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import * as Schema from '@effect/schema/Schema'
@@ -108,8 +108,8 @@ describe('drizzle sqlite printer', () => {
     const str = printSqliteDrizzleTables([userTableAst, todoTableAst])
 
     const currentModulePath = fileURLToPath(import.meta.url)
-    const currentDirectory = dirname(currentModulePath)
-    const filePath = join(currentDirectory, './__generated__/drizzle/raw-ast.ts')
+    const currentDirectory = path.dirname(currentModulePath)
+    const filePath = path.join(currentDirectory, './__generated__/drizzle/raw-ast.ts')
     fs.writeFileSync(filePath, str)
   })
 
@@ -131,8 +131,8 @@ describe('drizzle sqlite printer', () => {
     const str = printSqliteDbSchema(dbSchema)
 
     const currentModulePath = fileURLToPath(import.meta.url)
-    const currentDirectory = dirname(currentModulePath)
-    const filePath = join(currentDirectory, './__generated__/drizzle/dsl.ts')
+    const currentDirectory = path.dirname(currentModulePath)
+    const filePath = path.join(currentDirectory, './__generated__/drizzle/dsl.ts')
     fs.writeFileSync(filePath, str)
   })
 })
