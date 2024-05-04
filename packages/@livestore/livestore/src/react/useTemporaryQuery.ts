@@ -1,7 +1,7 @@
+import type { QueryInfo } from '@livestore/common'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import type { QueryInfo } from '../query-info.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'

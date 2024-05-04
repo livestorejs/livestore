@@ -1,9 +1,9 @@
+import type { QueryInfo, QueryInfoNone } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { globalDbGraph } from '../global-state.js'
-import type { QueryInfo, QueryInfoNone } from '../query-info.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'

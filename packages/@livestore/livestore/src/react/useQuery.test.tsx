@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
@@ -26,7 +26,7 @@ describe('useQuery', () => {
     expect(result.current.length).toBe(0)
     expect(renderCount.val).toBe(1)
 
-    act(() => store.mutate(cud.todos.insert({ id: 't1', text: 'buy milk', completed: false })))
+    React.act(() => store.mutate(cud.todos.insert({ id: 't1', text: 'buy milk', completed: false })))
 
     expect(result.current.length).toBe(1)
     expect(result.current[0]!.text).toBe('buy milk')
@@ -60,7 +60,7 @@ describe('useQuery', () => {
     expect(result.current).toBe('buy milk')
     expect(renderCount.val).toBe(1)
 
-    act(() => store.mutate(cud.todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
+    React.act(() => store.mutate(cud.todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
 
     expect(result.current).toBe('buy soy milk')
     expect(renderCount.val).toBe(2)

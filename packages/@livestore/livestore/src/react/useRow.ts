@@ -1,11 +1,11 @@
+import type { QueryInfo } from '@livestore/common'
+import { mutationForQueryInfo as mutationForQueryInfo_ } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
 
 import type { DbGraph, LiveQuery } from '../index.js'
-import type { QueryInfo } from '../query-info.js'
-import { mutationForQueryInfo } from '../query-info.js'
 import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
 import { useStore } from './LiveStoreContext.js'
@@ -24,6 +24,12 @@ export type UseRowOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
 
 export type UseRowOptionsBase = {
   dbGraph?: DbGraph
+  /**
+   * TODO remove this option again once Devtools v2 has landed
+   * This option is only used right now for the devtools to pass in their custom mutation function
+   * to emit raw sql mutation events instead of the default behavior of using derived mutation definitions
+   */
+  mutationForQueryInfo?: typeof mutationForQueryInfo_
 }
 
 /**
@@ -67,7 +73,7 @@ export const useRow: {
   const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
     typeof idOrOptions === 'string' ? options_ : idOrOptions
-  const { defaultValues, dbGraph } = options ?? {}
+  const { defaultValues, dbGraph, mutationForQueryInfo = mutationForQueryInfo_ } = options ?? {}
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
   const { store } = useStore()
@@ -135,7 +141,7 @@ export const useRow: {
 
       return setState as any
     }
-  }, [query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
+  }, [mutationForQueryInfo, query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
 
   return [query$Ref.current, setState, query$]
 }

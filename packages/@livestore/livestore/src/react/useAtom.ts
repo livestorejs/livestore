@@ -1,6 +1,6 @@
+import { mutationForQueryInfo, type QueryInfoCol, type QueryInfoRow } from '@livestore/common'
 import React from 'react'
 
-import { mutationForQueryInfo, type QueryInfoCol, type QueryInfoRow } from '../query-info.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'

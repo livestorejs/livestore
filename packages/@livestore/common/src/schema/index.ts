@@ -2,6 +2,7 @@ import { isReadonlyArray } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
+import { setterForQueryInfoMutationDef } from '../query-info.js'
 import {
   type MutationDef,
   type MutationDefMap,
@@ -70,7 +71,13 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  mutations.set('livestore.RawSql', rawSqlMutation)
+  mutations.set(rawSqlMutation.name, rawSqlMutation)
+
+  // TODO only allow this for tables with setters enabled
+  for (const tableDef of tables.values()) {
+    const mutationDef = setterForQueryInfoMutationDef(tableDef)
+    mutations.set(mutationDef.name, mutationDef)
+  }
 
   return {
     _DbSchemaType: Symbol('livestore.DbSchemaType') as any,

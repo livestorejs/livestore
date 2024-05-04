@@ -1,11 +1,11 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
+import type { QueryInfoNone } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
 import { globalDbGraph } from '../global-state.js'
-import type { QueryInfoNone } from '../query-info.js'
 import { isThunk, type Thunk } from '../reactive.js'
 import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'

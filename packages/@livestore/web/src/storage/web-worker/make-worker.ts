@@ -19,16 +19,9 @@ import { BrowserWorkerRunner, Context, Effect, Layer, Schema, WorkerRunner } fro
 import * as otel from '@opentelemetry/api'
 
 import { makeMainDb } from '../../make-main-db.js'
-import { importBytesToDb } from '../utils/sqlite-utils.js'
-import {
-  configureConnection,
-  getAppDbFileName,
-  getAppDbIdbStoreName,
-  getMutationlogDbFileName,
-  getMutationlogDbIdbStoreName,
-  getOpfsDirHandle,
-} from './common.js'
-import { makePersistedSqliteIndexedDb, makePersistedSqliteOpfs } from './persisted-sqlite.js'
+import { configureConnection } from './common.js'
+import type { PersistedSqlite } from './persisted-sqlite.js'
+import { makePersistedSqlite } from './persisted-sqlite.js'
 import type { ExecutionBacklogItem, StorageType } from './schema.js'
 import { Request, UnexpectedError } from './schema.js'
 
@@ -73,49 +66,33 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           const sqlite3 = yield* $(Effect.tryPromise(() => sqlite3Promise))
 
           const makeDb = Effect.gen(function* ($) {
-            const db =
-              storage.type === 'opfs'
-                ? yield* $(
-                    makePersistedSqliteOpfs(
-                      sqlite3,
-                      storage.directory,
-                      getAppDbFileName(storage.filePrefix, schemaHash),
-                    ),
-                  )
-                : yield* $(
-                    makePersistedSqliteIndexedDb(
-                      sqlite3,
-                      storage.databaseName ?? 'livestore',
-                      getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
-                    ),
-                  )
-
-            configureConnection(db, { fkEnabled: true })
+            const db = yield* $(
+              makePersistedSqlite({
+                storage,
+                kind: 'app',
+                schemaHash,
+                sqlite3,
+                configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: true })),
+              }),
+            )
 
             const dbWasEmptyWhenOpened =
-              db.exec({ sql: 'SELECT 1 FROM sqlite_master', returnValue: 'resultRows' }).length === 0
+              db.db.exec({ sql: 'SELECT 1 FROM sqlite_master', returnValue: 'resultRows' }).length === 0
 
             return { db, dbWasEmptyWhenOpened }
           })
 
-          const makeDbLog = Effect.gen(function* ($) {
-            const dbLog =
-              storage.type === 'opfs'
-                ? yield* $(
-                    makePersistedSqliteOpfs(sqlite3, storage.directory, getMutationlogDbFileName(storage.filePrefix)),
-                  )
-                : yield* $(
-                    makePersistedSqliteIndexedDb(
-                      sqlite3,
-                      storage.databaseName ?? 'livestore',
-                      getMutationlogDbIdbStoreName(storage.storeNamePrefix),
-                    ),
-                  )
-
-            configureConnection(dbLog, { fkEnabled: false })
+          const makeDbLog = Effect.gen(function* () {
+            const dbLog = yield* makePersistedSqlite({
+              storage,
+              kind: 'mutationlog',
+              schemaHash,
+              sqlite3,
+              configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: false })),
+            })
 
             // Creates `mutation_log` table if it doesn't exist
-            dbLog.exec(sql`
+            dbLog.db.exec(sql`
       CREATE TABLE IF NOT EXISTS mutation_log (
         id TEXT PRIMARY KEY NOT NULL,
         mutation TEXT NOT NULL,
@@ -143,17 +120,13 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           Layer.unwrapScoped,
         ),
       Export: () =>
-        Effect.gen(function* ($) {
-          const {
-            dbRef: { current: db },
-          } = yield* $(WorkerCtx)
-          return db.capi.sqlite3_js_db_export(db.pointer!)
-        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+        Effect.flatMap(WorkerCtx, (_) => _.dbRef.current.export).pipe(
+          Effect.catchAllCause((error) => new UnexpectedError({ error })),
+        ),
       ExportMutationlog: () =>
-        Effect.gen(function* ($) {
-          const { dbLog } = yield* $(WorkerCtx)
-          return dbLog.capi.sqlite3_js_db_export(dbLog.pointer!)
-        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+        Effect.flatMap(WorkerCtx, (_) => _.dbLog.export).pipe(
+          Effect.catchAllCause((error) => new UnexpectedError({ error })),
+        ),
       ExecuteBulk: ({ items }) =>
         executeBulk({
           executionItems: items,
@@ -164,10 +137,19 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
         }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
       Setup: () =>
         Effect.gen(function* ($) {
-          const { dbRef, dbWasEmptyWhenOpened, dbLog, sqlite3, storage } = yield* $(WorkerCtx)
+          const { dbRef, dbWasEmptyWhenOpened, dbLog, sqlite3 } = yield* $(WorkerCtx)
+          // TODO check whether this entire code path is necessary
           if (dbWasEmptyWhenOpened === false) {
-            return dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer!)
+            shouldNeverHappen('Database was not empty when opened')
+            return yield* $(dbRef.current.export)
           }
+
+          yield* $(
+            Effect.addFinalizer((ex) => {
+              if (ex._tag === 'Success') return Effect.void
+              return dbRef.current.destroy.pipe(Effect.orDie)
+            }),
+          )
 
           const otelContext = otel.context.active()
 
@@ -178,7 +160,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           configureConnection(tmpDb, { fkEnabled: true })
           const tmpMainDb = makeMainDb(sqlite3, tmpDb)
 
-          const mainDbLog = makeMainDb(sqlite3, dbLog)
+          const mainDbLog = makeMainDb(sqlite3, dbLog.db)
 
           migrateDb({ db: tmpMainDb, otelContext, schema })
 
@@ -215,41 +197,20 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
           tmpDb.close()
 
-          if (storage.type === 'opfs') {
-            dbRef.current.close()
-
-            const opfsFileName = getAppDbFileName(storage.filePrefix, schemaHash)
-
-            yield* $(
-              Effect.promise(async () => {
-                // overwrite the OPFS file with the new data
-                const dirHandle = await getOpfsDirHandle(storage.directory)
-                const fileHandle = await dirHandle.getFileHandle(opfsFileName, { create: true })
-                const writable = await fileHandle.createWritable()
-                await writable.write(snapshotFromTmpDb)
-                await writable.close()
-              }),
-            )
-
-            dbRef.current = yield* $(makePersistedSqliteOpfs(sqlite3, storage.directory, opfsFileName))
-            configureConnection(dbRef.current, { fkEnabled: true })
-          } else if (storage.type === 'indexeddb') {
-            importBytesToDb(sqlite3, dbRef.current, snapshotFromTmpDb)
-
-            // trigger persisting the data to IndexedDB
-            dbRef.current.exec('SELECT 1')
-          }
+          yield* $(dbRef.current.import(snapshotFromTmpDb))
 
           return snapshotFromTmpDb
         }).pipe(
+          Effect.scoped,
           Effect.withPerformanceMeasure('@livestore/web:worker:Setup'),
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
+      // TODO refactor / fix
       Shutdown: ({}) =>
-        Effect.gen(function* ($) {
-          const { dbRef, dbLog } = yield* $(WorkerCtx)
-          dbRef.current.close()
-          dbLog.close()
+        Effect.gen(function* () {
+          // const { dbRef, dbLog } = yield* $(WorkerCtx)
+          // dbRef.current.close()
+          // dbLog.close()
         }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(BrowserWorkerRunner.layer))
@@ -259,10 +220,10 @@ class WorkerCtx extends Context.Tag('WorkerCtx')<
   {
     storage: StorageType
     /** NOTE We're keeping a ref here since we need to re-assign it during `Setup` */
-    dbRef: { current: SqliteWasm.Database & { capi: SqliteWasm.CAPI } }
+    dbRef: { current: PersistedSqlite }
     dbWasEmptyWhenOpened: boolean
 
-    dbLog: SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+    dbLog: PersistedSqlite
 
     sqlite3: SqliteWasm.Sqlite3Static
   }
@@ -294,8 +255,8 @@ const executeBulk = ({
 
     while (offset < executionItems.length) {
       try {
-        db.exec('BEGIN TRANSACTION') // Start the transaction
-        dbLog.exec('BEGIN TRANSACTION') // Start the transaction
+        db.db.exec('BEGIN TRANSACTION') // Start the transaction
+        dbLog.db.exec('BEGIN TRANSACTION') // Start the transaction
 
         batchItems = executionItems.slice(offset, offset + 50)
         offset += 50
@@ -305,7 +266,7 @@ const executeBulk = ({
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item
-            db.exec({ sql: query, bind: bindValues })
+            db.db.exec({ sql: query, bind: bindValues })
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
@@ -318,7 +279,7 @@ const executeBulk = ({
 
             for (const { statementSql, bindValues } of execArgsArr) {
               try {
-                db.exec({ sql: statementSql, bind: bindValues })
+                db.db.exec({ sql: statementSql, bind: bindValues })
               } catch (e) {
                 console.error('Error executing query', e, statementSql, bindValues)
                 debugger
@@ -337,7 +298,7 @@ const executeBulk = ({
               const argsJson = JSON.stringify(item.mutationEventEncoded.args ?? {})
 
               try {
-                dbLog.exec({
+                dbLog.db.exec({
                   sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
                   bind: [
                     item.mutationEventEncoded.id,
@@ -368,12 +329,12 @@ const executeBulk = ({
           }
         }
 
-        db.exec('COMMIT') // Commit the transaction
-        dbLog.exec('COMMIT') // Commit the transaction
+        db.db.exec('COMMIT') // Commit the transaction
+        dbLog.db.exec('COMMIT') // Commit the transaction
       } catch (error) {
         try {
-          db.exec('ROLLBACK') // Rollback in case of an error
-          dbLog.exec('ROLLBACK') // Rollback in case of an error
+          db.db.exec('ROLLBACK') // Rollback in case of an error
+          dbLog.db.exec('ROLLBACK') // Rollback in case of an error
         } catch (e) {
           console.error('Error rolling back transaction', e)
         }

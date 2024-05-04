@@ -1,12 +1,11 @@
-import { sql } from '@livestore/common'
+import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
+import { migrateTable, sql } from '@livestore/common'
 import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import { migrateTable } from './migrations.js'
-import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from './query-info.js'
 import type { Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQueries/base-class.js'
 import { computed } from './reactiveQueries/js.js'
@@ -186,7 +185,7 @@ const makeExecBeforeFirstRun =
       )
       if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
         migrateTable({
-          db: store.db,
+          db: store.db.mainDb,
           tableAst: table.sqliteDef.ast,
           otelContext,
           schemaHash,

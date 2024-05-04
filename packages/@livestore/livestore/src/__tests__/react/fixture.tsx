@@ -33,7 +33,20 @@ export const app = DbSchema.table('app', {
   filter: DbSchema.text({ default: 'all', nullable: false }),
 })
 
-export const tables = { todos, app }
+const userInfo = DbSchema.table('UserInfo', {
+  username: DbSchema.text({ default: '' }),
+  text: DbSchema.text({ default: '' }),
+})
+
+const AppRouterSchema = DbSchema.table(
+  'AppRouter',
+  {
+    currentTaskId: DbSchema.text({ default: null, nullable: true }),
+  },
+  { isSingleton: true },
+)
+
+export const tables = { todos, app, userInfo, AppRouterSchema }
 export const schema = makeSchema({ tables })
 
 export const parseTodos = ParseUtils.many(todos)
@@ -49,11 +62,6 @@ export const makeTodoMvc = async ({
   useGlobalDbGraph?: boolean
   strictMode?: boolean
 } = {}) => {
-  const AppComponentSchema = DbSchema.table('UserInfo', {
-    username: DbSchema.text({ default: '' }),
-    text: DbSchema.text({ default: '' }),
-  })
-
   const dbGraph = useGlobalDbGraph ? globalDbGraph : makeDbGraph()
 
   const makeRenderCount = () => {
@@ -98,7 +106,8 @@ export const makeTodoMvc = async ({
   return {
     [Symbol.dispose]: () => store.destroy(),
     wrapper,
-    AppComponentSchema,
+    AppComponentSchema: userInfo,
+    AppRouterSchema,
     store,
     dbGraph,
     cud,

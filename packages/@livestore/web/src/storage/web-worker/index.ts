@@ -105,7 +105,11 @@ export const createStorage =
           await Queue.offer(executionBacklogQueue, { _tag: 'mutate', mutationEventEncoded }).pipe(Effect.runPromise)
         },
 
-        getMutationLogData: () => runInWorker(new WorkerSchema.ExportMutationlog()).pipe(Effect.runPromise),
+        getMutationLogData: () =>
+          runInWorker(new WorkerSchema.ExportMutationlog()).pipe(
+            Effect.timeoutDieMsg({ error: 'Timed out after 10sec', duration: 10_000 }),
+            Effect.runPromise,
+          ),
 
         shutdown: () =>
           Effect.gen(function* ($) {

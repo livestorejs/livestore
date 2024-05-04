@@ -1,7 +1,8 @@
+import { mutationForQueryInfo } from '@livestore/common'
 import { ReadonlyRecord } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { act, render, renderHook } from '@testing-library/react'
+import { render, renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
@@ -9,7 +10,6 @@ import type { Todo } from '../__tests__/react/fixture.js'
 import { makeTodoMvc, todos } from '../__tests__/react/fixture.js'
 import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
 import * as LiveStore from '../index.js'
-import { mutationForQueryInfo } from '../query-info.js'
 import * as LiveStoreReact from './index.js'
 import type { StackInfo } from './utils/stack-info.js'
 
@@ -36,7 +36,7 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount.val).toBe(1)
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
@@ -72,7 +72,7 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount.val).toBe(1)
 
-    act(() => result.current.setState.username('username_u1_hello'))
+    React.act(() => result.current.setState.username('username_u1_hello'))
 
     expect(result.current.state.id).toBe('u1')
     expect(result.current.state.username).toBe('username_u1_hello')
@@ -100,7 +100,7 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount.val).toBe(1)
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`UPDATE UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`,
@@ -115,17 +115,9 @@ describe.concurrent('useRow', () => {
 
   it('should work for a larger app', async () => {
     using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
-    const { wrapper, store, dbGraph, makeRenderCount } = inputs
+    const { wrapper, store, dbGraph, makeRenderCount, AppRouterSchema } = inputs
 
     const allTodos$ = LiveStore.querySQL<Todo[]>(`select * from todos`, { label: 'allTodos', dbGraph })
-
-    const AppRouterSchema = LiveStore.DbSchema.table(
-      'AppRouter',
-      {
-        currentTaskId: LiveStore.DbSchema.text({ default: null, nullable: true }),
-      },
-      { isSingleton: true },
-    )
 
     const appRouterRenderCount = makeRenderCount()
     let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
@@ -168,7 +160,7 @@ describe.concurrent('useRow', () => {
 
     expect(appRouterRenderCount.val).toBe(1)
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
@@ -179,7 +171,7 @@ describe.concurrent('useRow', () => {
     expect(appRouterRenderCount.val).toBe(1)
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
 
-    act(() => globalSetState!.currentTaskId('t1'))
+    React.act(() => globalSetState!.currentTaskId('t1'))
 
     expect(appRouterRenderCount.val).toBe(2)
     expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
@@ -188,7 +180,7 @@ describe.concurrent('useRow', () => {
 
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
@@ -233,7 +225,7 @@ describe.concurrent('useRow', () => {
       { wrapper, initialProps: 'u1' },
     )
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO UserInfo (id, username, text) VALUES ('u2', 'username_u2', 'milk')`,
@@ -289,7 +281,7 @@ describe.concurrent('useRow', () => {
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
-      act(() =>
+      React.act(() =>
         store.mutate(
           LiveStore.rawSqlMutation({
             sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
@@ -340,14 +332,6 @@ describe.concurrent('useRow', () => {
                 PRAGMA temp_store='MEMORY';
                 PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
               ",
-                },
-              },
-              {
-                "_name": "sql-in-memory-select",
-                "attributes": {
-                  "sql.cached": false,
-                  "sql.query": "SELECT schemaHash FROM __livestore_schema WHERE tableName = 'UserInfo'",
-                  "sql.rowsCount": 0,
                 },
               },
               {
@@ -484,14 +468,6 @@ describe.concurrent('useRow', () => {
                 PRAGMA temp_store='MEMORY';
                 PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
               ",
-                },
-              },
-              {
-                "_name": "sql-in-memory-select",
-                "attributes": {
-                  "sql.cached": false,
-                  "sql.query": "SELECT schemaHash FROM __livestore_schema WHERE tableName = 'UserInfo'",
-                  "sql.rowsCount": 0,
                 },
               },
               {
