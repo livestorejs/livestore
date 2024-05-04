@@ -189,6 +189,7 @@ const makeExecBeforeFirstRun =
           tableAst: table.sqliteDef.ast,
           otelContext,
           schemaHash,
+          behaviour: 'create-if-not-exists',
         })
       }
 

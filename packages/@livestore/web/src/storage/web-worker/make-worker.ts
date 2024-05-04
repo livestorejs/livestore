@@ -77,7 +77,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
             )
 
             const dbWasEmptyWhenOpened =
-              db.db.exec({ sql: 'SELECT 1 FROM sqlite_master', returnValue: 'resultRows' }).length === 0
+              db.dbRef.current.exec({ sql: 'SELECT 1 FROM sqlite_master', returnValue: 'resultRows' }).length === 0
 
             return { db, dbWasEmptyWhenOpened }
           })
@@ -92,7 +92,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
             })
 
             // Creates `mutation_log` table if it doesn't exist
-            dbLog.db.exec(sql`
+            dbLog.dbRef.current.exec(sql`
       CREATE TABLE IF NOT EXISTS mutation_log (
         id TEXT PRIMARY KEY NOT NULL,
         mutation TEXT NOT NULL,
@@ -110,7 +110,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           return Layer.succeed(WorkerCtx, {
             storage,
             sqlite3,
-            dbRef: { current: db },
+            db,
             dbWasEmptyWhenOpened,
             dbLog,
           })
@@ -120,7 +120,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           Layer.unwrapScoped,
         ),
       Export: () =>
-        Effect.flatMap(WorkerCtx, (_) => _.dbRef.current.export).pipe(
+        Effect.flatMap(WorkerCtx, (_) => _.db.export).pipe(
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExportMutationlog: () =>
@@ -137,17 +137,17 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
         }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
       Setup: () =>
         Effect.gen(function* ($) {
-          const { dbRef, dbWasEmptyWhenOpened, dbLog, sqlite3 } = yield* $(WorkerCtx)
+          const { db, dbWasEmptyWhenOpened, dbLog, sqlite3 } = yield* $(WorkerCtx)
           // TODO check whether this entire code path is necessary
           if (dbWasEmptyWhenOpened === false) {
             shouldNeverHappen('Database was not empty when opened')
-            return yield* $(dbRef.current.export)
+            return yield* $(db.export)
           }
 
           yield* $(
             Effect.addFinalizer((ex) => {
               if (ex._tag === 'Success') return Effect.void
-              return dbRef.current.destroy.pipe(Effect.orDie)
+              return db.destroy.pipe(Effect.orDie)
             }),
           )
 
@@ -160,7 +160,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           configureConnection(tmpDb, { fkEnabled: true })
           const tmpMainDb = makeMainDb(sqlite3, tmpDb)
 
-          const mainDbLog = makeMainDb(sqlite3, dbLog.db)
+          const mainDbLog = makeMainDb(sqlite3, dbLog.dbRef.current)
 
           migrateDb({ db: tmpMainDb, otelContext, schema })
 
@@ -197,7 +197,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
           tmpDb.close()
 
-          yield* $(dbRef.current.import(snapshotFromTmpDb))
+          yield* $(db.import(snapshotFromTmpDb))
 
           return snapshotFromTmpDb
         }).pipe(
@@ -220,7 +220,7 @@ class WorkerCtx extends Context.Tag('WorkerCtx')<
   {
     storage: StorageType
     /** NOTE We're keeping a ref here since we need to re-assign it during `Setup` */
-    dbRef: { current: PersistedSqlite }
+    db: PersistedSqlite
     dbWasEmptyWhenOpened: boolean
 
     dbLog: PersistedSqlite
@@ -244,10 +244,7 @@ const executeBulk = ({
 }) =>
   Effect.gen(function* ($) {
     let batchItems: ExecutionBacklogItem[] = []
-    const {
-      dbRef: { current: db },
-      dbLog,
-    } = yield* $(WorkerCtx)
+    const { db, dbLog } = yield* $(WorkerCtx)
 
     const createdAtMemo = memoize(() => new Date().toISOString())
 
@@ -255,8 +252,8 @@ const executeBulk = ({
 
     while (offset < executionItems.length) {
       try {
-        db.db.exec('BEGIN TRANSACTION') // Start the transaction
-        dbLog.db.exec('BEGIN TRANSACTION') // Start the transaction
+        db.dbRef.current.exec('BEGIN TRANSACTION') // Start the transaction
+        dbLog.dbRef.current.exec('BEGIN TRANSACTION') // Start the transaction
 
         batchItems = executionItems.slice(offset, offset + 50)
         offset += 50
@@ -266,7 +263,7 @@ const executeBulk = ({
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item
-            db.db.exec({ sql: query, bind: bindValues })
+            db.dbRef.current.exec({ sql: query, bind: bindValues })
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
@@ -279,7 +276,7 @@ const executeBulk = ({
 
             for (const { statementSql, bindValues } of execArgsArr) {
               try {
-                db.db.exec({ sql: statementSql, bind: bindValues })
+                db.dbRef.current.exec({ sql: statementSql, bind: bindValues })
               } catch (e) {
                 console.error('Error executing query', e, statementSql, bindValues)
                 debugger
@@ -298,7 +295,7 @@ const executeBulk = ({
               const argsJson = JSON.stringify(item.mutationEventEncoded.args ?? {})
 
               try {
-                dbLog.db.exec({
+                dbLog.dbRef.current.exec({
                   sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
                   bind: [
                     item.mutationEventEncoded.id,
@@ -329,12 +326,12 @@ const executeBulk = ({
           }
         }
 
-        db.db.exec('COMMIT') // Commit the transaction
-        dbLog.db.exec('COMMIT') // Commit the transaction
+        db.dbRef.current.exec('COMMIT') // Commit the transaction
+        dbLog.dbRef.current.exec('COMMIT') // Commit the transaction
       } catch (error) {
         try {
-          db.db.exec('ROLLBACK') // Rollback in case of an error
-          dbLog.db.exec('ROLLBACK') // Rollback in case of an error
+          db.dbRef.current.exec('ROLLBACK') // Rollback in case of an error
+          dbLog.dbRef.current.exec('ROLLBACK') // Rollback in case of an error
         } catch (e) {
           console.error('Error rolling back transaction', e)
         }

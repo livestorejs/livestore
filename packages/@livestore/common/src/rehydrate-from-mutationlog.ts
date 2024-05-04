@@ -35,11 +35,20 @@ export const rehydrateFromMutationLog = ({
         throw new Error(`Schema hash mismatch for mutation ${row.mutation}`)
       }
 
-      const argsDecoded = Schema.decodeUnknownSync(Schema.parseJson(mutationDef.schema))(row.args_json)
+      const argsDecodedEither = Schema.decodeUnknownEither(Schema.parseJson(mutationDef.schema))(row.args_json)
+      if (argsDecodedEither._tag === 'Left') {
+        return shouldNeverHappen(`\
+There was an error decoding the persisted mutation event args for mutation "${row.mutation}".
+This likely means the schema has changed in an incompatible way.
+
+Error: ${argsDecodedEither.left}
+        `)
+      }
+
       const mutationEventDecoded = {
         id: row.id,
         mutation: row.mutation,
-        args: argsDecoded,
+        args: argsDecodedEither.right,
       }
       // const argsEncoded = JSON.parse(row.args_json)
       // const mutationSqlRes =

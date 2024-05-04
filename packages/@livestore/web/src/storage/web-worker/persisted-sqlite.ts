@@ -15,7 +15,8 @@ import {
 import type { StorageType } from './schema.js'
 
 export interface PersistedSqlite {
-  db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+  /** NOTE the db instance is wrapped in a ref since it can be re-created */
+  dbRef: { current: SqliteWasm.Database & { capi: SqliteWasm.CAPI } }
   destroy: Effect.Effect<void, PersistedSqliteError>
   export: Effect.Effect<Uint8Array>
   import: (data: Uint8Array) => Effect.Effect<void, PersistedSqliteError>
@@ -68,22 +69,22 @@ export const makePersistedSqliteOpfs = (
       throw new Error('directory should not end with /')
     }
     const fullPath = directory ? `${directory}/${fileName}` : fileName
-    let db = new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-    db.capi = sqlite3.capi
+    const dbRef = { current: new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI } }
+    dbRef.current.capi = sqlite3.capi
 
-    yield* $(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+    yield* $(Effect.addFinalizer(() => Effect.sync(() => dbRef.current.close())))
 
-    yield* $(configure(db))
+    yield* $(configure(dbRef.current))
 
     const destroy = deletePersistedSqliteOpfs(directory, fileName).pipe(
       Effect.catchAllCause((error) => new PersistedSqliteError({ error })),
     )
 
-    const export_ = Effect.sync(() => db.capi.sqlite3_js_db_export(db.pointer!))
+    const export_ = Effect.sync(() => dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer!))
 
     const import_ = (data: Uint8Array) =>
       Effect.gen(function* ($) {
-        db.close()
+        dbRef.current.close()
 
         yield* Effect.promise(async () => {
           // overwrite the OPFS file with the new data
@@ -94,13 +95,13 @@ export const makePersistedSqliteOpfs = (
           await writable.close()
         })
 
-        db = new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-        db.capi = sqlite3.capi
+        dbRef.current = new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+        dbRef.current.capi = sqlite3.capi
 
-        yield* $(configure(db))
+        yield* $(configure(dbRef.current))
       })
 
-    return { db, destroy, export: export_, import: import_ }
+    return { dbRef, destroy, export: export_, import: import_ }
   }).pipe(Effect.mapError((error) => new PersistedSqliteError({ error })))
 
 export const makePersistedSqliteIndexedDb = (
@@ -197,7 +198,7 @@ export const makePersistedSqliteIndexedDb = (
         persist()
       })
 
-    return { db, destroy, export: export_, import: import_ }
+    return { dbRef: { current: db }, destroy, export: export_, import: import_ }
   }).pipe(Effect.mapError((error) => new PersistedSqliteError({ error })))
 
 const opfsDeleteFile = (absFilePath: string) =>
