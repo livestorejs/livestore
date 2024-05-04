@@ -6,7 +6,7 @@ import { table } from './table-def.js'
 
 export const SCHEMA_META_TABLE = '__livestore_schema'
 
-const schemaMetaTable = table(
+export const schemaMetaTable = table(
   SCHEMA_META_TABLE,
   {
     tableName: SqliteDsl.text({ primaryKey: true }),
@@ -21,13 +21,11 @@ export type SchemaMetaRow = FromTable.RowDecoded<typeof schemaMetaTable>
 
 export const SCHEMA_MUTATIONS_META_TABLE = '__livestore_schema_mutations'
 
-const schemaMutationsMetaTable = table(
+export const schemaMutationsMetaTable = table(
   SCHEMA_MUTATIONS_META_TABLE,
   {
     mutationName: SqliteDsl.text({ primaryKey: true }),
     schemaHash: SqliteDsl.integer({ nullable: false }),
-    // TODO remove jsonSchemaStr again
-    jsonSchemaStr: SqliteDsl.text({ nullable: false }),
     /** ISO date format */
     updatedAt: SqliteDsl.text({ nullable: false }),
   },

@@ -1,9 +1,10 @@
 import type { MainDatabase } from '@livestore/common'
-import { sql } from '@livestore/common'
+import { migrateTable, sql } from '@livestore/common'
 import type { LiveStoreSchema, MutationDef, SchemaMutationsMetaRow } from '@livestore/common/schema'
-import { SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
+import { SCHEMA_MUTATIONS_META_TABLE, schemaMutationsMetaTable } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import { JSONSchema, Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
+import * as otel from '@opentelemetry/api'
 
 import { dbExecute, dbSelect } from './common.js'
 
@@ -36,14 +37,10 @@ export const validateMutationDef = (
   registeredMutationDefInfo: MutationDefInfo | undefined,
 ) => {
   const schemaHash = Schema.hash(mutationDef.schema)
-  console.log(mutationDef.schema.ast)
-  const makeJsonSchemaStr = () =>
-    JSON.stringify(JSONSchema.make(Schema.make(SchemaAST.typeAST(mutationDef.schema.ast))))
 
   if (registeredMutationDefInfo === undefined) {
     schemaManager.setMutationDefInfo({
       schemaHash,
-      jsonSchemaStr: makeJsonSchemaStr(),
       mutationName: mutationDef.name,
     })
 
@@ -52,19 +49,15 @@ export const validateMutationDef = (
 
   if (schemaHash === registeredMutationDefInfo.schemaHash) return
 
-  // Alternatively instead of first re-creating an Effect schema from the JSONSchema and then doing the sub-type check,
-  // we could also consider doing the sub-type check directly on the JSONSchema.
-  // (Which would require a TS implementation of https://github.com/IBM/jsonsubschema)
-  const jsonSchemaDefFromMgmtStore = Schema.decodeJSONSchema(JSON.parse(registeredMutationDefInfo.jsonSchemaStr))
-  const newSchemaIsCompatibleWithOldSchema = Schema.isSubType(jsonSchemaDefFromMgmtStore, mutationDef.schema)
+  // TODO bring back some form of schema compatibility check (see https://github.com/livestorejs/livestore/issues/69)
+  // const newSchemaIsCompatibleWithOldSchema = Schema.isSubType(jsonSchemaDefFromMgmtStore, mutationDef.schema)
 
-  if (!newSchemaIsCompatibleWithOldSchema) {
-    shouldNeverHappen(`Schema for mutation ${mutationDef.name} has changed in an incompatible way`)
-  }
+  // if (!newSchemaIsCompatibleWithOldSchema) {
+  //   shouldNeverHappen(`Schema for mutation ${mutationDef.name} has changed in an incompatible way`)
+  // }
 
   schemaManager.setMutationDefInfo({
     schemaHash,
-    jsonSchemaStr: makeJsonSchemaStr(),
     mutationName: mutationDef.name,
   })
 }
@@ -78,16 +71,15 @@ interface SchemaManager {
 type MutationDefInfo = {
   mutationName: string
   schemaHash: number
-  jsonSchemaStr: string
 }
 
 export const makeSchemaManager = (db: MainDatabase): SchemaManager => {
-  // TODO reuse `migrateTable` from `migrations.ts`
-  dbExecute(
+  migrateTable({
     db,
-    // TODO use schema migration definition from schema.ts instead
-    sql`create table if not exists ${SCHEMA_MUTATIONS_META_TABLE} (mutationName text primary key, schemaHash text, jsonSchemaStr text, updatedAt text);`,
-  )
+    otelContext: otel.context.active(),
+    tableAst: schemaMutationsMetaTable.sqliteDef.ast,
+    behaviour: 'create-if-not-exists',
+  })
 
   return {
     getMutationDefInfos: () => {
@@ -101,11 +93,10 @@ export const makeSchemaManager = (db: MainDatabase): SchemaManager => {
     setMutationDefInfo: (info) => {
       dbExecute(
         db,
-        sql`INSERT OR REPLACE INTO ${SCHEMA_MUTATIONS_META_TABLE} (mutationName, schemaHash, jsonSchemaStr, updatedAt) VALUES ($mutationName, $schemaHash, $jsonSchemaStr, $updatedAt)`,
+        sql`INSERT OR REPLACE INTO ${SCHEMA_MUTATIONS_META_TABLE} (mutationName, schemaHash, updatedAt) VALUES ($mutationName, $schemaHash, $updatedAt)`,
         {
           mutationName: info.mutationName,
           schemaHash: info.schemaHash,
-          jsonSchemaStr: info.jsonSchemaStr,
           updatedAt: new Date().toISOString(),
         },
       )

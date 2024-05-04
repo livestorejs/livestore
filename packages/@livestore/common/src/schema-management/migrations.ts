@@ -6,7 +6,7 @@ import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 import type { MainDatabase } from '../database.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { SchemaMetaRow } from '../schema/system-tables.js'
-import { SCHEMA_META_TABLE, systemTables } from '../schema/system-tables.js'
+import { SCHEMA_META_TABLE, schemaMetaTable, systemTables } from '../schema/system-tables.js'
 import { sql } from '../util.js'
 import { dbExecute, dbSelect } from './common.js'
 import { makeSchemaManager, validateSchema } from './validate-mutation-defs.js'
@@ -23,13 +23,14 @@ export const migrateDb = ({
   otelContext: otel.Context
   schema: LiveStoreSchema
 }) => {
-  validateSchema(schema, makeSchemaManager(db))
-
-  dbExecute(
+  migrateTable({
     db,
-    // TODO use schema migration definition from schema.ts instead
-    sql`create table if not exists ${SCHEMA_META_TABLE} (tableName text primary key, schemaHash text, updatedAt text) strict`,
-  )
+    otelContext,
+    tableAst: schemaMetaTable.sqliteDef.ast,
+    behaviour: 'create-if-not-exists',
+  })
+
+  validateSchema(schema, makeSchemaManager(db))
 
   const schemaMetaRows = dbSelect<SchemaMetaRow>(db, sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
 
@@ -57,7 +58,7 @@ export const migrateDb = ({
         `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
       )
 
-      migrateTable({ db, tableAst, otelContext, schemaHash })
+      migrateTable({ db, tableAst, otelContext, schemaHash, behaviour: 'drop-and-recreate' })
     }
   }
 }
@@ -66,20 +67,26 @@ export const migrateTable = ({
   db,
   tableAst,
   // otelContext,
-  schemaHash,
+  schemaHash = SqliteAst.hash(tableAst),
+  behaviour,
 }: {
   db: MainDatabase
   tableAst: SqliteAst.Table
   otelContext: otel.Context
-  schemaHash: number
+  schemaHash?: number
+  behaviour: 'drop-and-recreate' | 'create-if-not-exists'
 }) => {
   console.log(`Migrating table '${tableAst.name}'...`)
   const tableName = tableAst.name
   const columnSpec = makeColumnSpec(tableAst)
 
-  // TODO need to possibly handle cascading deletes due to foreign keys
-  dbExecute(db, sql`drop table if exists ${tableName}`)
-  dbExecute(db, sql`create table if not exists ${tableName} (${columnSpec}) strict`)
+  if (behaviour === 'drop-and-recreate') {
+    // TODO need to possibly handle cascading deletes due to foreign keys
+    dbExecute(db, sql`drop table if exists ${tableName}`)
+    dbExecute(db, sql`create table if not exists ${tableName} (${columnSpec}) strict`)
+  } else if (behaviour === 'create-if-not-exists') {
+    dbExecute(db, sql`create table if not exists ${tableName} (${columnSpec}) strict`)
+  }
 
   for (const index of tableAst.indexes) {
     dbExecute(db, createIndexFromDefinition(tableName, index))
