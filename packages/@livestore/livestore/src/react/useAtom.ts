@@ -1,4 +1,5 @@
-import { mutationForQueryInfo, type QueryInfoCol, type QueryInfoRow } from '@livestore/common'
+import { type QueryInfoCol, type QueryInfoRow, updateMutationForQueryInfo } from '@livestore/common'
+import type { DbSchema } from '@livestore/common/schema'
 import React from 'react'
 
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
@@ -6,7 +7,14 @@ import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 import type { Dispatch, SetStateAction } from './useRow.js'
 
-export const useAtom = <TQuery extends LiveQuery<any, QueryInfoRow<any> | QueryInfoCol<any, any>>>(
+export const useAtom = <
+  TQuery extends LiveQuery<any, QueryInfoRow<TTableDef> | QueryInfoCol<TTableDef, any>>,
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { enableSetters: true }
+  >,
+>(
   query$: TQuery,
 ): [value: TQuery['__result!'], setValue: Dispatch<SetStateAction<Partial<TQuery['__result!']>>>] => {
   const query$Ref = useQueryRef(query$)
@@ -18,9 +26,9 @@ export const useAtom = <TQuery extends LiveQuery<any, QueryInfoRow<any> | QueryI
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
 
       if (query$.queryInfo._tag === 'Row' && query$.queryInfo.table.isSingleColumn) {
-        store.mutate(mutationForQueryInfo(query$.queryInfo!, { value: newValue }))
+        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue } as any))
       } else {
-        store.mutate(mutationForQueryInfo(query$.queryInfo!, newValue))
+        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, newValue))
       }
     }
   }, [query$.queryInfo, query$Ref, store])

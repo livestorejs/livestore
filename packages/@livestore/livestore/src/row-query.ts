@@ -1,6 +1,7 @@
-import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
-import { migrateTable, sql } from '@livestore/common'
-import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
+import type { MainDatabase, QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
+import { makeCuudCreateMutationDef as makeCuudCreateMutationDef_, migrateTable, sql } from '@livestore/common'
+import type { DbSchema } from '@livestore/common/schema'
+import { SCHEMA_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -9,7 +10,6 @@ import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 import type { Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQueries/base-class.js'
 import { computed } from './reactiveQueries/js.js'
-// import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { RefreshReason, Store } from './store.js'
 import type { GetValForKey } from './utils/util.js'
@@ -18,6 +18,12 @@ export type RowQueryOptions = {
   otelContext?: otel.Context
   skipInsertDefaultRow?: boolean
   dbGraph?: DbGraph
+  /**
+   * TODO remove this option again once Devtools v2 has landed
+   * This option is only used right now for the devtools to pass in their custom mutation function
+   * to emit raw sql mutation events instead of the default behavior of using derived mutation definitions
+   */
+  __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
 }
 
 export type RowQueryOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
@@ -77,9 +83,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     genQueryString: queryStr,
     queriedTables: new Set([componentTableName]),
     dbGraph: options?.dbGraph,
-    // TODO remove this once the LiveStore Devtools are no longer relying on it
-    // as the defaults rows are now already being inserted during store initialization
-    // and the tables need to be registered during initialization
+    // While this code-path is not needed for singleton tables, it's still needed for `useRow` with non-existing rows for a given ID
     execBeforeFirstRun: makeExecBeforeFirstRun({
       otelContext: options?.otelContext,
       table,
@@ -87,6 +91,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
       defaultValues,
       id,
       skipInsertDefaultRow: options?.skipInsertDefaultRow,
+      __makeCuudCreateMutationDef: options?.__makeCuudCreateMutationDef,
     }),
     map: (results): RowResult<TTableDef> => {
       if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
@@ -132,32 +137,6 @@ export const deriveColQuery: {
   }) as any
 }
 
-const insertRowWithDefaultValuesOrIgnore = ({
-  store,
-  id,
-  table,
-  otelContext,
-  defaultValues: explicitDefaultValues,
-}: {
-  store: Store
-  id: string
-  table: DbSchema.TableDef
-  otelContext: otel.Context
-  defaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
-}) => {
-  const defaultValues = DbSchema.getDefaultValuesEncoded(table, explicitDefaultValues)
-
-  const defaultColumnNames = [...Object.keys(defaultValues), 'id']
-  const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')
-
-  const tableName = table.sqliteDef.name
-  const insertQuery = sql`insert into ${tableName} (${defaultColumnNames.join(
-    ', ',
-  )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
-
-  store.execute(insertQuery, { ...defaultValues, id }, new Set([tableName]), otelContext)
-}
-
 const makeExecBeforeFirstRun =
   ({
     id,
@@ -166,6 +145,7 @@ const makeExecBeforeFirstRun =
     otelContext: otelContext_,
     table,
     componentTableName,
+    __makeCuudCreateMutationDef,
   }: {
     id?: string
     defaultValues?: any
@@ -173,19 +153,34 @@ const makeExecBeforeFirstRun =
     otelContext?: otel.Context
     componentTableName: string
     table: DbSchema.TableDef
+    __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
   }) =>
   ({ store }: DbContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
 
-    // TODO find a better solution for this
+    // TODO we can remove this codepath again when Devtools v2 has landed
     if (store.tableRefs[componentTableName] === undefined) {
       const schemaHash = SqliteAst.hash(table.sqliteDef.ast)
       const res = store.mainDbWrapper.select<{ schemaHash: number }>(
         sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
       )
       if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
+        const db = {
+          ...store.db.mainDb,
+          prepare: (query) => {
+            const mainStmt = store.db.mainDb.prepare(query)
+            return {
+              ...mainStmt,
+              execute: (bindValues) => {
+                mainStmt.execute(bindValues)
+                store.db.storageDb.execute(query, bindValues, undefined)
+              },
+            }
+          },
+        } satisfies MainDatabase
+
         migrateTable({
-          db: store.db.mainDb,
+          db,
           tableAst: table.sqliteDef.ast,
           otelContext,
           schemaHash,
@@ -203,13 +198,36 @@ const makeExecBeforeFirstRun =
       store.tableRefs[componentTableName] = existingTableRefFromGraph ?? store.makeTableRef(componentTableName)
     }
 
-    if (skipInsertDefaultRow !== true) {
+    if (skipInsertDefaultRow !== true && table.options.isSingleton === false) {
       insertRowWithDefaultValuesOrIgnore({
         store,
-        id: id ?? 'singleton',
+        id: id!,
         table,
         otelContext,
-        defaultValues,
+        explicitDefaultValues: defaultValues,
+        __makeCuudCreateMutationDef,
       })
     }
   }
+
+const insertRowWithDefaultValuesOrIgnore = ({
+  store,
+  id,
+  table,
+  otelContext,
+  explicitDefaultValues,
+  __makeCuudCreateMutationDef: makeCuudCreateMutationDef = makeCuudCreateMutationDef_,
+}: {
+  store: Store
+  id: string
+  table: DbSchema.TableDef
+  otelContext: otel.Context
+  explicitDefaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
+  __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
+}) => {
+  const rowExists = store.mainDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
+  if (rowExists) return
+
+  const mutationDef = makeCuudCreateMutationDef(table)
+  store.mutateWithoutRefresh(mutationDef({ id, explicitDefaultValues }), otelContext)
+}

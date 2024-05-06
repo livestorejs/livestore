@@ -38,6 +38,8 @@
     "**/flake.lock": true
   },
   "search.exclude": {
+    "**/.expo": true,
+    "**/build": true,
     "**/.vercel": true,
     "**/.direnv": true,
     "**/dist": true,

@@ -1,4 +1,4 @@
-import { mutationForQueryInfo } from '@livestore/common'
+import { updateMutationForQueryInfo } from '@livestore/common'
 import { ReadonlyRecord } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
@@ -185,7 +185,10 @@ describe.concurrent('useRow', () => {
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
         }),
-        mutationForQueryInfo({ _tag: 'Col', table: AppRouterSchema, column: 'currentTaskId', id: 'singleton' }, 't2'),
+        updateMutationForQueryInfo(
+          { _tag: 'Col', table: AppRouterSchema, column: 'currentTaskId', id: 'singleton' },
+          't2',
+        ),
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0)`,
         }),
@@ -335,6 +338,22 @@ describe.concurrent('useRow', () => {
                 },
               },
               {
+                "_name": "sql-in-memory-select",
+                "attributes": {
+                  "sql.cached": false,
+                  "sql.query": "select 1 from UserInfo where id = 'u1'",
+                  "sql.rowsCount": 0,
+                },
+              },
+              {
+                "_name": "sql-in-memory-select",
+                "attributes": {
+                  "sql.cached": false,
+                  "sql.query": "select 1 from UserInfo where id = 'u2'",
+                  "sql.rowsCount": 1,
+                },
+              },
+              {
                 "_name": "LiveStore:mutations",
                 "children": [
                   {
@@ -399,10 +418,22 @@ describe.concurrent('useRow', () => {
                     },
                     "children": [
                       {
-                        "_name": "livestore.in-memory-db:execute",
+                        "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
-                          "sql.query": "insert into UserInfo (username, text, id) select $username, $text, $id where not exists(select 1 from UserInfo where id = 'u1')",
+                          "livestore.args": "{
+            "id": "u1",
+            "explicitDefaultValues": {}
+          }",
+                          "livestore.mutation": "CUUD_Create_UserInfo",
                         },
+                        "children": [
+                          {
+                            "_name": "livestore.in-memory-db:execute",
+                            "attributes": {
+                              "sql.query": "insert into UserInfo (username, text, id) values ($username, $text, $id)",
+                            },
+                          },
+                        ],
                       },
                       {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
@@ -471,6 +502,22 @@ describe.concurrent('useRow', () => {
                 },
               },
               {
+                "_name": "sql-in-memory-select",
+                "attributes": {
+                  "sql.cached": false,
+                  "sql.query": "select 1 from UserInfo where id = 'u1'",
+                  "sql.rowsCount": 0,
+                },
+              },
+              {
+                "_name": "sql-in-memory-select",
+                "attributes": {
+                  "sql.cached": false,
+                  "sql.query": "select 1 from UserInfo where id = 'u2'",
+                  "sql.rowsCount": 1,
+                },
+              },
+              {
                 "_name": "LiveStore:mutations",
                 "children": [
                   {
@@ -535,10 +582,22 @@ describe.concurrent('useRow', () => {
                     },
                     "children": [
                       {
-                        "_name": "livestore.in-memory-db:execute",
+                        "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
-                          "sql.query": "insert into UserInfo (username, text, id) select $username, $text, $id where not exists(select 1 from UserInfo where id = 'u1')",
+                          "livestore.args": "{
+            "id": "u1",
+            "explicitDefaultValues": {}
+          }",
+                          "livestore.mutation": "CUUD_Create_UserInfo",
                         },
+                        "children": [
+                          {
+                            "_name": "livestore.in-memory-db:execute",
+                            "attributes": {
+                              "sql.query": "insert into UserInfo (username, text, id) values ($username, $text, $id)",
+                            },
+                          },
+                        ],
                       },
                       {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
@@ -581,12 +640,6 @@ describe.concurrent('useRow', () => {
                       "id": "u2",
                     },
                     "children": [
-                      {
-                        "_name": "livestore.in-memory-db:execute",
-                        "attributes": {
-                          "sql.query": "insert into UserInfo (username, text, id) select $username, $text, $id where not exists(select 1 from UserInfo where id = 'u2')",
-                        },
-                      },
                       {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u2)",
                         "attributes": {

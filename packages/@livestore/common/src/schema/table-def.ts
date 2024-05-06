@@ -73,6 +73,7 @@ export type TableOptions = {
   // TODO
   dynamicRegistration: boolean
   disableAutomaticIdColumn: boolean
+  enableSetters: boolean
 }
 
 export const table = <
@@ -100,6 +101,7 @@ export const table = <
     isSingleton: options?.isSingleton ?? false,
     dynamicRegistration: options?.dynamicRegistration ?? false,
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
+    enableSetters: options?.enableSetters ?? false,
   }
 
   const columns = (
@@ -214,6 +216,7 @@ type WithDefaults<TOptionsInput extends TableOptionsInput> = {
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   dynamicRegistration: TOptionsInput['dynamicRegistration'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
+  enableSetters: TOptionsInput['enableSetters'] extends true ? true : false
 }
 
 export namespace FromTable {

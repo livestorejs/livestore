@@ -1,6 +1,6 @@
 import { memoize } from '@livestore/utils'
 import { Schema as EffectSchema } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { MainDatabase } from '../database.js'
@@ -16,11 +16,11 @@ const getMemoizedTimestamp = memoize(() => new Date().toISOString())
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 export const migrateDb = ({
   db,
-  otelContext,
+  otelContext = otel.context.active(),
   schema,
 }: {
   db: MainDatabase
-  otelContext: otel.Context
+  otelContext?: otel.Context
   schema: LiveStoreSchema
 }) => {
   migrateTable({
@@ -69,12 +69,14 @@ export const migrateTable = ({
   // otelContext,
   schemaHash = SqliteAst.hash(tableAst),
   behaviour,
+  skipMetaTable = false,
 }: {
   db: MainDatabase
   tableAst: SqliteAst.Table
-  otelContext: otel.Context
+  otelContext?: otel.Context
   schemaHash?: number
   behaviour: 'drop-and-recreate' | 'create-if-not-exists'
+  skipMetaTable?: boolean
 }) => {
   console.log(`Migrating table '${tableAst.name}'...`)
   const tableName = tableAst.name
@@ -92,16 +94,18 @@ export const migrateTable = ({
     dbExecute(db, createIndexFromDefinition(tableName, index))
   }
 
-  const updatedAt = getMemoizedTimestamp()
+  if (skipMetaTable !== true) {
+    const updatedAt = getMemoizedTimestamp()
 
-  dbExecute(
-    db,
-    sql`
+    dbExecute(
+      db,
+      sql`
       INSERT INTO ${SCHEMA_META_TABLE} (tableName, schemaHash, updatedAt) VALUES ($tableName, $schemaHash, $updatedAt)
         ON CONFLICT (tableName) DO UPDATE SET schemaHash = $schemaHash, updatedAt = $updatedAt;
     `,
-    { tableName, schemaHash, updatedAt },
-  )
+      { tableName, schemaHash, updatedAt },
+    )
+  }
 }
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {

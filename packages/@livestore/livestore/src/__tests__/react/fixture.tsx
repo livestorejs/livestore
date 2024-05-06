@@ -21,11 +21,15 @@ export type AppState = {
   filter: Filter
 }
 
-export const todos = DbSchema.table('todos', {
-  id: DbSchema.text({ primaryKey: true }),
-  text: DbSchema.text({ default: '', nullable: false }),
-  completed: DbSchema.boolean({ default: false, nullable: false }),
-})
+export const todos = DbSchema.table(
+  'todos',
+  {
+    id: DbSchema.text({ primaryKey: true }),
+    text: DbSchema.text({ default: '', nullable: false }),
+    completed: DbSchema.boolean({ default: false, nullable: false }),
+  },
+  { enableSetters: true },
+)
 
 export const app = DbSchema.table('app', {
   id: DbSchema.text({ primaryKey: true }),
@@ -33,17 +37,21 @@ export const app = DbSchema.table('app', {
   filter: DbSchema.text({ default: 'all', nullable: false }),
 })
 
-const userInfo = DbSchema.table('UserInfo', {
-  username: DbSchema.text({ default: '' }),
-  text: DbSchema.text({ default: '' }),
-})
+const userInfo = DbSchema.table(
+  'UserInfo',
+  {
+    username: DbSchema.text({ default: '' }),
+    text: DbSchema.text({ default: '' }),
+  },
+  { enableSetters: true },
+)
 
 const AppRouterSchema = DbSchema.table(
   'AppRouter',
   {
     currentTaskId: DbSchema.text({ default: null, nullable: true }),
   },
-  { isSingleton: true },
+  { isSingleton: true, enableSetters: true },
 )
 
 export const tables = { todos, app, userInfo, AppRouterSchema }

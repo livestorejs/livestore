@@ -3,14 +3,15 @@ import {
   getExecArgsFromMutation,
   initializeSingletonTables,
   migrateDb,
+  migrateTable,
   rehydrateFromMutationLog,
-  sql,
 } from '@livestore/common'
 import {
   type LiveStoreSchema,
   makeMutationEventSchema,
   makeSchemaHash,
   type MutationEventSchema,
+  mutationLogMetaTable,
 } from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
@@ -52,9 +53,10 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
         ? migrations.excludeMutations ?? new Set(['livestore.RawSql'])
         : new Set(['livestore.RawSql'])
 
-    // TODO refactor
     const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
     const mutationDefSchemaHashMap = new Map(
+      // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
+      // at build time and lookup the pre-computed hash at runtime.
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
@@ -62,57 +64,37 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
 
     return WorkerRunner.layerSerialized(Request, {
       InitialMessage: ({ storage }) =>
-        Effect.gen(function* ($) {
-          const sqlite3 = yield* $(Effect.tryPromise(() => sqlite3Promise))
+        Effect.gen(function* () {
+          const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
 
-          const makeDb = Effect.gen(function* ($) {
-            const db = yield* $(
-              makePersistedSqlite({
-                storage,
-                kind: 'app',
-                schemaHash,
-                sqlite3,
-                configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: true })),
-              }),
-            )
-
-            const dbWasEmptyWhenOpened =
-              db.dbRef.current.exec({ sql: 'SELECT 1 FROM sqlite_master', returnValue: 'resultRows' }).length === 0
-
-            return { db, dbWasEmptyWhenOpened }
+          const makeDb = makePersistedSqlite({
+            storage,
+            kind: 'app',
+            schemaHash,
+            sqlite3,
+            configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: true })),
           })
 
-          const makeDbLog = Effect.gen(function* () {
-            const dbLog = yield* makePersistedSqlite({
-              storage,
-              kind: 'mutationlog',
-              schemaHash,
-              sqlite3,
-              configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: false })),
-            })
-
-            // Creates `mutation_log` table if it doesn't exist
-            dbLog.dbRef.current.exec(sql`
-      CREATE TABLE IF NOT EXISTS mutation_log (
-        id TEXT PRIMARY KEY NOT NULL,
-        mutation TEXT NOT NULL,
-        args_json TEXT NOT NULL,
-        schema_hash INTEGER NOT NULL,
-        created_at TEXT NOT NULL
-      );
-    `)
-
-            return dbLog
+          const makeDbLog = makePersistedSqlite({
+            storage,
+            kind: 'mutationlog',
+            schemaHash,
+            sqlite3,
+            configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: false })),
           })
 
-          const [{ db, dbWasEmptyWhenOpened }, dbLog] = yield* $(Effect.all([makeDb, makeDbLog], { concurrency: 2 }))
+          // Might involve some async work, so we're running them concurrently
+          const [db, dbLog] = yield* Effect.all([makeDb, makeDbLog], { concurrency: 2 })
 
           return Layer.succeed(WorkerCtx, {
             storage,
             sqlite3,
             db,
-            dbWasEmptyWhenOpened,
             dbLog,
+            mutationDefSchemaHashMap,
+            mutationEventSchema,
+            mutationLogExclude,
+            schema,
           })
         }).pipe(
           Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
@@ -120,36 +102,23 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           Layer.unwrapScoped,
         ),
       Export: () =>
-        Effect.flatMap(WorkerCtx, (_) => _.db.export).pipe(
+        Effect.andThen(WorkerCtx, (_) => _.db.export).pipe(
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExportMutationlog: () =>
-        Effect.flatMap(WorkerCtx, (_) => _.dbLog.export).pipe(
+        Effect.andThen(WorkerCtx, (_) => _.dbLog.export).pipe(
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExecuteBulk: ({ items }) =>
-        executeBulk({
-          executionItems: items,
-          mutationEventSchema,
-          mutationLogExclude,
-          mutationDefSchemaHashMap,
-          schema,
-        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+        executeBulk(items).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
       Setup: () =>
-        Effect.gen(function* ($) {
-          const { db, dbWasEmptyWhenOpened, dbLog, sqlite3 } = yield* $(WorkerCtx)
-          // TODO check whether this entire code path is necessary
-          if (dbWasEmptyWhenOpened === false) {
-            shouldNeverHappen('Database was not empty when opened')
-            return yield* $(db.export)
-          }
+        Effect.gen(function* () {
+          const { db, dbLog, sqlite3 } = yield* WorkerCtx
 
-          yield* $(
-            Effect.addFinalizer((ex) => {
-              if (ex._tag === 'Success') return Effect.void
-              return db.destroy.pipe(Effect.orDie)
-            }),
-          )
+          yield* Effect.addFinalizer((ex) => {
+            if (ex._tag === 'Success') return Effect.void
+            return db.destroy.pipe(Effect.orDie)
+          })
 
           const otelContext = otel.context.active()
 
@@ -158,21 +127,23 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
           tmpDb.capi = sqlite3.capi
           configureConnection(tmpDb, { fkEnabled: true })
+
           const tmpMainDb = makeMainDb(sqlite3, tmpDb)
+          migrateDb({ db: tmpMainDb, otelContext, schema })
+          initializeSingletonTables(schema, tmpMainDb)
 
           const mainDbLog = makeMainDb(sqlite3, dbLog.dbRef.current)
 
-          migrateDb({ db: tmpMainDb, otelContext, schema })
-
-          initializeSingletonTables(schema, tmpMainDb)
+          migrateTable({
+            db: mainDbLog,
+            behaviour: 'create-if-not-exists',
+            tableAst: mutationLogMetaTable.sqliteDef.ast,
+            skipMetaTable: true,
+          })
 
           switch (migrations.strategy) {
             case 'from-mutation-log': {
-              rehydrateFromMutationLog({
-                db: tmpMainDb,
-                logDb: mainDbLog,
-                schema,
-              })
+              rehydrateFromMutationLog({ db: tmpMainDb, logDb: mainDbLog, schema })
 
               break
             }
@@ -197,7 +168,7 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
           tmpDb.close()
 
-          yield* $(db.import(snapshotFromTmpDb))
+          yield* db.import(snapshotFromTmpDb)
 
           return snapshotFromTmpDb
         }).pipe(
@@ -205,12 +176,12 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           Effect.withPerformanceMeasure('@livestore/web:worker:Setup'),
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
-      // TODO refactor / fix
-      Shutdown: ({}) =>
+      Shutdown: () =>
         Effect.gen(function* () {
-          // const { dbRef, dbLog } = yield* $(WorkerCtx)
-          // dbRef.current.close()
-          // dbLog.close()
+          // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)
+          const { db, dbLog } = yield* WorkerCtx
+          db.dbRef.current.close()
+          dbLog.dbRef.current.close()
         }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(BrowserWorkerRunner.layer))
@@ -219,32 +190,21 @@ class WorkerCtx extends Context.Tag('WorkerCtx')<
   WorkerCtx,
   {
     storage: StorageType
-    /** NOTE We're keeping a ref here since we need to re-assign it during `Setup` */
     db: PersistedSqlite
-    dbWasEmptyWhenOpened: boolean
-
     dbLog: PersistedSqlite
-
     sqlite3: SqliteWasm.Sqlite3Static
+
+    mutationEventSchema: MutationEventSchema<any>
+    mutationLogExclude: ReadonlySet<string>
+    mutationDefSchemaHashMap: Map<string, number>
+    schema: LiveStoreSchema
   }
 >() {}
 
-const executeBulk = ({
-  executionItems,
-  mutationEventSchema,
-  mutationLogExclude,
-  mutationDefSchemaHashMap,
-  schema,
-}: {
-  executionItems: ReadonlyArray<ExecutionBacklogItem>
-  mutationEventSchema: MutationEventSchema<any>
-  mutationLogExclude: ReadonlySet<string>
-  mutationDefSchemaHashMap: Map<string, number>
-  schema: LiveStoreSchema
-}) =>
-  Effect.gen(function* ($) {
+const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
+  Effect.gen(function* () {
     let batchItems: ExecutionBacklogItem[] = []
-    const { db, dbLog } = yield* $(WorkerCtx)
+    const { db, dbLog, mutationEventSchema, mutationLogExclude, mutationDefSchemaHashMap, schema } = yield* WorkerCtx
 
     const createdAtMemo = memoize(() => new Date().toISOString())
 

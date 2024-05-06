@@ -384,7 +384,7 @@ export class Store<
    * This is an internal method that doesn't trigger a refresh;
    * the caller must refresh queries after calling this method.
    */
-  private mutateWithoutRefresh = (
+  mutateWithoutRefresh = (
     mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {

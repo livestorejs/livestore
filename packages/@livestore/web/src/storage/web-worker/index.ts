@@ -94,6 +94,8 @@ export const createStorage =
           Effect.gen(function* ($) {
             yield* $(runInWorker(new WorkerSchema.Shutdown({})))
 
+            worker.terminate()
+
             yield* $(Effect.promise(() => resetPersistedData(storageOptions, schemaHash)))
           }).pipe(Effect.runPromise),
 

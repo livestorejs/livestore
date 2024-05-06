@@ -1,8 +1,8 @@
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { DbSchema, MutationEvent } from './schema/index.js'
-import { defineMutation } from './schema/index.js'
+import type { MutationEvent } from './schema/index.js'
+import { DbSchema, defineMutation } from './schema/index.js'
 import type { TableDef } from './schema/table-def.js'
 import { sql } from './util.js'
 
@@ -63,11 +63,11 @@ export type UpdateValueForPath<TQueryInfo extends QueryInfo> = TQueryInfo extend
       ? { TODO: true }
       : never
 
-export const setterForQueryInfoMutationDef = (table: TableDef) => {
+export const makeCuudUpdateMutationDef = (table: TableDef) => {
   const tableName = table.sqliteDef.name
 
   return defineMutation(
-    `SetterForQueryInfo_${tableName}`,
+    `CUUD_Update_${tableName}`,
     Schema.Struct({
       id: Schema.String,
       decodedPartialValues: Schema.partial(table.schema),
@@ -96,15 +96,48 @@ export const setterForQueryInfoMutationDef = (table: TableDef) => {
   )
 }
 
-export const mutationForQueryInfo = <const TQueryInfo extends QueryInfo>(
+export const makeCuudCreateMutationDef = (table: TableDef) => {
+  const tableName = table.sqliteDef.name
+
+  return defineMutation(
+    `CUUD_Create_${tableName}`,
+    Schema.Struct({
+      id: Schema.String,
+      explicitDefaultValues: Schema.optional(Schema.partial(table.schema)),
+    }),
+    ({ id, explicitDefaultValues }) => {
+      const defaultValues = DbSchema.getDefaultValuesEncoded(table, explicitDefaultValues)
+
+      const defaultColumnNames = [...Object.keys(defaultValues), 'id']
+      const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')
+
+      const tableName = table.sqliteDef.name
+      const insertQuery = sql`insert into ${tableName} (${defaultColumnNames.join(', ')}) values (${columnValues})`
+      // )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
+
+      return {
+        sql: insertQuery,
+        bindValues: { ...defaultValues, id },
+        writeTables: new Set([tableName]),
+      }
+    },
+  )
+}
+
+export const updateMutationForQueryInfo = <const TQueryInfo extends QueryInfo>(
   queryInfo: TQueryInfo,
+  // queryInfo: TQueryInfo extends QueryInfo<infer TTableDef>
+  //   ? TTableDef['options']['enableSetters'] extends true
+  //     ? TQueryInfo
+  //     : never
+  //   : never,
   value: UpdateValueForPath<TQueryInfo>,
 ): MutationEvent.Any => {
   if (queryInfo._tag === 'ColJsonValue' || queryInfo._tag === 'None') {
     return notYetImplemented('TODO')
   }
 
-  const mutationDef = setterForQueryInfoMutationDef(queryInfo.table)
+  const mutationDef = makeCuudUpdateMutationDef(queryInfo.table)
   const id = queryInfo.id
 
   if (queryInfo._tag === 'Row') {

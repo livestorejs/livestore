@@ -1,6 +1,10 @@
 import type { QueryInfo } from '@livestore/common'
-import { mutationForQueryInfo as mutationForQueryInfo_ } from '@livestore/common'
+import {
+  makeCuudCreateMutationDef as makeCuudCreateMutationDef_,
+  updateMutationForQueryInfo as updateMutationForQueryInfo_,
+} from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
+import { shouldNeverHappen } from '@livestore/utils'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
@@ -29,7 +33,8 @@ export type UseRowOptionsBase = {
    * This option is only used right now for the devtools to pass in their custom mutation function
    * to emit raw sql mutation events instead of the default behavior of using derived mutation definitions
    */
-  mutationForQueryInfo?: typeof mutationForQueryInfo_
+  __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
+  __updateMutationForQueryInfo?: typeof updateMutationForQueryInfo_
 }
 
 /**
@@ -46,7 +51,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: true }
+      DbSchema.TableOptions & { isSingleton: true; enableSetters: true }
     >,
   >(
     table: TTableDef,
@@ -56,7 +61,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: false }
+      DbSchema.TableOptions & { isSingleton: false; enableSetters: true }
     >,
   >(
     table: TTableDef,
@@ -64,7 +69,13 @@ export const useRow: {
     id: string,
     options?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
   ): UseRowResult<TTableDef>
-} = <TTableDef extends DbSchema.TableDef>(
+} = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { enableSetters: true }
+  >,
+>(
   table: TTableDef,
   idOrOptions?: string | UseRowOptionsBase,
   options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
@@ -73,8 +84,18 @@ export const useRow: {
   const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
     typeof idOrOptions === 'string' ? options_ : idOrOptions
-  const { defaultValues, dbGraph, mutationForQueryInfo = mutationForQueryInfo_ } = options ?? {}
+  const {
+    defaultValues,
+    dbGraph,
+    __makeCuudCreateMutationDef = makeCuudCreateMutationDef_,
+    __updateMutationForQueryInfo: updateMutationForQueryInfo = updateMutationForQueryInfo_,
+  } = options ?? {}
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
+
+  // @ts-expect-error only a runtime check
+  if (table.options.enableSetters === false) {
+    shouldNeverHappen('useRow called on a table that does not have setters enabled')
+  }
 
   const { store } = useStore()
 
@@ -83,11 +104,15 @@ export const useRow: {
   const { query$, otelContext } = useMakeTemporaryQuery(
     (otelContext) =>
       DbSchema.tableIsSingleton(table)
-        ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
+        ? (rowQuery(table, { otelContext, dbGraph, __makeCuudCreateMutationDef }) as LiveQuery<
+            RowResult<TTableDef>,
+            QueryInfo
+          >)
         : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
             otelContext,
             defaultValues: defaultValues!,
             dbGraph,
+            __makeCuudCreateMutationDef,
           }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
     [id!, table.sqliteDef.name],
     {
@@ -106,7 +131,7 @@ export const useRow: {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
-        store.mutate(mutationForQueryInfo(query$.queryInfo!, { value: newValue }))
+        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue }))
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
@@ -119,7 +144,7 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
 
-          store.mutate(mutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
+          store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
         })
 
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
@@ -136,12 +161,12 @@ export const useRow: {
           return
         }
 
-        store.mutate(mutationForQueryInfo(query$.queryInfo!, columnValues))
+        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, columnValues))
       }
 
       return setState as any
     }
-  }, [mutationForQueryInfo, query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
+  }, [updateMutationForQueryInfo, query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
 
   return [query$Ref.current, setState, query$]
 }
