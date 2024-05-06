@@ -5,12 +5,12 @@ import {
   initializeSingletonTables,
   type MainDatabase,
   migrateDb,
+  migrateTable,
   type MigrationOptions,
   rehydrateFromMutationLog,
-  sql,
   type StorageDatabase,
 } from '@livestore/common'
-import { makeMutationEventSchema, makeSchemaHash } from '@livestore/common/schema'
+import { makeMutationEventSchema, makeSchemaHash, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -40,16 +40,12 @@ export const makeDb =
     const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
     const mainDbLog = makeMainDb(dbLog)
 
-    // Creates `mutation_log` table if it doesn't exist
-    dbLog.execSync(sql`
-      CREATE TABLE IF NOT EXISTS mutation_log (
-        id TEXT PRIMARY KEY NOT NULL,
-        mutation TEXT NOT NULL,
-        args_json TEXT NOT NULL,
-        schema_hash INTEGER NOT NULL,
-        created_at TEXT NOT NULL
-      );
-    `)
+    migrateTable({
+      db: mainDbLog,
+      behaviour: 'create-if-not-exists',
+      tableAst: mutationLogMetaTable.sqliteDef.ast,
+      skipMetaTable: true,
+    })
 
     if (dbWasEmptyWhenOpened) {
       const otelContext = otel.context.active()
@@ -99,7 +95,7 @@ export const makeDb =
     )
 
     const newMutationLogStmt = mainDbLog.prepare(
-      `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO mutation_log (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
     )
 
     const storageDb = {

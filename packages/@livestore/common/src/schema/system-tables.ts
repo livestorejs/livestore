@@ -1,3 +1,4 @@
+import { Schema } from '@livestore/utils/effect'
 import { type SqliteAst as __SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { FromTable } from './table-def.js'
@@ -46,7 +47,7 @@ export const mutationLogMetaTable = table(
   {
     id: SqliteDsl.text({ primaryKey: true }),
     mutation: SqliteDsl.text({ nullable: false }),
-    argsJson: SqliteDsl.text({ nullable: false }),
+    argsJson: SqliteDsl.text({ nullable: false, schema: Schema.parseJson(Schema.Any) }),
     schemaHash: SqliteDsl.integer({ nullable: false }),
     /** ISO date format */
     createdAt: SqliteDsl.text({ nullable: false }),

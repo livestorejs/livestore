@@ -55,7 +55,7 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   columns: TColumns
   values: ClientTypes.DecodedValuesForColumns<TColumns>
-  options: { orReplace: boolean }
+  options?: { orReplace: boolean }
 }): [string, BindValues] => {
   const keysStr = Object.keys(values).join(', ')
   const valuesStr = Object.keys(values)
@@ -63,7 +63,7 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
     .join(', ')
 
   return [
-    sql`INSERT ${options.orReplace ? 'OR REPLACE' : ''} INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`,
+    sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`,
     makeBindValues({ columns, values }),
   ]
 }

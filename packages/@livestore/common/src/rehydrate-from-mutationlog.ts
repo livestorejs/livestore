@@ -3,15 +3,8 @@ import { Schema } from '@livestore/utils/effect'
 
 import type { MainDatabase } from './database.js'
 import { getExecArgsFromMutation } from './mutation.js'
-import type { LiveStoreSchema } from './schema/index.js'
-
-type MutationLogRow = {
-  id: string
-  mutation: string
-  args_json: string
-  schema_hash: number
-  created_at: string
-}
+import type { LiveStoreSchema, MutationLogMetaRow } from './schema/index.js'
+import { MUTATION_LOG_META_TABLE } from './schema/index.js'
 
 export const rehydrateFromMutationLog = ({
   logDb,
@@ -23,19 +16,19 @@ export const rehydrateFromMutationLog = ({
   schema: LiveStoreSchema
 }) => {
   try {
-    const stmt = logDb.prepare('SELECT * FROM mutation_log ORDER BY id ASC')
-    const results = stmt.select<MutationLogRow>(undefined)
+    const stmt = logDb.prepare(`SELECT * FROM ${MUTATION_LOG_META_TABLE} ORDER BY id ASC`)
+    const results = stmt.select<MutationLogMetaRow>(undefined)
 
     performance.mark('livestore:hydrate-from-mutationlog:start')
 
     for (const row of results) {
       const mutationDef = schema.mutations.get(row.mutation) ?? shouldNeverHappen(`Unknown mutation ${row.mutation}`)
 
-      if (Schema.hash(mutationDef.schema) !== row.schema_hash) {
+      if (Schema.hash(mutationDef.schema) !== row.schemaHash) {
         throw new Error(`Schema hash mismatch for mutation ${row.mutation}`)
       }
 
-      const argsDecodedEither = Schema.decodeUnknownEither(Schema.parseJson(mutationDef.schema))(row.args_json)
+      const argsDecodedEither = Schema.decodeUnknownEither(Schema.parseJson(mutationDef.schema))(row.argsJson)
       if (argsDecodedEither._tag === 'Left') {
         return shouldNeverHappen(`\
 There was an error decoding the persisted mutation event args for mutation "${row.mutation}".

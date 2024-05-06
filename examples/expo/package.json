@@ -12,7 +12,7 @@
   "dependencies": {
     "@effect/schema": "0.66.10",
     "@expo/metro-runtime": "~3.1.3",
-    "@expo/vector-icons": "^14.0.0",
+    "@expo/vector-icons": "^14.0.1",
     "@livestore/devtools-react": "0.0.47",
     "@livestore/expo": "latest",
     "@livestore/livestore": "workspace:*",
@@ -25,15 +25,15 @@
     "expo-status-bar": "~1.11.1",
     "fast-text-encoding": "^1.0.6",
     "react": "18.3.1",
-    "react-native": "0.74.0",
+    "react-native": "0.73.8",
     "react-native-web": "~0.19.11"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.4",
-    "@babel/runtime": "^7.24.4",
+    "@babel/core": "^7.24.5",
+    "@babel/runtime": "^7.24.5",
     "@types/react": "~18.3.1",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "eas-cli": "^7.8.5",
+    "eas-cli": "^8.0.0",
     "typescript": "^5.4.5"
   },
   "private": true

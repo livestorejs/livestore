@@ -4,15 +4,18 @@ import {
   initializeSingletonTables,
   migrateDb,
   migrateTable,
+  prepareBindValues,
   rehydrateFromMutationLog,
 } from '@livestore/common'
 import {
   type LiveStoreSchema,
   makeMutationEventSchema,
   makeSchemaHash,
+  MUTATION_LOG_META_TABLE,
   type MutationEventSchema,
   mutationLogMetaTable,
 } from '@livestore/common/schema'
+import { insertRow } from '@livestore/common/sql-queries'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { casesHandled, memoize, shouldNeverHappen } from '@livestore/utils'
@@ -252,26 +255,26 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
               const mutationDefSchemaHash =
                 mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
-              const argsJson = JSON.stringify(item.mutationEventEncoded.args ?? {})
-
               try {
-                dbLog.dbRef.current.exec({
-                  sql: `INSERT INTO mutation_log (id, mutation, args_json, schema_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
-                  bind: [
-                    item.mutationEventEncoded.id,
-                    item.mutationEventEncoded.mutation,
-                    argsJson,
-                    mutationDefSchemaHash,
-                    createdAtMemo(),
-                  ],
+                const [sql, bind] = insertRow({
+                  tableName: MUTATION_LOG_META_TABLE,
+                  columns: mutationLogMetaTable.sqliteDef.columns,
+                  values: {
+                    id: item.mutationEventEncoded.id,
+                    mutation: item.mutationEventEncoded.mutation,
+                    argsJson: item.mutationEventEncoded.args ?? {},
+                    schemaHash: mutationDefSchemaHash,
+                    createdAt: createdAtMemo(),
+                  },
                 })
+                dbLog.dbRef.current.exec({ sql, bind: prepareBindValues(bind, sql) })
               } catch (e) {
                 console.error(
-                  'Error writing to mutation_log',
+                  `Error writing to ${MUTATION_LOG_META_TABLE}`,
                   e,
                   item.mutationEventEncoded.id,
                   item.mutationEventEncoded.mutation,
-                  argsJson,
+                  item.mutationEventEncoded.args ?? {},
                   mutationDefSchemaHash,
                   createdAtMemo(),
                 )

@@ -46,6 +46,11 @@
     "pnpm-lock.yaml": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
+  "workbench.editor.customLabels.enabled": true,
+  "workbench.editor.customLabels.patterns": {
+    "**/examples/**/*": "${filename} - EX",
+    "**/packages/**/*": "${filename} - LIB"
+},
   "vitest.commandLine": "direnv exec . vitest",
   "vitest.exclude": ["**/node_modules/**", "**/dist/**", "**/.{idea,git,cache,output,temp,direnv}/**"]
 }
