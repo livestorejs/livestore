@@ -219,7 +219,7 @@ const insertRowWithDefaultValuesOrIgnore = ({
   // const mutationDef = deriveCreateMutationDef(table)
   if (DbSchema.tableHasDerivedMutations(table) === false) {
     return shouldNeverHappen(
-      `Cannot insert row for table "${table.sqliteDef.name}" which does not have _Derived mutations enabled`,
+      `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveMutations: true' set`,
     )
   }
   store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), otelContext)

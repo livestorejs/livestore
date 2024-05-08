@@ -83,7 +83,7 @@ export const useRow: {
   const tableName = table.sqliteDef.name
 
   if (DbSchema.tableHasDerivedMutations(table) === false) {
-    shouldNeverHappen(`useRow called on table "${tableName}" which does not have _Derived mutations enabled`)
+    shouldNeverHappen(`useRow called on table "${tableName}" which does not have 'deriveMutations: true' set`)
   }
 
   const { store } = useStore()
