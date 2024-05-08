@@ -3,8 +3,8 @@ import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteDsl } from 'effect-db-schema'
 
-import type { CudMutationHelperFns } from '../cud.js'
-import { makeCudMutationDefsForTable } from '../cud.js'
+import type { DerivedMutationHelperFns } from '../derived-mutations.js'
+import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
@@ -60,7 +60,7 @@ export type TableDef<
   isSingleColumn: TIsSingleColumn
   options: TOptions
   schema: TSchema
-} & (TOptions['enableCud'] extends true ? CudMutationHelperFns<TSqliteDef['columns'], TOptions> : {})
+} & (TOptions['deriveMutations'] extends true ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions> : {})
 
 export type TableOptionsInput = Partial<Omit<TableOptions, 'isSingleColumn'> & { indexes: SqliteDsl.Index[] }>
 
@@ -68,7 +68,7 @@ export type TableOptions = {
   /**
    * Setting this to true will have the following consequences:
    * - An `id` column will be added with `primaryKey: true` and `"singleton"` as default value and only allowed value
-   * - LiveStore will automatically create the singleton row when the table is created
+   * - LiveStore will automatically create the singleton row when booting up
    * - LiveStore will fail if there is already a column defined with `primaryKey: true`
    *
    * @default false
@@ -77,7 +77,19 @@ export type TableOptions = {
   // TODO remove
   dynamicRegistration: boolean
   disableAutomaticIdColumn: boolean
-  enableCud: boolean
+  /**
+   * Setting this to true will automatically derive insert, update and delete mutations for this table. Example:
+   *
+   * ```ts
+   * const todos = table('todos', { ... }, { deriveMutations: true })
+   * todos.insert({ id: '1', text: 'Hello' })
+   * ```
+   *
+   * This is also a prerequisite for using the `useRow`, `useAtom` and `rowQuery` APIs.
+   *
+   * Important: When using this option, make sure you're following the "Rules of mutations" for the table schema.
+   */
+  deriveMutations: boolean
   /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
   isSingleColumn: boolean
 }
@@ -109,7 +121,7 @@ export const table = <
     isSingleton: options?.isSingleton ?? false,
     dynamicRegistration: options?.dynamicRegistration ?? false,
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
-    enableCud: options?.enableCud ?? false,
+    deriveMutations: options?.deriveMutations ?? false,
     isSingleColumn: SqliteDsl.isColumnDefinition(columnOrColumns) === true,
   }
 
@@ -149,36 +161,37 @@ export const table = <
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
   const tableDef = { sqliteDef, isSingleColumn, options: options_, schema } satisfies TableDef
 
-  if (tableHasCudEnabled(tableDef)) {
-    const cudMutationDefs = makeCudMutationDefsForTable(tableDef)
+  if (tableHasDerivedMutations(tableDef)) {
+    const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
 
     tableDef.insert = (valuesOrValue: any) => {
       if (isSingleColumn && options_.isSingleton) {
-        return cudMutationDefs.insert({ id: 'singleton', value: { value: valuesOrValue } })
+        return derivedMutationDefs.insert({ id: 'singleton', value: { value: valuesOrValue } })
       } else {
-        return cudMutationDefs.insert(valuesOrValue as any)
+        return derivedMutationDefs.insert(valuesOrValue as any)
       }
     }
 
     tableDef.update = (argsOrValues: any) => {
       if (isSingleColumn && options_.isSingleton) {
-        return cudMutationDefs.update({ where: { id: 'singleton' }, values: { value: argsOrValues } as any })
+        return derivedMutationDefs.update({ where: { id: 'singleton' }, values: { value: argsOrValues } as any })
       } else {
-        return cudMutationDefs.update(argsOrValues as any)
+        return derivedMutationDefs.update(argsOrValues as any)
       }
     }
 
-    tableDef.delete = (args: any) => cudMutationDefs.delete(args)
+    tableDef.delete = (args: any) => derivedMutationDefs.delete(args)
   }
 
   return tableDef as any
 }
 
-export const tableHasCudEnabled = <TTableDef extends TableDef>(
+export const tableHasDerivedMutations = <TTableDef extends TableDef>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & {
-  options: { enableCud: true }
-} & CudMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> => tableDef.options.enableCud === true
+  options: { deriveMutations: true }
+} & DerivedMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> =>
+  tableDef.options.deriveMutations === true
 
 export const tableIsSingleton = <TTableDef extends TableDef>(
   tableDef: TTableDef,
@@ -245,7 +258,7 @@ type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn exten
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   dynamicRegistration: TOptionsInput['dynamicRegistration'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
-  enableCud: TOptionsInput['enableCud'] extends true ? true : false
+  deriveMutations: TOptionsInput['deriveMutations'] extends true ? true : false
   isSingleColumn: TIsSingleColumn
 }
 

@@ -7,13 +7,13 @@ import { DbSchema, defineMutation } from './schema/index.js'
 import type { TableOptions } from './schema/table-def.js'
 import { deleteRows, insertRow, updateRows } from './sql-queries/sql-queries.js'
 
-export const makeCudMutationDefsForTable = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => ({
-  insert: makeCuudCreateMutationDef(table),
-  update: makeCuudUpdateMutationDef(table),
-  delete: makeCuudDeleteMutationDef(table),
+export const makeDerivedMutationDefsForTable = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => ({
+  insert: deriveCreateMutationDef(table),
+  update: deriveUpdateMutationDef(table),
+  delete: deriveDeleteMutationDef(table),
 })
 
-export const makeCuudCreateMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
+export const deriveCreateMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
   const tableName = table.sqliteDef.name
 
   const [optionalFields, requiredColumns] = ReadonlyRecord.partition(
@@ -25,7 +25,7 @@ export const makeCuudCreateMutationDef = <TTableDef extends DbSchema.TableDef>(t
     Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))),
   )
 
-  return defineMutation(`CUD_Create_${tableName}`, insertSchema, ({ id, ...explicitDefaultValues }) => {
+  return defineMutation(`_Derived_Create_${tableName}`, insertSchema, ({ id, ...explicitDefaultValues }) => {
     const defaultValues = DbSchema.getDefaultValuesDecoded(table, explicitDefaultValues)
 
     const [sql, bindValues] = insertRow({
@@ -38,11 +38,11 @@ export const makeCuudCreateMutationDef = <TTableDef extends DbSchema.TableDef>(t
   })
 }
 
-export const makeCuudUpdateMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
+export const deriveUpdateMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
   const tableName = table.sqliteDef.name
 
   return defineMutation(
-    `CUD_Update_${tableName}`,
+    `_Derived_Update_${tableName}`,
     Schema.Struct({
       where: Schema.partial(table.schema),
       values: Schema.partial(table.schema),
@@ -60,11 +60,11 @@ export const makeCuudUpdateMutationDef = <TTableDef extends DbSchema.TableDef>(t
   )
 }
 
-export const makeCuudDeleteMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
+export const deriveDeleteMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
   const tableName = table.sqliteDef.name
 
   return defineMutation(
-    `CUD_Delete_${tableName}`,
+    `_Derived_Delete_${tableName}`,
     Schema.Struct({
       where: Schema.partial(table.schema),
     }),
@@ -81,16 +81,16 @@ export const makeCuudDeleteMutationDef = <TTableDef extends DbSchema.TableDef>(t
 }
 
 /**
- * Convenience helper functions on top of the CUD mutation definitions.
+ * Convenience helper functions on top of the derived mutation definitions.
  */
-export type CudMutationHelperFns<TColumns extends SqliteDsl.ConstraintColumns, TOptions extends TableOptions> = {
-  insert: CudMutationHelperFns.InsertMutationFn<TColumns, TOptions>
-  update: CudMutationHelperFns.UpdateMutationFn<TColumns, TOptions>
-  delete: CudMutationHelperFns.DeleteMutationFn<TColumns, TOptions>
+export type DerivedMutationHelperFns<TColumns extends SqliteDsl.ConstraintColumns, TOptions extends TableOptions> = {
+  insert: DerivedMutationHelperFns.InsertMutationFn<TColumns, TOptions>
+  update: DerivedMutationHelperFns.UpdateMutationFn<TColumns, TOptions>
+  delete: DerivedMutationHelperFns.DeleteMutationFn<TColumns, TOptions>
   // TODO also consider adding upsert and deep json mutations (like lenses)
 }
 
-export namespace CudMutationHelperFns {
+export namespace DerivedMutationHelperFns {
   export type InsertMutationFn<
     TColumns extends SqliteDsl.ConstraintColumns,
     TOptions extends TableOptions,

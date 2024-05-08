@@ -28,7 +28,7 @@ export const todos = DbSchema.table(
     text: DbSchema.text({ default: '', nullable: false }),
     completed: DbSchema.boolean({ default: false, nullable: false }),
   },
-  { enableCud: true, isSingleton: false },
+  { deriveMutations: true, isSingleton: false },
 )
 
 export const app = DbSchema.table('app', {
@@ -43,7 +43,7 @@ const userInfo = DbSchema.table(
     username: DbSchema.text({ default: '' }),
     text: DbSchema.text({ default: '' }),
   },
-  { enableCud: true },
+  { deriveMutations: true },
 )
 
 const AppRouterSchema = DbSchema.table(
@@ -51,7 +51,7 @@ const AppRouterSchema = DbSchema.table(
   {
     currentTaskId: DbSchema.text({ default: null, nullable: true }),
   },
-  { isSingleton: true, enableCud: true },
+  { isSingleton: true, deriveMutations: true },
 )
 
 export const tables = { todos, app, userInfo, AppRouterSchema }

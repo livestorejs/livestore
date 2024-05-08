@@ -12,7 +12,7 @@ export const useAtom = <
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
     boolean,
-    DbSchema.TableOptions & { enableCud: true }
+    DbSchema.TableOptions & { deriveMutations: true }
   >,
 >(
   query$: TQuery,

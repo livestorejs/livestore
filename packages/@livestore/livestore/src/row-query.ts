@@ -216,10 +216,10 @@ const insertRowWithDefaultValuesOrIgnore = ({
   const rowExists = store.mainDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
   if (rowExists) return
 
-  // const mutationDef = makeCuudCreateMutationDef(table)
-  if (DbSchema.tableHasCudEnabled(table) === false) {
+  // const mutationDef = deriveCreateMutationDef(table)
+  if (DbSchema.tableHasDerivedMutations(table) === false) {
     return shouldNeverHappen(
-      `Cannot insert row for table "${table.sqliteDef.name}" which does not have CUD mutations enabled`,
+      `Cannot insert row for table "${table.sqliteDef.name}" which does not have _Derived mutations enabled`,
     )
   }
   store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), otelContext)

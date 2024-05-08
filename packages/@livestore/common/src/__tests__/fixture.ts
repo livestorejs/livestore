@@ -9,7 +9,7 @@ export const todos = DbSchema.table(
     text: DbSchema.text({ default: '', nullable: false }),
     completed: DbSchema.boolean({ default: false, nullable: false }),
   },
-  { enableCud: true },
+  { deriveMutations: true },
 )
 
 const Config = Schema.Struct({
@@ -19,5 +19,5 @@ const Config = Schema.Struct({
 
 export const appConfig = DbSchema.table('app_config', DbSchema.json({ schema: Config, nullable: true }), {
   isSingleton: true,
-  enableCud: true,
+  deriveMutations: true,
 })

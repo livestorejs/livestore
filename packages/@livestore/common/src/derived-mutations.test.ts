@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { appConfig, todos } from './__tests__/fixture.js'
 import type { MutationEvent } from './schema/mutations.js'
 
-describe('cud mutations', () => {
+describe('derived mutations', () => {
   test('todos', () => {
     expect(patchId(todos.insert({ id: 't1', completed: true, text: 'Task 1' }))).toMatchInlineSnapshot(`
       {
@@ -13,7 +13,7 @@ describe('cud mutations', () => {
           "text": "Task 1",
         },
         "id": "00000000-0000-0000-0000-000000000000",
-        "mutation": "CUD_Create_todos",
+        "mutation": "_Derived_Create_todos",
       }
     `)
 
@@ -28,7 +28,7 @@ describe('cud mutations', () => {
           },
         },
         "id": "00000000-0000-0000-0000-000000000000",
-        "mutation": "CUD_Update_todos",
+        "mutation": "_Derived_Update_todos",
       }
     `)
 
@@ -40,7 +40,7 @@ describe('cud mutations', () => {
           },
         },
         "id": "00000000-0000-0000-0000-000000000000",
-        "mutation": "CUD_Delete_todos",
+        "mutation": "_Derived_Delete_todos",
       }
     `)
   })
@@ -55,7 +55,7 @@ describe('cud mutations', () => {
           },
         },
         "id": "00000000-0000-0000-0000-000000000000",
-        "mutation": "CUD_Create_app_config",
+        "mutation": "_Derived_Create_app_config",
       }
     `)
 
@@ -71,7 +71,7 @@ describe('cud mutations', () => {
           },
         },
         "id": "00000000-0000-0000-0000-000000000000",
-        "mutation": "CUD_Create_app_config",
+        "mutation": "_Derived_Create_app_config",
       }
     `)
 
@@ -88,7 +88,7 @@ describe('cud mutations', () => {
           },
         },
         "id": "00000000-0000-0000-0000-000000000000",
-        "mutation": "CUD_Update_app_config",
+        "mutation": "_Derived_Update_app_config",
       }
     `)
   })

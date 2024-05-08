@@ -1,5 +1,5 @@
 import type { QueryInfo } from '@livestore/common'
-import {} from // makeCuudCreateMutationDef as makeCuudCreateMutationDef_,
+import {} from // deriveCreateMutationDef as deriveCreateMutationDef_,
 // updateMutationForQueryInfo as updateMutationForQueryInfo_,
 '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
@@ -43,7 +43,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: true; enableCud: true }
+      DbSchema.TableOptions & { isSingleton: true; deriveMutations: true }
     >,
   >(
     table: TTableDef,
@@ -53,7 +53,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: false; enableCud: true }
+      DbSchema.TableOptions & { isSingleton: false; deriveMutations: true }
     >,
   >(
     table: TTableDef,
@@ -65,7 +65,7 @@ export const useRow: {
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
     boolean,
-    DbSchema.TableOptions & { enableCud: true }
+    DbSchema.TableOptions & { deriveMutations: true }
   >,
 >(
   table: TTableDef,
@@ -82,8 +82,8 @@ export const useRow: {
 
   const tableName = table.sqliteDef.name
 
-  if (DbSchema.tableHasCudEnabled(table) === false) {
-    shouldNeverHappen(`useRow called on table "${tableName}" which does not have CUD mutations enabled`)
+  if (DbSchema.tableHasDerivedMutations(table) === false) {
+    shouldNeverHappen(`useRow called on table "${tableName}" which does not have _Derived mutations enabled`)
   }
 
   const { store } = useStore()

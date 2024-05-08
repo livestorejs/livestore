@@ -421,7 +421,7 @@ describe.concurrent('useRow', () => {
                           "livestore.args": "{
             "id": "u1"
           }",
-                          "livestore.mutation": "CUD_Create_UserInfo",
+                          "livestore.mutation": "_Derived_Create_UserInfo",
                         },
                         "children": [
                           {
@@ -584,7 +584,7 @@ describe.concurrent('useRow', () => {
                           "livestore.args": "{
             "id": "u1"
           }",
-                          "livestore.mutation": "CUD_Create_UserInfo",
+                          "livestore.mutation": "_Derived_Create_UserInfo",
                         },
                         "children": [
                           {

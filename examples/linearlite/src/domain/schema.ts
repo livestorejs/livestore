@@ -22,7 +22,7 @@ const issue = DbSchema.table(
       { name: 'issue_kanbanorder', columns: ['kanbanorder'] },
       { name: 'issue_created', columns: ['created'] },
     ],
-    enableCud: true,
+    deriveMutations: true,
   },
 )
 
@@ -39,7 +39,7 @@ const description = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     body: DbSchema.text({ default: '' }),
   },
-  { enableCud: true },
+  { deriveMutations: true },
 )
 
 const comment = DbSchema.table(
@@ -72,7 +72,7 @@ export type FilterState = Schema.Schema.Type<typeof FilterState>
 export const filterStateTable = DbSchema.table(
   'filter_state',
   DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
-  { isSingleton: true, enableCud: true },
+  { isSingleton: true, deriveMutations: true },
 )
 
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
