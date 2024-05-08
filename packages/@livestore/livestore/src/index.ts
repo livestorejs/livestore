@@ -1,5 +1,5 @@
 export { Store, createStore } from './store.js'
-export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason, BootDb } from './store.js'
+export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason } from './store.js'
 
 export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
 
@@ -27,7 +27,7 @@ export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 
 export * from '@livestore/common/schema'
-export { sql } from '@livestore/common'
+export { sql, type BootDb } from '@livestore/common'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 

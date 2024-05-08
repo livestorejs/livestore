@@ -25,16 +25,27 @@ export const useAtom = <
     return (newValueOrFn: any) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
 
-      if (query$.queryInfo._tag === 'Row' && query$.queryInfo.table.isSingleColumn) {
-        if (query$.queryInfo.table.options.isSingleton) {
+      if (query$.queryInfo._tag === 'Row') {
+        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.isSingleColumn) {
           store.mutate(query$.queryInfo.table.update(newValue))
-        } else {
+        } else if (query$.queryInfo.table.options.isSingleColumn) {
           store.mutate(
             query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: { value: newValue } }),
           )
+        } else {
+          store.mutate(query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
         }
       } else {
-        store.mutate(query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
+        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.isSingleColumn) {
+          store.mutate(query$.queryInfo.table.update({ [query$.queryInfo.column]: newValue }))
+        } else {
+          store.mutate(
+            query$.queryInfo.table.update({
+              where: { id: query$.queryInfo.id },
+              values: { [query$.queryInfo.column]: newValue },
+            }),
+          )
+        }
       }
     }
   }, [query$.queryInfo, query$Ref, store])

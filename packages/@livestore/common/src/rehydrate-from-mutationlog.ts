@@ -1,21 +1,24 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { MainDatabase } from './database.js'
+import type { MainDatabase, MigrationOptionsFromMutationLog } from './database.js'
 import { getExecArgsFromMutation } from './mutation.js'
 import type { LiveStoreSchema, MutationLogMetaRow } from './schema/index.js'
 import { MUTATION_LOG_META_TABLE } from './schema/index.js'
 
-export const rehydrateFromMutationLog = ({
+export const rehydrateFromMutationLog = async ({
   logDb,
   db,
   schema,
+  migrationOptions,
 }: {
   logDb: MainDatabase
   db: MainDatabase
   schema: LiveStoreSchema
+  migrationOptions: MigrationOptionsFromMutationLog
 }) => {
   try {
+    // TODO possibly implement this in a streaming fashion
     const stmt = logDb.prepare(`SELECT * FROM ${MUTATION_LOG_META_TABLE} ORDER BY id ASC`)
     const results = stmt.select<MutationLogMetaRow>(undefined)
 
@@ -23,6 +26,8 @@ export const rehydrateFromMutationLog = ({
 
     for (const row of results) {
       const mutationDef = schema.mutations.get(row.mutation) ?? shouldNeverHappen(`Unknown mutation ${row.mutation}`)
+
+      if (migrationOptions.excludeMutations?.has(row.mutation) === true) continue
 
       if (Schema.hash(mutationDef.schema) !== row.schemaHash) {
         throw new Error(`Schema hash mismatch for mutation ${row.mutation}`)
@@ -56,7 +61,11 @@ Error: ${argsDecodedEither.left}
       for (const { statementSql, bindValues } of execArgsArr) {
         try {
           const getRowsChanged = db.execute(statementSql, bindValues)
-          if (import.meta.env.DEV && getRowsChanged() === 0) {
+          if (
+            import.meta.env.DEV &&
+            getRowsChanged() === 0 &&
+            migrationOptions.logging?.excludeAffectedRows?.(statementSql) !== true
+          ) {
             console.warn(`Mutation "${mutationDef.name}" did not affect any rows:`, statementSql, bindValues)
           }
           // console.log(`Re-executed mutation ${mutationSql}`, bindValues)
@@ -67,6 +76,8 @@ Error: ${argsDecodedEither.left}
         }
       }
     }
+
+    await migrationOptions.postHook?.(db)
   } catch (e) {
     console.error('Error while rehydrating database from mutation log', e)
     debugger

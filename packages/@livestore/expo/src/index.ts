@@ -65,6 +65,7 @@ export const makeDb =
             db: mainDb,
             logDb: mainDbLog,
             schema,
+            migrationOptions: migrations,
           })
 
           break

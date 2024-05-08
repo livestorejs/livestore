@@ -1,4 +1,4 @@
-import type { DatabaseFactory } from '@livestore/common'
+import type { BootDb, DatabaseFactory } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
@@ -7,7 +7,7 @@ import type { GraphQLSchema } from 'graphql'
 
 import type { MainDatabaseWrapper } from '../MainDatabaseWrapper.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
-import type { BaseGraphQLContext, BootDb, GraphQLOptions, Store } from '../store.js'
+import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly

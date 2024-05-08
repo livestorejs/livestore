@@ -1,4 +1,5 @@
 import {
+  type BootDb,
   type DatabaseFactory,
   type DatabaseImpl,
   getExecArgsFromMutation,
@@ -80,13 +81,6 @@ export type StoreOtel = {
 
 let storeCount = 0
 const uniqueStoreId = () => `store-${++storeCount}`
-
-export type BootDb = {
-  execute(queryStr: string, bindValues?: ParamsObject): void
-  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
-  select<T>(queryStr: string, bindValues?: ParamsObject): ReadonlyArray<T>
-  txn(callback: () => void): void
-}
 
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,

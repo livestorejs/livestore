@@ -1,7 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
-import type { PreparedBindValues } from './util.js'
+import type { ParamsObject, PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined): GetRowsChangedCount
@@ -36,17 +36,16 @@ export type StorageDatabase = {
 
 export type GetRowsChangedCount = () => number
 
+export type BootDb = {
+  execute(queryStr: string, bindValues?: ParamsObject): void
+  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
+  select<T>(queryStr: string, bindValues?: ParamsObject): ReadonlyArray<T>
+  txn(callback: () => void): void
+}
+
 // TODO possibly allow a combination of these options
 export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =
-  | {
-      strategy: 'from-mutation-log'
-      /**
-       * Mutations to exclude in the mutation log
-       *
-       * @default new Set(['livestore.RawSql'])
-       */
-      excludeMutations?: ReadonlySet<keyof TSchema['_MutationDefMapType'] & string>
-    }
+  | MigrationOptionsFromMutationLog<TSchema>
   | {
       strategy: 'hard-reset'
     }
@@ -54,6 +53,20 @@ export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> 
       strategy: 'manual'
       migrate: (oldDb: Uint8Array) => Promise<Uint8Array> | Uint8Array
     }
+
+export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
+  strategy: 'from-mutation-log'
+  /**
+   * Mutations to exclude in the mutation log
+   *
+   * @default new Set(['livestore.RawSql'])
+   */
+  excludeMutations?: ReadonlySet<keyof TSchema['_MutationDefMapType'] & string>
+  postHook?: (db: MainDatabase) => void | Promise<void>
+  logging?: {
+    excludeAffectedRows?: (sqlStmt: string) => boolean
+  }
+}
 
 export type DatabaseFactory = (opts: {
   otelTracer: otel.Tracer

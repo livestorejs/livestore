@@ -1,4 +1,4 @@
-import type { MigrationOptions } from '@livestore/common'
+import type { BootDb, MigrationOptions } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
@@ -38,6 +38,7 @@ export type WorkerOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   schema: TSchema
   /** "hard-reset" is currently the default strategy */
   migrations?: MigrationOptions<TSchema>
+  postMigrationHook?: (db: BootDb) => void | Promise<void>
 }
 
 export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>(options: WorkerOptions<TSchema>) => {
@@ -49,7 +50,7 @@ export const makeWorker = <TSchema extends LiveStoreSchema = LiveStoreSchema>(op
   )
 }
 
-const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: WorkerOptions) =>
+const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' }, postMigrationHook }: WorkerOptions) =>
   Effect.gen(function* (_$) {
     const mutationLogExclude =
       migrations.strategy === 'from-mutation-log'
@@ -135,6 +136,48 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
           migrateDb({ db: tmpMainDb, otelContext, schema })
           initializeSingletonTables(schema, tmpMainDb)
 
+          if (postMigrationHook !== undefined) {
+            const bootDbImpl: BootDb = {
+              execute: (queryStr, bindValues) => {
+                const stmt = tmpMainDb.prepare(queryStr)
+                const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
+                stmt.execute(preparedBindValues)
+              },
+              mutate: (...list) => {
+                for (const mutationEventDecoded of list) {
+                  const mutationDef =
+                    schema.mutations.get(mutationEventDecoded.mutation) ??
+                    shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
+
+                  const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+                  for (const { statementSql, bindValues } of execArgsArr) {
+                    tmpMainDb.execute(statementSql, bindValues)
+                  }
+                }
+              },
+              select: (queryStr, bindValues) => {
+                const stmt = tmpMainDb.prepare(queryStr)
+                const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
+                return stmt.select(preparedBindValues)
+              },
+              txn: (callback) => {
+                try {
+                  tmpMainDb.execute('BEGIN', undefined)
+
+                  callback()
+
+                  tmpMainDb.execute('COMMIT', undefined)
+                } catch (e: any) {
+                  tmpMainDb.execute('ROLLBACK', undefined)
+                  throw e
+                }
+              },
+            }
+
+            yield* Effect.promise(async () => postMigrationHook(bootDbImpl))
+          }
+
           const mainDbLog = makeMainDb(sqlite3, dbLog.dbRef.current)
 
           migrateTable({
@@ -146,7 +189,9 @@ const makeWorkerRunner = ({ schema, migrations = { strategy: 'hard-reset' } }: W
 
           switch (migrations.strategy) {
             case 'from-mutation-log': {
-              rehydrateFromMutationLog({ db: tmpMainDb, logDb: mainDbLog, schema })
+              yield* Effect.promise(() =>
+                rehydrateFromMutationLog({ db: tmpMainDb, logDb: mainDbLog, schema, migrationOptions: migrations }),
+              )
 
               break
             }
