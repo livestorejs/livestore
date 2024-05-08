@@ -35,14 +35,14 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/experimental": "^0.15.12",
-    "@effect/opentelemetry": "^0.33.4",
-    "@effect/platform": "0.50.7",
-    "@effect/platform-browser": "0.33.7",
-    "@effect/schema": "0.66.10",
+    "@effect/experimental": "^0.16.0",
+    "@effect/opentelemetry": "^0.34.2",
+    "@effect/platform": "0.53.0",
+    "@effect/platform-browser": "0.33.14",
+    "@effect/schema": "0.66.14",
     "@opentelemetry/api": "^1.8.0",
     "date-fns": "^3.6.0",
-    "effect": "3.0.7",
+    "effect": "3.1.2",
     "effect-db-schema": "workspace:*",
     "otel-websocket-exporter": "^0.0.29",
     "pretty-bytes": "^6.1.1"

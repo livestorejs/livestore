@@ -1,20 +1,20 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, parseTodos } from '../__tests__/react/fixture.js'
+import { makeTodoMvc, parseTodos, todos } from '../__tests__/react/fixture.js'
 import type * as LiveStore from '../index.js'
 import { querySQL } from '../reactiveQueries/sql.js'
 import * as LiveStoreReact from './index.js'
 
 describe('useTemporaryQuery', () => {
   it('simple', async () => {
-    const { wrapper, store, cud, makeRenderCount } = await makeTodoMvc()
+    const { wrapper, store, makeRenderCount } = await makeTodoMvc()
 
     const renderCount = makeRenderCount()
 
     store.mutate(
-      cud.todos.insert({ id: 't1', text: 'buy milk', completed: false }),
-      cud.todos.insert({ id: 't2', text: 'buy bread', completed: false }),
+      todos.insert({ id: 't1', text: 'buy milk', completed: false }),
+      todos.insert({ id: 't2', text: 'buy bread', completed: false }),
     )
 
     const queryMap = new Map<string, LiveStore.LiveQuery<any>>()

@@ -22,7 +22,7 @@ const issue = DbSchema.table(
       { name: 'issue_kanbanorder', columns: ['kanbanorder'] },
       { name: 'issue_created', columns: ['created'] },
     ],
-    enableSetters: true,
+    enableCud: true,
   },
 )
 
@@ -32,11 +32,15 @@ export type OrderDirection = Schema.Schema.Type<typeof OrderDirection>
 const OrderBy = Schema.Literal('priority', 'status', 'created', 'modified')
 export type OrderBy = Schema.Schema.Type<typeof OrderBy>
 
-const description = DbSchema.table('description', {
-  // TODO: id is also a foreign key to issue
-  id: DbSchema.text({ primaryKey: true }),
-  body: DbSchema.text({ default: '' }),
-}, { enableSetters: true })
+const description = DbSchema.table(
+  'description',
+  {
+    // TODO: id is also a foreign key to issue
+    id: DbSchema.text({ primaryKey: true }),
+    body: DbSchema.text({ default: '' }),
+  },
+  { enableCud: true },
+)
 
 const comment = DbSchema.table(
   'comment',
@@ -68,7 +72,7 @@ export type FilterState = Schema.Schema.Type<typeof FilterState>
 export const filterStateTable = DbSchema.table(
   'filter_state',
   DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
-  { isSingleton: true, enableSetters: true },
+  { isSingleton: true, enableCud: true },
 )
 
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>

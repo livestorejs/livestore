@@ -130,4 +130,4 @@ export const makeMutationEventSchema = <TMutationsDefRecord extends MutationDefR
         id: Schema.String,
       }),
     ),
-  ) as any
+  ).annotations({ title: 'MutationEventSchema' }) as any

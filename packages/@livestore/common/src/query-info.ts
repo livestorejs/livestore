@@ -1,10 +1,6 @@
-import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import type { Schema } from '@livestore/utils/effect'
 
-import type { MutationEvent } from './schema/index.js'
-import { DbSchema, defineMutation } from './schema/index.js'
-import type { TableDef } from './schema/table-def.js'
-import { sql } from './util.js'
+import type { DbSchema } from './schema/index.js'
 
 /**
  * Semantic information about a query with supported cases being:
@@ -62,92 +58,6 @@ export type UpdateValueForPath<TQueryInfo extends QueryInfo> = TQueryInfo extend
     : TQueryInfo extends { _tag: 'ColJsonValue' }
       ? { TODO: true }
       : never
-
-export const makeCuudUpdateMutationDef = (table: TableDef) => {
-  const tableName = table.sqliteDef.name
-
-  return defineMutation(
-    `CUUD_Update_${tableName}`,
-    Schema.Struct({
-      id: Schema.String,
-      decodedPartialValues: Schema.partial(table.schema),
-    }),
-    ({ id, decodedPartialValues }) => {
-      const columnNames = Object.keys(decodedPartialValues)
-
-      const partialStructSchema = table.schema.pipe(Schema.pick(...columnNames))
-
-      // const columnNames = Object.keys(value)
-      const encodedBindValues = Schema.encodeEither(partialStructSchema)(decodedPartialValues)
-
-      if (encodedBindValues._tag === 'Left') {
-        return shouldNeverHappen(encodedBindValues.left.toString())
-      }
-
-      const updateClause = columnNames.map((columnName) => `${columnName} = $${columnName}`).join(', ')
-      const whereClause = `where id = '${id}'`
-
-      return {
-        sql: sql`UPDATE ${tableName} SET ${updateClause} ${whereClause}`,
-        bindValues: encodedBindValues.right,
-        writeTables: new Set([tableName]),
-      }
-    },
-  )
-}
-
-export const makeCuudCreateMutationDef = (table: TableDef) => {
-  const tableName = table.sqliteDef.name
-
-  return defineMutation(
-    `CUUD_Create_${tableName}`,
-    Schema.Struct({
-      id: Schema.String,
-      explicitDefaultValues: Schema.optional(Schema.partial(table.schema)),
-    }),
-    ({ id, explicitDefaultValues }) => {
-      const defaultValues = DbSchema.getDefaultValuesEncoded(table, explicitDefaultValues)
-
-      const defaultColumnNames = [...Object.keys(defaultValues), 'id']
-      const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')
-
-      const tableName = table.sqliteDef.name
-      const insertQuery = sql`insert into ${tableName} (${defaultColumnNames.join(', ')}) values (${columnValues})`
-      // )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
-
-      return {
-        sql: insertQuery,
-        bindValues: { ...defaultValues, id },
-        writeTables: new Set([tableName]),
-      }
-    },
-  )
-}
-
-export const updateMutationForQueryInfo = <const TQueryInfo extends QueryInfo>(
-  queryInfo: TQueryInfo,
-  // queryInfo: TQueryInfo extends QueryInfo<infer TTableDef>
-  //   ? TTableDef['options']['enableSetters'] extends true
-  //     ? TQueryInfo
-  //     : never
-  //   : never,
-  value: UpdateValueForPath<TQueryInfo>,
-): MutationEvent.Any => {
-  if (queryInfo._tag === 'ColJsonValue' || queryInfo._tag === 'None') {
-    return notYetImplemented('TODO')
-  }
-
-  const mutationDef = makeCuudUpdateMutationDef(queryInfo.table)
-  const id = queryInfo.id
-
-  if (queryInfo._tag === 'Row') {
-    return mutationDef({ id, decodedPartialValues: value })
-  } else if (queryInfo._tag === 'Col') {
-    return mutationDef({ id, decodedPartialValues: { [queryInfo.column]: value } })
-  } else {
-    return shouldNeverHappen()
-  }
-}
 
 // export const mutationForQueryInfo = <const TQueryInfo extends QueryInfo>(
 //   queryInfo: TQueryInfo,

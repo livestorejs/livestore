@@ -5,7 +5,7 @@ import React from 'react'
 
 import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeCudMutations, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
+import { createStore, DbSchema, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 
 export type Todo = {
@@ -28,7 +28,7 @@ export const todos = DbSchema.table(
     text: DbSchema.text({ default: '', nullable: false }),
     completed: DbSchema.boolean({ default: false, nullable: false }),
   },
-  { enableSetters: true },
+  { enableCud: true, isSingleton: false },
 )
 
 export const app = DbSchema.table('app', {
@@ -43,7 +43,7 @@ const userInfo = DbSchema.table(
     username: DbSchema.text({ default: '' }),
     text: DbSchema.text({ default: '' }),
   },
-  { enableSetters: true },
+  { enableCud: true },
 )
 
 const AppRouterSchema = DbSchema.table(
@@ -51,7 +51,7 @@ const AppRouterSchema = DbSchema.table(
   {
     currentTaskId: DbSchema.text({ default: null, nullable: true }),
   },
-  { isSingleton: true, enableSetters: true },
+  { isSingleton: true, enableCud: true },
 )
 
 export const tables = { todos, app, userInfo, AppRouterSchema }
@@ -96,8 +96,6 @@ export const makeTodoMvc = async ({
     otelRootSpanContext: otelContext,
   })
 
-  const cud = makeCudMutations(tables)
-
   // TODO improve typing of `LiveStoreContext`
   const storeContext: LiveStoreContext = { store } as TODO
 
@@ -118,7 +116,6 @@ export const makeTodoMvc = async ({
     AppRouterSchema,
     store,
     dbGraph,
-    cud,
     makeRenderCount,
     strictMode,
   }

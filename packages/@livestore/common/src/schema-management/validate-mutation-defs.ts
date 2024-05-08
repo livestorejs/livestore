@@ -1,12 +1,15 @@
-import type { MainDatabase } from '@livestore/common'
-import { migrateTable, sql } from '@livestore/common'
-import type { LiveStoreSchema, MutationDef, SchemaMutationsMetaRow } from '@livestore/common/schema'
-import { SCHEMA_MUTATIONS_META_TABLE, schemaMutationsMetaTable } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
+import type { MainDatabase } from '../database.js'
+import type { LiveStoreSchema } from '../schema/index.js'
+import type { MutationDef } from '../schema/mutations.js'
+import type { SchemaMutationsMetaRow } from '../schema/system-tables.js'
+import { SCHEMA_MUTATIONS_META_TABLE, schemaMutationsMetaTable } from '../schema/system-tables.js'
+import { sql } from '../util.js'
 import { dbExecute, dbSelect } from './common.js'
+import { migrateTable } from './migrations.js'
 
 export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaManager) => {
   // Validate mutation definitions

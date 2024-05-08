@@ -3,6 +3,9 @@ import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteDsl } from 'effect-db-schema'
 
+import type { CudMutationHelperFns } from '../cud.js'
+import { makeCudMutationDefsForTable } from '../cud.js'
+
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
 export { type SqliteDsl } from 'effect-db-schema'
@@ -53,12 +56,13 @@ export type TableDef<
   >,
 > = {
   sqliteDef: TSqliteDef
+  // TODO move this into options (for now it's duplicated)
   isSingleColumn: TIsSingleColumn
   options: TOptions
   schema: TSchema
-}
+} & (TOptions['enableCud'] extends true ? CudMutationHelperFns<TSqliteDef['columns'], TOptions> : {})
 
-export type TableOptionsInput = Partial<TableOptions & { indexes: SqliteDsl.Index[] }>
+export type TableOptionsInput = Partial<Omit<TableOptions, 'isSingleColumn'> & { indexes: SqliteDsl.Index[] }>
 
 export type TableOptions = {
   /**
@@ -70,10 +74,12 @@ export type TableOptions = {
    * @default false
    */
   isSingleton: boolean
-  // TODO
+  // TODO remove
   dynamicRegistration: boolean
   disableAutomaticIdColumn: boolean
-  enableSetters: boolean
+  enableCud: boolean
+  /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
+  isSingleColumn: boolean
 }
 
 export const table = <
@@ -83,17 +89,19 @@ export const table = <
 >(
   name: TName,
   columnOrColumns: TColumns,
-  // type?: TStateType,
   options?: TOptionsInput,
 ): TableDef<
   SqliteDsl.TableDefinition<
     TName,
     PrettifyFlat<
-      WithId<TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }, WithDefaults<TOptionsInput>>
+      WithId<
+        TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns },
+        WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
+      >
     >
   >,
-  TColumns extends SqliteDsl.ColumnDefinition<any, any> ? true : false,
-  WithDefaults<TOptionsInput>
+  SqliteDsl.IsSingleColumn<TColumns>,
+  WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
 > => {
   const tablePath = name
 
@@ -101,7 +109,8 @@ export const table = <
     isSingleton: options?.isSingleton ?? false,
     dynamicRegistration: options?.dynamicRegistration ?? false,
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
-    enableSetters: options?.enableSetters ?? false,
+    enableCud: options?.enableCud ?? false,
+    isSingleColumn: SqliteDsl.isColumnDefinition(columnOrColumns) === true,
   }
 
   const columns = (
@@ -124,6 +133,7 @@ export const table = <
 
   const sqliteDef = SqliteDsl.table(tablePath, columns, options?.indexes ?? [])
 
+  // TODO also enforce this on the type level
   if (options_.isSingleton) {
     for (const column of sqliteDef.ast.columns) {
       if (column.nullable === false && column.default._tag === 'None') {
@@ -139,17 +149,36 @@ export const table = <
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
   const tableDef = { sqliteDef, isSingleColumn, options: options_, schema } satisfies TableDef
 
-  // if (dynamicallyRegisteredTables.has(tablePath)) {
-  //   if (SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!.sqliteDef.ast) !== SqliteAst.hash(sqliteDef.ast)) {
-  //     console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', sqliteDef.ast)
-  //     shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
-  //   }
-  // } else {
-  //   dynamicallyRegisteredTables.set(tablePath, tableDef)
-  // }
+  if (tableHasCudEnabled(tableDef)) {
+    const cudMutationDefs = makeCudMutationDefsForTable(tableDef)
+
+    tableDef.insert = (valuesOrValue: any) => {
+      if (isSingleColumn && options_.isSingleton) {
+        return cudMutationDefs.insert({ id: 'singleton', value: { value: valuesOrValue } })
+      } else {
+        return cudMutationDefs.insert(valuesOrValue as any)
+      }
+    }
+
+    tableDef.update = (argsOrValues: any) => {
+      if (isSingleColumn && options_.isSingleton) {
+        return cudMutationDefs.update({ where: { id: 'singleton' }, values: { value: argsOrValues } as any })
+      } else {
+        return cudMutationDefs.update(argsOrValues as any)
+      }
+    }
+
+    tableDef.delete = (args: any) => cudMutationDefs.delete(args)
+  }
 
   return tableDef as any
 }
+
+export const tableHasCudEnabled = <TTableDef extends TableDef>(
+  tableDef: TTableDef,
+): tableDef is TTableDef & {
+  options: { enableCud: true }
+} & CudMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> => tableDef.options.enableCud === true
 
 export const tableIsSingleton = <TTableDef extends TableDef>(
   tableDef: TTableDef,
@@ -212,11 +241,12 @@ type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> =
             id: SqliteDsl.ColumnDefinition<string, string>
           })
 
-type WithDefaults<TOptionsInput extends TableOptionsInput> = {
+type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn extends boolean> = {
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   dynamicRegistration: TOptionsInput['dynamicRegistration'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
-  enableSetters: TOptionsInput['enableSetters'] extends true ? true : false
+  enableCud: TOptionsInput['enableCud'] extends true ? true : false
+  isSingleColumn: TIsSingleColumn
 }
 
 export namespace FromTable {

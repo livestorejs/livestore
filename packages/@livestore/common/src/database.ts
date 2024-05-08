@@ -4,7 +4,7 @@ import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
-  execute(bindValues: PreparedBindValues | undefined): void
+  execute(bindValues: PreparedBindValues | undefined): GetRowsChangedCount
   select<T>(bindValues: PreparedBindValues | undefined): ReadonlyArray<T>
   finalize(): void
 }
@@ -16,7 +16,7 @@ export type DatabaseImpl = {
 
 export type MainDatabase = {
   prepare(queryStr: string): PreparedStatement
-  execute(queryStr: string, bindValues: PreparedBindValues | undefined): void
+  execute(queryStr: string, bindValues: PreparedBindValues | undefined): GetRowsChangedCount
   dangerouslyReset(): Promise<void>
   export(): Uint8Array
 }
@@ -33,6 +33,8 @@ export type StorageDatabase = {
   getMutationLogData(): Promise<Uint8Array>
   shutdown(): Promise<void>
 }
+
+export type GetRowsChangedCount = () => number
 
 // TODO possibly allow a combination of these options
 export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =

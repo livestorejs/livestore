@@ -55,7 +55,10 @@ Error: ${argsDecodedEither.left}
 
       for (const { statementSql, bindValues } of execArgsArr) {
         try {
-          db.execute(statementSql, bindValues)
+          const getRowsChanged = db.execute(statementSql, bindValues)
+          if (import.meta.env.DEV && getRowsChanged() === 0) {
+            console.warn(`Mutation "${mutationDef.name}" did not affect any rows:`, statementSql, bindValues)
+          }
           // console.log(`Re-executed mutation ${mutationSql}`, bindValues)
         } catch (e) {
           console.error(`Error executing migration for mutation ${statementSql}`, bindValues, e)

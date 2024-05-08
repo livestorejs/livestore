@@ -239,6 +239,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
 
             for (const { statementSql, bindValues } of execArgsArr) {
               try {
+                // console.debug('livestore-webworker: executing SQL for mutation', mutation, statementSql, bindValues)
                 db.dbRef.current.exec({ sql: statementSql, bind: bindValues })
               } catch (e) {
                 console.error('Error executing query', e, statementSql, bindValues)

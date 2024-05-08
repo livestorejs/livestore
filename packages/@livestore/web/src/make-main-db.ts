@@ -21,6 +21,7 @@ export const makeMainDb = (
               stmt.step()
             } finally {
               stmt.reset() // Reset is needed for next execution
+              return () => sqlite3.capi.sqlite3_changes(db)
             }
 
             // if (storage !== undefined) {
@@ -80,6 +81,7 @@ export const makeMainDb = (
         stmt.step()
       } finally {
         stmt.finalize()
+        return () => sqlite3.capi.sqlite3_changes(db)
       }
     },
     dangerouslyReset: async () => {

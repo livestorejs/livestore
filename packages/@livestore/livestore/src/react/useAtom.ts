@@ -1,4 +1,4 @@
-import { type QueryInfoCol, type QueryInfoRow, updateMutationForQueryInfo } from '@livestore/common'
+import { type QueryInfoCol, type QueryInfoRow } from '@livestore/common'
 import type { DbSchema } from '@livestore/common/schema'
 import React from 'react'
 
@@ -12,7 +12,7 @@ export const useAtom = <
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
     boolean,
-    DbSchema.TableOptions & { enableSetters: true }
+    DbSchema.TableOptions & { enableCud: true }
   >,
 >(
   query$: TQuery,
@@ -26,9 +26,15 @@ export const useAtom = <
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
 
       if (query$.queryInfo._tag === 'Row' && query$.queryInfo.table.isSingleColumn) {
-        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue } as any))
+        if (query$.queryInfo.table.options.isSingleton) {
+          store.mutate(query$.queryInfo.table.update(newValue))
+        } else {
+          store.mutate(
+            query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: { value: newValue } }),
+          )
+        }
       } else {
-        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, newValue))
+        store.mutate(query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
       }
     }
   }, [query$.queryInfo, query$Ref, store])

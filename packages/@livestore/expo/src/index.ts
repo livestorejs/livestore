@@ -10,7 +10,12 @@ import {
   rehydrateFromMutationLog,
   type StorageDatabase,
 } from '@livestore/common'
-import { makeMutationEventSchema, makeSchemaHash, mutationLogMetaTable } from '@livestore/common/schema'
+import {
+  makeMutationEventSchema,
+  makeSchemaHash,
+  MUTATION_LOG_META_TABLE,
+  mutationLogMetaTable,
+} from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -95,7 +100,7 @@ export const makeDb =
     )
 
     const newMutationLogStmt = mainDbLog.prepare(
-      `INSERT INTO mutation_log (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
     )
 
     const storageDb = {
@@ -163,6 +168,7 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
         execute: (bindValues) => {
           const res = stmt.executeSync(bindValues ?? [])
           res.resetSync()
+          return () => res.changes
         },
         select: (bindValues) => {
           const res = stmt.executeSync(bindValues ?? [])
@@ -178,7 +184,8 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
     execute: (queryStr, bindValues) => {
       const stmt = db.prepareSync(queryStr)
       try {
-        stmt.executeSync(bindValues ?? [])
+        const res = stmt.executeSync(bindValues ?? [])
+        return () => res.changes
       } finally {
         stmt.finalizeSync()
       }

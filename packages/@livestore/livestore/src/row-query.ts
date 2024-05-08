@@ -1,7 +1,7 @@
 import type { MainDatabase, QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
-import { makeCuudCreateMutationDef as makeCuudCreateMutationDef_, migrateTable, sql } from '@livestore/common'
-import type { DbSchema } from '@livestore/common/schema'
-import { SCHEMA_META_TABLE } from '@livestore/common/schema'
+import { migrateTable, sql } from '@livestore/common'
+import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
+import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -12,18 +12,11 @@ import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQuer
 import { computed } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { RefreshReason, Store } from './store.js'
-import type { GetValForKey } from './utils/util.js'
 
 export type RowQueryOptions = {
   otelContext?: otel.Context
   skipInsertDefaultRow?: boolean
   dbGraph?: DbGraph
-  /**
-   * TODO remove this option again once Devtools v2 has landed
-   * This option is only used right now for the devtools to pass in their custom mutation function
-   * to emit raw sql mutation events instead of the default behavior of using derived mutation definitions
-   */
-  __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
 }
 
 export type RowQueryOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
@@ -91,7 +84,6 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
       defaultValues,
       id,
       skipInsertDefaultRow: options?.skipInsertDefaultRow,
-      __makeCuudCreateMutationDef: options?.__makeCuudCreateMutationDef,
     }),
     map: (results): RowResult<TTableDef> => {
       if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
@@ -145,7 +137,6 @@ const makeExecBeforeFirstRun =
     otelContext: otelContext_,
     table,
     componentTableName,
-    __makeCuudCreateMutationDef,
   }: {
     id?: string
     defaultValues?: any
@@ -153,7 +144,6 @@ const makeExecBeforeFirstRun =
     otelContext?: otel.Context
     componentTableName: string
     table: DbSchema.TableDef
-    __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
   }) =>
   ({ store }: DbContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
@@ -172,8 +162,9 @@ const makeExecBeforeFirstRun =
             return {
               ...mainStmt,
               execute: (bindValues) => {
-                mainStmt.execute(bindValues)
+                const getRowsChanged = mainStmt.execute(bindValues)
                 store.db.storageDb.execute(query, bindValues, undefined)
+                return getRowsChanged
               },
             }
           },
@@ -205,7 +196,6 @@ const makeExecBeforeFirstRun =
         table,
         otelContext,
         explicitDefaultValues: defaultValues,
-        __makeCuudCreateMutationDef,
       })
     }
   }
@@ -216,18 +206,21 @@ const insertRowWithDefaultValuesOrIgnore = ({
   table,
   otelContext,
   explicitDefaultValues,
-  __makeCuudCreateMutationDef: makeCuudCreateMutationDef = makeCuudCreateMutationDef_,
 }: {
   store: Store
   id: string
   table: DbSchema.TableDef
   otelContext: otel.Context
   explicitDefaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
-  __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
 }) => {
   const rowExists = store.mainDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
   if (rowExists) return
 
-  const mutationDef = makeCuudCreateMutationDef(table)
-  store.mutateWithoutRefresh(mutationDef({ id, explicitDefaultValues }), otelContext)
+  // const mutationDef = makeCuudCreateMutationDef(table)
+  if (DbSchema.tableHasCudEnabled(table) === false) {
+    return shouldNeverHappen(
+      `Cannot insert row for table "${table.sqliteDef.name}" which does not have CUD mutations enabled`,
+    )
+  }
+  store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), otelContext)
 }

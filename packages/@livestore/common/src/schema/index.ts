@@ -2,7 +2,7 @@ import { isReadonlyArray } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
-import { makeCuudCreateMutationDef, makeCuudUpdateMutationDef } from '../query-info.js'
+import { makeCudMutationDefsForTable } from '../cud.js'
 import {
   type MutationDef,
   type MutationDefMap,
@@ -74,12 +74,11 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   mutations.set(rawSqlMutation.name, rawSqlMutation)
 
   for (const tableDef of tables.values()) {
-    if (tableDef.options.enableSetters) {
-      const mutationDef = makeCuudUpdateMutationDef(tableDef)
-      mutations.set(mutationDef.name, mutationDef)
-
-      const createMutationDef = makeCuudCreateMutationDef(tableDef)
-      mutations.set(createMutationDef.name, createMutationDef)
+    if (tableDef.options.enableCud) {
+      const cudMutations = makeCudMutationDefsForTable(tableDef)
+      mutations.set(cudMutations.insert.name, cudMutations.insert)
+      mutations.set(cudMutations.update.name, cudMutations.update)
+      mutations.set(cudMutations.delete.name, cudMutations.delete)
     }
   }
 

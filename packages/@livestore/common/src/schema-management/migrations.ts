@@ -50,7 +50,6 @@ export const migrateDb = ({
     const dbSchemaHash = dbSchemaHashByTable[tableName]
     const schemaHash = SqliteAst.hash(tableAst)
 
-    // @ts-expect-error TODO fix typing
     const skipMigrations = import.meta.env.VITE_LIVESTORE_SKIP_MIGRATIONS !== undefined
 
     if (schemaHash !== dbSchemaHash && skipMigrations === false) {

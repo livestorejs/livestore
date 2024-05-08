@@ -1,8 +1,7 @@
 import type { QueryInfo } from '@livestore/common'
-import {
-  makeCuudCreateMutationDef as makeCuudCreateMutationDef_,
-  updateMutationForQueryInfo as updateMutationForQueryInfo_,
-} from '@livestore/common'
+import {} from // makeCuudCreateMutationDef as makeCuudCreateMutationDef_,
+// updateMutationForQueryInfo as updateMutationForQueryInfo_,
+'@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type { SqliteDsl } from 'effect-db-schema'
@@ -28,13 +27,6 @@ export type UseRowOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
 
 export type UseRowOptionsBase = {
   dbGraph?: DbGraph
-  /**
-   * TODO remove this option again once Devtools v2 has landed
-   * This option is only used right now for the devtools to pass in their custom mutation function
-   * to emit raw sql mutation events instead of the default behavior of using derived mutation definitions
-   */
-  __makeCuudCreateMutationDef?: typeof makeCuudCreateMutationDef_
-  __updateMutationForQueryInfo?: typeof updateMutationForQueryInfo_
 }
 
 /**
@@ -51,7 +43,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: true; enableSetters: true }
+      DbSchema.TableOptions & { isSingleton: true; enableCud: true }
     >,
   >(
     table: TTableDef,
@@ -61,7 +53,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: false; enableSetters: true }
+      DbSchema.TableOptions & { isSingleton: false; enableCud: true }
     >,
   >(
     table: TTableDef,
@@ -73,7 +65,7 @@ export const useRow: {
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
     boolean,
-    DbSchema.TableOptions & { enableSetters: true }
+    DbSchema.TableOptions & { enableCud: true }
   >,
 >(
   table: TTableDef,
@@ -84,40 +76,33 @@ export const useRow: {
   const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
     typeof idOrOptions === 'string' ? options_ : idOrOptions
-  const {
-    defaultValues,
-    dbGraph,
-    __makeCuudCreateMutationDef = makeCuudCreateMutationDef_,
-    __updateMutationForQueryInfo: updateMutationForQueryInfo = updateMutationForQueryInfo_,
-  } = options ?? {}
+  const { defaultValues, dbGraph } = options ?? {}
+
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
-  // @ts-expect-error only a runtime check
-  if (table.options.enableSetters === false) {
-    shouldNeverHappen('useRow called on a table that does not have setters enabled')
+  const tableName = table.sqliteDef.name
+
+  if (DbSchema.tableHasCudEnabled(table) === false) {
+    shouldNeverHappen(`useRow called on table "${tableName}" which does not have CUD mutations enabled`)
   }
 
   const { store } = useStore()
 
-  // console.debug('useRow', table.sqliteDef.name, id)
+  // console.debug('useRow', tableName, id)
 
   const { query$, otelContext } = useMakeTemporaryQuery(
     (otelContext) =>
       DbSchema.tableIsSingleton(table)
-        ? (rowQuery(table, { otelContext, dbGraph, __makeCuudCreateMutationDef }) as LiveQuery<
-            RowResult<TTableDef>,
-            QueryInfo
-          >)
+        ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
         : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
             otelContext,
             defaultValues: defaultValues!,
             dbGraph,
-            __makeCuudCreateMutationDef,
           }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
-    [id!, table.sqliteDef.name],
+    [id!, tableName],
     {
       otel: {
-        spanName: `LiveStore:useRow:${table.sqliteDef.name}${id === undefined ? '' : `:${id}`}`,
+        spanName: `LiveStore:useRow:${tableName}${id === undefined ? '' : `:${id}`}`,
         attributes: { id },
       },
     },
@@ -131,7 +116,13 @@ export const useRow: {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
-        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue }))
+        // NOTE we need to account for the short-hand syntax for single-column+singleton tables
+        if (table.options.isSingleton) {
+          store.mutate(table.update(newValue))
+        } else {
+          store.mutate(table.update({ where: { id }, values: { value: newValue } }))
+        }
+        // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue }))
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
@@ -144,7 +135,8 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
 
-          store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
+          store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: { [columnName]: newValue } }))
+          // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
         })
 
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
@@ -161,12 +153,13 @@ export const useRow: {
           return
         }
 
-        store.mutate(updateMutationForQueryInfo(query$.queryInfo!, columnValues))
+        store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: columnValues }))
+        // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, columnValues))
       }
 
       return setState as any
     }
-  }, [updateMutationForQueryInfo, query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
+  }, [id, query$Ref, sqliteTableDef.columns, store, table])
 
   return [query$Ref.current, setState, query$]
 }

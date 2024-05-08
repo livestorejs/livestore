@@ -1,4 +1,3 @@
-import { updateMutationForQueryInfo } from '@livestore/common'
 import { ReadonlyRecord } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
@@ -50,6 +49,8 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('username_u2')
     expect(renderCount.val).toBe(2)
   })
+
+  // TODO add a test that makes sure React doesn't re-render when a setter is used to set the same value
 
   it('should update the data reactively - via setState', async () => {
     using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
@@ -185,10 +186,7 @@ describe.concurrent('useRow', () => {
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
         }),
-        updateMutationForQueryInfo(
-          { _tag: 'Col', table: AppRouterSchema, column: 'currentTaskId', id: 'singleton' },
-          't2',
-        ),
+        AppRouterSchema.update({ where: { id: 'singleton' }, values: { currentTaskId: 't2' } }),
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0)`,
         }),
@@ -201,12 +199,12 @@ describe.concurrent('useRow', () => {
 
   it('should work for a useRow query chained with a useTemporary query', async () => {
     using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
-    const { store, wrapper, AppComponentSchema, dbGraph, makeRenderCount, cud } = inputs
+    const { store, wrapper, AppComponentSchema, dbGraph, makeRenderCount } = inputs
     const renderCount = makeRenderCount()
 
     store.mutate(
-      cud.todos.insert({ id: 't1', text: 'buy milk', completed: false }),
-      cud.todos.insert({ id: 't2', text: 'buy bread', completed: false }),
+      todos.insert({ id: 't1', text: 'buy milk', completed: false }),
+      todos.insert({ id: 't2', text: 'buy bread', completed: false }),
     )
 
     const { result, unmount, rerender } = renderHook(
@@ -421,16 +419,15 @@ describe.concurrent('useRow', () => {
                         "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
                           "livestore.args": "{
-            "id": "u1",
-            "explicitDefaultValues": {}
+            "id": "u1"
           }",
-                          "livestore.mutation": "CUUD_Create_UserInfo",
+                          "livestore.mutation": "CUD_Create_UserInfo",
                         },
                         "children": [
                           {
                             "_name": "livestore.in-memory-db:execute",
                             "attributes": {
-                              "sql.query": "insert into UserInfo (username, text, id) values ($username, $text, $id)",
+                              "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
                             },
                           },
                         ],
@@ -585,16 +582,15 @@ describe.concurrent('useRow', () => {
                         "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
                           "livestore.args": "{
-            "id": "u1",
-            "explicitDefaultValues": {}
+            "id": "u1"
           }",
-                          "livestore.mutation": "CUUD_Create_UserInfo",
+                          "livestore.mutation": "CUD_Create_UserInfo",
                         },
                         "children": [
                           {
                             "_name": "livestore.in-memory-db:execute",
                             "attributes": {
-                              "sql.query": "insert into UserInfo (username, text, id) values ($username, $text, $id)",
+                              "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
                             },
                           },
                         ],

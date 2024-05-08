@@ -30,6 +30,8 @@ export type Primitive = null | undefined | string | number | boolean | symbol | 
 
 export type LiteralUnion<LiteralType, BaseType extends Primitive> = LiteralType | (BaseType & Record<never, never>)
 
+export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
+
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const times = (n: number, fn: (index: number) => {}): void => {

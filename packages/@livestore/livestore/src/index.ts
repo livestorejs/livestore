@@ -26,8 +26,6 @@ export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
 
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 
-export * from './cud.js'
-
 export * from '@livestore/common/schema'
 export { sql } from '@livestore/common'
 
