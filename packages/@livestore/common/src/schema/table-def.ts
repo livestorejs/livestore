@@ -3,6 +3,9 @@ import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteDsl } from 'effect-db-schema'
 
+import type { DerivedMutationHelperFns } from '../derived-mutations.js'
+import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
+
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
 export { type SqliteDsl } from 'effect-db-schema'
@@ -53,26 +56,42 @@ export type TableDef<
   >,
 > = {
   sqliteDef: TSqliteDef
+  // TODO move this into options (for now it's duplicated)
   isSingleColumn: TIsSingleColumn
   options: TOptions
   schema: TSchema
-}
+} & (TOptions['deriveMutations'] extends true ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions> : {})
 
-export type TableOptionsInput = Partial<TableOptions & { indexes: SqliteDsl.Index[] }>
+export type TableOptionsInput = Partial<Omit<TableOptions, 'isSingleColumn'> & { indexes: SqliteDsl.Index[] }>
 
 export type TableOptions = {
   /**
    * Setting this to true will have the following consequences:
    * - An `id` column will be added with `primaryKey: true` and `"singleton"` as default value and only allowed value
-   * - LiveStore will automatically create the singleton row when the table is created
+   * - LiveStore will automatically create the singleton row when booting up
    * - LiveStore will fail if there is already a column defined with `primaryKey: true`
    *
    * @default false
    */
   isSingleton: boolean
-  // TODO
+  // TODO remove
   dynamicRegistration: boolean
   disableAutomaticIdColumn: boolean
+  /**
+   * Setting this to true will automatically derive insert, update and delete mutations for this table. Example:
+   *
+   * ```ts
+   * const todos = table('todos', { ... }, { deriveMutations: true })
+   * todos.insert({ id: '1', text: 'Hello' })
+   * ```
+   *
+   * This is also a prerequisite for using the `useRow`, `useAtom` and `rowQuery` APIs.
+   *
+   * Important: When using this option, make sure you're following the "Rules of mutations" for the table schema.
+   */
+  deriveMutations: boolean
+  /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
+  isSingleColumn: boolean
 }
 
 export const table = <
@@ -82,17 +101,19 @@ export const table = <
 >(
   name: TName,
   columnOrColumns: TColumns,
-  // type?: TStateType,
   options?: TOptionsInput,
 ): TableDef<
   SqliteDsl.TableDefinition<
     TName,
     PrettifyFlat<
-      WithId<TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns }, WithDefaults<TOptionsInput>>
+      WithId<
+        TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns },
+        WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
+      >
     >
   >,
-  TColumns extends SqliteDsl.ColumnDefinition<any, any> ? true : false,
-  WithDefaults<TOptionsInput>
+  SqliteDsl.IsSingleColumn<TColumns>,
+  WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
 > => {
   const tablePath = name
 
@@ -100,6 +121,8 @@ export const table = <
     isSingleton: options?.isSingleton ?? false,
     dynamicRegistration: options?.dynamicRegistration ?? false,
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
+    deriveMutations: options?.deriveMutations ?? false,
+    isSingleColumn: SqliteDsl.isColumnDefinition(columnOrColumns) === true,
   }
 
   const columns = (
@@ -122,6 +145,7 @@ export const table = <
 
   const sqliteDef = SqliteDsl.table(tablePath, columns, options?.indexes ?? [])
 
+  // TODO also enforce this on the type level
   if (options_.isSingleton) {
     for (const column of sqliteDef.ast.columns) {
       if (column.nullable === false && column.default._tag === 'None') {
@@ -137,17 +161,37 @@ export const table = <
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
   const tableDef = { sqliteDef, isSingleColumn, options: options_, schema } satisfies TableDef
 
-  // if (dynamicallyRegisteredTables.has(tablePath)) {
-  //   if (SqliteAst.hash(dynamicallyRegisteredTables.get(tablePath)!.sqliteDef.ast) !== SqliteAst.hash(sqliteDef.ast)) {
-  //     console.error('previous tableDef', dynamicallyRegisteredTables.get(tablePath), 'new tableDef', sqliteDef.ast)
-  //     shouldNeverHappen(`Table with name "${name}" was already previously defined with a different definition`)
-  //   }
-  // } else {
-  //   dynamicallyRegisteredTables.set(tablePath, tableDef)
-  // }
+  if (tableHasDerivedMutations(tableDef)) {
+    const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
+
+    tableDef.insert = (valuesOrValue: any) => {
+      if (isSingleColumn && options_.isSingleton) {
+        return derivedMutationDefs.insert({ id: 'singleton', value: { value: valuesOrValue } })
+      } else {
+        return derivedMutationDefs.insert(valuesOrValue as any)
+      }
+    }
+
+    tableDef.update = (argsOrValues: any) => {
+      if (isSingleColumn && options_.isSingleton) {
+        return derivedMutationDefs.update({ where: { id: 'singleton' }, values: { value: argsOrValues } as any })
+      } else {
+        return derivedMutationDefs.update(argsOrValues as any)
+      }
+    }
+
+    tableDef.delete = (args: any) => derivedMutationDefs.delete(args)
+  }
 
   return tableDef as any
 }
+
+export const tableHasDerivedMutations = <TTableDef extends TableDef>(
+  tableDef: TTableDef,
+): tableDef is TTableDef & {
+  options: { deriveMutations: true }
+} & DerivedMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> =>
+  tableDef.options.deriveMutations === true
 
 export const tableIsSingleton = <TTableDef extends TableDef>(
   tableDef: TTableDef,
@@ -210,10 +254,12 @@ type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> =
             id: SqliteDsl.ColumnDefinition<string, string>
           })
 
-type WithDefaults<TOptionsInput extends TableOptionsInput> = {
+type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn extends boolean> = {
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   dynamicRegistration: TOptionsInput['dynamicRegistration'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
+  deriveMutations: TOptionsInput['deriveMutations'] extends true ? true : false
+  isSingleColumn: TIsSingleColumn
 }
 
 export namespace FromTable {

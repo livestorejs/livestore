@@ -1,9 +1,5 @@
-import {
-  type DatabaseFactory,
-  type DatabaseImpl,
-  getExecArgsFromMutation,
-  type PreparedBindValues,
-} from '@livestore/common'
+import type { BootDb, DatabaseFactory, DatabaseImpl, PreparedBindValues, ResetMode } from '@livestore/common'
+import { getExecArgsFromMutation } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
@@ -80,13 +76,6 @@ export type StoreOtel = {
 
 let storeCount = 0
 const uniqueStoreId = () => `store-${++storeCount}`
-
-export type BootDb = {
-  execute(queryStr: string, bindValues?: ParamsObject): void
-  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
-  select<T>(queryStr: string, bindValues?: ParamsObject): ReadonlyArray<T>
-  txn(callback: () => void): void
-}
 
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
@@ -384,7 +373,7 @@ export class Store<
    * This is an internal method that doesn't trigger a refresh;
    * the caller must refresh queries after calling this method.
    */
-  private mutateWithoutRefresh = (
+  mutateWithoutRefresh = (
     mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
@@ -473,7 +462,7 @@ export class Store<
   }
 
   // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
-  dangerouslyResetStorage = () => this.db.storageDb.dangerouslyReset()
+  dangerouslyResetStorage = (mode: ResetMode) => this.db.storageDb.dangerouslyReset(mode)
 }
 
 /** Create a new LiveStore Store */
@@ -521,15 +510,15 @@ export const createStore = async <
         let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
 
         const bootDbImpl: BootDb = {
+          _tag: 'BootDb',
           execute: (queryStr, bindValues) => {
             const stmt = db.mainDb.prepare(queryStr)
-            const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
-            stmt.execute(preparedBindValues)
+            stmt.execute(bindValues)
 
             if (isInTxn === true) {
-              txnExecuteStmnts.push([queryStr, preparedBindValues])
+              txnExecuteStmnts.push([queryStr, bindValues])
             } else {
-              void db.storageDb.execute(queryStr, preparedBindValues, undefined)
+              void db.storageDb.execute(queryStr, bindValues, undefined)
             }
           },
           mutate: (...list) => {
@@ -551,8 +540,7 @@ export const createStore = async <
           },
           select: (queryStr, bindValues) => {
             const stmt = db.mainDb.prepare(queryStr)
-            const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
-            return stmt.select(preparedBindValues)
+            return stmt.select(bindValues)
           },
           txn: (callback) => {
             try {

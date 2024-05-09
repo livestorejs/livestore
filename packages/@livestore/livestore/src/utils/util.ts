@@ -2,8 +2,6 @@
 
 import type { Brand } from '@livestore/utils/effect'
 
-export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
-
 export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array | null
 

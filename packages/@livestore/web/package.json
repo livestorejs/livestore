@@ -22,6 +22,10 @@
     "./storage/in-memory": {
       "types": "./dist/storage/in-memory/index.d.ts",
       "default": "./dist/storage/in-memory/index.js"
+    },
+    "./sqlite-utils": {
+      "types": "./dist/sqlite-utils.d.ts",
+      "default": "./dist/sqlite-utils.js"
     }
   },
   "types": "./dist/index.d.ts",

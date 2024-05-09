@@ -1,45 +1,52 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { MainDatabase } from './database.js'
+import type { InMemoryDatabase, MigrationOptionsFromMutationLog } from './database-types.js'
 import { getExecArgsFromMutation } from './mutation.js'
-import type { LiveStoreSchema } from './schema/index.js'
+import type { LiveStoreSchema, MutationLogMetaRow } from './schema/index.js'
+import { MUTATION_LOG_META_TABLE } from './schema/index.js'
 
-type MutationLogRow = {
-  id: string
-  mutation: string
-  args_json: string
-  schema_hash: number
-  created_at: string
-}
-
-export const rehydrateFromMutationLog = ({
+export const rehydrateFromMutationLog = async ({
   logDb,
   db,
   schema,
+  migrationOptions,
 }: {
-  logDb: MainDatabase
-  db: MainDatabase
+  logDb: InMemoryDatabase
+  db: InMemoryDatabase
   schema: LiveStoreSchema
+  migrationOptions: MigrationOptionsFromMutationLog
 }) => {
   try {
-    const stmt = logDb.prepare('SELECT * FROM mutation_log ORDER BY id ASC')
-    const results = stmt.select<MutationLogRow>(undefined)
+    // TODO possibly implement this in a streaming fashion
+    const stmt = logDb.prepare(`SELECT * FROM ${MUTATION_LOG_META_TABLE} ORDER BY id ASC`)
+    const results = stmt.select<MutationLogMetaRow>(undefined)
 
     performance.mark('livestore:hydrate-from-mutationlog:start')
 
     for (const row of results) {
       const mutationDef = schema.mutations.get(row.mutation) ?? shouldNeverHappen(`Unknown mutation ${row.mutation}`)
 
-      if (Schema.hash(mutationDef.schema) !== row.schema_hash) {
+      if (migrationOptions.excludeMutations?.has(row.mutation) === true) continue
+
+      if (Schema.hash(mutationDef.schema) !== row.schemaHash) {
         throw new Error(`Schema hash mismatch for mutation ${row.mutation}`)
       }
 
-      const argsDecoded = Schema.decodeUnknownSync(Schema.parseJson(mutationDef.schema))(row.args_json)
+      const argsDecodedEither = Schema.decodeUnknownEither(Schema.parseJson(mutationDef.schema))(row.argsJson)
+      if (argsDecodedEither._tag === 'Left') {
+        return shouldNeverHappen(`\
+There was an error decoding the persisted mutation event args for mutation "${row.mutation}".
+This likely means the schema has changed in an incompatible way.
+
+Error: ${argsDecodedEither.left}
+        `)
+      }
+
       const mutationEventDecoded = {
         id: row.id,
         mutation: row.mutation,
-        args: argsDecoded,
+        args: argsDecodedEither.right,
       }
       // const argsEncoded = JSON.parse(row.args_json)
       // const mutationSqlRes =
@@ -53,7 +60,14 @@ export const rehydrateFromMutationLog = ({
 
       for (const { statementSql, bindValues } of execArgsArr) {
         try {
-          db.execute(statementSql, bindValues)
+          const getRowsChanged = db.execute(statementSql, bindValues)
+          if (
+            import.meta.env.DEV &&
+            getRowsChanged() === 0 &&
+            migrationOptions.logging?.excludeAffectedRows?.(statementSql) !== true
+          ) {
+            console.warn(`Mutation "${mutationDef.name}" did not affect any rows:`, statementSql, bindValues)
+          }
           // console.log(`Re-executed mutation ${mutationSql}`, bindValues)
         } catch (e) {
           console.error(`Error executing migration for mutation ${statementSql}`, bindValues, e)

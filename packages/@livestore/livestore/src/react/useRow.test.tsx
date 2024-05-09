@@ -1,7 +1,7 @@
 import { ReadonlyRecord } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { act, render, renderHook } from '@testing-library/react'
+import { render, renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
@@ -9,7 +9,6 @@ import type { Todo } from '../__tests__/react/fixture.js'
 import { makeTodoMvc, todos } from '../__tests__/react/fixture.js'
 import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
 import * as LiveStore from '../index.js'
-import { mutationForQueryInfo } from '../query-info.js'
 import * as LiveStoreReact from './index.js'
 import type { StackInfo } from './utils/stack-info.js'
 
@@ -36,7 +35,7 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount.val).toBe(1)
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
@@ -50,6 +49,8 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('username_u2')
     expect(renderCount.val).toBe(2)
   })
+
+  // TODO add a test that makes sure React doesn't re-render when a setter is used to set the same value
 
   it('should update the data reactively - via setState', async () => {
     using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
@@ -72,7 +73,7 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount.val).toBe(1)
 
-    act(() => result.current.setState.username('username_u1_hello'))
+    React.act(() => result.current.setState.username('username_u1_hello'))
 
     expect(result.current.state.id).toBe('u1')
     expect(result.current.state.username).toBe('username_u1_hello')
@@ -100,7 +101,7 @@ describe.concurrent('useRow', () => {
     expect(result.current.state.username).toBe('')
     expect(renderCount.val).toBe(1)
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`UPDATE UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`,
@@ -115,17 +116,9 @@ describe.concurrent('useRow', () => {
 
   it('should work for a larger app', async () => {
     using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
-    const { wrapper, store, dbGraph, makeRenderCount } = inputs
+    const { wrapper, store, dbGraph, makeRenderCount, AppRouterSchema } = inputs
 
     const allTodos$ = LiveStore.querySQL<Todo[]>(`select * from todos`, { label: 'allTodos', dbGraph })
-
-    const AppRouterSchema = LiveStore.DbSchema.table(
-      'AppRouter',
-      {
-        currentTaskId: LiveStore.DbSchema.text({ default: null, nullable: true }),
-      },
-      { isSingleton: true },
-    )
 
     const appRouterRenderCount = makeRenderCount()
     let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
@@ -168,7 +161,7 @@ describe.concurrent('useRow', () => {
 
     expect(appRouterRenderCount.val).toBe(1)
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
@@ -179,7 +172,7 @@ describe.concurrent('useRow', () => {
     expect(appRouterRenderCount.val).toBe(1)
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
 
-    act(() => globalSetState!.currentTaskId('t1'))
+    React.act(() => globalSetState!.currentTaskId('t1'))
 
     expect(appRouterRenderCount.val).toBe(2)
     expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
@@ -188,12 +181,12 @@ describe.concurrent('useRow', () => {
 
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
         }),
-        mutationForQueryInfo({ _tag: 'Col', table: AppRouterSchema, column: 'currentTaskId', id: 'singleton' }, 't2'),
+        AppRouterSchema.update({ where: { id: 'singleton' }, values: { currentTaskId: 't2' } }),
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0)`,
         }),
@@ -206,12 +199,12 @@ describe.concurrent('useRow', () => {
 
   it('should work for a useRow query chained with a useTemporary query', async () => {
     using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
-    const { store, wrapper, AppComponentSchema, dbGraph, makeRenderCount, cud } = inputs
+    const { store, wrapper, AppComponentSchema, dbGraph, makeRenderCount } = inputs
     const renderCount = makeRenderCount()
 
     store.mutate(
-      cud.todos.insert({ id: 't1', text: 'buy milk', completed: false }),
-      cud.todos.insert({ id: 't2', text: 'buy bread', completed: false }),
+      todos.insert({ id: 't1', text: 'buy milk', completed: false }),
+      todos.insert({ id: 't2', text: 'buy bread', completed: false }),
     )
 
     const { result, unmount, rerender } = renderHook(
@@ -233,7 +226,7 @@ describe.concurrent('useRow', () => {
       { wrapper, initialProps: 'u1' },
     )
 
-    act(() =>
+    React.act(() =>
       store.mutate(
         LiveStore.rawSqlMutation({
           sql: LiveStore.sql`INSERT INTO UserInfo (id, username, text) VALUES ('u2', 'username_u2', 'milk')`,
@@ -289,7 +282,7 @@ describe.concurrent('useRow', () => {
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
-      act(() =>
+      React.act(() =>
         store.mutate(
           LiveStore.rawSqlMutation({
             sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
@@ -346,8 +339,16 @@ describe.concurrent('useRow', () => {
                 "_name": "sql-in-memory-select",
                 "attributes": {
                   "sql.cached": false,
-                  "sql.query": "SELECT schemaHash FROM __livestore_schema WHERE tableName = 'UserInfo'",
+                  "sql.query": "select 1 from UserInfo where id = 'u1'",
                   "sql.rowsCount": 0,
+                },
+              },
+              {
+                "_name": "sql-in-memory-select",
+                "attributes": {
+                  "sql.cached": false,
+                  "sql.query": "select 1 from UserInfo where id = 'u2'",
+                  "sql.rowsCount": 1,
                 },
               },
               {
@@ -415,10 +416,21 @@ describe.concurrent('useRow', () => {
                     },
                     "children": [
                       {
-                        "_name": "livestore.in-memory-db:execute",
+                        "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
-                          "sql.query": "insert into UserInfo (username, text, id) select $username, $text, $id where not exists(select 1 from UserInfo where id = 'u1')",
+                          "livestore.args": "{
+            "id": "u1"
+          }",
+                          "livestore.mutation": "_Derived_Create_UserInfo",
                         },
+                        "children": [
+                          {
+                            "_name": "livestore.in-memory-db:execute",
+                            "attributes": {
+                              "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
+                            },
+                          },
+                        ],
                       },
                       {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
@@ -490,8 +502,16 @@ describe.concurrent('useRow', () => {
                 "_name": "sql-in-memory-select",
                 "attributes": {
                   "sql.cached": false,
-                  "sql.query": "SELECT schemaHash FROM __livestore_schema WHERE tableName = 'UserInfo'",
+                  "sql.query": "select 1 from UserInfo where id = 'u1'",
                   "sql.rowsCount": 0,
+                },
+              },
+              {
+                "_name": "sql-in-memory-select",
+                "attributes": {
+                  "sql.cached": false,
+                  "sql.query": "select 1 from UserInfo where id = 'u2'",
+                  "sql.rowsCount": 1,
                 },
               },
               {
@@ -559,10 +579,21 @@ describe.concurrent('useRow', () => {
                     },
                     "children": [
                       {
-                        "_name": "livestore.in-memory-db:execute",
+                        "_name": "LiveStore:mutatetWithoutRefresh",
                         "attributes": {
-                          "sql.query": "insert into UserInfo (username, text, id) select $username, $text, $id where not exists(select 1 from UserInfo where id = 'u1')",
+                          "livestore.args": "{
+            "id": "u1"
+          }",
+                          "livestore.mutation": "_Derived_Create_UserInfo",
                         },
+                        "children": [
+                          {
+                            "_name": "livestore.in-memory-db:execute",
+                            "attributes": {
+                              "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
+                            },
+                          },
+                        ],
                       },
                       {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
@@ -605,12 +636,6 @@ describe.concurrent('useRow', () => {
                       "id": "u2",
                     },
                     "children": [
-                      {
-                        "_name": "livestore.in-memory-db:execute",
-                        "attributes": {
-                          "sql.query": "insert into UserInfo (username, text, id) select $username, $text, $id where not exists(select 1 from UserInfo where id = 'u2')",
-                        },
-                      },
                       {
                         "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u2)",
                         "attributes": {

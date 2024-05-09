@@ -15,7 +15,7 @@ const app = DbSchema.table(
     newTodoText: DbSchema.text({ default: '' }),
     filter: DbSchema.text({ schema: Filter, default: 'all' }),
   },
-  { isSingleton: true },
+  { isSingleton: true, deriveMutations: true },
 )
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
@@ -23,6 +23,6 @@ export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
 
-export const schema = makeSchema({ tables, mutations })
+export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'from-mutation-log' } })
 
 export * as mutations from './mutations.js'

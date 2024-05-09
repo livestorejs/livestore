@@ -1,11 +1,14 @@
+import type { QueryInfo } from '@livestore/common'
+import {} from // deriveCreateMutationDef as deriveCreateMutationDef_,
+// updateMutationForQueryInfo as updateMutationForQueryInfo_,
+'@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
+import { shouldNeverHappen } from '@livestore/utils'
 import type { SqliteDsl } from 'effect-db-schema'
 import { mapValues } from 'lodash-es'
 import React from 'react'
 
 import type { DbGraph, LiveQuery } from '../index.js'
-import type { QueryInfo } from '../query-info.js'
-import { mutationForQueryInfo } from '../query-info.js'
 import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
 import { useStore } from './LiveStoreContext.js'
@@ -40,7 +43,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: true }
+      DbSchema.TableOptions & { isSingleton: true; deriveMutations: true }
     >,
   >(
     table: TTableDef,
@@ -50,7 +53,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: false }
+      DbSchema.TableOptions & { isSingleton: false; deriveMutations: true }
     >,
   >(
     table: TTableDef,
@@ -58,7 +61,13 @@ export const useRow: {
     id: string,
     options?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
   ): UseRowResult<TTableDef>
-} = <TTableDef extends DbSchema.TableDef>(
+} = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { deriveMutations: true }
+  >,
+>(
   table: TTableDef,
   idOrOptions?: string | UseRowOptionsBase,
   options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
@@ -68,11 +77,18 @@ export const useRow: {
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
     typeof idOrOptions === 'string' ? options_ : idOrOptions
   const { defaultValues, dbGraph } = options ?? {}
+
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
+
+  const tableName = table.sqliteDef.name
+
+  if (DbSchema.tableHasDerivedMutations(table) === false) {
+    shouldNeverHappen(`useRow called on table "${tableName}" which does not have 'deriveMutations: true' set`)
+  }
 
   const { store } = useStore()
 
-  // console.debug('useRow', table.sqliteDef.name, id)
+  // console.debug('useRow', tableName, id)
 
   const { query$, otelContext } = useMakeTemporaryQuery(
     (otelContext) =>
@@ -83,10 +99,10 @@ export const useRow: {
             defaultValues: defaultValues!,
             dbGraph,
           }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
-    [id!, table.sqliteDef.name],
+    [id!, tableName],
     {
       otel: {
-        spanName: `LiveStore:useRow:${table.sqliteDef.name}${id === undefined ? '' : `:${id}`}`,
+        spanName: `LiveStore:useRow:${tableName}${id === undefined ? '' : `:${id}`}`,
         attributes: { id },
       },
     },
@@ -100,7 +116,13 @@ export const useRow: {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
-        store.mutate(mutationForQueryInfo(query$.queryInfo!, { value: newValue }))
+        // NOTE we need to account for the short-hand syntax for single-column+singleton tables
+        if (table.options.isSingleton) {
+          store.mutate(table.update(newValue))
+        } else {
+          store.mutate(table.update({ where: { id }, values: { value: newValue } }))
+        }
+        // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue }))
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
@@ -113,7 +135,8 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (query$Ref.current[columnName] === newValue) return
 
-          store.mutate(mutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
+          store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: { [columnName]: newValue } }))
+          // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
         })
 
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
@@ -130,12 +153,13 @@ export const useRow: {
           return
         }
 
-        store.mutate(mutationForQueryInfo(query$.queryInfo!, columnValues))
+        store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: columnValues }))
+        // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, columnValues))
       }
 
       return setState as any
     }
-  }, [query$.queryInfo, query$Ref, sqliteTableDef.columns, store, table.isSingleColumn])
+  }, [id, query$Ref, sqliteTableDef.columns, store, table])
 
   return [query$Ref.current, setState, query$]
 }

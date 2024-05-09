@@ -28,7 +28,7 @@
     }
   },
   "scripts": {
-    "test": "echo No tests yet"
+    "test": "vitest"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*",
@@ -36,7 +36,8 @@
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {
-    "@livestore/utils": "workspace:*"
+    "@livestore/utils": "workspace:*",
+    "vitest": "^1.6.0"
   },
   "publishConfig": {
     "access": "public"

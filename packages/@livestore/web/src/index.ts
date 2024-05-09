@@ -4,7 +4,7 @@ import initSqlite3Wasm from '@livestore/sqlite-wasm'
 import { makeNoopSpan } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 
-import { makeMainDb } from './make-main-db.js'
+import { makeInMemoryDb } from './make-in-memory-db.js'
 import { InMemoryStorage } from './storage/in-memory/index.js'
 import { importBytesToDb } from './storage/utils/sqlite-utils.js'
 import type { StorageInit } from './storage/utils/types.js'
@@ -48,5 +48,5 @@ export const makeDb =
 
     importBytesToDb(sqlite3, db, persistedData)
 
-    return { mainDb: makeMainDb(sqlite3, db), storageDb } satisfies DatabaseImpl
+    return { mainDb: makeInMemoryDb(sqlite3, db), storageDb } satisfies DatabaseImpl
   }

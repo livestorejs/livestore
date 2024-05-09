@@ -46,7 +46,14 @@ export {
 
 export * as Stream from './Stream.js'
 
-export { Schema, TreeFormatter, AST as SchemaAST, Pretty as SchemaPretty, Serializable } from '@effect/schema'
+export {
+  TreeFormatter,
+  Schema,
+  AST as SchemaAST,
+  Pretty as SchemaPretty,
+  Serializable,
+  JSONSchema,
+} from '@effect/schema'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal } from '@effect/platform'

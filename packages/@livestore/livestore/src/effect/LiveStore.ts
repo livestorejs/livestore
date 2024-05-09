@@ -1,4 +1,4 @@
-import type { DatabaseFactory } from '@livestore/common'
+import type { BootDb, DatabaseFactory } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime } from '@livestore/utils/effect'
@@ -7,7 +7,7 @@ import type { GraphQLSchema } from 'graphql'
 
 import type { MainDatabaseWrapper } from '../MainDatabaseWrapper.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
-import type { BaseGraphQLContext, BootDb, GraphQLOptions, Store } from '../store.js'
+import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
@@ -104,8 +104,9 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
     }),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     Effect.timeoutFail({
-      onTimeout: () => new Error('Timed out while creating LiveStore store after 10sec'),
-      duration: Duration.seconds(10),
+      // NOTE migrating from the mutation log can take a long time (so might need to increase this even further)
+      onTimeout: () => new Error('Timed out while creating LiveStore store after 60sec'),
+      duration: Duration.seconds(60),
     }),
     Effect.orDie,
   )

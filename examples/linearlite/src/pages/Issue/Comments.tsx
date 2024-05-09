@@ -9,6 +9,7 @@ import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
 import { ParseUtils, querySQL, sql } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../../domain/schema'
+import React from 'react'
 
 export interface CommentsProps {
   issue: Issue
@@ -62,6 +63,13 @@ function Comments({ issue }: CommentsProps) {
     setNewCommentBody('')
   }
 
+  const onEnterRef = React.useRef<() => boolean>(() => false)
+
+  onEnterRef.current = () => {
+    handlePost()
+    return true
+  }
+
   return (
     <>
       {commentList()}
@@ -69,6 +77,7 @@ function Comments({ issue }: CommentsProps) {
         className="prose w-full max-w-full mt-2 font-normal appearance-none min-h-12 p-3 text-md shadow-sm rounded border border-gray-200 editor"
         value={newCommentBody}
         onChange={(val) => setNewCommentBody(val)}
+        onEnterRef={onEnterRef}
         placeholder="Add a comment..."
       />
       <div className="flex w-full py-3">

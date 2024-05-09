@@ -49,6 +49,7 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 }
 
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
+export type EmptyObjIfConstained<In> = '__constrained' extends keyof In ? {} : In
 
 export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
   AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.Type<TCols[K]['schema']> }>,
@@ -90,6 +91,9 @@ export type TableDefinition<TName extends string, TColumns extends Columns> = {
 }
 
 export type Columns = Record<string, ColumnDefinition<any, any>>
+
+export type IsSingleColumn<TColumns extends Columns | ColumnDefinition<any, any>> =
+  TColumns extends ColumnDefinition<any, any> ? true : false
 
 /**
  * NOTE this is only needed to avoid a TS limitation where `StructSchemaForColumns` in the default case

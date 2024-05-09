@@ -1,3 +1,4 @@
+import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
@@ -55,7 +56,7 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   columns: TColumns
   values: ClientTypes.DecodedValuesForColumns<TColumns>
-  options: { orReplace: boolean }
+  options?: { orReplace: boolean }
 }): [string, BindValues] => {
   const keysStr = Object.keys(values).join(', ')
   const valuesStr = Object.keys(values)
@@ -63,7 +64,7 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
     .join(', ')
 
   return [
-    sql`INSERT ${options.orReplace ? 'OR REPLACE' : ''} INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`,
+    sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`,
     makeBindValues({ columns, values }),
   ]
 }
@@ -263,7 +264,7 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
         if (columnDef.nullable === true && (value === null || value === undefined)) return null
         const res = Schema.encodeEither(columnDef.schema)(value)
         if (res._tag === 'Left') {
-          const parseErrorStr = TreeFormatter.formatError(res.left)
+          const parseErrorStr = TreeFormatter.formatErrorSync(res.left)
           const expectedSchemaStr = String(columnDef.schema.ast)
 
           console.error(
@@ -292,26 +293,24 @@ Value:`,
       // NOTE null/undefined values are handled via explicit SQL syntax and don't need to be provided as bind values
       .filter(([, value]) => skipNil !== true || (value !== null && value !== undefined))
       .flatMap(([columnName, value]: [string, any]) => {
+        const codec = codecMap[columnName] ?? shouldNeverHappen(`No codec found for column "${columnName}"`)
         // remap complex where-values with `op`
         if (typeof value === 'object' && value !== null && 'op' in value) {
           switch (value.op) {
             case 'in': {
-              return value.val.map((value: any, i: number) => [
-                `${variablePrefix}${columnName}_${i}`,
-                codecMap[columnName]!(value),
-              ])
+              return value.val.map((value: any, i: number) => [`${variablePrefix}${columnName}_${i}`, codec(value)])
             }
             case '=':
             case '>':
             case '<': {
-              return [[`${variablePrefix}${columnName}`, codecMap[columnName]!(value.val)]]
+              return [[`${variablePrefix}${columnName}`, codec(value.val)]]
             }
             default: {
               throw new Error(`Unknown op: ${value.op}`)
             }
           }
         } else {
-          return [[`${variablePrefix}${columnName}`, codecMap[columnName]!(value)]]
+          return [[`${variablePrefix}${columnName}`, codec(value)]]
         }
       }),
     Object.fromEntries,

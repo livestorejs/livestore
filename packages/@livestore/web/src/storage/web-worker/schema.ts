@@ -55,7 +55,7 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
   'InitialMessage',
   UnexpectedError,
   Schema.Void,
-  { storage: StorageType },
+  { storageOptions: StorageType },
 ) {}
 
 export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {

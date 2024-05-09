@@ -5,7 +5,7 @@ import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import { makeMainDb } from '../../make-main-db.js'
+import { makeInMemoryDb } from '../../make-in-memory-db.js'
 import type { StorageInit } from '../utils/types.js'
 import { configureConnection } from '../web-worker/common.js'
 
@@ -44,7 +44,7 @@ export class InMemoryStorage implements StorageDatabase {
       const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
       tmpDb.capi = sqlite3.capi
       configureConnection(tmpDb, { fkEnabled: true })
-      const tmpMainDb = makeMainDb(sqlite3, tmpDb)
+      const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
 
       migrateDb({ db: tmpMainDb, otelContext, schema })
 

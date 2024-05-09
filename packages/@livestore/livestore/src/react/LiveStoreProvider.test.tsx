@@ -1,3 +1,4 @@
+import type { BootDb } from '@livestore/common'
 import { sql } from '@livestore/common'
 import { makeDb } from '@livestore/web'
 import { InMemoryStorage } from '@livestore/web/storage/in-memory'
@@ -7,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 import { parseTodos, schema } from '../__tests__/react/fixture.js'
 import { querySQL } from '../reactiveQueries/sql.js'
-import type { BootDb, Store } from '../store.js'
+import type { Store } from '../store.js'
 import * as LiveStoreReact from './index.js'
 import { LiveStoreProvider } from './LiveStoreProvider.js'
 

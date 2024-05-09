@@ -1,19 +1,18 @@
-import { sql } from '@livestore/common'
+import type { InMemoryDatabase, QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
+import { migrateTable, sql } from '@livestore/common'
 import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
+import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import { SqliteAst, SqliteDsl } from 'effect-db-schema'
+import type { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst } from 'effect-db-schema'
 
-import { migrateTable } from './migrations.js'
-import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from './query-info.js'
 import type { Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQueries/base-class.js'
 import { computed } from './reactiveQueries/js.js'
-// import type { LiveStoreJSQuery } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { RefreshReason, Store } from './store.js'
-import type { GetValForKey } from './utils/util.js'
 
 export type RowQueryOptions = {
   otelContext?: otel.Context
@@ -67,24 +66,22 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     shouldNeverHappen(`Cannot query state table ${table.sqliteDef.name} without id`)
   }
 
-  const stateSchema = table.sqliteDef
-  const componentTableName = stateSchema.name
+  const tableSchema = table.sqliteDef
+  const tableName = tableSchema.name
 
   const whereClause = id === undefined ? '' : `where id = '${id}'`
-  const queryStr = sql`select * from ${componentTableName} ${whereClause} limit 1`
+  const queryStr = sql`select * from ${tableName} ${whereClause} limit 1`
 
   return new LiveStoreSQLQuery({
-    label: `rowQuery:query:${stateSchema.name}${id === undefined ? '' : `:${id}`}`,
+    label: `rowQuery:query:${tableSchema.name}${id === undefined ? '' : `:${id}`}`,
     genQueryString: queryStr,
-    queriedTables: new Set([componentTableName]),
+    queriedTables: new Set([tableName]),
     dbGraph: options?.dbGraph,
-    // TODO remove this once the LiveStore Devtools are no longer relying on it
-    // as the defaults rows are now already being inserted during store initialization
-    // and the tables need to be registered during initialization
+    // While this code-path is not needed for singleton tables, it's still needed for `useRow` with non-existing rows for a given ID
     execBeforeFirstRun: makeExecBeforeFirstRun({
       otelContext: options?.otelContext,
       table,
-      componentTableName,
+      tableName,
       defaultValues,
       id,
       skipInsertDefaultRow: options?.skipInsertDefaultRow,
@@ -92,8 +89,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     map: (results): RowResult<TTableDef> => {
       if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
 
-      const componentStateEffectSchema = SqliteDsl.structSchemaForTable(stateSchema)
-      const parseResult = Schema.decodeEither(componentStateEffectSchema)(results[0]!)
+      const parseResult = Schema.decodeEither(table.schema)(results[0]!)
 
       if (parseResult._tag === 'Left') {
         console.error('decode error', TreeFormatter.formatError(parseResult.left), 'results', results)
@@ -133,32 +129,6 @@ export const deriveColQuery: {
   }) as any
 }
 
-const insertRowWithDefaultValuesOrIgnore = ({
-  store,
-  id,
-  table,
-  otelContext,
-  defaultValues: explicitDefaultValues,
-}: {
-  store: Store
-  id: string
-  table: DbSchema.TableDef
-  otelContext: otel.Context
-  defaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
-}) => {
-  const defaultValues = DbSchema.getDefaultValuesEncoded(table, explicitDefaultValues)
-
-  const defaultColumnNames = [...Object.keys(defaultValues), 'id']
-  const columnValues = defaultColumnNames.map((name) => `$${name}`).join(', ')
-
-  const tableName = table.sqliteDef.name
-  const insertQuery = sql`insert into ${tableName} (${defaultColumnNames.join(
-    ', ',
-  )}) select ${columnValues} where not exists(select 1 from ${tableName} where id = '${id}')`
-
-  store.execute(insertQuery, { ...defaultValues, id }, new Set([tableName]), otelContext)
-}
-
 const makeExecBeforeFirstRun =
   ({
     id,
@@ -166,50 +136,91 @@ const makeExecBeforeFirstRun =
     skipInsertDefaultRow,
     otelContext: otelContext_,
     table,
-    componentTableName,
+    tableName,
   }: {
     id?: string
     defaultValues?: any
     skipInsertDefaultRow?: boolean
     otelContext?: otel.Context
-    componentTableName: string
+    tableName: string
     table: DbSchema.TableDef
   }) =>
   ({ store }: DbContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
 
-    // TODO find a better solution for this
-    if (store.tableRefs[componentTableName] === undefined) {
+    // TODO we can remove this codepath again when Devtools v2 has landed
+    if (store.tableRefs[tableName] === undefined) {
       const schemaHash = SqliteAst.hash(table.sqliteDef.ast)
       const res = store.mainDbWrapper.select<{ schemaHash: number }>(
-        sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
+        sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${tableName}'`,
       )
       if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
+        const db = {
+          ...store.db.mainDb,
+          prepare: (query) => {
+            const mainStmt = store.db.mainDb.prepare(query)
+            return {
+              ...mainStmt,
+              execute: (bindValues) => {
+                const getRowsChanged = mainStmt.execute(bindValues)
+                store.db.storageDb.execute(query, bindValues, undefined)
+                return getRowsChanged
+              },
+            }
+          },
+        } satisfies InMemoryDatabase
+
         migrateTable({
-          db: store.db,
+          db,
           tableAst: table.sqliteDef.ast,
           otelContext,
           schemaHash,
+          behaviour: 'create-if-not-exists',
         })
       }
 
-      const label = `tableRef:${componentTableName}`
+      const label = `tableRef:${tableName}`
 
       // TODO find a better implementation for this
       const existingTableRefFromGraph = Array.from(store.graph.atoms.values()).find(
         (_) => _._tag === 'ref' && _.label === label,
       ) as Ref<null, DbContext, RefreshReason> | undefined
 
-      store.tableRefs[componentTableName] = existingTableRefFromGraph ?? store.makeTableRef(componentTableName)
+      store.tableRefs[tableName] = existingTableRefFromGraph ?? store.makeTableRef(tableName)
     }
 
-    if (skipInsertDefaultRow !== true) {
+    if (skipInsertDefaultRow !== true && table.options.isSingleton === false) {
       insertRowWithDefaultValuesOrIgnore({
         store,
-        id: id ?? 'singleton',
+        id: id!,
         table,
         otelContext,
-        defaultValues,
+        explicitDefaultValues: defaultValues,
       })
     }
   }
+
+const insertRowWithDefaultValuesOrIgnore = ({
+  store,
+  id,
+  table,
+  otelContext,
+  explicitDefaultValues,
+}: {
+  store: Store
+  id: string
+  table: DbSchema.TableDef
+  otelContext: otel.Context
+  explicitDefaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
+}) => {
+  const rowExists = store.mainDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
+  if (rowExists) return
+
+  // const mutationDef = deriveCreateMutationDef(table)
+  if (DbSchema.tableHasDerivedMutations(table) === false) {
+    return shouldNeverHappen(
+      `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveMutations: true' set`,
+    )
+  }
+  store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), otelContext)
+}

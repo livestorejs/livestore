@@ -1,7 +1,7 @@
+import type { QueryInfo, QueryInfoNone } from '@livestore/common'
 import type * as otel from '@opentelemetry/api'
 import ReactDOM from 'react-dom'
 
-import type { QueryInfo, QueryInfoNone } from '../query-info.js'
 import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
 import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'

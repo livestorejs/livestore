@@ -5,7 +5,7 @@ import React from 'react'
 
 import { globalDbGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeCudMutations, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
+import { createStore, DbSchema, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 
 export type Todo = {
@@ -21,11 +21,15 @@ export type AppState = {
   filter: Filter
 }
 
-export const todos = DbSchema.table('todos', {
-  id: DbSchema.text({ primaryKey: true }),
-  text: DbSchema.text({ default: '', nullable: false }),
-  completed: DbSchema.boolean({ default: false, nullable: false }),
-})
+export const todos = DbSchema.table(
+  'todos',
+  {
+    id: DbSchema.text({ primaryKey: true }),
+    text: DbSchema.text({ default: '', nullable: false }),
+    completed: DbSchema.boolean({ default: false, nullable: false }),
+  },
+  { deriveMutations: true, isSingleton: false },
+)
 
 export const app = DbSchema.table('app', {
   id: DbSchema.text({ primaryKey: true }),
@@ -33,7 +37,24 @@ export const app = DbSchema.table('app', {
   filter: DbSchema.text({ default: 'all', nullable: false }),
 })
 
-export const tables = { todos, app }
+const userInfo = DbSchema.table(
+  'UserInfo',
+  {
+    username: DbSchema.text({ default: '' }),
+    text: DbSchema.text({ default: '' }),
+  },
+  { deriveMutations: true },
+)
+
+const AppRouterSchema = DbSchema.table(
+  'AppRouter',
+  {
+    currentTaskId: DbSchema.text({ default: null, nullable: true }),
+  },
+  { isSingleton: true, deriveMutations: true },
+)
+
+export const tables = { todos, app, userInfo, AppRouterSchema }
 export const schema = makeSchema({ tables })
 
 export const parseTodos = ParseUtils.many(todos)
@@ -49,11 +70,6 @@ export const makeTodoMvc = async ({
   useGlobalDbGraph?: boolean
   strictMode?: boolean
 } = {}) => {
-  const AppComponentSchema = DbSchema.table('UserInfo', {
-    username: DbSchema.text({ default: '' }),
-    text: DbSchema.text({ default: '' }),
-  })
-
   const dbGraph = useGlobalDbGraph ? globalDbGraph : makeDbGraph()
 
   const makeRenderCount = () => {
@@ -80,8 +96,6 @@ export const makeTodoMvc = async ({
     otelRootSpanContext: otelContext,
   })
 
-  const cud = makeCudMutations(tables)
-
   // TODO improve typing of `LiveStoreContext`
   const storeContext: LiveStoreContext = { store } as TODO
 
@@ -98,10 +112,10 @@ export const makeTodoMvc = async ({
   return {
     [Symbol.dispose]: () => store.destroy(),
     wrapper,
-    AppComponentSchema,
+    AppComponentSchema: userInfo,
+    AppRouterSchema,
     store,
     dbGraph,
-    cud,
     makeRenderCount,
     strictMode,
   }
