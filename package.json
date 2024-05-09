@@ -37,10 +37,5 @@
     "prettier-plugin-packagejson": "^2.5.0",
     "typescript": "^5.4.5"
   },
-  "packageManager": "pnpm@8.8.0",
-  "pnpm": {
-    "patchedDependencies": {
-      "expo-modules-autolinking@1.10.3": "patches/expo-modules-autolinking@1.10.3.patch"
-    }
-  }
+  "packageManager": "pnpm@8.8.0"
 }
