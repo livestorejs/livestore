@@ -60,6 +60,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     const mutationDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
+      // Also see https://github.com/Effect-TS/effect/issues/2719
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 

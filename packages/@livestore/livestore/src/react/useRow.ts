@@ -88,6 +88,13 @@ export const useRow: {
 
   const { store } = useStore()
 
+  if (
+    store.schema.tables.has(table.sqliteDef.name) === false &&
+    table.sqliteDef.name.startsWith('__livestore') === false
+  ) {
+    shouldNeverHappen(`Table "${table.sqliteDef.name}" not found in schema`)
+  }
+
   // console.debug('useRow', tableName, id)
 
   const { query$, otelContext } = useMakeTemporaryQuery(

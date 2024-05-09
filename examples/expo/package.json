@@ -4,8 +4,8 @@
   "main": "./src/AppEntry.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "android": "expo start --clear --android",
+    "ios": "expo start --clear --ios",
     "web": "expo start --web"
   },
   "dependencies": {
