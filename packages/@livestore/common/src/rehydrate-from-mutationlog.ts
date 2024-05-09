@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { MainDatabase, MigrationOptionsFromMutationLog } from './database.js'
+import type { InMemoryDatabase, MigrationOptionsFromMutationLog } from './database.js'
 import { getExecArgsFromMutation } from './mutation.js'
 import type { LiveStoreSchema, MutationLogMetaRow } from './schema/index.js'
 import { MUTATION_LOG_META_TABLE } from './schema/index.js'
@@ -12,8 +12,8 @@ export const rehydrateFromMutationLog = async ({
   schema,
   migrationOptions,
 }: {
-  logDb: MainDatabase
-  db: MainDatabase
+  logDb: InMemoryDatabase
+  db: InMemoryDatabase
   schema: LiveStoreSchema
   migrationOptions: MigrationOptionsFromMutationLog
 }) => {
@@ -76,8 +76,6 @@ Error: ${argsDecodedEither.left}
         }
       }
     }
-
-    await migrationOptions.postHook?.(db)
   } catch (e) {
     console.error('Error while rehydrating database from mutation log', e)
     debugger

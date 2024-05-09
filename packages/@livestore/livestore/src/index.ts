@@ -27,7 +27,7 @@ export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 
 export * from '@livestore/common/schema'
-export { sql, type BootDb } from '@livestore/common'
+export { sql, type BootDb, type InMemoryDatabase } from '@livestore/common'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 

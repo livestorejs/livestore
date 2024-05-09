@@ -3,10 +3,9 @@ import {
   type DatabaseImpl,
   getExecArgsFromMutation,
   initializeSingletonTables,
-  type MainDatabase,
+  type InMemoryDatabase,
   migrateDb,
   migrateTable,
-  type MigrationOptions,
   rehydrateFromMutationLog,
   type StorageDatabase,
 } from '@livestore/common'
@@ -22,8 +21,6 @@ import * as otel from '@opentelemetry/api'
 import * as SQLite from 'expo-sqlite/next'
 
 export type MakeDbOptions = {
-  /** "hard-reset" is currently the default strategy */
-  migrations?: MigrationOptions
   fileNamePrefix?: string
   subDirectory?: string
 }
@@ -31,7 +28,8 @@ export type MakeDbOptions = {
 export const makeDb =
   (options?: MakeDbOptions): DatabaseFactory =>
   ({ schema }) => {
-    const { fileNamePrefix, subDirectory, migrations = { strategy: 'hard-reset' } } = options ?? {}
+    const { fileNamePrefix, subDirectory } = options ?? {}
+    const migrationOptions = schema.migrationOptions
     const schemaHash = makeSchemaHash(schema)
     const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
     const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schemaHash}.db`
@@ -59,13 +57,13 @@ export const makeDb =
 
       initializeSingletonTables(schema, mainDb)
 
-      switch (migrations.strategy) {
+      switch (migrationOptions.strategy) {
         case 'from-mutation-log': {
           rehydrateFromMutationLog({
             db: mainDb,
             logDb: mainDbLog,
             schema,
-            migrationOptions: migrations,
+            migrationOptions,
           })
 
           break
@@ -84,14 +82,14 @@ export const makeDb =
           break
         }
         default: {
-          casesHandled(migrations)
+          casesHandled(migrationOptions)
         }
       }
     }
 
     const mutationLogExclude =
-      migrations.strategy === 'from-mutation-log'
-        ? migrations.excludeMutations ?? new Set(['livestore.RawSql'])
+      migrationOptions.strategy === 'from-mutation-log'
+        ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
         : new Set(['livestore.RawSql'])
 
     // TODO refactor
@@ -107,7 +105,7 @@ export const makeDb =
     const storageDb = {
       execute: async () => {},
       mutate: async (mutationEventEncoded) => {
-        if (migrations.strategy !== 'from-mutation-log') return
+        if (migrationOptions.strategy !== 'from-mutation-log') return
 
         const mutation = mutationEventEncoded.mutation
         const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
@@ -163,6 +161,7 @@ export const makeDb =
 
 const makeMainDb = (db: SQLite.SQLiteDatabase) => {
   return {
+    _tag: 'InMemoryDatabase',
     prepare: (value) => {
       const stmt = db.prepareSync(value)
       return {
@@ -198,5 +197,5 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
     dangerouslyReset: async () => {
       console.error(`dangerouslyReset not yet implemented`)
     },
-  } satisfies MainDatabase
+  } satisfies InMemoryDatabase
 }

@@ -1,7 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
-import type { ParamsObject, PreparedBindValues } from './util.js'
+import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined): GetRowsChangedCount
@@ -10,21 +10,25 @@ export interface PreparedStatement {
 }
 
 export type DatabaseImpl = {
-  mainDb: MainDatabase
+  /** Main thread database (usually in-memory) */
+  mainDb: InMemoryDatabase
   storageDb: StorageDatabase
 }
 
-export type MainDatabase = {
+export type InMemoryDatabase = {
+  _tag: 'InMemoryDatabase'
   prepare(queryStr: string): PreparedStatement
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): GetRowsChangedCount
   dangerouslyReset(): Promise<void>
   export(): Uint8Array
 }
 
+export type ResetMode = 'all-data' | 'only-app-db'
+
 export type StorageDatabase = {
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
   mutate(mutationEventEncoded: MutationEvent.Any, span: otel.Span): Promise<void>
-  dangerouslyReset(): Promise<void>
+  dangerouslyReset(mode: ResetMode): Promise<void>
   export(span: otel.Span | undefined): Promise<Uint8Array | undefined>
   /**
    * This is different from `export` since in `getInitialSnapshot` is usually the place for migrations etc to happen
@@ -37,22 +41,37 @@ export type StorageDatabase = {
 export type GetRowsChangedCount = () => number
 
 export type BootDb = {
-  execute(queryStr: string, bindValues?: ParamsObject): void
+  _tag: 'BootDb'
+  execute(queryStr: string, bindValues?: PreparedBindValues): void
   mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
-  select<T>(queryStr: string, bindValues?: ParamsObject): ReadonlyArray<T>
+  select<T>(queryStr: string, bindValues?: PreparedBindValues): ReadonlyArray<T>
   txn(callback: () => void): void
 }
 
 // TODO possibly allow a combination of these options
+// TODO allow a way to stream the migration progress back to the app
 export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =
   | MigrationOptionsFromMutationLog<TSchema>
   | {
       strategy: 'hard-reset'
+      hooks?: Partial<MigrationHooks>
     }
   | {
       strategy: 'manual'
       migrate: (oldDb: Uint8Array) => Promise<Uint8Array> | Uint8Array
+      hooks?: Partial<MigrationHooks>
     }
+
+export type MigrationHooks = {
+  /** Runs on the empty in-memory database with no database schemas applied yet */
+  init: MigrationHook
+  /** Runs before applying the migration strategy but after table schemas have been applied and singleton rows have been created */
+  pre: MigrationHook
+  /** Runs after applying the migration strategy before creating export snapshot and closing the database */
+  post: MigrationHook
+}
+
+export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void>
 
 export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   strategy: 'from-mutation-log'
@@ -62,7 +81,7 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
    * @default new Set(['livestore.RawSql'])
    */
   excludeMutations?: ReadonlySet<keyof TSchema['_MutationDefMapType'] & string>
-  postHook?: (db: MainDatabase) => void | Promise<void>
+  hooks?: Partial<MigrationHooks>
   logging?: {
     excludeAffectedRows?: (sqlStmt: string) => boolean
   }

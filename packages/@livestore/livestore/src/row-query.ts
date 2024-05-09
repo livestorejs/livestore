@@ -1,4 +1,4 @@
-import type { MainDatabase, QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
+import type { InMemoryDatabase, QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
 import { migrateTable, sql } from '@livestore/common'
 import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
 import type { GetValForKey } from '@livestore/utils'
@@ -168,7 +168,7 @@ const makeExecBeforeFirstRun =
               },
             }
           },
-        } satisfies MainDatabase
+        } satisfies InMemoryDatabase
 
         migrateTable({
           db,

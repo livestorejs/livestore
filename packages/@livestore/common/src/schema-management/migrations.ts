@@ -3,7 +3,7 @@ import { Schema as EffectSchema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { MainDatabase } from '../database.js'
+import type { InMemoryDatabase } from '../database.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { SchemaMetaRow } from '../schema/system-tables.js'
 import { SCHEMA_META_TABLE, schemaMetaTable, systemTables } from '../schema/system-tables.js'
@@ -19,7 +19,7 @@ export const migrateDb = ({
   otelContext = otel.context.active(),
   schema,
 }: {
-  db: MainDatabase
+  db: InMemoryDatabase
   otelContext?: otel.Context
   schema: LiveStoreSchema
 }) => {
@@ -70,7 +70,7 @@ export const migrateTable = ({
   behaviour,
   skipMetaTable = false,
 }: {
-  db: MainDatabase
+  db: InMemoryDatabase
   tableAst: SqliteAst.Table
   otelContext?: otel.Context
   schemaHash?: number

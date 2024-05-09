@@ -104,8 +104,9 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
     }),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     Effect.timeoutFail({
-      onTimeout: () => new Error('Timed out while creating LiveStore store after 10sec'),
-      duration: Duration.seconds(10),
+      // NOTE migrating from the mutation log can take a long time (so might need to increase this even further)
+      onTimeout: () => new Error('Timed out while creating LiveStore store after 60sec'),
+      duration: Duration.seconds(60),
     }),
     Effect.orDie,
   )

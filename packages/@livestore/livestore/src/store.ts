@@ -1,10 +1,5 @@
-import {
-  type BootDb,
-  type DatabaseFactory,
-  type DatabaseImpl,
-  getExecArgsFromMutation,
-  type PreparedBindValues,
-} from '@livestore/common'
+import type { BootDb, DatabaseFactory, DatabaseImpl, PreparedBindValues, ResetMode } from '@livestore/common'
+import { getExecArgsFromMutation } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
@@ -467,7 +462,7 @@ export class Store<
   }
 
   // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
-  dangerouslyResetStorage = () => this.db.storageDb.dangerouslyReset()
+  dangerouslyResetStorage = (mode: ResetMode) => this.db.storageDb.dangerouslyReset(mode)
 }
 
 /** Create a new LiveStore Store */
@@ -515,15 +510,15 @@ export const createStore = async <
         let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
 
         const bootDbImpl: BootDb = {
+          _tag: 'BootDb',
           execute: (queryStr, bindValues) => {
             const stmt = db.mainDb.prepare(queryStr)
-            const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
-            stmt.execute(preparedBindValues)
+            stmt.execute(bindValues)
 
             if (isInTxn === true) {
-              txnExecuteStmnts.push([queryStr, preparedBindValues])
+              txnExecuteStmnts.push([queryStr, bindValues])
             } else {
-              void db.storageDb.execute(queryStr, preparedBindValues, undefined)
+              void db.storageDb.execute(queryStr, bindValues, undefined)
             }
           },
           mutate: (...list) => {
@@ -545,8 +540,7 @@ export const createStore = async <
           },
           select: (queryStr, bindValues) => {
             const stmt = db.mainDb.prepare(queryStr)
-            const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
-            return stmt.select(preparedBindValues)
+            return stmt.select(bindValues)
           },
           txn: (callback) => {
             try {

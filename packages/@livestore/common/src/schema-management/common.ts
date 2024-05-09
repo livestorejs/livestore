@@ -1,4 +1,4 @@
-import type { MainDatabase } from '../database.js'
+import type { InMemoryDatabase } from '../database.js'
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'
 
@@ -6,7 +6,7 @@ import { prepareBindValues } from '../util.js'
 // will require proper scope-aware cleanup etc (for testing and apps with multiple LiveStore instances)
 // const cachedStmts = new Map<string, PreparedStatement>()
 
-export const dbExecute = (db: MainDatabase, queryStr: string, bindValues?: ParamsObject) => {
+export const dbExecute = (db: InMemoryDatabase, queryStr: string, bindValues?: ParamsObject) => {
   // let stmt = cachedStmts.get(queryStr)
   // if (!stmt) {
   const stmt = db.prepare(queryStr)
@@ -18,7 +18,7 @@ export const dbExecute = (db: MainDatabase, queryStr: string, bindValues?: Param
   stmt.execute(preparedBindValues)
 }
 
-export const dbSelect = <T>(db: MainDatabase, queryStr: string, bindValues?: ParamsObject) => {
+export const dbSelect = <T>(db: InMemoryDatabase, queryStr: string, bindValues?: ParamsObject) => {
   // let stmt = cachedStmts.get(queryStr)
   // if (!stmt) {
   const stmt = db.prepare(queryStr)

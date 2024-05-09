@@ -2,6 +2,7 @@ import { isReadonlyArray } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
+import type { MigrationOptions } from '../database.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
 import {
   type MutationDef,
@@ -29,6 +30,8 @@ export type LiveStoreSchema<
 
   readonly tables: Map<string, TableDef>
   readonly mutations: MutationDefMap
+
+  migrationOptions: MigrationOptions
 }
 
 export type InputSchema = {
@@ -38,15 +41,15 @@ export type InputSchema = {
 
 export const makeSchema = <TInputSchema extends InputSchema>(
   /** Note when using the object-notation for tables/mutations, the object keys are ignored and not used as table/mutation names */
-  schema: TInputSchema,
-): LiveStoreSchema<
-  DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
-  MutationDefRecordFromInputSchemaMutations<TInputSchema['mutations']>
-> => {
-  const inputTables: ReadonlyArray<TableDef> = Array.isArray(schema.tables)
-    ? schema.tables
+  inputSchema: TInputSchema & {
+    /** "hard-reset" is currently the default strategy */
+    migrations?: MigrationOptions<FromInputSchema.DeriveSchema<TInputSchema>>
+  },
+): FromInputSchema.DeriveSchema<TInputSchema> => {
+  const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)
+    ? inputSchema.tables
     : // TODO validate that table names are unique in this case
-      Object.values(schema.tables)
+      Object.values(inputSchema.tables)
 
   const tables = new Map<string, TableDef>()
 
@@ -61,12 +64,12 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   const mutations: MutationDefMap = new Map()
 
-  if (isReadonlyArray(schema.mutations)) {
-    for (const mutation of schema.mutations) {
+  if (isReadonlyArray(inputSchema.mutations)) {
+    for (const mutation of inputSchema.mutations) {
       mutations.set(mutation.name, mutation)
     }
   } else {
-    for (const [name, mutation] of Object.entries(schema.mutations ?? {})) {
+    for (const [name, mutation] of Object.entries(inputSchema.mutations ?? {})) {
       mutations.set(name, mutation)
     }
   }
@@ -87,6 +90,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     _MutationDefMapType: Symbol('livestore.MutationDefMapType') as any,
     tables,
     mutations,
+    migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
   } satisfies LiveStoreSchema
 }
 
@@ -96,21 +100,28 @@ export const makeSchemaHash = (schema: LiveStoreSchema) =>
     tables: [...schema.tables.values()].map((_) => _.sqliteDef.ast),
   })
 
-/**
- * In case of ...
- * - array: we use the table name of each array item (= table definition) as the object key
- * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
- */
-export type DbSchemaFromInputSchemaTables<TTables extends InputSchema['tables']> =
-  TTables extends ReadonlyArray<TableDef>
-    ? { [K in TTables[number] as K['sqliteDef']['name']]: K['sqliteDef'] }
-    : TTables extends Record<string, TableDef>
-      ? { [K in keyof TTables as TTables[K]['sqliteDef']['name']]: TTables[K]['sqliteDef'] }
-      : never
+namespace FromInputSchema {
+  export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
+    DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
+    MutationDefRecordFromInputSchemaMutations<TInputSchema['mutations']>
+  >
 
-export type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSchema['mutations']> =
-  TMutations extends ReadonlyArray<MutationDef.Any>
-    ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlMutation }
-    : TMutations extends { [name: string]: MutationDef.Any }
-      ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
-      : never
+  /**
+   * In case of ...
+   * - array: we use the table name of each array item (= table definition) as the object key
+   * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
+   */
+  type DbSchemaFromInputSchemaTables<TTables extends InputSchema['tables']> =
+    TTables extends ReadonlyArray<TableDef>
+      ? { [K in TTables[number] as K['sqliteDef']['name']]: K['sqliteDef'] }
+      : TTables extends Record<string, TableDef>
+        ? { [K in keyof TTables as TTables[K]['sqliteDef']['name']]: TTables[K]['sqliteDef'] }
+        : never
+
+  type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSchema['mutations']> =
+    TMutations extends ReadonlyArray<MutationDef.Any>
+      ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlMutation }
+      : TMutations extends { [name: string]: MutationDef.Any }
+        ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
+        : never
+}

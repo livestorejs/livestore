@@ -1,6 +1,6 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
-import { type MainDatabase, type PreparedStatement, sql } from '@livestore/common'
+import { type InMemoryDatabase, type PreparedStatement, sql } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
@@ -37,7 +37,7 @@ export class MainDatabaseWrapper {
   private cachedStmts = new BoundMap<string, PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, Set<string>>(200)
   private resultCache = new QueryCache()
-  private db: MainDatabase
+  private db: InMemoryDatabase
   private otelTracer: otel.Tracer
   private otelRootSpanContext: otel.Context
   private tablesUsedStmt
@@ -48,7 +48,7 @@ export class MainDatabaseWrapper {
     otelTracer,
     otelRootSpanContext,
   }: {
-    db: MainDatabase
+    db: InMemoryDatabase
     otelTracer: otel.Tracer
     otelRootSpanContext: otel.Context
   }) {

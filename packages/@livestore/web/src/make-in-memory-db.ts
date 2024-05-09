@@ -1,12 +1,13 @@
-import type { MainDatabase, PreparedBindValues } from '@livestore/common'
+import type { InMemoryDatabase, PreparedBindValues } from '@livestore/common'
 import type * as Sqlite from '@livestore/sqlite-wasm'
 import { shouldNeverHappen } from '@livestore/utils'
 
-export const makeMainDb = (
+export const makeInMemoryDb = (
   sqlite3: Sqlite.Sqlite3Static,
   db: Sqlite.Database & { capi: Sqlite.CAPI },
-): MainDatabase => {
+): InMemoryDatabase => {
   return {
+    _tag: 'InMemoryDatabase',
     prepare: (queryStr) => {
       try {
         const stmt = db.prepare(queryStr)
@@ -89,5 +90,5 @@ export const makeMainDb = (
 
       db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as Sqlite.Database & { capi: Sqlite.CAPI }
     },
-  } satisfies MainDatabase
+  } satisfies InMemoryDatabase
 }

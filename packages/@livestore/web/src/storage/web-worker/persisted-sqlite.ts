@@ -27,33 +27,37 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
 }) {}
 
 export const makePersistedSqlite = ({
-  storage,
+  storageOptions,
   sqlite3,
   schemaHash,
   kind,
   configure,
 }: {
-  storage: StorageType
+  storageOptions: StorageType
   sqlite3: SqliteWasm.Sqlite3Static
   schemaHash: number
   kind: 'app' | 'mutationlog'
   configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void>
 }) => {
-  switch (storage.type) {
+  switch (storageOptions.type) {
     case 'opfs': {
       const fileName =
-        kind === 'app' ? getAppDbFileName(storage.filePrefix, schemaHash) : getMutationlogDbFileName(storage.filePrefix)
-      return makePersistedSqliteOpfs(sqlite3, storage.directory, fileName, configure)
+        kind === 'app'
+          ? getAppDbFileName(storageOptions.filePrefix, schemaHash)
+          : getMutationlogDbFileName(storageOptions.filePrefix)
+
+      return makePersistedSqliteOpfs(sqlite3, storageOptions.directory, fileName, configure)
     }
     case 'indexeddb': {
       const storeName =
         kind === 'app'
-          ? getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash)
-          : getMutationlogDbIdbStoreName(storage.storeNamePrefix)
-      return makePersistedSqliteIndexedDb(sqlite3, storage.databaseName ?? 'livestore', storeName, configure)
+          ? getAppDbIdbStoreName(storageOptions.storeNamePrefix, schemaHash)
+          : getMutationlogDbIdbStoreName(storageOptions.storeNamePrefix)
+
+      return makePersistedSqliteIndexedDb(sqlite3, storageOptions.databaseName ?? 'livestore', storeName, configure)
     }
     default: {
-      return casesHandled(storage)
+      return casesHandled(storageOptions)
     }
   }
 }
