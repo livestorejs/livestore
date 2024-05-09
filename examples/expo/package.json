@@ -4,12 +4,12 @@
   "main": "./src/AppEntry.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --clear --android",
-    "ios": "expo start --clear --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
-    "@effect/schema": "0.66.14",
+    "@effect/schema": "0.66.16",
     "@expo/vector-icons": "^14.0.1",
     "@livestore/devtools-react": "0.0.47",
     "@livestore/expo": "latest",
@@ -29,7 +29,6 @@
     "@babel/core": "^7.24.5",
     "@babel/runtime": "^7.24.5",
     "@types/react": "~18.3.1",
-    "babel-plugin-module-resolver": "^5.0.2",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^8.0.0",
     "typescript": "^5.4.5"

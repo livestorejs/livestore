@@ -9,15 +9,15 @@
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {
-    "@effect/schema": "0.66.14",
+    "@effect/schema": "0.66.16",
     "@livestore/devtools-react": "0.0.47",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "latest",
     "@livestore/web": "latest",
     "@opentelemetry/api": "^1.8.0",
     "@schickling/fps-meter": "^0.1.2",
-    "drizzle-orm": "^0.30.9",
-    "effect": "3.1.2",
+    "drizzle-orm": "^0.30.10",
+    "effect": "3.1.3",
     "effect-db-schema": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

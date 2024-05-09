@@ -18,7 +18,7 @@
     "@opentelemetry/api": "^1.8.0"
   },
   "devDependencies": {
-    "expo-sqlite": "^13.4.0"
+    "expo-sqlite": "^14.0.3"
   },
   "peerDependencies": {
     "expo-sqlite": "*"
