@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import type { InMemoryDatabase, MigrationOptionsFromMutationLog } from './database.js'
+import type { InMemoryDatabase, MigrationOptionsFromMutationLog } from './database-types.js'
 import { getExecArgsFromMutation } from './mutation.js'
 import type { LiveStoreSchema, MutationLogMetaRow } from './schema/index.js'
 import { MUTATION_LOG_META_TABLE } from './schema/index.js'

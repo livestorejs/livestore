@@ -1,4 +1,4 @@
-import type { InMemoryDatabase } from './database.js'
+import type { InMemoryDatabase } from './database-types.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import { DbSchema } from './schema/index.js'
 import { prepareBindValues, sql } from './util.js'

@@ -3,7 +3,7 @@ import { Schema as EffectSchema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { InMemoryDatabase } from '../database.js'
+import type { InMemoryDatabase } from '../database-types.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { SchemaMetaRow } from '../schema/system-tables.js'
 import { SCHEMA_META_TABLE, schemaMetaTable, systemTables } from '../schema/system-tables.js'

@@ -5,7 +5,8 @@ import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import { SqliteAst, SqliteDsl } from 'effect-db-schema'
+import type { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst } from 'effect-db-schema'
 
 import type { Ref } from './reactive.js'
 import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQueries/base-class.js'
@@ -65,22 +66,22 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     shouldNeverHappen(`Cannot query state table ${table.sqliteDef.name} without id`)
   }
 
-  const stateSchema = table.sqliteDef
-  const componentTableName = stateSchema.name
+  const tableSchema = table.sqliteDef
+  const tableName = tableSchema.name
 
   const whereClause = id === undefined ? '' : `where id = '${id}'`
-  const queryStr = sql`select * from ${componentTableName} ${whereClause} limit 1`
+  const queryStr = sql`select * from ${tableName} ${whereClause} limit 1`
 
   return new LiveStoreSQLQuery({
-    label: `rowQuery:query:${stateSchema.name}${id === undefined ? '' : `:${id}`}`,
+    label: `rowQuery:query:${tableSchema.name}${id === undefined ? '' : `:${id}`}`,
     genQueryString: queryStr,
-    queriedTables: new Set([componentTableName]),
+    queriedTables: new Set([tableName]),
     dbGraph: options?.dbGraph,
     // While this code-path is not needed for singleton tables, it's still needed for `useRow` with non-existing rows for a given ID
     execBeforeFirstRun: makeExecBeforeFirstRun({
       otelContext: options?.otelContext,
       table,
-      componentTableName,
+      tableName,
       defaultValues,
       id,
       skipInsertDefaultRow: options?.skipInsertDefaultRow,
@@ -88,8 +89,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     map: (results): RowResult<TTableDef> => {
       if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
 
-      const componentStateEffectSchema = SqliteDsl.structSchemaForTable(stateSchema)
-      const parseResult = Schema.decodeEither(componentStateEffectSchema)(results[0]!)
+      const parseResult = Schema.decodeEither(table.schema)(results[0]!)
 
       if (parseResult._tag === 'Left') {
         console.error('decode error', TreeFormatter.formatError(parseResult.left), 'results', results)
@@ -136,23 +136,23 @@ const makeExecBeforeFirstRun =
     skipInsertDefaultRow,
     otelContext: otelContext_,
     table,
-    componentTableName,
+    tableName,
   }: {
     id?: string
     defaultValues?: any
     skipInsertDefaultRow?: boolean
     otelContext?: otel.Context
-    componentTableName: string
+    tableName: string
     table: DbSchema.TableDef
   }) =>
   ({ store }: DbContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
 
     // TODO we can remove this codepath again when Devtools v2 has landed
-    if (store.tableRefs[componentTableName] === undefined) {
+    if (store.tableRefs[tableName] === undefined) {
       const schemaHash = SqliteAst.hash(table.sqliteDef.ast)
       const res = store.mainDbWrapper.select<{ schemaHash: number }>(
-        sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${componentTableName}'`,
+        sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${tableName}'`,
       )
       if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
         const db = {
@@ -179,14 +179,14 @@ const makeExecBeforeFirstRun =
         })
       }
 
-      const label = `tableRef:${componentTableName}`
+      const label = `tableRef:${tableName}`
 
       // TODO find a better implementation for this
       const existingTableRefFromGraph = Array.from(store.graph.atoms.values()).find(
         (_) => _._tag === 'ref' && _.label === label,
       ) as Ref<null, DbContext, RefreshReason> | undefined
 
-      store.tableRefs[componentTableName] = existingTableRefFromGraph ?? store.makeTableRef(componentTableName)
+      store.tableRefs[tableName] = existingTableRefFromGraph ?? store.makeTableRef(tableName)
     }
 
     if (skipInsertDefaultRow !== true && table.options.isSingleton === false) {

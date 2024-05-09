@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { InMemoryDatabase } from '../database.js'
+import type { InMemoryDatabase } from '../database-types.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { MutationDef } from '../schema/mutations.js'
 import type { SchemaMutationsMetaRow } from '../schema/system-tables.js'
