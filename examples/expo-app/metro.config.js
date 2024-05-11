@@ -21,4 +21,5 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ]
 
+console.log(config)
 module.exports = config

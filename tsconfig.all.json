@@ -3,7 +3,7 @@
   "compilerOptions": {},
   "include": [],
   "references": [
-    { "path": "./examples/expo" },
+    { "path": "./examples/expo-app" },
     { "path": "./examples/linearlite" },
     { "path": "./examples/todomvc" },
     { "path": "./examples/todomvc-custom-elements" },

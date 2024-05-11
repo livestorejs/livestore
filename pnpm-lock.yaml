@@ -64,7 +64,7 @@ importers:
         specifier: ^5.4.5
         version: 5.4.5
 
-  examples/expo:
+  examples/expo-app:
     dependencies:
       '@effect/schema':
         specifier: 0.66.16
