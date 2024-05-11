@@ -30,7 +30,7 @@ export const rehydrateFromMutationLog = async ({
       if (migrationOptions.excludeMutations?.has(row.mutation) === true) continue
 
       if (Schema.hash(mutationDef.schema) !== row.schemaHash) {
-        throw new Error(`Schema hash mismatch for mutation ${row.mutation}`)
+        console.warn(`Schema hash mismatch for mutation ${row.mutation}. Trying to apply mutation anyway.`)
       }
 
       const argsDecodedEither = Schema.decodeUnknownEither(Schema.parseJson(mutationDef.schema))(row.argsJson)
