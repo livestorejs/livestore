@@ -163,22 +163,27 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
   return {
     _tag: 'InMemoryDatabase',
     prepare: (value) => {
-      const stmt = db.prepareSync(value)
-      return {
-        execute: (bindValues) => {
-          const res = stmt.executeSync(bindValues ?? [])
-          res.resetSync()
-          return () => res.changes
-        },
-        select: (bindValues) => {
-          const res = stmt.executeSync(bindValues ?? [])
-          try {
-            return res.getAllSync() as any
-          } finally {
+      try {
+        const stmt = db.prepareSync(value)
+        return {
+          execute: (bindValues) => {
+            const res = stmt.executeSync(bindValues ?? [])
             res.resetSync()
-          }
-        },
-        finalize: () => stmt.finalizeSync(),
+            return () => res.changes
+          },
+          select: (bindValues) => {
+            const res = stmt.executeSync(bindValues ?? [])
+            try {
+              return res.getAllSync() as any
+            } finally {
+              res.resetSync()
+            }
+          },
+          finalize: () => stmt.finalizeSync(),
+        }
+      } catch (e) {
+        console.error(`Error preparing statement: ${value}`, e)
+        return shouldNeverHappen(`Error preparing statement: ${value}`)
       }
     },
     execute: (queryStr, bindValues) => {
