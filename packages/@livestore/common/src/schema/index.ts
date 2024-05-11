@@ -69,8 +69,8 @@ export const makeSchema = <TInputSchema extends InputSchema>(
       mutations.set(mutation.name, mutation)
     }
   } else {
-    for (const [name, mutation] of Object.entries(inputSchema.mutations ?? {})) {
-      mutations.set(name, mutation)
+    for (const mutation of Object.values(inputSchema.mutations ?? {})) {
+      mutations.set(mutation.name, mutation)
     }
   }
 

@@ -31,7 +31,7 @@ export const first =
       if (defaultValuesResult._tag === 'Right') {
         return defaultValuesResult.right
       } else {
-        console.error('decode error', TreeFormatter.formatError(defaultValuesResult.left))
+        console.error('decode error', TreeFormatter.formatErrorSync(defaultValuesResult.left))
         return shouldNeverHappen(
           `Expected query (for table ${table.sqliteDef.name}) to return at least one result but found none. Also can't fallback to default values as some were not provided.`,
         )

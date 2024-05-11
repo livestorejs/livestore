@@ -98,7 +98,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
           ? (rows: any, opts: { sqlString: string }) => {
               const parseResult = Schema.decodeEither(map as Schema.Schema<TResult, ReadonlyArray<any>>)(rows)
               if (parseResult._tag === 'Left') {
-                const parseErrorStr = TreeFormatter.formatError(parseResult.left)
+                const parseErrorStr = TreeFormatter.formatErrorSync(parseResult.left)
                 const expectedSchemaStr = String(map.ast)
                 const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
 
@@ -116,7 +116,7 @@ Error: ${parseErrorStr}
 Result:`,
                   rows,
                 )
-                // console.error(`Error parsing SQL query result: ${TreeFormatter.formatError(parseResult.left)}`)
+                // console.error(`Error parsing SQL query result: ${TreeFormatter.formatErrorSync(parseResult.left)}`)
                 return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
               } else {
                 return parseResult.right as TResult

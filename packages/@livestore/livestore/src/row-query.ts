@@ -92,7 +92,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
       const parseResult = Schema.decodeEither(table.schema)(results[0]!)
 
       if (parseResult._tag === 'Left') {
-        console.error('decode error', TreeFormatter.formatError(parseResult.left), 'results', results)
+        console.error('decode error', TreeFormatter.formatErrorSync(parseResult.left), 'results', results)
         return shouldNeverHappen(`Error decoding query result for ${queryStr}`)
       }
 
