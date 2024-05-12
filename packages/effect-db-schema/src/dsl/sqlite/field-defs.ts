@@ -148,19 +148,25 @@ export type SpecializedColDefFn<
 type MakeSpecializedColDefFn = {
   <TColumnType extends FieldColumnType, TBaseDecoded>(
     columnType: TColumnType,
-    baseSchema: Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>,
+    opts: {
+      _tag: 'baseSchema'
+      baseSchema: Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
+    },
   ): SpecializedColDefFn<TColumnType, false, TBaseDecoded>
   <TColumnType extends FieldColumnType, TBaseDecoded>(
     columnType: TColumnType,
-    baseSchema: <TDecoded>(
-      customSchema: Schema.Schema<TDecoded, TBaseDecoded> | undefined,
-    ) => Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>,
+    opts: {
+      _tag: 'baseSchemaFn'
+      baseSchemaFn: <TDecoded>(
+        customSchema: Schema.Schema<TDecoded, TBaseDecoded> | undefined,
+      ) => Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
+    },
   ): SpecializedColDefFn<TColumnType, true, TBaseDecoded>
 }
 
-const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, baseSchema) => (def?: ColumnDefinitionInput) => {
+const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (def?: ColumnDefinitionInput) => {
   const nullable = def?.nullable ?? false
-  const schemaWithoutNull = typeof baseSchema === 'function' ? baseSchema(def?.schema as any) : baseSchema
+  const schemaWithoutNull = opts._tag === 'baseSchemaFn' ? opts.baseSchemaFn(def?.schema as any) : opts.baseSchema
   const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
@@ -173,27 +179,31 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, baseSchema) 
   } as any
 }
 
-export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedColDef('text', (customSchema) =>
-  Schema.parseJson(customSchema ?? Schema.Any),
-)
+export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedColDef('text', {
+  _tag: 'baseSchemaFn',
+  baseSchemaFn: (customSchema) => Schema.parseJson(customSchema ?? Schema.Any),
+})
 
-export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', Schema.Date)
+export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', {
+  _tag: 'baseSchema',
+  baseSchema: Schema.Date,
+})
 
-export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef(
-  'integer',
-  Schema.transform(Schema.Number, Schema.DateFromSelf, {
+export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
+  _tag: 'baseSchema',
+  baseSchema: Schema.transform(Schema.Number, Schema.DateFromSelf, {
     decode: (ms) => new Date(ms),
     encode: (date) => date.getTime(),
   }),
-)
+})
 
-export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef(
-  'integer',
-  Schema.transform(Schema.Number, Schema.Boolean, {
+export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef('integer', {
+  _tag: 'baseSchema',
+  baseSchema: Schema.transform(Schema.Number, Schema.Boolean, {
     decode: (_) => _ === 1,
     encode: (_) => (_ ? 1 : 0),
   }),
-)
+})
 
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
 

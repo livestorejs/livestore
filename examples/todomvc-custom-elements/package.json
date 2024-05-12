@@ -8,7 +8,7 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.66.16",
+    "@effect/schema": "0.67.0",
     "@livestore/devtools-react": "0.0.47",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "latest",

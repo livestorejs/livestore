@@ -35,11 +35,11 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/experimental": "^0.16.2",
+    "@effect/experimental": "^0.16.3",
     "@effect/opentelemetry": "^0.34.3",
-    "@effect/platform": "0.53.2",
-    "@effect/platform-browser": "0.33.16",
-    "@effect/schema": "0.66.16",
+    "@effect/platform": "0.53.3",
+    "@effect/platform-browser": "0.33.18",
+    "@effect/schema": "0.67.0",
     "@opentelemetry/api": "^1.8.0",
     "date-fns": "^3.6.0",
     "effect": "3.1.3",
@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.12.11",
-    "@types/web": "^0.0.143"
+    "@types/web": "^0.0.144"
   },
   "publishConfig": {
     "access": "public"

@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import type { Schema } from '@effect/schema'
 import { Hash } from 'effect'
 
 export * from '@effect/schema/Schema'
@@ -8,7 +8,7 @@ export * from '@effect/schema/Schema'
 // TODO remove this once the issue is resolved
 export const hash = (schema: Schema.Schema<any>) => {
   try {
-    return Schema.hash(schema)
+    return Hash.string(JSON.stringify(schema.ast, null, 2))
   } catch {
     console.warn(
       `Schema hashing failed, falling back to hashing the shortend schema AST string. This is less reliable and may cause false positives.`,
