@@ -9,6 +9,7 @@ import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { schema } from './schema/index.ts'
+import { Filters } from './components/Filters.tsx'
 
 export const App = () => {
   return (
@@ -26,6 +27,7 @@ export const App = () => {
         <NewTodo />
         <Meta />
         <ListTodos />
+        <Filters />
       </LiveStoreProvider>
       <StatusBar style="auto" />
     </View>
@@ -39,5 +41,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 32
   },
 })
