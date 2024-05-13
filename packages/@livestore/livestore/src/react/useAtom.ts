@@ -21,6 +21,7 @@ export const useAtom = <
 
   const { store } = useStore()
 
+  // TODO make API equivalent to useRow
   const setValue = React.useMemo<Dispatch<SetStateAction<TQuery['__result!']>>>(() => {
     return (newValueOrFn: any) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
