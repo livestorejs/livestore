@@ -159,6 +159,11 @@ const getPersistedData = async (storage: WorkerSchema.StorageType, schemaHash: n
           const buffer = await file.arrayBuffer()
           const data = new Uint8Array(buffer)
 
+          // In rare cases the file might be created by the `.Setup` flow but wasn't finished.
+          // This early causes the `.Setup` flow to run again.
+          // TODO we probably want to run the `.Setup` flow atomically so there's never a non-compliant file
+          if (data.length === 0) return undefined
+
           return data
         } catch (error: any) {
           if (error instanceof DOMException && error.name === 'NotFoundError') {
