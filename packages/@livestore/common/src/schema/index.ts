@@ -1,4 +1,4 @@
-import { isReadonlyArray } from '@livestore/utils'
+import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
@@ -48,13 +48,15 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 ): FromInputSchema.DeriveSchema<TInputSchema> => {
   const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)
     ? inputSchema.tables
-    : // TODO validate that table names are unique in this case
-      Object.values(inputSchema.tables)
+    : Object.values(inputSchema.tables)
 
   const tables = new Map<string, TableDef>()
 
   for (const tableDef of inputTables) {
     // TODO validate tables (e.g. index names are unique)
+    if (tables.has(tableDef.sqliteDef.ast.name)) {
+      shouldNeverHappen(`Duplicate table name: ${tableDef.sqliteDef.ast.name}. Please use unique names for tables.`)
+    }
     tables.set(tableDef.sqliteDef.ast.name, tableDef)
   }
 
@@ -70,6 +72,9 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   } else {
     for (const mutation of Object.values(inputSchema.mutations ?? {})) {
+      if (mutations.has(mutation.name)) {
+        shouldNeverHappen(`Duplicate mutation name: ${mutation.name}. Please use unique names for mutations.`)
+      }
       mutations.set(mutation.name, mutation)
     }
   }
