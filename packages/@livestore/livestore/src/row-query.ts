@@ -222,5 +222,6 @@ const insertRowWithDefaultValuesOrIgnore = ({
       `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveMutations: true' set`,
     )
   }
+  // NOTE It's important that we only mutate and don't refresh here, as this function is called during a render
   store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), otelContext)
 }

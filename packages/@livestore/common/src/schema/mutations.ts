@@ -131,3 +131,9 @@ export const makeMutationEventSchema = <TMutationsDefRecord extends MutationDefR
       }),
     ),
   ).annotations({ title: 'MutationEventSchema' }) as any
+
+export const mutationEventSchemaDecodedAny = Schema.Struct({
+  mutation: Schema.String,
+  args: Schema.Any,
+  id: Schema.String,
+}).annotations({ title: 'MutationEventSchema.DecodedAny' })

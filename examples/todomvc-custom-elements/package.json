@@ -1,5 +1,5 @@
 {
-  "name": "todomvc",
+  "name": "todomvc-custom-elements",
   "private": true,
   "type": "module",
   "scripts": {
