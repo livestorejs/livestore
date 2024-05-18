@@ -5,11 +5,11 @@ import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import { StyleSheet, Text, unstable_batchedUpdates, View } from 'react-native'
 
+import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { schema } from './schema/index.ts'
-import { Filters } from './components/Filters.tsx'
 
 export const App = () => {
   return (
@@ -41,6 +41,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 32
+    paddingBottom: 32,
   },
 })

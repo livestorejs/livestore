@@ -1,9 +1,8 @@
 import { useRow, useStore } from '@livestore/livestore/react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { mutations, tables } from '../schema'
-import { Filter } from '../types'
-
+import { mutations, tables } from '../schema/index.ts'
+import type { Filter } from '../types.ts'
 
 export const Filters: React.FC = () => {
   const { store } = useStore()
@@ -13,9 +12,15 @@ export const Filters: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Tag isActive={filter === 'all'} onPress={() => setFilter('all')}>All</Tag>
-      <Tag isActive={filter === 'active'} onPress={() => setFilter('active')}>Active</Tag>
-      <Tag isActive={filter === 'completed'} onPress={() => setFilter('completed')}>Completed</Tag>
+      <Tag isActive={filter === 'all'} onPress={() => setFilter('all')}>
+        All
+      </Tag>
+      <Tag isActive={filter === 'active'} onPress={() => setFilter('active')}>
+        Active
+      </Tag>
+      <Tag isActive={filter === 'completed'} onPress={() => setFilter('completed')}>
+        Completed
+      </Tag>
     </View>
   )
 }
@@ -23,18 +28,14 @@ export const Filters: React.FC = () => {
 const Tag = ({
   isActive,
   children,
-  onPress
+  onPress,
 }: {
   isActive: boolean
   onPress: () => void
   children: React.ReactNode
 }) => {
   return (
-    <Pressable
-      style={[styles.tag, isActive && styles.tagActive]}
-      hitSlop={4}
-      onPress={onPress}
-    >
+    <Pressable style={[styles.tag, isActive && styles.tagActive]} hitSlop={4} onPress={onPress}>
       <Text style={[styles.tagText, isActive && styles.tagTextActive]}>{children}</Text>
     </Pressable>
   )
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
   container: {
     display: 'flex',
     flexDirection: 'row',
-    gap: 8
+    gap: 8,
   },
   tag: {
     backgroundColor: '#fff',
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
     borderColor: '#dedede',
     borderRadius: 8,
     paddingHorizontal: 8,
-    paddingVertical: 4
+    paddingVertical: 4,
   },
   tagActive: {
     borderColor: '#000',
@@ -63,12 +64,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    elevation: 5
+    elevation: 5,
   },
   tagText: {
-    color: '#969696'
+    color: '#969696',
   },
   tagTextActive: {
-    color: '#000'
-  }
+    color: '#000',
+  },
 })
