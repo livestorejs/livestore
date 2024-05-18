@@ -10,22 +10,12 @@
 ## Setup requirements
 
 Set `export RCT_NEW_ARCH_ENABLED=1` in your shell
-- Until Expo supports the bytecode SQLite flag out of the box, you have to use the dev build of the app (i.e. Expo Go is not yet supported).
-  - `pnpm expo prebuild -p ios` (generates the `ios` Xcode project)
-  - Optional: `xed ios` (to open the project in Xcode)
 
 - Until Expo properly supports PNPM we also need the following
-  - Some workarounds in `metra.config.js` + `@babel/runtime` in `package.json`
-  - Extra dependencies in `package.json` for iOS `Release` builds
-    ```json
-    "expo-asset": "^9.0.2",
-    "@react-native/assets-registry": "^0.74.0",
-    "babel-preset-expo": "^10.0.1",
-    ```
-  - `"expo-modules-autolinking@1.10.3": "patches/expo-modules-autolinking@1.10.3.patch"`
+  - Some workarounds in `metro.config.js` + `@babel/runtime` in `package.json`
 
 ## Running
 
-```
-pnpm ios
-```
+livestore could run on Expo Go from Expo SDK 51. Just run `pnpm ios` or `pnpm android` to start the example app in Expo Go.
+
+If you want to have a custom build, you could run `pnpm expo run:ios` or `pnpm expo run:android` to build the app locally.
