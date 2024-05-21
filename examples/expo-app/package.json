@@ -1,5 +1,5 @@
 {
-  "name": "expo",
+  "name": "expo-app",
   "version": "1.0.0",
   "main": "./src/AppEntry.ts",
   "scripts": {
