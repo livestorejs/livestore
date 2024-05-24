@@ -40,17 +40,22 @@ export const systemTables = [schemaMetaTable, schemaMutationsMetaTable]
 
 /// Mutation log DB
 
+export const SyncStatus = Schema.Literal('synced', 'pending', 'error')
+export type SyncStatus = typeof SyncStatus.Type
+
 export const MUTATION_LOG_META_TABLE = 'mutation_log'
 
 export const mutationLogMetaTable = table(
   MUTATION_LOG_META_TABLE,
   {
+    // TODO add parent ids (see https://vlcn.io/blog/crdt-substrate)
     id: SqliteDsl.text({ primaryKey: true }),
     mutation: SqliteDsl.text({ nullable: false }),
     argsJson: SqliteDsl.text({ nullable: false, schema: Schema.parseJson(Schema.Any) }),
     schemaHash: SqliteDsl.integer({ nullable: false }),
     /** ISO date format */
     createdAt: SqliteDsl.text({ nullable: false }),
+    syncStatus: SqliteDsl.text({ schema: SyncStatus }),
   },
   { disableAutomaticIdColumn: true },
 )

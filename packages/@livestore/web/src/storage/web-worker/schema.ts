@@ -55,7 +55,12 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
   'InitialMessage',
   UnexpectedError,
   Schema.Void,
-  { storageOptions: StorageType },
+  {
+    storageOptions: StorageType,
+    roomId: Schema.String,
+    hasLock: Schema.Boolean,
+    needsRecreate: Schema.Boolean,
+  },
 ) {}
 
 export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {
@@ -63,6 +68,13 @@ export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBul
 }) {}
 
 export class Export extends Schema.TaggedRequest<Export>()('Export', UnexpectedError, Transferable.Uint8Array, {}) {}
+
+export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()(
+  'GetRecreateSnapshot',
+  UnexpectedError,
+  Transferable.Uint8Array,
+  {},
+) {}
 
 export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()(
   'ExportMutationlog',
@@ -75,5 +87,13 @@ export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedErro
 
 export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
 
-export const Request = Schema.Union(InitialMessage, ExecuteBulk, Export, ExportMutationlog, Setup, Shutdown)
+export const Request = Schema.Union(
+  InitialMessage,
+  ExecuteBulk,
+  Export,
+  GetRecreateSnapshot,
+  ExportMutationlog,
+  Setup,
+  Shutdown,
+)
 export type Request = Schema.Schema.Type<typeof Request>

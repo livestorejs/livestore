@@ -1,0 +1,27 @@
+{
+  "name": "@livestore/cf-sync",
+  "version": "0.0.47",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "deploy": "wrangler publish",
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@livestore/utils": "workspace:*",
+    "@livestore/common": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20240512.0",
+    "wrangler": "^3.57.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

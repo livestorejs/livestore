@@ -137,3 +137,9 @@ export const mutationEventSchemaDecodedAny = Schema.Struct({
   args: Schema.Any,
   id: Schema.String,
 }).annotations({ title: 'MutationEventSchema.DecodedAny' })
+
+export const mutationEventSchemaEncodedAny = Schema.Struct({
+  mutation: Schema.String,
+  args: Schema.Any,
+  id: Schema.String,
+}).annotations({ title: 'MutationEventSchema.EncodedAny' })

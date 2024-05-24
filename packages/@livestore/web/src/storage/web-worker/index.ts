@@ -1,5 +1,4 @@
-import type { ResetMode, StorageDatabase } from '@livestore/common'
-import { makeSchemaHash } from '@livestore/common/schema'
+import { BCMessage, type ResetMode, type StorageDatabase } from '@livestore/common'
 import { casesHandled, omit } from '@livestore/utils'
 import {
   BrowserWorker,
@@ -10,6 +9,7 @@ import {
   FiberId,
   pipe,
   Queue,
+  Schema,
   Scope,
   WebLock,
   Worker,
@@ -23,6 +23,7 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
   getOpfsDirHandle,
+  LIVESTORE_TAB_LOCK,
 } from './common.js'
 import * as WorkerSchema from './schema.js'
 
@@ -35,8 +36,6 @@ export const WebWorkerStorage = {
   load: (options: StorageOptionsWeb): StorageInit => createStorage(options),
 }
 
-const LIVESTORE_TAB_LOCK = 'livestore-tab-lock'
-
 export const createStorage =
   (options: StorageOptionsWeb): StorageInit =>
   ({ otel: {}, schema }) => {
@@ -47,24 +46,43 @@ export const createStorage =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const lockDeferred = yield* pipe(Deferred.make<void>())
+      const lockDeferred = yield* Deferred.make<void>()
+
+      const hasLock = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
+        Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
+      )
+
+      console.log('hasLock', hasLock)
+
+      const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}`)
 
       const worker =
         options.worker instanceof globalThis.Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
 
       const storageOptions = omit(options, ['worker'])
 
-      const workerDeferred = yield* pipe(
-        Worker.makePoolSerialized<WorkerSchema.Request>({
-          size: 1,
-          permits: 10,
-          initialMessage: () => new WorkerSchema.InitialMessage({ storageOptions }),
-        }).pipe(Effect.provide(BrowserWorker.layer(() => worker)), Effect.toForkedDeferred),
-      )
+      const roomId = getRoomId()
+
+      const dataFromFile = yield* getPersistedData(storageOptions, schema.hash)
+
+      const workerDeferred = yield* Worker.makePoolSerialized<WorkerSchema.Request>({
+        size: 1,
+        permits: 10,
+        initialMessage: () =>
+          new WorkerSchema.InitialMessage({
+            storageOptions,
+            roomId,
+            needsRecreate: dataFromFile === undefined,
+            hasLock,
+          }),
+      }).pipe(Effect.provide(BrowserWorker.layer(() => worker)), Effect.toForkedDeferred)
 
       const runInWorker = <TReq extends WorkerSchema.Request>(req: TReq) =>
         Effect.andThen(Deferred.await(workerDeferred), (worker) => worker.executeEffect(req))
 
+      const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.GetRecreateSnapshot()))
+
+      // Continously take items from the backlog and execute them in the worker if there are any
       yield* Deferred.await(workerDeferred).pipe(
         Effect.andThen(() =>
           Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(
@@ -79,43 +97,65 @@ export const createStorage =
         Effect.forkScoped,
       )
 
-      const schemaHash = makeSchemaHash(schema)
-
       const storage = {
-        getInitialSnapshot: () =>
-          Effect.gen(function* () {
-            // TODO replace with a proper multi-tab syncing/lock-transfer mechanism
-            yield* pipe(
-              WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK),
-              Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
-            )
+        getInitialSnapshot: async () => initialSnapshot,
+        // Effect.gen(function* () {
+        //   // TODO replace with a proper multi-tab syncing/lock-transfer mechanism
+        //   // yield* pipe(
+        //   //   WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK),
+        //   //   Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
+        //   //   Effect.tapSync(() => {
+        //   //     hasLock = true
+        //   //   }),
+        //   //   Effect.tapCauseLogPretty,
+        //   //   Effect.fork,
+        //   // )
 
-            // NOTE here we're trying to access the persisted data directly from the main thread which
-            // ususally speeds up the init process as we don't have to wait for the worker to be ready
-            // This will only work for the first tab though
-            const dataFromFile = yield* pipe(Effect.promise(() => getPersistedData(storageOptions, schemaHash)))
-            if (dataFromFile !== undefined) return dataFromFile
+        //   // NOTE here we're trying to access the persisted data directly from the main thread which
+        //   // ususally speeds up the init process as we don't have to wait for the worker to be ready
+        //   // This will only work for the first tab though
 
-            return yield* pipe(runInWorker(new WorkerSchema.Setup()))
-          }).pipe(Effect.withPerformanceMeasure('@livestore/web:getInitialSnapshot'), Effect.runPromise),
+        //   return yield* runInWorker(new WorkerSchema.Setup())
+        // }).pipe(
+        //   Effect.withPerformanceMeasure('@livestore/web:getInitialSnapshot'),
+        //   Effect.tapCauseLogPretty,
+        //   Effect.runPromise,
+        // ),
 
         export: () => runInWorker(new WorkerSchema.Export()).pipe(Effect.runPromise),
 
         dangerouslyReset: (mode) =>
           Effect.gen(function* () {
-            yield* pipe(runInWorker(new WorkerSchema.Shutdown({})))
+            yield* runInWorker(new WorkerSchema.Shutdown({}))
 
             worker.terminate()
 
-            yield* pipe(Effect.promise(() => resetPersistedData(storageOptions, schemaHash, mode)))
+            yield* resetPersistedData(storageOptions, schema.hash, mode)
           }).pipe(Effect.runPromise),
 
         execute: async (query, bindValues) => {
-          await Queue.offer(executionBacklogQueue, { _tag: 'execute', query, bindValues }).pipe(Effect.runPromise)
+          if (hasLock) {
+            await Queue.offer(executionBacklogQueue, { _tag: 'execute', query, bindValues }).pipe(Effect.runPromise)
+          } else {
+            console.warn(`TODO: implement execute without lock`, query, bindValues)
+          }
         },
 
         mutate: async (mutationEventEncoded) => {
-          await Queue.offer(executionBacklogQueue, { _tag: 'mutate', mutationEventEncoded }).pipe(Effect.runPromise)
+          if (hasLock) {
+            await Queue.offer(executionBacklogQueue, { _tag: 'mutate', mutationEventEncoded }).pipe(Effect.runPromise)
+          } else {
+            broadcastChannel.postMessage(
+              Schema.encodeSync(BCMessage.Message)(
+                BCMessage.Broadcast.make({
+                  _tag: 'BC.Broadcast',
+                  mutationEventEncoded,
+                  ref: '',
+                  sender: 'ui-thread',
+                }),
+              ),
+            )
+          }
         },
 
         getMutationLogData: () =>
@@ -144,88 +184,104 @@ export const createStorage =
       } satisfies StorageDatabase
 
       return storage
-    }).pipe(Scope.extend(manualScope), Effect.runPromise)
+    }).pipe(Scope.extend(manualScope), Effect.tapCauseLogPretty, Effect.runPromise)
   }
 
-const getPersistedData = async (storage: WorkerSchema.StorageType, schemaHash: number) => {
-  try {
-    performance.mark('@livestore/web:getPersistedData:start')
+const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number) =>
+  Effect.promise(async () => {
+    try {
+      performance.mark('@livestore/web:getPersistedData:start')
+      switch (storage.type) {
+        case 'opfs': {
+          try {
+            const dirHandle = await getOpfsDirHandle(storage.directory)
+            const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, schemaHash))
+            const file = await fileHandle.getFile()
+            const buffer = await file.arrayBuffer()
+            const data = new Uint8Array(buffer)
+
+            // In rare cases the file might be created by the `.Setup` flow but wasn't finished.
+            // This early causes the `.Setup` flow to run again.
+            // TODO we probably want to run the `.Setup` flow atomically so there's never a non-compliant file
+            if (data.length === 0) return undefined
+
+            return data
+          } catch (error: any) {
+            if (error instanceof DOMException && error.name === 'NotFoundError') {
+              return undefined
+            }
+
+            throw error
+          }
+        }
+
+        case 'indexeddb': {
+          const idb = new IDB(
+            storage.databaseName ?? 'livestore',
+            getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+          )
+
+          return await idb.get('db')
+        }
+        default: {
+          casesHandled(storage)
+        }
+      }
+    } finally {
+      performance.mark('@livestore/web:getPersistedData:end')
+      performance.measure(
+        '@livestore/web:getPersistedData',
+        '@livestore/web:getPersistedData:start',
+        '@livestore/web:getPersistedData:end',
+      )
+    }
+  })
+
+const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number, resetMode: ResetMode) =>
+  Effect.promise(async () => {
     switch (storage.type) {
       case 'opfs': {
-        try {
-          const dirHandle = await getOpfsDirHandle(storage.directory)
-          const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, schemaHash))
-          const file = await fileHandle.getFile()
-          const buffer = await file.arrayBuffer()
-          const data = new Uint8Array(buffer)
-
-          // In rare cases the file might be created by the `.Setup` flow but wasn't finished.
-          // This early causes the `.Setup` flow to run again.
-          // TODO we probably want to run the `.Setup` flow atomically so there's never a non-compliant file
-          if (data.length === 0) return undefined
-
-          return data
-        } catch (error: any) {
-          if (error instanceof DOMException && error.name === 'NotFoundError') {
-            return undefined
-          }
-
-          throw error
+        const dirHandle = await getOpfsDirHandle(storage.directory)
+        await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, schemaHash))
+        if (resetMode === 'all-data') {
+          await dirHandle.removeEntry(getMutationlogDbFileName(storage.filePrefix))
         }
+        break
       }
 
       case 'indexeddb': {
-        const idb = new IDB(
+        const idbApp = new IDB(
           storage.databaseName ?? 'livestore',
           getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
         )
+        await idbApp.deleteDb()
 
-        return await idb.get('db')
+        if (resetMode === 'all-data') {
+          const idbMutationLog = new IDB(
+            storage.databaseName ?? 'livestore',
+            getMutationlogDbIdbStoreName(storage.storeNamePrefix),
+          )
+          await idbMutationLog.deleteDb()
+        }
+
+        break
       }
       default: {
         casesHandled(storage)
       }
     }
-  } finally {
-    performance.mark('@livestore/web:getPersistedData:end')
-    performance.measure(
-      '@livestore/web:getPersistedData',
-      '@livestore/web:getPersistedData:start',
-      '@livestore/web:getPersistedData:end',
-    )
+  })
+
+const getRoomId = () => {
+  const searchParams = new URLSearchParams(location.search)
+  const roomId = searchParams.get('room')
+
+  if (roomId === null) {
+    const newRoomId = Math.random().toString(36).slice(7)
+    searchParams.set('room', newRoomId)
+    history.replaceState(null, '', `${location.pathname}?${searchParams.toString()}`)
+    return location.reload() as never
   }
-}
 
-const resetPersistedData = async (storage: WorkerSchema.StorageType, schemaHash: number, resetMode: ResetMode) => {
-  switch (storage.type) {
-    case 'opfs': {
-      const dirHandle = await getOpfsDirHandle(storage.directory)
-      await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, schemaHash))
-      if (resetMode === 'all-data') {
-        await dirHandle.removeEntry(getMutationlogDbFileName(storage.filePrefix))
-      }
-      break
-    }
-
-    case 'indexeddb': {
-      const idbApp = new IDB(
-        storage.databaseName ?? 'livestore',
-        getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
-      )
-      await idbApp.deleteDb()
-
-      if (resetMode === 'all-data') {
-        const idbMutationLog = new IDB(
-          storage.databaseName ?? 'livestore',
-          getMutationlogDbIdbStoreName(storage.storeNamePrefix),
-        )
-        await idbMutationLog.deleteDb()
-      }
-
-      break
-    }
-    default: {
-      casesHandled(storage)
-    }
-  }
+  return roomId
 }

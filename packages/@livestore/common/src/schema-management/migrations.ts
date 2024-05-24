@@ -1,4 +1,4 @@
-import { memoize } from '@livestore/utils'
+import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Schema as EffectSchema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
@@ -11,7 +11,7 @@ import { sql } from '../util.js'
 import { dbExecute, dbSelect } from './common.js'
 import { makeSchemaManager, validateSchema } from './validate-mutation-defs.js'
 
-const getMemoizedTimestamp = memoize(() => new Date().toISOString())
+const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 export const migrateDb = ({

@@ -30,6 +30,8 @@ export type LiveStoreSchema<
 
   readonly tables: Map<string, TableDef>
   readonly mutations: MutationDefMap
+  /** Compound hash of all table defs etc */
+  readonly hash: number
 
   migrationOptions: MigrationOptions
 }
@@ -90,20 +92,20 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
+  const hash = SqliteAst.hash({
+    _tag: 'dbSchema',
+    tables: [...tables.values()].map((_) => _.sqliteDef.ast),
+  })
+
   return {
     _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
     _MutationDefMapType: Symbol('livestore.MutationDefMapType') as any,
     tables,
     mutations,
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
+    hash,
   } satisfies LiveStoreSchema
 }
-
-export const makeSchemaHash = (schema: LiveStoreSchema) =>
-  SqliteAst.hash({
-    _tag: 'dbSchema',
-    tables: [...schema.tables.values()].map((_) => _.sqliteDef.ast),
-  })
 
 namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<

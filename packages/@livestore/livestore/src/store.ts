@@ -1,5 +1,5 @@
 import type { BootDb, DatabaseFactory, DatabaseImpl, PreparedBindValues, ResetMode } from '@livestore/common'
-import { getExecArgsFromMutation } from '@livestore/common'
+import { BCMessage, getExecArgsFromMutation } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
@@ -98,6 +98,9 @@ export class Store<
    */
   tableRefs: { [key: string]: Ref<null, DbContext, RefreshReason> }
 
+  // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
+  __processedMutationIds = new Set<string>()
+
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
@@ -135,6 +138,18 @@ export class Store<
 
     this.graph = dbGraph
     this.graph.context = { store: this as any, otelTracer, rootOtelContext: otelQueriesSpanContext }
+
+    const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}`)
+
+    broadcastChannel.addEventListener('message', (event) => {
+      const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)
+      if (decodedEvent._tag === 'Some') {
+        const { sender, mutationEventEncoded } = decodedEvent.value
+        if (sender === 'leader-worker') {
+          this.mutate({ wasSyncMessage: true }, mutationEventEncoded)
+        }
+      }
+    })
 
     this.otel = {
       tracer: otelTracer,
@@ -244,23 +259,24 @@ export class Store<
       txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
     <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(
-      options: { label?: string; skipRefresh?: boolean },
+      options: { label?: string; skipRefresh?: boolean; wasSyncMessage?: boolean },
       ...list: TMutationArg
     ): void
     (
-      options: { label?: string; skipRefresh?: boolean },
+      options: { label?: string; skipRefresh?: boolean; wasSyncMessage?: boolean },
       txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
     let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
-    let options: { label?: string; skipRefresh?: boolean } | undefined
+    let options: { label?: string; skipRefresh?: boolean; wasSyncMessage?: boolean } | undefined
 
     if (typeof firstMutationOrTxnFnOrOptions === 'function') {
       // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
       mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
     } else if (
       firstMutationOrTxnFnOrOptions?.label !== undefined ||
-      firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined
+      firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
+      firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined
     ) {
       options = firstMutationOrTxnFnOrOptions
       mutationsEvents = restMutations
@@ -268,13 +284,24 @@ export class Store<
       mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
     }
 
+    mutationsEvents = mutationsEvents.filter((_) => !this.__processedMutationIds.has(_.id))
+
+    if (mutationsEvents.length === 0) {
+      return
+    }
+
+    for (const mutationEvent of mutationsEvents) {
+      this.__processedMutationIds.add(mutationEvent.id)
+    }
+
     const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
+    const wasSyncMessage = options?.wasSyncMessage ?? false
 
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
     mutationsSpan.addEvent('mutate')
 
-    // console.debug('LiveStore.mutate', { skipRefresh, events: [...events] })
+    // console.debug('LiveStore.mutate', { skipRefresh, wasSyncMessage, label }, mutationsEvents)
 
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
@@ -297,7 +324,11 @@ export class Store<
                 const applyMutations = () => {
                   for (const mutationEvent of mutationsEvents) {
                     try {
-                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(mutationEvent, otelContext)
+                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(
+                        mutationEvent,
+                        otelContext,
+                        wasSyncMessage,
+                      )
                       for (const tableName of writeTablesForEvent) {
                         writeTables.add(tableName)
                       }
@@ -376,6 +407,7 @@ export class Store<
   mutateWithoutRefresh = (
     mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
+    skipStorage: boolean = false,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutatetWithoutRefresh',
@@ -409,9 +441,12 @@ export class Store<
           writeTables.forEach((table) => allWriteTables.add(table))
         }
 
-        // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
         const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationEventSchema)(mutationEventDecoded)
-        this.db.storageDb.mutate(mutationEventEncoded, span)
+
+        if (skipStorage === false) {
+          // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
+          this.db.storageDb.mutate(mutationEventEncoded, span)
+        }
 
         // Uncomment to print a list of queries currently registered on the store
         // console.debug(JSON.parse(JSON.stringify([...this.queries].map((q) => `${labelForKey(q.componentKey)}/${q.label}`))))

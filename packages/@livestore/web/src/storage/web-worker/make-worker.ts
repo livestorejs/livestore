@@ -1,31 +1,23 @@
-import {
-  getExecArgsFromMutation,
-  initializeSingletonTables,
-  migrateDb,
-  migrateTable,
-  prepareBindValues,
-  rehydrateFromMutationLog,
-} from '@livestore/common'
-import {
-  type LiveStoreSchema,
-  makeMutationEventSchema,
-  makeSchemaHash,
-  MUTATION_LOG_META_TABLE,
-  type MutationEventSchema,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
-import { insertRow } from '@livestore/common/sql-queries'
-import type * as SqliteWasm from '@livestore/sqlite-wasm'
+import { BCMessage, sql, WSMessage } from '@livestore/common'
+import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
-import { casesHandled, memoize, shouldNeverHappen } from '@livestore/utils'
-import { BrowserWorkerRunner, Context, Effect, Layer, Schema, WorkerRunner } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
+import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import type { Context } from '@livestore/utils/effect'
+import {
+  BrowserWorkerRunner,
+  Effect,
+  Layer,
+  PubSub,
+  Queue,
+  Schema,
+  Stream,
+  WorkerRunner,
+} from '@livestore/utils/effect'
 
-import { makeInMemoryDb } from '../../make-in-memory-db.js'
-import { configureConnection } from './common.js'
-import type { PersistedSqlite } from './persisted-sqlite.js'
+import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
-import type { ExecutionBacklogItem, StorageType } from './schema.js'
+import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
+import type { ExecutionBacklogItem } from './schema.js'
 import { Request, UnexpectedError } from './schema.js'
 
 const sqlite3Promise = sqlite3InitModule({
@@ -48,14 +40,6 @@ export const makeWorker = (options: WorkerOptions) => {
 
 const makeWorkerRunner = ({ schema }: WorkerOptions) =>
   Effect.gen(function* (_$) {
-    const migrationOptions = schema.migrationOptions
-    const hooks = migrationOptions.hooks
-
-    const mutationLogExclude =
-      migrationOptions.strategy === 'from-mutation-log'
-        ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
-        : new Set(['livestore.RawSql'])
-
     const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
     const mutationDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
@@ -64,12 +48,89 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
-    const schemaHash = makeSchemaHash(schema)
+    const schemaHash = schema.hash
+
+    const initialSnapshotRef = { current: undefined as any }
 
     return WorkerRunner.layerSerialized(Request, {
-      InitialMessage: ({ storageOptions }) =>
+      InitialMessage: ({ storageOptions, roomId, hasLock, needsRecreate }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
+
+          if (hasLock === false) {
+            return Layer.succeed(WorkerCtx, {
+              _tag: 'NoLock',
+              storageOptions,
+              schema,
+              ctx: undefined,
+            })
+          }
+
+          const wsUrl = `wss://websocket-server.schickling.workers.dev/websocket?room=${roomId}`
+          // const wsUrl = `ws://localhost:8787/websocket?room=room1`
+          const ws = new WebSocket(wsUrl)
+
+          const incomingInitResQueue = yield* Queue.unbounded<WSMessage.InitRes>()
+          const incomingBroadcastQueue = yield* Queue.unbounded<WSMessage.Broadcast>()
+          const incomingBroadcastAckPubsub = yield* PubSub.unbounded<WSMessage.BroadcastAck>()
+
+          ws.addEventListener('message', (event) => {
+            const decodedEventRes = Schema.decodeUnknownEither(WSMessage.Message)(JSON.parse(event.data))
+
+            if (decodedEventRes._tag === 'Left') {
+              console.error('Sync: Invalid message received', decodedEventRes.left)
+              return
+            } else {
+              switch (decodedEventRes.right._tag) {
+                case 'WSMessage.InitRes': {
+                  Queue.unsafeOffer(incomingInitResQueue, decodedEventRes.right)
+
+                  break
+                }
+                case 'WSMessage.Broadcast': {
+                  Queue.unsafeOffer(incomingBroadcastQueue, decodedEventRes.right)
+
+                  break
+                }
+                case 'WSMessage.BroadcastAck': {
+                  PubSub.publish(incomingBroadcastAckPubsub, decodedEventRes.right).pipe(
+                    Effect.tapCauseLogPretty,
+                    Effect.runSync,
+                  )
+
+                  break
+                }
+                // No default
+              }
+            }
+
+            // const decodedEvent = decodedEventRes.right
+            // if (decodedEvent._tag === 'WSMessage.InitRes') {
+            //   decodedEvent.events.forEach((event) => {
+            //     store.mutateWithoutRefresh(event)
+            //   })
+
+            //   if (decodedEvent.hasMore === false) {
+            //     // console.log('Sync: Initialized')
+            //     if (decodedEvent.events.length > 0) {
+            //       store.refresh()
+            //     }
+            //     isInitialized = true
+            //     deferred.resolve(void 0)
+            //     console.log('Sync: Initialized')
+            //   }
+            // } else if (decodedEvent._tag === 'WSMessage.Broadcast') {
+            //   if (!isInitialized) {
+            //     return shouldNeverHappen(`Received broadcast before initialization finished`)
+            //   }
+
+            //   if (decodedEvent.needsRefresh) {
+            //     store.mutate(decodedEvent.mutationEventEncoded)
+            //   } else {
+            //     store.mutateWithoutRefresh(decodedEvent.mutationEventEncoded)
+            //   }
+            // }
+          })
 
           const makeDb = makePersistedSqlite({
             storageOptions,
@@ -90,142 +151,117 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           // Might involve some async work, so we're running them concurrently
           const [db, dbLog] = yield* Effect.all([makeDb, makeDbLog], { concurrency: 2 })
 
-          return Layer.succeed(WorkerCtx, {
-            storageOptions,
-            sqlite3,
-            db,
-            dbLog,
-            mutationDefSchemaHashMap,
-            mutationEventSchema,
-            mutationLogExclude,
-            schema,
+          const cursor = yield* Effect.try(
+            () =>
+              dbLog.dbRef.current.selectValue(
+                sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} ORDER BY id DESC LIMIT 1`,
+              ) as string | undefined,
+          ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+
+          ws.addEventListener('open', () => {
+            ws.send(
+              Schema.encodeSync(Schema.parseJson(WSMessage.InitReq))(
+                WSMessage.InitReq.make({ _tag: 'WSMessage.InitReq', cursor }),
+              ),
+            )
           })
+
+          const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}`)
+
+          const workerCtx = {
+            _tag: 'HasLock',
+            storageOptions,
+            schema,
+            ctx: {
+              sqlite3,
+              db,
+              dbLog,
+              mutationDefSchemaHashMap,
+              mutationEventSchema,
+              broadcastChannel,
+              ws,
+              wsQueues: {
+                incomingInitRes: incomingInitResQueue,
+                incomingBroadcastAckPubsub,
+              },
+            },
+          } satisfies Context.Tag.Service<WorkerCtx>
+
+          if (needsRecreate) {
+            initialSnapshotRef.current = yield* recreateDb(workerCtx)
+          } else {
+            yield* fetchAndApplyRemoteMutations(workerCtx, db.dbRef.current, true)
+          }
+
+          const applyMutation = makeApplyMutation(workerCtx, () => new Date().toISOString(), db.dbRef.current)
+
+          // TODO try to do this in a batched-way if possible
+          yield* Stream.fromQueue(incomingBroadcastQueue).pipe(
+            Stream.tap(({ mutationEventEncoded }) =>
+              Effect.gen(function* () {
+                applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true })
+              }),
+            ),
+            Stream.runDrain,
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
+          )
+
+          broadcastChannel.addEventListener('message', (event) => {
+            const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)
+            if (decodedEvent._tag === 'Some') {
+              const { sender, mutationEventEncoded } = decodedEvent.value
+              if (sender === 'ui-thread') {
+                applyMutation(mutationEventEncoded, { syncStatus: 'pending', shouldBroadcast: true })
+              }
+            }
+          })
+
+          // TODO listen for broadcast WS events and broadcast them across tabs
+
+          return Layer.succeed(WorkerCtx, workerCtx)
         }).pipe(
           Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
-          Effect.catchAllCause((error) => new UnexpectedError({ error })),
+          Effect.tapCauseLogPretty,
+          Effect.catchAllCause((error) => {
+            // TODO remove when fixed https://github.com/Effect-TS/effect/issues/2813
+            shouldNeverHappen('Error initializing worker')
+            return new UnexpectedError({ error })
+          }),
           Layer.unwrapScoped,
         ),
+      GetRecreateSnapshot: () => Effect.sync(() => initialSnapshotRef.current),
       Export: () =>
-        Effect.andThen(WorkerCtx, (_) => _.db.export).pipe(
+        Effect.andThen(WorkerCtx, (_) => _.ctx!.db.export).pipe(
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExportMutationlog: () =>
-        Effect.andThen(WorkerCtx, (_) => _.dbLog.export).pipe(
+        Effect.andThen(WorkerCtx, (_) => _.ctx!.dbLog.export).pipe(
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExecuteBulk: ({ items }) =>
         executeBulk(items).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
-      Setup: () =>
-        Effect.gen(function* () {
-          const { db, dbLog, sqlite3 } = yield* WorkerCtx
-
-          yield* Effect.addFinalizer((ex) => {
-            if (ex._tag === 'Success') return Effect.void
-            return db.destroy.pipe(Effect.orDie)
-          })
-
-          const otelContext = otel.context.active()
-
-          // NOTE to speed up the operations below, we're creating a temporary in-memory database
-          // and later we'll overwrite the persisted database with the new data
-          const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-          tmpDb.capi = sqlite3.capi
-          configureConnection(tmpDb, { fkEnabled: true })
-
-          const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
-
-          if (hooks?.init !== undefined) {
-            yield* Effect.promise(async () => hooks.init!(tmpInMemoryDb))
-          }
-
-          migrateDb({ db: tmpInMemoryDb, otelContext, schema })
-          initializeSingletonTables(schema, tmpInMemoryDb)
-
-          if (hooks?.pre !== undefined) {
-            yield* Effect.promise(async () => hooks.pre!(tmpInMemoryDb))
-          }
-
-          const inMemoryDbLog = makeInMemoryDb(sqlite3, dbLog.dbRef.current)
-
-          migrateTable({
-            db: inMemoryDbLog,
-            behaviour: 'create-if-not-exists',
-            tableAst: mutationLogMetaTable.sqliteDef.ast,
-            skipMetaTable: true,
-          })
-
-          switch (migrationOptions.strategy) {
-            case 'from-mutation-log': {
-              yield* Effect.promise(() =>
-                rehydrateFromMutationLog({ db: tmpInMemoryDb, logDb: inMemoryDbLog, schema, migrationOptions }),
-              )
-
-              break
-            }
-            case 'hard-reset': {
-              // This is already the case by note doing anything now
-
-              break
-            }
-            case 'manual': {
-              // const migrateFn = migrationStrategy.migrate
-              console.warn('Manual migration strategy not implemented yet')
-
-              // TODO figure out a way to get previous database file to pass to the migration function
-
-              break
-            }
-            default: {
-              casesHandled(migrationOptions)
-            }
-          }
-
-          if (hooks?.post !== undefined) {
-            yield* Effect.promise(async () => hooks.post!(tmpInMemoryDb))
-          }
-
-          const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
-          tmpDb.close()
-
-          yield* db.import(snapshotFromTmpDb)
-
-          return snapshotFromTmpDb
-        }).pipe(
-          Effect.scoped,
-          Effect.withPerformanceMeasure('@livestore/web:worker:Setup'),
-          Effect.catchAllCause((error) => new UnexpectedError({ error })),
-        ),
+      Setup: () => Effect.never,
       Shutdown: () =>
         Effect.gen(function* () {
           // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)
-          const { db, dbLog } = yield* WorkerCtx
+          const { ctx } = yield* WorkerCtx
+          const { db, dbLog } = ctx!
           db.dbRef.current.close()
           dbLog.dbRef.current.close()
         }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(BrowserWorkerRunner.layer))
 
-class WorkerCtx extends Context.Tag('WorkerCtx')<
-  WorkerCtx,
-  {
-    storageOptions: StorageType
-    db: PersistedSqlite
-    dbLog: PersistedSqlite
-    sqlite3: SqliteWasm.Sqlite3Static
-
-    mutationEventSchema: MutationEventSchema<any>
-    mutationLogExclude: ReadonlySet<string>
-    mutationDefSchemaHashMap: Map<string, number>
-    schema: LiveStoreSchema
-  }
->() {}
-
 const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
   Effect.gen(function* () {
     let batchItems: ExecutionBacklogItem[] = []
-    const { db, dbLog, mutationEventSchema, mutationLogExclude, mutationDefSchemaHashMap, schema } = yield* WorkerCtx
+    const workerCtx = yield* WorkerCtx
+    if (workerCtx._tag === 'NoLock') return
+    const { db, dbLog } = workerCtx.ctx
 
-    const createdAtMemo = memoize(() => new Date().toISOString())
+    const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
+    const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db.dbRef.current)
 
     let offset = 0
 
@@ -246,62 +282,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
-            const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(item.mutationEventEncoded)
-
-            const mutationName = mutationEventDecoded.mutation
-            const mutationDef =
-              schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-
-            const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-            for (const { statementSql, bindValues } of execArgsArr) {
-              try {
-                // console.debug('livestore-webworker: executing SQL for mutation', mutation, statementSql, bindValues)
-                db.dbRef.current.exec({ sql: statementSql, bind: bindValues })
-              } catch (e) {
-                console.error('Error executing query', e, statementSql, bindValues)
-                debugger
-                throw e
-              }
-            }
-
-            // write to mutation_log
-            if (
-              mutationLogExclude.has(mutationName) === false &&
-              execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
-            ) {
-              const mutationDefSchemaHash =
-                mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-
-              try {
-                const [sql, bind] = insertRow({
-                  tableName: MUTATION_LOG_META_TABLE,
-                  columns: mutationLogMetaTable.sqliteDef.columns,
-                  values: {
-                    id: item.mutationEventEncoded.id,
-                    mutation: item.mutationEventEncoded.mutation,
-                    argsJson: item.mutationEventEncoded.args ?? {},
-                    schemaHash: mutationDefSchemaHash,
-                    createdAt: createdAtMemo(),
-                  },
-                })
-                dbLog.dbRef.current.exec({ sql, bind: prepareBindValues(bind, sql) })
-              } catch (e) {
-                console.error(
-                  `Error writing to ${MUTATION_LOG_META_TABLE}`,
-                  e,
-                  item.mutationEventEncoded.id,
-                  item.mutationEventEncoded.mutation,
-                  item.mutationEventEncoded.args ?? {},
-                  mutationDefSchemaHash,
-                  createdAtMemo(),
-                )
-                debugger
-                throw e
-              }
-            } else {
-              //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-            }
+            applyMutation(item.mutationEventEncoded, { syncStatus: 'pending', shouldBroadcast: true })
           } else {
             // TODO handle txn
           }

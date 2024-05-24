@@ -1,5 +1,22 @@
-import { sql } from '@livestore/common'
+import {
+  BCMessage,
+  getExecArgsFromMutation,
+  MUTATION_LOG_META_TABLE,
+  mutationLogMetaTable,
+  prepareBindValues,
+  sql,
+  WSMessage,
+} from '@livestore/common'
+import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
+import type { BindValues } from '@livestore/common/sql-queries'
+import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
+import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import type { PubSub, Queue } from '@livestore/utils/effect'
+import { Context, Effect, Schema, Stream } from '@livestore/utils/effect'
+
+import type { PersistedSqlite } from './persisted-sqlite.js'
+import type { StorageType } from './schema.js'
 
 export const getAppDbFileName = (prefix: string | undefined = 'livestore', schemaHash: number) => {
   return `${prefix}-${schemaHash}.db`
@@ -17,8 +34,9 @@ export const getMutationlogDbIdbStoreName = (prefix: string | undefined = 'lives
   return `${prefix}-mutationlog`
 }
 
+// NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
 const rootHandlePromise =
-  navigator.storage === undefined ? Promise.resolve(null as any) : navigator.storage.getDirectory()
+  navigator.storage === undefined ? new Promise<never>(() => {}) : navigator.storage.getDirectory()
 
 export const getOpfsDirHandle = async (directory: string | undefined) => {
   const rootHandle = await rootHandlePromise
@@ -39,3 +57,163 @@ export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fk
     PRAGMA journal_mode=MEMORY;
     ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
   `)
+
+export const LIVESTORE_TAB_LOCK = 'livestore-tab-lock'
+
+export class WorkerCtx extends Context.Tag('WorkerCtx')<
+  WorkerCtx,
+  | {
+      _tag: 'HasLock'
+      storageOptions: StorageType
+      schema: LiveStoreSchema
+      ctx: {
+        db: PersistedSqlite
+        dbLog: PersistedSqlite
+        sqlite3: SqliteWasm.Sqlite3Static
+
+        mutationEventSchema: MutationEventSchema<any>
+        mutationDefSchemaHashMap: Map<string, number>
+
+        broadcastChannel: BroadcastChannel
+
+        ws: WebSocket
+        wsQueues: {
+          incomingInitRes: Queue.Queue<WSMessage.InitRes>
+          incomingBroadcastAckPubsub: PubSub.PubSub<WSMessage.BroadcastAck>
+        }
+      }
+    }
+  | {
+      _tag: 'NoLock'
+      storageOptions: StorageType
+      schema: LiveStoreSchema
+      ctx: undefined
+    }
+>() {}
+
+export const makeApplyMutation = (
+  workerCtx: Context.Tag.Service<WorkerCtx>,
+  createdAtMemo: () => string,
+  db: SqliteWasm.Database,
+) => {
+  const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
+
+  return (
+    mutationEventEncoded: MutationEvent.Any,
+    { syncStatus, shouldBroadcast }: { syncStatus: SyncStatus; shouldBroadcast: boolean },
+  ) => {
+    if (workerCtx._tag === 'NoLock') return
+    const schema = workerCtx.schema
+    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel } = workerCtx.ctx
+    const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+
+    const mutationName = mutationEventDecoded.mutation
+    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+
+    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+    for (const { statementSql, bindValues } of execArgsArr) {
+      try {
+        // console.debug('livestore-webworker: executing SQL for mutation', mutation, statementSql, bindValues)
+        db.exec({ sql: statementSql, bind: bindValues })
+      } catch (e) {
+        console.error('Error executing query', e, statementSql, bindValues)
+        debugger
+        throw e
+      }
+    }
+
+    // write to mutation_log
+    if (shouldExcludeMutationFromLog(mutationName, mutationEventDecoded) === false) {
+      const mutationDefSchemaHash =
+        mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+
+      execSql(
+        dbLog.dbRef.current,
+        ...insertRow({
+          tableName: MUTATION_LOG_META_TABLE,
+          columns: mutationLogMetaTable.sqliteDef.columns,
+          values: {
+            id: mutationEventEncoded.id,
+            mutation: mutationEventEncoded.mutation,
+            argsJson: mutationEventEncoded.args ?? {},
+            schemaHash: mutationDefSchemaHash,
+            createdAt: createdAtMemo(),
+            syncStatus,
+          },
+        }),
+      )
+
+      if (shouldBroadcast) {
+        broadcastChannel.postMessage(
+          Schema.encodeSync(BCMessage.Message)(
+            BCMessage.Broadcast.make({
+              _tag: 'BC.Broadcast',
+              mutationEventEncoded,
+              ref: '',
+              sender: 'leader-worker',
+            }),
+          ),
+        )
+      }
+
+      // TODO do this via a batched queue
+      if (syncStatus === 'pending') {
+        Stream.fromPubSub(workerCtx.ctx.wsQueues.incomingBroadcastAckPubsub).pipe(
+          Stream.filter((_) => _.mutationId === mutationEventEncoded.id),
+          Stream.take(1),
+          Stream.tap(() =>
+            Effect.sync(() => {
+              execSql(
+                dbLog.dbRef.current,
+                ...updateRows({
+                  tableName: MUTATION_LOG_META_TABLE,
+                  columns: mutationLogMetaTable.sqliteDef.columns,
+                  where: { id: mutationEventEncoded.id },
+                  updateValues: { syncStatus: 'synced' },
+                }),
+              )
+            }),
+          ),
+          Stream.runDrain,
+          Effect.tapCauseLogPretty,
+          Effect.runFork,
+        )
+
+        workerCtx.ctx.ws.send(
+          Schema.encodeSync(Schema.parseJson(WSMessage.Message))(
+            WSMessage.BroadcastReq.make({ _tag: 'WSMessage.BroadcastReq', mutationEventEncoded }),
+          ),
+        )
+      }
+    } else {
+      //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
+    }
+  }
+}
+
+const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
+  try {
+    db.exec({ sql, bind: prepareBindValues(bind, sql) })
+  } catch (e) {
+    console.error(e, sql, bind)
+    return shouldNeverHappen(`Error writing to ${MUTATION_LOG_META_TABLE}`)
+  }
+}
+
+const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
+  const migrationOptions = schema.migrationOptions
+  const mutationLogExclude =
+    migrationOptions.strategy === 'from-mutation-log'
+      ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
+      : new Set(['livestore.RawSql'])
+
+  return (mutationName: string, mutationEventDecoded: MutationEvent.Any): boolean => {
+    if (mutationLogExclude.has(mutationName)) return true
+
+    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+    return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
+  }
+})

@@ -9,12 +9,7 @@ import {
   rehydrateFromMutationLog,
   type StorageDatabase,
 } from '@livestore/common'
-import {
-  makeMutationEventSchema,
-  makeSchemaHash,
-  MUTATION_LOG_META_TABLE,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
+import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -30,9 +25,8 @@ export const makeDb =
   ({ schema }) => {
     const { fileNamePrefix, subDirectory } = options ?? {}
     const migrationOptions = schema.migrationOptions
-    const schemaHash = makeSchemaHash(schema)
     const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
-    const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schemaHash}.db`
+    const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
     const db = SQLite.openDatabaseSync(fullDbFilePath)
 
     const mainDb = makeMainDb(db)
