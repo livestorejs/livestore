@@ -43,3 +43,15 @@ export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName:
       await Effect.runPromise(Deferred.await(deferred))
     })
   })
+
+export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
+  Effect.async<boolean>((cb) => {
+    navigator.locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock) => {
+      cb(Effect.succeed(lock !== null))
+
+      // the code below is still running
+
+      // holding lock until deferred is resolved
+      await Effect.runPromise(Deferred.await(deferred))
+    })
+  })

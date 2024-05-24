@@ -1,7 +1,7 @@
 import { type DatabaseFactory, type DatabaseImpl } from '@livestore/common'
 import type * as Sqlite from '@livestore/sqlite-wasm'
 import initSqlite3Wasm from '@livestore/sqlite-wasm'
-import { makeNoopSpan } from '@livestore/utils'
+import { makeNoopSpan, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 
 import { makeInMemoryDb } from './make-in-memory-db.js'
@@ -25,6 +25,9 @@ export const makeDb =
         const init = loadStorage ? await loadStorage() : InMemoryStorage.load()
         const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
         return init({ otel: { otelTracer, parentSpan }, schema })
+      } catch (e) {
+        console.error(e)
+        return shouldNeverHappen()
       } finally {
         span.end()
       }
@@ -37,6 +40,9 @@ export const makeDb =
       async (span) => {
         try {
           return await storageDb.getInitialSnapshot()
+        } catch (e) {
+          console.error(e)
+          return shouldNeverHappen()
         } finally {
           span.end()
         }

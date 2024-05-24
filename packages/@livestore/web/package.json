@@ -54,6 +54,9 @@
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.8.0"
   },
+  "devDependencies": {
+    "@types/wicg-file-system-access": "^2023.10.5"
+  },
   "publishConfig": {
     "access": "public"
   }

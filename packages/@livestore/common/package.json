@@ -36,7 +36,6 @@
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {
-    "@livestore/utils": "workspace:*",
     "vitest": "^1.6.0"
   },
   "publishConfig": {

@@ -220,6 +220,20 @@ export const memoize = <T extends (...args: any[]) => any>(fn: T): T => {
   }) as any
 }
 
+export const memoizeByRef = <T extends (arg: any) => any>(fn: T): T => {
+  const cache = new Map<Parameters<T>[0], ReturnType<T>>()
+
+  return ((arg: any) => {
+    if (cache.has(arg)) {
+      return cache.get(arg)
+    }
+
+    const result = fn(arg)
+    cache.set(arg, result)
+    return result
+  }) as any
+}
+
 export const isNonEmptyString = (str: string | undefined | null) => str === undefined || str === null || str === ''
 
 export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'

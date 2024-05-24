@@ -15,3 +15,6 @@ dist
 
 # self-signed certs
 /certs
+
+.wrangler
+.vercel
