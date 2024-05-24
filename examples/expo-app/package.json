@@ -12,7 +12,7 @@
     "@effect/schema": "0.67.0",
     "@expo/vector-icons": "^14.0.1",
     "@livestore/devtools-react": "0.0.47",
-    "@livestore/expo": "latest",
+    "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "babel-preset-expo": "^11.0.5",
     "expo": "~51.0.1",
