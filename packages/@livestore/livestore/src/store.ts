@@ -100,6 +100,7 @@ export class Store<
 
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
   __processedMutationIds = new Set<string>()
+  __processedMutationWithoutRefreshIds = new Set<string>()
 
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
@@ -146,7 +147,8 @@ export class Store<
       if (decodedEvent._tag === 'Some') {
         const { sender, mutationEventEncoded } = decodedEvent.value
         if (sender === 'leader-worker') {
-          this.mutate({ wasSyncMessage: true }, mutationEventEncoded)
+          const mutationEventDecoded = Schema.decodeUnknownSync(this.mutationEventSchema)(mutationEventEncoded)
+          this.mutate({ wasSyncMessage: true }, mutationEventDecoded as any)
         }
       }
     })
@@ -301,7 +303,9 @@ export class Store<
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
     mutationsSpan.addEvent('mutate')
 
-    // console.debug('LiveStore.mutate', { skipRefresh, wasSyncMessage, label }, mutationsEvents)
+    // console.group('LiveStore.mutate', { skipRefresh, wasSyncMessage, label })
+    // mutationsEvents.forEach((_) => console.log(_.mutation, _.id, _.args))
+    // console.groupEnd()
 
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
@@ -409,6 +413,15 @@ export class Store<
     otelContext: otel.Context,
     skipStorage: boolean = false,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
+    // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
+    // e.g. the row-query functionality
+    if (this.__processedMutationWithoutRefreshIds.has(mutationEventDecoded.id)) {
+      // NOTE this data should never be used
+      return { writeTables: new Set(), durationMs: 0 }
+    } else {
+      this.__processedMutationWithoutRefreshIds.add(mutationEventDecoded.id)
+    }
+
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutatetWithoutRefresh',
       {
