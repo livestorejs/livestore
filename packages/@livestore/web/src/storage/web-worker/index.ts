@@ -30,7 +30,9 @@ import * as WorkerSchema from './schema.js'
 /** Specifies where to persist data for this storage */
 export type StorageOptionsWeb = {
   worker: Worker | (new (options?: { name: string }) => Worker)
-} & WorkerSchema.StorageType
+  storage: WorkerSchema.StorageType
+  syncing?: WorkerSchema.SyncingType
+}
 
 export const WebWorkerStorage = {
   load: (options: StorageOptionsWeb): StorageInit => createStorage(options),
@@ -59,9 +61,7 @@ export const createStorage =
       const worker =
         options.worker instanceof globalThis.Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
 
-      const storageOptions = omit(options, ['worker'])
-
-      const roomId = getRoomId()
+      const storageOptions = options.storage
 
       const dataFromFile = yield* getPersistedData(storageOptions, schema.hash)
 
@@ -71,9 +71,9 @@ export const createStorage =
         initialMessage: () =>
           new WorkerSchema.InitialMessage({
             storageOptions,
-            roomId,
             needsRecreate: dataFromFile === undefined,
             hasLock,
+            syncOptions: options.syncing,
           }),
       }).pipe(Effect.provide(BrowserWorker.layer(() => worker)), Effect.toForkedDeferred)
 
@@ -271,17 +271,3 @@ const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: numbe
       }
     }
   })
-
-const getRoomId = () => {
-  const searchParams = new URLSearchParams(location.search)
-  const roomId = searchParams.get('room')
-
-  if (roomId === null) {
-    const newRoomId = Math.random().toString(36).slice(7)
-    searchParams.set('room', newRoomId)
-    history.replaceState(null, '', `${location.pathname}?${searchParams.toString()}`)
-    return location.reload() as never
-  }
-
-  return roomId
-}

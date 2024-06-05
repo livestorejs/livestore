@@ -3,7 +3,7 @@ import { mutationLogMetaTable } from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import { casesHandled, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
-import { Effect, Queue } from '@livestore/utils/effect'
+import { Effect, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeInMemoryDb } from '../../make-in-memory-db.js'
@@ -109,19 +109,18 @@ export const fetchAndApplyRemoteMutations = (
   shouldBroadcast: boolean,
 ) =>
   Effect.gen(function* () {
-    if (workerCtx._tag === 'NoLock') return
-    const { wsQueues } = workerCtx.ctx
+    if (workerCtx._tag === 'NoLock' || workerCtx.ctx.sync === undefined) return
+    const { sync } = workerCtx.ctx
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
     const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db)
 
-    while (true) {
-      const message = yield* Queue.take(wsQueues.incomingInitRes)
-
-      for (const mutationEventEncoded of message.events) {
-        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast })
-      }
-
-      if (message.hasMore === false) break
-    }
+    // TODO stash and rebase local mutations on top of remote mutations
+    // probably using the SQLite session extension
+    yield* sync.inititialMessages.pipe(
+      Stream.tapSync((mutationEventEncoded) =>
+        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast }),
+      ),
+      Stream.runDrain,
+    )
   })

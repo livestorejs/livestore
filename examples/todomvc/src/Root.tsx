@@ -23,7 +23,7 @@ export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
     fallback={<div>Loading...</div>}
-    makeDb={makeDb(() => WebWorkerStorage.load({ type: 'opfs', worker: LiveStoreWorker }))}
+    makeDb={makeDb(() => WebWorkerStorage.load({ storage: { type: 'opfs' }, worker: LiveStoreWorker }))}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

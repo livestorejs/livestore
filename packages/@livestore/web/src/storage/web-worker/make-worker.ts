@@ -1,18 +1,9 @@
-import { BCMessage, sql, WSMessage } from '@livestore/common'
+import { BCMessage, makeWsSync, sql } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
-import {
-  BrowserWorkerRunner,
-  Effect,
-  Layer,
-  PubSub,
-  Queue,
-  Schema,
-  Stream,
-  WorkerRunner,
-} from '@livestore/utils/effect'
+import { BrowserWorkerRunner, Effect, Layer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 
 import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
@@ -53,7 +44,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     const initialSnapshotRef = { current: undefined as any }
 
     return WorkerRunner.layerSerialized(Request, {
-      InitialMessage: ({ storageOptions, roomId, hasLock, needsRecreate }) =>
+      InitialMessage: ({ storageOptions, hasLock, needsRecreate, syncOptions }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
 
@@ -65,72 +56,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               ctx: undefined,
             })
           }
-
-          const wsUrl = `wss://websocket-server.schickling.workers.dev/websocket?room=${roomId}`
-          // const wsUrl = `ws://localhost:8787/websocket?room=room1`
-          const ws = new WebSocket(wsUrl)
-
-          const incomingInitResQueue = yield* Queue.unbounded<WSMessage.InitRes>()
-          const incomingBroadcastQueue = yield* Queue.unbounded<WSMessage.Broadcast>()
-          const incomingBroadcastAckPubsub = yield* PubSub.unbounded<WSMessage.BroadcastAck>()
-
-          ws.addEventListener('message', (event) => {
-            const decodedEventRes = Schema.decodeUnknownEither(WSMessage.Message)(JSON.parse(event.data))
-
-            if (decodedEventRes._tag === 'Left') {
-              console.error('Sync: Invalid message received', decodedEventRes.left)
-              return
-            } else {
-              switch (decodedEventRes.right._tag) {
-                case 'WSMessage.InitRes': {
-                  Queue.unsafeOffer(incomingInitResQueue, decodedEventRes.right)
-
-                  break
-                }
-                case 'WSMessage.Broadcast': {
-                  Queue.unsafeOffer(incomingBroadcastQueue, decodedEventRes.right)
-
-                  break
-                }
-                case 'WSMessage.BroadcastAck': {
-                  PubSub.publish(incomingBroadcastAckPubsub, decodedEventRes.right).pipe(
-                    Effect.tapCauseLogPretty,
-                    Effect.runSync,
-                  )
-
-                  break
-                }
-                // No default
-              }
-            }
-
-            // const decodedEvent = decodedEventRes.right
-            // if (decodedEvent._tag === 'WSMessage.InitRes') {
-            //   decodedEvent.events.forEach((event) => {
-            //     store.mutateWithoutRefresh(event)
-            //   })
-
-            //   if (decodedEvent.hasMore === false) {
-            //     // console.log('Sync: Initialized')
-            //     if (decodedEvent.events.length > 0) {
-            //       store.refresh()
-            //     }
-            //     isInitialized = true
-            //     deferred.resolve(void 0)
-            //     console.log('Sync: Initialized')
-            //   }
-            // } else if (decodedEvent._tag === 'WSMessage.Broadcast') {
-            //   if (!isInitialized) {
-            //     return shouldNeverHappen(`Received broadcast before initialization finished`)
-            //   }
-
-            //   if (decodedEvent.needsRefresh) {
-            //     store.mutate(decodedEvent.mutationEventEncoded)
-            //   } else {
-            //     store.mutateWithoutRefresh(decodedEvent.mutationEventEncoded)
-            //   }
-            // }
-          })
 
           const makeDb = makePersistedSqlite({
             storageOptions,
@@ -158,13 +83,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               ) as string | undefined,
           ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
 
-          ws.addEventListener('open', () => {
-            ws.send(
-              Schema.encodeSync(Schema.parseJson(WSMessage.InitReq))(
-                WSMessage.InitReq.make({ _tag: 'WSMessage.InitReq', cursor }),
-              ),
-            )
-          })
+          const sync = syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
 
           const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}`)
 
@@ -179,11 +98,13 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               mutationDefSchemaHashMap,
               mutationEventSchema,
               broadcastChannel,
-              ws,
-              wsQueues: {
-                incomingInitRes: incomingInitResQueue,
-                incomingBroadcastAckPubsub,
-              },
+              sync:
+                sync === undefined
+                  ? undefined
+                  : {
+                      impl: sync,
+                      inititialMessages: sync.pull(cursor),
+                    },
             },
           } satisfies Context.Tag.Service<WorkerCtx>
 
@@ -195,17 +116,17 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const applyMutation = makeApplyMutation(workerCtx, () => new Date().toISOString(), db.dbRef.current)
 
-          // TODO try to do this in a batched-way if possible
-          yield* Stream.fromQueue(incomingBroadcastQueue).pipe(
-            Stream.tap(({ mutationEventEncoded }) =>
-              Effect.gen(function* () {
-                applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true })
-              }),
-            ),
-            Stream.runDrain,
-            Effect.tapCauseLogPretty,
-            Effect.forkScoped,
-          )
+          if (sync !== undefined) {
+            // TODO try to do this in a batched-way if possible
+            yield* sync.pushes.pipe(
+              Stream.tapSync((mutationEventEncoded) =>
+                applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true }),
+              ),
+              Stream.runDrain,
+              Effect.tapCauseLogPretty,
+              Effect.forkScoped,
+            )
+          }
 
           broadcastChannel.addEventListener('message', (event) => {
             const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)
@@ -221,6 +142,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           return Layer.succeed(WorkerCtx, workerCtx)
         }).pipe(
+          (_) => _,
           Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
           Effect.tapCauseLogPretty,
           Effect.catchAllCause((error) => {

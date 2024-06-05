@@ -57,7 +57,7 @@ export class WebSocketServer extends DurableObject {
 
     const decodedMessage = decodedMessageRes.right
 
-    if (decodedMessage._tag === 'WSMessage.InitReq') {
+    if (decodedMessage._tag === 'WSMessage.PullReq') {
       const cursor = decodedMessage.cursor
       const CHUNK_SIZE = 100
 
@@ -71,7 +71,7 @@ export class WebSocketServer extends DurableObject {
         const events = remainingEvents.splice(0, CHUNK_SIZE)
         const hasMore = remainingEvents.length > 0
 
-        ws.send(encodeMessage(WSMessage.InitRes.make({ _tag: 'WSMessage.InitRes', events, hasMore })))
+        ws.send(encodeMessage(WSMessage.PullRes.make({ _tag: 'WSMessage.PullRes', events, hasMore })))
 
         if (hasMore === false) {
           break
@@ -79,7 +79,7 @@ export class WebSocketServer extends DurableObject {
       }
 
       // this.subscribedWebSockets.add(ws)
-    } else if (decodedMessage._tag === 'WSMessage.BroadcastReq') {
+    } else if (decodedMessage._tag === 'WSMessage.PushReq') {
       // if (this.subscribedWebSockets.has(ws) === false) {
       //   console.error('Client is not subscribed')
       //   ws.send(encodeMessage(WSMessage.Error.make({ _tag: 'WSMessage.Error', message: 'Client is not subscribed' })))
@@ -98,8 +98,8 @@ export class WebSocketServer extends DurableObject {
 
       ws.send(
         encodeMessage(
-          WSMessage.BroadcastAck.make({
-            _tag: 'WSMessage.BroadcastAck',
+          WSMessage.PushAck.make({
+            _tag: 'WSMessage.PushAck',
             mutationId: decodedMessage.mutationEventEncoded.id,
           }),
         ),
@@ -113,8 +113,8 @@ export class WebSocketServer extends DurableObject {
 
       if (connectedClients.length > 0) {
         const broadcastMessage = encodeMessage(
-          WSMessage.Broadcast.make({
-            _tag: 'WSMessage.Broadcast',
+          WSMessage.PushBroadcast.make({
+            _tag: 'WSMessage.PushBroadcast',
             mutationEventEncoded: decodedMessage.mutationEventEncoded,
           }),
         )

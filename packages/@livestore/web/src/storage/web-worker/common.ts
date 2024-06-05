@@ -1,3 +1,4 @@
+import type { SyncImpl } from '@livestore/common'
 import {
   BCMessage,
   getExecArgsFromMutation,
@@ -5,15 +6,14 @@ import {
   mutationLogMetaTable,
   prepareBindValues,
   sql,
-  WSMessage,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { PubSub, Queue } from '@livestore/utils/effect'
-import { Context, Effect, Schema, Stream } from '@livestore/utils/effect'
+import type { Stream } from '@livestore/utils/effect'
+import { Context, Effect, Schema } from '@livestore/utils/effect'
 
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import type { StorageType } from './schema.js'
@@ -70,17 +70,15 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
         db: PersistedSqlite
         dbLog: PersistedSqlite
         sqlite3: SqliteWasm.Sqlite3Static
-
         mutationEventSchema: MutationEventSchema<any>
         mutationDefSchemaHashMap: Map<string, number>
-
         broadcastChannel: BroadcastChannel
-
-        ws: WebSocket
-        wsQueues: {
-          incomingInitRes: Queue.Queue<WSMessage.InitRes>
-          incomingBroadcastAckPubsub: PubSub.PubSub<WSMessage.BroadcastAck>
-        }
+        sync:
+          | {
+              impl: SyncImpl
+              inititialMessages: Stream.Stream<MutationEvent.Any>
+            }
+          | undefined
       }
     }
   | {
@@ -104,7 +102,7 @@ export const makeApplyMutation = (
   ) => {
     if (workerCtx._tag === 'NoLock') return
     const schema = workerCtx.schema
-    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel } = workerCtx.ctx
+    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, sync } = workerCtx.ctx
     const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
     const mutationName = mutationEventDecoded.mutation
@@ -158,32 +156,21 @@ export const makeApplyMutation = (
       }
 
       // TODO do this via a batched queue
-      if (syncStatus === 'pending') {
-        Stream.fromPubSub(workerCtx.ctx.wsQueues.incomingBroadcastAckPubsub).pipe(
-          Stream.filter((_) => _.mutationId === mutationEventEncoded.id),
-          Stream.take(1),
-          Stream.tap(() =>
-            Effect.sync(() => {
-              execSql(
-                dbLog.dbRef.current,
-                ...updateRows({
-                  tableName: MUTATION_LOG_META_TABLE,
-                  columns: mutationLogMetaTable.sqliteDef.columns,
-                  where: { id: mutationEventEncoded.id },
-                  updateValues: { syncStatus: 'synced' },
-                }),
-              )
-            }),
-          ),
-          Stream.runDrain,
+      if (sync !== undefined && syncStatus === 'pending') {
+        sync.impl.push(mutationEventEncoded).pipe(
+          Effect.tapSync(() => {
+            execSql(
+              dbLog.dbRef.current,
+              ...updateRows({
+                tableName: MUTATION_LOG_META_TABLE,
+                columns: mutationLogMetaTable.sqliteDef.columns,
+                where: { id: mutationEventEncoded.id },
+                updateValues: { syncStatus: 'synced' },
+              }),
+            )
+          }),
           Effect.tapCauseLogPretty,
           Effect.runFork,
-        )
-
-        workerCtx.ctx.ws.send(
-          Schema.encodeSync(Schema.parseJson(WSMessage.Message))(
-            WSMessage.BroadcastReq.make({ _tag: 'WSMessage.BroadcastReq', mutationEventEncoded }),
-          ),
         )
       }
     } else {

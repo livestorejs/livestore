@@ -51,15 +51,24 @@ export const StorageTypeIndexeddb = Schema.Struct({
 export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb)
 export type StorageType = Schema.Schema.Type<typeof StorageType>
 
+export const SyncingTypeWebsocket = Schema.Struct({
+  type: Schema.Literal('websocket'),
+  url: Schema.String,
+  roomId: Schema.String,
+})
+
+export const SyncingType = Schema.Union(SyncingTypeWebsocket)
+export type SyncingType = typeof SyncingType.Type
+
 export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
   'InitialMessage',
   UnexpectedError,
   Schema.Void,
   {
     storageOptions: StorageType,
-    roomId: Schema.String,
     hasLock: Schema.Boolean,
     needsRecreate: Schema.Boolean,
+    syncOptions: Schema.optional(SyncingType),
   },
 ) {}
 
