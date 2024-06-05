@@ -1,13 +1,13 @@
 import {
-  type DatabaseFactory,
-  type DatabaseImpl,
+  type Coordinator,
   getExecArgsFromMutation,
   initializeSingletonTables,
   type InMemoryDatabase,
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
-  type StorageDatabase,
+  type StoreAdapter,
+  type StoreAdapterFactory,
 } from '@livestore/common'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
@@ -20,8 +20,8 @@ export type MakeDbOptions = {
   subDirectory?: string
 }
 
-export const makeDb =
-  (options?: MakeDbOptions): DatabaseFactory =>
+export const makeAdapter =
+  (options?: MakeDbOptions): StoreAdapterFactory =>
   ({ schema }) => {
     const { fileNamePrefix, subDirectory } = options ?? {}
     const migrationOptions = schema.migrationOptions
@@ -96,7 +96,7 @@ export const makeDb =
       `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
     )
 
-    const storageDb = {
+    const coordinator = {
       execute: async () => {},
       mutate: async (mutationEventEncoded) => {
         if (migrationOptions.strategy !== 'from-mutation-log') return
@@ -148,9 +148,9 @@ export const makeDb =
       dangerouslyReset: async () => {},
       getMutationLogData: async () => mainDbLog.export(),
       shutdown: async () => {},
-    } satisfies StorageDatabase
+    } satisfies Coordinator
 
-    return { mainDb, storageDb } satisfies DatabaseImpl
+    return { mainDb, coordinator } satisfies StoreAdapter
   }
 
 const makeMainDb = (db: SQLite.SQLiteDatabase) => {

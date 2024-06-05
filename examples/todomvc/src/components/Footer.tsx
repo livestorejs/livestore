@@ -6,7 +6,7 @@ import React from 'react'
 import { mutations, tables } from '../schema/index.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = querySQL(sql`select count(*) as c from todos where completed = false`, {
+const incompleteCount$ = querySQL(sql`select count(*) as c from todos where completed = false and deleted is null`, {
   map: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
 })
 
@@ -37,7 +37,10 @@ export const Footer: React.FC = () => {
           </a>
         </li>
       </ul>
-      <button className="clear-completed" onClick={() => store.mutate(mutations.clearCompleted())}>
+      <button
+        className="clear-completed"
+        onClick={() => store.mutate(mutations.clearCompleted({ deleted: Date.now() }))}
+      >
         Clear completed
       </button>
     </footer>

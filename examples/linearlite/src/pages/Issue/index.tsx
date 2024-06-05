@@ -40,10 +40,11 @@ function IssuePage() {
   const handleDescriptionChange = (body: string) => store.mutate(mutations.updateDescription({ id: issue.id, body }))
 
   const handleDelete = () => {
+    const deleted = Date.now()
     store.mutate(
-      mutations.deleteIssue({ id: issue.id }),
-      mutations.deleteDescription({ id: issue.id }),
-      mutations.deleteCommentsByIssueId({ issueId: issue.id }),
+      mutations.deleteIssue({ id: issue.id, deleted }),
+      mutations.deleteDescription({ id: issue.id, deleted }),
+      mutations.deleteCommentsByIssueId({ issueId: issue.id, deleted }),
     )
     handleClose()
   }
@@ -73,6 +74,7 @@ function IssuePage() {
               <span className="text-gray-500" title={issue.id}>
                 {shortId()}
               </span>
+              {issue.deleted && <span className="text-red-500 pl-2">Deleted</span>}
             </div>
 
             <div className="flex items-center">

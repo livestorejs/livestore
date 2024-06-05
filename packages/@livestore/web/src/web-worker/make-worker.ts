@@ -83,9 +83,18 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               ) as string | undefined,
           ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
 
-          const sync = syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
+          const syncImpl =
+            syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
 
           const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}`)
+
+          const sync =
+            syncImpl === undefined
+              ? undefined
+              : {
+                  impl: syncImpl,
+                  inititialMessages: syncImpl.pull(cursor),
+                }
 
           const workerCtx = {
             _tag: 'HasLock',
@@ -98,13 +107,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               mutationDefSchemaHashMap,
               mutationEventSchema,
               broadcastChannel,
-              sync:
-                sync === undefined
-                  ? undefined
-                  : {
-                      impl: sync,
-                      inititialMessages: sync.pull(cursor),
-                    },
+              sync,
             },
           } satisfies Context.Tag.Service<WorkerCtx>
 
@@ -116,9 +119,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const applyMutation = makeApplyMutation(workerCtx, () => new Date().toISOString(), db.dbRef.current)
 
-          if (sync !== undefined) {
+          if (syncImpl !== undefined) {
             // TODO try to do this in a batched-way if possible
-            yield* sync.pushes.pipe(
+            yield* syncImpl.pushes.pipe(
               Stream.tapSync((mutationEventEncoded) =>
                 applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true }),
               ),

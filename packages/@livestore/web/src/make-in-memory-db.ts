@@ -24,11 +24,6 @@ export const makeInMemoryDb = (
               stmt.reset() // Reset is needed for next execution
               return () => sqlite3.capi.sqlite3_changes(db)
             }
-
-            // if (storage !== undefined) {
-            //   const parentSpan = otel.trace.getSpan(otel.context.active())
-            //   storage.execute(queryStr, bindValues, parentSpan)
-            // }
           },
           select: <T>(bindValues: PreparedBindValues) => {
             if (bindValues !== undefined && Object.keys(bindValues).length > 0) {

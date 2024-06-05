@@ -3,7 +3,7 @@ import React from 'react'
 
 import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'
 import * as t from '../drizzle/schema.js'
-import type { Todo } from '../schema/index.js'
+import type { TodoInput } from '../schema/index.js'
 import { mutations } from '../schema/index.js'
 
 const filterClause$ = queryDrizzle((qb) => qb.select().from(t.app), {
@@ -11,7 +11,12 @@ const filterClause$ = queryDrizzle((qb) => qb.select().from(t.app), {
     appState!.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState!.filter === 'completed'),
 })
 
-const visibleTodos$ = queryDrizzle((qb, get) => qb.select().from(t.todos).where(get(filterClause$)))
+const visibleTodos$ = queryDrizzle((qb, get) =>
+  qb
+    .select()
+    .from(t.todos)
+    .where(drizzle.and(get(filterClause$), drizzle.isNull(t.todos.deleted))),
+)
 
 export const MainSection: React.FC = () => {
   const { store } = useStore()
@@ -22,7 +27,7 @@ export const MainSection: React.FC = () => {
   // The reason is that this better captures the user's intention
   // when the event gets synced across multiple devices--
   // If another user toggled concurrently, we shouldn't toggle it back
-  const toggleTodo = (todo: Todo) =>
+  const toggleTodo = (todo: TodoInput) =>
     store.mutate(todo.completed ? mutations.uncompleteTodo({ id: todo.id }) : mutations.completeTodo({ id: todo.id }))
 
   return (
@@ -33,7 +38,10 @@ export const MainSection: React.FC = () => {
             <div className="view">
               <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
               <label>{todo.text}</label>
-              <button className="destroy" onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id }))}></button>
+              <button
+                className="destroy"
+                onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))}
+              ></button>
             </div>
           </li>
         ))}

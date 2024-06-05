@@ -128,6 +128,7 @@ export function* createIssues(numTasks: number): Generator<Issue & { description
       title,
       created: Date.now() - i * 5 * 24 * 60 * 60 * 1000,
       modified: Date.now() - i * 2 * 24 * 60 * 60 * 1000,
+      deleted: null,
       status: getRandomItem(statuses),
       priority: getRandomItem(priorities),
       kanbanorder: 'a1',

@@ -94,8 +94,15 @@ export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   id: string
 }
 
+export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
+  mutation: TMutationsDef['name']
+  args: Schema.Schema.Encoded<TMutationsDef['schema']>
+  id: string
+}
+
 export namespace MutationEvent {
   export type Any = MutationEvent<MutationDef.Any>
+  export type AnyEncoded = MutationEventEncoded<MutationDef.Any>
 
   export type ForSchema<TSchema extends LiveStoreSchema> = {
     [K in keyof TSchema['_MutationDefMapType']]: MutationEvent<TSchema['_MutationDefMapType'][K]>

@@ -5,6 +5,7 @@ const todos = DbSchema.table('todos', {
   id: DbSchema.text({ primaryKey: true }),
   text: DbSchema.text({ default: '' }),
   completed: DbSchema.boolean({ default: false }),
+  deleted: DbSchema.integer({ nullable: true }),
 })
 
 const Filter = Schema.Literal('all', 'active', 'completed')
@@ -42,13 +43,17 @@ const uncompleteTodo = defineMutation(
   sql`UPDATE todos SET completed = false WHERE id = $id`,
 )
 
-const deleteTodo = defineMutation(
+export const deleteTodo = defineMutation(
   'deleteTodo',
-  Schema.Struct({ id: Schema.String }),
-  sql`DELETE FROM todos WHERE id = $id`,
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
 )
 
-const clearCompleted = defineMutation('clearCompleted', Schema.Void, sql`DELETE FROM todos WHERE completed = true`)
+export const clearCompleted = defineMutation(
+  'clearCompleted',
+  Schema.Struct({ deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted WHERE completed = true`,
+)
 
 const updateNewTodoText = defineMutation(
   'updateNewTodoText',

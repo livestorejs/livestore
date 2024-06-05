@@ -1,7 +1,6 @@
 import type { BootDb } from '@livestore/common'
 import { sql } from '@livestore/common'
-import { makeDb } from '@livestore/web'
-import { InMemoryStorage } from '@livestore/web/storage/in-memory'
+import { makeInMemoryAdapter } from '@livestore/web'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
@@ -36,9 +35,9 @@ describe('LiveStoreProvider', () => {
         [],
       )
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      const makeDbMemo = React.useMemo(() => makeDb(() => InMemoryStorage.load()), [forceUpdate])
+      const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
-        <LiveStoreProvider schema={schema} fallback={<div>Loading LiveStore</div>} makeDb={makeDbMemo} boot={bootCb}>
+        <LiveStoreProvider schema={schema} fallback={<div>Loading LiveStore</div>} adapter={adapterMemo} boot={bootCb}>
           <App />
         </LiveStoreProvider>
       )

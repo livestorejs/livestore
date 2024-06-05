@@ -156,14 +156,14 @@ const makeExecBeforeFirstRun =
       )
       if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
         const db = {
-          ...store.db.mainDb,
+          ...store.adapter.mainDb,
           prepare: (query) => {
-            const mainStmt = store.db.mainDb.prepare(query)
+            const mainStmt = store.adapter.mainDb.prepare(query)
             return {
               ...mainStmt,
               execute: (bindValues) => {
                 const getRowsChanged = mainStmt.execute(bindValues)
-                store.db.storageDb.execute(query, bindValues, undefined)
+                store.adapter.coordinator.execute(query, bindValues, undefined)
                 return getRowsChanged
               },
             }

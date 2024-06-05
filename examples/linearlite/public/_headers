@@ -1,0 +1,6 @@
+# Needed for Netlify
+
+/*
+	Cross-Origin-Opener-Policy: same-origin
+	Cross-Origin-Embedder-Policy: require-corp
+	Service-Worker-Allowed: /

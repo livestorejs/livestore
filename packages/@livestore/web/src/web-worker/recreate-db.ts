@@ -6,7 +6,7 @@ import type { Context } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import { makeInMemoryDb } from '../../make-in-memory-db.js'
+import { makeInMemoryDb } from '../make-in-memory-db.js'
 import type { WorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 import { UnexpectedError } from './schema.js'

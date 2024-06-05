@@ -1,5 +1,5 @@
-import { BCMessage, type ResetMode, type StorageDatabase } from '@livestore/common'
-import { casesHandled, omit } from '@livestore/utils'
+import { BCMessage, type Coordinator, type ResetMode } from '@livestore/common'
+import { casesHandled } from '@livestore/utils'
 import {
   BrowserWorker,
   Chunk,
@@ -15,8 +15,9 @@ import {
   Worker,
 } from '@livestore/utils/effect'
 
+import { makeAdapterFactory } from '../make-adapter-factory.js'
 import { IDB } from '../utils/idb.js'
-import type { StorageInit } from '../utils/types.js'
+import type { MakeCoordinator } from '../utils/types.js'
 import {
   getAppDbFileName,
   getAppDbIdbStoreName,
@@ -27,19 +28,17 @@ import {
 } from './common.js'
 import * as WorkerSchema from './schema.js'
 
-/** Specifies where to persist data for this storage */
-export type StorageOptionsWeb = {
+/** Specifies where to persist data for this coordinator */
+export type WebAdapterOptions = {
   worker: Worker | (new (options?: { name: string }) => Worker)
   storage: WorkerSchema.StorageType
   syncing?: WorkerSchema.SyncingType
 }
 
-export const WebWorkerStorage = {
-  load: (options: StorageOptionsWeb): StorageInit => createStorage(options),
-}
+export const makeAdapter = (options: WebAdapterOptions) => makeAdapterFactory(makeCoordinator(options))
 
-export const createStorage =
-  (options: StorageOptionsWeb): StorageInit =>
+const makeCoordinator =
+  (options: WebAdapterOptions): MakeCoordinator =>
   ({ otel: {}, schema }) => {
     const manualScope = Effect.runSync(Scope.make())
 
@@ -54,7 +53,7 @@ export const createStorage =
         Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
       )
 
-      console.log('hasLock', hasLock)
+      // console.log('hasLock', hasLock)
 
       const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}`)
 
@@ -181,10 +180,10 @@ export const createStorage =
 
             yield* Scope.close(manualScope, Exit.interrupt(FiberId.none))
           }).pipe(Effect.runPromise),
-      } satisfies StorageDatabase
+      } satisfies Coordinator
 
       return storage
-    }).pipe(Scope.extend(manualScope), Effect.tapCauseLogPretty, Effect.runPromise)
+    }).pipe(Scope.extend(manualScope), Effect.orDie, Effect.scoped)
   }
 
 const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number) =>

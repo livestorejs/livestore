@@ -9,10 +9,11 @@ export interface PreparedStatement {
   finalize(): void
 }
 
-export type DatabaseImpl = {
+export type StoreAdapter = {
   /** Main thread database (usually in-memory) */
   mainDb: InMemoryDatabase
-  storageDb: StorageDatabase
+  /** The coordinator is responsible for persisting the database, syncing etc */
+  coordinator: Coordinator
 }
 
 export type InMemoryDatabase = {
@@ -25,7 +26,7 @@ export type InMemoryDatabase = {
 
 export type ResetMode = 'all-data' | 'only-app-db'
 
-export type StorageDatabase = {
+export type Coordinator = {
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
   mutate(mutationEventEncoded: MutationEvent.Any, span: otel.Span): Promise<void>
   dangerouslyReset(mode: ResetMode): Promise<void>
@@ -87,8 +88,8 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type DatabaseFactory = (opts: {
+export type StoreAdapterFactory = (opts: {
   otelTracer: otel.Tracer
   otelContext: otel.Context
   schema: LiveStoreSchema
-}) => DatabaseImpl | Promise<DatabaseImpl>
+}) => StoreAdapter | Promise<StoreAdapter>

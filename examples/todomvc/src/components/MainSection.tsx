@@ -16,7 +16,7 @@ const filterClause$ = querySQL(sql`select filter from app`, {
     const { filter } = Schema.decodeSync(
       Schema.Array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),
     )(rows)
-    return filter === 'all' ? '' : `where completed = ${filter === 'completed'}`
+    return `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`
   },
 })
 
@@ -72,6 +72,7 @@ const Item = ({
   parentHasMounted: boolean
 }) => {
   const [state, setState] = React.useState<'initial' | 'deleting' | 'mounted'>('initial')
+  const isDeletedRef = React.useRef(false)
 
   React.useEffect(() => setState('mounted'), [])
   const isZero = parentHasMounted && (state === 'initial' || state === 'deleting')
@@ -80,8 +81,11 @@ const Item = ({
     <li
       style={{ opacity: isZero ? 0 : 1, height: isZero ? 0 : 58, transition: 'all 0.2s ease-in-out' }}
       onTransitionEnd={() => {
-        if (state === 'deleting') {
-          store.mutate(mutations.deleteTodo({ id: todo.id }))
+        // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
+        // Since using the `setState` doesn't seem to happen "quickly enough"
+        if (state === 'deleting' && todo.deleted === null && !isDeletedRef.current) {
+          store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))
+          isDeletedRef.current = true
         }
       }}
     >
