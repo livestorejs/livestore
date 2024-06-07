@@ -4,8 +4,8 @@ import type { MutationEvent } from '../schema/mutations.js'
 
 export type SyncImpl = {
   pull: (cursor: string | undefined) => Stream.Stream<MutationEvent.AnyEncoded, IsOfflineError | InvalidPullError>
-  pushes: Stream.Stream<MutationEvent.AnyEncoded>
   push: (mutationEvent: MutationEvent.AnyEncoded) => Effect.Effect<void, IsOfflineError | InvalidPushError>
+  pushes: Stream.Stream<MutationEvent.AnyEncoded>
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
 }
 

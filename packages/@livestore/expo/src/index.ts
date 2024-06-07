@@ -11,7 +11,7 @@ import {
 } from '@livestore/common'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Effect, Schema, Stream, TRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as SQLite from 'expo-sqlite/next'
 
@@ -96,7 +96,13 @@ export const makeAdapter =
       `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
     )
 
+    const hasLock = TRef.make(true).pipe(Effect.runSync)
+
+    const syncMutations = Stream.never
+
     const coordinator = {
+      hasLock,
+      syncMutations,
       execute: async () => {},
       mutate: async (mutationEventEncoded) => {
         if (migrationOptions.strategy !== 'from-mutation-log') return

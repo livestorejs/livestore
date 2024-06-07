@@ -1,6 +1,5 @@
 import type { SyncImpl } from '@livestore/common'
 import {
-  BCMessage,
   getExecArgsFromMutation,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
@@ -15,6 +14,7 @@ import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { Stream } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
+import { BCMessage } from '../common/index.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import type { StorageType } from './schema.js'
 

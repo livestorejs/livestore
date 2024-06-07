@@ -1,4 +1,6 @@
-import { BCMessage, type Coordinator, type ResetMode } from '@livestore/common'
+import { type Coordinator, type ResetMode } from '@livestore/common'
+import type { MutationEvent } from '@livestore/common/schema'
+import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled } from '@livestore/utils'
 import {
   BrowserWorker,
@@ -11,10 +13,13 @@ import {
   Queue,
   Schema,
   Scope,
+  Stream,
+  TRef,
   WebLock,
   Worker,
 } from '@livestore/utils/effect'
 
+import { BCMessage } from '../common/index.js'
 import { makeAdapterFactory } from '../make-adapter-factory.js'
 import { IDB } from '../utils/idb.js'
 import type { MakeCoordinator } from '../utils/types.js'
@@ -96,7 +101,29 @@ const makeCoordinator =
         Effect.forkScoped,
       )
 
-      const storage = {
+      const hasLockTRef = yield* TRef.make(hasLock)
+
+      const incomingSyncMutationsQueue = yield* Queue.unbounded<MutationEvent.Any>().pipe(
+        Effect.acquireRelease(Queue.shutdown),
+      )
+
+      const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+
+      broadcastChannel.addEventListener('message', (event) => {
+        const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)
+        if (decodedEvent._tag === 'Some') {
+          const { sender, mutationEventEncoded } = decodedEvent.value
+          if (sender === 'leader-worker') {
+            const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+            Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded).pipe(Effect.runSync)
+            // this.mutate({ wasSyncMessage: true }, mutationEventDecoded as any)
+          }
+        }
+      })
+
+      const coordinator = {
+        hasLock: hasLockTRef,
+        syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: async () => initialSnapshot,
         // Effect.gen(function* () {
         //   // TODO replace with a proper multi-tab syncing/lock-transfer mechanism
@@ -182,7 +209,7 @@ const makeCoordinator =
           }).pipe(Effect.runPromise),
       } satisfies Coordinator
 
-      return storage
+      return coordinator
     }).pipe(Scope.extend(manualScope), Effect.orDie, Effect.scoped)
   }
 

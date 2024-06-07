@@ -1,9 +1,9 @@
 import type { BootDb, PreparedBindValues, ResetMode, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
-import { BCMessage, getExecArgsFromMutation } from '@livestore/common'
+import { getExecArgsFromMutation } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -135,18 +135,14 @@ export class Store<
     this.graph = dbGraph
     this.graph.context = { store: this as any, otelTracer, rootOtelContext: otelQueriesSpanContext }
 
-    const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}`)
-
-    broadcastChannel.addEventListener('message', (event) => {
-      const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)
-      if (decodedEvent._tag === 'Some') {
-        const { sender, mutationEventEncoded } = decodedEvent.value
-        if (sender === 'leader-worker') {
-          const mutationEventDecoded = Schema.decodeUnknownSync(this.mutationEventSchema)(mutationEventEncoded)
-          this.mutate({ wasSyncMessage: true }, mutationEventDecoded as any)
-        }
-      }
-    })
+    this.adapter.coordinator.syncMutations.pipe(
+      Stream.tapSync((mutationEventDecoded) => {
+        this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
+      }),
+      Stream.runDrain,
+      Effect.tapCauseLogPretty,
+      Effect.runFork,
+    )
 
     this.otel = {
       tracer: otelTracer,
@@ -455,7 +451,7 @@ export class Store<
 
         if (skipStorage === false) {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          this.adapter.coordinator.mutate(mutationEventEncoded, span)
+          void this.adapter.coordinator.mutate(mutationEventEncoded, span)
         }
 
         // Uncomment to print a list of queries currently registered on the store

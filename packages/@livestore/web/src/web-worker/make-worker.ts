@@ -1,11 +1,12 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
-import { BCMessage, sql } from '@livestore/common'
+import { sql } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Effect, Layer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 
+import { BCMessage } from '../common/index.js'
 import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
@@ -141,8 +142,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               }
             }
           })
-
-          // TODO listen for broadcast WS events and broadcast them across tabs
 
           return Layer.succeed(WorkerCtx, workerCtx)
         }).pipe(

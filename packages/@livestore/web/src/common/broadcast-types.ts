@@ -1,7 +1,7 @@
+import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
-import { mutationEventSchemaEncodedAny } from '../schema/mutations.js'
-
+// TODO introduce req/ack
 export const Broadcast = Schema.Struct({
   _tag: Schema.Literal('BC.Broadcast'),
   sender: Schema.Literal('leader-worker', 'ui-thread'),

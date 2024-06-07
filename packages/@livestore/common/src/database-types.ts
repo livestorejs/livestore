@@ -1,3 +1,4 @@
+import type { Stream, TRef } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
@@ -27,6 +28,8 @@ export type InMemoryDatabase = {
 export type ResetMode = 'all-data' | 'only-app-db'
 
 export type Coordinator = {
+  hasLock: TRef.TRef<boolean>
+  syncMutations: Stream.Stream<MutationEvent.AnyEncoded>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
   mutate(mutationEventEncoded: MutationEvent.Any, span: otel.Span): Promise<void>
   dangerouslyReset(mode: ResetMode): Promise<void>

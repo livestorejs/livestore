@@ -37,6 +37,8 @@ export {
   MutableHashSet,
   Option,
   Layer,
+  STM,
+  TRef,
   Channel,
   SubscriptionRef,
   pipe,

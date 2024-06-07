@@ -2,7 +2,7 @@ import { type Coordinator, initializeSingletonTables, migrateDb, type PreparedBi
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, Stream, TRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
@@ -46,7 +46,12 @@ const makeCoordinator = (schema: LiveStoreSchema): Coordinator => {
   const dangerouslyReset = async () => {}
   const shutdown = async () => {}
 
+  const hasLock = TRef.make(true).pipe(Effect.runSync)
+  const syncMutations = Stream.never
+
   return {
+    hasLock,
+    syncMutations,
     execute,
     mutate,
     export: exportData,
