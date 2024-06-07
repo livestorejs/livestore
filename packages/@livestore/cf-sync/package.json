@@ -3,12 +3,16 @@
   "version": "0.0.47",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+    "./sync-impl": {
+      "types": "./dist/sync-impl/index.d.ts",
+      "default": "./dist/sync-impl/index.js"
     }
   },
-  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "./sync-impl": ["./dist/sync-impl/index.d.ts"]
+    }
+  },
   "scripts": {
     "deploy": "wrangler publish",
     "test": "echo 'No tests yet'"

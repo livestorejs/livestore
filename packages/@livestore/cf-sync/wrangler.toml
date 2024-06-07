@@ -1,5 +1,5 @@
 name = "websocket-server"
-main = "./src/index.ts"
+main = "./src/cf-worker/index.ts"
 compatibility_date = "2024-05-12"
 
 [[durable_objects.bindings]]

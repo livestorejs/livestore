@@ -704,6 +704,9 @@ importers:
 
   packages/@livestore/web:
     dependencies:
+      '@livestore/cf-sync':
+        specifier: workspace:*
+        version: link:../cf-sync
       '@livestore/common':
         specifier: workspace:*
         version: link:../common

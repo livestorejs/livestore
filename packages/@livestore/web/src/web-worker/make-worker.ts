@@ -1,4 +1,5 @@
-import { BCMessage, makeWsSync, sql } from '@livestore/common'
+import { makeWsSync } from '@livestore/cf-sync/sync-impl'
+import { BCMessage, sql } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
@@ -93,7 +94,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               ? undefined
               : {
                   impl: syncImpl,
-                  inititialMessages: syncImpl.pull(cursor),
+                  inititialMessages: syncImpl.pull(cursor).pipe(Stream.orDie),
                 }
 
           const workerCtx = {

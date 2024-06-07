@@ -1,8 +1,9 @@
-import { WSMessage } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
+
+import { WSMessage } from '../common/index.js'
 
 export interface Env {
   WEBSOCKET_SERVER: DurableObjectNamespace<WebSocketServer>
@@ -34,6 +35,13 @@ export class WebSocketServer extends DurableObject {
 
       this.ctx.acceptWebSocket(server)
 
+      this.ctx.setWebSocketAutoResponse(
+        new WebSocketRequestResponsePair(
+          encodeMessage({ _tag: 'WSMessage.Ping', requestId: 'ping' }),
+          encodeMessage({ _tag: 'WSMessage.Pong', requestId: 'ping' }),
+        ),
+      )
+
       // this.subscribedWebSockets.set(server, client)
 
       return new Response(null, {
@@ -56,6 +64,7 @@ export class WebSocketServer extends DurableObject {
     }
 
     const decodedMessage = decodedMessageRes.right
+    const requestId = decodedMessage.requestId
 
     if (decodedMessage._tag === 'WSMessage.PullReq') {
       const cursor = decodedMessage.cursor
@@ -71,7 +80,7 @@ export class WebSocketServer extends DurableObject {
         const events = remainingEvents.splice(0, CHUNK_SIZE)
         const hasMore = remainingEvents.length > 0
 
-        ws.send(encodeMessage(WSMessage.PullRes.make({ _tag: 'WSMessage.PullRes', events, hasMore })))
+        ws.send(encodeMessage(WSMessage.PullRes.make({ _tag: 'WSMessage.PullRes', events, hasMore, requestId })))
 
         if (hasMore === false) {
           break
@@ -89,7 +98,11 @@ export class WebSocketServer extends DurableObject {
       const allEvents = await this.storage.getEvents()
       if (allEvents.some((event) => event.id === decodedMessage.mutationEventEncoded.id)) {
         console.error('Event already broadcasted')
-        ws.send(encodeMessage(WSMessage.Error.make({ _tag: 'WSMessage.Error', message: 'Event already broadcasted' })))
+        ws.send(
+          encodeMessage(
+            WSMessage.Error.make({ _tag: 'WSMessage.Error', message: 'Event already broadcasted', requestId }),
+          ),
+        )
         return
       }
 
@@ -101,6 +114,7 @@ export class WebSocketServer extends DurableObject {
           WSMessage.PushAck.make({
             _tag: 'WSMessage.PushAck',
             mutationId: decodedMessage.mutationEventEncoded.id,
+            requestId,
           }),
         ),
       )
@@ -116,6 +130,7 @@ export class WebSocketServer extends DurableObject {
           WSMessage.PushBroadcast.make({
             _tag: 'WSMessage.PushBroadcast',
             mutationEventEncoded: decodedMessage.mutationEventEncoded,
+            requestId,
           }),
         )
 

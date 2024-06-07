@@ -11,26 +11,33 @@ export const priorities = ['none', 'low', 'medium', 'high', 'urgent'] satisfies 
 export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled'] satisfies StatusType[]
 
 export function seed(db: BootDb) {
-  const urlParams = new URLSearchParams(window.location.search)
-  const seedParam = urlParams.get('seed')
-  if (seedParam == null) {
-    return
-  }
-  let howMany = parseInt(seedParam)
-  const rows = db.select<{ c: number }>(sql`SELECT count(*) as c FROM issue`)
-  if (rows[0].c >= howMany) {
-    return
-  }
-
-  howMany -= rows[0].c
-
-  console.log('SEEDING WITH ', howMany, ' ADDITIONAL ROWS')
-
-  db.txn(() => {
-    for (const issueWithDescription of createIssues(howMany)) {
-      db.mutate(mutations.createIssueWithDescription(issueWithDescription))
+  try {
+    const urlParams = new URLSearchParams(window.location.search)
+    const seedParam = urlParams.get('seed')
+    if (seedParam == null) {
+      return
     }
-  })
+    let howMany = parseInt(seedParam)
+    const rows = db.select<{ c: number }>(sql`SELECT count(*) as c FROM issue`)
+    if (rows[0].c >= howMany) {
+      return
+    }
+
+    howMany -= rows[0].c
+
+    console.log('SEEDING WITH ', howMany, ' ADDITIONAL ROWS')
+
+    db.txn(() => {
+      for (const issueWithDescription of createIssues(howMany)) {
+        db.mutate(mutations.createIssueWithDescription(issueWithDescription))
+      }
+    })
+  } finally {
+    // remove `?seed=` from the URL using the URLSearchParams API
+    const url = new URL(window.location.href)
+    url.searchParams.delete('seed')
+    window.history.replaceState({}, '', url.toString())
+  }
 }
 
 export function* createIssues(numTasks: number): Generator<Issue & { description: string }> {

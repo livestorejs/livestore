@@ -13,7 +13,7 @@ import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { Stream } from '@livestore/utils/effect'
-import { Context, Effect, Schema } from '@livestore/utils/effect'
+import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import type { StorageType } from './schema.js'
@@ -157,21 +157,21 @@ export const makeApplyMutation = (
 
       // TODO do this via a batched queue
       if (sync !== undefined && syncStatus === 'pending') {
-        sync.impl.push(mutationEventEncoded).pipe(
-          Effect.tapSync(() => {
-            execSql(
-              dbLog.dbRef.current,
-              ...updateRows({
-                tableName: MUTATION_LOG_META_TABLE,
-                columns: mutationLogMetaTable.sqliteDef.columns,
-                where: { id: mutationEventEncoded.id },
-                updateValues: { syncStatus: 'synced' },
-              }),
-            )
-          }),
-          Effect.tapCauseLogPretty,
-          Effect.runFork,
-        )
+        Effect.gen(function* () {
+          if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
+
+          yield* sync.impl.push(mutationEventEncoded)
+
+          execSql(
+            dbLog.dbRef.current,
+            ...updateRows({
+              tableName: MUTATION_LOG_META_TABLE,
+              columns: mutationLogMetaTable.sqliteDef.columns,
+              where: { id: mutationEventEncoded.id },
+              updateValues: { syncStatus: 'synced' },
+            }),
+          )
+        }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
       }
     } else {
       //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)

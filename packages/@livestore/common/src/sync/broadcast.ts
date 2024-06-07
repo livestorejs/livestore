@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { mutationEventSchemaEncodedAny } from '../../schema/mutations.js'
+import { mutationEventSchemaEncodedAny } from '../schema/mutations.js'
 
 export const Broadcast = Schema.Struct({
   _tag: Schema.Literal('BC.Broadcast'),

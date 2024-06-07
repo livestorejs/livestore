@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/cf-sync": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.8.0"
