@@ -2,7 +2,7 @@ import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
-import type { MigrationOptions } from '../database-types.js'
+import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
 import {
   type MutationDef,

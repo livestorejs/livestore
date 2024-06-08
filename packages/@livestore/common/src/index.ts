@@ -1,6 +1,6 @@
 export * from './schema/system-tables.js'
 export * from './util.js'
-export * from './database-types.js'
+export * from './adapter-types.js'
 export * from './schema-management/migrations.js'
 export * from './mutation.js'
 export * from './init-singleton-tables.js'

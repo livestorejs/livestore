@@ -1,4 +1,4 @@
-import type { InMemoryDatabase } from '../database-types.js'
+import type { InMemoryDatabase } from '../adapter-types.js'
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'
 
