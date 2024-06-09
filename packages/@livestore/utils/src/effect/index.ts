@@ -1,3 +1,5 @@
+// TODO remove again when fixed in `@effect/platform-browser`
+import './effect-polyfill.js'
 import '../global.js'
 
 export {
