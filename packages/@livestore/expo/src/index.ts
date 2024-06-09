@@ -11,7 +11,7 @@ import {
 } from '@livestore/common'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Schema, Stream, TRef } from '@livestore/utils/effect'
+import { Effect, Schema, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as SQLite from 'expo-sqlite/next'
 
@@ -154,6 +154,7 @@ export const makeAdapter =
       dangerouslyReset: async () => {},
       getMutationLogData: async () => mainDbLog.export(),
       shutdown: async () => {},
+      networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
     } satisfies Coordinator
 
     return { mainDb, coordinator } satisfies StoreAdapter

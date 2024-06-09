@@ -1,4 +1,4 @@
-import type { Stream, TRef } from '@livestore/utils/effect'
+import type { Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
@@ -27,6 +27,11 @@ export type InMemoryDatabase = {
 
 export type ResetMode = 'all-data' | 'only-app-db'
 
+export type NetworkStatus = {
+  isConnected: boolean
+  timestampMs: number
+}
+
 export type Coordinator = {
   hasLock: TRef.TRef<boolean>
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded>
@@ -40,6 +45,7 @@ export type Coordinator = {
   getInitialSnapshot(): Promise<Uint8Array>
   getMutationLogData(): Promise<Uint8Array>
   shutdown(): Promise<void>
+  networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
 export type GetRowsChangedCount = () => number

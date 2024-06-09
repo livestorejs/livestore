@@ -4,7 +4,15 @@ import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE 
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
-import { BrowserWorkerRunner, Effect, Layer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
+import {
+  BrowserWorkerRunner,
+  Effect,
+  Layer,
+  Schema,
+  Stream,
+  SubscriptionRef,
+  WorkerRunner,
+} from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
@@ -90,13 +98,25 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}`)
 
-          const sync =
-            syncImpl === undefined
-              ? undefined
-              : {
-                  impl: syncImpl,
-                  inititialMessages: syncImpl.pull(cursor).pipe(Stream.orDie),
-                }
+          const makeSync = Effect.gen(function* () {
+            if (syncImpl === undefined) return undefined
+
+            const waitUntilOnline = SubscriptionRef.changeStreamIncludingCurrent(syncImpl.isConnected).pipe(
+              Stream.filter(Boolean),
+              Stream.take(1),
+              Stream.runDrain,
+            )
+
+            // Wait first until we're online
+            yield* waitUntilOnline
+
+            return {
+              impl: syncImpl,
+              inititialMessages: syncImpl.pull(cursor).pipe(Stream.orDie),
+            }
+          })
+
+          const sync = yield* makeSync
 
           const workerCtx = {
             _tag: 'HasLock',
@@ -167,6 +187,18 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
       ExecuteBulk: ({ items }) =>
         executeBulk(items).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
       Setup: () => Effect.never,
+      NetworkStatusStream: () =>
+        Effect.gen(function* (_) {
+          const workerCtx = yield* WorkerCtx
+
+          if (workerCtx.ctx?.sync === undefined) {
+            return Stream.succeed({ isConnected: false, timestampMs: Date.now() })
+          }
+
+          return workerCtx.ctx.sync.impl.isConnected.changes.pipe(
+            Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
+          )
+        }).pipe(Stream.unwrap),
       Shutdown: () =>
         Effect.gen(function* () {
           // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)

@@ -1,4 +1,4 @@
-import { type Coordinator, type ResetMode } from '@livestore/common'
+import type { Coordinator, NetworkStatus, ResetMode } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled } from '@livestore/utils'
@@ -14,6 +14,7 @@ import {
   Schema,
   Scope,
   Stream,
+  SubscriptionRef,
   TRef,
   WebLock,
   Worker,
@@ -83,6 +84,16 @@ const makeCoordinator =
 
       const runInWorker = <TReq extends WorkerSchema.Request>(req: TReq) =>
         Effect.andThen(Deferred.await(workerDeferred), (worker) => worker.executeEffect(req))
+
+      const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
+
+      yield* Effect.andThen(Deferred.await(workerDeferred), (worker) =>
+        worker.execute(new WorkerSchema.NetworkStatusStream()).pipe(
+          Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
+          Stream.runDrain,
+          Effect.tapCauseLogPretty,
+        ),
+      ).pipe(Effect.forkDaemon)
 
       const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.GetRecreateSnapshot()))
 
@@ -207,6 +218,8 @@ const makeCoordinator =
 
             yield* Scope.close(manualScope, Exit.interrupt(FiberId.none))
           }).pipe(Effect.runPromise),
+
+        networkStatus,
       } satisfies Coordinator
 
       return coordinator

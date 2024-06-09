@@ -65,14 +65,16 @@ const connect = (wsUrl: string) =>
 
     const incomingMessages = yield* PubSub.unbounded<Exclude<WSMessage.IncomingMessage, WSMessage.Pong>>()
 
-    const waitUntilOnline = isConnected.changes.pipe(Stream.filter(Boolean), Stream.take(1), Stream.runDrain)
+    const waitUntilOnline = SubscriptionRef.changeStreamIncludingCurrent(isConnected).pipe(
+      Stream.filter(Boolean),
+      Stream.take(1),
+      Stream.runDrain,
+    )
 
     const send = (message: WSMessage.Message) =>
       Effect.gen(function* () {
         // Wait first until we're online
-        if ((yield* SubscriptionRef.get(isConnected)) === false) {
-          yield* waitUntilOnline
-        }
+        yield* waitUntilOnline
 
         wsRef.current!.send(Schema.encodeSync(Schema.parseJson(WSMessage.Message))(message))
       })
@@ -104,12 +106,35 @@ const connect = (wsUrl: string) =>
         }
       }
 
+      const offlineHandler = () => {
+        Deferred.succeed(connectionClosed, void 0).pipe(Effect.runSync)
+      }
+
+      // NOTE it seems that this callback doesn't work reliably on a worker but only via `window.addEventListener`
+      // We might need to proxy the event from the main thread to the worker if we want this to work reliably.
+      self.addEventListener('offline', offlineHandler)
+
+      yield* Effect.addFinalizer(() =>
+        Effect.gen(function* () {
+          ws.removeEventListener('message', messageHandler)
+          self.removeEventListener('offline', offlineHandler)
+          wsRef.current?.close()
+          wsRef.current = undefined
+          yield* SubscriptionRef.set(isConnected, false)
+        }),
+      )
+
       ws.addEventListener('message', messageHandler)
 
-      ws.addEventListener('open', () => {
+      if (ws.readyState === WebSocket.OPEN) {
         wsRef.current = ws
         SubscriptionRef.set(isConnected, true).pipe(Effect.runSync)
-      })
+      } else {
+        ws.addEventListener('open', () => {
+          wsRef.current = ws
+          SubscriptionRef.set(isConnected, true).pipe(Effect.runSync)
+        })
+      }
 
       ws.addEventListener('close', () => {
         Deferred.succeed(connectionClosed, void 0).pipe(Effect.runSync)
@@ -120,15 +145,14 @@ const connect = (wsUrl: string) =>
         Deferred.succeed(connectionClosed, void 0).pipe(Effect.runSync)
       })
 
-      yield* Effect.addFinalizer(() => Effect.sync(() => ws.removeEventListener('message', messageHandler)))
-
       const checkPingPong = Effect.gen(function* () {
+        // TODO include pong latency infomation in network status
         yield* send({ _tag: 'WSMessage.Ping', requestId: 'ping' })
 
         // NOTE those numbers might need more fine-tuning to allow for bad network conditions
-        yield* Queue.take(pongMessages).pipe(Effect.timeout(2000))
+        yield* Queue.take(pongMessages).pipe(Effect.timeout(5000))
 
-        yield* Effect.sleep(5000)
+        yield* Effect.sleep(25_000)
       })
 
       yield* waitUntilOnline.pipe(
@@ -137,15 +161,8 @@ const connect = (wsUrl: string) =>
         Effect.forkScoped,
       )
 
-      yield* Effect.addFinalizer(() =>
-        Effect.gen(function* () {
-          wsRef.current = undefined
-          yield* SubscriptionRef.set(isConnected, false)
-        }),
-      )
-
       yield* Deferred.await(connectionClosed)
-    })
+    }).pipe(Effect.scoped)
 
     yield* innerConnect.pipe(Effect.forever, Effect.tapCauseLogPretty, Effect.forkScoped)
 

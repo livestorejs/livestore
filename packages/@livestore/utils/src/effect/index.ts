@@ -40,13 +40,14 @@ export {
   STM,
   TRef,
   Channel,
-  SubscriptionRef,
   pipe,
   identity,
   Match,
 } from 'effect'
 
 export * as Stream from './Stream.js'
+
+export * as SubscriptionRef from './SubscriptionRef.js'
 
 export { TreeFormatter, AST as SchemaAST, Pretty as SchemaPretty, Serializable, JSONSchema } from '@effect/schema'
 export * as Schema from './Schema.js'

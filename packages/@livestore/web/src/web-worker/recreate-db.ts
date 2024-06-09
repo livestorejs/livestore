@@ -103,6 +103,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
     Effect.catchAllCause((error) => new UnexpectedError({ error })),
   )
 
+// TODO replace with proper rebasing impl
 export const fetchAndApplyRemoteMutations = (
   workerCtx: Context.Tag.Service<WorkerCtx>,
   db: SqliteWasm.Database,

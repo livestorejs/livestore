@@ -94,6 +94,16 @@ export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()
 
 export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedError, Transferable.Uint8Array, {}) {}
 
+export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()(
+  'NetworkStatusStream',
+  UnexpectedError,
+  Schema.Struct({
+    isConnected: Schema.Boolean,
+    timestampMs: Schema.Number,
+  }),
+  {},
+) {}
+
 export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
 
 export const Request = Schema.Union(
@@ -103,6 +113,7 @@ export const Request = Schema.Union(
   GetRecreateSnapshot,
   ExportMutationlog,
   Setup,
+  NetworkStatusStream,
   Shutdown,
 )
 export type Request = Schema.Schema.Type<typeof Request>
