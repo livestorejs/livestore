@@ -1,3 +1,5 @@
+import './effect-polyfill.js'
+
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
 import { sql } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'

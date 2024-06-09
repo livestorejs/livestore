@@ -4,14 +4,12 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Unex
   error: Schema.Any,
 }) {}
 
-export const ExecutionBacklogItemExecute = Schema.Struct({
-  _tag: Schema.Literal('execute'),
+export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
   query: Schema.String,
   bindValues: Schema.Any,
 })
 
-export const ExecutionBacklogItemMutate = Schema.Struct({
-  _tag: Schema.Literal('mutate'),
+export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
   mutationEventEncoded: Schema.Struct({
     mutation: Schema.String,
     args: Schema.Any,
@@ -19,8 +17,7 @@ export const ExecutionBacklogItemMutate = Schema.Struct({
   }),
 })
 
-export const ExecutionBacklogItemTxn = Schema.Struct({
-  _tag: Schema.Literal('txn'),
+export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
   items: Schema.Union(ExecutionBacklogItemExecute, ExecutionBacklogItemMutate),
 })
 

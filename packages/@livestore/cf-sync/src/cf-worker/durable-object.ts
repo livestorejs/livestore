@@ -37,8 +37,8 @@ export class WebSocketServer extends DurableObject {
 
       this.ctx.setWebSocketAutoResponse(
         new WebSocketRequestResponsePair(
-          encodeMessage({ _tag: 'WSMessage.Ping', requestId: 'ping' }),
-          encodeMessage({ _tag: 'WSMessage.Pong', requestId: 'ping' }),
+          encodeMessage(WSMessage.Ping.make({ requestId: 'ping' })),
+          encodeMessage(WSMessage.Pong.make({ requestId: 'ping' })),
         ),
       )
 
@@ -80,7 +80,7 @@ export class WebSocketServer extends DurableObject {
         const events = remainingEvents.splice(0, CHUNK_SIZE)
         const hasMore = remainingEvents.length > 0
 
-        ws.send(encodeMessage(WSMessage.PullRes.make({ _tag: 'WSMessage.PullRes', events, hasMore, requestId })))
+        ws.send(encodeMessage(WSMessage.PullRes.make({ events, hasMore, requestId })))
 
         if (hasMore === false) {
           break
@@ -91,33 +91,21 @@ export class WebSocketServer extends DurableObject {
     } else if (decodedMessage._tag === 'WSMessage.PushReq') {
       // if (this.subscribedWebSockets.has(ws) === false) {
       //   console.error('Client is not subscribed')
-      //   ws.send(encodeMessage(WSMessage.Error.make({ _tag: 'WSMessage.Error', message: 'Client is not subscribed' })))
+      //   ws.send(encodeMessage(WSMessage.Error.make({ message: 'Client is not subscribed' })))
       //   return
       // }
 
       const allEvents = await this.storage.getEvents()
       if (allEvents.some((event) => event.id === decodedMessage.mutationEventEncoded.id)) {
         console.error('Event already broadcasted')
-        ws.send(
-          encodeMessage(
-            WSMessage.Error.make({ _tag: 'WSMessage.Error', message: 'Event already broadcasted', requestId }),
-          ),
-        )
+        ws.send(encodeMessage(WSMessage.Error.make({ message: 'Event already broadcasted', requestId })))
         return
       }
 
       // NOTE we're doing this out of band to already do the broadcast to the client
       void this.storage.appendEvent(decodedMessage.mutationEventEncoded)
 
-      ws.send(
-        encodeMessage(
-          WSMessage.PushAck.make({
-            _tag: 'WSMessage.PushAck',
-            mutationId: decodedMessage.mutationEventEncoded.id,
-            requestId,
-          }),
-        ),
-      )
+      ws.send(encodeMessage(WSMessage.PushAck.make({ mutationId: decodedMessage.mutationEventEncoded.id, requestId })))
 
       // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
 
@@ -127,11 +115,7 @@ export class WebSocketServer extends DurableObject {
 
       if (connectedClients.length > 0) {
         const broadcastMessage = encodeMessage(
-          WSMessage.PushBroadcast.make({
-            _tag: 'WSMessage.PushBroadcast',
-            mutationEventEncoded: decodedMessage.mutationEventEncoded,
-            requestId,
-          }),
+          WSMessage.PushBroadcast.make({ mutationEventEncoded: decodedMessage.mutationEventEncoded, requestId }),
         )
 
         for (const conn of connectedClients) {

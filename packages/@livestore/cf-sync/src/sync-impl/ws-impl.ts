@@ -19,7 +19,7 @@ export const makeWsSync = (wsBaseUrl: string, roomId: string): Effect.Effect<Syn
         Effect.gen(function* () {
           const requestId = cuid()
 
-          yield* send(WSMessage.PullReq.make({ _tag: 'WSMessage.PullReq', cursor, requestId }))
+          yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
           return Stream.fromPubSub(incomingMessages).pipe(
             Stream.filter(Schema.is(WSMessage.PullRes)),
@@ -49,7 +49,7 @@ export const makeWsSync = (wsBaseUrl: string, roomId: string): Effect.Effect<Syn
             Effect.fork,
           )
 
-          yield* send(WSMessage.PushReq.make({ _tag: 'WSMessage.PushReq', mutationEventEncoded, requestId }))
+          yield* send(WSMessage.PushReq.make({ mutationEventEncoded, requestId }))
 
           yield* Deferred.await(ready)
         }),

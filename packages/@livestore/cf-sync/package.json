@@ -10,7 +10,9 @@
   },
   "typesVersions": {
     "*": {
-      "./sync-impl": ["./dist/sync-impl/index.d.ts"]
+      "./sync-impl": [
+        "./dist/sync-impl/index.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -18,12 +20,12 @@
     "test": "echo 'No tests yet'"
   },
   "dependencies": {
-    "@livestore/utils": "workspace:*",
-    "@livestore/common": "workspace:*"
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20240512.0",
-    "wrangler": "^3.57.0"
+    "@cloudflare/workers-types": "4.20240605.0",
+    "wrangler": "^3.60.0"
   },
   "publishConfig": {
     "access": "public"

@@ -145,12 +145,7 @@ export const makeApplyMutation = (
       if (shouldBroadcast) {
         broadcastChannel.postMessage(
           Schema.encodeSync(BCMessage.Message)(
-            BCMessage.Broadcast.make({
-              _tag: 'BC.Broadcast',
-              mutationEventEncoded,
-              ref: '',
-              sender: 'leader-worker',
-            }),
+            BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker' }),
           ),
         )
       }

@@ -1,8 +1,7 @@
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
-export const PullReq = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.PullReq'),
+export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
   requestId: Schema.String,
   /** Omitting the cursor will start from the beginning */
   cursor: Schema.optional(Schema.String),
@@ -10,8 +9,7 @@ export const PullReq = Schema.Struct({
 
 export type PullReq = typeof PullReq.Type
 
-export const PullRes = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.PullRes'),
+export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   requestId: Schema.String,
   // /** The  */
   // cursor: Schema.String,
@@ -21,45 +19,39 @@ export const PullRes = Schema.Struct({
 
 export type PullRes = typeof PullRes.Type
 
-export const PushBroadcast = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.PushBroadcast'),
+export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
   requestId: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
 })
 
 export type PushBroadcast = typeof PushBroadcast.Type
 
-export const PushReq = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.PushReq'),
+export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
 })
 
 export type PushReq = typeof PushReq.Type
 
-export const PushAck = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.PushAck'),
+export const PushAck = Schema.TaggedStruct('WSMessage.PushAck', {
   requestId: Schema.String,
   mutationId: Schema.String,
 })
 
 export type PushAck = typeof PushAck.Type
 
-export const Error = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.Error'),
+export const Error = Schema.TaggedStruct('WSMessage.Error', {
   requestId: Schema.String,
   message: Schema.String,
 })
 
-export const Ping = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.Ping'),
+export const Ping = Schema.TaggedStruct('WSMessage.Ping', {
   requestId: Schema.Literal('ping'),
 })
 
 export type Ping = typeof Ping.Type
 
-export const Pong = Schema.Struct({
-  _tag: Schema.Literal('WSMessage.Pong'),
+export const Pong = Schema.TaggedStruct('WSMessage.Pong', {
   requestId: Schema.Literal('ping'),
 })
 

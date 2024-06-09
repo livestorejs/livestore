@@ -16,12 +16,12 @@
     "@livestore/*": "workspace:*",
     "@livestore/devtools-react": "0.0.47",
     "effect-db-schema": "workspace:*",
-    "effect": "3.2.5",
-    "@effect/platform": "0.55.0",
-    "@effect/platform-browser": "0.35.0",
-    "@effect/schema": "0.67.13",
-    "@effect/experimental": "^0.16.3",
-    "@effect/opentelemetry": "^0.34.3"
+    "effect": "3.3.0",
+    "@effect/platform": "0.56.0",
+    "@effect/platform-browser": "0.35.8",
+    "@effect/schema": "0.67.21",
+    "@effect/experimental": "^0.16.24",
+    "@effect/opentelemetry": "^0.34.17"
   },
   "dependencies": {
     "@effect/language-service": "^0.1.0"

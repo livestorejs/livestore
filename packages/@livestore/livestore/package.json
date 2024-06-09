@@ -42,15 +42,15 @@
     "@graphql-typed-document-node/core": "^3.2.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.8.0",
+    "@opentelemetry/api": "^1.9.0",
     "effect-db-schema": "workspace:*",
     "lodash-es": "^4.17.21"
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.24.1",
+    "@opentelemetry/sdk-trace-base": "1.25.0",
     "@tauri-apps/api": "^1.5.5",
-    "@testing-library/react": "^15.0.7",
+    "@testing-library/react": "^16.0.0",
     "@types/lodash-es": "^4.17.12",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
@@ -58,7 +58,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "5.4.5",
-    "vite": "5.2.11",
+    "vite": "5.2.13",
     "vitest": "^1.6.0"
   },
   "peerDependencies": {

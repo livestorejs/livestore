@@ -72,7 +72,7 @@ const makeCoordinator =
 
       const workerDeferred = yield* Worker.makePoolSerialized<WorkerSchema.Request>({
         size: 1,
-        permits: 10,
+        concurrency: 10,
         initialMessage: () =>
           new WorkerSchema.InitialMessage({
             storageOptions,
@@ -184,12 +184,7 @@ const makeCoordinator =
           } else {
             broadcastChannel.postMessage(
               Schema.encodeSync(BCMessage.Message)(
-                BCMessage.Broadcast.make({
-                  _tag: 'BC.Broadcast',
-                  mutationEventEncoded,
-                  ref: '',
-                  sender: 'ui-thread',
-                }),
+                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread' }),
               ),
             )
           }
