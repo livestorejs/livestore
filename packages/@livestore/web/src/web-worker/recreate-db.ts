@@ -9,7 +9,6 @@ import * as otel from '@opentelemetry/api'
 import { makeInMemoryDb } from '../make-in-memory-db.js'
 import type { WorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
-import { UnexpectedError } from './schema.js'
 
 export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
   Effect.gen(function* () {
@@ -97,11 +96,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
     yield* db.import(snapshotFromTmpDb)
 
     return snapshotFromTmpDb
-  }).pipe(
-    Effect.scoped,
-    Effect.withPerformanceMeasure('@livestore/web:worker:Setup'),
-    Effect.catchAllCause((error) => new UnexpectedError({ error })),
-  )
+  }).pipe(Effect.scoped, Effect.withPerformanceMeasure('@livestore/web:worker:Setup'))
 
 // TODO replace with proper rebasing impl
 export const fetchAndApplyRemoteMutations = (

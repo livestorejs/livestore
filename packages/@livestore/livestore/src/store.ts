@@ -273,6 +273,9 @@ export class Store<
     ) {
       options = firstMutationOrTxnFnOrOptions
       mutationsEvents = restMutations
+    } else if (firstMutationOrTxnFnOrOptions === undefined) {
+      // When `mutate` is called with no arguments (which sometimes happens when dynamically filtering mutations)
+      mutationsEvents = []
     } else {
       mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
     }
@@ -402,7 +405,7 @@ export class Store<
   mutateWithoutRefresh = (
     mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
     otelContext: otel.Context,
-    skipStorage: boolean = false,
+    skipCoordinator: boolean = false,
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
     // e.g. the row-query functionality
@@ -449,7 +452,7 @@ export class Store<
 
         const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationEventSchema)(mutationEventDecoded)
 
-        if (skipStorage === false) {
+        if (skipCoordinator === false) {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
           void this.adapter.coordinator.mutate(mutationEventEncoded, span)
         }

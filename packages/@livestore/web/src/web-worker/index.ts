@@ -30,7 +30,6 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
   getOpfsDirHandle,
-  LIVESTORE_TAB_LOCK,
 } from './common.js'
 import * as WorkerSchema from './schema.js'
 
@@ -39,6 +38,8 @@ export type WebAdapterOptions = {
   worker: Worker | (new (options?: { name: string }) => Worker)
   storage: WorkerSchema.StorageType
   syncing?: WorkerSchema.SyncingType
+  /** Can be used to isolate multiple LiveStore apps running in the same origin */
+  key?: string
 }
 
 export const makeAdapter = (options: WebAdapterOptions) => makeAdapterFactory(makeCoordinator(options))
@@ -55,13 +56,17 @@ const makeCoordinator =
 
       const lockDeferred = yield* Deferred.make<void>()
 
+      const keySuffix = options.key ? `-${options.key}` : ''
+
+      const LIVESTORE_TAB_LOCK = `livestore-tab-lock${keySuffix}`
+
       const hasLock = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
         Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
       )
 
       // console.log('hasLock', hasLock)
 
-      const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}`)
+      const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}${keySuffix}`)
 
       const worker =
         options.worker instanceof globalThis.Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
@@ -79,8 +84,13 @@ const makeCoordinator =
             needsRecreate: dataFromFile === undefined,
             hasLock,
             syncOptions: options.syncing,
+            key: options.key,
           }),
-      }).pipe(Effect.provide(BrowserWorker.layer(() => worker)), Effect.toForkedDeferred)
+      }).pipe(
+        Effect.provide(BrowserWorker.layer(() => worker)),
+        Effect.withSpan('@livestore/web:main:setupWorker'),
+        Effect.toForkedDeferred,
+      )
 
       const runInWorker = <TReq extends WorkerSchema.Request>(req: TReq) =>
         Effect.andThen(Deferred.await(workerDeferred), (worker) => worker.executeEffect(req))
@@ -159,7 +169,8 @@ const makeCoordinator =
         //   Effect.runPromise,
         // ),
 
-        export: () => runInWorker(new WorkerSchema.Export()).pipe(Effect.runPromise),
+        export: () =>
+          runInWorker(new WorkerSchema.Export()).pipe(Effect.withSpan('@livestore/web:main:export'), Effect.runPromise),
 
         dangerouslyReset: (mode) =>
           Effect.gen(function* () {

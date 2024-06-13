@@ -1,4 +1,4 @@
-import type { SyncImpl } from '@livestore/common'
+import type { InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   MUTATION_LOG_META_TABLE,
@@ -35,8 +35,11 @@ export const getMutationlogDbIdbStoreName = (prefix: string | undefined = 'lives
 }
 
 // NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
+// To improve LiveStore compatibility with e.g. Node.js we're guarding for `navigator` / `navigator.storage` to be defined.
 const rootHandlePromise =
-  navigator.storage === undefined ? new Promise<never>(() => {}) : navigator.storage.getDirectory()
+  typeof navigator === 'undefined' || navigator.storage === undefined
+    ? new Promise<never>(() => {})
+    : navigator.storage.getDirectory()
 
 export const getOpfsDirHandle = async (directory: string | undefined) => {
   const rootHandle = await rootHandlePromise
@@ -58,8 +61,6 @@ export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fk
     ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
   `)
 
-export const LIVESTORE_TAB_LOCK = 'livestore-tab-lock'
-
 export class WorkerCtx extends Context.Tag('WorkerCtx')<
   WorkerCtx,
   | {
@@ -76,7 +77,7 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
         sync:
           | {
               impl: SyncImpl
-              inititialMessages: Stream.Stream<MutationEvent.Any>
+              inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
             }
           | undefined
       }
@@ -110,9 +111,11 @@ export const makeApplyMutation = (
 
     const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
+    // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
+
     for (const { statementSql, bindValues } of execArgsArr) {
       try {
-        // console.debug('livestore-webworker: executing SQL for mutation', mutation, statementSql, bindValues)
+        // console.debug(mutationName, statementSql, bindValues)
         db.exec({ sql: statementSql, bind: bindValues })
       } catch (e) {
         console.error('Error executing query', e, statementSql, bindValues)
@@ -120,6 +123,8 @@ export const makeApplyMutation = (
         throw e
       }
     }
+
+    // console.groupEnd()
 
     // write to mutation_log
     if (shouldExcludeMutationFromLog(mutationName, mutationEventDecoded) === false) {
@@ -151,7 +156,7 @@ export const makeApplyMutation = (
       }
 
       // TODO do this via a batched queue
-      if (sync !== undefined && syncStatus === 'pending') {
+      if (mutationDef.options.localOnly === false && sync !== undefined && syncStatus === 'pending') {
         Effect.gen(function* () {
           if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
 

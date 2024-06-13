@@ -2,18 +2,35 @@ import type { GetValForKey } from '@livestore/utils'
 import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 
-import type { MutationEvent } from './schema/index.js'
-import { DbSchema, defineMutation } from './schema/index.js'
+import type { MutationEvent } from './schema/mutations.js'
+import { defineMutation } from './schema/mutations.js'
 import type { TableOptions } from './schema/table-def.js'
+import * as DbSchema from './schema/table-def.js'
 import { deleteRows, insertRow, updateRows } from './sql-queries/sql-queries.js'
 
-export const makeDerivedMutationDefsForTable = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => ({
+export const makeDerivedMutationDefsForTable = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) => ({
   insert: deriveCreateMutationDef(table),
   update: deriveUpdateMutationDef(table),
   delete: deriveDeleteMutationDef(table),
 })
 
-export const deriveCreateMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
+export const deriveCreateMutationDef = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) => {
   const tableName = table.sqliteDef.name
 
   const [optionalFields, requiredColumns] = ReadonlyRecord.partition(
@@ -25,20 +42,33 @@ export const deriveCreateMutationDef = <TTableDef extends DbSchema.TableDef>(tab
     Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))),
   )
 
-  return defineMutation(`_Derived_Create_${tableName}`, insertSchema, ({ id, ...explicitDefaultValues }) => {
-    const defaultValues = DbSchema.getDefaultValuesDecoded(table, explicitDefaultValues)
+  return defineMutation(
+    `_Derived_Create_${tableName}`,
+    insertSchema,
+    ({ id, ...explicitDefaultValues }) => {
+      const defaultValues = DbSchema.getDefaultValuesDecoded(table, explicitDefaultValues)
 
-    const [sql, bindValues] = insertRow({
-      tableName: table.sqliteDef.name,
-      columns: table.sqliteDef.columns,
-      values: { ...defaultValues, id },
-    })
+      const [sql, bindValues] = insertRow({
+        tableName: table.sqliteDef.name,
+        columns: table.sqliteDef.columns,
+        values: { ...defaultValues, id },
+      })
 
-    return { sql, bindValues, writeTables: new Set([tableName]) }
-  })
+      return { sql, bindValues, writeTables: new Set([tableName]) }
+    },
+    { localOnly: table.options.deriveMutations.localOnly },
+  )
 }
 
-export const deriveUpdateMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
+export const deriveUpdateMutationDef = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) => {
   const tableName = table.sqliteDef.name
 
   return defineMutation(
@@ -57,10 +87,19 @@ export const deriveUpdateMutationDef = <TTableDef extends DbSchema.TableDef>(tab
 
       return { sql, bindValues, writeTables: new Set([tableName]) }
     },
+    { localOnly: table.options.deriveMutations.localOnly },
   )
 }
 
-export const deriveDeleteMutationDef = <TTableDef extends DbSchema.TableDef>(table: TTableDef) => {
+export const deriveDeleteMutationDef = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    boolean,
+    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) => {
   const tableName = table.sqliteDef.name
 
   return defineMutation(
@@ -77,6 +116,7 @@ export const deriveDeleteMutationDef = <TTableDef extends DbSchema.TableDef>(tab
 
       return { sql, bindValues, writeTables: new Set([tableName]) }
     },
+    { localOnly: table.options.deriveMutations.localOnly },
   )
 }
 

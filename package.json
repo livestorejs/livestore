@@ -5,6 +5,7 @@
     "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o -name 'dist' -type d -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.all.json",
     "dev:ts": "pnpm run build:ts --watch",
+    "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish --no-git-checks",
@@ -15,15 +16,10 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
     "@livestore/devtools-react": "0.0.48-dev.0",
-    "effect-db-schema": "workspace:*",
-    "effect": "3.3.0",
-    "@effect/platform": "0.56.0",
-    "@effect/platform-browser": "0.35.8",
-    "@effect/schema": "0.67.21",
-    "@effect/experimental": "^0.16.24",
-    "@effect/opentelemetry": "^0.34.17"
+    "effect-db-schema": "workspace:*"
   },
   "dependencies": {
+    "madge": "^6.1.0",
     "@effect/language-service": "^0.1.0"
   },
   "devDependencies": {

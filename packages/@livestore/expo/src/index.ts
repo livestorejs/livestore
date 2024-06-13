@@ -93,7 +93,7 @@ export const makeAdapter =
     )
 
     const newMutationLogStmt = mainDbLog.prepare(
-      `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
     )
 
     const hasLock = TRef.make(true).pipe(Effect.runSync)
@@ -130,6 +130,7 @@ export const makeAdapter =
               argsJson,
               mutationDefSchemaHash,
               new Date().toISOString(),
+              'localOnly',
             ] as any)
           } catch (e) {
             console.error(

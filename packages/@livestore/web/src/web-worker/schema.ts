@@ -66,6 +66,7 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
     hasLock: Schema.Boolean,
     needsRecreate: Schema.Boolean,
     syncOptions: Schema.optional(SyncingType),
+    key: Schema.UndefinedOr(Schema.String),
   },
 ) {}
 

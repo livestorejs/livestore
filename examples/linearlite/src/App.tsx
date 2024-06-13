@@ -1,19 +1,12 @@
 import 'animate.css/animate.min.css'
 import Board from './pages/Board'
-import { useState, createContext } from 'react'
+import { useState } from 'react'
 import { Route, Routes, BrowserRouter } from 'react-router-dom'
 import { cssTransition, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import List from './pages/List'
 import Issue from './pages/Issue'
-import LeftMenu from './components/LeftMenu'
-
-interface MenuContextInterface {
-  showMenu: boolean
-  setShowMenu: (show: boolean) => void
-}
-
-export const MenuContext = createContext(null as MenuContextInterface | null)
+import LeftMenu, { MenuContext } from './components/LeftMenu'
 
 const slideUp = cssTransition({
   enter: 'animate__animated animate__slideInUp',

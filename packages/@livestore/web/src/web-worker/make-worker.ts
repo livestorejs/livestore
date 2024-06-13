@@ -54,7 +54,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     const initialSnapshotRef = { current: undefined as any }
 
     return WorkerRunner.layerSerialized(Request, {
-      InitialMessage: ({ storageOptions, hasLock, needsRecreate, syncOptions }) =>
+      InitialMessage: ({ storageOptions, hasLock, needsRecreate, syncOptions, key }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
 
@@ -89,14 +89,16 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const cursor = yield* Effect.try(
             () =>
               dbLog.dbRef.current.selectValue(
-                sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} ORDER BY id DESC LIMIT 1`,
+                sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
               ) as string | undefined,
           ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
 
           const syncImpl =
             syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
 
-          const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}`)
+          const keySuffix = key ? `-${key}` : ''
+
+          const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}${keySuffix}`)
 
           const makeSync = Effect.gen(function* () {
             if (syncImpl === undefined) return undefined
@@ -112,7 +114,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
             return {
               impl: syncImpl,
-              inititialMessages: syncImpl.pull(cursor).pipe(Stream.orDie),
+              inititialMessages: syncImpl.pull(cursor),
             }
           })
 
@@ -158,7 +160,16 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             if (decodedEvent._tag === 'Some') {
               const { sender, mutationEventEncoded } = decodedEvent.value
               if (sender === 'ui-thread') {
-                applyMutation(mutationEventEncoded, { syncStatus: 'pending', shouldBroadcast: true })
+                // console.log('livestore-webworker: applying mutation from ui-thread', mutationEventEncoded)
+
+                const mutationDef =
+                  schema.mutations.get(mutationEventEncoded.mutation) ??
+                  shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
+
+                applyMutation(mutationEventEncoded, {
+                  syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
+                  shouldBroadcast: true,
+                })
               }
             }
           })
@@ -178,6 +189,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
       GetRecreateSnapshot: () => Effect.sync(() => initialSnapshotRef.current),
       Export: () =>
         Effect.andThen(WorkerCtx, (_) => _.ctx!.db.export).pipe(
+          Effect.withSpan('@livestore/web:worker:Export'),
           Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExportMutationlog: () =>
@@ -230,7 +242,15 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         batchItems = executionItems.slice(offset, offset + 50)
         offset += 50
 
-        // console.debug('livestore-webworker: executing batch', batchItems)
+        // console.group('livestore-webworker: executing batch')
+        // batchItems.forEach((_) => {
+        //   if (_._tag === 'execute') {
+        //     console.log(_.query, _.bindValues)
+        //   } else if (_._tag === 'mutate') {
+        //     console.log(_.mutationEventEncoded.mutation, _.mutationEventEncoded.id, _.mutationEventEncoded.args)
+        //   }
+        // })
+        // console.groupEnd()
 
         for (const item of batchItems) {
           if (item._tag === 'execute') {
@@ -239,7 +259,14 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
-            applyMutation(item.mutationEventEncoded, { syncStatus: 'pending', shouldBroadcast: true })
+            const mutationDef =
+              workerCtx.schema.mutations.get(item.mutationEventEncoded.mutation) ??
+              shouldNeverHappen(`Unknown mutation: ${item.mutationEventEncoded.mutation}`)
+
+            applyMutation(item.mutationEventEncoded, {
+              syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
+              shouldBroadcast: true,
+            })
           } else {
             // TODO handle txn
           }

@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 
 import type { SyncImpl } from '@livestore/common'
+import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, PubSub, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -22,8 +23,11 @@ export const makeWsSync = (wsBaseUrl: string, roomId: string): Effect.Effect<Syn
           yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
           return Stream.fromPubSub(incomingMessages).pipe(
-            Stream.filter(Schema.is(WSMessage.PullRes)),
             Stream.filter((_) => _.requestId === requestId),
+            Stream.tap((_) =>
+              _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
+            ),
+            Stream.filter(Schema.is(WSMessage.PullRes)),
             Stream.takeUntil((_) => _.hasMore === false),
             Stream.map((_) => _.events),
             Stream.flattenIterables,
@@ -35,12 +39,17 @@ export const makeWsSync = (wsBaseUrl: string, roomId: string): Effect.Effect<Syn
       ),
       push: (mutationEventEncoded) =>
         Effect.gen(function* () {
-          const ready = yield* Deferred.make<void>()
+          const ready = yield* Deferred.make<void, InvalidPushError>()
           const requestId = cuid()
 
           yield* Stream.fromPubSub(incomingMessages).pipe(
-            Stream.filter(Schema.is(WSMessage.PushAck)),
             Stream.filter((_) => _.requestId === requestId),
+            Stream.tap((_) =>
+              _._tag === 'WSMessage.Error'
+                ? Deferred.fail(ready, new InvalidPushError({ message: _.message }))
+                : Effect.void,
+            ),
+            Stream.filter(Schema.is(WSMessage.PushAck)),
             Stream.filter((_) => _.mutationId === mutationEventEncoded.id),
             Stream.take(1),
             Stream.tap(() => Deferred.succeed(ready, void 0)),
@@ -82,9 +91,12 @@ const connect = (wsUrl: string) =>
     const innerConnect = Effect.gen(function* () {
       // If the browser already tells us we're offline, then we'll at least wait until the browser
       // thinks we're online again. (We'll only know for sure once the WS conneciton is established.)
-      if (navigator.onLine === false) {
-        yield* Effect.async((cb) => self.addEventListener('online', () => cb(Effect.void)))
+      while (navigator.onLine === false) {
+        yield* Effect.sleep(1000)
       }
+      // if (navigator.onLine === false) {
+      //   yield* Effect.async((cb) => self.addEventListener('online', () => cb(Effect.void)))
+      // }
 
       const ws = new WebSocket(wsUrl)
       const connectionClosed = yield* Deferred.make<void>()

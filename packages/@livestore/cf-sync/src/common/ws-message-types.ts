@@ -57,7 +57,49 @@ export const Pong = Schema.TaggedStruct('WSMessage.Pong', {
 
 export type Pong = typeof Pong.Type
 
-export const Message = Schema.Union(PullReq, PullRes, PushBroadcast, PushReq, PushAck, Error, Ping, Pong)
+export const AdminResetRoomReq = Schema.TaggedStruct('WSMessage.AdminResetRoomReq', {
+  requestId: Schema.String,
+  adminSecret: Schema.String,
+})
+
+export type AdminResetRoomReq = typeof AdminResetRoomReq.Type
+
+export const AdminResetRoomRes = Schema.TaggedStruct('WSMessage.AdminResetRoomRes', {
+  requestId: Schema.String,
+})
+
+export type AdminResetRoomRes = typeof AdminResetRoomRes.Type
+
+export const AdminInfoReq = Schema.TaggedStruct('WSMessage.AdminInfoReq', {
+  requestId: Schema.String,
+  adminSecret: Schema.String,
+})
+
+export type AdminInfoReq = typeof AdminInfoReq.Type
+
+export const AdminInfoRes = Schema.TaggedStruct('WSMessage.AdminInfoRes', {
+  requestId: Schema.String,
+  info: Schema.Struct({
+    durableObjectId: Schema.String,
+  }),
+})
+
+export type AdminInfoRes = typeof AdminInfoRes.Type
+
+export const Message = Schema.Union(
+  PullReq,
+  PullRes,
+  PushBroadcast,
+  PushReq,
+  PushAck,
+  Error,
+  Ping,
+  Pong,
+  AdminResetRoomReq,
+  AdminResetRoomRes,
+  AdminInfoReq,
+  AdminInfoRes,
+)
 export type Message = typeof Message.Type
 export type MessageEncoded = typeof Message.Encoded
 

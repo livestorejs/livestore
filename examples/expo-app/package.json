@@ -9,7 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@effect/schema": "0.67.21",
+    "@effect/schema": "0.67.22",
     "@expo/vector-icons": "^14.0.1",
     "@livestore/devtools-react": "0.0.48-dev.0",
     "@livestore/expo": "workspace:*",

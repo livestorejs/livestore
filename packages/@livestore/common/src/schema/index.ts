@@ -12,7 +12,7 @@ import {
   rawSqlMutation,
 } from './mutations.js'
 import { systemTables } from './system-tables.js'
-import type { TableDef } from './table-def.js'
+import { type TableDef, tableHasDerivedMutations } from './table-def.js'
 
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
@@ -84,7 +84,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   mutations.set(rawSqlMutation.name, rawSqlMutation)
 
   for (const tableDef of tables.values()) {
-    if (tableDef.options.deriveMutations) {
+    if (tableHasDerivedMutations(tableDef)) {
       const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
       mutations.set(derivedMutationDefs.insert.name, derivedMutationDefs.insert)
       mutations.set(derivedMutationDefs.update.name, derivedMutationDefs.update)

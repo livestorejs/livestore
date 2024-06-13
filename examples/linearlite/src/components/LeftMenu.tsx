@@ -2,7 +2,6 @@ import HelpIcon from '../assets/icons/help.svg?react'
 import MenuIcon from '../assets/icons/menu.svg?react'
 // import LiveStoreIcon from '../assets/images/logo.svg?react'
 import BacklogIcon from '../assets/icons/circle-dot.svg?react'
-import { MenuContext } from '../App'
 import classnames from 'classnames'
 import { memo, RefObject, useRef, useState, useContext } from 'react'
 import { BsPencilSquare as AddIcon } from 'react-icons/bs'
@@ -17,6 +16,14 @@ import IssueModal from './IssueModal'
 import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
 import { useFilterState } from '../domain/queries'
+import React from 'react'
+
+interface MenuContextInterface {
+  showMenu: boolean
+  setShowMenu: (show: boolean) => void
+}
+
+export const MenuContext = React.createContext(null as MenuContextInterface | null)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function LeftMenu() {
@@ -154,5 +161,5 @@ function LeftMenu() {
   )
 }
 
-const memoed = memo(LeftMenu)
-export default memoed
+// eslint-disable-next-line react-refresh/only-export-components
+export default memo(LeftMenu)
