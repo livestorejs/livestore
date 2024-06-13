@@ -4,8 +4,8 @@ import type { SqliteDsl } from 'effect-db-schema'
 
 import type { MutationEvent } from './schema/mutations.js'
 import { defineMutation } from './schema/mutations.js'
-import type { TableOptions } from './schema/table-def.js'
-import * as DbSchema from './schema/table-def.js'
+import { getDefaultValuesDecoded } from './schema/schema-helpers.js'
+import type * as DbSchema from './schema/table-def.js'
 import { deleteRows, insertRow, updateRows } from './sql-queries/sql-queries.js'
 
 export const makeDerivedMutationDefsForTable = <
@@ -46,7 +46,7 @@ export const deriveCreateMutationDef = <
     `_Derived_Create_${tableName}`,
     insertSchema,
     ({ id, ...explicitDefaultValues }) => {
-      const defaultValues = DbSchema.getDefaultValuesDecoded(table, explicitDefaultValues)
+      const defaultValues = getDefaultValuesDecoded(table, explicitDefaultValues)
 
       const [sql, bindValues] = insertRow({
         tableName: table.sqliteDef.name,
@@ -123,7 +123,10 @@ export const deriveDeleteMutationDef = <
 /**
  * Convenience helper functions on top of the derived mutation definitions.
  */
-export type DerivedMutationHelperFns<TColumns extends SqliteDsl.ConstraintColumns, TOptions extends TableOptions> = {
+export type DerivedMutationHelperFns<
+  TColumns extends SqliteDsl.ConstraintColumns,
+  TOptions extends DbSchema.TableOptions,
+> = {
   insert: DerivedMutationHelperFns.InsertMutationFn<TColumns, TOptions>
   update: DerivedMutationHelperFns.UpdateMutationFn<TColumns, TOptions>
   delete: DerivedMutationHelperFns.DeleteMutationFn<TColumns, TOptions>
@@ -133,7 +136,7 @@ export type DerivedMutationHelperFns<TColumns extends SqliteDsl.ConstraintColumn
 export namespace DerivedMutationHelperFns {
   export type InsertMutationFn<
     TColumns extends SqliteDsl.ConstraintColumns,
-    TOptions extends TableOptions,
+    TOptions extends DbSchema.TableOptions,
   > = SqliteDsl.AnyIfConstained<
     TColumns,
     UseShortcut<TOptions> extends true
@@ -143,7 +146,7 @@ export namespace DerivedMutationHelperFns {
 
   export type UpdateMutationFn<
     TColumns extends SqliteDsl.ConstraintColumns,
-    TOptions extends TableOptions,
+    TOptions extends DbSchema.TableOptions,
   > = SqliteDsl.AnyIfConstained<
     TColumns,
     UseShortcut<TOptions> extends true
@@ -154,11 +157,12 @@ export namespace DerivedMutationHelperFns {
         }) => MutationEvent.Any
   >
 
-  export type DeleteMutationFn<TColumns extends SqliteDsl.ConstraintColumns, _TOptions extends TableOptions> = (args: {
-    where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>>
-  }) => MutationEvent.Any
+  export type DeleteMutationFn<
+    TColumns extends SqliteDsl.ConstraintColumns,
+    _TOptions extends DbSchema.TableOptions,
+  > = (args: { where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>> }) => MutationEvent.Any
 
-  type UseShortcut<TOptions extends TableOptions> = TOptions['isSingleColumn'] extends true
+  type UseShortcut<TOptions extends DbSchema.TableOptions> = TOptions['isSingleColumn'] extends true
     ? TOptions['isSingleton'] extends true
       ? true
       : false
