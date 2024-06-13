@@ -35,6 +35,12 @@ export type MutationDef<TName extends string, TFrom, TTo> = {
   name: TName
   schema: Schema.Schema<TTo, TFrom>
   sql: MutationDefSqlResult<TTo>
+  options: {
+    /**
+     * When set to true, the mutation won't be synced over the network
+     */
+    localOnly: boolean
+  }
 
   /** Helper function to construct mutation event */
   (args: TTo): { mutation: TName; args: TTo; id: string }
@@ -49,12 +55,19 @@ export const defineMutation = <TName extends string, TFrom, TTo>(
   name: TName,
   schema: Schema.Schema<TTo, TFrom>,
   sql: MutationDefSqlResult<TTo>,
+  options?: {
+    /**
+     * When set to true, the mutation won't be synced over the network
+     */
+    localOnly?: boolean
+  },
 ): MutationDef<TName, TFrom, TTo> => {
   const makeEvent = (args: TTo) => ({ mutation: name, args, id: cuid() })
 
   Object.defineProperty(makeEvent, 'name', { value: name })
   Object.defineProperty(makeEvent, 'schema', { value: schema })
   Object.defineProperty(makeEvent, 'sql', { value: sql })
+  Object.defineProperty(makeEvent, 'options', { value: { localOnly: options?.localOnly ?? false } })
 
   return makeEvent as MutationDef<TName, TFrom, TTo>
 }
@@ -94,8 +107,15 @@ export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   id: string
 }
 
+export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
+  mutation: TMutationsDef['name']
+  args: Schema.Schema.Encoded<TMutationsDef['schema']>
+  id: string
+}
+
 export namespace MutationEvent {
   export type Any = MutationEvent<MutationDef.Any>
+  export type AnyEncoded = MutationEventEncoded<MutationDef.Any>
 
   export type ForSchema<TSchema extends LiveStoreSchema> = {
     [K in keyof TSchema['_MutationDefMapType']]: MutationEvent<TSchema['_MutationDefMapType'][K]>
@@ -137,3 +157,9 @@ export const mutationEventSchemaDecodedAny = Schema.Struct({
   args: Schema.Any,
   id: Schema.String,
 }).annotations({ title: 'MutationEventSchema.DecodedAny' })
+
+export const mutationEventSchemaEncodedAny = Schema.Struct({
+  mutation: Schema.String,
+  args: Schema.Any,
+  id: Schema.String,
+}).annotations({ title: 'MutationEventSchema.EncodedAny' })

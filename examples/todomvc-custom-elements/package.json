@@ -8,16 +8,16 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.67.0",
-    "@livestore/devtools-react": "0.0.47",
+    "@effect/schema": "0.67.22",
+    "@livestore/devtools-react": "0.0.48-dev.0",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
-    "effect": "3.1.3",
+    "effect": "3.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "todomvc-app-css": "^2.4.3",
-    "uuid": "^9.0.1",
+    "uuid": "^10.0.0",
     "workbox-window": "^7.1.0"
   },
   "devDependencies": {
@@ -30,7 +30,7 @@
     "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
-    "vite": "^5.2.11",
+    "vite": "^5.2.13",
     "vite-plugin-pwa": "^0.20.0"
   }
 }

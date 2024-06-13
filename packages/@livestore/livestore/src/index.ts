@@ -34,4 +34,8 @@ export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 export { prepareBindValues, type Bindable, type PreparedBindValues } from './utils/util.js'
 export { isEqual } from 'lodash-es'
 
-export type { DatabaseImpl, DatabaseFactory, PreparedStatement } from '@livestore/common'
+export type {
+  StoreAdapter as DatabaseImpl,
+  StoreAdapterFactory as DatabaseFactory,
+  PreparedStatement,
+} from '@livestore/common'

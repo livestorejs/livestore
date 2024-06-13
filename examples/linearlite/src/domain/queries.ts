@@ -1,4 +1,7 @@
 import { filterStateTable } from './schema'
-import { useRow } from '@livestore/livestore/react'
+import { useLocalId, useRow } from '@livestore/livestore/react'
 
-export const useFilterState = () => useRow(filterStateTable)
+export const useFilterState = () => {
+  const localId = useLocalId()
+  return useRow(filterStateTable, localId)
+}

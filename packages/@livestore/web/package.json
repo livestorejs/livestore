@@ -1,27 +1,19 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.47",
+  "version": "0.0.48-dev.5",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./storage/web-worker": {
-      "types": "./dist/storage/web-worker/index.d.ts",
-      "default": "./dist/storage/web-worker/index.js"
+    "./worker": {
+      "types": "./dist/web-worker/make-worker.d.ts",
+      "default": "./dist/web-worker/make-worker.js"
     },
-    "./storage/web-worker/worker": {
-      "types": "./dist/storage/web-worker/make-worker.d.ts",
-      "default": "./dist/storage/web-worker/make-worker.js"
-    },
-    "./storage/web-worker/vite-dev-polyfill": {
-      "types": "./dist/storage/web-worker/vite-dev-polyfill.d.ts",
-      "default": "./dist/storage/web-worker/vite-dev-polyfill.js"
-    },
-    "./storage/in-memory": {
-      "types": "./dist/storage/in-memory/index.d.ts",
-      "default": "./dist/storage/in-memory/index.js"
+    "./worker-vite-dev-polyfill": {
+      "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
+      "default": "./dist/web-worker/vite-dev-polyfill.js"
     },
     "./sqlite-utils": {
       "types": "./dist/sqlite-utils.d.ts",
@@ -31,17 +23,14 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "storage/web-worker": [
-        "./dist/storage/web-worker/index.d.ts"
+      "adapter/web-worker": [
+        "./dist/web-worker/index.d.ts"
       ],
-      "storage/web-worker/worker": [
-        "./dist/storage/web-worker/make-worker.d.ts"
+      "worker": [
+        "./dist/web-worker/make-worker.d.ts"
       ],
-      "storage/web-worker/vite-dev-polyfill": [
-        "./dist/storage/web-worker/vite-dev-polyfill.d.ts"
-      ],
-      "storage/in-memory": [
-        "./dist/storage/in-memory/index.d.ts"
+      "worker-vite-dev-polyfill": [
+        "./dist/web-worker/vite-dev-polyfill.d.ts"
       ]
     }
   },
@@ -49,10 +38,14 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
+    "@livestore/cf-sync": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.8.0"
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/wicg-file-system-access": "^2023.10.5"
   },
   "publishConfig": {
     "access": "public"

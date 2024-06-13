@@ -94,9 +94,11 @@ export const makePersistedSqliteOpfs = (
           // overwrite the OPFS file with the new data
           const dirHandle = await getOpfsDirHandle(directory)
           const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
-          const writable = await fileHandle.createWritable()
-          await writable.write(data)
-          await writable.close()
+          // NOTE we have to use the sync API here as the async API doesn't yet exist in Safari
+          const writable = await fileHandle.createSyncAccessHandle()
+          writable.write(data)
+          writable.flush()
+          writable.close()
         })
 
         dbRef.current = new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI }

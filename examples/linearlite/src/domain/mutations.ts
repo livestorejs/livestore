@@ -36,26 +36,26 @@ export const createComment = defineMutation(
 
 export const deleteIssue = defineMutation(
   'deleteIssue',
-  Schema.Struct({ id: Schema.String }),
-  sql`DELETE FROM issue WHERE id = $id`,
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE issue SET deleted = $deleted WHERE id = $id`,
 )
 
 export const deleteDescription = defineMutation(
   'deleteDescription',
-  Schema.Struct({ id: Schema.String }),
-  sql`DELETE FROM description WHERE id = $id`,
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE description SET deleted = $deleted WHERE id = $id`,
 )
 
 export const deleteComment = defineMutation(
   'deleteComment',
-  Schema.Struct({ id: Schema.String }),
-  sql`DELETE FROM comment WHERE id = $id`,
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE comment SET deleted = $deleted WHERE id = $id`,
 )
 
 export const deleteCommentsByIssueId = defineMutation(
   'deleteCommentsByIssueId',
-  Schema.Struct({ issueId: Schema.String }),
-  sql`DELETE FROM comment WHERE issueId = $issueId`,
+  Schema.Struct({ issueId: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE comment SET deleted = $deleted WHERE issueId = $issueId`,
 )
 
 export const updateIssue = defineMutation(

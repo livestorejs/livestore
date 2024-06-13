@@ -3,7 +3,8 @@ import type { ReadonlyArray } from '@livestore/utils/effect'
 import { pipe, ReadonlyRecord, Schema, TreeFormatter } from '@livestore/utils/effect'
 import { SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 
-import { type FromColumns, type FromTable, getDefaultValuesDecoded, type TableDef } from './table-def.js'
+import { getDefaultValuesDecoded } from './schema-helpers.js'
+import { type FromColumns, type FromTable, type TableDef } from './table-def.js'
 
 export const many = <TTableDef extends TableDef>(
   table: TTableDef,

@@ -4,14 +4,12 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Unex
   error: Schema.Any,
 }) {}
 
-export const ExecutionBacklogItemExecute = Schema.Struct({
-  _tag: Schema.Literal('execute'),
+export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
   query: Schema.String,
   bindValues: Schema.Any,
 })
 
-export const ExecutionBacklogItemMutate = Schema.Struct({
-  _tag: Schema.Literal('mutate'),
+export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
   mutationEventEncoded: Schema.Struct({
     mutation: Schema.String,
     args: Schema.Any,
@@ -19,8 +17,7 @@ export const ExecutionBacklogItemMutate = Schema.Struct({
   }),
 })
 
-export const ExecutionBacklogItemTxn = Schema.Struct({
-  _tag: Schema.Literal('txn'),
+export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
   items: Schema.Union(ExecutionBacklogItemExecute, ExecutionBacklogItemMutate),
 })
 
@@ -51,11 +48,26 @@ export const StorageTypeIndexeddb = Schema.Struct({
 export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb)
 export type StorageType = Schema.Schema.Type<typeof StorageType>
 
+export const SyncingTypeWebsocket = Schema.Struct({
+  type: Schema.Literal('websocket'),
+  url: Schema.String,
+  roomId: Schema.String,
+})
+
+export const SyncingType = Schema.Union(SyncingTypeWebsocket)
+export type SyncingType = typeof SyncingType.Type
+
 export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
   'InitialMessage',
   UnexpectedError,
   Schema.Void,
-  { storageOptions: StorageType },
+  {
+    storageOptions: StorageType,
+    hasLock: Schema.Boolean,
+    needsRecreate: Schema.Boolean,
+    syncOptions: Schema.optional(SyncingType),
+    key: Schema.UndefinedOr(Schema.String),
+  },
 ) {}
 
 export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {
@@ -63,6 +75,13 @@ export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBul
 }) {}
 
 export class Export extends Schema.TaggedRequest<Export>()('Export', UnexpectedError, Transferable.Uint8Array, {}) {}
+
+export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()(
+  'GetRecreateSnapshot',
+  UnexpectedError,
+  Transferable.Uint8Array,
+  {},
+) {}
 
 export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()(
   'ExportMutationlog',
@@ -73,7 +92,26 @@ export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()
 
 export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedError, Transferable.Uint8Array, {}) {}
 
+export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()(
+  'NetworkStatusStream',
+  UnexpectedError,
+  Schema.Struct({
+    isConnected: Schema.Boolean,
+    timestampMs: Schema.Number,
+  }),
+  {},
+) {}
+
 export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
 
-export const Request = Schema.Union(InitialMessage, ExecuteBulk, Export, ExportMutationlog, Setup, Shutdown)
+export const Request = Schema.Union(
+  InitialMessage,
+  ExecuteBulk,
+  Export,
+  GetRecreateSnapshot,
+  ExportMutationlog,
+  Setup,
+  NetworkStatusStream,
+  Shutdown,
+)
 export type Request = Schema.Schema.Type<typeof Request>

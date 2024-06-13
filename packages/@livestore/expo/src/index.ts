@@ -1,22 +1,17 @@
 import {
-  type DatabaseFactory,
-  type DatabaseImpl,
+  type Coordinator,
   getExecArgsFromMutation,
   initializeSingletonTables,
   type InMemoryDatabase,
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
-  type StorageDatabase,
+  type StoreAdapter,
+  type StoreAdapterFactory,
 } from '@livestore/common'
-import {
-  makeMutationEventSchema,
-  makeSchemaHash,
-  MUTATION_LOG_META_TABLE,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
+import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Effect, Schema, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as SQLite from 'expo-sqlite/next'
 
@@ -25,14 +20,13 @@ export type MakeDbOptions = {
   subDirectory?: string
 }
 
-export const makeDb =
-  (options?: MakeDbOptions): DatabaseFactory =>
+export const makeAdapter =
+  (options?: MakeDbOptions): StoreAdapterFactory =>
   ({ schema }) => {
     const { fileNamePrefix, subDirectory } = options ?? {}
     const migrationOptions = schema.migrationOptions
-    const schemaHash = makeSchemaHash(schema)
     const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
-    const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schemaHash}.db`
+    const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
     const db = SQLite.openDatabaseSync(fullDbFilePath)
 
     const mainDb = makeMainDb(db)
@@ -99,10 +93,16 @@ export const makeDb =
     )
 
     const newMutationLogStmt = mainDbLog.prepare(
-      `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
     )
 
-    const storageDb = {
+    const hasLock = TRef.make(true).pipe(Effect.runSync)
+
+    const syncMutations = Stream.never
+
+    const coordinator = {
+      hasLock,
+      syncMutations,
       execute: async () => {},
       mutate: async (mutationEventEncoded) => {
         if (migrationOptions.strategy !== 'from-mutation-log') return
@@ -130,6 +130,7 @@ export const makeDb =
               argsJson,
               mutationDefSchemaHash,
               new Date().toISOString(),
+              'localOnly',
             ] as any)
           } catch (e) {
             console.error(
@@ -154,9 +155,10 @@ export const makeDb =
       dangerouslyReset: async () => {},
       getMutationLogData: async () => mainDbLog.export(),
       shutdown: async () => {},
-    } satisfies StorageDatabase
+      networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+    } satisfies Coordinator
 
-    return { mainDb, storageDb } satisfies DatabaseImpl
+    return { mainDb, coordinator } satisfies StoreAdapter
   }
 
 const makeMainDb = (db: SQLite.SQLiteDatabase) => {

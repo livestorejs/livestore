@@ -1,7 +1,6 @@
 import { DevtoolsLazy } from '@livestore/devtools-react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
-import { makeDb } from '@livestore/web'
-import { WebWorkerStorage } from '@livestore/web/storage/web-worker'
+import { makeAdapter } from '@livestore/web'
 import { FPSMeter } from '@schickling/fps-meter'
 import React from 'react'
 
@@ -19,12 +18,19 @@ const AppBody: React.FC = () => (
   </section>
 )
 
+const syncing =
+  import.meta.env.VITE_LIVESTORE_SYNC_URL && import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID
+    ? {
+        type: 'websocket' as const,
+        url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
+        roomId: `todomvc-${import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID}`,
+      }
+    : undefined
+
+const adapter = makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, syncing })
+
 export const App: React.FC = () => (
-  <LiveStoreProvider
-    schema={schema}
-    fallback={<div>Loading...</div>}
-    makeDb={makeDb(() => WebWorkerStorage.load({ type: 'opfs', worker: LiveStoreWorker }))}
-  >
+  <LiveStoreProvider schema={schema} fallback={<div>Loading...</div>} adapter={adapter}>
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />
     </div>

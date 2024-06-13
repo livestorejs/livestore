@@ -2,7 +2,6 @@ import MenuIcon from '../assets/icons/menu.svg?react'
 import { useState, useContext } from 'react'
 import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
 import ViewOptionMenu from './ViewOptionMenu'
-import { MenuContext } from '../App'
 import FilterMenu from './contextmenu/FilterMenu'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'
@@ -10,6 +9,7 @@ import { querySQL, sql } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
 import { useFilterState } from '../domain/queries'
 import { Schema } from '@effect/schema'
+import { MenuContext } from './LeftMenu'
 
 interface Props {
   issues: readonly Issue[]

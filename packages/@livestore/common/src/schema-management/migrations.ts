@@ -1,17 +1,55 @@
-import { memoize } from '@livestore/utils'
+import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Schema as EffectSchema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { InMemoryDatabase } from '../database-types.js'
+import type { InMemoryDatabase } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/index.js'
-import type { SchemaMetaRow } from '../schema/system-tables.js'
-import { SCHEMA_META_TABLE, schemaMetaTable, systemTables } from '../schema/system-tables.js'
+import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
+import {
+  SCHEMA_META_TABLE,
+  SCHEMA_MUTATIONS_META_TABLE,
+  schemaMetaTable,
+  schemaMutationsMetaTable,
+  systemTables,
+} from '../schema/system-tables.js'
 import { sql } from '../util.js'
+import type { SchemaManager } from './common.js'
 import { dbExecute, dbSelect } from './common.js'
-import { makeSchemaManager, validateSchema } from './validate-mutation-defs.js'
+import { validateSchema } from './validate-mutation-defs.js'
 
-const getMemoizedTimestamp = memoize(() => new Date().toISOString())
+const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
+
+export const makeSchemaManager = (db: InMemoryDatabase): SchemaManager => {
+  migrateTable({
+    db,
+    otelContext: otel.context.active(),
+    tableAst: schemaMutationsMetaTable.sqliteDef.ast,
+    behaviour: 'create-if-not-exists',
+  })
+
+  return {
+    getMutationDefInfos: () => {
+      const schemaMutationsMetaRows = dbSelect<SchemaMutationsMetaRow>(
+        db,
+        sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`,
+      )
+
+      return schemaMutationsMetaRows
+    },
+    setMutationDefInfo: (info) => {
+      dbExecute(
+        db,
+        sql`INSERT OR REPLACE INTO ${SCHEMA_MUTATIONS_META_TABLE} (mutationName, schemaHash, updatedAt) VALUES ($mutationName, $schemaHash, $updatedAt)`,
+        {
+          mutationName: info.mutationName,
+          schemaHash: info.schemaHash,
+          updatedAt: new Date().toISOString(),
+        },
+      )
+    },
+  }
+}
 
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 export const migrateDb = ({
@@ -112,7 +150,7 @@ const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) =>
   return sql`create ${uniqueStr} index ${index.name} on ${tableName} (${index.columns.join(', ')})`
 }
 
-const makeColumnSpec = (tableAst: SqliteAst.Table) => {
+export const makeColumnSpec = (tableAst: SqliteAst.Table) => {
   const primaryKeys = tableAst.columns.filter((_) => _.primaryKey).map((_) => _.name)
   const columnDefStrs = tableAst.columns.map(toSqliteColumnSpec)
   if (primaryKeys.length > 0) {

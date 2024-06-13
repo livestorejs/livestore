@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import type { Nullable, PrettifyFlat } from 'effect-db-schema'
 import { SqliteDsl } from 'effect-db-schema'
 
@@ -60,9 +60,21 @@ export type TableDef<
   isSingleColumn: TIsSingleColumn
   options: TOptions
   schema: TSchema
-} & (TOptions['deriveMutations'] extends true ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions> : {})
+} & (TOptions['deriveMutations']['enabled'] extends true
+  ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions>
+  : {})
 
-export type TableOptionsInput = Partial<Omit<TableOptions, 'isSingleColumn'> & { indexes: SqliteDsl.Index[] }>
+export type TableOptionsInput = Partial<
+  Omit<TableOptions, 'isSingleColumn' | 'deriveMutations'> & {
+    indexes: SqliteDsl.Index[]
+    deriveMutations:
+      | boolean
+      | {
+          enabled: true
+          localOnly?: boolean
+        }
+  }
+>
 
 export type TableOptions = {
   /**
@@ -89,7 +101,15 @@ export type TableOptions = {
    *
    * Important: When using this option, make sure you're following the "Rules of mutations" for the table schema.
    */
-  deriveMutations: boolean
+  deriveMutations:
+    | { enabled: false }
+    | {
+        enabled: true
+        /**
+         * When set to true, the mutations won't be synced over the network
+         */
+        localOnly: boolean
+      }
   /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
   isSingleColumn: boolean
 }
@@ -121,7 +141,14 @@ export const table = <
     isSingleton: options?.isSingleton ?? false,
     dynamicRegistration: options?.dynamicRegistration ?? false,
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
-    deriveMutations: options?.deriveMutations ?? false,
+    deriveMutations:
+      options?.deriveMutations === true
+        ? { enabled: true as const, localOnly: false }
+        : options?.deriveMutations === false
+          ? { enabled: false as const }
+          : options?.deriveMutations === undefined
+            ? { enabled: false as const }
+            : { enabled: true as const, localOnly: options.deriveMutations.localOnly ?? false },
     isSingleColumn: SqliteDsl.isColumnDefinition(columnOrColumns) === true,
   }
 
@@ -189,57 +216,13 @@ export const table = <
 export const tableHasDerivedMutations = <TTableDef extends TableDef>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & {
-  options: { deriveMutations: true }
+  options: { deriveMutations: { enabled: true; localOnly: boolean } }
 } & DerivedMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> =>
-  tableDef.options.deriveMutations === true
+  tableDef.options.deriveMutations.enabled === true
 
 export const tableIsSingleton = <TTableDef extends TableDef>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
-
-export const getDefaultValuesEncoded = <TTableDef extends TableDef>(
-  tableDef: TTableDef,
-  fallbackValues?: Record<string, any>,
-) =>
-  pipe(
-    tableDef.sqliteDef.columns,
-    ReadonlyRecord.filter((col, key) => {
-      if (fallbackValues?.[key] !== undefined) return true
-      if (key === 'id') return false
-      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
-    }),
-    ReadonlyRecord.map((column, columnName) =>
-      fallbackValues?.[columnName] === undefined
-        ? column!.default._tag === 'None'
-          ? column!.nullable === true
-            ? null
-            : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
-          : Schema.encodeSync(column!.schema)(column!.default.value)
-        : fallbackValues[columnName],
-    ),
-  )
-
-export const getDefaultValuesDecoded = <TTableDef extends TableDef>(
-  tableDef: TTableDef,
-  fallbackValues?: Record<string, any>,
-) =>
-  pipe(
-    tableDef.sqliteDef.columns,
-    ReadonlyRecord.filter((col, key) => {
-      if (fallbackValues?.[key] !== undefined) return true
-      if (key === 'id') return false
-      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
-    }),
-    ReadonlyRecord.map((column, columnName) =>
-      fallbackValues?.[columnName] === undefined
-        ? column!.default._tag === 'None'
-          ? column!.nullable === true
-            ? null
-            : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
-          : Schema.validateSync(column!.schema)(column!.default.value)
-        : fallbackValues[columnName],
-    ),
-  )
 
 type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> = TColumns &
   ('id' extends keyof TColumns
@@ -258,7 +241,16 @@ type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn exten
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   dynamicRegistration: TOptionsInput['dynamicRegistration'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
-  deriveMutations: TOptionsInput['deriveMutations'] extends true ? true : false
+  deriveMutations: TOptionsInput['deriveMutations'] extends true
+    ? { enabled: true; localOnly: boolean }
+    : TOptionsInput['deriveMutations'] extends false
+      ? { enabled: false }
+      : TOptionsInput['deriveMutations'] extends { enabled: true; localOnly?: boolean }
+        ? {
+            enabled: true
+            localOnly: TOptionsInput['deriveMutations']['localOnly'] extends true ? true : false
+          }
+        : never
   isSingleColumn: TIsSingleColumn
 }
 

@@ -1,4 +1,4 @@
-import type { InMemoryDatabase } from '../database-types.js'
+import type { InMemoryDatabase } from '../adapter-types.js'
 import type { ParamsObject } from '../util.js'
 import { prepareBindValues } from '../util.js'
 
@@ -26,4 +26,15 @@ export const dbSelect = <T>(db: InMemoryDatabase, queryStr: string, bindValues?:
   // }
 
   return stmt.select<T>(bindValues ? prepareBindValues(bindValues, queryStr) : undefined)
+}
+
+export interface SchemaManager {
+  getMutationDefInfos: () => ReadonlyArray<MutationDefInfo>
+
+  setMutationDefInfo: (mutationDefInfo: MutationDefInfo) => void
+}
+
+export type MutationDefInfo = {
+  mutationName: string
+  schemaHash: number
 }

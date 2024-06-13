@@ -4,10 +4,10 @@ import IssueBoard from './IssueBoard'
 import { Issue } from '../../types'
 import { querySQL, sql } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
-import { useQuery } from '@livestore/livestore/react'
+import { getLocalId, useQuery } from '@livestore/livestore/react'
 import { parseFilterStateString } from '../../domain/schema'
 
-const filterClause$ = querySQL(`select value from filter_state`, {
+const filterClause$ = querySQL(`select value from filter_state where id = '${getLocalId()}'`, {
   map: ([{ value }]) => (value ? filterStateToWhere(parseFilterStateString(value)) : ''),
 })
 const issues$ = querySQL<Issue[]>((get) => sql`SELECT * FROM issue ${get(filterClause$)} ORDER BY kanbanorder ASC`)

@@ -1,4 +1,4 @@
-import type { BootDb, DatabaseFactory } from '@livestore/common'
+import type { BootDb, StoreAdapterFactory } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
@@ -18,7 +18,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
   otelTracer?: otel.Tracer
   otelRootSpanContext?: otel.Context
   fallback: ReactElement
-  makeDb: DatabaseFactory
+  adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
 }
 
@@ -30,7 +30,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   children,
   schema,
   boot,
-  makeDb,
+  adapter,
   batchUpdates,
 }: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
   const storeCtx = useCreateStore({
@@ -39,7 +39,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
     otelTracer,
     otelRootSpanContext,
     boot,
-    makeDb,
+    adapter,
     batchUpdates,
   })
 
@@ -58,7 +58,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   otelTracer,
   otelRootSpanContext,
   boot,
-  makeDb,
+  adapter,
   batchUpdates,
 }: LiveStoreCreateStoreOptions<GraphQLContext>) => {
   const [_, rerender] = React.useState(0)
@@ -69,7 +69,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     otelTracer,
     otelRootSpanContext,
     boot,
-    makeDb,
+    adapter,
     batchUpdates,
   })
   const oldStoreAlreadyDestroyedRef = React.useRef(false)
@@ -80,7 +80,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     inputPropsCacheRef.current.otelTracer !== otelTracer ||
     inputPropsCacheRef.current.otelRootSpanContext !== otelRootSpanContext ||
     inputPropsCacheRef.current.boot !== boot ||
-    inputPropsCacheRef.current.makeDb !== makeDb ||
+    inputPropsCacheRef.current.adapter !== adapter ||
     inputPropsCacheRef.current.batchUpdates !== batchUpdates
   ) {
     inputPropsCacheRef.current = {
@@ -89,7 +89,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       otelTracer,
       otelRootSpanContext,
       boot,
-      makeDb,
+      adapter,
       batchUpdates,
     }
     ctxValueRef.current?.store.destroy()
@@ -108,7 +108,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           otelTracer,
           otelRootSpanContext,
           boot,
-          makeDb,
+          adapter,
           batchUpdates,
         })
         ctxValueRef.current = { store }
@@ -124,7 +124,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         store?.destroy()
       }
     }
-  }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, makeDb, batchUpdates])
+  }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, adapter, batchUpdates])
 
   return ctxValueRef.current
 }

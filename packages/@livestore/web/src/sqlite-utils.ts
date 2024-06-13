@@ -1,4 +1,4 @@
-export { importBytesToDb } from './storage/utils/sqlite-utils.js'
+export { importBytesToDb } from './utils/sqlite-utils.js'
 
 export * from './make-in-memory-db.js'
 

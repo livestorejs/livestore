@@ -7,6 +7,7 @@ const todos = DbSchema.table('todos', {
   id: DbSchema.text({ primaryKey: true }),
   text: DbSchema.text({ default: '' }),
   completed: DbSchema.boolean({ default: false }),
+  deleted: DbSchema.integer({ nullable: true }),
 })
 
 const app = DbSchema.table(
@@ -15,7 +16,7 @@ const app = DbSchema.table(
     newTodoText: DbSchema.text({ default: '' }),
     filter: DbSchema.text({ schema: Filter, default: 'all' }),
   },
-  { isSingleton: true, deriveMutations: true },
+  { deriveMutations: true },
 )
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>

@@ -1,21 +1,22 @@
 import { Schema } from '@effect/schema'
 import { querySQL, sql } from '@livestore/livestore'
-import { useQuery, useRow, useStore } from '@livestore/livestore/react'
+import { useLocalId, useQuery, useRow, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import { mutations, tables } from '../schema/index.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = querySQL(sql`select count(*) as c from todos where completed = false`, {
+const incompleteCount$ = querySQL(sql`select count(*) as c from todos where completed = false and deleted is null`, {
   map: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
 })
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
-  const [{ filter }] = useRow(tables.app)
+  const localId = useLocalId()
+  const [{ filter }] = useRow(tables.app, localId)
   const incompleteCount = useQuery(incompleteCount$)
 
-  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter }))
+  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter, localId }))
 
   return (
     <footer className="footer">
@@ -37,7 +38,10 @@ export const Footer: React.FC = () => {
           </a>
         </li>
       </ul>
-      <button className="clear-completed" onClick={() => store.mutate(mutations.clearCompleted())}>
+      <button
+        className="clear-completed"
+        onClick={() => store.mutate(mutations.clearCompleted({ deleted: Date.now() }))}
+      >
         Clear completed
       </button>
     </footer>

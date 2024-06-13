@@ -1,5 +1,5 @@
 import { Schema as __Schema } from '@livestore/utils/effect'
-import { makeDb } from '@livestore/web'
+import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
@@ -90,7 +90,7 @@ export const makeTodoMvc = async ({
   const store = await createStore({
     schema,
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
-    makeDb: makeDb(),
+    adapter: makeInMemoryAdapter(),
     dbGraph,
     otelTracer,
     otelRootSpanContext: otelContext,

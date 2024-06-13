@@ -1,3 +1,4 @@
+import type { Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
@@ -9,10 +10,11 @@ export interface PreparedStatement {
   finalize(): void
 }
 
-export type DatabaseImpl = {
+export type StoreAdapter = {
   /** Main thread database (usually in-memory) */
   mainDb: InMemoryDatabase
-  storageDb: StorageDatabase
+  /** The coordinator is responsible for persisting the database, syncing etc */
+  coordinator: Coordinator
 }
 
 export type InMemoryDatabase = {
@@ -25,7 +27,14 @@ export type InMemoryDatabase = {
 
 export type ResetMode = 'all-data' | 'only-app-db'
 
-export type StorageDatabase = {
+export type NetworkStatus = {
+  isConnected: boolean
+  timestampMs: number
+}
+
+export type Coordinator = {
+  hasLock: TRef.TRef<boolean>
+  syncMutations: Stream.Stream<MutationEvent.AnyEncoded>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
   mutate(mutationEventEncoded: MutationEvent.Any, span: otel.Span): Promise<void>
   dangerouslyReset(mode: ResetMode): Promise<void>
@@ -36,6 +45,7 @@ export type StorageDatabase = {
   getInitialSnapshot(): Promise<Uint8Array>
   getMutationLogData(): Promise<Uint8Array>
   shutdown(): Promise<void>
+  networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
 export type GetRowsChangedCount = () => number
@@ -87,8 +97,8 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type DatabaseFactory = (opts: {
+export type StoreAdapterFactory = (opts: {
   otelTracer: otel.Tracer
   otelContext: otel.Context
   schema: LiveStoreSchema
-}) => DatabaseImpl | Promise<DatabaseImpl>
+}) => StoreAdapter | Promise<StoreAdapter>

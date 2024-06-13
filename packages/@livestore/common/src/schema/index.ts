@@ -2,7 +2,7 @@ import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
 import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
 
-import type { MigrationOptions } from '../database-types.js'
+import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
 import {
   type MutationDef,
@@ -12,7 +12,7 @@ import {
   rawSqlMutation,
 } from './mutations.js'
 import { systemTables } from './system-tables.js'
-import type { TableDef } from './table-def.js'
+import { type TableDef, tableHasDerivedMutations } from './table-def.js'
 
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
@@ -30,6 +30,8 @@ export type LiveStoreSchema<
 
   readonly tables: Map<string, TableDef>
   readonly mutations: MutationDefMap
+  /** Compound hash of all table defs etc */
+  readonly hash: number
 
   migrationOptions: MigrationOptions
 }
@@ -82,7 +84,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   mutations.set(rawSqlMutation.name, rawSqlMutation)
 
   for (const tableDef of tables.values()) {
-    if (tableDef.options.deriveMutations) {
+    if (tableHasDerivedMutations(tableDef)) {
       const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
       mutations.set(derivedMutationDefs.insert.name, derivedMutationDefs.insert)
       mutations.set(derivedMutationDefs.update.name, derivedMutationDefs.update)
@@ -90,20 +92,20 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
+  const hash = SqliteAst.hash({
+    _tag: 'dbSchema',
+    tables: [...tables.values()].map((_) => _.sqliteDef.ast),
+  })
+
   return {
     _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
     _MutationDefMapType: Symbol('livestore.MutationDefMapType') as any,
     tables,
     mutations,
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
+    hash,
   } satisfies LiveStoreSchema
 }
-
-export const makeSchemaHash = (schema: LiveStoreSchema) =>
-  SqliteAst.hash({
-    _tag: 'dbSchema',
-    tables: [...schema.tables.values()].map((_) => _.sqliteDef.ast),
-  })
 
 namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<

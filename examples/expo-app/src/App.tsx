@@ -1,4 +1,4 @@
-import { makeDb } from '@livestore/expo'
+import { makeAdapter } from '@livestore/expo'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { StatusBar } from 'expo-status-bar'
@@ -20,7 +20,7 @@ export const App = () => {
         boot={(db) => {
           db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
         }}
-        makeDb={makeDb()}
+        adapter={makeAdapter()}
         // NOTE This is currently necessary to properly batch updates in React Native
         batchUpdates={(run) => unstable_batchedUpdates(() => run())}
       >

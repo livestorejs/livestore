@@ -43,7 +43,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: true; deriveMutations: true }
+      DbSchema.TableOptions & { isSingleton: true; deriveMutations: { enabled: true } }
     >,
   >(
     table: TTableDef,
@@ -53,7 +53,7 @@ export const useRow: {
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
       boolean,
-      DbSchema.TableOptions & { isSingleton: false; deriveMutations: true }
+      DbSchema.TableOptions & { isSingleton: false; deriveMutations: { enabled: true } }
     >,
   >(
     table: TTableDef,
@@ -65,7 +65,7 @@ export const useRow: {
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
     boolean,
-    DbSchema.TableOptions & { deriveMutations: true }
+    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
   table: TTableDef,

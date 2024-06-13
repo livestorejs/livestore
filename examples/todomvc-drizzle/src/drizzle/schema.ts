@@ -6,6 +6,7 @@ export const todos = sqliteTable('todos', {
   id: text('id').primaryKey().notNull(),
   text: text('text').notNull().default(''),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  deleted: integer('deleted'),
 })
 
 export const app = sqliteTable('app', {

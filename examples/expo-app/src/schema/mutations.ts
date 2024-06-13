@@ -23,17 +23,21 @@ export const uncompleteTodo = defineMutation(
 
 export const deleteTodo = defineMutation(
   'deleteTodo',
-  Schema.Struct({ id: Schema.String }),
-  sql`DELETE FROM todos WHERE id = $id`,
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
 )
 
 export const clearCompleted = defineMutation(
   'clearCompleted',
-  Schema.Void,
-  sql`DELETE FROM todos WHERE completed = true`,
+  Schema.Struct({ deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted WHERE completed = true`,
 )
 
-export const clearAll = defineMutation('clearAll', Schema.Void, sql`DELETE FROM todos`)
+export const clearAll = defineMutation(
+  'clearAll',
+  Schema.Struct({ deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted`,
+)
 
 export const updateNewTodoText = defineMutation(
   'updateNewTodoText',

@@ -3,9 +3,9 @@ import IssueList from './IssueList'
 import { ParseUtils, querySQL, sql } from '@livestore/livestore'
 import { parseFilterStateString, tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
-import { useQuery } from '@livestore/livestore/react'
+import { getLocalId, useQuery } from '@livestore/livestore/react'
 
-const filterClause$ = querySQL(`select value from filter_state`, {
+const filterClause$ = querySQL(`select value from filter_state where id = '${getLocalId()}'`, {
   map: ([{ value }]) => {
     if (value === undefined) return ''
     const filterStateObj = parseFilterStateString(value)

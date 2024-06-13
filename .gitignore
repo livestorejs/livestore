@@ -2,6 +2,8 @@ node_modules
 .idea/
 .DS_Store
 
+.envrc.local
+
 tmp*
 dist
 
@@ -15,3 +17,6 @@ dist
 
 # self-signed certs
 /certs
+
+.wrangler
+.vercel

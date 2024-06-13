@@ -18,7 +18,7 @@ export const NewTodo: React.FC = () => {
     const todos = Array.from({ length: 50 }, (_, i) => ({ id: `${idPrefix}-${i}`, text: `Todo ${i}` }))
     store.mutate(...todos.map((todo) => mutations.addTodo(todo)))
   }
-  const reset = () => store.mutate(mutations.clearAll())
+  const reset = () => store.mutate(mutations.clearAll({ deleted: Date.now() }))
 
   return (
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>

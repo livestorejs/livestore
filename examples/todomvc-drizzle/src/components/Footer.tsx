@@ -12,7 +12,7 @@ const incompleteCount$ = queryDrizzle(
     qb
       .select({ c: drizzle.sql<number>`count(*) as c` })
       .from(t.todos)
-      .where(drizzle.eq(t.todos.completed, false)),
+      .where(drizzle.and(drizzle.eq(t.todos.completed, false), drizzle.isNull(t.todos.deleted))),
   {
     map: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
   },
@@ -46,7 +46,10 @@ export const Footer: React.FC = () => {
           </a>
         </li>
       </ul>
-      <button className="clear-completed" onClick={() => store.mutate(mutations.clearCompleted())}>
+      <button
+        className="clear-completed"
+        onClick={() => store.mutate(mutations.clearCompleted({ deleted: Date.now() }))}
+      >
         Clear completed
       </button>
     </footer>

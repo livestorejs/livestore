@@ -11,6 +11,7 @@ export {
   type UseRowResult as UseStateResult,
 } from './useRow.js'
 export { useAtom } from './useAtom.js'
+export { useLocalId, getLocalId } from './useLocalId.js'
 
 export { LiveList, type LiveListProps } from './components/LiveList.js'
 

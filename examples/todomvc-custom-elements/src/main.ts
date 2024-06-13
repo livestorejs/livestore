@@ -4,8 +4,7 @@
 
 import { createStore, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
 import { cuid } from '@livestore/utils/cuid'
-import { makeDb } from '@livestore/web'
-import { WebWorkerStorage } from '@livestore/web/storage/web-worker'
+import { makeAdapter } from '@livestore/web'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'
@@ -18,11 +17,11 @@ export const css = (strings: TemplateStringsArray, ...values: unknown[]) => Stri
 
 const store = await createStore({
   schema,
-  makeDb: makeDb(() => WebWorkerStorage.load({ type: 'opfs', worker: LiveStoreWorker })),
+  adapter: makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker }),
 })
 
 const appState$ = rowQuery(tables.app)
-const todos$ = querySQL(`select * from todos`, { map: ParseUtils.many(tables.todos) })
+const todos$ = querySQL(`select * from todos where deleted is null`, { map: ParseUtils.many(tables.todos) })
 
 const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
 
@@ -40,7 +39,7 @@ const toggleTodo = (todo: Todo) => {
 }
 
 const deleteTodo = (todo: Todo) => {
-  store.mutate(mutations.deleteTodo({ id: todo.id }))
+  store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))
 }
 
 const TodoItemTemplate = html`

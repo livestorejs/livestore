@@ -14,6 +14,7 @@ const issue = DbSchema.table(
     priority: DbSchema.text({ schema: PriorityType, default: Priority.NONE }),
     status: DbSchema.text({ schema: StatusType, default: Status.TODO }),
     created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
+    deleted: DbSchema.integer({ nullable: true }),
     modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
     kanbanorder: DbSchema.text({ nullable: false, default: '' }),
   },
@@ -38,6 +39,7 @@ const description = DbSchema.table(
     // TODO: id is also a foreign key to issue
     id: DbSchema.text({ primaryKey: true }),
     body: DbSchema.text({ default: '' }),
+    deleted: DbSchema.integer({ nullable: true }),
   },
   { deriveMutations: true },
 )
@@ -51,6 +53,7 @@ const comment = DbSchema.table(
     // TODO: issueId is a foreign key to issue
     issueId: DbSchema.text(),
     created: DbSchema.integer(),
+    deleted: DbSchema.integer({ nullable: true }),
   },
   {
     indexes: [{ name: 'issue_id', columns: ['issueId'] }],
@@ -72,7 +75,7 @@ export type FilterState = Schema.Schema.Type<typeof FilterState>
 export const filterStateTable = DbSchema.table(
   'filter_state',
   DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
-  { isSingleton: true, deriveMutations: true },
+  { deriveMutations: true },
 )
 
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
