@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.48-dev.5",
+  "version": "0.0.52",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -35,21 +35,30 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@effect/experimental": "^0.16.24",
-    "@effect/opentelemetry": "^0.34.17",
-    "@effect/platform": "0.57.0",
-    "@effect/platform-browser": "0.36.0",
-    "@effect/schema": "0.67.22",
-    "@opentelemetry/api": "^1.9.0",
     "date-fns": "^3.6.0",
-    "effect": "3.3.1",
     "effect-db-schema": "workspace:*",
     "otel-websocket-exporter": "^0.0.29",
     "pretty-bytes": "^6.1.1"
   },
+  "peerDependencies": {
+    "@effect/experimental": "^0.16.24",
+    "@effect/opentelemetry": "^0.34.17",
+    "@effect/platform": "^0.57.0",
+    "@effect/platform-browser": "^0.36.0",
+    "@effect/schema": "^0.67.22",
+    "@opentelemetry/api": "^1.9.0",
+    "effect": "^3.3.1"
+  },
   "devDependencies": {
+    "@effect/experimental": "0.16.25",
+    "@effect/opentelemetry": "0.34.18",
+    "@effect/platform": "0.57.0",
+    "@effect/platform-browser": "0.36.0",
+    "@effect/schema": "0.67.22",
+    "@opentelemetry/api": "^1.9.0",
     "@types/node": "^20.12.11",
-    "@types/web": "^0.0.148"
+    "@types/web": "^0.0.148",
+    "effect": "3.3.1"
   },
   "publishConfig": {
     "access": "public"

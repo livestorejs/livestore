@@ -15,16 +15,16 @@
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
-    "@livestore/devtools-react": "0.0.48-dev.5",
+    "@livestore/devtools-react": "0.0.52",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {
-    "madge": "^6.1.0",
-    "@effect/language-service": "^0.1.0"
+    "@effect/language-service": "^0.1.0",
+    "madge": "^6.1.0"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.8.0",
-    "@typescript-eslint/parser": "^7.8.0",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
@@ -35,9 +35,9 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unicorn": "^52.0.0",
-    "prettier": "^3.2.5",
+    "prettier": "^3.3.2",
     "prettier-plugin-packagejson": "^2.5.0",
     "typescript": "^5.4.5"
   },
-  "packageManager": "pnpm@9.1.1"
+  "packageManager": "pnpm@9.3.0"
 }

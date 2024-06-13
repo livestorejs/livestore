@@ -18,6 +18,7 @@ export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
 export * as ParseUtils from './parse-utils.js'
 export * from './mutations.js'
+export * from './schema-helpers.js'
 
 export type LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,

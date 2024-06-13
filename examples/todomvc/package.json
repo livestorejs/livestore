@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@effect/schema": "0.67.22",
-    "@livestore/devtools-react": "0.0.48-dev.0",
+    "@livestore/devtools-react": "0.0.48-dev.5",
     "@livestore/livestore": "workspace:*",
     "@livestore/web": "workspace:*",
     "@schickling/fps-meter": "^0.1.2",
