@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --force",
     "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
@@ -14,7 +14,7 @@
     "@effect/schema": "0.67.22",
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^1.7.19",
-    "@livestore/devtools-react": "0.0.48-dev.5",
+    "@livestore/devtools-react": "0.0.52",
     "@livestore/livestore": "workspace:*",
     "@livestore/web": "workspace:*",
     "@schickling/fps-meter": "^0.1.2",
