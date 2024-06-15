@@ -223,5 +223,8 @@ const insertRowWithDefaultValuesOrIgnore = ({
     )
   }
   // NOTE It's important that we only mutate and don't refresh here, as this function is called during a render
-  store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), otelContext)
+  store.mutateWithoutRefresh(table.insert({ id, ...explicitDefaultValues }), {
+    otelContext,
+    coordinatorMode: 'default',
+  })
 }

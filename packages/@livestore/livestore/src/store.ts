@@ -75,6 +75,19 @@ export type StoreOtel = {
 let storeCount = 0
 const uniqueStoreId = () => `store-${++storeCount}`
 
+export type StoreMutateOptions = {
+  label?: string
+  skipRefresh?: boolean
+  wasSyncMessage?: boolean
+  /**
+   * When set to `false` the mutation won't be persisted in the mutation log and sync server (but still synced).
+   * This can be useful e.g. for fine-granular update events (e.g. position updates during drag & drop)
+   *
+   * @default true
+   */
+  persisted?: boolean
+}
+
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
@@ -252,16 +265,16 @@ export class Store<
       txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
     <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(
-      options: { label?: string; skipRefresh?: boolean; wasSyncMessage?: boolean },
+      options: StoreMutateOptions,
       ...list: TMutationArg
     ): void
     (
-      options: { label?: string; skipRefresh?: boolean; wasSyncMessage?: boolean },
+      options: StoreMutateOptions,
       txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
     ): void
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
     let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
-    let options: { label?: string; skipRefresh?: boolean; wasSyncMessage?: boolean } | undefined
+    let options: StoreMutateOptions | undefined
 
     if (typeof firstMutationOrTxnFnOrOptions === 'function') {
       // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
@@ -269,7 +282,8 @@ export class Store<
     } else if (
       firstMutationOrTxnFnOrOptions?.label !== undefined ||
       firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined
+      firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined ||
+      firstMutationOrTxnFnOrOptions?.persisted !== undefined
     ) {
       options = firstMutationOrTxnFnOrOptions
       mutationsEvents = restMutations
@@ -293,6 +307,7 @@ export class Store<
     const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
     const wasSyncMessage = options?.wasSyncMessage ?? false
+    const persisted = options?.persisted ?? true
 
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
     mutationsSpan.addEvent('mutate')
@@ -322,11 +337,11 @@ export class Store<
                 const applyMutations = () => {
                   for (const mutationEvent of mutationsEvents) {
                     try {
-                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(
-                        mutationEvent,
+                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(mutationEvent, {
                         otelContext,
-                        wasSyncMessage,
-                      )
+                        // NOTE if it was a sync message, it's already coming from the coordinator, so we can skip the coordinator
+                        coordinatorMode: wasSyncMessage ? 'skip-coordinator' : persisted ? 'default' : 'skip-persist',
+                      })
                       for (const tableName of writeTablesForEvent) {
                         writeTables.add(tableName)
                       }
@@ -404,8 +419,10 @@ export class Store<
    */
   mutateWithoutRefresh = (
     mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
-    otelContext: otel.Context,
-    skipCoordinator: boolean = false,
+    options: {
+      otelContext: otel.Context
+      coordinatorMode: 'default' | 'skip-coordinator' | 'skip-persist'
+    },
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
     // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
     // e.g. the row-query functionality
@@ -415,6 +432,8 @@ export class Store<
     } else {
       this.__processedMutationWithoutRefreshIds.add(mutationEventDecoded.id)
     }
+
+    const { otelContext, coordinatorMode = 'default' } = options
 
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutatetWithoutRefresh',
@@ -452,9 +471,12 @@ export class Store<
 
         const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationEventSchema)(mutationEventDecoded)
 
-        if (skipCoordinator === false) {
+        if (coordinatorMode !== 'skip-coordinator') {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          void this.adapter.coordinator.mutate(mutationEventEncoded, span)
+          void this.adapter.coordinator.mutate(mutationEventEncoded, {
+            span,
+            persisted: coordinatorMode !== 'skip-persist',
+          })
         }
 
         // Uncomment to print a list of queries currently registered on the store
@@ -579,7 +601,7 @@ export const createStore = async <
               }
 
               const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
-              void adapter.coordinator.mutate(mutationEventEncoded, span)
+              void adapter.coordinator.mutate(mutationEventEncoded, { span, persisted: true })
             }
           },
           select: (queryStr, bindValues) => {

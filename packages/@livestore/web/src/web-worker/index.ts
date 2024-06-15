@@ -183,19 +183,25 @@ const makeCoordinator =
 
         execute: async (query, bindValues) => {
           if (hasLock) {
-            await Queue.offer(executionBacklogQueue, { _tag: 'execute', query, bindValues }).pipe(Effect.runPromise)
+            await Queue.offer(
+              executionBacklogQueue,
+              WorkerSchema.ExecutionBacklogItemExecute.make({ query, bindValues }),
+            ).pipe(Effect.runPromise)
           } else {
             console.warn(`TODO: implement execute without lock`, query, bindValues)
           }
         },
 
-        mutate: async (mutationEventEncoded) => {
+        mutate: async (mutationEventEncoded, { persisted }) => {
           if (hasLock) {
-            await Queue.offer(executionBacklogQueue, { _tag: 'mutate', mutationEventEncoded }).pipe(Effect.runPromise)
+            await Queue.offer(
+              executionBacklogQueue,
+              WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
+            ).pipe(Effect.runPromise)
           } else {
             broadcastChannel.postMessage(
               Schema.encodeSync(BCMessage.Message)(
-                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread' }),
+                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread', persisted }),
               ),
             )
           }

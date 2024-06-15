@@ -36,7 +36,7 @@ export type Coordinator = {
   hasLock: TRef.TRef<boolean>
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
-  mutate(mutationEventEncoded: MutationEvent.Any, span: otel.Span): Promise<void>
+  mutate(mutationEventEncoded: MutationEvent.Any, options: { span: otel.Span; persisted: boolean }): Promise<void>
   dangerouslyReset(mode: ResetMode): Promise<void>
   export(span: otel.Span | undefined): Promise<Uint8Array | undefined>
   /**

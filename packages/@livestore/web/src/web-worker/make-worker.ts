@@ -146,8 +146,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           if (syncImpl !== undefined) {
             // TODO try to do this in a batched-way if possible
             yield* syncImpl.pushes.pipe(
-              Stream.tapSync((mutationEventEncoded) =>
-                applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true }),
+              Stream.tapSync(({ mutationEventEncoded, persisted }) =>
+                applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true, persisted }),
               ),
               Stream.runDrain,
               Effect.tapCauseLogPretty,
@@ -158,7 +158,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           broadcastChannel.addEventListener('message', (event) => {
             const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)
             if (decodedEvent._tag === 'Some') {
-              const { sender, mutationEventEncoded } = decodedEvent.value
+              const { sender, mutationEventEncoded, persisted } = decodedEvent.value
               if (sender === 'ui-thread') {
                 // console.log('livestore-webworker: applying mutation from ui-thread', mutationEventEncoded)
 
@@ -169,6 +169,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                 applyMutation(mutationEventEncoded, {
                   syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
                   shouldBroadcast: true,
+                  persisted,
                 })
               }
             }
@@ -266,6 +267,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
             applyMutation(item.mutationEventEncoded, {
               syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
               shouldBroadcast: true,
+              persisted: item.persisted,
             })
           } else {
             // TODO handle txn

@@ -93,7 +93,9 @@ export class WebSocketServer extends DurableObject<Env> {
       case 'WSMessage.PushReq': {
         // NOTE we're currently not blocking on this to allow broadcasting right away
         // however we should do some mutation validation first (e.g. checking parent event id)
-        const storePromise = this.storage.appendEvent(decodedMessage.mutationEventEncoded)
+        const storePromise = decodedMessage.persisted
+          ? this.storage.appendEvent(decodedMessage.mutationEventEncoded)
+          : Promise.resolve()
 
         ws.send(
           encodeMessage(WSMessage.PushAck.make({ mutationId: decodedMessage.mutationEventEncoded.id, requestId })),
@@ -105,7 +107,11 @@ export class WebSocketServer extends DurableObject<Env> {
 
         if (connectedClients.length > 0) {
           const broadcastMessage = encodeMessage(
-            WSMessage.PushBroadcast.make({ mutationEventEncoded: decodedMessage.mutationEventEncoded, requestId }),
+            WSMessage.PushBroadcast.make({
+              mutationEventEncoded: decodedMessage.mutationEventEncoded,
+              requestId,
+              persisted: decodedMessage.persisted,
+            }),
           )
 
           for (const conn of connectedClients) {

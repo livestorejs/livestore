@@ -35,9 +35,9 @@ export const makeWsSync = (wsBaseUrl: string, roomId: string): Effect.Effect<Syn
         }).pipe(Stream.unwrap),
       pushes: Stream.fromPubSub(incomingMessages).pipe(
         Stream.filter(Schema.is(WSMessage.PushBroadcast)),
-        Stream.map((_) => _.mutationEventEncoded),
+        Stream.map((_) => ({ mutationEventEncoded: _.mutationEventEncoded, persisted: _.persisted })),
       ),
-      push: (mutationEventEncoded) =>
+      push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
           const ready = yield* Deferred.make<void, InvalidPushError>()
           const requestId = cuid()
@@ -58,7 +58,7 @@ export const makeWsSync = (wsBaseUrl: string, roomId: string): Effect.Effect<Syn
             Effect.fork,
           )
 
-          yield* send(WSMessage.PushReq.make({ mutationEventEncoded, requestId }))
+          yield* send(WSMessage.PushReq.make({ mutationEventEncoded, requestId, persisted }))
 
           yield* Deferred.await(ready)
         }),

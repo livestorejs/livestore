@@ -99,7 +99,11 @@ export const makeApplyMutation = (
 
   return (
     mutationEventEncoded: MutationEvent.Any,
-    { syncStatus, shouldBroadcast }: { syncStatus: SyncStatus; shouldBroadcast: boolean },
+    {
+      syncStatus,
+      shouldBroadcast,
+      persisted,
+    }: { syncStatus: SyncStatus; shouldBroadcast: boolean; persisted: boolean },
   ) => {
     if (workerCtx._tag === 'NoLock') return
     const schema = workerCtx.schema
@@ -127,7 +131,8 @@ export const makeApplyMutation = (
     // console.groupEnd()
 
     // write to mutation_log
-    if (shouldExcludeMutationFromLog(mutationName, mutationEventDecoded) === false) {
+    const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
+    if (persisted && excludeFromMutationLogAndSyncing === false) {
       const mutationDefSchemaHash =
         mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
@@ -146,35 +151,40 @@ export const makeApplyMutation = (
           },
         }),
       )
-
-      if (shouldBroadcast) {
-        broadcastChannel.postMessage(
-          Schema.encodeSync(BCMessage.Message)(
-            BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker' }),
-          ),
-        )
-      }
-
-      // TODO do this via a batched queue
-      if (mutationDef.options.localOnly === false && sync !== undefined && syncStatus === 'pending') {
-        Effect.gen(function* () {
-          if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
-
-          yield* sync.impl.push(mutationEventEncoded)
-
-          execSql(
-            dbLog.dbRef.current,
-            ...updateRows({
-              tableName: MUTATION_LOG_META_TABLE,
-              columns: mutationLogMetaTable.sqliteDef.columns,
-              where: { id: mutationEventEncoded.id },
-              updateValues: { syncStatus: 'synced' },
-            }),
-          )
-        }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
-      }
     } else {
       //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
+    }
+
+    if (shouldBroadcast) {
+      broadcastChannel.postMessage(
+        Schema.encodeSync(BCMessage.Message)(
+          BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }),
+        ),
+      )
+    }
+
+    // TODO do this via a batched queue
+    if (
+      excludeFromMutationLogAndSyncing === false &&
+      mutationDef.options.localOnly === false &&
+      sync !== undefined &&
+      syncStatus === 'pending'
+    ) {
+      Effect.gen(function* () {
+        if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
+
+        yield* sync.impl.push(mutationEventEncoded, persisted)
+
+        execSql(
+          dbLog.dbRef.current,
+          ...updateRows({
+            tableName: MUTATION_LOG_META_TABLE,
+            columns: mutationLogMetaTable.sqliteDef.columns,
+            where: { id: mutationEventEncoded.id },
+            updateValues: { syncStatus: 'synced' },
+          }),
+        )
+      }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
     }
   }
 }

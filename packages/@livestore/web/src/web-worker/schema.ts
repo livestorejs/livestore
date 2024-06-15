@@ -15,6 +15,7 @@ export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
     args: Schema.Any,
     id: Schema.String,
   }),
+  persisted: Schema.Boolean,
 })
 
 export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {

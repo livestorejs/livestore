@@ -115,7 +115,7 @@ export const fetchAndApplyRemoteMutations = (
     // probably using the SQLite session extension
     yield* sync.inititialMessages.pipe(
       Stream.tapSync((mutationEventEncoded) =>
-        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast }),
+        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast, persisted: true }),
       ),
       Stream.runDrain,
     )

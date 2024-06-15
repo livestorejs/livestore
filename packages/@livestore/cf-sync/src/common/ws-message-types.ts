@@ -22,6 +22,7 @@ export type PullRes = typeof PullRes.Type
 export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
   requestId: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
+  persisted: Schema.Boolean,
 })
 
 export type PushBroadcast = typeof PushBroadcast.Type
@@ -29,6 +30,7 @@ export type PushBroadcast = typeof PushBroadcast.Type
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
+  persisted: Schema.Boolean,
 })
 
 export type PushReq = typeof PushReq.Type

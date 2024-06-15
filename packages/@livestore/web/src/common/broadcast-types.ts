@@ -6,6 +6,7 @@ export const Broadcast = Schema.TaggedStruct('BC.Broadcast', {
   sender: Schema.Literal('leader-worker', 'ui-thread'),
   ref: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
+  persisted: Schema.Boolean,
 })
 
 export type Broadcast = typeof Broadcast.Type

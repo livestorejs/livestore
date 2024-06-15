@@ -104,7 +104,7 @@ export const makeAdapter =
       hasLock,
       syncMutations,
       execute: async () => {},
-      mutate: async (mutationEventEncoded) => {
+      mutate: async (mutationEventEncoded, { persisted }) => {
         if (migrationOptions.strategy !== 'from-mutation-log') return
 
         const mutation = mutationEventEncoded.mutation
@@ -115,6 +115,7 @@ export const makeAdapter =
 
         // write to mutation_log
         if (
+          persisted === true &&
           mutationLogExclude.has(mutation) === false &&
           execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
         ) {

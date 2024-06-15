@@ -9,9 +9,9 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@effect/schema": "0.67.22",
+    "@effect/schema": "0.67.23",
     "@expo/vector-icons": "^14.0.1",
-    "@livestore/devtools-react": "0.0.52",
+    "@livestore/devtools-react": "0.0.53",
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "babel-preset-expo": "^11.0.5",

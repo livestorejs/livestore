@@ -1,5 +1,5 @@
-import { type Coordinator, initializeSingletonTables, migrateDb, type PreparedBindValues } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import { type Coordinator, initializeSingletonTables, migrateDb } from '@livestore/common'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
@@ -18,12 +18,6 @@ const sqlite3Promise = sqlite3InitModule({
 export const makeInMemoryAdapter = () => makeAdapterFactory(({ schema }) => Effect.succeed(makeCoordinator(schema)))
 
 const makeCoordinator = (schema: LiveStoreSchema): Coordinator => {
-  const execute = async (_query: string, _bindValues?: PreparedBindValues) => {}
-
-  const mutate = async (_mutationEventEncoded: MutationEvent.Any, _parentSpan?: otel.Span | undefined) => {}
-
-  const exportData = async () => undefined
-
   const getInitialSnapshot = () =>
     Effect.gen(function* ($) {
       const sqlite3 = yield* $(Effect.tryPromise(() => sqlite3Promise))
@@ -52,9 +46,9 @@ const makeCoordinator = (schema: LiveStoreSchema): Coordinator => {
   return {
     hasLock,
     syncMutations,
-    execute,
-    mutate,
-    export: exportData,
+    execute: async () => {},
+    mutate: async () => {},
+    export: async () => undefined,
     getInitialSnapshot,
     getMutationLogData,
     dangerouslyReset,
