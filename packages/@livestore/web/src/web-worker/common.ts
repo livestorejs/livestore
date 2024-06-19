@@ -1,5 +1,6 @@
 import type { InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
 import {
+  Devtools,
   getExecArgsFromMutation,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
@@ -74,6 +75,7 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
         mutationEventSchema: MutationEventSchema<any>
         mutationDefSchemaHashMap: Map<string, number>
         broadcastChannel: BroadcastChannel
+        devtoolsChannel: BroadcastChannel
         sync:
           | {
               impl: SyncImpl
@@ -107,7 +109,8 @@ export const makeApplyMutation = (
   ) => {
     if (workerCtx._tag === 'NoLock') return
     const schema = workerCtx.schema
-    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, sync } = workerCtx.ctx
+    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtoolsChannel, sync } =
+      workerCtx.ctx
     const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
     const mutationName = mutationEventDecoded.mutation
@@ -160,6 +163,10 @@ export const makeApplyMutation = (
         Schema.encodeSync(BCMessage.Message)(
           BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }),
         ),
+      )
+
+      devtoolsChannel.postMessage(
+        Schema.encodeSync(Devtools.Message)(Devtools.MutationBroadcast.make({ mutationEventEncoded })),
       )
     }
 

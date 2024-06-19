@@ -10,6 +10,17 @@ import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './schema/index.js'
 
+// console.log('schemaUrl', new URL('./schema/index.ts', import.meta.url).toString())
+
+// const url = new URL('./schema/index.ts', import.meta.url)
+// console.log('Chunk URL:', url.href)
+
+// const x = import(url.href)
+// console.log('x', x)
+
+// @ts-expect-error xxx
+window._schema = schema
+
 const AppBody: React.FC = () => (
   <section className="todoapp">
     <Header />
@@ -35,6 +46,6 @@ export const App: React.FC = () => (
       <FPSMeter height={40} />
     </div>
     <AppBody />
-    <DevtoolsLazy schema={schema} />
+    {/* <DevtoolsLazy schema={schema} /> */}
   </LiveStoreProvider>
 )

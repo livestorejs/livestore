@@ -22,6 +22,6 @@ export const Root = () => (
   <LiveStoreProvider schema={schema} adapter={adapter} fallback={<div>Loading ...</div>} boot={seed}>
     <FPSMeter className="absolute left-1/2 z-50 top-0 bg-black/30" height={40} />
     <App />
-    <DevtoolsLazy schema={schema} />
+    {/* <DevtoolsLazy schema={schema} /> */}
   </LiveStoreProvider>
 )

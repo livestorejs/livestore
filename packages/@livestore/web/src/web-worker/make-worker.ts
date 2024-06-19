@@ -1,5 +1,5 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
-import { sql } from '@livestore/common'
+import { Devtools, sql } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
@@ -120,6 +120,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const sync = yield* makeSync
 
+          const devtoolsChannel = Devtools.makeBc()
+
           const workerCtx = {
             _tag: 'HasLock',
             storageOptions,
@@ -131,6 +133,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               mutationDefSchemaHashMap,
               mutationEventSchema,
               broadcastChannel,
+              devtoolsChannel,
               sync,
             },
           } satisfies Context.Tag.Service<WorkerCtx>
@@ -173,6 +176,45 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                 })
               }
             }
+          })
+
+          devtoolsChannel.addEventListener('message', (event) => {
+            console.log('livestore-webworker: devtools message', event)
+            Effect.gen(function* () {
+              const decodedEvent = Schema.decodeUnknownOption(Devtools.Message)(event.data)
+              if (decodedEvent._tag === 'None') {
+                console.log(`Unknown message`, event)
+                return
+              }
+              switch (decodedEvent.value._tag) {
+                case 'LSD.SnapshotReq': {
+                  const data = yield* db.export
+
+                  devtoolsChannel.postMessage(
+                    Schema.encodeSync(Devtools.Message)(Devtools.SnapshotRes.make({ snapshot: data })),
+                  )
+
+                  break
+                }
+                case 'LSD.SerializedSchemaReq': {
+                  devtoolsChannel.postMessage(
+                    Schema.encodeSync(Devtools.Message)(Devtools.SerializedSchemaRes.make({ schema })),
+                  )
+
+                  break
+                }
+                case 'LSD.MutationLogReq': {
+                  const mutationLog = yield* dbLog.export
+
+                  devtoolsChannel.postMessage(
+                    Schema.encodeSync(Devtools.Message)(Devtools.MutationLogRes.make({ mutationLog })),
+                  )
+
+                  break
+                }
+                // No default
+              }
+            }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
           })
 
           return Layer.succeed(WorkerCtx, workerCtx)

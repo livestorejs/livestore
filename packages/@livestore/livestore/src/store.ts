@@ -1,5 +1,5 @@
 import type { BootDb, PreparedBindValues, ResetMode, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
-import { getExecArgsFromMutation } from '@livestore/common'
+import { Devtools, getExecArgsFromMutation } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
@@ -116,7 +116,7 @@ export class Store<
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
-  private mutationEventSchema
+  readonly __mutationEventSchema
 
   private constructor({
     adapter,
@@ -132,7 +132,7 @@ export class Store<
     this.schema = schema
 
     // TODO refactor
-    this.mutationEventSchema = mutationEventSchema
+    this.__mutationEventSchema = mutationEventSchema
     // this.mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
@@ -156,6 +156,67 @@ export class Store<
       Effect.tapCauseLogPretty,
       Effect.runFork,
     )
+
+    const devtoolsChannel = Devtools.makeBc()
+
+    devtoolsChannel.postMessage(
+      Schema.encodeSync(Devtools.Message)(
+        Devtools.SubscribeSignalsRes.make({
+          signals: this.graph.getSnapshot({ includeResults: true }),
+        }),
+      ),
+    )
+
+    let alreadySubscribedToSignals = false
+    let alreadySubscribedToLiveQueries = false
+    devtoolsChannel.addEventListener('message', (event) => {
+      const decoded = Schema.decodeUnknownOption(Devtools.Message)(event.data)
+      if (decoded._tag === 'None') {
+        console.log(`Unknown message`, event)
+        return
+      }
+
+      if (decoded.value._tag === 'LSD.SubscribeSignalsReq') {
+        const includeResults = decoded.value.includeResults
+        const send = () =>
+          devtoolsChannel.postMessage(
+            Schema.encodeSync(Devtools.Message)(
+              Devtools.SubscribeSignalsRes.make({ signals: this.graph.getSnapshot({ includeResults }) }),
+            ),
+          )
+
+        send()
+
+        if (!alreadySubscribedToSignals) {
+          this.graph.subscribeToRefresh(() => send())
+          alreadySubscribedToSignals = true
+        }
+      } else if (decoded.value._tag === 'LSD.SubscribeLiveQueriesReq') {
+        const send = () =>
+          devtoolsChannel.postMessage(
+            Schema.encodeSync(Devtools.Message)(
+              Devtools.SubscribeLiveQueriesRes.make({
+                liveQueries: [...this.activeQueries].map((q) => ({
+                  _tag: q._tag,
+                  id: q.id,
+                  label: q.label,
+                  runs: q.runs,
+                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
+                  lastestResult: q.results$.previousResult,
+                  activeSubscriptions: Array.from(q.activeSubscriptions),
+                })),
+              }),
+            ),
+          )
+
+        send()
+
+        if (!alreadySubscribedToLiveQueries) {
+          this.graph.subscribeToRefresh(() => send())
+          alreadySubscribedToLiveQueries = true
+        }
+      }
+    })
 
     this.otel = {
       tracer: otelTracer,
@@ -469,7 +530,7 @@ export class Store<
           writeTables.forEach((table) => allWriteTables.add(table))
         }
 
-        const mutationEventEncoded = Schema.encodeUnknownSync(this.mutationEventSchema)(mutationEventDecoded)
+        const mutationEventEncoded = Schema.encodeUnknownSync(this.__mutationEventSchema)(mutationEventDecoded)
 
         if (coordinatorMode !== 'skip-coordinator') {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)

@@ -36,6 +36,12 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
+    minify: false,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => (id.endsWith('/schema/index.ts') ? 'schema' : undefined),
+      },
+    },
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {

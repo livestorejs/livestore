@@ -5,7 +5,8 @@
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "vite --force"
+    "dev": "vite --force",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@effect/schema": "0.67.23",

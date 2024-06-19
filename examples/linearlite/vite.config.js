@@ -22,6 +22,13 @@ export default defineConfig({
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/sqlite-wasm', '@livestore/devtools-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => (id.endsWith('/schema/index.ts') ? 'schema' : undefined),
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
