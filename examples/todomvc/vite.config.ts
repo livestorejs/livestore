@@ -34,15 +34,10 @@ export default defineConfig({
   preview: {
     headers: credentiallessHeaders,
   },
-  build: {
-    sourcemap: true,
-    minify: false,
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => (id.endsWith('/schema/index.ts') ? 'schema' : undefined),
-      },
-    },
-  },
+  // build: {
+  //   sourcemap: true,
+  //   minify: false,
+  // },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427

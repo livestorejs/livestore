@@ -166,7 +166,9 @@ export const makeApplyMutation = (
       )
 
       devtoolsChannel.postMessage(
-        Schema.encodeSync(Devtools.Message)(Devtools.MutationBroadcast.make({ mutationEventEncoded })),
+        Schema.encodeSync(Devtools.MessageFromAppHost)(
+          Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, requestId: 'unused' }),
+        ),
       )
     }
 

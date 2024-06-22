@@ -159,42 +159,39 @@ export class Store<
 
     const devtoolsChannel = Devtools.makeBc()
 
-    devtoolsChannel.postMessage(
-      Schema.encodeSync(Devtools.Message)(
-        Devtools.SubscribeSignalsRes.make({
-          signals: this.graph.getSnapshot({ includeResults: true }),
-        }),
-      ),
-    )
-
     let alreadySubscribedToSignals = false
     let alreadySubscribedToLiveQueries = false
-    devtoolsChannel.addEventListener('message', (event) => {
-      const decoded = Schema.decodeUnknownOption(Devtools.Message)(event.data)
+    devtoolsChannel.addEventListener('message', async (event) => {
+      const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
       if (decoded._tag === 'None') {
         console.log(`Unknown message`, event)
         return
       }
 
-      if (decoded.value._tag === 'LSD.SubscribeSignalsReq') {
-        const includeResults = decoded.value.includeResults
-        const send = () =>
-          devtoolsChannel.postMessage(
-            Schema.encodeSync(Devtools.Message)(
-              Devtools.SubscribeSignalsRes.make({ signals: this.graph.getSnapshot({ includeResults }) }),
-            ),
-          )
+      const requestId = decoded.value.requestId
+      const sendToDevtools = (message: Devtools.MessageFromAppHost) =>
+        devtoolsChannel.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
 
-        send()
+      switch (decoded.value._tag) {
+        case 'LSD.SubscribeSignalsReq': {
+          const includeResults = decoded.value.includeResults
+          const send = () =>
+            sendToDevtools(
+              Devtools.SubscribeSignalsRes.make({ signals: this.graph.getSnapshot({ includeResults }), requestId }),
+            )
 
-        if (!alreadySubscribedToSignals) {
-          this.graph.subscribeToRefresh(() => send())
-          alreadySubscribedToSignals = true
+          send()
+
+          if (!alreadySubscribedToSignals) {
+            this.graph.subscribeToRefresh(() => send())
+            alreadySubscribedToSignals = true
+          }
+
+          break
         }
-      } else if (decoded.value._tag === 'LSD.SubscribeLiveQueriesReq') {
-        const send = () =>
-          devtoolsChannel.postMessage(
-            Schema.encodeSync(Devtools.Message)(
+        case 'LSD.SubscribeLiveQueriesReq': {
+          const send = () =>
+            sendToDevtools(
               Devtools.SubscribeLiveQueriesRes.make({
                 liveQueries: [...this.activeQueries].map((q) => ({
                   _tag: q._tag,
@@ -205,16 +202,26 @@ export class Store<
                   lastestResult: q.results$.previousResult,
                   activeSubscriptions: Array.from(q.activeSubscriptions),
                 })),
+                requestId,
               }),
-            ),
-          )
+            )
 
-        send()
+          send()
 
-        if (!alreadySubscribedToLiveQueries) {
-          this.graph.subscribeToRefresh(() => send())
-          alreadySubscribedToLiveQueries = true
+          if (!alreadySubscribedToLiveQueries) {
+            this.graph.subscribeToRefresh(() => send())
+            alreadySubscribedToLiveQueries = true
+          }
+
+          break
         }
+        case 'LSD.ResetAllDataReq': {
+          await this.adapter.coordinator.dangerouslyReset(decoded.value.mode)
+          sendToDevtools(Devtools.ResetAllDataRes.make({ requestId }))
+
+          break
+        }
+        // No default
       }
     })
 

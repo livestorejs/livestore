@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { VitePWA } from 'vite-plugin-pwa'
+import process from 'node:process'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -20,14 +21,7 @@ export default defineConfig({
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/sqlite-wasm', '@livestore/devtools-react'],
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => (id.endsWith('/schema/index.ts') ? 'schema' : undefined),
-      },
-    },
+    exclude: ['@livestore/sqlite-wasm'],
   },
   plugins: [
     react(),

@@ -5,7 +5,7 @@
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "vite",
+    "dev": "vite --force",
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {

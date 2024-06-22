@@ -1,4 +1,3 @@
-import { DevtoolsLazy } from '@livestore/devtools-react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { makeAdapter } from '@livestore/web'
 import { FPSMeter } from '@schickling/fps-meter'
@@ -28,6 +27,5 @@ export const App: React.FC = () => (
       <FPSMeter height={40} />
     </div>
     <AppBody />
-    <DevtoolsLazy schema={schema} />
   </LiveStoreProvider>
 )

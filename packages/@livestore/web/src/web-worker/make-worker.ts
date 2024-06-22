@@ -179,36 +179,40 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           })
 
           devtoolsChannel.addEventListener('message', (event) => {
-            console.log('livestore-webworker: devtools message', event)
             Effect.gen(function* () {
-              const decodedEvent = Schema.decodeUnknownOption(Devtools.Message)(event.data)
+              const decodedEvent = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
               if (decodedEvent._tag === 'None') {
                 console.log(`Unknown message`, event)
                 return
               }
+              // console.log('livestore-webworker: devtools message', decodedEvent)
+              const { requestId } = decodedEvent.value
+
+              const respond = (msg: Devtools.MessageFromAppHost) => {
+                devtoolsChannel.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(msg))
+              }
+
               switch (decodedEvent.value._tag) {
+                case 'LSD.AppHostReadyReq': {
+                  respond(Devtools.AppHostReadyRes.make({ requestId }))
+                  break
+                }
                 case 'LSD.SnapshotReq': {
                   const data = yield* db.export
 
-                  devtoolsChannel.postMessage(
-                    Schema.encodeSync(Devtools.Message)(Devtools.SnapshotRes.make({ snapshot: data })),
-                  )
+                  respond(Devtools.SnapshotRes.make({ snapshot: data, requestId }))
 
                   break
                 }
                 case 'LSD.SerializedSchemaReq': {
-                  devtoolsChannel.postMessage(
-                    Schema.encodeSync(Devtools.Message)(Devtools.SerializedSchemaRes.make({ schema })),
-                  )
+                  respond(Devtools.SerializedSchemaRes.make({ schema, requestId }))
 
                   break
                 }
                 case 'LSD.MutationLogReq': {
                   const mutationLog = yield* dbLog.export
 
-                  devtoolsChannel.postMessage(
-                    Schema.encodeSync(Devtools.Message)(Devtools.MutationLogRes.make({ mutationLog })),
-                  )
+                  respond(Devtools.MutationLogRes.make({ mutationLog, requestId }))
 
                   break
                 }
