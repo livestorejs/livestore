@@ -3,7 +3,7 @@ export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason } from './store.
 
 export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
 
-export { MainDatabaseWrapper, type DebugInfo, emptyDebugInfo } from './MainDatabaseWrapper.js'
+export { MainDatabaseWrapper, emptyDebugInfo } from './MainDatabaseWrapper.js'
 
 export type {
   GetAtom,
@@ -27,7 +27,7 @@ export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 
 export * from '@livestore/common/schema'
-export { sql, type BootDb, type InMemoryDatabase } from '@livestore/common'
+export { sql, type BootDb, type InMemoryDatabase, type DebugInfo, type MutableDebugInfo } from '@livestore/common'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 

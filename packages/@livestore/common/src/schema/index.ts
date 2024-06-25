@@ -1,7 +1,7 @@
-import { isReadonlyArray, pick, shouldNeverHappen } from '@livestore/utils'
+import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
-import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import { SqliteAst, SqliteDsl } from 'effect-db-schema'
+import type { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst } from 'effect-db-schema'
 
 import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
@@ -13,7 +13,7 @@ import {
   rawSqlMutation,
 } from './mutations.js'
 import { systemTables } from './system-tables.js'
-import { table, type TableDef, tableHasDerivedMutations } from './table-def.js'
+import { type TableDef, tableHasDerivedMutations } from './table-def.js'
 
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
@@ -139,65 +139,3 @@ namespace FromInputSchema {
         ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
         : never
 }
-
-export const LiveStoreSchemaFromSelf: Schema.Schema<LiveStoreSchema> = Schema.declare(
-  (_): _ is LiveStoreSchema =>
-    (_ as any)._DbSchemaType === Symbol.for('livestore.DbSchemaType') &&
-    (_ as any)._MutationDefMapType === Symbol.for('livestore.MutationDefMapType'),
-  {
-    identifier: 'LiveStoreSchemaFromSelf',
-    pretty: () => (_) => `LiveStoreSchema(hash: ${_.hash})`,
-    arbitrary: () => (fc) => fc.anything as any,
-    equivalence: () => (a, b) => a.hash === b.hash,
-  },
-)
-
-export const TableDefColumnSchema = Schema.Struct({
-  columnType: Schema.Literal('blob', 'integer', 'text', 'real'),
-  nullable: Schema.Boolean,
-  primaryKey: Schema.Boolean,
-})
-
-export const TableDefSqliteSchema = Schema.Struct({
-  name: Schema.String,
-  columns: Schema.Record(Schema.String, TableDefColumnSchema),
-  ast: Schema.Any,
-})
-
-export const TableDefSchema = Schema.Struct({
-  sqliteDef: TableDefSqliteSchema,
-  isSingleColumn: Schema.Boolean,
-  options: Schema.Any,
-})
-
-export const LiveStoreSchemaSchema = Schema.transform(
-  Schema.Struct({
-    tables: Schema.Record(Schema.String, TableDefSchema),
-    // mutations: Schema.Record(Schema.String, MutationDef.AnySchema),
-    // migrationOptions: Schema.Struct({ strategy: Schema.Literal('hard-reset') }),
-  }),
-  LiveStoreSchemaFromSelf,
-  {
-    encode: (schema) => ({
-      tables: ReadonlyRecord.map(Object.fromEntries(schema.tables.entries()), (t) => ({
-        sqliteDef: {
-          name: t.sqliteDef.name,
-          columns: ReadonlyRecord.map(t.sqliteDef.columns, (c) => pick(c!, ['columnType', 'nullable', 'primaryKey'])),
-          ast: JSON.parse(JSON.stringify(t.sqliteDef.ast)),
-        },
-        isSingleColumn: t.isSingleColumn,
-        options: t.options,
-      })),
-    }),
-    decode: (schema) => {
-      const tables = ReadonlyRecord.map(schema.tables, (t) => {
-        const columns = ReadonlyRecord.map(t.sqliteDef.columns, (c) => {
-          const makeCol = SqliteDsl[c.columnType] as any
-          return makeCol({ nullable: c.nullable, primaryKey: c.primaryKey })
-        })
-        return table(t.sqliteDef.name, columns, t.options)
-      })
-      return makeSchema({ tables })
-    },
-  },
-)

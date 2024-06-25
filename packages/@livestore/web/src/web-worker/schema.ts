@@ -68,6 +68,9 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
     needsRecreate: Schema.Boolean,
     syncOptions: Schema.optional(SyncingType),
     key: Schema.UndefinedOr(Schema.String),
+    devtools: Schema.Struct({
+      channelId: Schema.String,
+    }),
   },
 ) {}
 

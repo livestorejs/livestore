@@ -5,7 +5,9 @@ import type { Brand } from '@livestore/utils/effect'
 export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array | null
 
-export type Bindable = SqlValue[] | ParamsObject
+export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
+
+type XXX_TODO_REMOVE_REDUDANCY = 1
 
 export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
 
@@ -16,7 +18,7 @@ export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
 /*  TODO: Search for unused params via proper parsing, not string search
 **/
 export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
-  if (Array.isArray(values)) return values as PreparedBindValues
+  if (Array.isArray(values)) return values as any as PreparedBindValues
 
   const result: ParamsObject = {}
   for (const [key, value] of Object.entries(values)) {

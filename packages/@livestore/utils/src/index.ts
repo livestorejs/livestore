@@ -34,6 +34,8 @@ export type GetValForKey<T, K> = K extends keyof T ? T[K] : never
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+export const ref = <T>(val: T): { current: T } => ({ current: val })
+
 export const times = (n: number, fn: (index: number) => {}): void => {
   for (let i = 0; i < n; i++) {
     fn(i)
@@ -101,9 +103,9 @@ export function casesHandled(unexpectedCase: never): never {
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
 }
 
-export const shouldNeverHappen = (msg?: string): never => {
-  if (import.meta.env.DEV) {
-    console.error(msg)
+export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
+  if (import.meta.env.DEV || import.meta.env.VITE_DEV) {
+    console.error(msg, ...args)
     debugger
   }
 

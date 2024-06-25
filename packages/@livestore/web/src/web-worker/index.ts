@@ -2,6 +2,7 @@ import type { Coordinator, NetworkStatus, ResetMode } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled } from '@livestore/utils'
+import { cuid } from '@livestore/utils/cuid'
 import {
   BrowserWorker,
   Chunk,
@@ -75,6 +76,8 @@ const makeCoordinator =
 
       const dataFromFile = yield* getPersistedData(storageOptions, schema.hash)
 
+      const channelId = cuid()
+
       const workerDeferred = yield* Worker.makePoolSerialized<WorkerSchema.Request>({
         size: 1,
         concurrency: 10,
@@ -85,6 +88,7 @@ const makeCoordinator =
             hasLock,
             syncOptions: options.syncing,
             key: options.key,
+            devtools: { channelId },
           }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => worker)),
@@ -143,6 +147,7 @@ const makeCoordinator =
       })
 
       const coordinator = {
+        devtools: { channelId },
         hasLock: hasLockTRef,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: async () => initialSnapshot,

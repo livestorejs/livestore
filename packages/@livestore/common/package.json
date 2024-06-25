@@ -1,12 +1,13 @@
 {
   "name": "@livestore/common",
-  "version": "0.0.53",
+  "version": "0.0.54-dev.3",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./package.json": "./package.json",
     "./sql-queries": {
       "types": "./dist/sql-queries/index.d.ts",
       "default": "./dist/sql-queries/index.js"
@@ -19,6 +20,9 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "package.json": [
+        "./package.json"
+      ],
       "schema": [
         "./dist/schema/index.d.ts"
       ],

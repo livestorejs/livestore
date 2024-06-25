@@ -2,7 +2,7 @@
  * Creates a map that has a fixed number of entries.
  * Once hitting the bound, earliest insertions are removed
  */
-export default class BoundMap<K, V> {
+export class BoundMap<K, V> {
   #map = new Map<K, V>()
   #sizeLimit: number
 
@@ -65,17 +65,25 @@ export class BoundSet<V> {
 
 export class BoundArray<V> {
   #array: V[] = []
-  #sizeLimit: number
+  public sizeLimit: number
 
   constructor(sizeLimit: number) {
-    this.#sizeLimit = sizeLimit
+    this.sizeLimit = sizeLimit
+  }
+
+  static make = <V>(sizeLimit: number, initial: ReadonlyArray<V> = []): BoundArray<V> => {
+    const b = new BoundArray<V>(sizeLimit)
+    for (const v of initial) {
+      b.push(v)
+    }
+    return b
   }
 
   onEvict: ((key: V) => void) | undefined
 
   push = (v: V) => {
     this.#array.push(v)
-    if (this.#array.length > this.#sizeLimit) {
+    if (this.#array.length > this.sizeLimit) {
       const first = this.#array.shift()
       if (first && this.onEvict) {
         this.onEvict(first)
@@ -95,7 +103,7 @@ export class BoundArray<V> {
     return this.#array.length
   }
 
-  [Symbol.iterator] = () => {
+  [Symbol.iterator] = (): IterableIterator<V> => {
     return this.#array[Symbol.iterator]()
   }
 

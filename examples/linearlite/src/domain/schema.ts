@@ -75,7 +75,7 @@ export type FilterState = Schema.Schema.Type<typeof FilterState>
 export const filterStateTable = DbSchema.table(
   'filter_state',
   DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
-  { deriveMutations: true },
+  { deriveMutations: { enabled: true, localOnly: true } },
 )
 
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>

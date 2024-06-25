@@ -7,6 +7,7 @@ import {
   prepareBindValues,
   sql,
 } from '@livestore/common'
+import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
@@ -62,6 +63,19 @@ export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fk
     ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
   `)
 
+export type DevtoolsContext = {
+  isConnected: SubscriptionRef.SubscriptionRef<boolean>
+  incomingMessages: Stream.Stream<Devtools.MessageToAppHost>
+  sendMessage: (
+    message: Devtools.MessageFromAppHost,
+    options?: {
+      /** Send message even if not connected (e.g. for initial broadcast messages) */
+      force: boolean
+    },
+  ) => Effect.Effect<void>
+  channelId: string
+}
+
 export class WorkerCtx extends Context.Tag('WorkerCtx')<
   WorkerCtx,
   | {
@@ -75,7 +89,7 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
         mutationEventSchema: MutationEventSchema<any>
         mutationDefSchemaHashMap: Map<string, number>
         broadcastChannel: BroadcastChannel
-        devtoolsChannel: BroadcastChannel
+        devtools: DevtoolsContext
         sync:
           | {
               impl: SyncImpl
@@ -109,8 +123,7 @@ export const makeApplyMutation = (
   ) => {
     if (workerCtx._tag === 'NoLock') return
     const schema = workerCtx.schema
-    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtoolsChannel, sync } =
-      workerCtx.ctx
+    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync } = workerCtx.ctx
     const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
     const mutationName = mutationEventDecoded.mutation
@@ -165,11 +178,11 @@ export const makeApplyMutation = (
         ),
       )
 
-      devtoolsChannel.postMessage(
-        Schema.encodeSync(Devtools.MessageFromAppHost)(
-          Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, requestId: 'unused' }),
-        ),
-      )
+      devtools
+        .sendMessage(
+          Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, requestId: 'unused', liveStoreVersion }),
+        )
+        .pipe(Effect.tapCauseLogPretty, Effect.runFork)
     }
 
     // TODO do this via a batched queue

@@ -1,29 +1,13 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
-import { type InMemoryDatabase, type PreparedStatement, sql } from '@livestore/common'
+import type { DebugInfo, InMemoryDatabase, MutableDebugInfo, PreparedStatement } from '@livestore/common'
+import { BoundArray, BoundMap, sql } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
-import BoundMap, { BoundArray } from './utils/bounded-collections.js'
 import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './utils/otel.js'
-import { type Bindable, type PreparedBindValues } from './utils/util.js'
-
-export interface DebugInfo {
-  slowQueries: BoundArray<SlowQueryInfo>
-  queryFrameDuration: number
-  queryFrameCount: number
-  events: BoundArray<[queryStr: string, bindValues: Bindable | undefined]>
-}
-
-export type SlowQueryInfo = [
-  queryStr: string,
-  bindValues: PreparedBindValues | undefined,
-  durationMs: number,
-  rowsCount: number | undefined,
-  queriedTables: Set<string>,
-  startTimePerfNow: DOMHighResTimeStamp,
-]
+import { type PreparedBindValues } from './utils/util.js'
 
 export const emptyDebugInfo = (): DebugInfo => ({
   slowQueries: new BoundArray(200),
@@ -41,7 +25,7 @@ export class MainDatabaseWrapper {
   private otelTracer: otel.Tracer
   private otelRootSpanContext: otel.Context
   private tablesUsedStmt
-  public debugInfo: DebugInfo = emptyDebugInfo()
+  public debugInfo: MutableDebugInfo = emptyDebugInfo()
 
   constructor({
     db,
@@ -115,7 +99,7 @@ export class MainDatabaseWrapper {
   }
 
   execute(
-    query: string,
+    queryStr: string,
     bindValues?: PreparedBindValues,
     writeTables?: ReadonlySet<string>,
     options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
@@ -125,25 +109,25 @@ export class MainDatabaseWrapper {
     return this.otelTracer.startActiveSpan(
       'livestore.in-memory-db:execute',
       // TODO truncate query string
-      { attributes: { 'sql.query': query } },
+      { attributes: { 'sql.query': queryStr } },
       options?.otelContext ?? this.otelRootSpanContext,
       (span) => {
         try {
-          let stmt = this.cachedStmts.get(query)
+          let stmt = this.cachedStmts.get(queryStr)
           if (stmt === undefined) {
-            stmt = this.db.prepare(query)
-            this.cachedStmts.set(query, stmt)
+            stmt = this.db.prepare(queryStr)
+            this.cachedStmts.set(queryStr, stmt)
           }
 
           stmt.execute(bindValues)
         } catch (error) {
-          shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify({ query, bindValues })}`)
+          shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify({ query: queryStr, bindValues })}`)
         }
 
-        if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(query)) {
+        if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
           // TODO use write tables instead
           // check what queries actually end up here.
-          this.resultCache.invalidate(writeTables ?? this.getTablesUsed(query))
+          this.resultCache.invalidate(writeTables ?? this.getTablesUsed(queryStr))
         }
 
         span.end()
@@ -154,14 +138,14 @@ export class MainDatabaseWrapper {
         this.debugInfo.queryFrameCount++
 
         if (durationMs > 5 && import.meta.env.DEV) {
-          this.debugInfo.slowQueries.push([
-            query,
+          this.debugInfo.slowQueries.push({
+            queryStr,
             bindValues,
             durationMs,
-            undefined,
-            new Set(),
-            getStartTimeHighResFromSpan(span),
-          ])
+            rowsCount: undefined,
+            queriedTables: new Set(),
+            startTimePerfNow: getStartTimeHighResFromSpan(span),
+          })
         }
 
         return { durationMs }
@@ -170,9 +154,9 @@ export class MainDatabaseWrapper {
   }
 
   select<T = any>(
-    query: string,
+    queryStr: string,
     options?: {
-      queriedTables?: Set<string>
+      queriedTables?: ReadonlySet<string>
       bindValues?: PreparedBindValues
       skipCache?: boolean
       otelContext?: otel.Context
@@ -188,9 +172,9 @@ export class MainDatabaseWrapper {
       otelContext ?? this.otelRootSpanContext,
       (span) => {
         try {
-          span.setAttribute('sql.query', query)
+          span.setAttribute('sql.query', queryStr)
 
-          const key = this.resultCache.getKey(query, bindValues)
+          const key = this.resultCache.getKey(queryStr, bindValues)
           const cachedResult = this.resultCache.get(key)
           if (skipCache === false && cachedResult !== undefined) {
             span.setAttribute('sql.rowsCount', cachedResult.length)
@@ -199,10 +183,10 @@ export class MainDatabaseWrapper {
             return cachedResult
           }
 
-          let stmt = this.cachedStmts.get(query)
+          let stmt = this.cachedStmts.get(queryStr)
           if (stmt === undefined) {
-            stmt = this.db.prepare(query)
-            this.cachedStmts.set(query, stmt)
+            stmt = this.db.prepare(queryStr)
+            this.cachedStmts.set(queryStr, stmt)
           }
 
           const result = stmt.select<T>(bindValues)
@@ -210,7 +194,7 @@ export class MainDatabaseWrapper {
           span.setAttribute('sql.rowsCount', result.length)
           span.setAttribute('sql.cached', false)
 
-          const queriedTables_ = queriedTables ?? this.getTablesUsed(query)
+          const queriedTables_ = queriedTables ?? this.getTablesUsed(queryStr)
           this.resultCache.set(queriedTables_, key, result)
 
           span.end()
@@ -222,22 +206,22 @@ export class MainDatabaseWrapper {
 
           // TODO also enable in non-dev mode
           if (durationMs > 5 && import.meta.env.DEV) {
-            this.debugInfo.slowQueries.push([
-              query,
+            this.debugInfo.slowQueries.push({
+              queryStr,
               bindValues,
               durationMs,
-              result.length,
-              queriedTables_,
-              getStartTimeHighResFromSpan(span),
-            ])
+              rowsCount: result.length,
+              queriedTables: queriedTables_,
+              startTimePerfNow: getStartTimeHighResFromSpan(span),
+            })
           }
 
           return result
         } catch (e) {
           span.end()
-          console.error(query)
+          console.error(queryStr)
           console.error(bindValues)
-          shouldNeverHappen(`Error executing select query: ${e} \n ${JSON.stringify({ query, bindValues })}`)
+          shouldNeverHappen(`Error executing select query: ${e} \n ${JSON.stringify({ query: queryStr, bindValues })}`)
         }
       },
     )

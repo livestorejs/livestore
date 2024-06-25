@@ -1,4 +1,5 @@
 import type { Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
@@ -27,12 +28,20 @@ export type InMemoryDatabase = {
 
 export type ResetMode = 'all-data' | 'only-app-db'
 
+export const NetworkStatus = Schema.Struct({
+  isConnected: Schema.Boolean,
+  timestampMs: Schema.Number,
+})
+
 export type NetworkStatus = {
   isConnected: boolean
   timestampMs: number
 }
 
 export type Coordinator = {
+  devtools: {
+    channelId: string
+  }
   hasLock: TRef.TRef<boolean>
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>

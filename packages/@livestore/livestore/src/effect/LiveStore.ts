@@ -25,6 +25,7 @@ export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContex
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
+  disableDevtools?: boolean
 }
 
 export const LiveStoreContext = Context.GenericTag<LiveStoreContext>('@livestore/livestore/LiveStoreContext')
@@ -44,6 +45,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   }
   boot?: (db: BootDb) => Effect.Effect<void>
   adapter: StoreAdapterFactory
+  disableDevtools?: boolean
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
@@ -61,6 +63,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   graphQLOptions: graphQLOptions_,
   boot: boot_,
   adapter,
+  disableDevtools,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
   LiveStoreContext,
   never,
@@ -93,6 +96,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
             otelRootSpanContext,
             boot,
             adapter,
+            disableDevtools,
           }),
         ),
         Effect.acquireRelease((store) => Effect.sync(() => store.destroy())),

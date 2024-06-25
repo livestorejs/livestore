@@ -1,8 +1,9 @@
 import type { BootDb, PreparedBindValues, ResetMode, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
 import { Devtools, getExecArgsFromMutation } from '@livestore/common'
+import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isPromise, makeNoopTracer, ref, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
@@ -39,6 +40,7 @@ export type StoreOptions<
   otelRootSpanContext: otel.Context
   dbGraph: DbGraph
   mutationEventSchema: MutationEventSchema<any>
+  disableDevtools?: boolean
 }
 
 export type RefreshReason =
@@ -126,6 +128,7 @@ export class Store<
     otelTracer,
     otelRootSpanContext,
     mutationEventSchema,
+    disableDevtools,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     this.mainDbWrapper = new MainDatabaseWrapper({ otelTracer, otelRootSpanContext, db: adapter.mainDb })
     this.adapter = adapter
@@ -157,73 +160,9 @@ export class Store<
       Effect.runFork,
     )
 
-    const devtoolsChannel = Devtools.makeBc()
-
-    let alreadySubscribedToSignals = false
-    let alreadySubscribedToLiveQueries = false
-    devtoolsChannel.addEventListener('message', async (event) => {
-      const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
-      if (decoded._tag === 'None') {
-        console.log(`Unknown message`, event)
-        return
-      }
-
-      const requestId = decoded.value.requestId
-      const sendToDevtools = (message: Devtools.MessageFromAppHost) =>
-        devtoolsChannel.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
-
-      switch (decoded.value._tag) {
-        case 'LSD.SubscribeSignalsReq': {
-          const includeResults = decoded.value.includeResults
-          const send = () =>
-            sendToDevtools(
-              Devtools.SubscribeSignalsRes.make({ signals: this.graph.getSnapshot({ includeResults }), requestId }),
-            )
-
-          send()
-
-          if (!alreadySubscribedToSignals) {
-            this.graph.subscribeToRefresh(() => send())
-            alreadySubscribedToSignals = true
-          }
-
-          break
-        }
-        case 'LSD.SubscribeLiveQueriesReq': {
-          const send = () =>
-            sendToDevtools(
-              Devtools.SubscribeLiveQueriesRes.make({
-                liveQueries: [...this.activeQueries].map((q) => ({
-                  _tag: q._tag,
-                  id: q.id,
-                  label: q.label,
-                  runs: q.runs,
-                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                  lastestResult: q.results$.previousResult,
-                  activeSubscriptions: Array.from(q.activeSubscriptions),
-                })),
-                requestId,
-              }),
-            )
-
-          send()
-
-          if (!alreadySubscribedToLiveQueries) {
-            this.graph.subscribeToRefresh(() => send())
-            alreadySubscribedToLiveQueries = true
-          }
-
-          break
-        }
-        case 'LSD.ResetAllDataReq': {
-          await this.adapter.coordinator.dangerouslyReset(decoded.value.mode)
-          sendToDevtools(Devtools.ResetAllDataRes.make({ requestId }))
-
-          break
-        }
-        // No default
-      }
-    })
+    if (disableDevtools !== true) {
+      this.bootDevtools()
+    }
 
     this.otel = {
       tracer: otelTracer,
@@ -585,6 +524,112 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
+  private bootDevtools = () => {
+    const devtoolsChannel = Devtools.makeBroadcastChannels()
+
+    const signalsSubcriptionRef = ref<undefined | (() => void)>(undefined)
+    // let alreadySubscribedToLiveQueries = false
+    const liveQueriesSubscriptionRef = ref<undefined | (() => void)>(undefined)
+    devtoolsChannel.toAppHost.addEventListener('message', async (event) => {
+      const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
+      if (
+        decoded._tag === 'None' ||
+        decoded.value._tag === 'LSD.DevtoolsReadyBroadcast' ||
+        decoded.value._tag === 'LSD.DevtoolsConnected' ||
+        decoded.value.channelId !== this.adapter.coordinator.devtools.channelId
+      ) {
+        // console.log(`Unknown message`, event)
+        return
+      }
+
+      const requestId = decoded.value.requestId
+      const sendToDevtools = (message: Devtools.MessageFromAppHost) =>
+        devtoolsChannel.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
+
+      switch (decoded.value._tag) {
+        case 'LSD.SignalsSubscribe': {
+          const includeResults = decoded.value.includeResults
+          const send = () =>
+            sendToDevtools(
+              Devtools.SignalsRes.make({
+                signals: this.graph.getSnapshot({ includeResults }),
+                requestId,
+                liveStoreVersion,
+              }),
+            )
+
+          send()
+
+          if (signalsSubcriptionRef.current === undefined) {
+            signalsSubcriptionRef.current = this.graph.subscribeToRefresh(() => send())
+          }
+
+          break
+        }
+        case 'LSD.DebugInfoReq': {
+          sendToDevtools(
+            Devtools.DebugInfoRes.make({ debugInfo: this.mainDbWrapper.debugInfo, requestId, liveStoreVersion }),
+          )
+          break
+        }
+        case 'LSD.DebugInfoResetReq': {
+          this.mainDbWrapper.debugInfo.slowQueries.clear()
+          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
+          break
+        }
+        case 'LSD.DebugInfoRerunQueryReq': {
+          const { queryStr, bindValues, queriedTables } = decoded.value
+          this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
+          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
+          break
+        }
+        case 'LSD.SignalsUnsubscribe': {
+          signalsSubcriptionRef.current!()
+          signalsSubcriptionRef.current = undefined
+          break
+        }
+        case 'LSD.LiveQueriesSubscribe': {
+          const send = () =>
+            sendToDevtools(
+              Devtools.LiveQueriesRes.make({
+                liveQueries: [...this.activeQueries].map((q) => ({
+                  _tag: q._tag,
+                  id: q.id,
+                  label: q.label,
+                  runs: q.runs,
+                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
+                  lastestResult: q.results$.previousResult,
+                  activeSubscriptions: Array.from(q.activeSubscriptions),
+                })),
+                requestId,
+                liveStoreVersion,
+              }),
+            )
+
+          send()
+
+          if (liveQueriesSubscriptionRef.current === undefined) {
+            liveQueriesSubscriptionRef.current = this.graph.subscribeToRefresh(() => send())
+          }
+
+          break
+        }
+        case 'LSD.LiveQueriesUnsubscribe': {
+          liveQueriesSubscriptionRef.current!()
+          liveQueriesSubscriptionRef.current = undefined
+          break
+        }
+        case 'LSD.ResetAllDataReq': {
+          await this.adapter.coordinator.dangerouslyReset(decoded.value.mode)
+          sendToDevtools(Devtools.ResetAllDataRes.make({ requestId, liveStoreVersion }))
+
+          break
+        }
+        // No default
+      }
+    })
+  }
+
   __devDownloadDb = () => {
     const data = this.mainDbWrapper.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
@@ -612,6 +657,7 @@ export const createStore = async <
   boot,
   dbGraph = globalDbGraph,
   batchUpdates,
+  disableDevtools,
 }: {
   schema: TSchema
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
@@ -621,6 +667,7 @@ export const createStore = async <
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   dbGraph?: DbGraph
   batchUpdates?: (run: () => void) => void
+  disableDevtools?: boolean
 }): Promise<Store<TGraphQLContext, TSchema>> => {
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
@@ -711,7 +758,16 @@ export const createStore = async <
       // Think about what to do about this case.
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext, TSchema>(
-        { adapter: adapter, schema, graphQLOptions, otelTracer, otelRootSpanContext, dbGraph, mutationEventSchema },
+        {
+          adapter: adapter,
+          schema,
+          graphQLOptions,
+          otelTracer,
+          otelRootSpanContext,
+          dbGraph,
+          mutationEventSchema,
+          disableDevtools,
+        },
         span,
       )
     } finally {

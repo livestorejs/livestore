@@ -1,7 +1,7 @@
 import { Schema } from '@effect/schema'
 import type { Store } from '@livestore/livestore'
 import { querySQL, sql } from '@livestore/livestore'
-import { LiveList, useStore } from '@livestore/livestore/react'
+import { getLocalId, LiveList, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import { mutations, tables, type Todo } from '../schema/index.js'
@@ -11,7 +11,7 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 // First, we create a reactive query which defines the filter clause for the SQL query.
 // It gets all the rows from the app table, and pipes them into a transform function.
 // The result is a reactive query whose value is a string containing the filter clause.
-const filterClause$ = querySQL(sql`select filter from app`, {
+const filterClause$ = querySQL(sql`select filter from app where id = '${getLocalId()}'`, {
   map: (rows) => {
     const { filter } = Schema.decodeSync(
       Schema.Array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),

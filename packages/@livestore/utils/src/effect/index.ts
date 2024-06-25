@@ -45,11 +45,20 @@ export {
   Match,
 } from 'effect'
 
+export { dual } from 'effect/Function'
+
 export * as Stream from './Stream.js'
 
 export * as SubscriptionRef from './SubscriptionRef.js'
 
-export { TreeFormatter, AST as SchemaAST, Pretty as SchemaPretty, Serializable, JSONSchema } from '@effect/schema'
+export {
+  TreeFormatter,
+  AST as SchemaAST,
+  Pretty as SchemaPretty,
+  Serializable,
+  JSONSchema,
+  ParseResult,
+} from '@effect/schema'
 export * as Schema from './Schema.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 

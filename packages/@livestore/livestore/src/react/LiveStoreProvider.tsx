@@ -20,6 +20,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
   fallback: ReactElement
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
+  disableDevtools?: boolean
 }
 
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
@@ -32,6 +33,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   boot,
   adapter,
   batchUpdates,
+  disableDevtools,
 }: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
   const storeCtx = useCreateStore({
     schema,
@@ -41,6 +43,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
     boot,
     adapter,
     batchUpdates,
+    disableDevtools,
   })
 
   if (storeCtx === undefined) {
@@ -60,6 +63,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   boot,
   adapter,
   batchUpdates,
+  disableDevtools,
 }: LiveStoreCreateStoreOptions<GraphQLContext>) => {
   const [_, rerender] = React.useState(0)
   const ctxValueRef = React.useRef<StoreContext_ | undefined>(undefined)
@@ -110,6 +114,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           boot,
           adapter,
           batchUpdates,
+          disableDevtools,
         })
         ctxValueRef.current = { store }
         oldStoreAlreadyDestroyedRef.current = false
@@ -124,7 +129,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         store?.destroy()
       }
     }
-  }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, adapter, batchUpdates])
+  }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, adapter, batchUpdates, disableDevtools])
 
   return ctxValueRef.current
 }

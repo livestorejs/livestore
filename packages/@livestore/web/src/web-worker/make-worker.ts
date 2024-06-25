@@ -1,5 +1,6 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
 import { Devtools, sql } from '@livestore/common'
+import { version as liveStoreVersion } from '@livestore/common/package.json'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
@@ -8,6 +9,7 @@ import {
   BrowserWorkerRunner,
   Effect,
   Layer,
+  Queue,
   Schema,
   Stream,
   SubscriptionRef,
@@ -15,6 +17,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
+import type { DevtoolsContext } from './common.js'
 import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
@@ -54,7 +57,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     const initialSnapshotRef = { current: undefined as any }
 
     return WorkerRunner.layerSerialized(Request, {
-      InitialMessage: ({ storageOptions, hasLock, needsRecreate, syncOptions, key }) =>
+      InitialMessage: ({ storageOptions, hasLock, needsRecreate, syncOptions, key, devtools: { channelId } }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
 
@@ -120,7 +123,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const sync = yield* makeSync
 
-          const devtoolsChannel = Devtools.makeBc()
+          const devtools = yield* makeDevtoolsContext(channelId)
 
           const workerCtx = {
             _tag: 'HasLock',
@@ -133,7 +136,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               mutationDefSchemaHashMap,
               mutationEventSchema,
               broadcastChannel,
-              devtoolsChannel,
+              devtools,
               sync,
             },
           } satisfies Context.Tag.Service<WorkerCtx>
@@ -178,47 +181,89 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             }
           })
 
-          devtoolsChannel.addEventListener('message', (event) => {
-            Effect.gen(function* () {
-              const decodedEvent = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
-              if (decodedEvent._tag === 'None') {
-                console.log(`Unknown message`, event)
-                return
-              }
-              // console.log('livestore-webworker: devtools message', decodedEvent)
-              const { requestId } = decodedEvent.value
+          yield* devtools.incomingMessages.pipe(
+            Stream.tap((decodedEvent) =>
+              Effect.gen(function* () {
+                // console.debug('livestore-webworker: devtools message', decodedEvent)
 
-              const respond = (msg: Devtools.MessageFromAppHost) => {
-                devtoolsChannel.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(msg))
-              }
-
-              switch (decodedEvent.value._tag) {
-                case 'LSD.AppHostReadyReq': {
-                  respond(Devtools.AppHostReadyRes.make({ requestId }))
-                  break
+                if (decodedEvent._tag === 'LSD.DevtoolsReadyBroadcast') {
+                  if ((yield* devtools.isConnected.get) === false) {
+                    yield* devtools.sendMessage(Devtools.AppHostReadyBroadcast.make({ channelId, liveStoreVersion }), {
+                      force: true,
+                    })
+                  }
+                  return
                 }
-                case 'LSD.SnapshotReq': {
-                  const data = yield* db.export
 
-                  respond(Devtools.SnapshotRes.make({ snapshot: data, requestId }))
+                if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
+                  if (yield* devtools.isConnected.get) {
+                    shouldNeverHappen('devtools already connected')
+                  }
 
-                  break
+                  if (sync?.impl !== undefined) {
+                    const networkStatus = yield* sync.impl.isConnected.get.pipe(
+                      Effect.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
+                    )
+
+                    yield* devtools.sendMessage(
+                      Devtools.NetworkStatusBroadcast.make({
+                        channelId: devtools.channelId,
+                        networkStatus,
+                        liveStoreVersion,
+                      }),
+                    )
+                  }
+
+                  yield* SubscriptionRef.set(devtools.isConnected, true)
+                  return
                 }
-                case 'LSD.SerializedSchemaReq': {
-                  respond(Devtools.SerializedSchemaRes.make({ schema, requestId }))
 
-                  break
+                const { requestId } = decodedEvent
+
+                if (decodedEvent.channelId !== channelId) return
+
+                switch (decodedEvent._tag) {
+                  case 'LSD.Disconnect': {
+                    yield* SubscriptionRef.set(devtools.isConnected, false)
+
+                    yield* devtools.sendMessage(Devtools.AppHostReadyBroadcast.make({ channelId, liveStoreVersion }), {
+                      force: true,
+                    })
+
+                    break
+                  }
+                  case 'LSD.SnapshotReq': {
+                    const data = yield* db.export
+
+                    yield* devtools.sendMessage(
+                      Devtools.SnapshotRes.make({ snapshot: data, requestId, liveStoreVersion }),
+                      {
+                        force: true,
+                      },
+                    )
+
+                    break
+                  }
+                  case 'LSD.MutationLogReq': {
+                    const mutationLog = yield* dbLog.export
+
+                    yield* devtools.sendMessage(
+                      Devtools.MutationLogRes.make({ mutationLog, requestId, liveStoreVersion }),
+                    )
+
+                    break
+                  }
+                  // No default
                 }
-                case 'LSD.MutationLogReq': {
-                  const mutationLog = yield* dbLog.export
+              }),
+            ),
+            Stream.runDrain,
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
+          )
 
-                  respond(Devtools.MutationLogRes.make({ mutationLog, requestId }))
-
-                  break
-                }
-                // No default
-              }
-            }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+          yield* devtools.sendMessage(Devtools.AppHostReadyBroadcast.make({ channelId, liveStoreVersion }), {
+            force: true,
           })
 
           return Layer.succeed(WorkerCtx, workerCtx)
@@ -256,6 +301,15 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           return workerCtx.ctx.sync.impl.isConnected.changes.pipe(
             Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
+            Stream.tap((networkStatus) =>
+              workerCtx.ctx!.devtools.sendMessage(
+                Devtools.NetworkStatusBroadcast.make({
+                  channelId: workerCtx.ctx!.devtools.channelId,
+                  networkStatus,
+                  liveStoreVersion,
+                }),
+              ),
+            ),
           )
         }).pipe(Stream.unwrap),
       Shutdown: () =>
@@ -333,4 +387,36 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify(batchItems)}`)
       }
     }
+  })
+
+const makeDevtoolsContext = (channelId: string) =>
+  Effect.gen(function* () {
+    const isConnected = yield* SubscriptionRef.make(false)
+
+    const devtoolBroadcastChannels = Devtools.makeBroadcastChannels()
+
+    const incomingMessages = Stream.fromEventListener<MessageEvent>(devtoolBroadcastChannels.toAppHost, 'message').pipe(
+      Stream.map((_) => Schema.decodeSync(Devtools.MessageToAppHost)(_.data)),
+    )
+
+    const outgoingMessagesQueue = yield* Queue.unbounded<Devtools.MessageFromAppHost>()
+
+    const sendMessage: DevtoolsContext['sendMessage'] = (message, options) =>
+      Effect.gen(function* () {
+        if (options?.force === true || (yield* SubscriptionRef.get(isConnected))) {
+          devtoolBroadcastChannels.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
+        } else {
+          yield* Queue.offer(outgoingMessagesQueue, message)
+        }
+      })
+
+    yield* Effect.gen(function* () {
+      yield* SubscriptionRef.waitUntil(isConnected, (_) => _ === true)
+
+      const msg = yield* Queue.take(outgoingMessagesQueue)
+
+      devtoolBroadcastChannels.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(msg))
+    }).pipe(Effect.forever, Effect.tapCauseLogPretty, Effect.forkScoped)
+
+    return { isConnected, sendMessage, incomingMessages, channelId } satisfies DevtoolsContext
   })

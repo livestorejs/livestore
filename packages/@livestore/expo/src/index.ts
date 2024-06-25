@@ -101,6 +101,7 @@ export const makeAdapter =
     const syncMutations = Stream.never
 
     const coordinator = {
+      devtools: { channelId: 'todo' },
       hasLock,
       syncMutations,
       execute: async () => {},
@@ -170,12 +171,12 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
         const stmt = db.prepareSync(value)
         return {
           execute: (bindValues) => {
-            const res = stmt.executeSync(bindValues ?? [])
+            const res = stmt.executeSync(bindValues ?? ([] as any))
             res.resetSync()
             return () => res.changes
           },
           select: (bindValues) => {
-            const res = stmt.executeSync(bindValues ?? [])
+            const res = stmt.executeSync(bindValues ?? ([] as any))
             try {
               return res.getAllSync() as any
             } finally {
@@ -192,7 +193,7 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
     execute: (queryStr, bindValues) => {
       const stmt = db.prepareSync(queryStr)
       try {
-        const res = stmt.executeSync(bindValues ?? [])
+        const res = stmt.executeSync(bindValues ?? ([] as any))
         return () => res.changes
       } finally {
         stmt.finalizeSync()

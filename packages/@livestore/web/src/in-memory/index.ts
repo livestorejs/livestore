@@ -2,6 +2,7 @@ import { type Coordinator, initializeSingletonTables, migrateDb } from '@livesto
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import sqlite3InitModule from '@livestore/sqlite-wasm'
+import { cuid } from '@livestore/utils/cuid'
 import { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
@@ -49,6 +50,7 @@ const makeCoordinator = (schema: LiveStoreSchema, initialData?: Uint8Array): Coo
   const syncMutations = Stream.never
 
   return {
+    devtools: { channelId: cuid() },
     hasLock,
     syncMutations,
     execute: async () => {},

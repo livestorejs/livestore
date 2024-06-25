@@ -23,12 +23,11 @@
 
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
+import { BoundArray } from '@livestore/common'
 import type { PrettifyFlat } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import { isEqual } from 'lodash-es'
-
-import { BoundArray } from './utils/bounded-collections.js'
 // import { getDurationMsFromSpan } from './otel.js'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
@@ -520,7 +519,9 @@ export class ReactiveGraph<
     superComp.sub.add(subComp)
     subComp.super.add(superComp)
 
-    this.runRefreshCallbacks()
+    if (this.currentDebugRefresh === undefined) {
+      this.runRefreshCallbacks()
+    }
   }
 
   removeEdge(
@@ -537,7 +538,9 @@ export class ReactiveGraph<
 
     subComp.super.delete(superComp)
 
-    this.runRefreshCallbacks()
+    if (this.currentDebugRefresh === undefined) {
+      this.runRefreshCallbacks()
+    }
   }
 
   // NOTE This function is performance-optimized (i.e. not using `Array.from`)
