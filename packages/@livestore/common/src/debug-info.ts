@@ -21,15 +21,7 @@ export const SlowQueryInfo = Schema.Struct({
   startTimePerfNow: Schema.Number,
 })
 
-const BoundArraySchemaFromSelf = <ItemDecoded, ItemEncoded>(_elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
-  Schema.declare((_): _ is BoundArray<ItemDecoded> => _ instanceof BoundArray, {
-    identifier: `BoundArrayFromSelf`,
-    pretty: () => (_) => `BoundArray(${_.length})`,
-    arbitrary: () => (fc) => fc.anything() as any,
-    equivalence: () => (a, b) => a === b,
-  }) as any as Schema.Schema<BoundArray<ItemDecoded>, BoundArray<ItemEncoded>>
-
-const BoundArraySchemaFromSelf_ = <A, I, R>(
+const BoundArraySchemaFromSelf = <A, I, R>(
   item: Schema.Schema<A, I, R>,
 ): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
   Schema.declare(
@@ -52,6 +44,9 @@ const BoundArraySchemaFromSelf_ = <A, I, R>(
     },
     {
       description: `BoundArray<${Schema.format(item)}>`,
+      pretty: () => (_) => `BoundArray(${_.length})`,
+      arbitrary: () => (fc) => fc.anything() as any,
+      equivalence: () => (a, b) => a === b,
     },
   )
 

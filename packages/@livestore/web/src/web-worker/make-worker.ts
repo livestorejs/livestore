@@ -248,12 +248,28 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                     const mutationLog = yield* dbLog.export
 
                     yield* devtools.sendMessage(
-                      Devtools.MutationLogRes.make({ mutationLog, requestId, liveStoreVersion }),
+                      Devtools.MutationLogRes.make({ mutationLog, requestId, channelId, liveStoreVersion }),
                     )
 
                     break
                   }
-                  // No default
+                  case 'LSD.RunMutationReq': {
+                    const { mutationEventEncoded, persisted } = decodedEvent
+
+                    const mutationDef =
+                      schema.mutations.get(mutationEventEncoded.mutation) ??
+                      shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
+
+                    applyMutation(mutationEventEncoded, {
+                      syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
+                      shouldBroadcast: true,
+                      persisted,
+                    })
+
+                    yield* devtools.sendMessage(
+                      Devtools.RunMutationRes.make({ requestId, channelId, liveStoreVersion }),
+                    )
+                  }
                 }
               }),
             ),

@@ -62,6 +62,13 @@ export const makePersistedSqlite = ({
   }
 }
 
+// TODO remove this once bun-types has fixed the type for ArrayBuffer
+declare global {
+  interface Uint8Array {
+    resize: (size: number) => never
+  }
+}
+
 export const makePersistedSqliteOpfs = (
   sqlite3: SqliteWasm.Sqlite3Static,
   directory: string | undefined,
@@ -96,10 +103,7 @@ export const makePersistedSqliteOpfs = (
           const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
           // NOTE we have to use the sync API here as the async API doesn't yet exist in Safari
           const writable = await fileHandle.createSyncAccessHandle()
-          writable.write(
-            // @ts-expect-error TODO remove this once bun-types has fixed the type for ArrayBuffer
-            data,
-          )
+          writable.write(data)
           writable.flush()
           writable.close()
         })

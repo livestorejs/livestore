@@ -179,9 +179,7 @@ export const makeApplyMutation = (
       )
 
       devtools
-        .sendMessage(
-          Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, requestId: 'unused', liveStoreVersion }),
-        )
+        .sendMessage(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }))
         .pipe(Effect.tapCauseLogPretty, Effect.runFork)
     }
 

@@ -151,6 +151,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/sqlite-wasm':
+        specifier: 3.46.0-build4
+        version: 3.46.0-build4
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
@@ -335,6 +338,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/sqlite-wasm':
+        specifier: 3.46.0-build4
+        version: 3.46.0-build4
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
@@ -396,6 +402,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/sqlite-wasm':
+        specifier: 3.46.0-build4
+        version: 3.46.0-build4
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
@@ -466,6 +475,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/sqlite-wasm':
+        specifier: 3.46.0-build4
+        version: 3.46.0-build4
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils

@@ -62,9 +62,22 @@ export class DebugInfoRerunQueryRes extends Schema.TaggedStruct('LSD.DebugInfoRe
 
 export class MutationBroadcast extends Schema.TaggedStruct('LSD.MutationBroadcast', {
   liveStoreVersion,
-  requestId,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
+}) {}
+
+export class RunMutationReq extends Schema.TaggedStruct('LSD.RunMutationReq', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  persisted: Schema.Boolean,
+}) {}
+
+export class RunMutationRes extends Schema.TaggedStruct('LSD.RunMutationRes', {
+  liveStoreVersion,
+  requestId,
+  channelId,
 }) {}
 
 export class MutationLogReq extends Schema.TaggedStruct('LSD.MutationLogReq', {
@@ -76,6 +89,7 @@ export class MutationLogReq extends Schema.TaggedStruct('LSD.MutationLogReq', {
 export class MutationLogRes extends Schema.TaggedStruct('LSD.MutationLogRes', {
   liveStoreVersion,
   requestId,
+  channelId,
   mutationLog: Schema.Uint8Array,
 }) {}
 
@@ -180,6 +194,7 @@ export const MessageToAppHost = Schema.Union(
   DevtoolsReady,
   Disconnect,
   DevtoolsConnected,
+  RunMutationReq,
 )
 
 export type MessageToAppHost = typeof MessageToAppHost.Type
@@ -197,6 +212,7 @@ export const MessageFromAppHost = Schema.Union(
   MutationBroadcast,
   AppHostReady,
   NetworkStatusChanged,
+  RunMutationRes,
 )
 
 export type MessageFromAppHost = typeof MessageFromAppHost.Type

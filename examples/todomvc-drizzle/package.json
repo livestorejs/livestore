@@ -14,6 +14,7 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
+    "@livestore/sqlite-wasm": "3.46.0-build4",
     "@opentelemetry/api": "^1.9.0",
     "@schickling/fps-meter": "^0.1.2",
     "drizzle-orm": "^0.31.2",

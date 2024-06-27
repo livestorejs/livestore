@@ -1,13 +1,18 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
-import type { DebugInfo, InMemoryDatabase, MutableDebugInfo, PreparedStatement } from '@livestore/common'
+import type {
+  DebugInfo,
+  InMemoryDatabase,
+  MutableDebugInfo,
+  PreparedBindValues,
+  PreparedStatement,
+} from '@livestore/common'
 import { BoundArray, BoundMap, sql } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
 import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './utils/otel.js'
-import { type PreparedBindValues } from './utils/util.js'
 
 export const emptyDebugInfo = (): DebugInfo => ({
   slowQueries: new BoundArray(200),

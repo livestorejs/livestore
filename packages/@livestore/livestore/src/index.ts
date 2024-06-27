@@ -27,11 +27,19 @@ export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 
 export * from '@livestore/common/schema'
-export { sql, type BootDb, type InMemoryDatabase, type DebugInfo, type MutableDebugInfo } from '@livestore/common'
+export {
+  sql,
+  type BootDb,
+  type InMemoryDatabase,
+  type DebugInfo,
+  type MutableDebugInfo,
+  prepareBindValues,
+  type Bindable,
+  type PreparedBindValues,
+} from '@livestore/common'
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-export { prepareBindValues, type Bindable, type PreparedBindValues } from './utils/util.js'
 export { isEqual } from 'lodash-es'
 
 export type {
