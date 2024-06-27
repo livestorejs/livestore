@@ -534,7 +534,7 @@ export class Store<
       const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
       if (
         decoded._tag === 'None' ||
-        decoded.value._tag === 'LSD.DevtoolsReadyBroadcast' ||
+        decoded.value._tag === 'LSD.DevtoolsReady' ||
         decoded.value._tag === 'LSD.DevtoolsConnected' ||
         decoded.value.channelId !== this.adapter.coordinator.devtools.channelId
       ) {

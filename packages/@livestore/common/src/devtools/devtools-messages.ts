@@ -140,13 +140,13 @@ export class ResetAllDataRes extends Schema.TaggedStruct('LSD.ResetAllDataRes', 
   requestId,
 }) {}
 
-export class NetworkStatusBroadcast extends Schema.TaggedStruct('LSD.NetworkStatusBroadcast', {
+export class NetworkStatusChanged extends Schema.TaggedStruct('LSD.NetworkStatusChanged', {
   liveStoreVersion,
   channelId,
   networkStatus: NetworkStatus,
 }) {}
 
-export class DevtoolsReadyBroadcast extends Schema.TaggedStruct('LSD.DevtoolsReadyBroadcast', {
+export class DevtoolsReady extends Schema.TaggedStruct('LSD.DevtoolsReady', {
   liveStoreVersion,
 }) {}
 
@@ -155,7 +155,7 @@ export class DevtoolsConnected extends Schema.TaggedStruct('LSD.DevtoolsConnecte
   channelId,
 }) {}
 
-export class AppHostReadyBroadcast extends Schema.TaggedStruct('LSD.AppHostReadyBroadcast', {
+export class AppHostReady extends Schema.TaggedStruct('LSD.AppHostReady', {
   liveStoreVersion,
   channelId,
 }) {}
@@ -165,10 +165,6 @@ export class Disconnect extends Schema.TaggedStruct('LSD.Disconnect', {
   requestId,
   channelId,
 }) {}
-
-// export class SchemaChanged extends Schema.TaggedStruct('LSD.SchemaChanged', {
-//   requestId,
-// }) {}
 
 export const MessageToAppHost = Schema.Union(
   SnapshotReq,
@@ -181,7 +177,7 @@ export const MessageToAppHost = Schema.Union(
   LiveQueriesSubscribe,
   LiveQueriesUnsubscribe,
   ResetAllDataReq,
-  DevtoolsReadyBroadcast,
+  DevtoolsReady,
   Disconnect,
   DevtoolsConnected,
 )
@@ -198,10 +194,9 @@ export const MessageFromAppHost = Schema.Union(
   LiveQueriesRes,
   ResetAllDataRes,
   Disconnect,
-  // SchemaChanged,
   MutationBroadcast,
-  AppHostReadyBroadcast,
-  NetworkStatusBroadcast,
+  AppHostReady,
+  NetworkStatusChanged,
 )
 
 export type MessageFromAppHost = typeof MessageFromAppHost.Type

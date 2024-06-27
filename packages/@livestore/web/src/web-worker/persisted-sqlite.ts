@@ -96,7 +96,10 @@ export const makePersistedSqliteOpfs = (
           const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
           // NOTE we have to use the sync API here as the async API doesn't yet exist in Safari
           const writable = await fileHandle.createSyncAccessHandle()
-          writable.write(data)
+          writable.write(
+            // @ts-expect-error TODO remove this once bun-types has fixed the type for ArrayBuffer
+            data,
+          )
           writable.flush()
           writable.close()
         })

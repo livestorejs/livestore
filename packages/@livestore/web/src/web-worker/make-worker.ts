@@ -186,9 +186,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               Effect.gen(function* () {
                 // console.debug('livestore-webworker: devtools message', decodedEvent)
 
-                if (decodedEvent._tag === 'LSD.DevtoolsReadyBroadcast') {
+                if (decodedEvent._tag === 'LSD.DevtoolsReady') {
                   if ((yield* devtools.isConnected.get) === false) {
-                    yield* devtools.sendMessage(Devtools.AppHostReadyBroadcast.make({ channelId, liveStoreVersion }), {
+                    yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
                       force: true,
                     })
                   }
@@ -206,7 +206,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                     )
 
                     yield* devtools.sendMessage(
-                      Devtools.NetworkStatusBroadcast.make({
+                      Devtools.NetworkStatusChanged.make({
                         channelId: devtools.channelId,
                         networkStatus,
                         liveStoreVersion,
@@ -226,7 +226,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                   case 'LSD.Disconnect': {
                     yield* SubscriptionRef.set(devtools.isConnected, false)
 
-                    yield* devtools.sendMessage(Devtools.AppHostReadyBroadcast.make({ channelId, liveStoreVersion }), {
+                    yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
                       force: true,
                     })
 
@@ -262,7 +262,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             Effect.forkScoped,
           )
 
-          yield* devtools.sendMessage(Devtools.AppHostReadyBroadcast.make({ channelId, liveStoreVersion }), {
+          yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
             force: true,
           })
 
@@ -303,7 +303,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
             Stream.tap((networkStatus) =>
               workerCtx.ctx!.devtools.sendMessage(
-                Devtools.NetworkStatusBroadcast.make({
+                Devtools.NetworkStatusChanged.make({
                   channelId: workerCtx.ctx!.devtools.channelId,
                   networkStatus,
                   liveStoreVersion,
