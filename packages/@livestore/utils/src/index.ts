@@ -104,8 +104,8 @@ export function casesHandled(unexpectedCase: never): never {
 }
 
 export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
+  console.error(msg, ...args)
   if (import.meta.env.DEV || import.meta.env.VITE_DEV) {
-    console.error(msg, ...args)
     debugger
   }
 
