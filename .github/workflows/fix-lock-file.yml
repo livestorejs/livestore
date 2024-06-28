@@ -41,23 +41,22 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
+          git status
           git add pnpm-lock.yaml
           if git diff-index --quiet HEAD --; then
-            echo "No changes detected"
-            echo "::set-output name=changes::false"
+            echo "NO_CHANGES='true'" >> $GITHUB_ENV
           else
-            echo "Changes detected"
-            echo "::set-output name=changes::true"
+            echo "NO_CHANGES='false'" >> $GITHUB_ENV
           fi
 
       - name: Commit changes
-        if: steps.check_changes.outputs.changes == 'true'
+        if: ${{ env.NO_CHANGES == 'true' }}
         run: |
           git commit -m 'fix: update pnpm lockfile with pnpm install --fix-lockfile'
           git push origin $BRANCH_NAME
 
       - name: Create PR
-        if: steps.check_changes.outputs.changes == 'true'
+        if: ${{ env.NO_CHANGES == 'true' }}
         uses: devops-infra/action-pull-request@v0.5.5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
