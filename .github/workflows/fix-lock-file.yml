@@ -25,9 +25,9 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          BRANCH_NAME="fix-lockfile-${{ github.ref }}"
           # Extract branch name from the full reference path
-          BRANCH_NAME=${BRANCH_NAME#refs/heads/}
+          REF_BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||')
+          BRANCH_NAME="fix-lockfile-${REF_BRANCH_NAME}"
           git checkout -b $BRANCH_NAME
 
       - run: pnpm install --fix-lockfile --no-frozen-lockfile
