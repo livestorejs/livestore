@@ -1,12 +1,6 @@
 name: Fix Lock File and Create PR
 
 on:
-  workflow_dispatch:
-    inputs:
-      base-branch:
-        description: 'Base branch to create the PR against'
-        required: true
-        default: 'main'
   push:
     branches:
       - '**'  # Run on every branch push
@@ -18,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.base-branch || github.ref }}
+          ref: ${{ github.ref }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
@@ -33,7 +27,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          BRANCH_NAME="fix-lockfile-${{ github.event.inputs.base-branch || github.ref }}"
+          BRANCH_NAME="fix-lockfile-${{ github.ref }}"
           git checkout -b $BRANCH_NAME
 
       - run: pnpm install --fix-lockfile --no-frozen-lockfile
@@ -61,7 +55,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           source_branch: $BRANCH_NAME
-          target_branch: ${{ github.event.inputs.base-branch || github.ref }}
+          target_branch: ${{ github.ref }}
           title: "Fix: Update PNPM Lockfile"
           body: "**Automated pull request**"
           label: dependencies
