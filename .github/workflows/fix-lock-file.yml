@@ -60,7 +60,7 @@ jobs:
         uses: devops-infra/action-pull-request@v0.5.5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          source_branch: $BRANCH_NAME
+          source_branch: ${{ env.BRANCH_NAME }}
           target_branch: ${{ github.ref }}
           title: "Fix: Update PNPM Lockfile"
           body: "**Automated pull request**"
