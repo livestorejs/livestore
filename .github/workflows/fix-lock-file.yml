@@ -7,6 +7,9 @@ on:
         description: 'Base branch to create the PR against'
         required: true
         default: 'main'
+  push:
+    branches:
+      - '**'  # Run on every branch push
 
 jobs:
   fix-lockfile:
@@ -15,9 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.base-branch }}
+          ref: ${{ github.event.inputs.base-branch || github.ref }}
+
       - name: Install pnpm
         uses: pnpm/action-setup@v2
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -28,22 +33,36 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git checkout -b fix-lockfile
+          BRANCH_NAME="fix-lockfile-${{ github.event.inputs.base-branch || github.ref }}"
+          git checkout -b $BRANCH_NAME
 
-      - run: pnpm install --fix-lockfile
+      - run: pnpm install --fix-lockfile --no-frozen-lockfile
 
-      - name: Commit changes
+      - name: Check for changes
+        id: check_changes
         run: |
           git add pnpm-lock.yaml
+          if git diff-index --quiet HEAD --; then
+            echo "No changes detected"
+            echo "::set-output name=changes::false"
+          else
+            echo "Changes detected"
+            echo "::set-output name=changes::true"
+          fi
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
           git commit -m 'fix: update pnpm lockfile with pnpm install --fix-lockfile'
-          git push origin fix-lockfile
+          git push origin $BRANCH_NAME
 
       - name: Create PR
+        if: steps.check_changes.outputs.changes == 'true'
         uses: devops-infra/action-pull-request@v0.5.5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          source_branch: fix-lockfile
-          target_branch: ${{ github.event.inputs.base-branch }}
+          source_branch: $BRANCH_NAME
+          target_branch: ${{ github.event.inputs.base-branch || github.ref }}
           title: "Fix: Update PNPM Lockfile"
           body: "**Automated pull request**"
           label: dependencies
