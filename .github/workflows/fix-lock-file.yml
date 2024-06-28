@@ -30,9 +30,10 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           # Extract branch name from the full reference path
           REF_BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||')
+          echo "REF_BRANCH_NAME=${REF_BRANCH_NAME}" >> $GITHUB_ENV
           BRANCH_NAME="fix-lockfile-${REF_BRANCH_NAME}"
-          git checkout -b $BRANCH_NAME
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          git checkout -b $BRANCH_NAME
 
       - run: pnpm install --fix-lockfile --no-frozen-lockfile
 
@@ -61,7 +62,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           source_branch: ${{ env.BRANCH_NAME }}
-          target_branch: ${{ github.ref }}
+          target_branch: ${{ env.REF_BRANCH_NAME }}
           title: "Fix: Update PNPM Lockfile"
           body: "**Automated pull request**"
           label: dependencies
