@@ -29,6 +29,7 @@ jobs:
           REF_BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||')
           BRANCH_NAME="fix-lockfile-${REF_BRANCH_NAME}"
           git checkout -b $BRANCH_NAME
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
 
       - run: pnpm install --fix-lockfile --no-frozen-lockfile
 
