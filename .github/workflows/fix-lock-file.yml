@@ -2,6 +2,11 @@ name: Fix Lock File and Create PR
 
 on:
   workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'Base branch to create the PR against'
+        required: true
+        default: 'main'
 
 jobs:
   fix-lockfile:
@@ -9,6 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.base-branch }}
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -36,9 +43,8 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           source_branch: fix-lockfile
-          target_branch: master
+          target_branch: ${{ github.event.inputs.base-branch }}
           title: "Fix: Update PNPM Lockfile"
           body: "**Automated pull request**"
           label: dependencies
           draft: false
-          
