@@ -1,0 +1,43 @@
+name: Fix Lock File and Create PR
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix-lock-file:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - name: Create new branch
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b fix-lock-file
+
+      - run: pnpm install --fix-lock-file
+
+      - name: Commit changes
+        run: |
+          git add pnpm-lock.yaml
+          git commit -m 'fix: update lock file with pnpm install --fix-lock-file'
+          git push origin fix-lock-file
+
+      - name: Create PR
+        uses: devops-infra/action-pull-request@v0.5.5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          source_branch: fix-lock-file
+          target_branch: master
+          title: "Fix: Update Lock File"
+          body: "**Automated pull request**"
+          label: dependencies
+          draft: false
