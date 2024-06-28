@@ -35,16 +35,20 @@ jobs:
         run: |
           git status
           git add pnpm-lock.yaml
-          [ -n "$(git diff --cached --name-only)" ] && echo 'true' || echo 'false' >> $GITHUB_ENV
+          if [ -n "$(git diff --cached --name-only)" ]; then
+            echo 'HAS_CHANGES=true' >> $GITHUB_ENV
+          else
+            echo 'HAS_CHANGES=false' >> $GITHUB_ENV
+          fi
 
       - name: Commit changes
-        if: ${{ env.NO_CHANGES == 'true' }}
+        if: ${{ env.HAS_CHANGES == 'true' }}
         run: |
           git commit -m 'fix: update pnpm lockfile with pnpm install --fix-lockfile'
           git push origin $BRANCH_NAME
 
       - name: Create PR
-        if: ${{ env.NO_CHANGES == 'true' }}
+        if: ${{ env.HAS_CHANGES == 'true' }}
         uses: devops-infra/action-pull-request@v0.5.5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
