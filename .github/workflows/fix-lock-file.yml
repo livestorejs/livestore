@@ -11,8 +11,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
@@ -37,11 +35,7 @@ jobs:
         run: |
           git status
           git add pnpm-lock.yaml
-          if git diff-index --quiet HEAD --; then
-            echo "NO_CHANGES='true'" >> $GITHUB_ENV
-          else
-            echo "NO_CHANGES='false'" >> $GITHUB_ENV
-          fi
+          [ -n "$(git diff --cached --name-only)" ] && echo 'true' || echo 'false' >> $GITHUB_ENV
 
       - name: Commit changes
         if: ${{ env.NO_CHANGES == 'true' }}
