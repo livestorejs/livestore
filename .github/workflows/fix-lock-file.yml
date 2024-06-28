@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  fix-lock-file:
+  fix-lockfile:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,23 +21,23 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git checkout -b fix-lock-file
+          git checkout -b fix-lockfile
 
-      - run: pnpm install --fix-lock-file
+      - run: pnpm install --fix-lockfile
 
       - name: Commit changes
         run: |
           git add pnpm-lock.yaml
-          git commit -m 'fix: update lock file with pnpm install --fix-lock-file'
-          git push origin fix-lock-file
+          git commit -m 'fix: update pnpm lockfile with pnpm install --fix-lockfile'
+          git push origin fix-lockfile
 
       - name: Create PR
         uses: devops-infra/action-pull-request@v0.5.5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          source_branch: fix-lock-file
+          source_branch: fix-lockfile
           target_branch: master
-          title: "Fix: Update Lock File"
+          title: "Fix: Update PNPM Lockfile"
           body: "**Automated pull request**"
           label: dependencies
           draft: false
