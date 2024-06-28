@@ -45,7 +45,7 @@ jobs:
         if: ${{ env.HAS_CHANGES == 'true' }}
         run: |
           git commit -m 'fix: update pnpm lockfile with pnpm install --fix-lockfile'
-          git push origin $BRANCH_NAME
+          git push --set-upstream origin $BRANCH_NAME
 
       - name: Create PR
         if: ${{ env.HAS_CHANGES == 'true' }}
