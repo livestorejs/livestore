@@ -23,6 +23,18 @@ export class SnapshotRes extends Schema.TaggedStruct('LSD.SnapshotRes', {
   snapshot: Schema.Uint8Array,
 }) {}
 
+export class LoadSnapshotReq extends Schema.TaggedStruct('LSD.LoadSnapshotReq', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+  snapshot: Schema.Uint8Array,
+}) {}
+
+export class LoadSnapshotRes extends Schema.TaggedStruct('LSD.LoadSnapshotRes', {
+  liveStoreVersion,
+  requestId,
+}) {}
+
 export class DebugInfoReq extends Schema.TaggedStruct('LSD.DebugInfoReq', {
   liveStoreVersion,
   requestId,
@@ -91,6 +103,18 @@ export class MutationLogRes extends Schema.TaggedStruct('LSD.MutationLogRes', {
   requestId,
   channelId,
   mutationLog: Schema.Uint8Array,
+}) {}
+
+export class LoadMutationLogReq extends Schema.TaggedStruct('LSD.LoadMutationLogReq', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+  mutationLog: Schema.Uint8Array,
+}) {}
+
+export class LoadMutationLogRes extends Schema.TaggedStruct('LSD.LoadMutationLogRes', {
+  liveStoreVersion,
+  requestId,
 }) {}
 
 export class SignalsSubscribe extends Schema.TaggedStruct('LSD.SignalsSubscribe', {
@@ -182,7 +206,9 @@ export class Disconnect extends Schema.TaggedStruct('LSD.Disconnect', {
 
 export const MessageToAppHost = Schema.Union(
   SnapshotReq,
+  LoadSnapshotReq,
   MutationLogReq,
+  LoadMutationLogReq,
   DebugInfoReq,
   DebugInfoResetReq,
   DebugInfoRerunQueryReq,
@@ -201,7 +227,9 @@ export type MessageToAppHost = typeof MessageToAppHost.Type
 
 export const MessageFromAppHost = Schema.Union(
   SnapshotRes,
+  LoadSnapshotRes,
   MutationLogRes,
+  LoadMutationLogRes,
   DebugInfoRes,
   DebugInfoResetRes,
   DebugInfoRerunQueryRes,

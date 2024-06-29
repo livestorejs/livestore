@@ -86,6 +86,8 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
         db: PersistedSqlite
         dbLog: PersistedSqlite
         sqlite3: SqliteWasm.Sqlite3Static
+        // TODO we should find a more elegant way to handle cases which need this ref for their implementation
+        isShuttingDownRef: { current: boolean }
         mutationEventSchema: MutationEventSchema<any>
         mutationDefSchemaHashMap: Map<string, number>
         broadcastChannel: BroadcastChannel

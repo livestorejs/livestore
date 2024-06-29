@@ -130,6 +130,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             storageOptions,
             schema,
             ctx: {
+              isShuttingDownRef: { current: false as boolean },
               sqlite3,
               db,
               dbLog,
@@ -237,10 +238,32 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
                     yield* devtools.sendMessage(
                       Devtools.SnapshotRes.make({ snapshot: data, requestId, liveStoreVersion }),
-                      {
-                        force: true,
-                      },
+                      { force: true },
                     )
+
+                    break
+                  }
+                  case 'LSD.LoadSnapshotReq': {
+                    const { snapshot } = decodedEvent
+
+                    workerCtx.ctx.isShuttingDownRef.current = true
+
+                    yield* db.import(snapshot)
+
+                    yield* devtools.sendMessage(Devtools.LoadSnapshotRes.make({ requestId, liveStoreVersion }))
+
+                    break
+                  }
+                  case 'LSD.LoadMutationLogReq': {
+                    const { mutationLog } = decodedEvent
+
+                    workerCtx.ctx.isShuttingDownRef.current = true
+
+                    yield* dbLog.import(mutationLog)
+
+                    yield* db.destroy
+
+                    yield* devtools.sendMessage(Devtools.LoadMutationLogRes.make({ requestId, liveStoreVersion }))
 
                     break
                   }
@@ -344,7 +367,12 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
     let batchItems: ExecutionBacklogItem[] = []
     const workerCtx = yield* WorkerCtx
     if (workerCtx._tag === 'NoLock') return
-    const { db, dbLog } = workerCtx.ctx
+    const { db, dbLog, isShuttingDownRef } = workerCtx.ctx
+
+    if (isShuttingDownRef.current) {
+      console.warn('livestore-webworker: shutting down, skipping execution')
+      return
+    }
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
     const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db.dbRef.current)
