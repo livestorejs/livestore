@@ -14,10 +14,6 @@
     "./effect": {
       "types": "./dist/effect/index.d.ts",
       "default": "./dist/effect/index.js"
-    },
-    "./util": {
-      "types": "./dist/utils/util.d.ts",
-      "default": "./dist/utils/util.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -28,9 +24,6 @@
       ],
       "effect": [
         "./dist/effect/index.d.ts"
-      ],
-      "util": [
-        "./dist/utils/util.d.ts"
       ]
     }
   },
