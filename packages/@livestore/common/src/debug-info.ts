@@ -50,13 +50,13 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     },
   )
 
-const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
+export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
   Schema.transform(
     Schema.Struct({
       size: Schema.Number,
       items: Schema.Array(elSchema),
     }),
-    BoundArraySchemaFromSelf(elSchema as any as Schema.Schema<ItemDecoded>),
+    Schema.typeSchema(BoundArraySchemaFromSelf(elSchema as any as Schema.Schema<ItemDecoded>)),
     {
       encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
       decode: (_) => BoundArray.make(_.size, _.items),

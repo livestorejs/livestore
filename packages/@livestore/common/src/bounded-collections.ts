@@ -71,7 +71,7 @@ export class BoundArray<V> {
     this.sizeLimit = sizeLimit
   }
 
-  static make = <V>(sizeLimit: number, initial: ReadonlyArray<V> = []): BoundArray<V> => {
+  static make = <V>(sizeLimit: number, initial: Iterable<V> = []): BoundArray<V> => {
     const b = new BoundArray<V>(sizeLimit)
     for (const v of initial) {
       b.push(v)

@@ -10,7 +10,7 @@ import { Devtools, getExecArgsFromMutation, prepareBindValues } from '@livestore
 import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { assertNever, isPromise, makeNoopTracer, ref, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
@@ -532,9 +532,11 @@ export class Store<
   private bootDevtools = () => {
     const devtoolsChannel = Devtools.makeBroadcastChannels()
 
-    const signalsSubcriptionRef = ref<undefined | (() => void)>(undefined)
-    // let alreadySubscribedToLiveQueries = false
-    const liveQueriesSubscriptionRef = ref<undefined | (() => void)>(undefined)
+    type Unsub = () => void
+    type RequestId = string
+
+    const signalsSubcriptions = new Map<RequestId, Unsub>()
+    const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
     devtoolsChannel.toAppHost.addEventListener('message', async (event) => {
       const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
       if (
@@ -565,9 +567,10 @@ export class Store<
 
           send()
 
-          if (signalsSubcriptionRef.current === undefined) {
-            signalsSubcriptionRef.current = this.graph.subscribeToRefresh(() => send())
-          }
+          signalsSubcriptions.set(
+            requestId,
+            this.graph.subscribeToRefresh(() => send()),
+          )
 
           break
         }
@@ -589,8 +592,7 @@ export class Store<
           break
         }
         case 'LSD.SignalsUnsubscribe': {
-          signalsSubcriptionRef.current!()
-          signalsSubcriptionRef.current = undefined
+          signalsSubcriptions.get(requestId)!()
           break
         }
         case 'LSD.LiveQueriesSubscribe': {
@@ -613,15 +615,15 @@ export class Store<
 
           send()
 
-          if (liveQueriesSubscriptionRef.current === undefined) {
-            liveQueriesSubscriptionRef.current = this.graph.subscribeToRefresh(() => send())
-          }
+          liveQueriesSubscriptions.set(
+            requestId,
+            this.graph.subscribeToRefresh(() => send()),
+          )
 
           break
         }
         case 'LSD.LiveQueriesUnsubscribe': {
-          liveQueriesSubscriptionRef.current!()
-          liveQueriesSubscriptionRef.current = undefined
+          liveQueriesSubscriptions.get(requestId)!()
           break
         }
         case 'LSD.ResetAllDataReq': {
