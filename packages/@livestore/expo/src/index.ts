@@ -86,8 +86,7 @@ export const makeAdapter =
         ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
         : new Set(['livestore.RawSql'])
 
-    // TODO refactor
-    const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+    const mutationEventSchema = makeMutationEventSchema(schema)
     const mutationDefSchemaHashMap = new Map(
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )

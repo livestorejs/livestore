@@ -44,7 +44,7 @@ export const makeWorker = (options: WorkerOptions) => {
 
 const makeWorkerRunner = ({ schema }: WorkerOptions) =>
   Effect.gen(function* (_$) {
-    const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+    const mutationEventSchema = makeMutationEventSchema(schema)
     const mutationDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.

@@ -132,7 +132,7 @@ const makeCoordinator =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+      const mutationEventSchema = makeMutationEventSchema(schema)
 
       broadcastChannel.addEventListener('message', (event) => {
         const decodedEvent = Schema.decodeUnknownOption(BCMessage.Message)(event.data)

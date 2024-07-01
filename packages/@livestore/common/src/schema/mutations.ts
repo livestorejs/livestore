@@ -142,8 +142,9 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
 
 export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
-): MutationEventSchema<TSchema['_MutationDefMapType']> =>
-  Schema.Union(
+): MutationEventSchema<TSchema['_MutationDefMapType']> => {
+  debugger
+  return Schema.Union(
     ...[...schema.mutations.values()].map((def) =>
       Schema.Struct({
         mutation: Schema.Literal(def.name),
@@ -152,6 +153,7 @@ export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
       }),
     ),
   ).annotations({ title: 'MutationEventSchema' }) as any
+}
 
 export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 
