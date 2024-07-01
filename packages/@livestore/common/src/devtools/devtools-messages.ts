@@ -204,6 +204,17 @@ export class Disconnect extends Schema.TaggedStruct('LSD.Disconnect', {
   channelId,
 }).annotations({ identifier: 'LSD.Disconnect' }) {}
 
+export class Ping extends Schema.TaggedStruct('LSD.Ping', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+}).annotations({ identifier: 'LSD.Ping' }) {}
+
+export class Pong extends Schema.TaggedStruct('LSD.Pong', {
+  liveStoreVersion,
+  requestId,
+}).annotations({ identifier: 'LSD.Pong' }) {}
+
 export const MessageToAppHost = Schema.Union(
   SnapshotReq,
   LoadSnapshotReq,
@@ -221,6 +232,7 @@ export const MessageToAppHost = Schema.Union(
   Disconnect,
   DevtoolsConnected,
   RunMutationReq,
+  Ping,
 ).annotations({ identifier: 'LSD.MessageToAppHost' })
 
 export type MessageToAppHost = typeof MessageToAppHost.Type
@@ -241,6 +253,7 @@ export const MessageFromAppHost = Schema.Union(
   AppHostReady,
   NetworkStatusChanged,
   RunMutationRes,
+  Pong,
 ).annotations({ identifier: 'LSD.MessageFromAppHost' })
 
 export type MessageFromAppHost = typeof MessageFromAppHost.Type

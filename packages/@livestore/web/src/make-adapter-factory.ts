@@ -1,5 +1,5 @@
 import { type StoreAdapter, type StoreAdapterFactory } from '@livestore/common'
-import type * as Sqlite from '@livestore/sqlite-wasm'
+import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import initSqlite3Wasm from '@livestore/sqlite-wasm'
 import { makeNoopSpan, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
@@ -20,10 +20,14 @@ export const makeAdapterFactory =
   async ({ otelTracer, otelContext, schema }) => {
     const sqlite3 = await sqlite3Promise
 
+    // NOTE Since we're only using SQLite via in-memory, we want to ignore the mainthread+OPFS related warnings here
+    // See https://sqlite.org/forum/info/9d4f722c6912799d
+    sqlite3.config.warn = () => {}
+
     const coordinator = await otelTracer.startActiveSpan('coordinator:load', {}, otelContext, async (span) => {
       try {
         const parentSpan = otel.trace.getSpan(otel.context.active()) ?? makeNoopSpan()
-        return makeCoordinator({ otel: { otelTracer, parentSpan }, schema }).pipe(
+        return makeCoordinator({ otel: { otelTracer, parentSpan }, schema, sqlite3 }).pipe(
           Effect.tapCauseLogPretty,
           Effect.runPromise,
         )
@@ -51,7 +55,9 @@ export const makeAdapterFactory =
       },
     )
 
-    const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as Sqlite.Database & { capi: Sqlite.CAPI }
+    const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & {
+      capi: SqliteWasm.CAPI
+    }
     db.capi = sqlite3.capi
 
     importBytesToDb(sqlite3, db, persistedData)

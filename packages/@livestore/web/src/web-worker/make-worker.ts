@@ -224,6 +224,10 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                 if (decodedEvent.channelId !== channelId) return
 
                 switch (decodedEvent._tag) {
+                  case 'LSD.Ping': {
+                    yield* devtools.sendMessage(Devtools.Pong.make({ requestId, liveStoreVersion }))
+                    break
+                  }
                   case 'LSD.Disconnect': {
                     yield* SubscriptionRef.set(devtools.isConnected, false)
 
@@ -238,7 +242,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
                     yield* devtools.sendMessage(
                       Devtools.SnapshotRes.make({ snapshot: data, requestId, liveStoreVersion }),
-                      { force: true },
                     )
 
                     break

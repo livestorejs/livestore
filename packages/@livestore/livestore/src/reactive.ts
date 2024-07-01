@@ -618,7 +618,9 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
   }
 
   const previousResult: EncodedOption<string> = includeResult
-    ? encodedOptionSome(JSON.stringify(atom.previousResult))
+    ? encodedOptionSome(
+        atom.previousResult === NOT_REFRESHED_YET ? 'SYMBOL_NOT_REFRESHED_YET' : JSON.stringify(atom.previousResult),
+      )
     : encodedOptionNone()
 
   if (atom._tag === 'ref') {

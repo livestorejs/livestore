@@ -19,6 +19,7 @@ import { globalReactivityGraph } from './global-state.js'
 import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
+import { NOT_REFRESHED_YET } from './reactive.js'
 import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
@@ -153,7 +154,7 @@ export class Store<
 
     this.reactivityGraph = reactivityGraph
     this.reactivityGraph.context = {
-      store: this as any,
+      store: this as unknown as Store<BaseGraphQLContext, LiveStoreSchema>,
       otelTracer: otelOptions.tracer,
       rootOtelContext: otelQueriesSpanContext,
     }
@@ -607,7 +608,10 @@ export class Store<
                   label: q.label,
                   runs: q.runs,
                   executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                  lastestResult: q.results$.previousResult,
+                  lastestResult:
+                    q.results$.previousResult === NOT_REFRESHED_YET
+                      ? 'SYMBOL_NOT_REFRESHED_YET'
+                      : q.results$.previousResult,
                   activeSubscriptions: Array.from(q.activeSubscriptions),
                 })),
                 requestId,
