@@ -11,7 +11,7 @@
   "dependencies": {
     "@effect/schema": "0.67.23",
     "@expo/vector-icons": "^14.0.1",
-    "@livestore/devtools-react": "0.0.54-dev.19",
+    "@livestore/devtools-react": "0.0.54-dev.21",
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "babel-preset-expo": "^11.0.5",
