@@ -8,18 +8,18 @@ import type {
 } from '@livestore/common'
 import { Devtools, getExecArgsFromMutation, prepareBindValues } from '@livestore/common'
 import { version as liveStoreVersion } from '@livestore/common/package.json'
-import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '@livestore/common/schema'
-import { makeMutationEventSchema } from '@livestore/common/schema'
+import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import { globalDbGraph } from './global-state.js'
+import { globalReactivityGraph } from './global-state.js'
 import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
-import type { DebugRefreshReasonBase, ReactiveGraph, Ref } from './reactive.js'
-import type { DbContext, DbGraph, LiveQuery } from './reactiveQueries/base-class.js'
+import type { DebugRefreshReasonBase, Ref } from './reactive.js'
+import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 
@@ -34,17 +34,21 @@ export type GraphQLOptions<TContext> = {
   makeContext: (db: MainDatabaseWrapper, tracer: otel.Tracer) => TContext
 }
 
+export type OtelOptions = {
+  tracer: otel.Tracer
+  rootSpanContext: otel.Context
+}
+
 export type StoreOptions<
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > = {
   adapter: StoreAdapter
   schema: TSchema
+  // TODO remove graphql-related stuff from store and move to GraphQL query directly
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
-  otelTracer: otel.Tracer
-  otelRootSpanContext: otel.Context
-  dbGraph: DbGraph
-  mutationEventSchema: MutationEventSchema<any>
+  otelOptions: OtelOptions
+  reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
 }
 
@@ -100,11 +104,8 @@ export class Store<
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > {
   id = uniqueStoreId()
-  graph: ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
+  reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
-  // TODO refactor
-  // _proxyDb: InMemoryDatabase
-  // TODO
   adapter: StoreAdapter
   schema: LiveStoreSchema
   graphQLSchema?: GraphQLSchema
@@ -114,7 +115,7 @@ export class Store<
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
-  tableRefs: { [key: string]: Ref<null, DbContext, RefreshReason> }
+  tableRefs: { [key: string]: Ref<null, QueryContext, RefreshReason> }
 
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
   __processedMutationIds = new Set<string>()
@@ -129,32 +130,33 @@ export class Store<
     adapter,
     schema,
     graphQLOptions,
-    dbGraph,
-    otelTracer,
-    otelRootSpanContext,
-    mutationEventSchema,
+    reactivityGraph,
+    otelOptions,
     disableDevtools,
   }: StoreOptions<TGraphQLContext, TSchema>) {
-    this.mainDbWrapper = new MainDatabaseWrapper({ otelTracer, otelRootSpanContext, db: adapter.mainDb })
+    this.mainDbWrapper = new MainDatabaseWrapper({ otel: otelOptions, db: adapter.mainDb })
     this.adapter = adapter
     this.schema = schema
 
     // TODO refactor
-    this.__mutationEventSchema = mutationEventSchema
-    // this.mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+    this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
     this.activeQueries = new ReferenceCountedSet()
 
-    const mutationsSpan = otelTracer.startSpan('LiveStore:mutations', {}, otelRootSpanContext)
+    const mutationsSpan = otelOptions.tracer.startSpan('LiveStore:mutations', {}, otelOptions.rootSpanContext)
     const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
 
-    const queriesSpan = otelTracer.startSpan('LiveStore:queries', {}, otelRootSpanContext)
+    const queriesSpan = otelOptions.tracer.startSpan('LiveStore:queries', {}, otelOptions.rootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
 
-    this.graph = dbGraph
-    this.graph.context = { store: this as any, otelTracer, rootOtelContext: otelQueriesSpanContext }
+    this.reactivityGraph = reactivityGraph
+    this.reactivityGraph.context = {
+      store: this as any,
+      otelTracer: otelOptions.tracer,
+      rootOtelContext: otelQueriesSpanContext,
+    }
 
     this.adapter.coordinator.syncMutations.pipe(
       Stream.tapSync((mutationEventDecoded) => {
@@ -170,7 +172,7 @@ export class Store<
     }
 
     this.otel = {
-      tracer: otelTracer,
+      tracer: otelOptions.tracer,
       mutationsSpanContext: otelMuationsSpanContext,
       queriesSpanContext: otelQueriesSpanContext,
     }
@@ -182,7 +184,7 @@ export class Store<
       // ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.sqliteDef.name),
     )
     const existingTableRefs = new Map(
-      Array.from(this.graph.atoms.values())
+      Array.from(this.reactivityGraph.atoms.values())
         .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)
         .map((_) => [_.label!.slice('tableRef:'.length), _] as const),
     )
@@ -201,7 +203,7 @@ export class Store<
     parentSpan: otel.Span,
   ): Store<TGraphQLContext, TSchema> => {
     const ctx = otel.trace.setSpan(otel.context.active(), parentSpan)
-    return storeOptions.otelTracer.startActiveSpan('LiveStore:store-constructor', {}, ctx, (span) => {
+    return storeOptions.otelOptions.tracer.startActiveSpan('LiveStore:store-constructor', {}, ctx, (span) => {
       try {
         return new Store(storeOptions)
       } finally {
@@ -229,7 +231,7 @@ export class Store<
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const label = `subscribe:${options?.label}`
-        const effect = this.graph.makeEffect((get) => onNewValue(get(query$.results$)), { label })
+        const effect = this.reactivityGraph.makeEffect((get) => onNewValue(get(query$.results$)), { label })
 
         this.activeQueries.add(query$ as LiveQuery<TResult>)
 
@@ -241,7 +243,7 @@ export class Store<
         const unsubscribe = () => {
           // console.log('store unsub', query$.label)
           try {
-            this.graph.destroyNode(effect)
+            this.reactivityGraph.destroyNode(effect)
             this.activeQueries.remove(query$ as LiveQuery<TResult>)
             onUnsubsubscribe?.()
           } finally {
@@ -261,7 +263,7 @@ export class Store<
   destroy = async () => {
     for (const tableRef of Object.values(this.tableRefs)) {
       for (const superComp of tableRef.super) {
-        this.graph.removeEdge(superComp, tableRef)
+        this.reactivityGraph.removeEdge(superComp, tableRef)
       }
     }
 
@@ -379,7 +381,7 @@ export class Store<
             },
           )
 
-          const tablesToUpdate = [] as [Ref<null, DbContext, RefreshReason>, null][]
+          const tablesToUpdate = [] as [Ref<null, QueryContext, RefreshReason>, null][]
           for (const tableName of writeTables) {
             const tableRef = this.tableRefs[tableName]
             assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
@@ -393,7 +395,7 @@ export class Store<
           }
 
           // Update all table refs together in a batch, to only trigger one reactive update
-          this.graph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
+          this.reactivityGraph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
         } catch (e: any) {
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
         } finally {
@@ -417,7 +419,7 @@ export class Store<
       this.otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
-        this.graph.runDeferredEffects({ otelContext })
+        this.reactivityGraph.runDeferredEffects({ otelContext })
         span.end()
       },
     )
@@ -485,7 +487,7 @@ export class Store<
 
         if (coordinatorMode !== 'skip-coordinator') {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          void this.adapter.coordinator.mutate(mutationEventEncoded, {
+          void this.adapter.coordinator.mutate(mutationEventEncoded as MutationEvent.AnyEncoded, {
             span,
             persisted: coordinatorMode !== 'skip-persist',
           })
@@ -523,7 +525,7 @@ export class Store<
   }
 
   makeTableRef = (tableName: string) =>
-    this.graph.makeRef(null, {
+    this.reactivityGraph.makeRef(null, {
       equal: () => false,
       label: `tableRef:${tableName}`,
       meta: { liveStoreRefType: 'table' },
@@ -535,7 +537,7 @@ export class Store<
     type Unsub = () => void
     type RequestId = string
 
-    const signalsSubcriptions = new Map<RequestId, Unsub>()
+    const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
     const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
     devtoolsChannel.toAppHost.addEventListener('message', async (event) => {
       const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
@@ -554,12 +556,12 @@ export class Store<
         devtoolsChannel.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
 
       switch (decoded.value._tag) {
-        case 'LSD.SignalsSubscribe': {
+        case 'LSD.ReactivityGraphSubscribe': {
           const includeResults = decoded.value.includeResults
           const send = () =>
             sendToDevtools(
-              Devtools.SignalsRes.make({
-                signals: this.graph.getSnapshot({ includeResults }),
+              Devtools.ReactivityGraphRes.make({
+                reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
                 requestId,
                 liveStoreVersion,
               }),
@@ -567,9 +569,9 @@ export class Store<
 
           send()
 
-          signalsSubcriptions.set(
+          reactivityGraphSubcriptions.set(
             requestId,
-            this.graph.subscribeToRefresh(() => send()),
+            this.reactivityGraph.subscribeToRefresh(() => send()),
           )
 
           break
@@ -591,8 +593,8 @@ export class Store<
           sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
           break
         }
-        case 'LSD.SignalsUnsubscribe': {
-          signalsSubcriptions.get(requestId)!()
+        case 'LSD.ReactivityGraphUnsubscribe': {
+          reactivityGraphSubcriptions.get(requestId)!()
           break
         }
         case 'LSD.LiveQueriesSubscribe': {
@@ -617,7 +619,7 @@ export class Store<
 
           liveQueriesSubscriptions.set(
             requestId,
-            this.graph.subscribeToRefresh(() => send()),
+            this.reactivityGraph.subscribeToRefresh(() => send()),
           )
 
           break
@@ -658,24 +660,24 @@ export const createStore = async <
 >({
   schema,
   graphQLOptions,
-  otelTracer = makeNoopTracer(),
-  otelRootSpanContext = otel.context.active(),
+  otelOptions,
   adapter: adapterFactory,
   boot,
-  dbGraph = globalDbGraph,
+  reactivityGraph = globalReactivityGraph,
   batchUpdates,
   disableDevtools,
 }: {
   schema: TSchema
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
-  otelTracer?: otel.Tracer
-  otelRootSpanContext?: otel.Context
   adapter: StoreAdapterFactory
+  reactivityGraph?: ReactivityGraph
+  graphQLOptions?: GraphQLOptions<TGraphQLContext>
+  otelOptions?: Partial<OtelOptions>
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
-  dbGraph?: DbGraph
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
 }): Promise<Store<TGraphQLContext, TSchema>> => {
+  const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
+  const otelRootSpanContext = otelOptions?.rootSpanContext ?? otel.context.active()
   return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
     try {
       performance.mark('livestore:db-creating')
@@ -687,10 +689,10 @@ export const createStore = async <
       performance.measure('livestore:db-create', 'livestore:db-creating', 'livestore:db-created')
 
       if (batchUpdates !== undefined) {
-        dbGraph.effectsWrapper = batchUpdates
+        reactivityGraph.effectsWrapper = batchUpdates
       }
 
-      const mutationEventSchema = makeMutationEventSchema(Object.fromEntries(schema.mutations.entries()) as any)
+      const mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
       // TODO consider moving booting into the storage backend
       if (boot !== undefined) {
@@ -723,7 +725,11 @@ export const createStore = async <
               }
 
               const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
-              void adapter.coordinator.mutate(mutationEventEncoded, { span, persisted: true })
+
+              void adapter.coordinator.mutate(mutationEventEncoded as MutationEvent.AnyEncoded, {
+                span,
+                persisted: true,
+              })
             }
           },
           select: (queryStr, bindValues) => {
@@ -766,13 +772,11 @@ export const createStore = async <
       // await applySchema(db, schema)
       return Store.createStore<TGraphQLContext, TSchema>(
         {
-          adapter: adapter,
+          adapter,
           schema,
           graphQLOptions,
-          otelTracer,
-          otelRootSpanContext,
-          dbGraph,
-          mutationEventSchema,
+          otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
+          reactivityGraph,
           disableDevtools,
         },
         span,

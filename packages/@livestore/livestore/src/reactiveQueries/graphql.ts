@@ -5,11 +5,11 @@ import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
-import { globalDbGraph } from '../global-state.js'
+import { globalReactivityGraph } from '../global-state.js'
 import { isThunk, type Thunk } from '../reactive.js'
 import type { BaseGraphQLContext, RefreshReason, Store } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
+import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
 export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<To, From>
@@ -21,9 +21,13 @@ export const queryGraphQL = <
 >(
   document: DocumentNode<TResult, TVariableValues>,
   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
-  { label, dbGraph, map }: { label?: string; dbGraph?: DbGraph; map?: MapResult<TResultMapped, TResult> } = {},
+  {
+    label,
+    reactivityGraph,
+    map,
+  }: { label?: string; reactivityGraph?: ReactivityGraph; map?: MapResult<TResultMapped, TResult> } = {},
 ): LiveQuery<TResultMapped, QueryInfoNone> =>
-  new LiveStoreGraphQLQuery({ document, genVariableValues, label, dbGraph, map })
+  new LiveStoreGraphQLQuery({ document, genVariableValues, label, reactivityGraph, map })
 
 export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
@@ -37,13 +41,13 @@ export class LiveStoreGraphQLQuery<
   document: DocumentNode<TResult, TVariableValues>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResultMapped, DbContext, RefreshReason>
+  results$: Thunk<TResultMapped, QueryContext, RefreshReason>
 
-  variableValues$: Thunk<TVariableValues, DbContext, RefreshReason> | undefined
+  variableValues$: Thunk<TVariableValues, QueryContext, RefreshReason> | undefined
 
   label: string
 
-  protected dbGraph: DbGraph
+  protected reactivityGraph: ReactivityGraph
 
   queryInfo: QueryInfoNone = { _tag: 'None' }
 
@@ -53,13 +57,13 @@ export class LiveStoreGraphQLQuery<
     document,
     label,
     genVariableValues,
-    dbGraph,
+    reactivityGraph,
     map,
   }: {
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
     label?: string
-    dbGraph?: DbGraph
+    reactivityGraph?: ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
   }) {
     super()
@@ -69,7 +73,7 @@ export class LiveStoreGraphQLQuery<
     this.label = labelWithDefault
     this.document = document
 
-    this.dbGraph = dbGraph ?? globalDbGraph
+    this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
 
     this.mapResult =
       map === undefined
@@ -92,7 +96,7 @@ export class LiveStoreGraphQLQuery<
     let variableValues$OrvariableValues
 
     if (typeof genVariableValues === 'function') {
-      variableValues$OrvariableValues = this.dbGraph.makeThunk(
+      variableValues$OrvariableValues = this.reactivityGraph.makeThunk(
         (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
           return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
         },
@@ -104,7 +108,7 @@ export class LiveStoreGraphQLQuery<
     }
 
     const resultsLabel = `${labelWithDefault}:results`
-    this.results$ = this.dbGraph.makeThunk<TResultMapped>(
+    this.results$ = this.reactivityGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
         const variableValues = isThunk(variableValues$OrvariableValues)
           ? (get(variableValues$OrvariableValues) as TVariableValues)
@@ -145,7 +149,7 @@ export class LiveStoreGraphQLQuery<
   //     },
   //     label: `${this.label}:js`,
   //     onDestroy: () => this.destroy(),
-  //     dbGraph: this.dbGraph,
+  //     reactivityGraph: this.reactivityGraph,
   //   })
 
   queryOnce = ({
@@ -217,9 +221,9 @@ export class LiveStoreGraphQLQuery<
 
   destroy = () => {
     if (this.variableValues$ !== undefined) {
-      this.dbGraph.destroyNode(this.variableValues$)
+      this.reactivityGraph.destroyNode(this.variableValues$)
     }
 
-    this.dbGraph.destroyNode(this.results$)
+    this.reactivityGraph.destroyNode(this.results$)
   }
 }

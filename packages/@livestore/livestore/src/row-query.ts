@@ -9,7 +9,7 @@ import type { SqliteDsl } from 'effect-db-schema'
 import { SqliteAst } from 'effect-db-schema'
 
 import type { Ref } from './reactive.js'
-import type { DbContext, DbGraph, LiveQuery, LiveQueryAny } from './reactiveQueries/base-class.js'
+import type { LiveQuery, LiveQueryAny, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
 import { computed } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { RefreshReason, Store } from './store.js'
@@ -17,7 +17,7 @@ import type { RefreshReason, Store } from './store.js'
 export type RowQueryOptions = {
   otelContext?: otel.Context
   skipInsertDefaultRow?: boolean
-  dbGraph?: DbGraph
+  reactivityGraph?: ReactivityGraph
 }
 
 export type RowQueryOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
@@ -76,7 +76,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     label: `rowQuery:query:${tableSchema.name}${id === undefined ? '' : `:${id}`}`,
     genQueryString: queryStr,
     queriedTables: new Set([tableName]),
-    dbGraph: options?.dbGraph,
+    reactivityGraph: options?.reactivityGraph,
     // While this code-path is not needed for singleton tables, it's still needed for `useRow` with non-existing rows for a given ID
     execBeforeFirstRun: makeExecBeforeFirstRun({
       otelContext: options?.otelContext,
@@ -145,7 +145,7 @@ const makeExecBeforeFirstRun =
     tableName: string
     table: DbSchema.TableDef
   }) =>
-  ({ store }: DbContext) => {
+  ({ store }: QueryContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
 
     // TODO we can remove this codepath again when Devtools v2 has landed
@@ -182,9 +182,9 @@ const makeExecBeforeFirstRun =
       const label = `tableRef:${tableName}`
 
       // TODO find a better implementation for this
-      const existingTableRefFromGraph = Array.from(store.graph.atoms.values()).find(
+      const existingTableRefFromGraph = Array.from(store.reactivityGraph.atoms.values()).find(
         (_) => _._tag === 'ref' && _.label === label,
-      ) as Ref<null, DbContext, RefreshReason> | undefined
+      ) as Ref<null, QueryContext, RefreshReason> | undefined
 
       store.tableRefs[tableName] = existingTableRefFromGraph ?? store.makeTableRef(tableName)
     }

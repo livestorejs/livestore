@@ -56,7 +56,7 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Sche
       size: Schema.Number,
       items: Schema.Array(elSchema),
     }),
-    Schema.typeSchema(BoundArraySchemaFromSelf(elSchema as any as Schema.Schema<ItemDecoded>)),
+    BoundArraySchemaFromSelf(Schema.typeSchema(elSchema)),
     {
       encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
       decode: (_) => BoundArray.make(_.size, _.items),
@@ -69,13 +69,6 @@ export const DebugInfo = Schema.Struct({
   queryFrameCount: Schema.Number,
   events: BoundArraySchema(Schema.Tuple(Schema.String, Schema.Any)),
 })
-
-// export interface DebugInfo {
-//   slowQueries: BoundArray<SlowQueryInfo>
-//   queryFrameDuration: number
-//   queryFrameCount: number
-//   events: BoundArray<[queryStr: string, bindValues: Bindable | undefined]>
-// }
 
 export type DebugInfo = typeof DebugInfo.Type
 

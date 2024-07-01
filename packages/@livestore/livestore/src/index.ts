@@ -20,9 +20,14 @@ export type {
 export { LiveStoreJSQuery, computed } from './reactiveQueries/js.js'
 export { LiveStoreSQLQuery, querySQL, type MapRows } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
-export { type GetAtomResult, type DbGraph, makeDbGraph, type LiveQuery } from './reactiveQueries/base-class.js'
+export {
+  type GetAtomResult,
+  type ReactivityGraph,
+  makeReactivityGraph,
+  type LiveQuery,
+} from './reactiveQueries/base-class.js'
 
-export { globalDbGraph, dynamicallyRegisteredTables } from './global-state.js'
+export { globalReactivityGraph, dynamicallyRegisteredTables } from './global-state.js'
 
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 

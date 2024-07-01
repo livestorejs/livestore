@@ -13,8 +13,8 @@
 
 import type { DbSchema } from '@livestore/common/schema'
 
-import { makeDbGraph } from './reactiveQueries/base-class.js'
+import { makeReactivityGraph } from './reactiveQueries/base-class.js'
 
-export const globalDbGraph = makeDbGraph()
+export const globalReactivityGraph = makeReactivityGraph()
 
 export const dynamicallyRegisteredTables: Map<string, DbSchema.TableDef> = new Map()

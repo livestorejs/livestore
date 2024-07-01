@@ -1,3 +1,4 @@
+import { memoizeByRef } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import { Schema } from '@livestore/utils/effect'
 
@@ -139,11 +140,11 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
   }[keyof TMutationsDefRecord]
 >
 
-export const makeMutationEventSchema = <TMutationsDefRecord extends MutationDefRecord>(
-  mutationDefRecord: TMutationsDefRecord,
-): MutationEventSchema<TMutationsDefRecord> =>
+export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
+  schema: TSchema,
+): MutationEventSchema<TSchema['_MutationDefMapType']> =>
   Schema.Union(
-    ...Object.values(mutationDefRecord).map((def) =>
+    ...[...schema.mutations.values()].map((def) =>
       Schema.Struct({
         mutation: Schema.Literal(def.name),
         args: def.schema,
@@ -151,6 +152,8 @@ export const makeMutationEventSchema = <TMutationsDefRecord extends MutationDefR
       }),
     ),
   ).annotations({ title: 'MutationEventSchema' }) as any
+
+export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 
 export const mutationEventSchemaDecodedAny = Schema.Struct({
   mutation: Schema.String,

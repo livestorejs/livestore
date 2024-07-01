@@ -7,7 +7,7 @@ import type { GraphQLSchema } from 'graphql'
 
 import type { MainDatabaseWrapper } from '../MainDatabaseWrapper.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
-import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
+import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
@@ -20,8 +20,7 @@ export type QueryDefinition = <TResult>(store: Store) => LiveQuery<TResult>
 export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
   graphQLOptions?: GraphQLOptions<GraphQLContext>
-  otelTracer?: otel.Tracer
-  otelRootSpanContext?: otel.Context
+  otelOptions?: OtelOptions
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
@@ -92,8 +91,10 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
           createStore({
             schema,
             graphQLOptions,
-            otelTracer,
-            otelRootSpanContext,
+            otelOptions: {
+              tracer: otelTracer,
+              rootSpanContext: otelRootSpanContext,
+            },
             boot,
             adapter,
             disableDevtools,

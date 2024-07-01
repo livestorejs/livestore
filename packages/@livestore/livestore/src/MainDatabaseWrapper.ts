@@ -34,16 +34,17 @@ export class MainDatabaseWrapper {
 
   constructor({
     db,
-    otelTracer,
-    otelRootSpanContext,
+    otel,
   }: {
     db: InMemoryDatabase
-    otelTracer: otel.Tracer
-    otelRootSpanContext: otel.Context
+    otel: {
+      tracer: otel.Tracer
+      rootSpanContext: otel.Context
+    }
   }) {
     this.db = db
-    this.otelTracer = otelTracer
-    this.otelRootSpanContext = otelRootSpanContext
+    this.otelTracer = otel.tracer
+    this.otelRootSpanContext = otel.rootSpanContext
 
     this.tablesUsedStmt = db.prepare(
       `SELECT tbl_name FROM tables_used(?) AS u JOIN sqlite_master ON sqlite_master.name = u.name WHERE u.schema = 'main';`,

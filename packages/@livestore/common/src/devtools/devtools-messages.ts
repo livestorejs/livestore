@@ -117,24 +117,24 @@ export class LoadMutationLogRes extends Schema.TaggedStruct('LSD.LoadMutationLog
   requestId,
 }).annotations({ identifier: 'LSD.LoadMutationLogRes' }) {}
 
-export class SignalsSubscribe extends Schema.TaggedStruct('LSD.SignalsSubscribe', {
+export class ReactivityGraphSubscribe extends Schema.TaggedStruct('LSD.ReactivityGraphSubscribe', {
   liveStoreVersion,
   requestId,
   channelId,
   includeResults: Schema.Boolean,
-}).annotations({ identifier: 'LSD.SignalsSubscribe' }) {}
+}).annotations({ identifier: 'LSD.ReactivityGraphSubscribe' }) {}
 
-export class SignalsUnsubscribe extends Schema.TaggedStruct('LSD.SignalsUnsubscribe', {
+export class ReactivityGraphUnsubscribe extends Schema.TaggedStruct('LSD.ReactivityGraphUnsubscribe', {
   liveStoreVersion,
   requestId,
   channelId,
-}).annotations({ identifier: 'LSD.SignalsUnsubscribe' }) {}
+}).annotations({ identifier: 'LSD.ReactivityGraphUnsubscribe' }) {}
 
-export class SignalsRes extends Schema.TaggedStruct('LSD.SignalsRes', {
+export class ReactivityGraphRes extends Schema.TaggedStruct('LSD.ReactivityGraphRes', {
   liveStoreVersion,
   requestId,
-  signals: Schema.Any,
-}).annotations({ identifier: 'LSD.SignalsRes' }) {}
+  reactivityGraph: Schema.Any,
+}).annotations({ identifier: 'LSD.ReactivityGraphRes' }) {}
 
 export class LiveQueriesSubscribe extends Schema.TaggedStruct('LSD.LiveQueriesSubscribe', {
   liveStoreVersion,
@@ -212,8 +212,8 @@ export const MessageToAppHost = Schema.Union(
   DebugInfoReq,
   DebugInfoResetReq,
   DebugInfoRerunQueryReq,
-  SignalsSubscribe,
-  SignalsUnsubscribe,
+  ReactivityGraphSubscribe,
+  ReactivityGraphUnsubscribe,
   LiveQueriesSubscribe,
   LiveQueriesUnsubscribe,
   ResetAllDataReq,
@@ -233,7 +233,7 @@ export const MessageFromAppHost = Schema.Union(
   DebugInfoRes,
   DebugInfoResetRes,
   DebugInfoRerunQueryRes,
-  SignalsRes,
+  ReactivityGraphRes,
   LiveQueriesRes,
   ResetAllDataRes,
   Disconnect,

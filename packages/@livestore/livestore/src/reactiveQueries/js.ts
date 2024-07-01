@@ -1,25 +1,25 @@
 import type { QueryInfo, QueryInfoNone } from '@livestore/common'
 import * as otel from '@opentelemetry/api'
 
-import { globalDbGraph } from '../global-state.js'
+import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
+import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
 export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfoNone>(
   fn: (get: GetAtomResult) => TResult,
   options?: {
     label: string
-    dbGraph?: DbGraph
+    reactivityGraph?: ReactivityGraph
     queryInfo?: TQueryInfo
   },
 ): LiveQuery<TResult, TQueryInfo> =>
   new LiveStoreJSQuery<TResult, TQueryInfo>({
     fn,
     label: options?.label ?? fn.toString(),
-    dbGraph: options?.dbGraph,
+    reactivityGraph: options?.reactivityGraph,
     queryInfo: options?.queryInfo,
   })
 
@@ -30,11 +30,11 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
   _tag: 'js' = 'js'
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, DbContext, RefreshReason>
+  results$: Thunk<TResult, QueryContext, RefreshReason>
 
   label: string
 
-  protected dbGraph: DbGraph
+  protected reactivityGraph: ReactivityGraph
 
   queryInfo: TQueryInfo
 
@@ -50,14 +50,14 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
     fn,
     label,
     onDestroy,
-    dbGraph,
+    reactivityGraph,
     queryInfo,
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
     /** Currently only used for "nested destruction" of piped queries */
     onDestroy?: () => void
-    dbGraph?: DbGraph
+    reactivityGraph?: ReactivityGraph
     queryInfo?: TQueryInfo
   }) {
     super()
@@ -65,12 +65,12 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
     this.onDestroy = onDestroy
     this.label = label
 
-    this.dbGraph = dbGraph ?? globalDbGraph
+    this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
     this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
 
     const queryLabel = `${label}:results`
 
-    this.results$ = this.dbGraph.makeThunk(
+    this.results$ = this.reactivityGraph.makeThunk(
       (get, setDebugInfo, { otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? rootOtelContext, (span) => {
           const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -98,11 +98,11 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
   //     },
   //     label: `${this.label}:js`,
   //     onDestroy: () => this.destroy(),
-  //     dbGraph: this.dbGraph,
+  //     reactivityGraph: this.reactivityGraph,
   //   })
 
   destroy = () => {
-    this.dbGraph.destroyNode(this.results$)
+    this.reactivityGraph.destroyNode(this.results$)
     this.onDestroy?.()
   }
 }

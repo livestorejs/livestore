@@ -6,15 +6,15 @@ import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
 import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'
 
-export type DbGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>
+export type ReactivityGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, QueryContext>
 
-export const makeDbGraph = (): DbGraph =>
-  new ReactiveGraph<RefreshReason, QueryDebugInfo, DbContext>({
+export const makeReactivityGraph = (): ReactivityGraph =>
+  new ReactiveGraph<RefreshReason, QueryDebugInfo, QueryContext>({
     // TODO also find a better way to only use this effects wrapper when used in a React app
     effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
   })
 
-export type DbContext = {
+export type QueryContext = {
   store: Store
   otelTracer: otel.Tracer
   rootOtelContext: otel.Context
@@ -37,7 +37,7 @@ export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone
   '__result!': TResult
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, DbContext, RefreshReason>
+  results$: Thunk<TResult, QueryContext, RefreshReason>
 
   label: string
 
@@ -72,11 +72,11 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
   /** Human-readable label for the query for debugging */
   abstract label: string
 
-  abstract results$: Thunk<TResult, DbContext, RefreshReason>
+  abstract results$: Thunk<TResult, QueryContext, RefreshReason>
 
   activeSubscriptions: Set<StackInfo> = new Set()
 
-  protected abstract dbGraph: DbGraph
+  protected abstract reactivityGraph: ReactivityGraph
 
   abstract queryInfo: TQueryInfo
 
@@ -102,8 +102,8 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
     onUnsubsubscribe?: () => void,
     options?: { label?: string; otelContext?: otel.Context } | undefined,
   ): (() => void) =>
-    this.dbGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ??
-    throwContextNotSetError(this.dbGraph)
+    this.reactivityGraph.context?.store.subscribe(this, onNewValue, onUnsubsubscribe, options) ??
+    throwContextNotSetError(this.reactivityGraph)
 }
 
 export type GetAtomResult = <T>(atom: Atom<T, any, RefreshReason> | LiveQuery<T, any>) => T

@@ -7,7 +7,7 @@ import React from 'react'
 
 // TODO refactor so the `react` module doesn't depend on `effect` module
 import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
-import type { BaseGraphQLContext, GraphQLOptions, Store } from '../store.js'
+import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
@@ -15,8 +15,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
-  otelTracer?: otel.Tracer
-  otelRootSpanContext?: otel.Context
+  otelOptions?: OtelOptions
   fallback: ReactElement
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
@@ -26,8 +25,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   fallback,
   graphQLOptions,
-  otelTracer,
-  otelRootSpanContext,
+  otelOptions,
   children,
   schema,
   boot,
@@ -38,8 +36,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   const storeCtx = useCreateStore({
     schema,
     graphQLOptions,
-    otelTracer,
-    otelRootSpanContext,
+    otelOptions,
     boot,
     adapter,
     batchUpdates,
@@ -58,8 +55,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   schema,
   graphQLOptions,
-  otelTracer,
-  otelRootSpanContext,
+  otelOptions,
   boot,
   adapter,
   batchUpdates,
@@ -70,8 +66,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   const inputPropsCacheRef = React.useRef({
     schema,
     graphQLOptions,
-    otelTracer,
-    otelRootSpanContext,
+    otelOptions,
     boot,
     adapter,
     batchUpdates,
@@ -81,8 +76,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   if (
     inputPropsCacheRef.current.schema !== schema ||
     inputPropsCacheRef.current.graphQLOptions !== graphQLOptions ||
-    inputPropsCacheRef.current.otelTracer !== otelTracer ||
-    inputPropsCacheRef.current.otelRootSpanContext !== otelRootSpanContext ||
+    inputPropsCacheRef.current.otelOptions !== otelOptions ||
     inputPropsCacheRef.current.boot !== boot ||
     inputPropsCacheRef.current.adapter !== adapter ||
     inputPropsCacheRef.current.batchUpdates !== batchUpdates
@@ -90,8 +84,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     inputPropsCacheRef.current = {
       schema,
       graphQLOptions,
-      otelTracer,
-      otelRootSpanContext,
+      otelOptions,
       boot,
       adapter,
       batchUpdates,
@@ -109,8 +102,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         store = await createStore({
           schema,
           graphQLOptions,
-          otelTracer,
-          otelRootSpanContext,
+          otelOptions,
           boot,
           adapter,
           batchUpdates,
@@ -129,7 +121,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         store?.destroy()
       }
     }
-  }, [schema, graphQLOptions, otelTracer, otelRootSpanContext, boot, adapter, batchUpdates, disableDevtools])
+  }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools])
 
   return ctxValueRef.current
 }
