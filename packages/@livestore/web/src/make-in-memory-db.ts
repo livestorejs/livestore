@@ -1,10 +1,11 @@
 import type { InMemoryDatabase, PreparedBindValues } from '@livestore/common'
-import type * as Sqlite from '@livestore/sqlite-wasm'
 import { shouldNeverHappen } from '@livestore/utils'
 
+import type { SqliteWasm } from './sqlite-utils.js'
+
 export const makeInMemoryDb = (
-  sqlite3: Sqlite.Sqlite3Static,
-  db: Sqlite.Database & { capi: Sqlite.CAPI },
+  sqlite3: SqliteWasm.Sqlite3Static,
+  db: SqliteWasm.Database & { capi: SqliteWasm.CAPI },
 ): InMemoryDatabase => {
   return {
     _tag: 'InMemoryDatabase',
@@ -80,10 +81,10 @@ export const makeInMemoryDb = (
         return () => sqlite3.capi.sqlite3_changes(db)
       }
     },
-    dangerouslyReset: async () => {
-      db.capi.sqlite3_close_v2(db.pointer!)
+    // dangerouslyReset: async () => {
+    //   db.capi.sqlite3_close_v2(db.pointer!)
 
-      db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as Sqlite.Database & { capi: Sqlite.CAPI }
-    },
+    //   db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+    // },
   } satisfies InMemoryDatabase
 }

@@ -1,8 +1,5 @@
+import { UnexpectedError } from '@livestore/common'
 import { Schema, Transferable } from '@livestore/utils/effect'
-
-export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('UnexpectedError', {
-  error: Schema.Any,
-}) {}
 
 export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
   query: Schema.String,
@@ -33,21 +30,32 @@ export type ExecutionBacklogItem = Schema.Schema.Type<typeof ExecutionBacklogIte
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
   /** Default is root directory */
-  directory: Schema.optional(Schema.String),
+  directory: Schema.optional(Schema.String, { default: () => '' }),
   /** Default is 'livestore-' */
-  filePrefix: Schema.optional(Schema.String),
+  filePrefix: Schema.optional(Schema.String, { default: () => 'livestore-' }),
 })
+
+export const StorageTypeOpfsSahpoolExperimental = Schema.Struct({
+  type: Schema.Literal('opfs-sahpool-experimental'),
+  /** Default is `.livestore-sahpool-experimental` */
+  directory: Schema.optional(Schema.String, { default: () => '.livestore-sahpool-experimental' }),
+  /** Default is 'livestore-' */
+  filePrefix: Schema.optional(Schema.String, { default: () => 'livestore-' }),
+})
+
+export type StorageTypeOpfsSahpoolExperimental = typeof StorageTypeOpfsSahpoolExperimental.Type
 
 export const StorageTypeIndexeddb = Schema.Struct({
   type: Schema.Literal('indexeddb'),
   /** @default "livestore" */
-  databaseName: Schema.optional(Schema.String),
-  /** @default "livestore" */
-  storeNamePrefix: Schema.optional(Schema.String),
+  databaseName: Schema.optional(Schema.String, { default: () => 'livestore' }),
+  /** @default "livestore-" */
+  storeNamePrefix: Schema.optional(Schema.String, { default: () => 'livestore-' }),
 })
 
-export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb)
-export type StorageType = Schema.Schema.Type<typeof StorageType>
+export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb, StorageTypeOpfsSahpoolExperimental)
+export type StorageType = typeof StorageType.Type
+export type StorageTypeEncoded = typeof StorageType.Encoded
 
 export const SyncingTypeWebsocket = Schema.Struct({
   type: Schema.Literal('websocket'),

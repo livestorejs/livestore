@@ -1,12 +1,12 @@
 import { initializeSingletonTables, migrateDb, migrateTable, rehydrateFromMutationLog } from '@livestore/common'
 import { mutationLogMetaTable } from '@livestore/common/schema'
-import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import { casesHandled, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeInMemoryDb } from '../make-in-memory-db.js'
+import type { SqliteWasm } from '../sqlite-utils.js'
 import type { WorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 
@@ -25,7 +25,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
 
     yield* Effect.addFinalizer((ex) => {
       if (ex._tag === 'Success') return Effect.void
-      return db.destroy.pipe(Effect.orDie)
+      return db.destroy.pipe(Effect.tapCauseLogPretty, Effect.orDie)
     })
 
     const otelContext = otel.context.active()

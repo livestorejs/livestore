@@ -22,145 +22,147 @@ export type MakeDbOptions = {
 
 export const makeAdapter =
   (options?: MakeDbOptions): StoreAdapterFactory =>
-  ({ schema }) => {
-    const { fileNamePrefix, subDirectory } = options ?? {}
-    const migrationOptions = schema.migrationOptions
-    const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
-    const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
-    const db = SQLite.openDatabaseSync(fullDbFilePath)
+  ({ schema }) =>
+    Effect.gen(function* () {
+      const { fileNamePrefix, subDirectory } = options ?? {}
+      const migrationOptions = schema.migrationOptions
+      const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
+      const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
+      const db = SQLite.openDatabaseSync(fullDbFilePath)
 
-    const mainDb = makeMainDb(db)
+      const mainDb = makeMainDb(db)
 
-    const dbWasEmptyWhenOpenedStmt = mainDb.prepare('SELECT 1 FROM sqlite_master')
-    const dbWasEmptyWhenOpened = dbWasEmptyWhenOpenedStmt.select(undefined).length === 0
+      const dbWasEmptyWhenOpenedStmt = mainDb.prepare('SELECT 1 FROM sqlite_master')
+      const dbWasEmptyWhenOpened = dbWasEmptyWhenOpenedStmt.select(undefined).length === 0
 
-    const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
-    const mainDbLog = makeMainDb(dbLog)
+      const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
+      const mainDbLog = makeMainDb(dbLog)
 
-    migrateTable({
-      db: mainDbLog,
-      behaviour: 'create-if-not-exists',
-      tableAst: mutationLogMetaTable.sqliteDef.ast,
-      skipMetaTable: true,
-    })
+      migrateTable({
+        db: mainDbLog,
+        behaviour: 'create-if-not-exists',
+        tableAst: mutationLogMetaTable.sqliteDef.ast,
+        skipMetaTable: true,
+      })
 
-    if (dbWasEmptyWhenOpened) {
-      const otelContext = otel.context.active()
+      if (dbWasEmptyWhenOpened) {
+        const otelContext = otel.context.active()
 
-      migrateDb({ db: mainDb, otelContext, schema })
+        migrateDb({ db: mainDb, otelContext, schema })
 
-      initializeSingletonTables(schema, mainDb)
+        initializeSingletonTables(schema, mainDb)
 
-      switch (migrationOptions.strategy) {
-        case 'from-mutation-log': {
-          rehydrateFromMutationLog({
-            db: mainDb,
-            logDb: mainDbLog,
-            schema,
-            migrationOptions,
-          })
+        switch (migrationOptions.strategy) {
+          case 'from-mutation-log': {
+            rehydrateFromMutationLog({
+              db: mainDb,
+              logDb: mainDbLog,
+              schema,
+              migrationOptions,
+            })
 
-          break
-        }
-        case 'hard-reset': {
-          // This is already the case by note doing anything now
+            break
+          }
+          case 'hard-reset': {
+            // This is already the case by note doing anything now
 
-          break
-        }
-        case 'manual': {
-          // const migrateFn = migrationStrategy.migrate
-          console.warn('Manual migration strategy not implemented yet')
+            break
+          }
+          case 'manual': {
+            // const migrateFn = migrationStrategy.migrate
+            console.warn('Manual migration strategy not implemented yet')
 
-          // TODO figure out a way to get previous database file to pass to the migration function
+            // TODO figure out a way to get previous database file to pass to the migration function
 
-          break
-        }
-        default: {
-          casesHandled(migrationOptions)
+            break
+          }
+          default: {
+            casesHandled(migrationOptions)
+          }
         }
       }
-    }
 
-    const mutationLogExclude =
-      migrationOptions.strategy === 'from-mutation-log'
-        ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
-        : new Set(['livestore.RawSql'])
+      const mutationLogExclude =
+        migrationOptions.strategy === 'from-mutation-log'
+          ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
+          : new Set(['livestore.RawSql'])
 
-    const mutationEventSchema = makeMutationEventSchema(schema)
-    const mutationDefSchemaHashMap = new Map(
-      [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
-    )
+      const mutationEventSchema = makeMutationEventSchema(schema)
+      const mutationDefSchemaHashMap = new Map(
+        [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
+      )
 
-    const newMutationLogStmt = mainDbLog.prepare(
-      `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
-    )
+      const newMutationLogStmt = mainDbLog.prepare(
+        `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
 
-    const hasLock = TRef.make(true).pipe(Effect.runSync)
+      const hasLock = TRef.make(true).pipe(Effect.runSync)
 
-    const syncMutations = Stream.never
+      const syncMutations = Stream.never
 
-    const coordinator = {
-      devtools: { channelId: 'todo' },
-      hasLock,
-      syncMutations,
-      execute: async () => {},
-      mutate: async (mutationEventEncoded, { persisted }) => {
-        if (migrationOptions.strategy !== 'from-mutation-log') return
+      const coordinator = {
+        devtools: { channelId: 'todo' },
+        hasLock,
+        syncMutations,
+        execute: () => Effect.void,
+        mutate: (mutationEventEncoded, { persisted }) =>
+          Effect.gen(function* () {
+            if (migrationOptions.strategy !== 'from-mutation-log') return
 
-        const mutation = mutationEventEncoded.mutation
-        const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
-        const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+            const mutation = mutationEventEncoded.mutation
+            const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
+            const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
-        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+            const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-        // write to mutation_log
-        if (
-          persisted === true &&
-          mutationLogExclude.has(mutation) === false &&
-          execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
-        ) {
-          const mutationDefSchemaHash =
-            mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
+            // write to mutation_log
+            if (
+              persisted === true &&
+              mutationLogExclude.has(mutation) === false &&
+              execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
+            ) {
+              const mutationDefSchemaHash =
+                mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
-          const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
+              const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
 
-          try {
-            newMutationLogStmt.execute([
-              mutationEventEncoded.id,
-              mutationEventEncoded.mutation,
-              argsJson,
-              mutationDefSchemaHash,
-              new Date().toISOString(),
-              'localOnly',
-            ] as any)
-          } catch (e) {
-            console.error(
-              'Error writing to mutation_log',
-              e,
-              mutationEventEncoded.id,
-              mutationEventEncoded.mutation,
-              argsJson,
-              mutationDefSchemaHash,
-            )
-            debugger
-            throw e
-          }
-        } else {
-          //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-        }
-      },
-      export: async () => mainDb.export(),
-      // TODO actually implement this
-      getInitialSnapshot: async () => new Uint8Array(),
-      // TODO actually implement this
-      dangerouslyReset: async () => {},
-      getMutationLogData: async () => mainDbLog.export(),
-      shutdown: async () => {},
-      networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
-    } satisfies Coordinator
+              try {
+                newMutationLogStmt.execute([
+                  mutationEventEncoded.id,
+                  mutationEventEncoded.mutation,
+                  argsJson,
+                  mutationDefSchemaHash,
+                  new Date().toISOString(),
+                  'localOnly',
+                ] as any)
+              } catch (e) {
+                console.error(
+                  'Error writing to mutation_log',
+                  e,
+                  mutationEventEncoded.id,
+                  mutationEventEncoded.mutation,
+                  argsJson,
+                  mutationDefSchemaHash,
+                )
+                debugger
+                throw e
+              }
+            } else {
+              //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
+            }
+          }),
+        export: Effect.sync(() => mainDb.export()),
+        // TODO actually implement this
+        getInitialSnapshot: Effect.succeed(new Uint8Array()),
+        // TODO actually implement this
+        dangerouslyReset: () => Effect.dieMessage('Not implemented'),
+        getMutationLogData: Effect.sync(() => mainDbLog.export()),
+        shutdown: Effect.dieMessage('Not implemented'),
+        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+      } satisfies Coordinator
 
-    return { mainDb, coordinator } satisfies StoreAdapter
-  }
+      return { mainDb, coordinator } satisfies StoreAdapter
+    })
 
 const makeMainDb = (db: SQLite.SQLiteDatabase) => {
   return {
@@ -201,9 +203,6 @@ const makeMainDb = (db: SQLite.SQLiteDatabase) => {
     export: () => {
       console.error(`export not yet implemented`)
       return new Uint8Array([])
-    },
-    dangerouslyReset: async () => {
-      console.error(`dangerouslyReset not yet implemented`)
     },
   } satisfies InMemoryDatabase
 }

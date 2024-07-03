@@ -5,13 +5,14 @@ import type {
   ResetMode,
   StoreAdapter,
   StoreAdapterFactory,
+  UnexpectedError,
 } from '@livestore/common'
 import { Devtools, getExecArgsFromMutation, prepareBindValues } from '@livestore/common'
 import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, OtelTracer, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -271,7 +272,7 @@ export class Store<
     otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
     otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
 
-    await this.adapter.coordinator.shutdown()
+    await this.adapter.coordinator.shutdown.pipe(Effect.tapCauseLogPretty, Effect.runPromise)
   }
 
   mutate: {
@@ -488,10 +489,9 @@ export class Store<
 
         if (coordinatorMode !== 'skip-coordinator') {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          void this.adapter.coordinator.mutate(mutationEventEncoded as MutationEvent.AnyEncoded, {
-            span,
-            persisted: coordinatorMode !== 'skip-persist',
-          })
+          this.adapter.coordinator
+            .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
+            .pipe(Effect.tapCauseLogPretty, Effect.runFork)
         }
 
         // Uncomment to print a list of queries currently registered on the store
@@ -517,8 +517,9 @@ export class Store<
   ) => {
     this.mainDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
-    const parentSpan = otel.trace.getSpan(otel.context.active())
-    this.adapter.coordinator.execute(query, prepareBindValues(params, query), parentSpan)
+    this.adapter.coordinator
+      .execute(query, prepareBindValues(params, query))
+      .pipe(Effect.tapCauseLogPretty, Effect.runFork)
   }
 
   select = (query: string, params: ParamsObject = {}) => {
@@ -633,7 +634,10 @@ export class Store<
           break
         }
         case 'LSD.ResetAllDataReq': {
-          await this.adapter.coordinator.dangerouslyReset(decoded.value.mode)
+          await this.adapter.coordinator
+            .dangerouslyReset(decoded.value.mode)
+            .pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+
           sendToDevtools(Devtools.ResetAllDataRes.make({ requestId, liveStoreVersion }))
 
           break
@@ -649,16 +653,35 @@ export class Store<
   }
 
   __devDownloadMutationLogDb = async () => {
-    const data = await this.adapter.coordinator.getMutationLogData()
+    const data = await this.adapter.coordinator.getMutationLogData.pipe(Effect.tapCauseLogPretty, Effect.runPromise)
     downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
   }
 
   // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
-  dangerouslyResetStorage = (mode: ResetMode) => this.adapter.coordinator.dangerouslyReset(mode)
+  dangerouslyResetStorage = (mode: ResetMode) =>
+    this.adapter.coordinator.dangerouslyReset(mode).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+}
+
+export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
+  schema: TSchema
+  adapter: StoreAdapterFactory
+  reactivityGraph?: ReactivityGraph
+  graphQLOptions?: GraphQLOptions<TGraphQLContext>
+  otelOptions?: Partial<OtelOptions>
+  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
+  batchUpdates?: (run: () => void) => void
+  disableDevtools?: boolean
 }
 
 /** Create a new LiveStore Store */
 export const createStore = async <
+  TGraphQLContext extends BaseGraphQLContext,
+  TSchema extends LiveStoreSchema = LiveStoreSchema,
+>(
+  options: CreateStoreOptions<TGraphQLContext, TSchema>,
+): Promise<Store<TGraphQLContext, TSchema>> => createStoreEff(options).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+
+export const createStoreEff = <
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >({
@@ -670,125 +693,122 @@ export const createStore = async <
   reactivityGraph = globalReactivityGraph,
   batchUpdates,
   disableDevtools,
-}: {
-  schema: TSchema
-  adapter: StoreAdapterFactory
-  reactivityGraph?: ReactivityGraph
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
-  otelOptions?: Partial<OtelOptions>
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
-  batchUpdates?: (run: () => void) => void
-  disableDevtools?: boolean
-}): Promise<Store<TGraphQLContext, TSchema>> => {
+}: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<Store<TGraphQLContext, TSchema>, UnexpectedError> => {
   const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
   const otelRootSpanContext = otelOptions?.rootSpanContext ?? otel.context.active()
-  return otelTracer.startActiveSpan('createStore', {}, otelRootSpanContext, async (span) => {
-    try {
-      performance.mark('livestore:db-creating')
-      const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-      const adapterPromise = adapterFactory({ otelTracer, otelContext, schema })
-      const adapter = adapterPromise instanceof Promise ? await adapterPromise : adapterPromise
-      performance.mark('livestore:db-created')
-      performance.measure('livestore:db-create', 'livestore:db-creating', 'livestore:db-created')
+  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    Layer.provide(Layer.sync(OtelTracer.Tracer, () => otelTracer)),
+  )
 
-      if (batchUpdates !== undefined) {
-        reactivityGraph.effectsWrapper = batchUpdates
-      }
+  return Effect.gen(function* () {
+    const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
 
-      const mutationEventSchema = makeMutationEventSchemaMemo(schema)
+    const adapter = yield* adapterFactory({ schema }).pipe(
+      Effect.withPerformanceMeasure('livestore:makeAdapter'),
+      Effect.withSpan('createStore:makeAdapter'),
+    )
 
-      // TODO consider moving booting into the storage backend
-      if (boot !== undefined) {
-        let isInTxn = false
-        let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
-
-        const bootDbImpl: BootDb = {
-          _tag: 'BootDb',
-          execute: (queryStr, bindValues) => {
-            const stmt = adapter.mainDb.prepare(queryStr)
-            stmt.execute(bindValues)
-
-            if (isInTxn === true) {
-              txnExecuteStmnts.push([queryStr, bindValues])
-            } else {
-              void adapter.coordinator.execute(queryStr, bindValues, undefined)
-            }
-          },
-          mutate: (...list) => {
-            for (const mutationEventDecoded of list) {
-              const mutationDef =
-                schema.mutations.get(mutationEventDecoded.mutation) ??
-                shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
-
-              const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-              // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-              for (const { statementSql, bindValues } of execArgsArr) {
-                adapter.mainDb.execute(statementSql, bindValues)
-              }
-
-              const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
-
-              void adapter.coordinator.mutate(mutationEventEncoded as MutationEvent.AnyEncoded, {
-                span,
-                persisted: true,
-              })
-            }
-          },
-          select: (queryStr, bindValues) => {
-            const stmt = adapter.mainDb.prepare(queryStr)
-            return stmt.select(bindValues)
-          },
-          txn: (callback) => {
-            try {
-              isInTxn = true
-              adapter.mainDb.execute('BEGIN', undefined)
-
-              callback()
-
-              adapter.mainDb.execute('COMMIT', undefined)
-
-              // adapter.coordinator.execute('BEGIN', undefined, undefined)
-              for (const [queryStr, bindValues] of txnExecuteStmnts) {
-                adapter.coordinator.execute(queryStr, bindValues, undefined)
-              }
-              // adapter.coordinator.execute('COMMIT', undefined, undefined)
-            } catch (e: any) {
-              adapter.mainDb.execute('ROLLBACK', undefined)
-              throw e
-            } finally {
-              isInTxn = false
-              txnExecuteStmnts = []
-            }
-          },
-        }
-
-        const booting = boot(bootDbImpl, span)
-        // NOTE only awaiting if it's actually a promise to avoid unnecessary async/await
-        if (isPromise(booting)) {
-          await booting
-        }
-      }
-
-      // TODO: we can't apply the schema at this point, we've already loaded persisted data!
-      // Think about what to do about this case.
-      // await applySchema(db, schema)
-      return Store.createStore<TGraphQLContext, TSchema>(
-        {
-          adapter,
-          schema,
-          graphQLOptions,
-          otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-          reactivityGraph,
-          disableDevtools,
-        },
-        span,
-      )
-    } finally {
-      span.end()
+    if (batchUpdates !== undefined) {
+      reactivityGraph.effectsWrapper = batchUpdates
     }
-  })
+
+    const mutationEventSchema = makeMutationEventSchemaMemo(schema)
+
+    // TODO consider moving booting into the storage backend
+    if (boot !== undefined) {
+      let isInTxn = false
+      let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
+
+      const bootDbImpl: BootDb = {
+        _tag: 'BootDb',
+        execute: (queryStr, bindValues) => {
+          const stmt = adapter.mainDb.prepare(queryStr)
+          stmt.execute(bindValues)
+
+          if (isInTxn === true) {
+            txnExecuteStmnts.push([queryStr, bindValues])
+          } else {
+            adapter.coordinator.execute(queryStr, bindValues).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+          }
+        },
+        mutate: (...list) => {
+          for (const mutationEventDecoded of list) {
+            const mutationDef =
+              schema.mutations.get(mutationEventDecoded.mutation) ??
+              shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
+
+            const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+            // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+            for (const { statementSql, bindValues } of execArgsArr) {
+              adapter.mainDb.execute(statementSql, bindValues)
+            }
+
+            const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
+
+            adapter.coordinator
+              .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: true })
+              .pipe(Effect.tapCauseLogPretty, Effect.runFork)
+          }
+        },
+        select: (queryStr, bindValues) => {
+          const stmt = adapter.mainDb.prepare(queryStr)
+          return stmt.select(bindValues)
+        },
+        txn: (callback) => {
+          try {
+            isInTxn = true
+            adapter.mainDb.execute('BEGIN', undefined)
+
+            callback()
+
+            adapter.mainDb.execute('COMMIT', undefined)
+
+            // adapter.coordinator.execute('BEGIN', undefined, undefined)
+            for (const [queryStr, bindValues] of txnExecuteStmnts) {
+              adapter.coordinator.execute(queryStr, bindValues).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+            }
+            // adapter.coordinator.execute('COMMIT', undefined, undefined)
+          } catch (e: any) {
+            adapter.mainDb.execute('ROLLBACK', undefined)
+            throw e
+          } finally {
+            isInTxn = false
+            txnExecuteStmnts = []
+          }
+        },
+      }
+
+      const booting = boot(bootDbImpl, span)
+      // NOTE only awaiting if it's actually a promise to avoid unnecessary async/await
+      if (isPromise(booting)) {
+        yield* Effect.promise(() => booting)
+      }
+    }
+
+    // TODO: we can't apply the schema at this point, we've already loaded persisted data!
+    // Think about what to do about this case.
+    // await applySchema(db, schema)
+    return Store.createStore<TGraphQLContext, TSchema>(
+      {
+        adapter,
+        schema,
+        graphQLOptions,
+        otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
+        reactivityGraph,
+        disableDevtools,
+      },
+      span,
+    )
+  }).pipe(
+    Effect.withSpan('createStore', {
+      parent: otelOptions?.rootSpanContext
+        ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
+        : undefined,
+    }),
+    Effect.provide(TracingLive),
+  )
 }
 
 class ReferenceCountedSet<T> {

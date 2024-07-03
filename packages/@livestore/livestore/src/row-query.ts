@@ -3,7 +3,7 @@ import { migrateTable, sql } from '@livestore/common'
 import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
 import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Effect, Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
 import { SqliteAst } from 'effect-db-schema'
@@ -163,7 +163,7 @@ const makeExecBeforeFirstRun =
               ...mainStmt,
               execute: (bindValues) => {
                 const getRowsChanged = mainStmt.execute(bindValues)
-                store.adapter.coordinator.execute(query, bindValues, undefined)
+                store.adapter.coordinator.execute(query, bindValues).pipe(Effect.tapCauseLogPretty, Effect.runFork)
                 return getRowsChanged
               },
             }

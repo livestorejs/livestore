@@ -3,6 +3,9 @@ globalThis.$RefreshReg$ = () => {}
 // @ts-expect-error TODO remove when Vite does proper treeshaking during dev
 globalThis.$RefreshSig$ = () => (type: any) => type
 
+// @ts-expect-error Needed for React
+globalThis.process = globalThis.process ?? { env: {} }
+
 globalThis.document = (globalThis as any)?.document ?? {
   querySelectorAll: () => [],
   addEventListener: () => {},

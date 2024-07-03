@@ -1,4 +1,4 @@
-import type { Coordinator, NetworkStatus, ResetMode } from '@livestore/common'
+import { type Coordinator, type NetworkStatus, type ResetMode, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled } from '@livestore/utils'
@@ -10,7 +10,6 @@ import {
   Effect,
   Exit,
   FiberId,
-  pipe,
   Queue,
   Schema,
   Scope,
@@ -23,6 +22,7 @@ import {
 
 import { BCMessage } from '../common/index.js'
 import { makeAdapterFactory } from '../make-adapter-factory.js'
+import * as OpfsUtils from '../opfs-utils.js'
 import { IDB } from '../utils/idb.js'
 import type { MakeCoordinator } from '../utils/types.js'
 import {
@@ -30,24 +30,25 @@ import {
   getAppDbIdbStoreName,
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
-  getOpfsDirHandle,
 } from './common.js'
+import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
 import * as WorkerSchema from './schema.js'
 
 /** Specifies where to persist data for this coordinator */
 export type WebAdapterOptions = {
   worker: Worker | (new (options?: { name: string }) => Worker)
-  storage: WorkerSchema.StorageType
+  storage: WorkerSchema.StorageTypeEncoded
   syncing?: WorkerSchema.SyncingType
   /** Can be used to isolate multiple LiveStore apps running in the same origin */
   key?: string
+  resetPersistence?: boolean
 }
 
 export const makeAdapter = (options: WebAdapterOptions) => makeAdapterFactory(makeCoordinator(options))
 
 const makeCoordinator =
   (options: WebAdapterOptions): MakeCoordinator =>
-  ({ otel: {}, schema }) => {
+  ({ schema }) => {
     const manualScope = Effect.runSync(Scope.make())
 
     return Effect.gen(function* () {
@@ -65,14 +66,22 @@ const makeCoordinator =
         Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
       )
 
+      const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
+
+      if (options.resetPersistence === true) {
+        yield* resetPersistedData(storageOptions, schema.hash, 'all-data')
+      }
+
       // console.log('hasLock', hasLock)
 
-      const broadcastChannel = new BroadcastChannel(`livestore-sync-${schema.hash}${keySuffix}`)
+      const broadcastChannel = yield* Effect.succeed(
+        new BroadcastChannel(`livestore-sync-${schema.hash}${keySuffix}`),
+      ).pipe(Effect.acquireRelease((channel) => Effect.succeed(channel.close())))
 
       const worker =
-        options.worker instanceof globalThis.Worker ? options.worker : new options.worker({ name: 'livestore-worker' })
-
-      const storageOptions = options.storage
+        options.worker instanceof globalThis.Worker
+          ? options.worker
+          : new options.worker({ name: `livestore-worker${keySuffix}` })
 
       const dataFromFile = yield* getPersistedData(storageOptions, schema.hash)
 
@@ -97,7 +106,7 @@ const makeCoordinator =
       )
 
       const runInWorker = <TReq extends WorkerSchema.Request>(req: TReq) =>
-        Effect.andThen(Deferred.await(workerDeferred), (worker) => worker.executeEffect(req))
+        Deferred.await(workerDeferred).pipe(Effect.andThen((worker) => worker.executeEffect(req)))
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
 
@@ -109,13 +118,19 @@ const makeCoordinator =
         ),
       ).pipe(Effect.forkDaemon)
 
-      const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.GetRecreateSnapshot()))
+      const initialSnapshot =
+        dataFromFile ??
+        (yield* runInWorker(new WorkerSchema.GetRecreateSnapshot()).pipe(Effect.withSpan('initialSnapshot')))
 
       // Continously take items from the backlog and execute them in the worker if there are any
       yield* Deferred.await(workerDeferred).pipe(
         Effect.andThen(() =>
           Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(
-            Effect.tap((items) => runInWorker(new WorkerSchema.ExecuteBulk({ items: Chunk.toReadonlyArray(items) }))),
+            Effect.tap((items) =>
+              runInWorker(new WorkerSchema.ExecuteBulk({ items: Chunk.toReadonlyArray(items) })).pipe(
+                Effect.withSpan('executeBulk'),
+              ),
+            ),
             // NOTE we're waiting a little bit for more items to come in before executing the batch
             Effect.tap(() => Effect.sleep(20)),
             Effect.forever,
@@ -140,17 +155,30 @@ const makeCoordinator =
           const { sender, mutationEventEncoded } = decodedEvent.value
           if (sender === 'leader-worker') {
             const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
-            Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded).pipe(Effect.runSync)
+            Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded).pipe(Effect.tapCauseLogPretty, Effect.runSync)
             // this.mutate({ wasSyncMessage: true }, mutationEventDecoded as any)
           }
         }
       })
 
+      const shutdownWorker = Effect.race(
+        // In case the graceful shutdown didn't finish in time, we terminate the worker
+        runInWorker(new WorkerSchema.Shutdown({})).pipe(Effect.andThen(() => worker.terminate())),
+        Effect.sync(() => {
+          console.warn('[livestore] Worker did not gracefully shutdown in time, terminating it')
+          worker.terminate()
+        }).pipe(
+          // Seems like we still need to wait a bit for the worker to terminate
+          // TODO improve this implementation (possibly via another weblock?)
+          Effect.delay(1000),
+        ),
+      )
+
       const coordinator = {
         devtools: { channelId },
         hasLock: hasLockTRef,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
-        getInitialSnapshot: async () => initialSnapshot,
+        getInitialSnapshot: Effect.sync(() => initialSnapshot),
         // Effect.gen(function* () {
         //   // TODO replace with a proper multi-tab syncing/lock-transfer mechanism
         //   // yield* pipe(
@@ -174,67 +202,58 @@ const makeCoordinator =
         //   Effect.runPromise,
         // ),
 
-        export: () =>
-          runInWorker(new WorkerSchema.Export()).pipe(Effect.withSpan('@livestore/web:main:export'), Effect.runPromise),
+        export: runInWorker(new WorkerSchema.Export()).pipe(
+          Effect.withSpan('@livestore/web:main:export'),
+          Effect.mapError((error) => new UnexpectedError({ error })),
+        ),
 
         dangerouslyReset: (mode) =>
           Effect.gen(function* () {
-            yield* runInWorker(new WorkerSchema.Shutdown({}))
-
-            worker.terminate()
+            yield* shutdownWorker
 
             yield* resetPersistedData(storageOptions, schema.hash, mode)
-          }).pipe(Effect.runPromise),
+          }).pipe(Effect.mapError((error) => new UnexpectedError({ error }))),
 
-        execute: async (query, bindValues) => {
-          if (hasLock) {
-            await Queue.offer(
-              executionBacklogQueue,
-              WorkerSchema.ExecutionBacklogItemExecute.make({ query, bindValues }),
-            ).pipe(Effect.runPromise)
-          } else {
-            console.warn(`TODO: implement execute without lock`, query, bindValues)
-          }
-        },
-
-        mutate: async (mutationEventEncoded, { persisted }) => {
-          if (hasLock) {
-            await Queue.offer(
-              executionBacklogQueue,
-              WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
-            ).pipe(Effect.runPromise)
-          } else {
-            broadcastChannel.postMessage(
-              Schema.encodeSync(BCMessage.Message)(
-                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread', persisted }),
-              ),
-            )
-          }
-        },
-
-        getMutationLogData: () =>
-          runInWorker(new WorkerSchema.ExportMutationlog()).pipe(
-            Effect.timeoutDieMsg({ error: 'Timed out after 10sec', duration: 10_000 }),
-            Effect.runPromise,
-          ),
-
-        shutdown: () =>
+        execute: (query, bindValues) =>
           Effect.gen(function* () {
-            yield* pipe(
-              runInWorker(new WorkerSchema.Shutdown({})).pipe(Effect.andThen(() => worker.terminate())),
-              // In case the graceful shutdown didn't finish in time, we terminate the worker
-              Effect.race(
-                Effect.sync(() => {
-                  console.warn('[livestore] Worker did not gracefully shutdown in time, terminating it')
-                  worker.terminate()
-                }).pipe(Effect.delay(1000)),
-              ),
-            )
+            if (hasLock) {
+              yield* Queue.offer(
+                executionBacklogQueue,
+                WorkerSchema.ExecutionBacklogItemExecute.make({ query, bindValues }),
+              )
+            } else {
+              console.warn(`TODO: implement execute without lock`, query, bindValues)
+            }
+          }),
 
-            yield* Deferred.succeed(lockDeferred, undefined)
+        mutate: (mutationEventEncoded, { persisted }) =>
+          Effect.gen(function* () {
+            if (hasLock) {
+              yield* Queue.offer(
+                executionBacklogQueue,
+                WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
+              )
+            } else {
+              broadcastChannel.postMessage(
+                Schema.encodeSync(BCMessage.Message)(
+                  BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread', persisted }),
+                ),
+              )
+            }
+          }),
 
-            yield* Scope.close(manualScope, Exit.interrupt(FiberId.none))
-          }).pipe(Effect.runPromise),
+        getMutationLogData: runInWorker(new WorkerSchema.ExportMutationlog()).pipe(
+          Effect.timeout(10_000),
+          Effect.mapError((error) => new UnexpectedError({ error })),
+        ),
+
+        shutdown: Effect.gen(function* () {
+          yield* shutdownWorker
+
+          yield* Deferred.succeed(lockDeferred, undefined)
+
+          yield* Scope.close(manualScope, Exit.interrupt(FiberId.none))
+        }).pipe(Effect.mapError((error) => new UnexpectedError({ error }))),
 
         networkStatus,
       } satisfies Coordinator
@@ -250,7 +269,7 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
       switch (storage.type) {
         case 'opfs': {
           try {
-            const dirHandle = await getOpfsDirHandle(storage.directory)
+            const dirHandle = await OpfsUtils.getDirHandle(storage.directory)
             const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, schemaHash))
             const file = await fileHandle.getFile()
             const buffer = await file.arrayBuffer()
@@ -269,6 +288,48 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
 
             throw error
           }
+        }
+
+        case 'opfs-sahpool-experimental': {
+          const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(`${storage.directory}/.opaque`).catch(() => undefined)
+
+          if (sahPoolOpaqueDir === undefined) {
+            return undefined
+          }
+
+          const tryGetDbFile = async (fileHandle: FileSystemFileHandle) => {
+            const file = await fileHandle.getFile()
+            const fileName = await decodeSAHPoolFilename(file)
+            return fileName ? { fileName, file } : undefined
+          }
+
+          const getAllFiles = async (
+            asyncIterator: AsyncIterable<FileSystemHandle>,
+          ): Promise<FileSystemFileHandle[]> => {
+            const results: FileSystemFileHandle[] = []
+            for await (const value of asyncIterator) {
+              if (value.kind === 'file') {
+                results.push(value as FileSystemFileHandle)
+              }
+            }
+            return results
+          }
+
+          const files = await getAllFiles(sahPoolOpaqueDir.values())
+
+          const fileResults = await Promise.all(files.map(tryGetDbFile))
+
+          const appDbFileName = '/' + getAppDbFileName(storage.filePrefix, schemaHash)
+
+          const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
+
+          if (dbFileRes !== undefined) {
+            const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
+
+            return new Uint8Array(data)
+          }
+
+          return undefined
         }
 
         case 'indexeddb': {
@@ -291,17 +352,24 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
         '@livestore/web:getPersistedData:end',
       )
     }
-  })
+  }).pipe(Effect.withSpan('@livestore/web:getPersistedData'))
 
 const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number, resetMode: ResetMode) =>
   Effect.promise(async () => {
     switch (storage.type) {
       case 'opfs': {
-        const dirHandle = await getOpfsDirHandle(storage.directory)
+        const dirHandle = await OpfsUtils.getDirHandle(storage.directory)
         await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, schemaHash))
         if (resetMode === 'all-data') {
           await dirHandle.removeEntry(getMutationlogDbFileName(storage.filePrefix))
         }
+        break
+      }
+
+      case 'opfs-sahpool-experimental': {
+        const rootHandle = await OpfsUtils.rootHandlePromise
+        await rootHandle.removeEntry(storage.directory, { recursive: true })
+
         break
       }
 
@@ -322,8 +390,9 @@ const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: numbe
 
         break
       }
+
       default: {
         casesHandled(storage)
       }
     }
-  })
+  }).pipe(Effect.withSpan('@livestore/web:resetPersistedData'))

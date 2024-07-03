@@ -1,5 +1,7 @@
-import type { Schema } from '@effect/schema'
+import { Schema } from '@effect/schema'
 import { Hash } from 'effect'
+
+import { objectToString } from '../misc.js'
 
 export * from '@effect/schema/Schema'
 
@@ -16,3 +18,26 @@ export const hash = (schema: Schema.Schema<any>) => {
     return Hash.hash(schema.ast.toString())
   }
 }
+
+const errorStructSchema = Schema.Struct({
+  message: Schema.String,
+  stack: Schema.String,
+})
+
+export class AnyError extends Schema.transform(errorStructSchema, Schema.Any, {
+  decode: (errorStruct) => {
+    const { message, stack } = errorStruct
+    const previousLimit = Error.stackTraceLimit
+    Error.stackTraceLimit = 0
+    // eslint-disable-next-line unicorn/error-message
+    const error = new Error('')
+    Error.stackTraceLimit = previousLimit
+    error.message = message
+    error.stack = stack
+    return error
+  },
+  encode: (anyError) => ({
+    message: objectToString(anyError).replace(/^Error: /, ''),
+    stack: anyError.stack,
+  }),
+}) {}

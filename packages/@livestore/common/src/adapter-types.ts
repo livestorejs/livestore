@@ -1,6 +1,5 @@
-import type { Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+import type { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
+import { Cause, Schema } from '@livestore/utils/effect'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
@@ -22,7 +21,6 @@ export type InMemoryDatabase = {
   _tag: 'InMemoryDatabase'
   prepare(queryStr: string): PreparedStatement
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): GetRowsChangedCount
-  dangerouslyReset(): Promise<void>
   export(): Uint8Array
 }
 
@@ -43,17 +41,17 @@ export type Coordinator = {
     channelId: string
   }
   hasLock: TRef.TRef<boolean>
-  syncMutations: Stream.Stream<MutationEvent.AnyEncoded>
-  execute(queryStr: string, bindValues: PreparedBindValues | undefined, span: otel.Span | undefined): Promise<void>
-  mutate(mutationEventEncoded: MutationEvent.Any, options: { span: otel.Span; persisted: boolean }): Promise<void>
-  dangerouslyReset(mode: ResetMode): Promise<void>
-  export(span: otel.Span | undefined): Promise<Uint8Array | undefined>
+  syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
+  execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
+  mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
+  dangerouslyReset(mode: ResetMode): Effect.Effect<void, UnexpectedError>
+  export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   /**
    * This is different from `export` since in `getInitialSnapshot` is usually the place for migrations etc to happen
    */
-  getInitialSnapshot(): Promise<Uint8Array>
-  getMutationLogData(): Promise<Uint8Array>
-  shutdown(): Promise<void>
+  getInitialSnapshot: Effect.Effect<Uint8Array, UnexpectedError>
+  getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
+  shutdown: Effect.Effect<void, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
@@ -65,6 +63,19 @@ export type BootDb = {
   mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
   select<T>(queryStr: string, bindValues?: PreparedBindValues): ReadonlyArray<T>
   txn(callback: () => void): void
+}
+
+export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
+  error: Schema.AnyError,
+}) {
+  get message() {
+    try {
+      return Cause.pretty(this.error)
+    } catch (e) {
+      console.warn(`Error pretty printing error: ${e}`)
+      return this.error.toString()
+    }
+  }
 }
 
 // TODO possibly allow a combination of these options
@@ -106,8 +117,4 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type StoreAdapterFactory = (opts: {
-  otelTracer: otel.Tracer
-  otelContext: otel.Context
-  schema: LiveStoreSchema
-}) => StoreAdapter | Promise<StoreAdapter>
+export type StoreAdapterFactory = (opts: { schema: LiveStoreSchema }) => Effect.Effect<StoreAdapter, UnexpectedError>

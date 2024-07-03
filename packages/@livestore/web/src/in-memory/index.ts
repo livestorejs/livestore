@@ -1,12 +1,12 @@
 import { type Coordinator, initializeSingletonTables, migrateDb } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import { cuid } from '@livestore/utils/cuid'
 import { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
 import { makeInMemoryDb } from '../make-in-memory-db.js'
+import type { SqliteWasm } from '../sqlite-utils.js'
 import { configureConnection } from '../web-worker/common.js'
 
 /** NOTE: This coordinator is currently only used for testing */
@@ -18,28 +18,24 @@ const makeCoordinator = (
   sqlite3: SqliteWasm.Sqlite3Static,
   initialData?: Uint8Array,
 ): Coordinator => {
-  const getInitialSnapshot = () =>
-    Effect.sync(() => {
-      if (initialData !== undefined) {
-        return initialData
-      }
+  const getInitialSnapshot = Effect.sync(() => {
+    if (initialData !== undefined) {
+      return initialData
+    }
 
-      const otelContext = otel.context.active()
-      const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-      tmpDb.capi = sqlite3.capi
+    const otelContext = otel.context.active()
+    const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+    tmpDb.capi = sqlite3.capi
 
-      configureConnection(tmpDb, { fkEnabled: true })
-      const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
+    configureConnection(tmpDb, { fkEnabled: true })
+    const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
 
-      migrateDb({ db: tmpMainDb, otelContext, schema })
+    migrateDb({ db: tmpMainDb, otelContext, schema })
 
-      initializeSingletonTables(schema, tmpMainDb)
+    initializeSingletonTables(schema, tmpMainDb)
 
-      return tmpMainDb.export()
-    }).pipe(Effect.runPromise)
-
-  const dangerouslyReset = async () => {}
-  const shutdown = async () => {}
+    return tmpMainDb.export()
+  })
 
   const hasLock = TRef.make(true).pipe(Effect.runSync)
   const syncMutations = Stream.never
@@ -48,13 +44,13 @@ const makeCoordinator = (
     devtools: { channelId: cuid() },
     hasLock,
     syncMutations,
-    execute: async () => {},
-    mutate: async () => {},
-    export: async () => undefined,
+    execute: () => Effect.void,
+    mutate: () => Effect.void,
+    export: Effect.dieMessage('Not implemented'),
     getInitialSnapshot,
-    getMutationLogData: async () => new Uint8Array(),
-    dangerouslyReset,
-    shutdown,
+    getMutationLogData: Effect.succeed(new Uint8Array()),
+    dangerouslyReset: () => Effect.void,
+    shutdown: Effect.void,
     networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
   }
 }

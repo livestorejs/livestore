@@ -18,19 +18,26 @@
     "./sqlite-utils": {
       "types": "./dist/sqlite-utils.d.ts",
       "default": "./dist/sqlite-utils.js"
+    },
+    "./opfs-utils": {
+      "types": "./dist/opfs-utils.d.ts",
+      "default": "./dist/opfs-utils.js"
     }
   },
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "adapter/web-worker": [
-        "./dist/web-worker/index.d.ts"
-      ],
       "worker": [
         "./dist/web-worker/make-worker.d.ts"
       ],
       "worker-vite-dev-polyfill": [
         "./dist/web-worker/vite-dev-polyfill.d.ts"
+      ],
+      "sqlite-utils": [
+        "./dist/sqlite-utils.d.ts"
+      ],
+      "opfs-utils": [
+        "./dist/opfs-utils.d.ts"
       ]
     }
   },

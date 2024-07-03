@@ -11,49 +11,29 @@ import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
-import type * as SqliteWasm from '@livestore/sqlite-wasm'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { Stream } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
+import type { SqliteWasm } from '../sqlite-utils.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import type { StorageType } from './schema.js'
 
-export const getAppDbFileName = (prefix: string | undefined = 'livestore', schemaHash: number) => {
-  return `${prefix}-${schemaHash}.db`
+export const getAppDbFileName = (prefix: string, schemaHash: number) => {
+  return `${prefix}${schemaHash}.db`
 }
 
-export const getMutationlogDbFileName = (prefix: string | undefined = 'livestore') => {
-  return `${prefix}-mutationlog.db`
+export const getMutationlogDbFileName = (prefix: string) => {
+  return `${prefix}mutationlog.db`
 }
 
-export const getAppDbIdbStoreName = (prefix: string | undefined = 'livestore', schemaHash: number) => {
-  return `${prefix}-${schemaHash}`
+export const getAppDbIdbStoreName = (prefix: string, schemaHash: number) => {
+  return `${prefix}${schemaHash}`
 }
 
-export const getMutationlogDbIdbStoreName = (prefix: string | undefined = 'livestore') => {
-  return `${prefix}-mutationlog`
-}
-
-// NOTE we're already firing off this promise call here since we'll need it anyway and need it cached
-// To improve LiveStore compatibility with e.g. Node.js we're guarding for `navigator` / `navigator.storage` to be defined.
-const rootHandlePromise =
-  typeof navigator === 'undefined' || navigator.storage === undefined
-    ? new Promise<never>(() => {})
-    : navigator.storage.getDirectory()
-
-export const getOpfsDirHandle = async (directory: string | undefined) => {
-  const rootHandle = await rootHandlePromise
-  if (directory === undefined) return rootHandle
-
-  let dirHandle = rootHandle
-  const directoryStack = directory?.split('/').filter(Boolean)
-  while (directoryStack.length > 0) {
-    dirHandle = await dirHandle.getDirectoryHandle(directoryStack.shift()!)
-  }
-
-  return dirHandle
+export const getMutationlogDbIdbStoreName = (prefix: string) => {
+  return `${prefix}mutationlog`
 }
 
 export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fkEnabled: boolean }) =>
@@ -80,6 +60,7 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
   WorkerCtx,
   | {
       _tag: 'HasLock'
+      keySuffix: string
       storageOptions: StorageType
       schema: LiveStoreSchema
       ctx: {
@@ -102,27 +83,30 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
     }
   | {
       _tag: 'NoLock'
+      keySuffix: string
       storageOptions: StorageType
       schema: LiveStoreSchema
       ctx: undefined
     }
 >() {}
 
+export type ApplyMutation = (
+  mutationEventEncoded: MutationEvent.Any,
+  options: {
+    syncStatus: SyncStatus
+    shouldBroadcast: boolean
+    persisted: boolean
+  },
+) => void
+
 export const makeApplyMutation = (
   workerCtx: Context.Tag.Service<WorkerCtx>,
   createdAtMemo: () => string,
   db: SqliteWasm.Database,
-) => {
+): ApplyMutation => {
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
-  return (
-    mutationEventEncoded: MutationEvent.Any,
-    {
-      syncStatus,
-      shouldBroadcast,
-      persisted,
-    }: { syncStatus: SyncStatus; shouldBroadcast: boolean; persisted: boolean },
-  ) => {
+  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) => {
     if (workerCtx._tag === 'NoLock') return
     const schema = workerCtx.schema
     const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync } = workerCtx.ctx

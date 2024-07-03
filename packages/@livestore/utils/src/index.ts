@@ -7,10 +7,13 @@ export * from './NoopTracer.js'
 export * from './set.js'
 export * from './browser.js'
 export * from './Deferred.js'
+export * from './misc.js'
 export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
 
 import type * as otel from '@opentelemetry/api'
+
+import { objectToString } from './misc.js'
 
 export * as dateFns from 'date-fns'
 
@@ -71,23 +74,6 @@ export const prop =
   <T extends {}, K extends keyof T>(key: K) =>
   (obj: T): T[K] =>
     obj[key]
-
-export const objectToString = (error: any): string => {
-  const stack = error.stack
-  const str = error.toString()
-  const stackStr = stack ? `\n${stack}` : ''
-  if (str !== '[object Object]') return str + stackStr
-
-  try {
-    return JSON.stringify({ ...error, stack }, null, 2)
-  } catch (e: any) {
-    console.log(error)
-
-    return 'Error while printing error: ' + e
-  }
-}
-
-export const errorToString = objectToString
 
 export const capitalizeFirstLetter = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1)
 
@@ -236,8 +222,12 @@ export const memoizeByRef = <T extends (arg: any) => any>(fn: T): T => {
   }) as any
 }
 
-export const isNonEmptyString = (str: string | undefined | null) => str === undefined || str === null || str === ''
+export const isNonEmptyString = (str: string | undefined | null): str is string => {
+  return typeof str === 'string' && str.length > 0
+}
 
 export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
 
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
+
+export { objectToString as errorToString } from './misc.js'

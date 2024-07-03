@@ -22,6 +22,9 @@ export const logError = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
     console.error(message, ...rest)
   })
 
+const getThreadName = () =>
+  isNonEmptyString(self.name) ? self.name : typeof window === 'object' ? 'Browser Main Thread' : 'unknown-thread'
+
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (err) => {
@@ -29,10 +32,12 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
       return Effect.void
     }
 
-    const threadName =
-      typeof window === 'undefined' ? 'NodeJS Main Thread' : isNonEmptyString(self.name) ? self.name : 'unknown-thread'
+    const threadName = getThreadName()
 
-    return logError(`Error on ${threadName}`, Cause.pretty(err))
+    // const prettyError = (err as any).error ? (err as any).error.toString() : Cause.pretty(err)
+    const prettyError = Cause.pretty(err)
+
+    return logError(`Error on ${threadName}:`, prettyError)
   })
 
 export const tapSync =

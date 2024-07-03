@@ -1,8 +1,8 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
-import { Devtools, sql } from '@livestore/common'
+import type { SyncImpl } from '@livestore/common'
+import { Devtools, sql, UnexpectedError } from '@livestore/common'
 import { version as liveStoreVersion } from '@livestore/common/package.json'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
-import sqlite3InitModule from '@livestore/sqlite-wasm'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import {
@@ -17,17 +17,16 @@ import {
 } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
-import type { DevtoolsContext } from './common.js'
+import { loadSqlite3Wasm } from '../sqlite-utils.js'
+import type { ApplyMutation, DevtoolsContext } from './common.js'
 import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
+import type { PersistedSqlite } from './persisted-sqlite.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
 import type { ExecutionBacklogItem } from './schema.js'
-import { Request, UnexpectedError } from './schema.js'
+import { Request } from './schema.js'
 
-const sqlite3Promise = sqlite3InitModule({
-  print: (message) => console.log(`[sql-client] ${message}`),
-  printErr: (message) => console.error(`[sql-client] ${message}`),
-})
+const sqlite3Promise = loadSqlite3Wasm()
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
@@ -61,13 +60,23 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
 
+          const keySuffix = key ? `-${key}` : ''
+
           if (hasLock === false) {
             return Layer.succeed(WorkerCtx, {
               _tag: 'NoLock',
+              keySuffix,
               storageOptions,
               schema,
               ctx: undefined,
             })
+          }
+
+          let sahUtils: Awaited<ReturnType<typeof sqlite3.installOpfsSAHPoolVfs>> | undefined
+          if (storageOptions.type === 'opfs-sahpool-experimental') {
+            sahUtils = yield* Effect.tryPromise(() =>
+              sqlite3.installOpfsSAHPoolVfs({ directory: storageOptions.directory }),
+            )
           }
 
           const makeDb = makePersistedSqlite({
@@ -75,6 +84,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             kind: 'app',
             schemaHash,
             sqlite3,
+            sahUtils,
             configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: true })),
           })
 
@@ -83,6 +93,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             kind: 'mutationlog',
             schemaHash,
             sqlite3,
+            sahUtils,
             configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: false })),
           })
 
@@ -98,8 +109,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const syncImpl =
             syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
-
-          const keySuffix = key ? `-${key}` : ''
 
           const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}${keySuffix}`)
 
@@ -121,16 +130,19 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             }
           })
 
+          const isShuttingDownRef = { current: false as boolean }
+
           const sync = yield* makeSync
 
           const devtools = yield* makeDevtoolsContext(channelId)
 
           const workerCtx = {
             _tag: 'HasLock',
+            keySuffix,
             storageOptions,
             schema,
             ctx: {
-              isShuttingDownRef: { current: false as boolean },
+              isShuttingDownRef,
               sqlite3,
               db,
               dbLog,
@@ -149,6 +161,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           }
 
           const applyMutation = makeApplyMutation(workerCtx, () => new Date().toISOString(), db.dbRef.current)
+
+          yield* listenToDevtools({ devtools, sync, schema, db, dbLog, applyMutation, isShuttingDownRef })
 
           if (syncImpl !== undefined) {
             // TODO try to do this in a batched-way if possible
@@ -182,156 +196,34 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             }
           })
 
-          yield* devtools.incomingMessages.pipe(
-            Stream.tap((decodedEvent) =>
-              Effect.gen(function* () {
-                // console.debug('livestore-webworker: devtools message', decodedEvent)
-
-                if (decodedEvent._tag === 'LSD.DevtoolsReady') {
-                  if ((yield* devtools.isConnected.get) === false) {
-                    yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
-                      force: true,
-                    })
-                  }
-                  return
-                }
-
-                if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
-                  if (yield* devtools.isConnected.get) {
-                    shouldNeverHappen('devtools already connected')
-                  }
-
-                  if (sync?.impl !== undefined) {
-                    const networkStatus = yield* sync.impl.isConnected.get.pipe(
-                      Effect.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
-                    )
-
-                    yield* devtools.sendMessage(
-                      Devtools.NetworkStatusChanged.make({
-                        channelId: devtools.channelId,
-                        networkStatus,
-                        liveStoreVersion,
-                      }),
-                    )
-                  }
-
-                  yield* SubscriptionRef.set(devtools.isConnected, true)
-                  return
-                }
-
-                const { requestId } = decodedEvent
-
-                if (decodedEvent.channelId !== channelId) return
-
-                switch (decodedEvent._tag) {
-                  case 'LSD.Ping': {
-                    yield* devtools.sendMessage(Devtools.Pong.make({ requestId, liveStoreVersion }))
-                    break
-                  }
-                  case 'LSD.Disconnect': {
-                    yield* SubscriptionRef.set(devtools.isConnected, false)
-
-                    yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
-                      force: true,
-                    })
-
-                    break
-                  }
-                  case 'LSD.SnapshotReq': {
-                    const data = yield* db.export
-
-                    yield* devtools.sendMessage(
-                      Devtools.SnapshotRes.make({ snapshot: data, requestId, liveStoreVersion }),
-                    )
-
-                    break
-                  }
-                  case 'LSD.LoadSnapshotReq': {
-                    const { snapshot } = decodedEvent
-
-                    workerCtx.ctx.isShuttingDownRef.current = true
-
-                    yield* db.import(snapshot)
-
-                    yield* devtools.sendMessage(Devtools.LoadSnapshotRes.make({ requestId, liveStoreVersion }))
-
-                    break
-                  }
-                  case 'LSD.LoadMutationLogReq': {
-                    const { mutationLog } = decodedEvent
-
-                    workerCtx.ctx.isShuttingDownRef.current = true
-
-                    yield* dbLog.import(mutationLog)
-
-                    yield* db.destroy
-
-                    yield* devtools.sendMessage(Devtools.LoadMutationLogRes.make({ requestId, liveStoreVersion }))
-
-                    break
-                  }
-                  case 'LSD.MutationLogReq': {
-                    const mutationLog = yield* dbLog.export
-
-                    yield* devtools.sendMessage(
-                      Devtools.MutationLogRes.make({ mutationLog, requestId, channelId, liveStoreVersion }),
-                    )
-
-                    break
-                  }
-                  case 'LSD.RunMutationReq': {
-                    const { mutationEventEncoded, persisted } = decodedEvent
-
-                    const mutationDef =
-                      schema.mutations.get(mutationEventEncoded.mutation) ??
-                      shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
-
-                    applyMutation(mutationEventEncoded, {
-                      syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
-                      shouldBroadcast: true,
-                      persisted,
-                    })
-
-                    yield* devtools.sendMessage(
-                      Devtools.RunMutationRes.make({ requestId, channelId, liveStoreVersion }),
-                    )
-                  }
-                }
-              }),
-            ),
-            Stream.runDrain,
-            Effect.tapCauseLogPretty,
-            Effect.forkScoped,
-          )
-
-          yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
-            force: true,
-          })
-
           return Layer.succeed(WorkerCtx, workerCtx)
         }).pipe(
-          (_) => _,
-          Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((error) => {
-            // TODO remove when fixed https://github.com/Effect-TS/effect/issues/2813
-            shouldNeverHappen('Error initializing worker')
-            return new UnexpectedError({ error })
-          }),
+          mapToUnexpectedError,
+          Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
+          Effect.withSpan('@livestore/web:worker:InitialMessage'),
           Layer.unwrapScoped,
         ),
-      GetRecreateSnapshot: () => Effect.sync(() => initialSnapshotRef.current),
+      GetRecreateSnapshot: () =>
+        Effect.sync(() => initialSnapshotRef.current).pipe(
+          Effect.andThen((_: Uint8Array | undefined) =>
+            _ ? Effect.succeed(_) : Effect.andThen(getWorkerCtxUnsafe, (_) => _.db.export),
+          ),
+          mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot'),
+        ),
       Export: () =>
-        Effect.andThen(WorkerCtx, (_) => _.ctx!.db.export).pipe(
+        Effect.andThen(getWorkerCtxUnsafe, (_) => _.db.export).pipe(
+          mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:Export'),
-          Effect.catchAllCause((error) => new UnexpectedError({ error })),
         ),
       ExportMutationlog: () =>
-        Effect.andThen(WorkerCtx, (_) => _.ctx!.dbLog.export).pipe(
-          Effect.catchAllCause((error) => new UnexpectedError({ error })),
+        Effect.andThen(getWorkerCtxUnsafe, (_) => _.dbLog.export).pipe(
+          mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
         ),
       ExecuteBulk: ({ items }) =>
-        executeBulk(items).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+        executeBulk(items).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:ExecuteBulk')),
       Setup: () => Effect.never,
       NetworkStatusStream: () =>
         Effect.gen(function* (_) {
@@ -357,20 +249,38 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
       Shutdown: () =>
         Effect.gen(function* () {
           // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)
-          const { ctx } = yield* WorkerCtx
-          const { db, dbLog } = ctx!
+          const { db, dbLog } = yield* getWorkerCtxUnsafe
           db.dbRef.current.close()
           dbLog.dbRef.current.close()
-        }).pipe(Effect.catchAllCause((error) => new UnexpectedError({ error }))),
+          yield* db.close
+          yield* dbLog.close
+        }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(BrowserWorkerRunner.layer))
+
+const getWorkerCtxUnsafe = Effect.gen(function* () {
+  const workerCtx = yield* WorkerCtx
+  if (workerCtx._tag === 'NoLock') {
+    const suffix = workerCtx.keySuffix.length > 0 ? `'${workerCtx.keySuffix}' lock key` : 'default lock key'
+    return yield* new UnexpectedError({ error: `Worker doesn't have lock for ${suffix}` })
+  }
+
+  return workerCtx.ctx
+})
+
+const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.tapCauseLogPretty,
+    Effect.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ error }))),
+    Effect.catchAllDefect((error) => new UnexpectedError({ error })),
+  )
 
 const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
   Effect.gen(function* () {
     let batchItems: ExecutionBacklogItem[] = []
     const workerCtx = yield* WorkerCtx
     if (workerCtx._tag === 'NoLock') return
-    const { db, dbLog, isShuttingDownRef } = workerCtx.ctx
+    const { db, dbLog, isShuttingDownRef } = yield* getWorkerCtxUnsafe
 
     if (isShuttingDownRef.current) {
       console.warn('livestore-webworker: shutting down, skipping execution')
@@ -466,4 +376,145 @@ const makeDevtoolsContext = (channelId: string) =>
     }).pipe(Effect.forever, Effect.tapCauseLogPretty, Effect.forkScoped)
 
     return { isConnected, sendMessage, incomingMessages, channelId } satisfies DevtoolsContext
+  })
+
+const listenToDevtools = ({
+  devtools,
+  sync,
+  schema,
+  db,
+  dbLog,
+  applyMutation,
+  isShuttingDownRef,
+}: {
+  devtools: DevtoolsContext
+  sync: { impl: SyncImpl } | undefined
+  schema: LiveStoreSchema
+  db: PersistedSqlite
+  dbLog: PersistedSqlite
+  applyMutation: ApplyMutation
+  isShuttingDownRef: { current: boolean }
+}) =>
+  Effect.gen(function* () {
+    const { channelId } = devtools
+
+    yield* devtools.incomingMessages.pipe(
+      Stream.tap((decodedEvent) =>
+        Effect.gen(function* () {
+          // console.debug('livestore-webworker: devtools message', decodedEvent)
+
+          if (decodedEvent._tag === 'LSD.DevtoolsReady') {
+            if ((yield* devtools.isConnected.get) === false) {
+              yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
+                force: true,
+              })
+            }
+            return
+          }
+
+          if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
+            if (yield* devtools.isConnected.get) {
+              shouldNeverHappen('devtools already connected')
+            }
+
+            if (sync?.impl !== undefined) {
+              const networkStatus = yield* sync.impl.isConnected.get.pipe(
+                Effect.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
+              )
+
+              yield* devtools.sendMessage(
+                Devtools.NetworkStatusChanged.make({
+                  channelId: devtools.channelId,
+                  networkStatus,
+                  liveStoreVersion,
+                }),
+              )
+            }
+
+            yield* SubscriptionRef.set(devtools.isConnected, true)
+            return
+          }
+
+          const { requestId } = decodedEvent
+
+          if (decodedEvent.channelId !== channelId) return
+
+          switch (decodedEvent._tag) {
+            case 'LSD.Ping': {
+              yield* devtools.sendMessage(Devtools.Pong.make({ requestId, liveStoreVersion }))
+              break
+            }
+            case 'LSD.Disconnect': {
+              yield* SubscriptionRef.set(devtools.isConnected, false)
+
+              yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
+                force: true,
+              })
+
+              break
+            }
+            case 'LSD.SnapshotReq': {
+              const data = yield* db.export
+
+              yield* devtools.sendMessage(Devtools.SnapshotRes.make({ snapshot: data, requestId, liveStoreVersion }))
+
+              break
+            }
+            case 'LSD.LoadSnapshotReq': {
+              const { snapshot } = decodedEvent
+
+              isShuttingDownRef.current = true
+
+              yield* db.import(snapshot)
+
+              yield* devtools.sendMessage(Devtools.LoadSnapshotRes.make({ requestId, liveStoreVersion }))
+
+              break
+            }
+            case 'LSD.LoadMutationLogReq': {
+              const { mutationLog } = decodedEvent
+
+              isShuttingDownRef.current = true
+
+              yield* dbLog.import(mutationLog)
+
+              yield* db.destroy
+
+              yield* devtools.sendMessage(Devtools.LoadMutationLogRes.make({ requestId, liveStoreVersion }))
+
+              break
+            }
+            case 'LSD.MutationLogReq': {
+              const mutationLog = yield* dbLog.export
+
+              yield* devtools.sendMessage(
+                Devtools.MutationLogRes.make({ mutationLog, requestId, channelId, liveStoreVersion }),
+              )
+
+              break
+            }
+            case 'LSD.RunMutationReq': {
+              const { mutationEventEncoded, persisted } = decodedEvent
+
+              const mutationDef =
+                schema.mutations.get(mutationEventEncoded.mutation) ??
+                shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
+
+              applyMutation(mutationEventEncoded, {
+                syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
+                shouldBroadcast: true,
+                persisted,
+              })
+
+              yield* devtools.sendMessage(Devtools.RunMutationRes.make({ requestId, channelId, liveStoreVersion }))
+            }
+          }
+        }).pipe(Effect.withSpan('@livestore/web:worker:onDevtoolsMessage')),
+      ),
+      Stream.runDrain,
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
+
+    yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), { force: true })
   })
