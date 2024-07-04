@@ -1,18 +1,16 @@
-import type { InMemoryDatabase, QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
-import { migrateTable, sql } from '@livestore/common'
-import { DbSchema, SCHEMA_META_TABLE } from '@livestore/common/schema'
+import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
+import { sql } from '@livestore/common'
+import { DbSchema } from '@livestore/common/schema'
 import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
-import { SqliteAst } from 'effect-db-schema'
 
-import type { Ref } from './reactive.js'
 import type { LiveQuery, LiveQueryAny, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
 import { computed } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { RefreshReason, Store } from './store.js'
+import type { Store } from './store.js'
 
 export type RowQueryOptions = {
   otelContext?: otel.Context
@@ -81,7 +79,6 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     execBeforeFirstRun: makeExecBeforeFirstRun({
       otelContext: options?.otelContext,
       table,
-      tableName,
       defaultValues,
       id,
       skipInsertDefaultRow: options?.skipInsertDefaultRow,
@@ -136,58 +133,15 @@ const makeExecBeforeFirstRun =
     skipInsertDefaultRow,
     otelContext: otelContext_,
     table,
-    tableName,
   }: {
     id?: string
     defaultValues?: any
     skipInsertDefaultRow?: boolean
     otelContext?: otel.Context
-    tableName: string
     table: DbSchema.TableDef
   }) =>
   ({ store }: QueryContext) => {
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
-
-    // TODO we can remove this codepath again when Devtools v2 has landed
-    if (store.tableRefs[tableName] === undefined) {
-      const schemaHash = SqliteAst.hash(table.sqliteDef.ast)
-      const res = store.mainDbWrapper.select<{ schemaHash: number }>(
-        sql`SELECT schemaHash FROM ${SCHEMA_META_TABLE} WHERE tableName = '${tableName}'`,
-      )
-      if (res.length === 0 || res[0]!.schemaHash !== schemaHash) {
-        const db = {
-          ...store.adapter.mainDb,
-          prepare: (query) => {
-            const mainStmt = store.adapter.mainDb.prepare(query)
-            return {
-              ...mainStmt,
-              execute: (bindValues) => {
-                const getRowsChanged = mainStmt.execute(bindValues)
-                store.adapter.coordinator.execute(query, bindValues).pipe(Effect.tapCauseLogPretty, Effect.runFork)
-                return getRowsChanged
-              },
-            }
-          },
-        } satisfies InMemoryDatabase
-
-        migrateTable({
-          db,
-          tableAst: table.sqliteDef.ast,
-          otelContext,
-          schemaHash,
-          behaviour: 'create-if-not-exists',
-        })
-      }
-
-      const label = `tableRef:${tableName}`
-
-      // TODO find a better implementation for this
-      const existingTableRefFromGraph = Array.from(store.reactivityGraph.atoms.values()).find(
-        (_) => _._tag === 'ref' && _.label === label,
-      ) as Ref<null, QueryContext, RefreshReason> | undefined
-
-      store.tableRefs[tableName] = existingTableRefFromGraph ?? store.makeTableRef(tableName)
-    }
 
     if (skipInsertDefaultRow !== true && table.options.isSingleton === false) {
       insertRowWithDefaultValuesOrIgnore({

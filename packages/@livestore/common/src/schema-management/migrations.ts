@@ -68,6 +68,8 @@ export const migrateDb = ({
     behaviour: 'create-if-not-exists',
   })
 
+  // TODO enforce that migrating tables isn't allowed once the store is running
+
   validateSchema(schema, makeSchemaManager(db))
 
   const schemaMetaRows = dbSelect<SchemaMetaRow>(db, sql`SELECT * FROM ${SCHEMA_META_TABLE}`)

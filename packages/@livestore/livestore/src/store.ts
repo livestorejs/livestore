@@ -180,11 +180,7 @@ export class Store<
     }
 
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
-    const allTableNames = new Set(
-      this.schema.tables.keys(),
-      // TODO activate dynamic tables
-      // ...Array.from(dynamicallyRegisteredTables.values()).map((_) => _.sqliteDef.name),
-    )
+    const allTableNames = new Set(this.schema.tables.keys())
     const existingTableRefs = new Map(
       Array.from(this.reactivityGraph.atoms.values())
         .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)

@@ -27,7 +27,7 @@ export {
   type LiveQuery,
 } from './reactiveQueries/base-class.js'
 
-export { globalReactivityGraph, dynamicallyRegisteredTables } from './global-state.js'
+export { globalReactivityGraph } from './global-state.js'
 
 export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
 
