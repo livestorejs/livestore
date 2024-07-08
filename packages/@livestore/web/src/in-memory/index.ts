@@ -41,7 +41,7 @@ const makeCoordinator = (
   const syncMutations = Stream.never
 
   return {
-    devtools: { channelId: cuid() },
+    devtools: { channelId: cuid(), init: () => Effect.void, enabled: false },
     hasLock,
     syncMutations,
     execute: () => Effect.void,

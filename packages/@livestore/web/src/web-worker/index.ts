@@ -48,7 +48,7 @@ export const makeAdapter = (options: WebAdapterOptions) => makeAdapterFactory(ma
 
 const makeCoordinator =
   (options: WebAdapterOptions): MakeCoordinator =>
-  ({ schema }) => {
+  ({ schema, devtoolsEnabled }) => {
     const manualScope = Effect.runSync(Scope.make())
 
     return Effect.gen(function* () {
@@ -89,7 +89,7 @@ const makeCoordinator =
 
       const workerDeferred = yield* Worker.makePoolSerialized<WorkerSchema.Request>({
         size: 1,
-        concurrency: 10,
+        concurrency: 100,
         initialMessage: () =>
           new WorkerSchema.InitialMessage({
             storageOptions,
@@ -97,10 +97,11 @@ const makeCoordinator =
             hasLock,
             syncOptions: options.syncing,
             key: options.key,
-            devtools: { channelId },
+            devtools: { channelId, enabled: devtoolsEnabled },
           }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => worker)),
+        Effect.tapErrorCause((cause) => Scope.close(manualScope, Exit.fail(cause))),
         Effect.withSpan('@livestore/web:main:setupWorker'),
         Effect.toForkedDeferred,
       )
@@ -116,7 +117,12 @@ const makeCoordinator =
           Stream.runDrain,
           Effect.tapCauseLogPretty,
         ),
-      ).pipe(Effect.forkDaemon)
+      ).pipe(Effect.forkScoped)
+
+      yield* runInWorker(new WorkerSchema.ListenForReload()).pipe(
+        Effect.tapSync(() => window.location.reload()),
+        Effect.forkScoped,
+      )
 
       const initialSnapshot =
         dataFromFile ??
@@ -175,7 +181,15 @@ const makeCoordinator =
       )
 
       const coordinator = {
-        devtools: { channelId },
+        devtools: {
+          enabled: devtoolsEnabled,
+          channelId,
+          init: (port) =>
+            runInWorker(new WorkerSchema.InitDevtools({ port })).pipe(
+              Effect.withSpan('@livestore/web:main:initDevtools'),
+              Effect.mapError((error) => new UnexpectedError({ error })),
+            ),
+        },
         hasLock: hasLockTRef,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: Effect.sync(() => initialSnapshot),

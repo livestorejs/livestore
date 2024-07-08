@@ -101,7 +101,7 @@ export const makeAdapter =
       const syncMutations = Stream.never
 
       const coordinator = {
-        devtools: { channelId: 'todo' },
+        devtools: { channelId: 'todo', init: () => Effect.void, enabled: false },
         hasLock,
         syncMutations,
         execute: () => Effect.void,

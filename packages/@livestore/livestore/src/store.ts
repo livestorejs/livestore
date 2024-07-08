@@ -11,7 +11,7 @@ import { Devtools, getExecArgsFromMutation, prepareBindValues } from '@livestore
 import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
-import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
 import { Effect, Layer, OtelTracer, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
@@ -530,6 +530,36 @@ export class Store<
     })
 
   private bootDevtools = () => {
+    const sendToDevtoolsContentscript = (
+      message: typeof Devtools.DevtoolsWindowMessage.MessageForContentscript.Type,
+    ) => {
+      window.postMessage(Schema.encodeSync(Devtools.DevtoolsWindowMessage.MessageForContentscript)(message), '*')
+    }
+
+    const channelId = this.adapter.coordinator.devtools.channelId
+
+    window.addEventListener('message', (event) => {
+      const decodedMessageRes = Schema.decodeOption(Devtools.DevtoolsWindowMessage.MessageForStore)(event.data)
+      if (decodedMessageRes._tag === 'None') return
+
+      const message = decodedMessageRes.value
+
+      if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
+        sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+        return
+      }
+
+      if (message.channelId !== channelId) return
+
+      if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
+        const port = message.port
+        this.adapter.coordinator.devtools.init(port).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+        return
+      }
+    })
+
+    sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+
     const devtoolsChannel = Devtools.makeBroadcastChannels()
 
     type Unsub = () => void
@@ -553,24 +583,35 @@ export class Store<
       const sendToDevtools = (message: Devtools.MessageFromAppHost) =>
         devtoolsChannel.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
 
+      const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
+
       switch (decoded.value._tag) {
         case 'LSD.ReactivityGraphSubscribe': {
           const includeResults = decoded.value.includeResults
+
           const send = () =>
-            sendToDevtools(
-              Devtools.ReactivityGraphRes.make({
-                reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
-                requestId,
-                liveStoreVersion,
-              }),
+            // In order to not add more work to the current tick, we use requestIdleCallback
+            // to send the reactivity graph updates to the devtools
+            requestIdleCallback(
+              () =>
+                sendToDevtools(
+                  Devtools.ReactivityGraphRes.make({
+                    reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
+                    requestId,
+                    liveStoreVersion,
+                  }),
+                ),
+              { timeout: 500 },
             )
 
           send()
 
-          reactivityGraphSubcriptions.set(
-            requestId,
-            this.reactivityGraph.subscribeToRefresh(() => send()),
-          )
+          // In some cases, there can be A LOT of reactivity graph updates in a short period of time
+          // so we throttle the updates to avoid sending too much data
+          // This might need to be tweaked further and possibly be exposed to the user in some way.
+          const throttledSend = throttle(send, 20)
+
+          reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
 
           break
         }
@@ -597,31 +638,35 @@ export class Store<
         }
         case 'LSD.LiveQueriesSubscribe': {
           const send = () =>
-            sendToDevtools(
-              Devtools.LiveQueriesRes.make({
-                liveQueries: [...this.activeQueries].map((q) => ({
-                  _tag: q._tag,
-                  id: q.id,
-                  label: q.label,
-                  runs: q.runs,
-                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                  lastestResult:
-                    q.results$.previousResult === NOT_REFRESHED_YET
-                      ? 'SYMBOL_NOT_REFRESHED_YET'
-                      : q.results$.previousResult,
-                  activeSubscriptions: Array.from(q.activeSubscriptions),
-                })),
-                requestId,
-                liveStoreVersion,
-              }),
+            requestIdleCallback(
+              () =>
+                sendToDevtools(
+                  Devtools.LiveQueriesRes.make({
+                    liveQueries: [...this.activeQueries].map((q) => ({
+                      _tag: q._tag,
+                      id: q.id,
+                      label: q.label,
+                      runs: q.runs,
+                      executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
+                      lastestResult:
+                        q.results$.previousResult === NOT_REFRESHED_YET
+                          ? 'SYMBOL_NOT_REFRESHED_YET'
+                          : q.results$.previousResult,
+                      activeSubscriptions: Array.from(q.activeSubscriptions),
+                    })),
+                    requestId,
+                    liveStoreVersion,
+                  }),
+                ),
+              { timeout: 500 },
             )
 
           send()
 
-          liveQueriesSubscriptions.set(
-            requestId,
-            this.reactivityGraph.subscribeToRefresh(() => send()),
-          )
+          // Same as in the reactivity graph subscription case above, we need to throttle the updates
+          const throttledSend = throttle(send, 20)
+
+          liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
 
           break
         }
@@ -700,7 +745,7 @@ export const createStoreEff = <
   return Effect.gen(function* () {
     const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
 
-    const adapter = yield* adapterFactory({ schema }).pipe(
+    const adapter = yield* adapterFactory({ schema, devtoolsEnabled: disableDevtools !== true }).pipe(
       Effect.withPerformanceMeasure('livestore:makeAdapter'),
       Effect.withSpan('createStore:makeAdapter'),
     )

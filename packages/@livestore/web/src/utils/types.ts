@@ -7,4 +7,5 @@ import type { SqliteWasm } from '../sqlite-utils.js'
 export type MakeCoordinator = (props: {
   schema: LiveStoreSchema
   sqlite3: SqliteWasm.Sqlite3Static
+  devtoolsEnabled: boolean
 }) => Effect.Effect<Coordinator, UnexpectedError, never>

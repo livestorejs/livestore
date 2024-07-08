@@ -1,5 +1,5 @@
 import { version as pkgVersion } from '@livestore/common/package.json'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, Transferable } from '@livestore/utils/effect'
 import { type SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 
 import { NetworkStatus } from '../adapter-types.js'
@@ -20,20 +20,21 @@ export class SnapshotReq extends Schema.TaggedStruct('LSD.SnapshotReq', {
 export class SnapshotRes extends Schema.TaggedStruct('LSD.SnapshotRes', {
   liveStoreVersion,
   requestId,
-  snapshot: Schema.Uint8Array,
+  snapshot: Transferable.Uint8Array,
 }).annotations({ identifier: 'LSD.SnapshotRes' }) {}
 
-export class LoadSnapshotReq extends Schema.TaggedStruct('LSD.LoadSnapshotReq', {
+export class LoadDatabaseFileReq extends Schema.TaggedStruct('LSD.LoadDatabaseFileReq', {
   liveStoreVersion,
   requestId,
   channelId,
-  snapshot: Schema.Uint8Array,
-}).annotations({ identifier: 'LSD.LoadSnapshotReq' }) {}
+  data: Transferable.Uint8Array,
+}).annotations({ identifier: 'LSD.LoadDatabaseFileReq' }) {}
 
-export class LoadSnapshotRes extends Schema.TaggedStruct('LSD.LoadSnapshotRes', {
+export class LoadDatabaseFileRes extends Schema.TaggedStruct('LSD.LoadDatabaseFileRes', {
   liveStoreVersion,
   requestId,
-}).annotations({ identifier: 'LSD.LoadSnapshotRes' }) {}
+  status: Schema.Literal('ok', 'unsupported-file', 'unsupported-database'),
+}).annotations({ identifier: 'LSD.LoadDatabaseFileRes' }) {}
 
 export class DebugInfoReq extends Schema.TaggedStruct('LSD.DebugInfoReq', {
   liveStoreVersion,
@@ -102,20 +103,8 @@ export class MutationLogRes extends Schema.TaggedStruct('LSD.MutationLogRes', {
   liveStoreVersion,
   requestId,
   channelId,
-  mutationLog: Schema.Uint8Array,
+  mutationLog: Transferable.Uint8Array,
 }).annotations({ identifier: 'LSD.MutationLogRes' }) {}
-
-export class LoadMutationLogReq extends Schema.TaggedStruct('LSD.LoadMutationLogReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-  mutationLog: Schema.Uint8Array,
-}).annotations({ identifier: 'LSD.LoadMutationLogReq' }) {}
-
-export class LoadMutationLogRes extends Schema.TaggedStruct('LSD.LoadMutationLogRes', {
-  liveStoreVersion,
-  requestId,
-}).annotations({ identifier: 'LSD.LoadMutationLogRes' }) {}
 
 export class ReactivityGraphSubscribe extends Schema.TaggedStruct('LSD.ReactivityGraphSubscribe', {
   liveStoreVersion,
@@ -217,9 +206,8 @@ export class Pong extends Schema.TaggedStruct('LSD.Pong', {
 
 export const MessageToAppHost = Schema.Union(
   SnapshotReq,
-  LoadSnapshotReq,
+  LoadDatabaseFileReq,
   MutationLogReq,
-  LoadMutationLogReq,
   DebugInfoReq,
   DebugInfoResetReq,
   DebugInfoRerunQueryReq,
@@ -239,9 +227,8 @@ export type MessageToAppHost = typeof MessageToAppHost.Type
 
 export const MessageFromAppHost = Schema.Union(
   SnapshotRes,
-  LoadSnapshotRes,
+  LoadDatabaseFileRes,
   MutationLogRes,
-  LoadMutationLogRes,
   DebugInfoRes,
   DebugInfoResetRes,
   DebugInfoRerunQueryRes,

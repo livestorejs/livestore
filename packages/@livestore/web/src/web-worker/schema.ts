@@ -77,6 +77,7 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
     syncOptions: Schema.optional(SyncingType),
     key: Schema.UndefinedOr(Schema.String),
     devtools: Schema.Struct({
+      enabled: Schema.Boolean,
       channelId: Schema.String,
     }),
   },
@@ -114,7 +115,18 @@ export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStrea
   {},
 ) {}
 
+export class ListenForReload extends Schema.TaggedRequest<ListenForReload>()(
+  'ListenForReload',
+  UnexpectedError,
+  Schema.Void,
+  {},
+) {}
+
 export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
+
+export class InitDevtools extends Schema.TaggedRequest<InitDevtools>()('InitDevtools', UnexpectedError, Schema.Void, {
+  port: Transferable.MessagePort,
+}) {}
 
 export const Request = Schema.Union(
   InitialMessage,
@@ -124,6 +136,8 @@ export const Request = Schema.Union(
   ExportMutationlog,
   Setup,
   NetworkStatusStream,
+  ListenForReload,
   Shutdown,
+  InitDevtools,
 )
 export type Request = Schema.Schema.Type<typeof Request>

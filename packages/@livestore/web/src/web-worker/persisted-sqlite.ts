@@ -97,17 +97,24 @@ export const makePersistedSqliteOpfs = (
   configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void>,
 ): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
   Effect.gen(function* () {
-    const directory = directory_.endsWith('/') ? directory_ : `${directory_}/`
+    const directory = sanitizeOpfsDir(directory_)
     const fullPath = `${directory}${fileName}`
 
     const dbRef = ref(new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI })
     dbRef.current.capi = sqlite3.capi
 
+    // Log below can be useful to debug state of loaded DB
+    // console.debug(
+    //   'makePersistedSqliteOpfs: sqlite_master for',
+    //   fullPath,
+    //   dbRef.current.selectObjects('select * from sqlite_master'),
+    // )
+
     yield* Effect.addFinalizer(() => Effect.sync(() => dbRef.current.close()))
 
     yield* configure(dbRef.current)
 
-    const destroy = deletePersistedSqliteOpfs(directory, fileName).pipe(
+    const destroy = opfsDeleteFile(fullPath).pipe(
       Effect.catchAllCause((error) => new PersistedSqliteError({ error })),
       Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:destroy'),
     )
@@ -332,7 +339,11 @@ const opfsDeleteFile = (absFilePath: string) =>
     }
   }).pipe(Effect.withSpan('@livestore/web:worker:opfsDeleteFile', { attributes: { absFilePath } }))
 
-const deletePersistedSqliteOpfs = (directory: string | undefined, fileName: string) => {
-  const fullPath = directory ? `${directory}/${fileName}` : fileName
-  return opfsDeleteFile(fullPath)
+const sanitizeOpfsDir = (directory: string) => {
+  // Root dir should be `''` not `/`
+  if (directory === '' || directory === '/') return ''
+
+  if (directory.endsWith('/')) return directory
+
+  return `${directory}/`
 }

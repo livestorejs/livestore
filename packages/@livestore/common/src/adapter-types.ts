@@ -38,7 +38,9 @@ export type NetworkStatus = {
 
 export type Coordinator = {
   devtools: {
+    enabled: boolean
     channelId: string
+    init: (messagePort: MessagePort) => Effect.Effect<void, UnexpectedError>
   }
   hasLock: TRef.TRef<boolean>
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
@@ -117,4 +119,7 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type StoreAdapterFactory = (opts: { schema: LiveStoreSchema }) => Effect.Effect<StoreAdapter, UnexpectedError>
+export type StoreAdapterFactory = (opts: {
+  schema: LiveStoreSchema
+  devtoolsEnabled: boolean
+}) => Effect.Effect<StoreAdapter, UnexpectedError>

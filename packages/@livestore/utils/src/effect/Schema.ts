@@ -1,5 +1,8 @@
+import { Transferable } from '@effect/platform'
 import { Schema } from '@effect/schema'
-import { Hash } from 'effect'
+import type { ParseOptions } from '@effect/schema/AST'
+import type { ParseError } from '@effect/schema/ParseResult'
+import { Effect, Hash } from 'effect'
 
 import { objectToString } from '../misc.js'
 
@@ -41,3 +44,16 @@ export class AnyError extends Schema.transform(errorStructSchema, Schema.Any, {
     stack: anyError.stack,
   }),
 }) {}
+
+export const encodeWithTransferables =
+  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) =>
+  (a: A, overrideOptions?: ParseOptions | undefined): Effect.Effect<[I, Transferable[]], ParseError, R> =>
+    Effect.gen(function* () {
+      const collector = yield* Transferable.makeCollector
+
+      const encoded: I = yield* Schema.encode(schema, options)(a, overrideOptions).pipe(
+        Effect.provideService(Transferable.Collector, collector),
+      )
+
+      return [encoded, collector.unsafeRead() as Transferable[]]
+    })

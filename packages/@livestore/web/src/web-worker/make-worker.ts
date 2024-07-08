@@ -2,13 +2,21 @@ import { makeWsSync } from '@livestore/cf-sync/sync-impl'
 import type { SyncImpl } from '@livestore/common'
 import { Devtools, sql, UnexpectedError } from '@livestore/common'
 import { version as liveStoreVersion } from '@livestore/common/package.json'
-import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
-import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import {
+  type LiveStoreSchema,
+  makeMutationEventSchema,
+  MUTATION_LOG_META_TABLE,
+  SCHEMA_META_TABLE,
+  SCHEMA_MUTATIONS_META_TABLE,
+} from '@livestore/common/schema'
+import { isNotUndefined, memoizeByStringifyArgs, ref, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
   Effect,
+  Fiber,
   Layer,
+  PubSub,
   Queue,
   Schema,
   Stream,
@@ -17,8 +25,10 @@ import {
 } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
-import { loadSqlite3Wasm } from '../sqlite-utils.js'
-import type { ApplyMutation, DevtoolsContext } from './common.js'
+import { makeInMemoryDb } from '../make-in-memory-db.js'
+import type { SqliteWasm } from '../sqlite-utils.js'
+import { importBytesToDb, loadSqlite3Wasm } from '../sqlite-utils.js'
+import type { ApplyMutation, DevtoolsContext, ShutdownState } from './common.js'
 import { configureConnection, makeApplyMutation, WorkerCtx } from './common.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
@@ -56,11 +66,31 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     const initialSnapshotRef = { current: undefined as any }
 
     return WorkerRunner.layerSerialized(Request, {
-      InitialMessage: ({ storageOptions, hasLock, needsRecreate, syncOptions, key, devtools: { channelId } }) =>
+      InitialMessage: ({
+        storageOptions,
+        hasLock,
+        needsRecreate,
+        syncOptions,
+        key,
+        devtools: { channelId, enabled: devtoolsEnabled },
+      }) =>
         Effect.gen(function* () {
+          if (storageOptions.type === 'opfs-sahpool-experimental') {
+            // NOTE We're not using SharedArrayBuffers/Atomics here, so we can ignore the warnings
+            // See https://sqlite.org/forum/info/9d4f722c6912799d
+            // TODO hopefully this won't be needed in future versions of SQLite where when using SAHPool, SQLite
+            // won't attempt to spawn the async OPFS proxy
+            // See https://sqlite.org/forum/info/9d4f722c6912799d and https://github.com/sqlite/sqlite-wasm/issues/62
+            // @ts-expect-error Missing types
+            globalThis.sqlite3ApiConfig = {
+              warn: () => {},
+            }
+          }
           const sqlite3 = yield* Effect.tryPromise(() => sqlite3Promise)
 
           const keySuffix = key ? `-${key}` : ''
+
+          const shutdownStateSubRef = yield* SubscriptionRef.make<ShutdownState>('running')
 
           if (hasLock === false) {
             return Layer.succeed(WorkerCtx, {
@@ -68,7 +98,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               keySuffix,
               storageOptions,
               schema,
-              ctx: undefined,
+              ctx: {
+                shutdownStateSubRef,
+              },
             })
           }
 
@@ -130,8 +162,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             }
           })
 
-          const isShuttingDownRef = { current: false as boolean }
-
           const sync = yield* makeSync
 
           const devtools = yield* makeDevtoolsContext(channelId)
@@ -142,7 +172,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             storageOptions,
             schema,
             ctx: {
-              isShuttingDownRef,
+              shutdownStateSubRef,
               sqlite3,
               db,
               dbLog,
@@ -162,7 +192,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const applyMutation = makeApplyMutation(workerCtx, () => new Date().toISOString(), db.dbRef.current)
 
-          yield* listenToDevtools({ devtools, sync, schema, db, dbLog, applyMutation, isShuttingDownRef })
+          if (devtoolsEnabled) {
+            yield* listenToDevtools({ devtools, sqlite3, sync, schema, db, dbLog, applyMutation, shutdownStateSubRef })
+          }
 
           if (syncImpl !== undefined) {
             // TODO try to do this in a batched-way if possible
@@ -229,16 +261,18 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
         Effect.gen(function* (_) {
           const workerCtx = yield* WorkerCtx
 
-          if (workerCtx.ctx?.sync === undefined) {
+          if (workerCtx._tag === 'NoLock' || workerCtx.ctx?.sync === undefined) {
             return Stream.succeed({ isConnected: false, timestampMs: Date.now() })
           }
 
-          return workerCtx.ctx.sync.impl.isConnected.changes.pipe(
+          const ctx = workerCtx.ctx
+
+          return ctx.sync!.impl.isConnected.changes.pipe(
             Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
             Stream.tap((networkStatus) =>
-              workerCtx.ctx!.devtools.sendMessage(
+              ctx.devtools.sendMessage(
                 Devtools.NetworkStatusChanged.make({
-                  channelId: workerCtx.ctx!.devtools.channelId,
+                  channelId: ctx.devtools.channelId,
                   networkStatus,
                   liveStoreVersion,
                 }),
@@ -246,6 +280,13 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             ),
           )
         }).pipe(Stream.unwrap),
+      ListenForReload: () =>
+        WorkerCtx.pipe(
+          Effect.andThen((_) => SubscriptionRef.waitUntil(_.ctx.shutdownStateSubRef, (_) => _ == 'shutdown-requested')),
+          Effect.asVoid,
+          mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:worker:ListenForReload'),
+        ),
       Shutdown: () =>
         Effect.gen(function* () {
           // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)
@@ -255,6 +296,16 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           yield* db.close
           yield* dbLog.close
         }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
+      InitDevtools: ({ port }) =>
+        Effect.gen(function* () {
+          const workerCtx = yield* WorkerCtx
+          if (workerCtx._tag === 'NoLock') {
+            console.warn(`LiveStore doesn't currently support using the Devtools in more than one tab.`)
+            return
+          }
+
+          yield* SubscriptionRef.set(workerCtx.ctx.devtools.portSubRef, port)
+        }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:InitDevtools')),
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(BrowserWorkerRunner.layer))
 
@@ -280,9 +331,9 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
     let batchItems: ExecutionBacklogItem[] = []
     const workerCtx = yield* WorkerCtx
     if (workerCtx._tag === 'NoLock') return
-    const { db, dbLog, isShuttingDownRef } = yield* getWorkerCtxUnsafe
+    const { db, dbLog, shutdownStateSubRef } = yield* getWorkerCtxUnsafe
 
-    if (isShuttingDownRef.current) {
+    if ((yield* SubscriptionRef.get(shutdownStateSubRef)) !== 'running') {
       console.warn('livestore-webworker: shutting down, skipping execution')
       return
     }
@@ -352,48 +403,126 @@ const makeDevtoolsContext = (channelId: string) =>
 
     const devtoolBroadcastChannels = Devtools.makeBroadcastChannels()
 
-    const incomingMessages = Stream.fromEventListener<MessageEvent>(devtoolBroadcastChannels.toAppHost, 'message').pipe(
-      Stream.map((_) => Schema.decodeSync(Devtools.MessageToAppHost)(_.data)),
-    )
+    const portSubRef = yield* SubscriptionRef.make<MessagePort | undefined>(undefined)
+
+    // const incomingMessages = Stream.fromEventListener<MessageEvent>(devtoolBroadcastChannels.toAppHost, 'message').pipe(
+    //   Stream.map((_) => Schema.decodeSync(Devtools.MessageToAppHost)(_.data)),
+    // )
+
+    const incomingMessagesPubSub = yield* PubSub.unbounded<Devtools.MessageToAppHost>()
 
     const outgoingMessagesQueue = yield* Queue.unbounded<Devtools.MessageFromAppHost>()
+
+    const sendToPort = (msg: typeof Devtools.MessageFromAppHost.Type) =>
+      Effect.gen(function* () {
+        const port = yield* SubscriptionRef.waitUntil(portSubRef, isNotUndefined)
+
+        const [encodedMessage, transfers] = yield* Schema.encodeWithTransferables(Devtools.MessageFromAppHost)(msg)
+
+        yield* Effect.try(() => port.postMessage(encodedMessage, transfers))
+      }).pipe(Effect.withSpan('LSD:contentscript:sendToDevtools'))
 
     const sendMessage: DevtoolsContext['sendMessage'] = (message, options) =>
       Effect.gen(function* () {
         if (options?.force === true || (yield* SubscriptionRef.get(isConnected))) {
-          devtoolBroadcastChannels.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
+          yield* sendToPort(message)
         } else {
           yield* Queue.offer(outgoingMessagesQueue, message)
         }
-      })
+      }).pipe(Effect.withSpan('LSD:contentscript:sendToDevtools'), Effect.tapCauseLogPretty, Effect.orDie)
 
     yield* Effect.gen(function* () {
       yield* SubscriptionRef.waitUntil(isConnected, (_) => _ === true)
 
-      const msg = yield* Queue.take(outgoingMessagesQueue)
+      const message = yield* Queue.take(outgoingMessagesQueue)
 
-      devtoolBroadcastChannels.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(msg))
+      yield* sendToPort(message)
     }).pipe(Effect.forever, Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    return { isConnected, sendMessage, incomingMessages, channelId } satisfies DevtoolsContext
+    const currentRunningPortFiberRef = ref<Fiber.RuntimeFiber<any, any> | undefined>(undefined)
+
+    yield* portSubRef.changes.pipe(
+      Stream.filter(isNotUndefined),
+      Stream.tap((port) =>
+        Effect.gen(function* () {
+          // console.log('livestore-webworker: devtools: port changed', port)
+          if (currentRunningPortFiberRef.current !== undefined) {
+            yield* Fiber.interrupt(currentRunningPortFiberRef.current)
+          }
+
+          yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), { force: true }).pipe(
+            Effect.forkScoped, // TODO remove forking
+          )
+
+          currentRunningPortFiberRef.current = Effect.gen(function* () {
+            port.addEventListener('message', (event) => {
+              // console.log('livestore-webworker: devtools: message from port', event.data)
+              const decodedMsg = Schema.decodeSync(Devtools.MessageToAppHost)(event.data)
+              const temporarilyForwardToMainThread =
+                decodedMsg._tag === 'LSD.ReactivityGraphSubscribe' ||
+                decodedMsg._tag === 'LSD.ReactivityGraphUnsubscribe' ||
+                decodedMsg._tag === 'LSD.DebugInfoReq' ||
+                decodedMsg._tag === 'LSD.DebugInfoResetReq' ||
+                decodedMsg._tag === 'LSD.DebugInfoRerunQueryReq' ||
+                decodedMsg._tag === 'LSD.LiveQueriesSubscribe' ||
+                decodedMsg._tag === 'LSD.LiveQueriesUnsubscribe' ||
+                decodedMsg._tag === 'LSD.ResetAllDataReq'
+
+              if (temporarilyForwardToMainThread) {
+                devtoolBroadcastChannels.toAppHost.postMessage(event.data)
+              } else {
+                PubSub.publish(incomingMessagesPubSub, decodedMsg).pipe(Effect.tapCauseLogPretty, Effect.runSync)
+              }
+            })
+
+            port.start()
+
+            yield* Effect.addFinalizer(() => Effect.sync(() => port.close()))
+
+            yield* Effect.never
+          }).pipe(Effect.withSpan('LSD:webworker:handlePort'), Effect.scoped, Effect.tapCauseLogPretty, Effect.runFork)
+        }),
+      ),
+      Stream.runDrain,
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
+
+    // temporarily relaying messages from the store to the devtools
+    devtoolBroadcastChannels.fromAppHost.addEventListener('message', (event) => {
+      // console.debug('web worker: relaying message from store to devtools: message', event.data)
+
+      const decodedMessageRes = Schema.decodeEither(Devtools.MessageFromAppHost)(event.data)
+      if (decodedMessageRes._tag === 'Left') {
+        return shouldNeverHappen(`Invalid devtools message`, decodedMessageRes.left)
+      }
+
+      sendMessage(decodedMessageRes.right).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+    })
+
+    const incomingMessages = Stream.fromPubSub(incomingMessagesPubSub)
+
+    return { isConnected, sendMessage, incomingMessages, portSubRef, channelId } satisfies DevtoolsContext
   })
 
 const listenToDevtools = ({
   devtools,
+  sqlite3,
   sync,
   schema,
   db,
   dbLog,
   applyMutation,
-  isShuttingDownRef,
+  shutdownStateSubRef,
 }: {
   devtools: DevtoolsContext
+  sqlite3: SqliteWasm.Sqlite3Static
   sync: { impl: SyncImpl } | undefined
   schema: LiveStoreSchema
   db: PersistedSqlite
   dbLog: PersistedSqlite
   applyMutation: ApplyMutation
-  isShuttingDownRef: { current: boolean }
+  shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
 }) =>
   Effect.gen(function* () {
     const { channelId } = devtools
@@ -460,27 +589,55 @@ const listenToDevtools = ({
 
               break
             }
-            case 'LSD.LoadSnapshotReq': {
-              const { snapshot } = decodedEvent
+            case 'LSD.LoadDatabaseFileReq': {
+              const { data } = decodedEvent
 
-              isShuttingDownRef.current = true
+              let tableNames: Set<string>
 
-              yield* db.import(snapshot)
+              try {
+                const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+                tmpDb.capi = sqlite3.capi
 
-              yield* devtools.sendMessage(Devtools.LoadSnapshotRes.make({ requestId, liveStoreVersion }))
+                importBytesToDb(sqlite3, tmpDb, data)
 
-              break
-            }
-            case 'LSD.LoadMutationLogReq': {
-              const { mutationLog } = decodedEvent
+                const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
+                const tableNameResults = tmpInMemoryDb
+                  .prepare(`select name from sqlite_master where type = 'table'`)
+                  .select<{ name: string }>(undefined)
 
-              isShuttingDownRef.current = true
+                tableNames = new Set(tableNameResults.map((_) => _.name))
 
-              yield* dbLog.import(mutationLog)
+                tmpDb.close()
+              } catch (e) {
+                yield* devtools.sendMessage(
+                  Devtools.LoadDatabaseFileRes.make({ requestId, liveStoreVersion, status: 'unsupported-file' }),
+                )
 
-              yield* db.destroy
+                break
+              }
 
-              yield* devtools.sendMessage(Devtools.LoadMutationLogRes.make({ requestId, liveStoreVersion }))
+              if (tableNames.has(MUTATION_LOG_META_TABLE)) {
+                yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
+
+                yield* dbLog.import(data)
+
+                yield* db.destroy
+              } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
+                yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
+
+                yield* db.import(data)
+              } else {
+                yield* devtools.sendMessage(
+                  Devtools.LoadDatabaseFileRes.make({ requestId, liveStoreVersion, status: 'unsupported-database' }),
+                )
+                break
+              }
+
+              yield* devtools.sendMessage(
+                Devtools.LoadDatabaseFileRes.make({ requestId, liveStoreVersion, status: 'ok' }),
+              )
+
+              yield* SubscriptionRef.set(shutdownStateSubRef, 'shutdown-requested')
 
               break
             }
@@ -515,6 +672,4 @@ const listenToDevtools = ({
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-
-    yield* devtools.sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), { force: true })
   })

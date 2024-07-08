@@ -46,6 +46,7 @@ export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fk
 export type DevtoolsContext = {
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   incomingMessages: Stream.Stream<Devtools.MessageToAppHost>
+  portSubRef: SubscriptionRef.SubscriptionRef<MessagePort | undefined>
   sendMessage: (
     message: Devtools.MessageFromAppHost,
     options?: {
@@ -55,6 +56,8 @@ export type DevtoolsContext = {
   ) => Effect.Effect<void>
   channelId: string
 }
+
+export type ShutdownState = 'running' | 'shutting-down' | 'shutdown-requested'
 
 export class WorkerCtx extends Context.Tag('WorkerCtx')<
   WorkerCtx,
@@ -68,7 +71,7 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
         dbLog: PersistedSqlite
         sqlite3: SqliteWasm.Sqlite3Static
         // TODO we should find a more elegant way to handle cases which need this ref for their implementation
-        isShuttingDownRef: { current: boolean }
+        shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
         mutationEventSchema: MutationEventSchema<any>
         mutationDefSchemaHashMap: Map<string, number>
         broadcastChannel: BroadcastChannel
@@ -86,7 +89,9 @@ export class WorkerCtx extends Context.Tag('WorkerCtx')<
       keySuffix: string
       storageOptions: StorageType
       schema: LiveStoreSchema
-      ctx: undefined
+      ctx: {
+        shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
+      }
     }
 >() {}
 
