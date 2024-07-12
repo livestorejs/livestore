@@ -70,14 +70,11 @@ importers:
   examples/expo-app:
     dependencies:
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       '@expo/vector-icons':
         specifier: ^14.0.1
         version: 14.0.2
-      '@livestore/devtools-react':
-        specifier: 0.0.54-dev.22
-        version: 0.0.54-dev.22(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/expo':
         specifier: workspace:*
         version: link:../../packages/@livestore/expo
@@ -137,8 +134,8 @@ importers:
   examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -330,8 +327,8 @@ importers:
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.22
         version: 0.0.54-dev.22(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -348,8 +345,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.3.2
-        version: 3.3.2
+        specifier: 3.5.1
+        version: 3.5.1
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -394,8 +391,8 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.22
         version: 0.0.54-dev.22(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -412,8 +409,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/web
       effect:
-        specifier: 3.3.2
-        version: 3.3.2
+        specifier: 3.5.1
+        version: 3.5.1
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -467,8 +464,8 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.22
         version: 0.0.54-dev.22(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -494,8 +491,8 @@ importers:
         specifier: ^0.31.2
         version: 0.31.2(@cloudflare/workers-types@4.20240614.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
       effect:
-        specifier: 3.3.2
-        version: 3.3.2
+        specifier: 3.5.1
+        version: 3.5.1
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -684,20 +681,20 @@ importers:
         version: 6.1.1
     devDependencies:
       '@effect/experimental':
-        specifier: 0.16.26
-        version: 0.16.26(@effect/platform@0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2))(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2)(ws@8.17.0)
+        specifier: 0.17.27
+        version: 0.17.27(@effect/platform@0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1))(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1)(ws@8.17.0)
       '@effect/opentelemetry':
-        specifier: 0.34.19
-        version: 0.34.19(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.0)(effect@3.3.2)
+        specifier: 0.34.34
+        version: 0.34.34(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.0)(effect@3.5.1)
       '@effect/platform':
-        specifier: 0.57.1
-        version: 0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2)
+        specifier: 0.58.25
+        version: 0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1)
       '@effect/platform-browser':
-        specifier: 0.36.1
-        version: 0.36.1(@effect/platform@0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2))(effect@3.3.2)
+        specifier: 0.37.25
+        version: 0.37.25(@effect/platform@0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1))(effect@3.5.1)
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -708,8 +705,8 @@ importers:
         specifier: ^0.0.149
         version: 0.0.149
       effect:
-        specifier: 3.3.2
-        version: 3.3.2
+        specifier: 3.5.1
+        version: 3.5.1
 
   packages/@livestore/web:
     dependencies:
@@ -740,14 +737,14 @@ importers:
         version: 1.0.8
     devDependencies:
       '@effect/schema':
-        specifier: 0.67.23
-        version: 0.67.23(effect@3.3.2)
+        specifier: 0.68.21
+        version: 0.68.21(effect@3.5.1)
       drizzle-orm:
         specifier: ^0.31.2
         version: 0.31.2(@cloudflare/workers-types@4.20240614.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
       effect:
-        specifier: 3.3.2
-        version: 3.3.2
+        specifier: 3.5.1
+        version: 3.5.1
       vite:
         specifier: ^5.3.1
         version: 5.3.1(@types/node@20.14.2)(terser@5.31.1)
@@ -1579,13 +1576,13 @@ packages:
     resolution: {integrity: sha512-1YUvQ+e0eeTWAHoN8Uz2x2U37jZs6IGutiIE5LXId7cxfUGhtZjzxE06FdUiuiRrW+UE0vNCdSNPH2lY4dQCOQ==}
     engines: {node: '>=12'}
 
-  '@effect/experimental@0.16.26':
-    resolution: {integrity: sha512-dPtHEypgRJunRdwwKyBojmwF6UH0rklQqNBDrD2hbP74tZHzDPTo4wq3apwN4vrSIlduDtciYzTFGGUZUeNL2Q==}
+  '@effect/experimental@0.17.27':
+    resolution: {integrity: sha512-1N4a5HT3gwVSCxM60uXkz5HA+S/DnjlJZB1lJzhMHk6DnDNLzuz6sZHT2HNEE/fGFuKx/ELaneqC/K2Y98BS3w==}
     peerDependencies:
-      '@effect/platform': ^0.57.1
-      '@effect/platform-node': ^0.51.10
-      '@effect/schema': ^0.67.23
-      effect: ^3.3.2
+      '@effect/platform': ^0.58.25
+      '@effect/platform-node': ^0.53.24
+      '@effect/schema': ^0.68.21
+      effect: ^3.5.1
       ioredis: ^5
       lmdb: ^3
       ws: ^8
@@ -1602,8 +1599,8 @@ packages:
   '@effect/language-service@0.1.0':
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
 
-  '@effect/opentelemetry@0.34.19':
-    resolution: {integrity: sha512-0rpLzLos+PrT6trzvlWqHti2kPwkRO1S42NvFDyI2XjN4zmW/oysbjxbEPhEy4dpZvEr4ihT5CdrpepmTzxkrg==}
+  '@effect/opentelemetry@0.34.34':
+    resolution: {integrity: sha512-kvDKpfolLkm0Qt12nraOV3ei7Bn1859b+ZqPF8YF7UpW+VZZ9NpAE2lpCC397um9Ie4Ko+2vVfXLZ1pgk1wfNA==}
     peerDependencies:
       '@opentelemetry/api': ^1.6
       '@opentelemetry/resources': ^1.22
@@ -1612,7 +1609,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^1.22
       '@opentelemetry/sdk-trace-web': ^1.22
       '@opentelemetry/semantic-conventions': ^1.24.1
-      effect: ^3.3.2
+      effect: ^3.5.1
     peerDependenciesMeta:
       '@opentelemetry/sdk-metrics':
         optional: true
@@ -1623,22 +1620,22 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@0.36.1':
-    resolution: {integrity: sha512-vCWYcitB1yEyf1OgN1RDVa7hjKoNsLzBatqHGM2FdcJGAD8LTa3o3oy9stPhjkHcA9QutRYhzKi0WfYgNJRE3A==}
+  '@effect/platform-browser@0.37.25':
+    resolution: {integrity: sha512-mui1eToRX3w1LQbRsh8BC3ILC6YzZT1ViGMc+iiDYEnLimyHqn7i20+DwiFhZa2xp7f7p4DIZxc85W8+zsCRIg==}
     peerDependencies:
-      '@effect/platform': ^0.57.1
-      effect: ^3.3.2
+      '@effect/platform': ^0.58.25
+      effect: ^3.5.1
 
-  '@effect/platform@0.57.1':
-    resolution: {integrity: sha512-O9x4YVtyFKKuoIc5KJkvr5dtu4J7W2HQSj4KGo5QU4FZKW4HkCNQqBpAGChJTMTA7RlqCea7Rn0Z22wzsm3svA==}
+  '@effect/platform@0.58.25':
+    resolution: {integrity: sha512-UMynArcxdFWf3N8DKcN6cfFv9TEYOf9d3FKbnJZN3dLbKJtxieeCuoOsBZCtvPOS7m/kWabZC/HEjpOmpg2jRg==}
     peerDependencies:
-      '@effect/schema': ^0.67.23
-      effect: ^3.3.2
+      '@effect/schema': ^0.68.21
+      effect: ^3.5.1
 
-  '@effect/schema@0.67.23':
-    resolution: {integrity: sha512-REKPOCm8guN6CEMvlQfR5ovjldeVRSnf3sj8FhyOIOeWuUtWlqghyBtgXLbAniSkjFFMFxWwDFyAoxVX9C0wGw==}
+  '@effect/schema@0.68.21':
+    resolution: {integrity: sha512-N+UmVaBXyAz4g0eMPKUOvz4lrjlboAnYog3tIiKlwFMUhGqI1Vq+GQ8dteXisqqKJzzLFn15R9LE6uoX/mlAlw==}
     peerDependencies:
-      effect: ^3.3.2
+      effect: ^3.5.1
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3':
     resolution: {integrity: sha512-r3MIryXDeXDOZh7ih1l/yE9ZLORCd5e8vWg02azWRGj5SPTuoh69A2AIyn0Z31V/kHBfZ4HgWJ+OK3GTTwLmnw==}
@@ -4309,8 +4306,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.3.2:
-    resolution: {integrity: sha512-695XQBtp+UUYG50oREG9ujnRoeQU7xhwHDhT6ZAexm3Q+umdml1kjxcPoYRrS65crmaLlhVpjZHePJNzWOODnA==}
+  effect@3.5.1:
+    resolution: {integrity: sha512-pwEqTNdPTvz7LzWKz99VeLLklOlgfqgWVXDepCudrkTU6ufaLqJ+62Sd42BaiGAt1vrnJBNhtpht+u+/7LK32g==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -4757,8 +4754,8 @@ packages:
     resolution: {integrity: sha512-Tq6PixE0w/VMFfCgbONnkiQIVol/JJL7nRMi20fqzA4NRs9AfeqMGeRdPi3wIhYkxjeBaWh2rxwapn5Tu3IqOQ==}
     engines: {node: '>=6'}
 
-  find-my-way-ts@0.1.2:
-    resolution: {integrity: sha512-AWsH49RGcyayzzxSAkwQKC1bToY5ForAfNreix88slo7wijg1wwTtCPvUUoVm/qhIY3UVSHBKApw8mOGPxsvSg==}
+  find-my-way-ts@0.1.4:
+    resolution: {integrity: sha512-naNl2YZ8m9LlYtPZathQBjXQQ8069uYBFq8We6w9AEGddJErVh0JZw8jd/C/2W9Ib3BjTnu+YN0/rR+ytWxNdw==}
 
   find-up@3.0.0:
     resolution: {integrity: sha512-1yD6RmLI1XBfxugvORwlck6f75tYL+iR0jqwsOrOxMZyGYqUuDhJ0l4AXdO1iX/FTs9cBAMEk1gWSEx1kSbylg==}
@@ -6163,8 +6160,8 @@ packages:
   msgpackr@1.10.2:
     resolution: {integrity: sha512-L60rsPynBvNE+8BWipKKZ9jHcSGbtyJYIwjRq0VrIvQ08cRjntGXJYW/tmciZ2IHWIY8WEW32Qa2xbh5+SKBZA==}
 
-  multipasta@0.2.1:
-    resolution: {integrity: sha512-0NR15o5iewJFMsZ4jN6cztCd4izTLZPyHUfBrakbg/x70B8zplPE6qumbs+A7LmhGtQMzpN/K8MOOdifMgAKFA==}
+  multipasta@0.2.2:
+    resolution: {integrity: sha512-KKGdmXIJUmt9BV45LsbUdMnju8eCNSyF9KpbyqK2E3wQXjpPQOg52/Hc+nsmBacmEkNxLVT5h1y3ZgEXB4prXg==}
 
   mustache@4.2.0:
     resolution: {integrity: sha512-71ippSywq5Yb7/tVYyGbkBggbU8H3u5Rz56fH60jGFgr8uHwxs+aSKeqmluIVzM0m0kB7xQjKS6qPfd0b2ZoqQ==}
@@ -9512,44 +9509,44 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 5.0.2
 
-  '@effect/experimental@0.16.26(@effect/platform@0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2))(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2)(ws@8.17.0)':
+  '@effect/experimental@0.17.27(@effect/platform@0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1))(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1)(ws@8.17.0)':
     dependencies:
-      '@effect/platform': 0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2)
-      '@effect/schema': 0.67.23(effect@3.3.2)
-      effect: 3.3.2
+      '@effect/platform': 0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1)
+      '@effect/schema': 0.68.21(effect@3.5.1)
+      effect: 3.5.1
       msgpackr: 1.10.2
     optionalDependencies:
       ws: 8.17.0
 
   '@effect/language-service@0.1.0': {}
 
-  '@effect/opentelemetry@0.34.19(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.0)(effect@3.3.2)':
+  '@effect/opentelemetry@0.34.34(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.0)(effect@3.5.1)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 1.25.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.25.0
-      effect: 3.3.2
+      effect: 3.5.1
     optionalDependencies:
       '@opentelemetry/sdk-metrics': 1.25.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.25.0(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@0.36.1(@effect/platform@0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2))(effect@3.3.2)':
+  '@effect/platform-browser@0.37.25(@effect/platform@0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1))(effect@3.5.1)':
     dependencies:
-      '@effect/platform': 0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2)
-      effect: 3.3.2
-      multipasta: 0.2.1
+      '@effect/platform': 0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1)
+      effect: 3.5.1
+      multipasta: 0.2.2
 
-  '@effect/platform@0.57.1(@effect/schema@0.67.23(effect@3.3.2))(effect@3.3.2)':
+  '@effect/platform@0.58.25(@effect/schema@0.68.21(effect@3.5.1))(effect@3.5.1)':
     dependencies:
-      '@effect/schema': 0.67.23(effect@3.3.2)
-      effect: 3.3.2
-      find-my-way-ts: 0.1.2
-      multipasta: 0.2.1
+      '@effect/schema': 0.68.21(effect@3.5.1)
+      effect: 3.5.1
+      find-my-way-ts: 0.1.4
+      multipasta: 0.2.2
       path-browserify: 1.0.1
 
-  '@effect/schema@0.67.23(effect@3.3.2)':
+  '@effect/schema@0.68.21(effect@3.5.1)':
     dependencies:
-      effect: 3.3.2
+      effect: 3.5.1
       fast-check: 3.19.0
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3(esbuild@0.17.19)':
@@ -12904,7 +12901,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.3.2: {}
+  effect@3.5.1: {}
 
   ejs@3.1.10:
     dependencies:
@@ -13622,7 +13619,7 @@ snapshots:
       make-dir: 2.1.0
       pkg-dir: 3.0.0
 
-  find-my-way-ts@0.1.2:
+  find-my-way-ts@0.1.4:
     dependencies:
       fast-querystring: 1.1.2
 
@@ -15272,7 +15269,7 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  multipasta@0.2.1: {}
+  multipasta@0.2.2: {}
 
   mustache@4.2.0: {}
 
