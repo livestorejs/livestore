@@ -16,3 +16,10 @@ interface FileSystemReadWriteOptions {
 interface FileSystemFileHandle {
   createSyncAccessHandle: () => Promise<FileSystemSyncAccessHandle>
 }
+
+declare module '*?sharedworker' {
+  const sharedWorkerConstructor: {
+    new (options?: { name?: string }): SharedWorker
+  }
+  export default sharedWorkerConstructor
+}

@@ -1,7 +1,8 @@
-import { type Coordinator, initializeSingletonTables, migrateDb } from '@livestore/common'
+import type { Coordinator, LockStatus } from '@livestore/common'
+import { initializeSingletonTables, migrateDb } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { cuid } from '@livestore/utils/cuid'
-import { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
+import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
@@ -37,12 +38,13 @@ const makeCoordinator = (
     return tmpMainDb.export()
   })
 
-  const hasLock = TRef.make(true).pipe(Effect.runSync)
+  const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
   const syncMutations = Stream.never
 
   return {
-    devtools: { channelId: cuid(), init: () => Effect.void, enabled: false },
-    hasLock,
+    isShutdownRef: { current: false },
+    devtools: { channelId: cuid(), connect: () => Effect.void, enabled: false },
+    lockStatus,
     syncMutations,
     execute: () => Effect.void,
     mutate: () => Effect.void,

@@ -36,6 +36,8 @@ export {
   HashSet,
   MutableHashSet,
   Option,
+  LogLevel,
+  Logger,
   Layer,
   STM,
   TRef,
@@ -55,6 +57,7 @@ export {
   TreeFormatter,
   AST as SchemaAST,
   Pretty as SchemaPretty,
+  Equivalence as SchemaEquivalence,
   Serializable,
   JSONSchema,
   ParseResult,
@@ -64,6 +67,7 @@ export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
+export * as PortPlatformRunner from './port-platform-runner.js'
 
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'

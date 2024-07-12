@@ -41,24 +41,24 @@
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.16.24",
-    "@effect/opentelemetry": "^0.34.17",
-    "@effect/platform": "^0.57.0",
-    "@effect/platform-browser": "^0.36.0",
-    "@effect/schema": "^0.67.22",
+    "@effect/experimental": "^0.17.27",
+    "@effect/opentelemetry": "^0.34.34",
+    "@effect/platform": "^0.58.25",
+    "@effect/platform-browser": "^0.37.25",
+    "@effect/schema": "^0.68.21",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.3.1"
+    "effect": "^3.5.1"
   },
   "devDependencies": {
-    "@effect/experimental": "0.16.26",
-    "@effect/opentelemetry": "0.34.19",
-    "@effect/platform": "0.57.1",
-    "@effect/platform-browser": "0.36.1",
-    "@effect/schema": "0.67.23",
+    "@effect/experimental": "0.17.27",
+    "@effect/opentelemetry": "0.34.34",
+    "@effect/platform": "0.58.25",
+    "@effect/platform-browser": "0.37.25",
+    "@effect/schema": "0.68.21",
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^20.12.11",
     "@types/web": "^0.0.149",
-    "effect": "3.3.2"
+    "effect": "3.5.1"
   },
   "publishConfig": {
     "access": "public"

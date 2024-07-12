@@ -1,17 +1,14 @@
+import type { Coordinator, InMemoryDatabase, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
 import {
-  type Coordinator,
   getExecArgsFromMutation,
   initializeSingletonTables,
-  type InMemoryDatabase,
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
-  type StoreAdapter,
-  type StoreAdapterFactory,
 } from '@livestore/common'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Schema, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
+import { Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as SQLite from 'expo-sqlite/next'
 
@@ -96,13 +93,14 @@ export const makeAdapter =
         `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
       )
 
-      const hasLock = TRef.make(true).pipe(Effect.runSync)
+      const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
       const syncMutations = Stream.never
 
       const coordinator = {
-        devtools: { channelId: 'todo', init: () => Effect.void, enabled: false },
-        hasLock,
+        isShutdownRef: { current: false },
+        devtools: { channelId: 'todo', connect: () => Effect.void, enabled: false },
+        lockStatus,
         syncMutations,
         execute: () => Effect.void,
         mutate: (mutationEventEncoded, { persisted }) =>

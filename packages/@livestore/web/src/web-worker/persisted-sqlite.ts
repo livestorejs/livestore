@@ -1,6 +1,6 @@
 import { casesHandled, ref } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Queue, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Queue, Schema, Stream } from '@livestore/utils/effect'
 
 import { getDirHandle } from '../opfs-utils.js'
 import type { SahUtils, SqliteWasm } from '../sqlite-utils.js'
@@ -24,12 +24,8 @@ export interface PersistedSqlite {
 }
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
-  error: Schema.AnyError,
-}) {
-  get message() {
-    return Cause.pretty(this.error)
-  }
-}
+  cause: Schema.AnyError,
+}) {}
 
 export const makePersistedSqlite = ({
   storageOptions,
@@ -115,13 +111,14 @@ export const makePersistedSqliteOpfs = (
     yield* configure(dbRef.current)
 
     const destroy = opfsDeleteFile(fullPath).pipe(
-      Effect.catchAllCause((error) => new PersistedSqliteError({ error })),
+      Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
       Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:destroy'),
     )
 
-    const export_ = Effect.sync(() => dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer!)).pipe(
-      Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:export'),
-    )
+    const export_ = Effect.sync(() => {
+      if (dbRef.current.pointer === undefined) throw new Error(`dbRef.current.pointer is undefined`)
+      return dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer)
+    }).pipe(Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:export'))
 
     const import_ = (data: Uint8Array) =>
       Effect.gen(function* () {
@@ -143,7 +140,7 @@ export const makePersistedSqliteOpfs = (
 
         yield* configure(dbRef.current)
       }).pipe(
-        Effect.catchAllCause((error) => new PersistedSqliteError({ error })),
+        Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
         Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:import'),
       )
 
@@ -151,7 +148,7 @@ export const makePersistedSqliteOpfs = (
 
     return { dbRef, destroy, export: export_, import: import_, close }
   }).pipe(
-    Effect.mapError((error) => new PersistedSqliteError({ error })),
+    Effect.mapError((error) => new PersistedSqliteError({ cause: error })),
     Effect.withSpan('@livestore/web:worker:makePersistedSqliteOpfs', {
       attributes: { directory: directory_, fileName },
     }),
@@ -176,13 +173,14 @@ export const makePersistedSqliteOpfsSahpoolExperimental = (
     yield* configure(dbRef.current)
 
     const destroy = opfsDeleteFile(directory).pipe(
-      Effect.catchAllCause((error) => new PersistedSqliteError({ error })),
+      Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
       Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:destroy'),
     )
 
-    const export_ = Effect.sync(() => dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer!)).pipe(
-      Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:export'),
-    )
+    const export_ = Effect.sync(() => {
+      if (dbRef.current.pointer === undefined) throw new Error(`dbRef.current.pointer is undefined`)
+      return dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer)
+    }).pipe(Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:export'))
 
     const import_ = (data: Uint8Array) =>
       Effect.gen(function* () {
@@ -192,7 +190,7 @@ export const makePersistedSqliteOpfsSahpoolExperimental = (
 
         yield* configure(dbRef.current)
       }).pipe(
-        Effect.catchAllCause((error) => new PersistedSqliteError({ error })),
+        Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
         Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:import'),
       )
 
@@ -202,7 +200,7 @@ export const makePersistedSqliteOpfsSahpoolExperimental = (
 
     return { dbRef, destroy, export: export_, import: import_, close }
   }).pipe(
-    Effect.mapError((error) => new PersistedSqliteError({ error })),
+    Effect.mapError((error) => new PersistedSqliteError({ cause: error })),
     Effect.withSpan('@livestore/web:worker:makePersistedSqliteOpfsSahpoolExperimental', {
       attributes: { directory, fileName },
     }),
@@ -289,7 +287,7 @@ export const makePersistedSqliteIndexedDb = (
       originalClose.apply(db)
     }
 
-    const destroy = idb.deleteDb.pipe(Effect.mapError((error) => new PersistedSqliteError({ error })))
+    const destroy = idb.deleteDb.pipe(Effect.mapError((error) => new PersistedSqliteError({ cause: error })))
 
     const export_ = Effect.sync(() => db.capi.sqlite3_js_db_export(db.pointer!))
 
@@ -305,7 +303,7 @@ export const makePersistedSqliteIndexedDb = (
 
     return { dbRef: ref(db), destroy, export: export_, import: import_, close }
   }).pipe(
-    Effect.mapError((error) => new PersistedSqliteError({ error })),
+    Effect.mapError((error) => new PersistedSqliteError({ cause: error })),
     Effect.withSpan('@livestore/web:worker:makePersistedSqliteIndexedDb'),
   )
 

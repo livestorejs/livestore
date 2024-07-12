@@ -8,13 +8,13 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.67.23",
+    "@effect/schema": "0.68.21",
     "@livestore/devtools-react": "0.0.54-dev.22",
     "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
-    "@livestore/sqlite-wasm": "3.46.0-build4",
-    "effect": "3.3.2",
+    "effect": "3.5.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "todomvc-app-css": "^2.4.3",

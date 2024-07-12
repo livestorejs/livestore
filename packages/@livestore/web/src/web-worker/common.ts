@@ -12,7 +12,7 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Stream } from '@livestore/utils/effect'
+import type { Fiber, Stream } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
@@ -59,40 +59,38 @@ export type DevtoolsContext = {
 
 export type ShutdownState = 'running' | 'shutting-down' | 'shutdown-requested'
 
+export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
+  OuterWorkerCtx,
+  {
+    innerFiber: Fiber.RuntimeFiber<any, any>
+  }
+>() {}
+
 export class WorkerCtx extends Context.Tag('WorkerCtx')<
   WorkerCtx,
-  | {
-      _tag: 'HasLock'
-      keySuffix: string
-      storageOptions: StorageType
-      schema: LiveStoreSchema
-      ctx: {
-        db: PersistedSqlite
-        dbLog: PersistedSqlite
-        sqlite3: SqliteWasm.Sqlite3Static
-        // TODO we should find a more elegant way to handle cases which need this ref for their implementation
-        shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
-        mutationEventSchema: MutationEventSchema<any>
-        mutationDefSchemaHashMap: Map<string, number>
-        broadcastChannel: BroadcastChannel
-        devtools: DevtoolsContext
-        sync:
-          | {
-              impl: SyncImpl
-              inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
-            }
-          | undefined
-      }
+  {
+    _tag: 'HasLock'
+    keySuffix: string
+    storageOptions: StorageType
+    schema: LiveStoreSchema
+    ctx: {
+      db: PersistedSqlite
+      dbLog: PersistedSqlite
+      sqlite3: SqliteWasm.Sqlite3Static
+      // TODO we should find a more elegant way to handle cases which need this ref for their implementation
+      shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
+      mutationEventSchema: MutationEventSchema<any>
+      mutationDefSchemaHashMap: Map<string, number>
+      broadcastChannel: BroadcastChannel
+      devtools: DevtoolsContext
+      sync:
+        | {
+            impl: SyncImpl
+            inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
+          }
+        | undefined
     }
-  | {
-      _tag: 'NoLock'
-      keySuffix: string
-      storageOptions: StorageType
-      schema: LiveStoreSchema
-      ctx: {
-        shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
-      }
-    }
+  }
 >() {}
 
 export type ApplyMutation = (
@@ -112,7 +110,6 @@ export const makeApplyMutation = (
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
   return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) => {
-    if (workerCtx._tag === 'NoLock') return
     const schema = workerCtx.schema
     const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync } = workerCtx.ctx
     const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)

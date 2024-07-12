@@ -1,5 +1,5 @@
-import type { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
-import { Cause, Schema } from '@livestore/utils/effect'
+import type { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
@@ -37,12 +37,14 @@ export type NetworkStatus = {
 }
 
 export type Coordinator = {
+  isShutdownRef: { current: boolean }
   devtools: {
     enabled: boolean
     channelId: string
-    init: (messagePort: MessagePort) => Effect.Effect<void, UnexpectedError>
+    connect: (options: { port: MessagePort; connectionId: string }) => Effect.Effect<void, UnexpectedError>
   }
-  hasLock: TRef.TRef<boolean>
+  // TODO is exposing the lock status really needed (or only relevant for web adapter?)
+  lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
   mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
@@ -59,6 +61,8 @@ export type Coordinator = {
 
 export type GetRowsChangedCount = () => number
 
+export type LockStatus = 'has-lock' | 'no-lock'
+
 export type BootDb = {
   _tag: 'BootDb'
   execute(queryStr: string, bindValues?: PreparedBindValues): void
@@ -68,17 +72,8 @@ export type BootDb = {
 }
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
-  error: Schema.AnyError,
-}) {
-  get message() {
-    try {
-      return Cause.pretty(this.error)
-    } catch (e) {
-      console.warn(`Error pretty printing error: ${e}`)
-      return this.error.toString()
-    }
-  }
-}
+  cause: Schema.AnyError,
+}) {}
 
 // TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app

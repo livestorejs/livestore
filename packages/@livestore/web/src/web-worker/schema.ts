@@ -25,7 +25,7 @@ export const ExecutionBacklogItem = Schema.Union(
   ExecutionBacklogItemTxn,
 )
 
-export type ExecutionBacklogItem = Schema.Schema.Type<typeof ExecutionBacklogItem>
+export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
 
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
@@ -66,78 +66,117 @@ export const SyncingTypeWebsocket = Schema.Struct({
 export const SyncingType = Schema.Union(SyncingTypeWebsocket)
 export type SyncingType = typeof SyncingType.Type
 
-export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
-  'InitialMessage',
-  UnexpectedError,
-  Schema.Void,
-  {
-    storageOptions: StorageType,
-    hasLock: Schema.Boolean,
-    needsRecreate: Schema.Boolean,
-    syncOptions: Schema.optional(SyncingType),
-    key: Schema.UndefinedOr(Schema.String),
-    devtools: Schema.Struct({
-      enabled: Schema.Boolean,
-      channelId: Schema.String,
+export namespace DedicatedWorkerOuter {
+  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
+    'InitialMessage',
+    UnexpectedError,
+    Schema.Void,
+    { port: Transferable.MessagePort },
+  ) {}
+
+  export class Request extends Schema.Union(InitialMessage) {}
+}
+
+export namespace DedicatedWorkerInner {
+  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
+    'InitialMessage',
+    UnexpectedError,
+    Schema.Void,
+    {
+      storageOptions: StorageType,
+      needsRecreate: Schema.Boolean,
+      syncOptions: Schema.optional(SyncingType),
+      key: Schema.UndefinedOr(Schema.String),
+      devtools: Schema.Struct({
+        enabled: Schema.Boolean,
+        channelId: Schema.String,
+      }),
+    },
+  ) {}
+
+  export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {
+    items: Schema.Array(ExecutionBacklogItem),
+  }) {}
+
+  export class Export extends Schema.TaggedRequest<Export>()('Export', UnexpectedError, Transferable.Uint8Array, {}) {}
+
+  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()(
+    'GetRecreateSnapshot',
+    UnexpectedError,
+    Transferable.Uint8Array,
+    {},
+  ) {}
+
+  export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()(
+    'ExportMutationlog',
+    UnexpectedError,
+    Transferable.Uint8Array,
+    {},
+  ) {}
+
+  export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedError, Transferable.Uint8Array, {}) {}
+
+  export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()(
+    'NetworkStatusStream',
+    UnexpectedError,
+    Schema.Struct({
+      isConnected: Schema.Boolean,
+      timestampMs: Schema.Number,
     }),
-  },
-) {}
+    {},
+  ) {}
 
-export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {
-  items: Schema.Array(ExecutionBacklogItem),
-}) {}
+  /** NOTE we're modeling this case as a stream since streams are interruptible */
+  export class ListenForReloadStream extends Schema.TaggedRequest<ListenForReloadStream>()(
+    'ListenForReloadStream',
+    UnexpectedError,
+    Schema.Void,
+    {},
+  ) {}
 
-export class Export extends Schema.TaggedRequest<Export>()('Export', UnexpectedError, Transferable.Uint8Array, {}) {}
+  export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
 
-export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()(
-  'GetRecreateSnapshot',
-  UnexpectedError,
-  Transferable.Uint8Array,
-  {},
-) {}
+  export class InitDevtools extends Schema.TaggedRequest<InitDevtools>()('InitDevtools', UnexpectedError, Schema.Void, {
+    port: Transferable.MessagePort,
+  }) {}
 
-export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()(
-  'ExportMutationlog',
-  UnexpectedError,
-  Transferable.Uint8Array,
-  {},
-) {}
+  export const Request = Schema.Union(
+    InitialMessage,
+    ExecuteBulk,
+    Export,
+    GetRecreateSnapshot,
+    ExportMutationlog,
+    Setup,
+    NetworkStatusStream,
+    ListenForReloadStream,
+    Shutdown,
+    InitDevtools,
+  )
+  export type Request = typeof Request.Type
+}
 
-export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedError, Transferable.Uint8Array, {}) {}
+export namespace SharedWorker {
+  export class UpdateMessagePort extends Schema.TaggedRequest<UpdateMessagePort>()(
+    'UpdateMessagePort',
+    UnexpectedError,
+    Schema.Void,
+    {
+      port: Transferable.MessagePort,
+    },
+  ) {}
 
-export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()(
-  'NetworkStatusStream',
-  UnexpectedError,
-  Schema.Struct({
-    isConnected: Schema.Boolean,
-    timestampMs: Schema.Number,
-  }),
-  {},
-) {}
+  export class Request extends Schema.Union(
+    DedicatedWorkerInner.InitialMessage,
+    DedicatedWorkerInner.ExecuteBulk,
+    DedicatedWorkerInner.Export,
+    DedicatedWorkerInner.GetRecreateSnapshot,
+    DedicatedWorkerInner.ExportMutationlog,
+    DedicatedWorkerInner.Setup,
+    DedicatedWorkerInner.NetworkStatusStream,
+    DedicatedWorkerInner.ListenForReloadStream,
+    DedicatedWorkerInner.Shutdown,
+    DedicatedWorkerInner.InitDevtools,
 
-export class ListenForReload extends Schema.TaggedRequest<ListenForReload>()(
-  'ListenForReload',
-  UnexpectedError,
-  Schema.Void,
-  {},
-) {}
-
-export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
-
-export class InitDevtools extends Schema.TaggedRequest<InitDevtools>()('InitDevtools', UnexpectedError, Schema.Void, {
-  port: Transferable.MessagePort,
-}) {}
-
-export const Request = Schema.Union(
-  InitialMessage,
-  ExecuteBulk,
-  Export,
-  GetRecreateSnapshot,
-  ExportMutationlog,
-  Setup,
-  NetworkStatusStream,
-  ListenForReload,
-  Shutdown,
-  InitDevtools,
-)
-export type Request = Schema.Schema.Type<typeof Request>
+    UpdateMessagePort,
+  ) {}
+}

@@ -12,7 +12,8 @@ import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
-import { Effect, Layer, OtelTracer, Schema, Stream } from '@livestore/utils/effect'
+import { cuid } from '@livestore/utils/cuid'
+import { Effect, Layer, Logger, OtelTracer, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -52,6 +53,8 @@ export type StoreOptions<
   otelOptions: OtelOptions
   reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
+  // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
+  __processedMutationIds: Set<string>
 }
 
 export type RefreshReason =
@@ -120,8 +123,8 @@ export class Store<
   tableRefs: { [key: string]: Ref<null, QueryContext, RefreshReason> }
 
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
-  __processedMutationIds = new Set<string>()
-  __processedMutationWithoutRefreshIds = new Set<string>()
+  private __processedMutationIds
+  private __processedMutationWithoutRefreshIds = new Set<string>()
 
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
@@ -135,6 +138,7 @@ export class Store<
     reactivityGraph,
     otelOptions,
     disableDevtools,
+    __processedMutationIds,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     this.mainDbWrapper = new MainDatabaseWrapper({ otel: otelOptions, db: adapter.mainDb })
     this.adapter = adapter
@@ -142,6 +146,9 @@ export class Store<
 
     // TODO refactor
     this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
+
+    // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
+    this.__processedMutationIds = __processedMutationIds
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -165,8 +172,7 @@ export class Store<
         this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
       }),
       Stream.runDrain,
-      Effect.tapCauseLogPretty,
-      Effect.runFork,
+      runEffectFork,
     )
 
     if (disableDevtools !== true) {
@@ -268,7 +274,7 @@ export class Store<
     otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
     otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
 
-    await this.adapter.coordinator.shutdown.pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+    await this.adapter.coordinator.shutdown.pipe(runEffectPromise)
   }
 
   mutate: {
@@ -487,7 +493,7 @@ export class Store<
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
           this.adapter.coordinator
             .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
-            .pipe(Effect.tapCauseLogPretty, Effect.runFork)
+            .pipe(runEffectFork)
         }
 
         // Uncomment to print a list of queries currently registered on the store
@@ -513,9 +519,7 @@ export class Store<
   ) => {
     this.mainDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
-    this.adapter.coordinator
-      .execute(query, prepareBindValues(params, query))
-      .pipe(Effect.tapCauseLogPretty, Effect.runFork)
+    this.adapter.coordinator.execute(query, prepareBindValues(params, query)).pipe(runEffectFork)
   }
 
   select = (query: string, params: ParamsObject = {}) => {
@@ -553,7 +557,9 @@ export class Store<
 
       if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
         const port = message.port
-        this.adapter.coordinator.devtools.init(port).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+        // TODO use unique store id instead of new id here
+        const connectionId = cuid()
+        this.adapter.coordinator.devtools.connect({ port, connectionId }).pipe(runEffectFork)
         return
       }
     })
@@ -674,15 +680,6 @@ export class Store<
           liveQueriesSubscriptions.get(requestId)!()
           break
         }
-        case 'LSD.ResetAllDataReq': {
-          await this.adapter.coordinator
-            .dangerouslyReset(decoded.value.mode)
-            .pipe(Effect.tapCauseLogPretty, Effect.runPromise)
-
-          sendToDevtools(Devtools.ResetAllDataRes.make({ requestId, liveStoreVersion }))
-
-          break
-        }
         // No default
       }
     })
@@ -694,13 +691,12 @@ export class Store<
   }
 
   __devDownloadMutationLogDb = async () => {
-    const data = await this.adapter.coordinator.getMutationLogData.pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+    const data = await this.adapter.coordinator.getMutationLogData.pipe(runEffectPromise)
     downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
   }
 
   // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
-  dangerouslyResetStorage = (mode: ResetMode) =>
-    this.adapter.coordinator.dangerouslyReset(mode).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+  dangerouslyResetStorage = (mode: ResetMode) => this.adapter.coordinator.dangerouslyReset(mode).pipe(runEffectPromise)
 }
 
 export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
@@ -720,7 +716,7 @@ export const createStore = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >(
   options: CreateStoreOptions<TGraphQLContext, TSchema>,
-): Promise<Store<TGraphQLContext, TSchema>> => createStoreEff(options).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+): Promise<Store<TGraphQLContext, TSchema>> => createStoreEff(options).pipe(runEffectPromise)
 
 export const createStoreEff = <
   TGraphQLContext extends BaseGraphQLContext,
@@ -756,6 +752,8 @@ export const createStoreEff = <
 
     const mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
+    const __processedMutationIds = new Set<string>()
+
     // TODO consider moving booting into the storage backend
     if (boot !== undefined) {
       let isInTxn = false
@@ -770,7 +768,7 @@ export const createStoreEff = <
           if (isInTxn === true) {
             txnExecuteStmnts.push([queryStr, bindValues])
           } else {
-            adapter.coordinator.execute(queryStr, bindValues).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+            adapter.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
           }
         },
         mutate: (...list) => {
@@ -778,6 +776,8 @@ export const createStoreEff = <
             const mutationDef =
               schema.mutations.get(mutationEventDecoded.mutation) ??
               shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
+
+            __processedMutationIds.add(mutationEventDecoded.id)
 
             const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
             // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
@@ -790,7 +790,7 @@ export const createStoreEff = <
 
             adapter.coordinator
               .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: true })
-              .pipe(Effect.tapCauseLogPretty, Effect.runFork)
+              .pipe(runEffectFork)
           }
         },
         select: (queryStr, bindValues) => {
@@ -808,7 +808,7 @@ export const createStoreEff = <
 
             // adapter.coordinator.execute('BEGIN', undefined, undefined)
             for (const [queryStr, bindValues] of txnExecuteStmnts) {
-              adapter.coordinator.execute(queryStr, bindValues).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+              adapter.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
             }
             // adapter.coordinator.execute('COMMIT', undefined, undefined)
           } catch (e: any) {
@@ -839,6 +839,7 @@ export const createStoreEff = <
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
         reactivityGraph,
         disableDevtools,
+        __processedMutationIds,
       },
       span,
     )
@@ -852,6 +853,7 @@ export const createStoreEff = <
   )
 }
 
+// TODO consider replacing with Effect's RC data structures
 class ReferenceCountedSet<T> {
   private map: Map<T, number>
 
@@ -887,3 +889,19 @@ class ReferenceCountedSet<T> {
     }
   }
 }
+
+const runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
+  effect.pipe(
+    Effect.tapCauseLogPretty,
+    Effect.annotateLogs({ thread: 'window' }),
+    Effect.provide(Logger.pretty),
+    Effect.runFork,
+  )
+
+const runEffectPromise = <A, E>(effect: Effect.Effect<A, E, never>) =>
+  effect.pipe(
+    Effect.tapCauseLogPretty,
+    Effect.annotateLogs({ thread: 'window' }),
+    Effect.provide(Logger.pretty),
+    Effect.runPromise,
+  )

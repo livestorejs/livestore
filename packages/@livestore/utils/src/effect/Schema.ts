@@ -24,7 +24,7 @@ export const hash = (schema: Schema.Schema<any>) => {
 
 const errorStructSchema = Schema.Struct({
   message: Schema.String,
-  stack: Schema.String,
+  stack: Schema.optional(Schema.String),
 })
 
 export class AnyError extends Schema.transform(errorStructSchema, Schema.Any, {

@@ -11,6 +11,7 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 // First, we create a reactive query which defines the filter clause for the SQL query.
 // It gets all the rows from the app table, and pipes them into a transform function.
 // The result is a reactive query whose value is a string containing the filter clause.
+// TODO make sure row exists before querying
 const filterClause$ = querySQL(sql`select filter from app where id = '${getLocalId()}'`, {
   map: (rows) => {
     const { filter } = Schema.decodeSync(

@@ -1,6 +1,6 @@
 import { initializeSingletonTables, migrateDb, migrateTable, rehydrateFromMutationLog } from '@livestore/common'
 import { mutationLogMetaTable } from '@livestore/common/schema'
-import { casesHandled, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -12,11 +12,6 @@ import { configureConnection, makeApplyMutation } from './common.js'
 
 export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
   Effect.gen(function* () {
-    // const ctx = yield* WorkerCtx
-    if (workerCtx._tag === 'NoLock') {
-      return shouldNeverHappen('No lock acquired')
-    }
-
     const { schema } = workerCtx
     const { db, dbLog, sqlite3 } = workerCtx.ctx
 
@@ -105,7 +100,7 @@ export const fetchAndApplyRemoteMutations = (
   shouldBroadcast: boolean,
 ) =>
   Effect.gen(function* () {
-    if (workerCtx._tag === 'NoLock' || workerCtx.ctx.sync === undefined) return
+    if (workerCtx.ctx.sync === undefined) return
     const { sync } = workerCtx.ctx
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
