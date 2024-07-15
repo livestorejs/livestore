@@ -41,13 +41,13 @@
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.17.27",
-    "@effect/opentelemetry": "^0.34.34",
-    "@effect/platform": "^0.58.25",
-    "@effect/platform-browser": "^0.37.25",
-    "@effect/schema": "^0.68.21",
+    "@effect/experimental": "^0.18.1",
+    "@effect/opentelemetry": "^0.34.36",
+    "@effect/platform": "^0.58.27",
+    "@effect/platform-browser": "^0.37.27",
+    "@effect/schema": "^0.68.23",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.5.1"
+    "effect": "^3.5.3"
   },
   "devDependencies": {
     "@effect/experimental": "0.18.1",
