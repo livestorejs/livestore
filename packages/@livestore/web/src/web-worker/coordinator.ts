@@ -12,7 +12,6 @@ import {
   Deferred,
   Effect,
   Exit,
-  Fiber,
   FiberId,
   Queue,
   Schema,
