@@ -12,6 +12,7 @@ import { createStore } from '../store.js'
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
 export type LiveStoreContext = {
+  stage: 'running'
   store: Store
 }
 
@@ -105,7 +106,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 
       window.__debugLiveStore = store
 
-      return { store }
+      return { stage: 'running', store } satisfies LiveStoreContext
     }),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     Effect.timeoutFail({

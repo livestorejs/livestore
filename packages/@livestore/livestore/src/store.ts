@@ -1,5 +1,6 @@
 import type {
   BootDb,
+  BootStatus,
   ParamsObject,
   PreparedBindValues,
   ResetMode,
@@ -7,13 +8,12 @@ import type {
   StoreAdapterFactory,
   UnexpectedError,
 } from '@livestore/common'
-import { Devtools, getExecArgsFromMutation, prepareBindValues } from '@livestore/common'
-import { version as liveStoreVersion } from '@livestore/common/package.json'
+import { Devtools, getExecArgsFromMutation, liveStoreVersion, prepareBindValues } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
-import { Effect, Layer, Logger, OtelTracer, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, LogLevel, OtelTracer, Queue, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -708,6 +708,7 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
+  onBootStatus?: (status: BootStatus) => void
 }
 
 /** Create a new LiveStore Store */
@@ -730,6 +731,7 @@ export const createStoreEff = <
   reactivityGraph = globalReactivityGraph,
   batchUpdates,
   disableDevtools,
+  onBootStatus,
 }: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<Store<TGraphQLContext, TSchema>, UnexpectedError> => {
   const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
   const otelRootSpanContext = otelOptions?.rootSpanContext ?? otel.context.active()
@@ -741,10 +743,20 @@ export const createStoreEff = <
   return Effect.gen(function* () {
     const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
 
-    const adapter = yield* adapterFactory({ schema, devtoolsEnabled: disableDevtools !== true }).pipe(
-      Effect.withPerformanceMeasure('livestore:makeAdapter'),
-      Effect.withSpan('createStore:makeAdapter'),
+    const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+
+    yield* Queue.take(bootStatusQueue).pipe(
+      Effect.tapSync((status) => onBootStatus?.(status)),
+      Effect.forever,
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
     )
+
+    const adapter: StoreAdapter = yield* adapterFactory({
+      schema,
+      devtoolsEnabled: disableDevtools !== true,
+      bootStatusQueue,
+    }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
     if (batchUpdates !== undefined) {
       reactivityGraph.effectsWrapper = batchUpdates
@@ -844,6 +856,7 @@ export const createStoreEff = <
       span,
     )
   }).pipe(
+    Effect.scoped,
     Effect.withSpan('createStore', {
       parent: otelOptions?.rootSpanContext
         ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
@@ -895,6 +908,7 @@ const runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
     Effect.provide(Logger.pretty),
+    Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runFork,
   )
 
@@ -903,5 +917,6 @@ const runEffectPromise = <A, E>(effect: Effect.Effect<A, E, never>) =>
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
     Effect.provide(Logger.pretty),
+    Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runPromise,
   )

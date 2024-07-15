@@ -37,7 +37,12 @@ describe('LiveStoreProvider', () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       const adapterMemo = React.useMemo(() => makeInMemoryAdapter(), [forceUpdate])
       return (
-        <LiveStoreProvider schema={schema} fallback={<div>Loading LiveStore</div>} adapter={adapterMemo} boot={bootCb}>
+        <LiveStoreProvider
+          schema={schema}
+          renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
+          adapter={adapterMemo}
+          boot={bootCb}
+        >
           <App />
         </LiveStoreProvider>
       )
@@ -47,14 +52,14 @@ describe('LiveStoreProvider', () => {
 
     expect(renderCount).toBe(0)
 
-    await waitForElementToBeRemoved(() => screen.getByText('Loading LiveStore'))
+    await waitForElementToBeRemoved(() => screen.getByText((_) => _.startsWith('Loading LiveStore')))
 
     expect(renderCount).toBe(1)
 
     rerender(<Root forceUpdate={2} />)
 
-    await waitFor(() => screen.getByText('Loading LiveStore'))
-    await waitForElementToBeRemoved(() => screen.getByText('Loading LiveStore'))
+    await waitFor(() => screen.getByText('Loading LiveStore: loading'))
+    await waitForElementToBeRemoved(() => screen.getByText((_) => _.startsWith('Loading LiveStore')))
 
     expect(renderCount).toBe(2)
 

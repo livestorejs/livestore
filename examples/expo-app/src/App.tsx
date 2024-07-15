@@ -16,7 +16,7 @@ export const App = () => {
     <View style={styles.container}>
       <LiveStoreProvider
         schema={schema}
-        fallback={<Text>Loading...</Text>}
+        renderLoading={(_) => <Text>Loading LiveStore ({_.stage})...</Text>}
         boot={(db) => {
           db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
         }}

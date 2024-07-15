@@ -1,4 +1,4 @@
-import type { BootDb, StoreAdapterFactory } from '@livestore/common'
+import type { BootDb, BootStatus, StoreAdapterFactory } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
@@ -16,14 +16,14 @@ interface LiveStoreProviderProps<GraphQLContext> {
   boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
-  fallback: ReactElement
+  renderLoading: (status: BootStatus) => ReactElement
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
 }
 
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
-  fallback,
+  renderLoading,
   graphQLOptions,
   otelOptions,
   children,
@@ -43,8 +43,8 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
     disableDevtools,
   })
 
-  if (storeCtx === undefined) {
-    return fallback
+  if (storeCtx.stage !== 'running') {
+    return <div>{renderLoading(storeCtx)}</div>
   }
 
   window.__debugLiveStore = storeCtx.store
@@ -62,7 +62,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   disableDevtools,
 }: LiveStoreCreateStoreOptions<GraphQLContext>) => {
   const [_, rerender] = React.useState(0)
-  const ctxValueRef = React.useRef<StoreContext_ | undefined>(undefined)
+  const ctxValueRef = React.useRef<StoreContext_ | BootStatus>({ stage: 'loading' })
   const inputPropsCacheRef = React.useRef({
     schema,
     graphQLOptions,
@@ -89,9 +89,11 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       adapter,
       batchUpdates,
     }
-    ctxValueRef.current?.store.destroy()
-    oldStoreAlreadyDestroyedRef.current = true
-    ctxValueRef.current = undefined
+    if (ctxValueRef.current.stage === 'running') {
+      ctxValueRef.current.store.destroy()
+      oldStoreAlreadyDestroyedRef.current = true
+      ctxValueRef.current = { stage: 'loading' }
+    }
   }
 
   React.useEffect(() => {
@@ -107,8 +109,13 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           adapter,
           batchUpdates,
           disableDevtools,
+          onBootStatus: (status) => {
+            if (ctxValueRef.current.stage === 'running') return
+            ctxValueRef.current = status
+            rerender((c) => c + 1)
+          },
         })
-        ctxValueRef.current = { store }
+        ctxValueRef.current = { stage: 'running', store }
         oldStoreAlreadyDestroyedRef.current = false
         rerender((c) => c + 1)
       } catch (e) {

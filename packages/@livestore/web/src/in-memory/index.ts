@@ -19,7 +19,7 @@ const makeCoordinator = (
   sqlite3: SqliteWasm.Sqlite3Static,
   initialData?: Uint8Array,
 ): Coordinator => {
-  const getInitialSnapshot = Effect.sync(() => {
+  const getInitialSnapshot = Effect.gen(function* () {
     if (initialData !== undefined) {
       return initialData
     }
@@ -31,7 +31,7 @@ const makeCoordinator = (
     configureConnection(tmpDb, { fkEnabled: true })
     const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
 
-    migrateDb({ db: tmpMainDb, otelContext, schema })
+    yield* migrateDb({ db: tmpMainDb, otelContext, schema })
 
     initializeSingletonTables(schema, tmpMainDb)
 
@@ -54,5 +54,5 @@ const makeCoordinator = (
     dangerouslyReset: () => Effect.void,
     shutdown: Effect.void,
     networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
-  }
+  } satisfies Coordinator
 }

@@ -1,4 +1,4 @@
-import type { InMemoryDatabase, PreparedBindValues } from '@livestore/common'
+import type { GetRowsChangedCount, InMemoryDatabase, PreparedBindValues } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 
 import type { SqliteWasm } from './sqlite-utils.js'
@@ -19,12 +19,16 @@ export const makeInMemoryDb = (
               stmt.bind(bindValues)
             }
 
+            let res: GetRowsChangedCount
+
             try {
               stmt.step()
             } finally {
               stmt.reset() // Reset is needed for next execution
-              return () => sqlite3.capi.sqlite3_changes(db)
+              res = () => sqlite3.capi.sqlite3_changes(db)
             }
+
+            return res
           },
           select: <T>(bindValues: PreparedBindValues) => {
             if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
@@ -74,12 +78,16 @@ export const makeInMemoryDb = (
         stmt.bind(bindValues)
       }
 
+      let res: GetRowsChangedCount
+
       try {
         stmt.step()
       } finally {
         stmt.finalize()
-        return () => sqlite3.capi.sqlite3_changes(db)
+        res = () => sqlite3.capi.sqlite3_changes(db)
       }
+
+      return res
     },
     // dangerouslyReset: async () => {
     //   db.capi.sqlite3_close_v2(db.pointer!)

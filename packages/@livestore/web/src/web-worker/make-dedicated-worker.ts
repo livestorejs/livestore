@@ -1,7 +1,6 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
-import type { NetworkStatus, SyncImpl } from '@livestore/common'
-import { Devtools, sql, UnexpectedError } from '@livestore/common'
-import { version as liveStoreVersion } from '@livestore/common/package.json'
+import type { BootStatus, NetworkStatus, SyncImpl } from '@livestore/common'
+import { Devtools, liveStoreVersion, sql, UnexpectedError } from '@livestore/common'
 import {
   type LiveStoreSchema,
   makeMutationEventSchema,
@@ -13,9 +12,12 @@ import { isNotUndefined, memoizeByStringifyArgs, ref, shouldNeverHappen } from '
 import type { Context } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
+  Deferred,
   Effect,
   Fiber,
   Layer,
+  Logger,
+  LogLevel,
   PortPlatformRunner,
   PubSub,
   Queue,
@@ -29,8 +31,8 @@ import { BCMessage } from '../common/index.js'
 import { makeInMemoryDb } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import { importBytesToDb, loadSqlite3Wasm } from '../sqlite-utils.js'
-import type { ApplyMutation, DevtoolsContext, ShutdownState } from './common.js'
-import { configureConnection, makeApplyMutation, OuterWorkerCtx, WorkerCtx } from './common.js'
+import type { ApplyMutation, DevtoolsContext, InitialSetup, ShutdownState } from './common.js'
+import { configureConnection, InnerWorkerCtx, makeApplyMutation, OuterWorkerCtx } from './common.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
@@ -48,6 +50,9 @@ export const makeWorker = (options: WorkerOptions) => {
     Layer.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
+    Effect.annotateLogs({ thread: self.name }),
+    Effect.provide(Logger.pretty),
+    Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runFork,
   )
 }
@@ -62,6 +67,9 @@ export const makeWorkerRunnerOuter = ({ schema }: WorkerOptions) =>
           Effect.scoped,
           Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
+          Effect.annotateLogs({ thread: self.name }),
+          Effect.provide(Logger.pretty),
+          Logger.withMinimumLogLevel(LogLevel.Debug),
           Effect.runFork,
         )
 
@@ -80,8 +88,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     )
 
     const schemaHash = schema.hash
-
-    const initialSnapshotRef = { current: undefined as any }
 
     return WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerInner.Request, {
       InitialMessage: ({
@@ -171,67 +177,103 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const devtools = yield* makeDevtoolsContext(channelId)
 
-          const workerCtx = {
-            _tag: 'HasLock',
+          const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+
+          const initialSetupDeferred = yield* Deferred.make<InitialSetup>()
+
+          const innerWorkerCtx = {
             keySuffix,
             storageOptions,
             schema,
-            ctx: {
-              shutdownStateSubRef,
-              sqlite3,
-              db,
-              dbLog,
-              mutationDefSchemaHashMap,
-              mutationEventSchema,
-              broadcastChannel,
-              devtools,
-              sync,
-            },
-          } satisfies Context.Tag.Service<WorkerCtx>
+            shutdownStateSubRef,
+            sqlite3,
+            initialSetupDeferred,
+            bootStatusQueue,
+            db,
+            dbLog,
+            mutationDefSchemaHashMap,
+            mutationEventSchema,
+            broadcastChannel,
+            devtools,
+            sync,
+          } satisfies Context.Tag.Service<InnerWorkerCtx>
 
           if (needsRecreate) {
-            initialSnapshotRef.current = yield* recreateDb(workerCtx)
+            yield* recreateDb(innerWorkerCtx).pipe(
+              Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
+              Effect.tap((snapshot) => Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshot })),
+              Effect.tapCauseLogPretty,
+              Effect.forkScoped,
+            )
           } else {
-            yield* fetchAndApplyRemoteMutations(workerCtx, db.dbRef.current, true)
-          }
-
-          const applyMutation = makeApplyMutation(workerCtx, () => new Date().toISOString(), db.dbRef.current)
-
-          if (devtoolsEnabled) {
-            yield* listenToDevtools({ devtools, sqlite3, sync, schema, db, dbLog, applyMutation, shutdownStateSubRef })
-          }
-
-          if (syncImpl !== undefined) {
-            // TODO try to do this in a batched-way if possible
-            yield* syncImpl.pushes.pipe(
-              Stream.tapSync(({ mutationEventEncoded, persisted }) =>
-                applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true, persisted }),
-              ),
-              Stream.runDrain,
+            yield* fetchAndApplyRemoteMutations(innerWorkerCtx, db.dbRef.current, true, ({ done, total }) =>
+              Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
+            ).pipe(
+              Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
+              Effect.tap(() => Deferred.succeed(initialSetupDeferred, { _tag: 'Reuse' })),
               Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )
           }
 
-          broadcastChannel.addEventListener('message', (event) => {
-            const { sender, mutationEventEncoded, persisted } = Schema.decodeUnknownSync(BCMessage.Message)(event.data)
-            // console.log('[@livestore/web:worker] broadcastChannel message', event.data)
-            if (sender === 'ui-thread') {
-              // console.log('livestore-webworker: applying mutation from ui-thread', mutationEventEncoded)
+          yield* Effect.gen(function* () {
+            yield* Deferred.await(initialSetupDeferred)
 
-              const mutationDef =
-                schema.mutations.get(mutationEventEncoded.mutation) ??
-                shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
+            const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current)
 
-              applyMutation(mutationEventEncoded, {
-                syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
-                shouldBroadcast: true,
-                persisted,
+            if (devtoolsEnabled) {
+              yield* listenToDevtools({
+                devtools,
+                sqlite3,
+                sync,
+                schema,
+                db,
+                dbLog,
+                applyMutation,
+                shutdownStateSubRef,
               })
             }
-          })
 
-          return Layer.succeed(WorkerCtx, workerCtx)
+            if (syncImpl !== undefined) {
+              // TODO try to do this in a batched-way if possible
+              yield* syncImpl.pushes.pipe(
+                Stream.tap(({ mutationEventEncoded, persisted }) =>
+                  applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true, persisted }),
+                ),
+                Stream.runDrain,
+                Effect.tapCauseLogPretty,
+                Effect.forkScoped,
+              )
+            }
+
+            broadcastChannel.addEventListener('message', (event) =>
+              Effect.gen(function* () {
+                const { sender, mutationEventEncoded, persisted } = Schema.decodeUnknownSync(BCMessage.Message)(
+                  event.data,
+                )
+                // console.log('[@livestore/web:worker] broadcastChannel message', event.data)
+                if (sender === 'ui-thread') {
+                  // console.log('livestore-webworker: applying mutation from ui-thread', mutationEventEncoded)
+
+                  const mutationDef =
+                    schema.mutations.get(mutationEventEncoded.mutation) ??
+                    shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
+
+                  yield* applyMutation(mutationEventEncoded, {
+                    syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
+                    shouldBroadcast: true,
+                    persisted,
+                  })
+                }
+              }).pipe(
+                Effect.withSpan('@livestore/web:worker:broadcastChannel:message'),
+                Effect.tapCauseLogPretty,
+                Effect.runFork,
+              ),
+            )
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+          return Layer.succeed(InnerWorkerCtx, innerWorkerCtx)
         }).pipe(
           Effect.tapCauseLogPretty,
           mapToUnexpectedError,
@@ -240,20 +282,23 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           Layer.unwrapScoped,
         ),
       GetRecreateSnapshot: () =>
-        Effect.sync(() => initialSnapshotRef.current).pipe(
-          Effect.andThen((_: Uint8Array | undefined) =>
-            _ ? Effect.succeed(_) : Effect.andThen(getWorkerCtx, (_) => _.db.export),
-          ),
-          mapToUnexpectedError,
-          Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot'),
-        ),
+        Effect.gen(function* () {
+          const workerCtx = yield* InnerWorkerCtx
+          const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
+
+          if (result._tag === 'Recreate') {
+            return result.snapshot
+          } else {
+            return yield* workerCtx.db.export
+          }
+        }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
       Export: () =>
-        Effect.andThen(getWorkerCtx, (_) => _.db.export).pipe(
+        Effect.andThen(InnerWorkerCtx, (_) => _.db.export).pipe(
           mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:Export'),
         ),
       ExportMutationlog: () =>
-        Effect.andThen(getWorkerCtx, (_) => _.dbLog.export).pipe(
+        Effect.andThen(InnerWorkerCtx, (_) => _.dbLog.export).pipe(
           mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
         ),
@@ -263,13 +308,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExecuteBulk'),
         ),
-      // TODO get rid of this
-      Setup: () => Effect.never,
+      BootStatusStream: () =>
+        Effect.andThen(InnerWorkerCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
       NetworkStatusStream: () =>
         Effect.gen(function* (_) {
-          const workerCtx = yield* WorkerCtx
-
-          const ctx = workerCtx.ctx
+          const ctx = yield* InnerWorkerCtx
 
           if (ctx.sync === undefined) {
             return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now() })
@@ -289,8 +332,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           )
         }).pipe(Stream.unwrap),
       ListenForReloadStream: () =>
-        WorkerCtx.pipe(
-          Effect.andThen((_) => SubscriptionRef.waitUntil(_.ctx.shutdownStateSubRef, (_) => _ == 'shutdown-requested')),
+        InnerWorkerCtx.pipe(
+          Effect.andThen((_) => SubscriptionRef.waitUntil(_.shutdownStateSubRef, (_) => _ == 'shutdown-requested')),
           Effect.tapSync((_) => console.log('[@livestore/web:worker] ListenForReload: shutdown-requested')),
           Effect.asVoid,
           mapToUnexpectedError,
@@ -299,7 +342,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
       Shutdown: () =>
         Effect.gen(function* () {
           // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)
-          const { db, dbLog } = yield* getWorkerCtx
+          const { db, dbLog } = yield* InnerWorkerCtx
           db.dbRef.current.close()
           dbLog.dbRef.current.close()
           yield* db.close
@@ -307,18 +350,12 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
         }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       InitDevtools: ({ port }) =>
         Effect.gen(function* () {
-          const workerCtx = yield* WorkerCtx
+          const workerCtx = yield* InnerWorkerCtx
 
-          yield* SubscriptionRef.set(workerCtx.ctx.devtools.portSubRef, port)
+          yield* SubscriptionRef.set(workerCtx.devtools.portSubRef, port)
         }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:InitDevtools')),
     })
   }).pipe(Layer.unwrapScoped)
-
-const getWorkerCtx = Effect.gen(function* () {
-  const workerCtx = yield* WorkerCtx
-
-  return workerCtx.ctx
-})
 
 const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
@@ -330,8 +367,8 @@ const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
   Effect.gen(function* () {
     let batchItems: ExecutionBacklogItem[] = []
-    const workerCtx = yield* WorkerCtx
-    const { db, dbLog, shutdownStateSubRef } = yield* getWorkerCtx
+    const workerCtx = yield* InnerWorkerCtx
+    const { db, dbLog, shutdownStateSubRef } = yield* InnerWorkerCtx
 
     if ((yield* SubscriptionRef.get(shutdownStateSubRef)) !== 'running') {
       console.warn('livestore-webworker: shutting down, skipping execution')
@@ -372,7 +409,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
               workerCtx.schema.mutations.get(item.mutationEventEncoded.mutation) ??
               shouldNeverHappen(`Unknown mutation: ${item.mutationEventEncoded.mutation}`)
 
-            applyMutation(item.mutationEventEncoded, {
+            yield* applyMutation(item.mutationEventEncoded, {
               syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
               shouldBroadcast: true,
               persisted: item.persisted,
@@ -674,7 +711,7 @@ const listenToDevtools = ({
                 schema.mutations.get(mutationEventEncoded.mutation) ??
                 shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
 
-              applyMutation(mutationEventEncoded, {
+              yield* applyMutation(mutationEventEncoded, {
                 syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
                 shouldBroadcast: true,
                 persisted,

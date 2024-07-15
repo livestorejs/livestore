@@ -20,7 +20,7 @@ const AppBody: React.FC = () => (
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
-    fallback={<div>Loading...</div>}
+    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker })}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>

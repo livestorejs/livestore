@@ -30,7 +30,7 @@ const getThreadName = () =>
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (err) => {
     if (Cause.isInterruptedOnly(err)) {
-      console.log('interrupted', Cause.pretty(err), err)
+      // console.log('interrupted', Cause.pretty(err), err)
       return Effect.void
     }
 

@@ -35,6 +35,7 @@ export * from '@livestore/common/schema'
 export {
   sql,
   type BootDb,
+  type BootStatus,
   type InMemoryDatabase,
   type DebugInfo,
   type MutableDebugInfo,

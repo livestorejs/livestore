@@ -5,6 +5,7 @@ import {
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
+  UnexpectedError,
 } from '@livestore/common'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
@@ -35,7 +36,7 @@ export const makeAdapter =
       const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
       const mainDbLog = makeMainDb(dbLog)
 
-      migrateTable({
+      yield* migrateTable({
         db: mainDbLog,
         behaviour: 'create-if-not-exists',
         tableAst: mutationLogMetaTable.sqliteDef.ast,
@@ -45,17 +46,18 @@ export const makeAdapter =
       if (dbWasEmptyWhenOpened) {
         const otelContext = otel.context.active()
 
-        migrateDb({ db: mainDb, otelContext, schema })
+        yield* migrateDb({ db: mainDb, otelContext, schema })
 
         initializeSingletonTables(schema, mainDb)
 
         switch (migrationOptions.strategy) {
           case 'from-mutation-log': {
-            rehydrateFromMutationLog({
+            yield* rehydrateFromMutationLog({
               db: mainDb,
               logDb: mainDbLog,
               schema,
               migrationOptions,
+              onProgress: () => Effect.void,
             })
 
             break
@@ -160,7 +162,7 @@ export const makeAdapter =
       } satisfies Coordinator
 
       return { mainDb, coordinator } satisfies StoreAdapter
-    })
+    }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause })))
 
 const makeMainDb = (db: SQLite.SQLiteDatabase) => {
   return {

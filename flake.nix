@@ -27,6 +27,9 @@
             # needed for Expo
             cocoapods
           ];
+
+          # See version https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/web/playwright/driver.nix#L33
+          PLAYWRIGHT_BROWSERS_PATH = pkgsUnstable.playwright-driver.browsers;
         };
 
       });

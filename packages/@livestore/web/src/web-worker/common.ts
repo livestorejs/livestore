@@ -1,18 +1,19 @@
-import type { InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
+import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
 import {
   Devtools,
   getExecArgsFromMutation,
+  liveStoreVersion,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
   prepareBindValues,
   sql,
+  SqliteError,
 } from '@livestore/common'
-import { version as liveStoreVersion } from '@livestore/common/package.json'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Fiber, Stream } from '@livestore/utils/effect'
+import type { Deferred, Fiber, Queue, Stream } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
@@ -66,30 +67,31 @@ export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
   }
 >() {}
 
-export class WorkerCtx extends Context.Tag('WorkerCtx')<
-  WorkerCtx,
+export type InitialSetup = { _tag: 'Recreate'; snapshot: Uint8Array } | { _tag: 'Reuse' }
+
+export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
+  InnerWorkerCtx,
   {
-    _tag: 'HasLock'
     keySuffix: string
     storageOptions: StorageType
     schema: LiveStoreSchema
-    ctx: {
-      db: PersistedSqlite
-      dbLog: PersistedSqlite
-      sqlite3: SqliteWasm.Sqlite3Static
-      // TODO we should find a more elegant way to handle cases which need this ref for their implementation
-      shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
-      mutationEventSchema: MutationEventSchema<any>
-      mutationDefSchemaHashMap: Map<string, number>
-      broadcastChannel: BroadcastChannel
-      devtools: DevtoolsContext
-      sync:
-        | {
-            impl: SyncImpl
-            inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
-          }
-        | undefined
-    }
+    db: PersistedSqlite
+    dbLog: PersistedSqlite
+    sqlite3: SqliteWasm.Sqlite3Static
+    bootStatusQueue: Queue.Queue<BootStatus>
+    initialSetupDeferred: Deferred.Deferred<InitialSetup>
+    // TODO we should find a more elegant way to handle cases which need this ref for their implementation
+    shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
+    mutationEventSchema: MutationEventSchema<any>
+    mutationDefSchemaHashMap: Map<string, number>
+    broadcastChannel: BroadcastChannel
+    devtools: DevtoolsContext
+    sync:
+      | {
+          impl: SyncImpl
+          inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
+        }
+      | undefined
   }
 >() {}
 
@@ -100,101 +102,110 @@ export type ApplyMutation = (
     shouldBroadcast: boolean
     persisted: boolean
   },
-) => void
+) => Effect.Effect<void, SqliteError>
 
 export const makeApplyMutation = (
-  workerCtx: Context.Tag.Service<WorkerCtx>,
+  workerCtx: Context.Tag.Service<InnerWorkerCtx>,
   createdAtMemo: () => string,
   db: SqliteWasm.Database,
 ): ApplyMutation => {
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
-  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) => {
-    const schema = workerCtx.schema
-    const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync } = workerCtx.ctx
-    const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) =>
+    Effect.gen(function* () {
+      const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync, schema } =
+        workerCtx
+      const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
-    const mutationName = mutationEventDecoded.mutation
-    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+      const mutationName = mutationEventDecoded.mutation
+      const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
-    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+      const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-    // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
+      // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
-    for (const { statementSql, bindValues } of execArgsArr) {
-      try {
-        // console.debug(mutationName, statementSql, bindValues)
-        db.exec({ sql: statementSql, bind: bindValues })
-      } catch (e) {
-        console.error('Error executing query', e, statementSql, bindValues)
-        debugger
-        throw e
+      for (const { statementSql, bindValues } of execArgsArr) {
+        try {
+          // console.debug(mutationName, statementSql, bindValues)
+          db.exec({ sql: statementSql, bind: bindValues })
+        } catch (error) {
+          yield* new SqliteError({ sql: statementSql, bindValues, cause: error, code: (error as any).resultCode })
+        }
       }
-    }
 
-    // console.groupEnd()
+      // console.groupEnd()
 
-    // write to mutation_log
-    const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
-    if (persisted && excludeFromMutationLogAndSyncing === false) {
-      const mutationDefSchemaHash =
-        mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-
-      execSql(
-        dbLog.dbRef.current,
-        ...insertRow({
-          tableName: MUTATION_LOG_META_TABLE,
-          columns: mutationLogMetaTable.sqliteDef.columns,
-          values: {
-            id: mutationEventEncoded.id,
-            mutation: mutationEventEncoded.mutation,
-            argsJson: mutationEventEncoded.args ?? {},
-            schemaHash: mutationDefSchemaHash,
-            createdAt: createdAtMemo(),
-            syncStatus,
-          },
-        }),
-      )
-    } else {
-      //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-    }
-
-    if (shouldBroadcast) {
-      broadcastChannel.postMessage(
-        Schema.encodeSync(BCMessage.Message)(
-          BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }),
-        ),
-      )
-
-      devtools
-        .sendMessage(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }))
-        .pipe(Effect.tapCauseLogPretty, Effect.runFork)
-    }
-
-    // TODO do this via a batched queue
-    if (
-      excludeFromMutationLogAndSyncing === false &&
-      mutationDef.options.localOnly === false &&
-      sync !== undefined &&
-      syncStatus === 'pending'
-    ) {
-      Effect.gen(function* () {
-        if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
-
-        yield* sync.impl.push(mutationEventEncoded, persisted)
+      // write to mutation_log
+      const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
+      if (persisted && excludeFromMutationLogAndSyncing === false) {
+        const mutationDefSchemaHash =
+          mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
         execSql(
           dbLog.dbRef.current,
-          ...updateRows({
+          ...insertRow({
             tableName: MUTATION_LOG_META_TABLE,
             columns: mutationLogMetaTable.sqliteDef.columns,
-            where: { id: mutationEventEncoded.id },
-            updateValues: { syncStatus: 'synced' },
+            values: {
+              id: mutationEventEncoded.id,
+              mutation: mutationEventEncoded.mutation,
+              argsJson: mutationEventEncoded.args ?? {},
+              schemaHash: mutationDefSchemaHash,
+              createdAt: createdAtMemo(),
+              syncStatus,
+            },
           }),
         )
-      }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
-    }
-  }
+      } else {
+        //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
+      }
+
+      if (shouldBroadcast) {
+        broadcastChannel.postMessage(
+          Schema.encodeSync(BCMessage.Message)(
+            BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }),
+          ),
+        )
+
+        devtools
+          .sendMessage(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }))
+          .pipe(Effect.tapCauseLogPretty, Effect.runFork)
+      }
+
+      // TODO do this via a batched queue
+      if (
+        excludeFromMutationLogAndSyncing === false &&
+        mutationDef.options.localOnly === false &&
+        sync !== undefined &&
+        syncStatus === 'pending'
+      ) {
+        Effect.gen(function* () {
+          if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
+
+          yield* sync.impl.push(mutationEventEncoded, persisted)
+
+          execSql(
+            dbLog.dbRef.current,
+            ...updateRows({
+              tableName: MUTATION_LOG_META_TABLE,
+              columns: mutationLogMetaTable.sqliteDef.columns,
+              where: { id: mutationEventEncoded.id },
+              updateValues: { syncStatus: 'synced' },
+            }),
+          )
+        }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+      }
+    }).pipe(
+      Effect.withSpan(`livestore-webworker: applyMutation`, {
+        attributes: {
+          mutationName: mutationEventEncoded.mutation,
+          mutationId: mutationEventEncoded.id,
+          syncStatus,
+          shouldBroadcast,
+          persisted,
+        },
+      }),
+    )
 }
 
 const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {

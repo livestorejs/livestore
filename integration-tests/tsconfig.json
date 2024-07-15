@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["./src"],
+  "references": [
+    { "path": "../packages/@livestore/common" },
+    { "path": "../packages/@livestore/utils" },
+    { "path": "../packages/@livestore/web" }
+  ]
+}

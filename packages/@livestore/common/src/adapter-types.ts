@@ -1,4 +1,4 @@
-import type { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { Effect, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
@@ -36,6 +36,21 @@ export type NetworkStatus = {
   timestampMs: number
 }
 
+export const BootStateProgress = Schema.Struct({
+  done: Schema.Number,
+  total: Schema.Number,
+})
+
+export const BootStatus = Schema.Union(
+  Schema.Struct({ stage: Schema.Literal('loading') }),
+  Schema.Struct({ stage: Schema.Literal('migrating'), progress: BootStateProgress }),
+  Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }),
+  Schema.Struct({ stage: Schema.Literal('syncing'), progress: BootStateProgress }),
+  Schema.Struct({ stage: Schema.Literal('done') }),
+)
+
+export type BootStatus = typeof BootStatus.Type
+
 export type Coordinator = {
   isShutdownRef: { current: boolean }
   devtools: {
@@ -72,6 +87,15 @@ export type BootDb = {
 }
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
+  cause: Schema.AnyError,
+}) {}
+
+export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
+  sql: Schema.String,
+  bindValues: Schema.Record(Schema.String, Schema.Any),
+  /** The SQLite result code */
+  code: Schema.Number,
+  /** The original SQLite3 error */
   cause: Schema.AnyError,
 }) {}
 
@@ -117,4 +141,5 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
 export type StoreAdapterFactory = (opts: {
   schema: LiveStoreSchema
   devtoolsEnabled: boolean
+  bootStatusQueue: Queue.Queue<BootStatus>
 }) => Effect.Effect<StoreAdapter, UnexpectedError>

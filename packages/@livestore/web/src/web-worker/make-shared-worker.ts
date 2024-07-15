@@ -24,7 +24,10 @@ import * as WorkerSchema from './schema.js'
 
 const makeWorkerRunner = Effect.gen(function* () {
   const dedicatedWorkerContextSubRef = yield* SubscriptionRef.make<
-    | { worker: Worker.SerializedWorkerPool<WorkerSchema.DedicatedWorkerInner.Request>; scope: Scope.CloseableScope }
+    | {
+        worker: Worker.SerializedWorkerPool<WorkerSchema.DedicatedWorkerInner.Request>
+        scope: Scope.CloseableScope
+      }
     | undefined
   >(undefined)
 
@@ -59,6 +62,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       mapToUnexpectedError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
+      Stream.ensuring(Effect.log(`shutting down stream for ${req._tag}`)),
       Stream.mapError((cause) => new UnexpectedError({ cause })),
     ) as any
 
@@ -75,7 +79,13 @@ const makeWorkerRunner = Effect.gen(function* () {
           )
           // const isEqual = SchemaEquivalence.make(WorkerSchema.DedicatedWorkerInner.InitialMessage)
           if (isEqual(message, previousInitialMessage) === false) {
-            yield* new UnexpectedError({ cause: 'Initial message already sent and was different now' })
+            yield* new UnexpectedError({
+              cause: {
+                message: 'Initial message already sent and was different now',
+                previousInitialMessage,
+                newInitialMessage: message,
+              },
+            })
           }
         } else {
           yield* Deferred.succeed(initialMessageDeferred, message)
@@ -124,6 +134,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         mapToUnexpectedError,
         Effect.tapCauseLogPretty,
       ),
+    BootStatusStream: forwardRequestStream,
     ExecuteBulk: forwardRequest,
     Export: forwardRequest,
     GetRecreateSnapshot: forwardRequest,

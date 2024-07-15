@@ -12,6 +12,7 @@ import {
   Deferred,
   Effect,
   Exit,
+  Fiber,
   FiberId,
   Queue,
   Schema,
@@ -48,10 +49,12 @@ export type WebAdapterOptions = {
 
 export const makeCoordinator =
   (options: WebAdapterOptions): MakeCoordinator =>
-  ({ schema, devtoolsEnabled }) => {
+  ({ schema, devtoolsEnabled, bootStatusQueue }) => {
     const manualScope = Effect.runSync(Scope.make())
 
     return Effect.gen(function* () {
+      yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
+
       const executionBacklogQueue = yield* Queue.unbounded<WorkerSchema.ExecutionBacklogItem>().pipe(
         Effect.acquireRelease(Queue.shutdown),
       )
@@ -94,7 +97,7 @@ export const makeCoordinator =
           BrowserWorker.layer(() => new LiveStoreSharedWorker({ name: `livestore-shared-worker${keySuffix}` })),
         ),
         Effect.tapErrorCause((cause) => Scope.close(manualScope, Exit.fail(cause))),
-        Effect.withSpan('@livestore/web:main:setupSharedWorker'),
+        Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
         Effect.toForkedDeferred,
       )
 
@@ -107,7 +110,7 @@ export const makeCoordinator =
       const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky ? 'has-lock' : 'no-lock')
 
       const runLocked = Effect.gen(function* () {
-        console.debug(`[@livestore/web:coordinator] Got lock for '${LIVESTORE_TAB_LOCK}'`)
+        yield* Effect.logDebug(`[@livestore/web:coordinator] Got lock for '${LIVESTORE_TAB_LOCK}'`)
 
         yield* SubscriptionRef.set(lockStatus, 'has-lock')
 
@@ -119,14 +122,12 @@ export const makeCoordinator =
             ? options.worker
             : new options.worker({ name: `livestore-worker${keySuffix}` })
 
-        yield* Worker.makePoolSerialized<WorkerSchema.DedicatedWorkerOuter.Request>({
-          size: 1,
-          concurrency: 1,
+        yield* Worker.makeSerialized<WorkerSchema.DedicatedWorkerOuter.Request>({
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           Effect.tapErrorCause((cause) => Scope.close(manualScope, Exit.fail(cause))),
-          Effect.withSpan('@livestore/web:main:setupDedicatedWorker'),
+          Effect.withSpan('@livestore/web:coordinator:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
         )
@@ -135,7 +136,7 @@ export const makeCoordinator =
         yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
 
         yield* Effect.never
-      }).pipe(Effect.withSpan('@livestore/web:main:lock'))
+      }).pipe(Effect.withSpan('@livestore/web:coordinator:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
@@ -160,9 +161,11 @@ export const makeCoordinator =
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           Effect.uninterruptible,
-          Effect.logWarnIfTakesLongerThan({ label: `@livestore/web:main:runInWorker:${req._tag}`, duration: 2000 }),
-          Effect.timeout(10_000),
-          Effect.withSpan(`@livestore/web:main:runInWorker:${req._tag}`),
+          Effect.logWarnIfTakesLongerThan({
+            label: `@livestore/web:coordinator:runInWorker:${req._tag}`,
+            duration: 2000,
+          }),
+          Effect.withSpan(`@livestore/web:coordinator:runInWorker:${req._tag}`),
           Effect.mapError((cause) => new UnexpectedError({ cause })),
         ) as any
 
@@ -172,25 +175,36 @@ export const makeCoordinator =
         ? Stream.Stream<A, UnexpectedError, R>
         : never =>
         Effect.gen(function* () {
-          const worker = yield* Deferred.await(sharedWorkerDeferred)
-          return worker.execute(req).pipe(
+          const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+          return sharedWorker.execute(req).pipe(
             Stream.mapError((cause) => new UnexpectedError({ cause })),
-            Stream.withSpan(`@livestore/web:main:runInWorkerStream:${req._tag}`),
+            Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
           )
         }).pipe(Stream.unwrap) as any
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
 
-      // TODO repeat when interrupted
       yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.NetworkStatusStream()).pipe(
         Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
         Stream.runDrain,
+        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
       yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.ListenForReloadStream()).pipe(
         Stream.tapSync((_) => window.location.reload()),
+        Stream.runDrain,
+        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+
+      // TODO Make sure boot status events already stream in during snapshot recreation and not after
+      // See https://share.cleanshot.com/7VprVPzL + https://share.cleanshot.com/NZvJwYFY
+      // Will need session with Mike A. / Tim Smart
+      yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
+        Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -203,14 +217,16 @@ export const makeCoordinator =
       yield* Effect.gen(function* () {
         const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100)
 
-        yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items: Chunk.toReadonlyArray(items) }))
+        yield* runInWorker(
+          new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items: Chunk.toReadonlyArray(items) }),
+        ).pipe(Effect.timeout(10_000))
 
         // NOTE we're waiting a little bit for more items to come in before executing the batch
         yield* Effect.sleep(20)
       }).pipe(
         Effect.tapCauseLogPretty,
         Effect.forever,
-        Effect.withSpan('@livestore/web:main:executeBulkLoop'),
+        Effect.withSpan('@livestore/web:coordinator:executeBulkLoop'),
         Effect.forkScoped,
       )
 
@@ -238,7 +254,7 @@ export const makeCoordinator =
             yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded).pipe(ensureQueueSuccess)
           }
         }).pipe(
-          Effect.withSpan('@livestore/web:main:broadcastChannel:onmessage'),
+          Effect.withSpan('@livestore/web:coordinator:broadcastChannel:onmessage'),
           Effect.tapCauseLogPretty,
           Effect.runFork,
         ),
@@ -247,7 +263,7 @@ export const makeCoordinator =
       // TODO in case this coordinator holds the dedicated worker, handle shutdown properly
       const shutdownWorker = Effect.race(
         // In case the graceful shutdown didn't finish in time, we terminate the worker
-        runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})),
+        runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})).pipe(Effect.timeout(2000)),
         // runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})).pipe(Effect.andThen(() => worker.terminate())),
         Effect.sync(() => {
           console.warn('[@livestore/web:coordinator] Worker did not gracefully shutdown in time, terminating it')
@@ -265,35 +281,19 @@ export const makeCoordinator =
           enabled: devtoolsEnabled,
           channelId,
           connect: ({ connectionId, port }) =>
-            runInWorker(new WorkerSchema.DedicatedWorkerInner.InitDevtools({ port })),
+            runInWorker(new WorkerSchema.DedicatedWorkerInner.InitDevtools({ port })).pipe(
+              Effect.timeout(10_000),
+              Effect.mapError((cause) => new UnexpectedError({ cause })),
+            ),
         },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: Effect.sync(() => initialSnapshot),
-        // Effect.gen(function* () {
-        //   // TODO replace with a proper multi-tab syncing/lock-transfer mechanism
-        //   // yield* pipe(
-        //   //   WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK),
-        //   //   Effect.withPerformanceMeasure('@livestore/web:waitForLock'),
-        //   //   Effect.tapSync(() => {
-        //   //     hasLock = true
-        //   //   }),
-        //   //   Effect.tapCauseLogPretty,
-        //   //   Effect.fork,
-        //   // )
 
-        //   // NOTE here we're trying to access the persisted data directly from the main thread which
-        //   // ususally speeds up the init process as we don't have to wait for the worker to be ready
-        //   // This will only work for the first tab though
-
-        //   return yield* runInWorker(new WorkerSchema.Setup())
-        // }).pipe(
-        //   Effect.withPerformanceMeasure('@livestore/web:getInitialSnapshot'),
-        //   Effect.tapCauseLogPretty,
-        //   Effect.runPromise,
-        // ),
-
-        export: runInWorker(new WorkerSchema.DedicatedWorkerInner.Export()),
+        export: runInWorker(new WorkerSchema.DedicatedWorkerInner.Export()).pipe(
+          Effect.timeout(10_000),
+          Effect.mapError((cause) => new UnexpectedError({ cause })),
+        ),
 
         dangerouslyReset: (mode) =>
           Effect.gen(function* () {
@@ -333,7 +333,10 @@ export const makeCoordinator =
             }
           }).pipe(Effect.withSpan('@livestore/web:coordinator:mutate')),
 
-        getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()),
+        getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
+          Effect.timeout(10_000),
+          Effect.mapError((cause) => new UnexpectedError({ cause })),
+        ),
 
         shutdown: Effect.gen(function* () {
           // TODO in case this coordinator holds the dedicated worker, handle shutdown properly
@@ -430,6 +433,7 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
       }
     }
   }).pipe(
+    Effect.logWarnIfTakesLongerThan({ duration: 1000, label: '@livestore/web:getPersistedData' }),
     Effect.withPerformanceMeasure('@livestore/web:getPersistedData'),
     Effect.withSpan('@livestore/web:getPersistedData'),
   )

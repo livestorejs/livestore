@@ -1,0 +1,19 @@
+{
+  "name": "@livestore/integration-tests",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "DEV_SERVER_PORT=61001 DEV_SERVER_COMMAND='pnpm vite dev' playwright test"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/sqlite-wasm": "3.46.0-build4",
+    "@livestore/utils": "workspace:*",
+    "@livestore/web": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.40.0",
+    "vite": "5.3.1"
+  }
+}

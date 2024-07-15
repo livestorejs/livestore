@@ -8,8 +8,8 @@
       "default": "./dist/index.js"
     },
     "./worker": {
-      "types": "./dist/web-worker/make-worker.d.ts",
-      "default": "./dist/web-worker/make-worker.js"
+      "types": "./dist/web-worker/make-dedicated-worker.d.ts",
+      "default": "./dist/web-worker/make-dedicated-worker.js"
     },
     "./worker-vite-dev-polyfill": {
       "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
@@ -28,7 +28,7 @@
   "typesVersions": {
     "*": {
       "worker": [
-        "./dist/web-worker/make-worker.d.ts"
+        "./dist/web-worker/make-dedicated-worker.d.ts"
       ],
       "worker-vite-dev-polyfill": [
         "./dist/web-worker/vite-dev-polyfill.d.ts"

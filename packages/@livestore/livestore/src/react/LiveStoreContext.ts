@@ -11,5 +11,9 @@ export const useStore = (): LiveStoreContext_ => {
     throw new Error(`useStore can only be used inside StoreContext.Provider`)
   }
 
+  if (storeContext.stage !== 'running') {
+    throw new Error(`useStore can only be used after the store is running`)
+  }
+
   return storeContext
 }

@@ -29,7 +29,11 @@ const syncing =
 const adapter = makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, syncing })
 
 export const App: React.FC = () => (
-  <LiveStoreProvider schema={schema} fallback={<div>Loading...</div>} adapter={adapter}>
+  <LiveStoreProvider
+    schema={schema}
+    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
+    adapter={adapter}
+  >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />
     </div>

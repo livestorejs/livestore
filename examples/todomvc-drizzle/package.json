@@ -9,8 +9,8 @@
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {
-    "@effect/schema": "0.68.21",
-    "@livestore/devtools-react": "0.0.54-dev.22",
+    "@effect/schema": "0.68.23",
+    "@livestore/devtools-react": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
@@ -18,7 +18,7 @@
     "@opentelemetry/api": "^1.9.0",
     "@schickling/fps-meter": "^0.1.2",
     "drizzle-orm": "^0.31.2",
-    "effect": "3.5.1",
+    "effect": "3.5.3",
     "effect-db-schema": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

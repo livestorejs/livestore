@@ -1,4 +1,3 @@
-import { version as pkgVersion } from '@livestore/common/package.json'
 import { Schema, Transferable } from '@livestore/utils/effect'
 import { type SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 
@@ -6,6 +5,7 @@ import { NetworkStatus } from '../adapter-types.js'
 import { DebugInfo } from '../debug-info.js'
 import { mutationEventSchemaEncodedAny } from '../schema/mutations.js'
 import { PreparedBindValues } from '../util.js'
+import { liveStoreVersion as pkgVersion } from '../version.js'
 
 const requestId = Schema.String
 const channelId = Schema.String

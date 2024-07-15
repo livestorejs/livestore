@@ -9,8 +9,8 @@ export type SahUtils = Awaited<ReturnType<SqliteWasm.Sqlite3Static['installOpfsS
 
 export const loadSqlite3Wasm = () =>
   initSqlite3Wasm({
-    print: (message) => console.log(`[livestore sqlite] ${message}`),
-    printErr: (message) => console.error(`[livestore sqlite] ${message}`),
+    print: (message) => console.log(`[@livestore/web:sqlite] ${message}`),
+    printErr: (message) => console.error(`[@livestore/web:sqlite] ${message}`),
   })
 
 export const importBytesToDb = (sqlite3: SqliteWasm.Sqlite3Static, db: SqliteWasm.Database, bytes: Uint8Array) => {

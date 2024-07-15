@@ -12,21 +12,21 @@ globalThis.sqlite3ApiConfig = {
   warn: () => {},
 }
 
-// NOTE we're starting to initialize the sqlite wasm binary here (already before calling `createStore`),
+// NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
 
 export const makeAdapterFactory =
   (makeCoordinator: MakeCoordinator): StoreAdapterFactory =>
-  ({ schema, devtoolsEnabled }) =>
+  ({ schema, devtoolsEnabled, bootStatusQueue }) =>
     Effect.gen(function* () {
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
 
-      const coordinator = yield* makeCoordinator({ schema, sqlite3, devtoolsEnabled }).pipe(
-        Effect.withSpan('coordinator:load'),
+      const coordinator = yield* makeCoordinator({ schema, sqlite3, devtoolsEnabled, bootStatusQueue }).pipe(
+        Effect.withSpan('@livestore/web:coordinator:load'),
       )
 
       const persistedData = yield* coordinator.getInitialSnapshot.pipe(
-        Effect.withSpan('coordinator:getInitialSnapshot'),
+        Effect.withSpan('@livestore/web:coordinator:getInitialSnapshot'),
       )
 
       const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & {
@@ -36,5 +36,7 @@ export const makeAdapterFactory =
 
       importBytesToDb(sqlite3, db, persistedData)
 
-      return { mainDb: makeInMemoryDb(sqlite3, db), coordinator } satisfies StoreAdapter
+      const mainDb = makeInMemoryDb(sqlite3, db)
+
+      return { mainDb, coordinator } satisfies StoreAdapter
     })

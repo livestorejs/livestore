@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { BootStatus, UnexpectedError } from '@livestore/common'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
@@ -94,6 +94,13 @@ export namespace DedicatedWorkerInner {
     },
   ) {}
 
+  export class BootStatusStream extends Schema.TaggedRequest<BootStatusStream>()(
+    'BootStatusStream',
+    UnexpectedError,
+    BootStatus,
+    {},
+  ) {}
+
   export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {
     items: Schema.Array(ExecutionBacklogItem),
   }) {}
@@ -113,8 +120,6 @@ export namespace DedicatedWorkerInner {
     Transferable.Uint8Array,
     {},
   ) {}
-
-  export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedError, Transferable.Uint8Array, {}) {}
 
   export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()(
     'NetworkStatusStream',
@@ -142,11 +147,11 @@ export namespace DedicatedWorkerInner {
 
   export const Request = Schema.Union(
     InitialMessage,
+    BootStatusStream,
     ExecuteBulk,
     Export,
     GetRecreateSnapshot,
     ExportMutationlog,
-    Setup,
     NetworkStatusStream,
     ListenForReloadStream,
     Shutdown,
@@ -167,11 +172,11 @@ export namespace SharedWorker {
 
   export class Request extends Schema.Union(
     DedicatedWorkerInner.InitialMessage,
+    DedicatedWorkerInner.BootStatusStream,
     DedicatedWorkerInner.ExecuteBulk,
     DedicatedWorkerInner.Export,
     DedicatedWorkerInner.GetRecreateSnapshot,
     DedicatedWorkerInner.ExportMutationlog,
-    DedicatedWorkerInner.Setup,
     DedicatedWorkerInner.NetworkStatusStream,
     DedicatedWorkerInner.ListenForReloadStream,
     DedicatedWorkerInner.Shutdown,
