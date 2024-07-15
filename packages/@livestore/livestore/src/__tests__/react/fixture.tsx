@@ -99,7 +99,7 @@ export const makeTodoMvc = async ({
   })
 
   // TODO improve typing of `LiveStoreContext`
-  const storeContext: LiveStoreContext = { store } as TODO
+  const storeContext = { stage: 'running', store } as any as LiveStoreContext
 
   const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
