@@ -41,7 +41,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install
-      - run: npx playwright install --with-deps
+      - run: pnpm playwright install --with-deps
+        working-directory: integration-tests
       - run: pnpm build:ts
       - run: pnpm test
       - uses: actions/upload-artifact@v4
