@@ -12,7 +12,7 @@ const syncing =
     ? {
         type: 'websocket' as const,
         url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
-        roomId: import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID + '5',
+        roomId: import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID,
       }
     : undefined
 
