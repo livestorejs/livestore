@@ -109,6 +109,7 @@ export class Store<
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > {
   id = uniqueStoreId()
+  readonly devtoolsConnectionId = cuid()
   reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
   adapter: StoreAdapter
@@ -533,6 +534,7 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
+  // TODO shutdown behaviour
   private bootDevtools = () => {
     const sendToDevtoolsContentscript = (
       message: typeof Devtools.DevtoolsWindowMessage.MessageForContentscript.Type,
@@ -556,133 +558,137 @@ export class Store<
       if (message.channelId !== channelId) return
 
       if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
-        const port = message.port
-        // TODO use unique store id instead of new id here
-        const connectionId = cuid()
-        this.adapter.coordinator.devtools.connect({ port, connectionId }).pipe(runEffectFork)
+        type Unsub = () => void
+        type RequestId = string
+
+        const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
+        const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
+
+        this.adapter.coordinator.devtools.connect({ port: message.port, connectionId: this.devtoolsConnectionId }).pipe(
+          Effect.tapSync(({ storeMessagePort }) => {
+            // console.log('storeMessagePort', storeMessagePort)
+            storeMessagePort.addEventListener('message', (event) => {
+              const decodedMessage = Schema.decodeUnknownSync(Devtools.MessageToAppHostStore)(event.data)
+              // console.log('storeMessagePort message', decodedMessage)
+
+              if (decodedMessage.channelId !== this.adapter.coordinator.devtools.channelId) {
+                // console.log(`Unknown message`, event)
+                return
+              }
+
+              const requestId = decodedMessage.requestId
+              const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
+                storeMessagePort.postMessage(Schema.encodeSync(Devtools.MessageFromAppHostStore)(message))
+
+              const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
+
+              switch (decodedMessage._tag) {
+                case 'LSD.ReactivityGraphSubscribe': {
+                  const includeResults = decodedMessage.includeResults
+
+                  const send = () =>
+                    // In order to not add more work to the current tick, we use requestIdleCallback
+                    // to send the reactivity graph updates to the devtools
+                    requestIdleCallback(
+                      () =>
+                        sendToDevtools(
+                          Devtools.ReactivityGraphRes.make({
+                            reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
+                            requestId,
+                            liveStoreVersion,
+                          }),
+                        ),
+                      { timeout: 500 },
+                    )
+
+                  send()
+
+                  // In some cases, there can be A LOT of reactivity graph updates in a short period of time
+                  // so we throttle the updates to avoid sending too much data
+                  // This might need to be tweaked further and possibly be exposed to the user in some way.
+                  const throttledSend = throttle(send, 20)
+
+                  reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
+
+                  break
+                }
+                case 'LSD.DebugInfoReq': {
+                  sendToDevtools(
+                    Devtools.DebugInfoRes.make({
+                      debugInfo: this.mainDbWrapper.debugInfo,
+                      requestId,
+                      liveStoreVersion,
+                    }),
+                  )
+                  break
+                }
+                case 'LSD.DebugInfoResetReq': {
+                  this.mainDbWrapper.debugInfo.slowQueries.clear()
+                  sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
+                  break
+                }
+                case 'LSD.DebugInfoRerunQueryReq': {
+                  const { queryStr, bindValues, queriedTables } = decodedMessage
+                  this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
+                  sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
+                  break
+                }
+                case 'LSD.ReactivityGraphUnsubscribe': {
+                  reactivityGraphSubcriptions.get(requestId)!()
+                  break
+                }
+                case 'LSD.LiveQueriesSubscribe': {
+                  const send = () =>
+                    requestIdleCallback(
+                      () =>
+                        sendToDevtools(
+                          Devtools.LiveQueriesRes.make({
+                            liveQueries: [...this.activeQueries].map((q) => ({
+                              _tag: q._tag,
+                              id: q.id,
+                              label: q.label,
+                              runs: q.runs,
+                              executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
+                              lastestResult:
+                                q.results$.previousResult === NOT_REFRESHED_YET
+                                  ? 'SYMBOL_NOT_REFRESHED_YET'
+                                  : q.results$.previousResult,
+                              activeSubscriptions: Array.from(q.activeSubscriptions),
+                            })),
+                            requestId,
+                            liveStoreVersion,
+                          }),
+                        ),
+                      { timeout: 500 },
+                    )
+
+                  send()
+
+                  // Same as in the reactivity graph subscription case above, we need to throttle the updates
+                  const throttledSend = throttle(send, 20)
+
+                  liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
+
+                  break
+                }
+                case 'LSD.LiveQueriesUnsubscribe': {
+                  liveQueriesSubscriptions.get(requestId)!()
+                  break
+                }
+                // No default
+              }
+            })
+
+            storeMessagePort.start()
+          }),
+          runEffectFork,
+        )
+
         return
       }
     })
 
     sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-
-    const devtoolsChannel = Devtools.makeBroadcastChannels()
-
-    type Unsub = () => void
-    type RequestId = string
-
-    const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
-    const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
-    devtoolsChannel.toAppHost.addEventListener('message', async (event) => {
-      const decoded = Schema.decodeUnknownOption(Devtools.MessageToAppHost)(event.data)
-      if (
-        decoded._tag === 'None' ||
-        decoded.value._tag === 'LSD.DevtoolsReady' ||
-        decoded.value._tag === 'LSD.DevtoolsConnected' ||
-        decoded.value.channelId !== this.adapter.coordinator.devtools.channelId
-      ) {
-        // console.log(`Unknown message`, event)
-        return
-      }
-
-      const requestId = decoded.value.requestId
-      const sendToDevtools = (message: Devtools.MessageFromAppHost) =>
-        devtoolsChannel.fromAppHost.postMessage(Schema.encodeSync(Devtools.MessageFromAppHost)(message))
-
-      const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
-
-      switch (decoded.value._tag) {
-        case 'LSD.ReactivityGraphSubscribe': {
-          const includeResults = decoded.value.includeResults
-
-          const send = () =>
-            // In order to not add more work to the current tick, we use requestIdleCallback
-            // to send the reactivity graph updates to the devtools
-            requestIdleCallback(
-              () =>
-                sendToDevtools(
-                  Devtools.ReactivityGraphRes.make({
-                    reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
-                    requestId,
-                    liveStoreVersion,
-                  }),
-                ),
-              { timeout: 500 },
-            )
-
-          send()
-
-          // In some cases, there can be A LOT of reactivity graph updates in a short period of time
-          // so we throttle the updates to avoid sending too much data
-          // This might need to be tweaked further and possibly be exposed to the user in some way.
-          const throttledSend = throttle(send, 20)
-
-          reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
-
-          break
-        }
-        case 'LSD.DebugInfoReq': {
-          sendToDevtools(
-            Devtools.DebugInfoRes.make({ debugInfo: this.mainDbWrapper.debugInfo, requestId, liveStoreVersion }),
-          )
-          break
-        }
-        case 'LSD.DebugInfoResetReq': {
-          this.mainDbWrapper.debugInfo.slowQueries.clear()
-          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
-          break
-        }
-        case 'LSD.DebugInfoRerunQueryReq': {
-          const { queryStr, bindValues, queriedTables } = decoded.value
-          this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
-          break
-        }
-        case 'LSD.ReactivityGraphUnsubscribe': {
-          reactivityGraphSubcriptions.get(requestId)!()
-          break
-        }
-        case 'LSD.LiveQueriesSubscribe': {
-          const send = () =>
-            requestIdleCallback(
-              () =>
-                sendToDevtools(
-                  Devtools.LiveQueriesRes.make({
-                    liveQueries: [...this.activeQueries].map((q) => ({
-                      _tag: q._tag,
-                      id: q.id,
-                      label: q.label,
-                      runs: q.runs,
-                      executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                      lastestResult:
-                        q.results$.previousResult === NOT_REFRESHED_YET
-                          ? 'SYMBOL_NOT_REFRESHED_YET'
-                          : q.results$.previousResult,
-                      activeSubscriptions: Array.from(q.activeSubscriptions),
-                    })),
-                    requestId,
-                    liveStoreVersion,
-                  }),
-                ),
-              { timeout: 500 },
-            )
-
-          send()
-
-          // Same as in the reactivity graph subscription case above, we need to throttle the updates
-          const throttledSend = throttle(send, 20)
-
-          liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
-
-          break
-        }
-        case 'LSD.LiveQueriesUnsubscribe': {
-          liveQueriesSubscriptions.get(requestId)!()
-          break
-        }
-        // No default
-      }
-    })
   }
 
   __devDownloadDb = () => {

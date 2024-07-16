@@ -1,4 +1,4 @@
-import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
+import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl, UnexpectedError } from '@livestore/common'
 import {
   Devtools,
   getExecArgsFromMutation,
@@ -13,7 +13,7 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, Queue, Stream } from '@livestore/utils/effect'
+import type { Deferred, Fiber, Queue, Scope, Stream } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
@@ -44,19 +44,21 @@ export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fk
     ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
   `)
 
-export type DevtoolsContext = {
-  isConnected: SubscriptionRef.SubscriptionRef<boolean>
-  incomingMessages: Stream.Stream<Devtools.MessageToAppHost>
-  portSubRef: SubscriptionRef.SubscriptionRef<MessagePort | undefined>
-  sendMessage: (
-    message: Devtools.MessageFromAppHost,
-    options?: {
-      /** Send message even if not connected (e.g. for initial broadcast messages) */
-      force: boolean
-    },
+export type DevtoolsContextEnabled = {
+  enabled: true
+  connect: (options: {
+    coordinatorMessagePort: MessagePort
+    storeMessagePortDeferred: Deferred.Deferred<MessagePort>
+    connectionScope: Scope.CloseableScope
+    connectionId: string
+  }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
+  connectionScopes: Set<Scope.CloseableScope>
+  broadcast: (
+    message: typeof Devtools.NetworkStatusChanged.Type | typeof Devtools.MutationBroadcast.Type,
   ) => Effect.Effect<void>
   channelId: string
 }
+export type DevtoolsContext = DevtoolsContextEnabled | { enabled: false }
 
 export type ShutdownState = 'running' | 'shutting-down' | 'shutdown-requested'
 
@@ -167,9 +169,11 @@ export const makeApplyMutation = (
           ),
         )
 
-        devtools
-          .sendMessage(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }))
-          .pipe(Effect.tapCauseLogPretty, Effect.runFork)
+        if (devtools.enabled) {
+          yield* devtools.broadcast(
+            Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }),
+          )
+        }
       }
 
       // TODO do this via a batched queue

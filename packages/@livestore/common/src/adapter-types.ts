@@ -56,7 +56,13 @@ export type Coordinator = {
   devtools: {
     enabled: boolean
     channelId: string
-    connect: (options: { port: MessagePort; connectionId: string }) => Effect.Effect<void, UnexpectedError>
+    /**
+     * Returns a dedicated message port for the store which is established over the message port passed in
+     */
+    connect: (options: {
+      port: MessagePort
+      connectionId: string
+    }) => Effect.Effect<{ storeMessagePort: MessagePort }, UnexpectedError>
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>

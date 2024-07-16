@@ -43,7 +43,7 @@ const makeCoordinator = (
 
   return {
     isShutdownRef: { current: false },
-    devtools: { channelId: cuid(), connect: () => Effect.void, enabled: false },
+    devtools: { channelId: cuid(), connect: () => Effect.never, enabled: false },
     lockStatus,
     syncMutations,
     execute: () => Effect.void,

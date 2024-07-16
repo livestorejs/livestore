@@ -21,6 +21,8 @@ import {
   WebLock,
   Worker,
 } from '@livestore/utils/effect'
+// NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
+import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 
 import { BCMessage } from '../common/index.js'
 import * as OpfsUtils from '../opfs-utils.js'
@@ -32,7 +34,6 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
 } from './common.js'
-import LiveStoreSharedWorker from './make-shared-worker.js?sharedworker'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
 import * as WorkerSchema from './schema.js'
 
@@ -183,13 +184,15 @@ export const makeCoordinator =
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
 
-      yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.NetworkStatusStream()).pipe(
-        Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
-        Stream.runDrain,
-        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
+      if (options.syncing !== undefined) {
+        yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.NetworkStatusStream()).pipe(
+          Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
+          Stream.runDrain,
+          Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
+        )
+      }
 
       yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.ListenForReloadStream()).pipe(
         Stream.tapSync((_) => window.location.reload()),
@@ -280,7 +283,7 @@ export const makeCoordinator =
           enabled: devtoolsEnabled,
           channelId,
           connect: ({ connectionId, port }) =>
-            runInWorker(new WorkerSchema.DedicatedWorkerInner.InitDevtools({ port })).pipe(
+            runInWorker(new WorkerSchema.DedicatedWorkerInner.ConnectDevtools({ port, connectionId })).pipe(
               Effect.timeout(10_000),
               Effect.mapError((cause) => new UnexpectedError({ cause })),
             ),

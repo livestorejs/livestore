@@ -101,7 +101,7 @@ export const makeAdapter =
 
       const coordinator = {
         isShutdownRef: { current: false },
-        devtools: { channelId: 'todo', connect: () => Effect.void, enabled: false },
+        devtools: { channelId: 'todo', connect: () => Effect.never, enabled: false },
         lockStatus,
         syncMutations,
         execute: () => Effect.void,

@@ -141,9 +141,17 @@ export namespace DedicatedWorkerInner {
 
   export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
 
-  export class InitDevtools extends Schema.TaggedRequest<InitDevtools>()('InitDevtools', UnexpectedError, Schema.Void, {
-    port: Transferable.MessagePort,
-  }) {}
+  export class ConnectDevtools extends Schema.TaggedRequest<ConnectDevtools>()(
+    'ConnectDevtools',
+    UnexpectedError,
+    Schema.Struct({
+      storeMessagePort: Transferable.MessagePort,
+    }),
+    {
+      port: Transferable.MessagePort,
+      connectionId: Schema.String,
+    },
+  ) {}
 
   export const Request = Schema.Union(
     InitialMessage,
@@ -155,7 +163,7 @@ export namespace DedicatedWorkerInner {
     NetworkStatusStream,
     ListenForReloadStream,
     Shutdown,
-    InitDevtools,
+    ConnectDevtools,
   )
   export type Request = typeof Request.Type
 }
@@ -180,7 +188,7 @@ export namespace SharedWorker {
     DedicatedWorkerInner.NetworkStatusStream,
     DedicatedWorkerInner.ListenForReloadStream,
     DedicatedWorkerInner.Shutdown,
-    DedicatedWorkerInner.InitDevtools,
+    DedicatedWorkerInner.ConnectDevtools,
 
     UpdateMessagePort,
   ) {}

@@ -1,5 +1,4 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
-import { type SqliteDsl as __SqliteDsl } from 'effect-db-schema'
 
 import { NetworkStatus } from '../adapter-types.js'
 import { DebugInfo } from '../debug-info.js'
@@ -167,6 +166,19 @@ export class ResetAllDataRes extends Schema.TaggedStruct('LSD.ResetAllDataRes', 
   requestId,
 }).annotations({ identifier: 'LSD.ResetAllDataRes' }) {}
 
+export class MessagePortForStoreReq extends Schema.TaggedStruct('LSD.MessagePortForStoreReq', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+}).annotations({ identifier: 'LSD.MessagePortForStoreReq' }) {}
+
+export class MessagePortForStoreRes extends Schema.TaggedStruct('LSD.MessagePortForStoreRes', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+  port: Transferable.MessagePort,
+}).annotations({ identifier: 'LSD.MessagePortForStoreRes' }) {}
+
 export class NetworkStatusChanged extends Schema.TaggedStruct('LSD.NetworkStatusChanged', {
   liveStoreVersion,
   channelId,
@@ -204,10 +216,22 @@ export class Pong extends Schema.TaggedStruct('LSD.Pong', {
   requestId,
 }).annotations({ identifier: 'LSD.Pong' }) {}
 
-export const MessageToAppHost = Schema.Union(
+export const MessageToAppHostCoordinator = Schema.Union(
   SnapshotReq,
   LoadDatabaseFileReq,
   MutationLogReq,
+  ResetAllDataReq,
+  MessagePortForStoreRes,
+  DevtoolsReady,
+  Disconnect,
+  DevtoolsConnected,
+  RunMutationReq,
+  Ping,
+).annotations({ identifier: 'LSD.MessageToAppHostCoordinator' })
+
+export type MessageToAppHostCoordinator = typeof MessageToAppHostCoordinator.Type
+
+export const MessageToAppHostStore = Schema.Union(
   DebugInfoReq,
   DebugInfoResetReq,
   DebugInfoRerunQueryReq,
@@ -215,38 +239,34 @@ export const MessageToAppHost = Schema.Union(
   ReactivityGraphUnsubscribe,
   LiveQueriesSubscribe,
   LiveQueriesUnsubscribe,
-  ResetAllDataReq,
-  DevtoolsReady,
-  Disconnect,
-  DevtoolsConnected,
-  RunMutationReq,
-  Ping,
-).annotations({ identifier: 'LSD.MessageToAppHost' })
+  // Ping,
+).annotations({ identifier: 'LSD.MessageToAppHostStore' })
 
-export type MessageToAppHost = typeof MessageToAppHost.Type
+export type MessageToAppHostStore = typeof MessageToAppHostStore.Type
 
-export const MessageFromAppHost = Schema.Union(
+export const MessageFromAppHostCoordinator = Schema.Union(
   SnapshotRes,
   LoadDatabaseFileRes,
   MutationLogRes,
-  DebugInfoRes,
-  DebugInfoResetRes,
-  DebugInfoRerunQueryRes,
-  ReactivityGraphRes,
-  LiveQueriesRes,
   ResetAllDataRes,
+  MessagePortForStoreReq,
   Disconnect,
   MutationBroadcast,
   AppHostReady,
   NetworkStatusChanged,
   RunMutationRes,
   Pong,
-).annotations({ identifier: 'LSD.MessageFromAppHost' })
+).annotations({ identifier: 'LSD.MessageFromAppHostCoordinator' })
 
-export type MessageFromAppHost = typeof MessageFromAppHost.Type
+export type MessageFromAppHostCoordinator = typeof MessageFromAppHostCoordinator.Type
 
-// TODO make specific over app key
-export const makeBroadcastChannels = () => ({
-  fromAppHost: new BroadcastChannel(`livestore-devtools-from-app-host`),
-  toAppHost: new BroadcastChannel(`livestore-devtools-to-app-host`),
-})
+export const MessageFromAppHostStore = Schema.Union(
+  DebugInfoRes,
+  DebugInfoResetRes,
+  DebugInfoRerunQueryRes,
+  ReactivityGraphRes,
+  LiveQueriesRes,
+  // Pong,
+).annotations({ identifier: 'LSD.MessageFromAppHostStore' })
+
+export type MessageFromAppHostStore = typeof MessageFromAppHostStore.Type
