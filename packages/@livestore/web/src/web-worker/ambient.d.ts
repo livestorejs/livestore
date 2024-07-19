@@ -17,9 +17,10 @@ interface FileSystemFileHandle {
   createSyncAccessHandle: () => Promise<FileSystemSyncAccessHandle>
 }
 
-declare module '*?sharedworker' {
-  const sharedWorkerConstructor: {
-    new (options?: { name?: string }): SharedWorker
-  }
-  export default sharedWorkerConstructor
-}
+// TODO bring back when Vite limitation is resolved https://github.com/vitejs/vite/issues/8427
+// declare module '*?sharedworker' {
+//   const sharedWorkerConstructor: {
+//     new (options?: { name?: string }): SharedWorker
+//   }
+//   export default sharedWorkerConstructor
+// }

@@ -1,7 +1,11 @@
-export { Store, createStore } from './store.js'
+export { Store, createStorePromise, createStore } from './store.js'
 export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason } from './store.js'
 
-export type { QueryDefinition, LiveStoreCreateStoreOptions, LiveStoreContext } from './effect/LiveStore.js'
+export type {
+  QueryDefinition,
+  LiveStoreCreateStoreOptions,
+  LiveStoreContextRunning as LiveStoreContext,
+} from './effect/LiveStore.js'
 
 export { MainDatabaseWrapper, emptyDebugInfo } from './MainDatabaseWrapper.js'
 

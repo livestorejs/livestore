@@ -149,7 +149,9 @@ export namespace DedicatedWorkerInner {
     }),
     {
       port: Transferable.MessagePort,
+      // TODO double-check if connecitonId is actually needed
       connectionId: Schema.String,
+      isLeaderTab: Schema.Boolean,
     },
   ) {}
 

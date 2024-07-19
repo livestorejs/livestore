@@ -19,7 +19,7 @@ import { makeInMemoryDb } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import { importBytesToDb } from '../sqlite-utils.js'
 import type { DevtoolsContextEnabled } from './common.js'
-import { InnerWorkerCtx, makeApplyMutation } from './common.js'
+import { InnerWorkerCtx, makeApplyMutation, mapToUnexpectedErrorStream } from './common.js'
 
 type SendMessage = (
   message: Devtools.MessageFromAppHostCoordinator,
@@ -40,6 +40,7 @@ export const makeDevtoolsContext = (channelId: string) =>
       connectionScope,
       storeMessagePortDeferred,
       connectionId,
+      isLeaderTab,
     }) =>
       Effect.gen(function* () {
         const runtime = yield* Effect.runtime<InnerWorkerCtx>()
@@ -103,7 +104,7 @@ export const makeDevtoolsContext = (channelId: string) =>
 
         coordinatorMessagePort.start()
 
-        yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), { force: true })
+        yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), { force: true })
 
         yield* sendMessage(Devtools.MessagePortForStoreReq.make({ channelId, liveStoreVersion, requestId: cuid() }), {
           force: true,
@@ -111,9 +112,7 @@ export const makeDevtoolsContext = (channelId: string) =>
 
         yield* Effect.addFinalizer(() => Effect.sync(() => coordinatorMessagePort.close()))
 
-        yield* listenToDevtools({ incomingMessages, sendMessage, isConnected, connectionScope, channelId })
-
-        yield* Effect.never
+        yield* listenToDevtools({ incomingMessages, sendMessage, isConnected, connectionScope, channelId, isLeaderTab })
       }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect'))
 
     const broadcast: DevtoolsContextEnabled['broadcast'] = (message) =>
@@ -132,12 +131,14 @@ const listenToDevtools = ({
   isConnected,
   connectionScope,
   channelId,
+  isLeaderTab,
 }: {
   incomingMessages: Stream.Stream<Devtools.MessageToAppHostCoordinator>
   sendMessage: SendMessage
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   connectionScope: Scope.CloseableScope
   channelId: string
+  isLeaderTab: boolean
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* InnerWorkerCtx
@@ -152,7 +153,7 @@ const listenToDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
+              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
                 force: true,
               })
             }
@@ -196,10 +197,11 @@ const listenToDevtools = ({
             case 'LSD.Disconnect': {
               yield* SubscriptionRef.set(isConnected, false)
 
+              // TODO consider using `return yield* Effect.interrupt` instead
               yield* Scope.close(connectionScope, Exit.void)
 
               // TODO is there a better place for this?
-              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion }), {
+              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
                 force: true,
               })
 
@@ -304,8 +306,7 @@ const listenToDevtools = ({
           }
         }).pipe(Effect.withSpan(`@livestore/web:worker:onDevtoolsMessage:${decodedEvent._tag}`)),
       ),
+      mapToUnexpectedErrorStream,
       Stream.runDrain,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
     )
   })

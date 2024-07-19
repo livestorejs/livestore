@@ -12,7 +12,6 @@ export {
   Exit,
   Cause,
   Runtime,
-  Scheduler,
   FiberRef,
   FiberRefs,
   FiberRefsPatch,
@@ -71,6 +70,7 @@ export * as PortPlatformRunner from './port-platform-runner.js'
 
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'
+export * as Scheduler from './Scheduler.js'
 export * from './Error.js'
 export * as ServiceContext from './ServiceContext.js'
 export * as WebLock from './WebLock.js'

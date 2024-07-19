@@ -109,7 +109,6 @@ LIMIT ${CHUNK_SIZE}
         return Option.some([prevItem, nextItem])
       },
     ).pipe(
-      (_) => _,
       Stream.bufferChunks({ capacity: 2 }),
       Stream.tap((row) =>
         Effect.gen(function* () {

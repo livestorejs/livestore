@@ -1,6 +1,7 @@
 export {
   LiveStoreContextLayer,
-  LiveStoreContext,
+  LiveStoreContextRunning as LiveStoreContext,
+  LiveStoreContextRunning,
   LiveStoreContextDeferred,
   DeferredStoreContext,
   type LiveStoreContextProps,

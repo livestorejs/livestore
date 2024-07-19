@@ -6,14 +6,31 @@ import type {
   ResetMode,
   StoreAdapter,
   StoreAdapterFactory,
+} from '@livestore/common'
+import {
+  Devtools,
+  getExecArgsFromMutation,
+  liveStoreVersion,
+  prepareBindValues,
   UnexpectedError,
 } from '@livestore/common'
-import { Devtools, getExecArgsFromMutation, liveStoreVersion, prepareBindValues } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
 import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
-import { Effect, Layer, Logger, LogLevel, OtelTracer, Queue, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Effect,
+  Exit,
+  Layer,
+  Logger,
+  LogLevel,
+  OtelTracer,
+  Queue,
+  Runtime,
+  Schema,
+  Scope,
+  Stream,
+} from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -53,6 +70,7 @@ export type StoreOptions<
   otelOptions: OtelOptions
   reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
+  storeScope: Scope.CloseableScope
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
   __processedMutationIds: Set<string>
 }
@@ -110,6 +128,7 @@ export class Store<
 > {
   id = uniqueStoreId()
   readonly devtoolsConnectionId = cuid()
+  private storeScope: Scope.CloseableScope
   reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
   adapter: StoreAdapter
@@ -140,10 +159,13 @@ export class Store<
     otelOptions,
     disableDevtools,
     __processedMutationIds,
+    storeScope,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     this.mainDbWrapper = new MainDatabaseWrapper({ otel: otelOptions, db: adapter.mainDb })
     this.adapter = adapter
     this.schema = schema
+
+    this.storeScope = storeScope
 
     // TODO refactor
     this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
@@ -168,18 +190,6 @@ export class Store<
       rootOtelContext: otelQueriesSpanContext,
     }
 
-    this.adapter.coordinator.syncMutations.pipe(
-      Stream.tapSync((mutationEventDecoded) => {
-        this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
-      }),
-      Stream.runDrain,
-      runEffectFork,
-    )
-
-    if (disableDevtools !== true) {
-      this.bootDevtools()
-    }
-
     this.otel = {
       tracer: otelOptions.tracer,
       mutationsSpanContext: otelMuationsSpanContext,
@@ -201,6 +211,34 @@ export class Store<
       this.graphQLSchema = graphQLOptions.schema
       this.graphQLContext = graphQLOptions.makeContext(this.mainDbWrapper, this.otel.tracer)
     }
+
+    Effect.gen(this, function* () {
+      yield* this.adapter.coordinator.syncMutations.pipe(
+        Stream.tapSync((mutationEventDecoded) => {
+          this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
+        }),
+        Stream.runDrain,
+        Effect.withSpan('LiveStore:syncMutations'),
+        Effect.forkScoped,
+      )
+
+      if (disableDevtools !== true) {
+        yield* this.bootDevtools().pipe(Effect.forkScoped)
+      }
+
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          for (const tableRef of Object.values(this.tableRefs)) {
+            for (const superComp of tableRef.super) {
+              this.reactivityGraph.removeEdge(superComp, tableRef)
+            }
+          }
+
+          otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
+          otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
+        }),
+      )
+    }).pipe(Scope.extend(storeScope), Effect.forkIn(storeScope), Effect.scoped, runEffectFork)
   }
 
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
@@ -266,16 +304,7 @@ export class Store<
    * Currently only used when shutting down the app for debugging purposes (e.g. to close Otel spans).
    */
   destroy = async () => {
-    for (const tableRef of Object.values(this.tableRefs)) {
-      for (const superComp of tableRef.super) {
-        this.reactivityGraph.removeEdge(superComp, tableRef)
-      }
-    }
-
-    otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
-    otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
-
-    await this.adapter.coordinator.shutdown.pipe(runEffectPromise)
+    await Scope.close(this.storeScope, Exit.void).pipe(Effect.withSpan('Store:destroy'), runEffectPromise)
   }
 
   mutate: {
@@ -535,161 +564,164 @@ export class Store<
     })
 
   // TODO shutdown behaviour
-  private bootDevtools = () => {
-    const sendToDevtoolsContentscript = (
-      message: typeof Devtools.DevtoolsWindowMessage.MessageForContentscript.Type,
-    ) => {
-      window.postMessage(Schema.encodeSync(Devtools.DevtoolsWindowMessage.MessageForContentscript)(message), '*')
-    }
-
-    const channelId = this.adapter.coordinator.devtools.channelId
-
-    window.addEventListener('message', (event) => {
-      const decodedMessageRes = Schema.decodeOption(Devtools.DevtoolsWindowMessage.MessageForStore)(event.data)
-      if (decodedMessageRes._tag === 'None') return
-
-      const message = decodedMessageRes.value
-
-      if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
-        sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-        return
+  private bootDevtools = () =>
+    Effect.gen(this, function* () {
+      const sendToDevtoolsContentscript = (
+        message: typeof Devtools.DevtoolsWindowMessage.MessageForContentscript.Type,
+      ) => {
+        window.postMessage(Schema.encodeSync(Devtools.DevtoolsWindowMessage.MessageForContentscript)(message), '*')
       }
 
-      if (message.channelId !== channelId) return
+      const channelId = this.adapter.coordinator.devtools.channelId
 
-      if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
-        type Unsub = () => void
-        type RequestId = string
+      window.addEventListener('message', (event) => {
+        const decodedMessageRes = Schema.decodeOption(Devtools.DevtoolsWindowMessage.MessageForStore)(event.data)
+        if (decodedMessageRes._tag === 'None') return
 
-        const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
-        const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
+        const message = decodedMessageRes.value
 
-        this.adapter.coordinator.devtools.connect({ port: message.port, connectionId: this.devtoolsConnectionId }).pipe(
-          Effect.tapSync(({ storeMessagePort }) => {
-            // console.log('storeMessagePort', storeMessagePort)
-            storeMessagePort.addEventListener('message', (event) => {
-              const decodedMessage = Schema.decodeUnknownSync(Devtools.MessageToAppHostStore)(event.data)
-              // console.log('storeMessagePort message', decodedMessage)
+        if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
+          sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+          return
+        }
 
-              if (decodedMessage.channelId !== this.adapter.coordinator.devtools.channelId) {
-                // console.log(`Unknown message`, event)
-                return
-              }
+        if (message.channelId !== channelId) return
 
-              const requestId = decodedMessage.requestId
-              const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
-                storeMessagePort.postMessage(Schema.encodeSync(Devtools.MessageFromAppHostStore)(message))
+        if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
+          type Unsub = () => void
+          type RequestId = string
 
-              const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
+          const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
+          const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
 
-              switch (decodedMessage._tag) {
-                case 'LSD.ReactivityGraphSubscribe': {
-                  const includeResults = decodedMessage.includeResults
+          this.adapter.coordinator.devtools
+            .connect({ port: message.port, connectionId: this.devtoolsConnectionId })
+            .pipe(
+              Effect.tapSync(({ storeMessagePort }) => {
+                // console.log('storeMessagePort', storeMessagePort)
+                storeMessagePort.addEventListener('message', (event) => {
+                  const decodedMessage = Schema.decodeUnknownSync(Devtools.MessageToAppHostStore)(event.data)
+                  // console.log('storeMessagePort message', decodedMessage)
 
-                  const send = () =>
-                    // In order to not add more work to the current tick, we use requestIdleCallback
-                    // to send the reactivity graph updates to the devtools
-                    requestIdleCallback(
-                      () =>
-                        sendToDevtools(
-                          Devtools.ReactivityGraphRes.make({
-                            reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
-                            requestId,
-                            liveStoreVersion,
-                          }),
-                        ),
-                      { timeout: 500 },
-                    )
+                  if (decodedMessage.channelId !== this.adapter.coordinator.devtools.channelId) {
+                    // console.log(`Unknown message`, event)
+                    return
+                  }
 
-                  send()
+                  const requestId = decodedMessage.requestId
+                  const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
+                    storeMessagePort.postMessage(Schema.encodeSync(Devtools.MessageFromAppHostStore)(message))
 
-                  // In some cases, there can be A LOT of reactivity graph updates in a short period of time
-                  // so we throttle the updates to avoid sending too much data
-                  // This might need to be tweaked further and possibly be exposed to the user in some way.
-                  const throttledSend = throttle(send, 20)
+                  const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
 
-                  reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
+                  switch (decodedMessage._tag) {
+                    case 'LSD.ReactivityGraphSubscribe': {
+                      const includeResults = decodedMessage.includeResults
 
-                  break
-                }
-                case 'LSD.DebugInfoReq': {
-                  sendToDevtools(
-                    Devtools.DebugInfoRes.make({
-                      debugInfo: this.mainDbWrapper.debugInfo,
-                      requestId,
-                      liveStoreVersion,
-                    }),
-                  )
-                  break
-                }
-                case 'LSD.DebugInfoResetReq': {
-                  this.mainDbWrapper.debugInfo.slowQueries.clear()
-                  sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
-                  break
-                }
-                case 'LSD.DebugInfoRerunQueryReq': {
-                  const { queryStr, bindValues, queriedTables } = decodedMessage
-                  this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-                  sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
-                  break
-                }
-                case 'LSD.ReactivityGraphUnsubscribe': {
-                  reactivityGraphSubcriptions.get(requestId)!()
-                  break
-                }
-                case 'LSD.LiveQueriesSubscribe': {
-                  const send = () =>
-                    requestIdleCallback(
-                      () =>
-                        sendToDevtools(
-                          Devtools.LiveQueriesRes.make({
-                            liveQueries: [...this.activeQueries].map((q) => ({
-                              _tag: q._tag,
-                              id: q.id,
-                              label: q.label,
-                              runs: q.runs,
-                              executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                              lastestResult:
-                                q.results$.previousResult === NOT_REFRESHED_YET
-                                  ? 'SYMBOL_NOT_REFRESHED_YET'
-                                  : q.results$.previousResult,
-                              activeSubscriptions: Array.from(q.activeSubscriptions),
-                            })),
-                            requestId,
-                            liveStoreVersion,
-                          }),
-                        ),
-                      { timeout: 500 },
-                    )
+                      const send = () =>
+                        // In order to not add more work to the current tick, we use requestIdleCallback
+                        // to send the reactivity graph updates to the devtools
+                        requestIdleCallback(
+                          () =>
+                            sendToDevtools(
+                              Devtools.ReactivityGraphRes.make({
+                                reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
+                                requestId,
+                                liveStoreVersion,
+                              }),
+                            ),
+                          { timeout: 500 },
+                        )
 
-                  send()
+                      send()
 
-                  // Same as in the reactivity graph subscription case above, we need to throttle the updates
-                  const throttledSend = throttle(send, 20)
+                      // In some cases, there can be A LOT of reactivity graph updates in a short period of time
+                      // so we throttle the updates to avoid sending too much data
+                      // This might need to be tweaked further and possibly be exposed to the user in some way.
+                      const throttledSend = throttle(send, 20)
 
-                  liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
+                      reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
 
-                  break
-                }
-                case 'LSD.LiveQueriesUnsubscribe': {
-                  liveQueriesSubscriptions.get(requestId)!()
-                  break
-                }
-                // No default
-              }
-            })
+                      break
+                    }
+                    case 'LSD.DebugInfoReq': {
+                      sendToDevtools(
+                        Devtools.DebugInfoRes.make({
+                          debugInfo: this.mainDbWrapper.debugInfo,
+                          requestId,
+                          liveStoreVersion,
+                        }),
+                      )
+                      break
+                    }
+                    case 'LSD.DebugInfoResetReq': {
+                      this.mainDbWrapper.debugInfo.slowQueries.clear()
+                      sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
+                      break
+                    }
+                    case 'LSD.DebugInfoRerunQueryReq': {
+                      const { queryStr, bindValues, queriedTables } = decodedMessage
+                      this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
+                      sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
+                      break
+                    }
+                    case 'LSD.ReactivityGraphUnsubscribe': {
+                      reactivityGraphSubcriptions.get(requestId)!()
+                      break
+                    }
+                    case 'LSD.LiveQueriesSubscribe': {
+                      const send = () =>
+                        requestIdleCallback(
+                          () =>
+                            sendToDevtools(
+                              Devtools.LiveQueriesRes.make({
+                                liveQueries: [...this.activeQueries].map((q) => ({
+                                  _tag: q._tag,
+                                  id: q.id,
+                                  label: q.label,
+                                  runs: q.runs,
+                                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
+                                  lastestResult:
+                                    q.results$.previousResult === NOT_REFRESHED_YET
+                                      ? 'SYMBOL_NOT_REFRESHED_YET'
+                                      : q.results$.previousResult,
+                                  activeSubscriptions: Array.from(q.activeSubscriptions),
+                                })),
+                                requestId,
+                                liveStoreVersion,
+                              }),
+                            ),
+                          { timeout: 500 },
+                        )
 
-            storeMessagePort.start()
-          }),
-          runEffectFork,
-        )
+                      send()
 
-        return
-      }
+                      // Same as in the reactivity graph subscription case above, we need to throttle the updates
+                      const throttledSend = throttle(send, 20)
+
+                      liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
+
+                      break
+                    }
+                    case 'LSD.LiveQueriesUnsubscribe': {
+                      liveQueriesSubscriptions.get(requestId)!()
+                      break
+                    }
+                    // No default
+                  }
+                })
+
+                storeMessagePort.start()
+              }),
+              runEffectFork,
+            )
+
+          return
+        }
+      })
+
+      sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
     })
-
-    sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-  }
 
   __devDownloadDb = () => {
     const data = this.mainDbWrapper.export()
@@ -718,14 +750,27 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
 }
 
 /** Create a new LiveStore Store */
-export const createStore = async <
+export const createStorePromise = async <
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
->(
-  options: CreateStoreOptions<TGraphQLContext, TSchema>,
-): Promise<Store<TGraphQLContext, TSchema>> => createStoreEff(options).pipe(runEffectPromise)
+>({
+  signal,
+  ...options
+}: CreateStoreOptions<TGraphQLContext, TSchema> & { signal?: AbortSignal }): Promise<Store<TGraphQLContext, TSchema>> =>
+  Effect.gen(function* () {
+    const scope = yield* Scope.make()
+    const runtime = yield* Effect.runtime()
 
-export const createStoreEff = <
+    if (signal !== undefined) {
+      signal.addEventListener('abort', () => {
+        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
+      })
+    }
+
+    return yield* createStore({ ...options, storeScope: scope }).pipe(Scope.extend(scope))
+  }).pipe(Effect.withSpan('createStore'), runEffectPromise)
+
+export const createStore = <
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >({
@@ -738,7 +783,12 @@ export const createStoreEff = <
   batchUpdates,
   disableDevtools,
   onBootStatus,
-}: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<Store<TGraphQLContext, TSchema>, UnexpectedError> => {
+  storeScope,
+}: CreateStoreOptions<TGraphQLContext, TSchema> & { storeScope: Scope.CloseableScope }): Effect.Effect<
+  Store<TGraphQLContext, TSchema>,
+  UnexpectedError,
+  Scope.Scope
+> => {
   const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
   const otelRootSpanContext = otelOptions?.rootSpanContext ?? otel.context.active()
 
@@ -762,6 +812,7 @@ export const createStoreEff = <
       schema,
       devtoolsEnabled: disableDevtools !== true,
       bootStatusQueue,
+      shutdown: (cause) => Scope.close(storeScope, Exit.failCause(cause)),
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
     if (batchUpdates !== undefined) {
@@ -839,10 +890,13 @@ export const createStoreEff = <
         },
       }
 
-      const booting = boot(bootDbImpl, span)
+      const booting = yield* Effect.try({
+        try: () => boot(bootDbImpl, span),
+        catch: (cause) => new UnexpectedError({ cause }),
+      })
       // NOTE only awaiting if it's actually a promise to avoid unnecessary async/await
       if (isPromise(booting)) {
-        yield* Effect.promise(() => booting)
+        yield* Effect.tryPromise({ try: () => booting, catch: (cause) => new UnexpectedError({ cause }) })
       }
     }
 
@@ -858,11 +912,12 @@ export const createStoreEff = <
         reactivityGraph,
         disableDevtools,
         __processedMutationIds,
+        storeScope,
       },
       span,
     )
   }).pipe(
-    Effect.scoped,
+    // Effect.scoped,
     Effect.withSpan('createStore', {
       parent: otelOptions?.rootSpanContext
         ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)

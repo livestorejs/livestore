@@ -1,6 +1,6 @@
 import type { BootStatus, Coordinator, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { Effect, Queue } from '@livestore/utils/effect'
+import type { Cause, Effect, Queue, Scope } from '@livestore/utils/effect'
 
 import type { SqliteWasm } from '../sqlite-utils.js'
 
@@ -9,4 +9,5 @@ export type MakeCoordinator = (props: {
   sqlite3: SqliteWasm.Sqlite3Static
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-}) => Effect.Effect<Coordinator, UnexpectedError, never>
+  shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+}) => Effect.Effect<Coordinator, UnexpectedError, Scope.Scope>

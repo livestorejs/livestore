@@ -10,7 +10,7 @@ const modulePrefix = './src/tests/playwright/'
 test('basic', ({ page }) =>
   Effect.gen(function* () {
     yield* Effect.promise(() =>
-      page.goto(`http://localhost:${process.env.DEV_SERVER_PORT}/?importPath=${modulePrefix}basic.ts`),
+      page.goto(`http://localhost:${process.env.DEV_SERVER_PORT}/?importPath=${modulePrefix}bootstatus.ts`),
     )
 
     const deferred = yield* Deferred.make<(typeof Bridge.Result.Type)['exit']>()

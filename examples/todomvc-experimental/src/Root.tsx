@@ -18,10 +18,20 @@ const AppBody: React.FC = () => (
   </section>
 )
 
+const syncing =
+  import.meta.env.VITE_LIVESTORE_SYNC_URL && import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID
+    ? {
+        type: 'websocket' as const,
+        url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
+        roomId: `todomvc-${import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID}`,
+      }
+    : undefined
+
 const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
+  syncing,
 })
 
 export const App: React.FC = () => (

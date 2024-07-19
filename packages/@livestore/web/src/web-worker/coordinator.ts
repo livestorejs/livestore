@@ -1,5 +1,4 @@
-import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
+import type { Coordinator, LockStatus, NetworkStatus, ResetMode, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled, ref } from '@livestore/utils'
@@ -11,19 +10,18 @@ import {
   Chunk,
   Deferred,
   Effect,
-  Exit,
-  FiberId,
   Queue,
+  Runtime,
   Schema,
-  Scope,
   Stream,
   SubscriptionRef,
   WebLock,
   Worker,
 } from '@livestore/utils/effect'
-// NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
-import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 
+// TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
+// NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
+// import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { BCMessage } from '../common/index.js'
 import * as OpfsUtils from '../opfs-utils.js'
 import { IDB } from '../utils/idb.js'
@@ -33,13 +31,30 @@ import {
   getAppDbIdbStoreName,
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
+  mapToUnexpectedError,
+  mapToUnexpectedErrorStream,
 } from './common.js'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
 import * as WorkerSchema from './schema.js'
 
-/** Specifies where to persist data for this coordinator */
 export type WebAdapterOptions = {
   worker: globalThis.Worker | (new (options?: { name: string }) => globalThis.Worker)
+  /**
+   * This is mostly an implementation detail and needed to be exposed into app code
+   * due to a current Vite limitation (https://github.com/vitejs/vite/issues/8427).
+   *
+   * In most cases this should look like:
+   * ```ts
+   * import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
+   *
+   * const adapter = makeAdapter({
+   *   sharedWorker: LiveStoreSharedWorker,
+   *   // ...
+   * })
+   * ```
+   */
+  sharedWorker: globalThis.SharedWorker | (new (options?: { name: string }) => globalThis.SharedWorker)
+  /** Specifies where to persist data for this adapter */
   storage: WorkerSchema.StorageTypeEncoded
   syncing?: WorkerSchema.SyncingType
   /** Can be used to isolate multiple LiveStore apps running in the same origin */
@@ -49,10 +64,8 @@ export type WebAdapterOptions = {
 
 export const makeCoordinator =
   (options: WebAdapterOptions): MakeCoordinator =>
-  ({ schema, devtoolsEnabled, bootStatusQueue }) => {
-    const manualScope = Effect.runSync(Scope.make())
-
-    return Effect.gen(function* () {
+  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown }) =>
+    Effect.gen(function* () {
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const executionBacklogQueue = yield* Queue.unbounded<WorkerSchema.ExecutionBacklogItem>().pipe(
@@ -81,6 +94,11 @@ export const makeCoordinator =
 
       const channelId = cuid()
 
+      const sharedWorker =
+        options.sharedWorker instanceof globalThis.SharedWorker
+          ? options.sharedWorker
+          : new options.sharedWorker({ name: `livestore-shared-worker${keySuffix}` })
+
       const sharedWorkerDeferred = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
         concurrency: 100,
@@ -93,10 +111,8 @@ export const makeCoordinator =
             devtools: { channelId, enabled: devtoolsEnabled },
           }),
       }).pipe(
-        Effect.provide(
-          BrowserWorker.layer(() => new LiveStoreSharedWorker({ name: `livestore-shared-worker${keySuffix}` })),
-        ),
-        Effect.tapErrorCause((cause) => Scope.close(manualScope, Exit.fail(cause))),
+        Effect.provide(BrowserWorker.layer(() => sharedWorker)),
+        Effect.tapErrorCause((cause) => shutdown(cause)),
         Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
         Effect.toForkedDeferred,
       )
@@ -106,11 +122,15 @@ export const makeCoordinator =
       // Otherwise mutations could end up being dropped.
       //
       // Sorry for this pun ...
-      const gotLocky = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK)
+      let gotLocky = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK)
       const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky ? 'has-lock' : 'no-lock')
 
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(`[@livestore/web:coordinator] Got lock for '${LIVESTORE_TAB_LOCK}'`)
+
+        yield* Effect.addFinalizer(() =>
+          Effect.logDebug(`[@livestore/web:coordinator] Releasing lock for '${LIVESTORE_TAB_LOCK}'`),
+        )
 
         yield* SubscriptionRef.set(lockStatus, 'has-lock')
 
@@ -126,7 +146,7 @@ export const makeCoordinator =
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
-          Effect.tapErrorCause((cause) => Scope.close(manualScope, Exit.fail(cause))),
+          Effect.tapErrorCause((cause) => shutdown(cause)),
           Effect.withSpan('@livestore/web:coordinator:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -143,7 +163,10 @@ export const makeCoordinator =
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
         const innerLockDeferred = yield* Deferred.make<void>()
         yield* WebLock.waitForDeferredLock(innerLockDeferred, LIVESTORE_TAB_LOCK).pipe(
-          Effect.andThen(() => runLocked),
+          Effect.andThen(() => {
+            gotLocky = true
+            return runLocked
+          }),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
         )
@@ -166,7 +189,7 @@ export const makeCoordinator =
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/web:coordinator:runInWorker:${req._tag}`),
-          Effect.mapError((cause) => new UnexpectedError({ cause })),
+          mapToUnexpectedError,
         ) as any
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
@@ -176,10 +199,12 @@ export const makeCoordinator =
         : never =>
         Effect.gen(function* () {
           const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
-          return sharedWorker.execute(req).pipe(
-            Stream.mapError((cause) => new UnexpectedError({ cause })),
-            Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
-          )
+          return sharedWorker
+            .execute(req)
+            .pipe(
+              mapToUnexpectedErrorStream,
+              Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
+            )
         }).pipe(Stream.unwrap) as any
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
@@ -236,13 +261,7 @@ export const makeCoordinator =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      yield* Effect.addFinalizer((ex) => {
-        isShutdownRef.current = true
-        return Effect.logWarning(
-          '[@livestore/web:coordinator] coordinator shutdown',
-          ex._tag === 'Failure' ? Cause.pretty(ex.cause) : ex,
-        )
-      })
+      const runtime = yield* Effect.runtime<never>()
 
       const mutationEventSchema = makeMutationEventSchema(schema)
 
@@ -258,7 +277,7 @@ export const makeCoordinator =
         }).pipe(
           Effect.withSpan('@livestore/web:coordinator:broadcastChannel:onmessage'),
           Effect.tapCauseLogPretty,
-          Effect.runFork,
+          Runtime.runFork(runtime),
         ),
       )
 
@@ -267,14 +286,32 @@ export const makeCoordinator =
         // In case the graceful shutdown didn't finish in time, we terminate the worker
         runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})).pipe(Effect.timeout(2000)),
         // runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})).pipe(Effect.andThen(() => worker.terminate())),
-        Effect.sync(() => {
-          console.warn('[@livestore/web:coordinator] Worker did not gracefully shutdown in time, terminating it')
-          // worker.terminate()
-        }).pipe(
-          // Seems like we still need to wait a bit for the worker to terminate
-          // TODO improve this implementation (possibly via another weblock?)
-          Effect.delay(1000),
-        ),
+        Effect.void,
+        // Effect.sync(() => {
+        //   console.warn('[@livestore/web:coordinator] Worker did not gracefully shutdown in time, terminating it')
+        //   // worker.terminate()
+        // }).pipe(
+        //   // Seems like we still need to wait a bit for the worker to terminate
+        //   // TODO improve this implementation (possibly via another weblock?)
+        //   Effect.delay(1000),
+        // ),
+      )
+
+      yield* Effect.addFinalizer((ex) =>
+        Effect.gen(function* () {
+          isShutdownRef.current = true
+
+          if (gotLocky) {
+            yield* shutdownWorker
+
+            yield* Deferred.succeed(lockDeferred, undefined)
+          }
+
+          yield* Effect.logWarning(
+            '[@livestore/web:coordinator] coordinator shutdown',
+            ex._tag === 'Failure' ? Cause.pretty(ex.cause) : ex,
+          )
+        }).pipe(Effect.orDie),
       )
 
       const coordinator = {
@@ -283,10 +320,9 @@ export const makeCoordinator =
           enabled: devtoolsEnabled,
           channelId,
           connect: ({ connectionId, port }) =>
-            runInWorker(new WorkerSchema.DedicatedWorkerInner.ConnectDevtools({ port, connectionId })).pipe(
-              Effect.timeout(10_000),
-              Effect.mapError((cause) => new UnexpectedError({ cause })),
-            ),
+            runInWorker(
+              new WorkerSchema.DedicatedWorkerInner.ConnectDevtools({ port, connectionId, isLeaderTab: gotLocky }),
+            ).pipe(Effect.timeout(10_000), mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:connect')),
         },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
@@ -294,7 +330,8 @@ export const makeCoordinator =
 
         export: runInWorker(new WorkerSchema.DedicatedWorkerInner.Export()).pipe(
           Effect.timeout(10_000),
-          Effect.mapError((cause) => new UnexpectedError({ cause })),
+          mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:coordinator:export'),
         ),
 
         dangerouslyReset: (mode) =>
@@ -303,7 +340,7 @@ export const makeCoordinator =
 
             // TODO refactor to make use of persisted-sql destory functionality
             yield* resetPersistedData(storageOptions, schema.hash, mode)
-          }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause }))),
+          }).pipe(mapToUnexpectedError),
 
         execute: (query, bindValues) =>
           Effect.gen(function* () {
@@ -337,24 +374,15 @@ export const makeCoordinator =
 
         getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),
-          Effect.mapError((cause) => new UnexpectedError({ cause })),
+          mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:coordinator:getMutationLogData'),
         ),
-
-        shutdown: Effect.gen(function* () {
-          // TODO in case this coordinator holds the dedicated worker, handle shutdown properly
-          yield* shutdownWorker
-
-          yield* Deferred.succeed(lockDeferred, undefined)
-
-          yield* Scope.close(manualScope, Exit.interrupt(FiberId.none))
-        }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause }))),
 
         networkStatus,
       } satisfies Coordinator
 
       return coordinator
-    }).pipe(Scope.extend(manualScope), Effect.orDie, Effect.scoped)
-  }
+    }).pipe(mapToUnexpectedError)
 
 const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number) =>
   Effect.promise(async () => {

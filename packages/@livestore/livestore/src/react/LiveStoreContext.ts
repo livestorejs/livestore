@@ -1,10 +1,11 @@
 import React, { useContext } from 'react'
 
-import type { LiveStoreContext as LiveStoreContext_ } from '../effect/LiveStore.js'
+import type { LiveStoreContextRunning as LiveStoreContext_ } from '../effect/LiveStore.js'
+import type { Store } from '../store.js'
 
 export const LiveStoreContext = React.createContext<LiveStoreContext_ | undefined>(undefined)
 
-export const useStore = (): LiveStoreContext_ => {
+export const useStore = (): { store: Store } => {
   const storeContext = useContext(LiveStoreContext)
 
   if (storeContext === undefined) {

@@ -5,7 +5,7 @@ import React from 'react'
 
 import { globalReactivityGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeReactivityGraph, makeSchema, ParseUtils, sql } from '../../index.js'
+import { createStorePromise, DbSchema, makeReactivityGraph, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 
 export type Todo = {
@@ -87,7 +87,7 @@ export const makeTodoMvc = async ({
     }
   }
 
-  const store = await createStore({
+  const store = await createStorePromise({
     schema,
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
     adapter: makeInMemoryAdapter(),

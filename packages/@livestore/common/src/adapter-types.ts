@@ -1,4 +1,4 @@
-import type { Effect, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { Cause, Effect, Queue, Scope, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
@@ -76,7 +76,6 @@ export type Coordinator = {
    */
   getInitialSnapshot: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
-  shutdown: Effect.Effect<void, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
@@ -148,4 +147,5 @@ export type StoreAdapterFactory = (opts: {
   schema: LiveStoreSchema
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-}) => Effect.Effect<StoreAdapter, UnexpectedError>
+  shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+}) => Effect.Effect<StoreAdapter, UnexpectedError, Scope.Scope>

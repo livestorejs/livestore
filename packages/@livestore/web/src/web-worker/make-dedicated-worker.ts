@@ -15,6 +15,7 @@ import {
   PortPlatformRunner,
   Queue,
   Runtime,
+  Scheduler,
   Schema,
   Scope,
   Stream,
@@ -23,9 +24,16 @@ import {
 } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
+import * as OpfsUtils from '../opfs-utils.js'
 import { loadSqlite3Wasm } from '../sqlite-utils.js'
 import type { DevtoolsContext, InitialSetup, ShutdownState } from './common.js'
-import { configureConnection, InnerWorkerCtx, makeApplyMutation, OuterWorkerCtx } from './common.js'
+import {
+  configureConnection,
+  InnerWorkerCtx,
+  makeApplyMutation,
+  mapToUnexpectedError,
+  OuterWorkerCtx,
+} from './common.js'
 import { makeDevtoolsContext } from './devtools.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
@@ -34,6 +42,12 @@ import * as WorkerSchema from './schema.js'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
+}
+
+// @ts-expect-error TODO fix types
+if (import.meta.env.DEV) {
+  // @ts-expect-error TODO fix types
+  globalThis.__opfsUtils = OpfsUtils
 }
 
 export const makeWorker = (options: WorkerOptions) => {
@@ -53,7 +67,7 @@ export const makeWorkerRunnerOuter = ({ schema }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerOuter.InitialMessage, {
     InitialMessage: ({ port: incomingRequestsPort }) =>
       Effect.gen(function* () {
-        const innerFiber = makeWorkerRunner({ schema }).pipe(
+        const innerFiber = yield* makeWorkerRunner({ schema }).pipe(
           Layer.provide(PortPlatformRunner.layer(incomingRequestsPort)),
           Layer.launch,
           Effect.scoped,
@@ -62,7 +76,9 @@ export const makeWorkerRunnerOuter = ({ schema }: WorkerOptions) =>
           Effect.annotateLogs({ thread: self.name }),
           Effect.provide(Logger.pretty),
           Logger.withMinimumLogLevel(LogLevel.Debug),
-          Effect.runFork,
+          Effect.withScheduler(Scheduler.messageChannel()),
+          Effect.withMaxOpsBeforeYield(4096),
+          Effect.forkScoped,
         )
 
         return Layer.succeed(OuterWorkerCtx, OuterWorkerCtx.of({ innerFiber }))
@@ -190,6 +206,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             sync,
           } satisfies Context.Tag.Service<InnerWorkerCtx>
 
+          // @ts-expect-error For debugging purposes
+          globalThis.__innerWorkerCtx = innerWorkerCtx
+
           if (needsRecreate) {
             yield* recreateDb(innerWorkerCtx).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
@@ -290,8 +309,18 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExecuteBulk'),
         ),
-      BootStatusStream: () =>
-        Effect.andThen(InnerWorkerCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      // BootStatusStream: () =>
+      //   Effect.andThen(InnerWorkerCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      BootStatusStream: () => {
+        performance.mark('bootStatusStartBeforeCtx')
+        return Effect.andThen(InnerWorkerCtx, (_) => {
+          performance.mark('bootStatusStart')
+          return Stream.fromQueue(_.bootStatusQueue)
+        }).pipe(
+          Stream.unwrap,
+          Stream.tapSync(() => performance.mark('bootStatusUpdate')),
+        )
+      },
       NetworkStatusStream: () =>
         Effect.gen(function* (_) {
           const ctx = yield* InnerWorkerCtx
@@ -337,7 +366,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           yield* db.close
           yield* dbLog.close
         }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
-      ConnectDevtools: ({ port, connectionId }) =>
+      ConnectDevtools: ({ port, connectionId, isLeaderTab }) =>
         Effect.gen(function* () {
           const workerCtx = yield* InnerWorkerCtx
 
@@ -354,6 +383,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               storeMessagePortDeferred,
               connectionScope,
               connectionId,
+              isLeaderTab,
             })
             .pipe(Effect.tapCauseLogPretty, Effect.forkIn(connectionScope))
 
@@ -363,13 +393,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
         }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:ConnectDevtools')),
     })
   }).pipe(Layer.unwrapScoped)
-
-const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.tapCauseLogPretty,
-    Effect.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ cause: error }))),
-    Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
-  )
 
 const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
   Effect.gen(function* () {

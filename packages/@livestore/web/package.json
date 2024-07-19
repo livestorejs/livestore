@@ -15,7 +15,7 @@
       "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
       "default": "./dist/web-worker/vite-dev-polyfill.js"
     },
-    "./internal-shared-worker": {
+    "./shared-worker": {
       "types": "./dist/web-worker/make-shared-worker.d.ts",
       "default": "./dist/web-worker/make-shared-worker.js"
     },
@@ -37,7 +37,7 @@
       "worker-vite-dev-polyfill": [
         "./dist/web-worker/vite-dev-polyfill.d.ts"
       ],
-      "internal-shared-worker": [
+      "shared-worker": [
         "./dist/web-worker/make-shared-worker.d.ts"
       ],
       "sqlite-utils": [

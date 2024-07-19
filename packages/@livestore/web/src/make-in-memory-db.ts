@@ -1,5 +1,9 @@
-import type { GetRowsChangedCount, InMemoryDatabase, PreparedBindValues } from '@livestore/common'
-import { shouldNeverHappen } from '@livestore/utils'
+import {
+  type GetRowsChangedCount,
+  type InMemoryDatabase,
+  type PreparedBindValues,
+  SqliteError,
+} from '@livestore/common'
 
 import type { SqliteWasm } from './sqlite-utils.js'
 
@@ -54,8 +58,12 @@ export const makeInMemoryDb = (
                 }
               }
             } catch (e) {
-              console.error(e)
-              shouldNeverHappen(`Error while executing query ${queryStr}`)
+              throw new SqliteError({
+                sql: queryStr,
+                code: (e as any).resultCode,
+                cause: e,
+                bindValues,
+              })
             } finally {
               // reset the cached statement so we can use it again in the future
               stmt.reset()
@@ -66,8 +74,12 @@ export const makeInMemoryDb = (
           finalize: () => stmt.finalize(),
         }
       } catch (e) {
-        console.error(e)
-        return shouldNeverHappen(`Error while preparing query ${queryStr}`)
+        throw new SqliteError({
+          sql: queryStr,
+          code: (e as any).resultCode,
+          cause: e,
+          bindValues: {},
+        })
       }
     },
     export: () => db.capi.sqlite3_js_db_export(db.pointer!),

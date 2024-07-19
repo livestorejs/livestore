@@ -1,4 +1,4 @@
-import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl, UnexpectedError } from '@livestore/common'
+import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
 import {
   Devtools,
   getExecArgsFromMutation,
@@ -8,13 +8,14 @@ import {
   prepareBindValues,
   sql,
   SqliteError,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, Queue, Scope, Stream } from '@livestore/utils/effect'
-import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
+import type { Deferred, Fiber, Queue, Scope } from '@livestore/utils/effect'
+import { Context, Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
@@ -51,6 +52,7 @@ export type DevtoolsContextEnabled = {
     storeMessagePortDeferred: Deferred.Deferred<MessagePort>
     connectionScope: Scope.CloseableScope
     connectionId: string
+    isLeaderTab: boolean
   }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
   connectionScopes: Set<Scope.CloseableScope>
   broadcast: (
@@ -211,6 +213,18 @@ export const makeApplyMutation = (
       }),
     )
 }
+
+export const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.tapCauseLogPretty,
+    Effect.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ cause: error }))),
+    Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+  )
+
+export const mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
+  stream.pipe(
+    Stream.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ cause: error }))),
+  )
 
 const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
   try {

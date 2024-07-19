@@ -24,17 +24,17 @@ describe('otel', () => {
     provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
     provider.register()
 
-    const tracer = otel.trace.getTracer('test')
+    const otelTracer = otel.trace.getTracer('test')
 
-    const span = tracer.startSpan('test')
+    const span = otelTracer.startSpan('test')
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const { store } = await makeTodoMvc({ otelTracer: tracer, otelContext })
+    const { store } = await makeTodoMvc({ otelTracer, otelContext })
 
     return {
       [Symbol.dispose]: () => store.destroy(),
       store,
-      tracer,
+      otelTracer,
       exporter,
       span,
       provider,
@@ -60,7 +60,7 @@ describe('otel', () => {
       ]
     `)
 
-    store.destroy()
+    await store.destroy()
     query.destroy()
     span.end()
 
@@ -193,7 +193,7 @@ describe('otel', () => {
       }
     `)
 
-    store.destroy()
+    await store.destroy()
     query.destroy()
     span.end()
 

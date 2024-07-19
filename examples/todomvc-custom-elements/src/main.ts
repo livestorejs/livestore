@@ -2,9 +2,10 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { createStore, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
+import { createStorePromise, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
 import { cuid } from '@livestore/utils/cuid'
 import { makeAdapter } from '@livestore/web'
+import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'
@@ -15,9 +16,9 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
   parseTemplate(String.raw({ raw: strings }, ...values))
 export const css = (strings: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: strings }, ...values)
 
-const store = await createStore({
+const store = await createStorePromise({
   schema,
-  adapter: makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker }),
+  adapter: makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, sharedWorker: LiveStoreSharedWorker }),
 })
 
 const appState$ = rowQuery(tables.app)

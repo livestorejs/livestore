@@ -13,37 +13,35 @@ export const withLock =
     options?: Omit<LockOptions, 'signal'>
   }) =>
   <Ctx, E, A>(eff: Effect.Effect<A, E, Ctx>): Effect.Effect<A | void, E | E2, Ctx> =>
-    Effect.gen(function* ($) {
-      const runtime = yield* $(Effect.runtime<Ctx>())
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<Ctx>()
 
-      const exit = yield* $(
-        Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
-          try: (signal) => {
-            if (signal.aborted) return 'aborted' as never
+      const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
+        try: (signal) => {
+          if (signal.aborted) return 'aborted' as never
 
-            // NOTE The 'signal' and 'ifAvailable' options cannot be used together.
-            const requestOptions = options?.ifAvailable === true ? options : { ...options, signal }
-            return navigator.locks.request(lockName, requestOptions, async (lock) => {
-              if (lock === null) {
-                if (onTaken) {
-                  const exit = await Runtime.runPromiseExit(runtime)(onTaken)
-                  if (exit._tag === 'Failure') {
-                    return exit
-                  }
+          // NOTE The 'signal' and 'ifAvailable' options cannot be used together.
+          const requestOptions = options?.ifAvailable === true ? options : { ...options, signal }
+          return navigator.locks.request(lockName, requestOptions, async (lock) => {
+            if (lock === null) {
+              if (onTaken) {
+                const exit = await Runtime.runPromiseExit(runtime)(onTaken)
+                if (exit._tag === 'Failure') {
+                  return exit
                 }
-                return
               }
+              return
+            }
 
-              // TODO also propagate Effect interruption to the execution
-              return Runtime.runPromiseExit(runtime)(eff)
-            })
-          },
-          catch: (err) => err as any as E,
-        }),
-      )
+            // TODO also propagate Effect interruption to the execution
+            return Runtime.runPromiseExit(runtime)(eff)
+          })
+        },
+        catch: (err) => err as any as E,
+      })
 
       if (exit._tag === 'Failure') {
-        return yield* $(Effect.failCause(exit.cause))
+        return yield* Effect.failCause(exit.cause)
       } else {
         return exit.value
       }

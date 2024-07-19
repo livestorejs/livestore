@@ -157,7 +157,6 @@ export const makeAdapter =
         // TODO actually implement this
         dangerouslyReset: () => Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.sync(() => mainDbLog.export()),
-        shutdown: Effect.dieMessage('Not implemented'),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator
 

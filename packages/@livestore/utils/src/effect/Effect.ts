@@ -24,24 +24,23 @@ export * from 'effect/Effect'
 //   })
 
 const getThreadName = () =>
-  isNonEmptyString(self.name) ? self.name : typeof window === 'object' ? 'Browser Main Thread' : 'unknown-thread'
+  typeof self !== 'undefined' && isNonEmptyString(self.name)
+    ? self.name
+    : typeof window === 'object'
+      ? 'Browser Main Thread'
+      : 'unknown-thread'
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.tapErrorCause(eff, (err) => {
-    if (Cause.isInterruptedOnly(err)) {
+  Effect.tapErrorCause(eff, (cause) => {
+    if (Cause.isInterruptedOnly(cause)) {
       // console.log('interrupted', Cause.pretty(err), err)
       return Effect.void
     }
 
     const threadName = getThreadName()
-
-    // const prettyError = (err as any).error ? (err as any).error.toString() : Cause.pretty(err)
-    // const prettyError = Cause.pretty(err)
-
-    // return Effect.logError(`Error on ${threadName}:`, prettyError)
-    const firstErrLine = err.toString().split('\n')[0]
-    return Effect.logError(`Error on ${threadName}: ${firstErrLine}`, err)
+    const firstErrLine = cause.toString().split('\n')[0]
+    return Effect.logError(`Error on ${threadName}: ${firstErrLine}`, cause)
   })
 
 export const logWarnIfTakesLongerThan =

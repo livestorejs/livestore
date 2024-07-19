@@ -20,6 +20,7 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
+import { mapToUnexpectedError, mapToUnexpectedErrorStream } from './common.js'
 import * as WorkerSchema from './schema.js'
 
 const makeWorkerRunner = Effect.gen(function* () {
@@ -63,7 +64,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.tapCauseLogPretty,
       Stream.unwrap,
       // Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-      Stream.mapError((cause) => new UnexpectedError({ cause })),
+      mapToUnexpectedErrorStream,
     ) as any
 
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
@@ -147,13 +148,6 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
 }).pipe(Layer.unwrapScoped)
 
-const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.tapCauseLogPretty,
-    Effect.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ cause: error }))),
-    Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
-  )
-
 export const makeWorker = () => {
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
@@ -161,7 +155,7 @@ export const makeWorker = () => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.replace(Logger.defaultLogger, Logger.prettyLogger({ mode: 'browser' }))),
+    Effect.provide(Logger.pretty),
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runFork,
   )

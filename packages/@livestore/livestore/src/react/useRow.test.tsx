@@ -297,7 +297,7 @@ describe.concurrent('useRow', () => {
       expect(renderCount.val).toBe(2)
 
       unmount()
-      store.destroy()
+      await store.destroy()
       span.end()
 
       const mapAttributes = (attributes: otel.Attributes) => {

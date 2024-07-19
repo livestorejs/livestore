@@ -197,6 +197,7 @@ export class DevtoolsConnected extends Schema.TaggedStruct('LSD.DevtoolsConnecte
 export class AppHostReady extends Schema.TaggedStruct('LSD.AppHostReady', {
   liveStoreVersion,
   channelId,
+  isLeaderTab: Schema.Boolean,
 }).annotations({ identifier: 'LSD.AppHostReady' }) {}
 
 export class Disconnect extends Schema.TaggedStruct('LSD.Disconnect', {
