@@ -1,3 +1,5 @@
+/* eslint-disable no-var */
+
 // Copied from fast-deep-equal
 // MIT License
 
@@ -7,13 +9,38 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
   if (a && b && typeof a == 'object' && typeof b == 'object') {
     if (a.constructor !== b.constructor) return false
 
-    let length, i
+    var length, i, keys
     if (Array.isArray(a)) {
       length = a.length
       // @ts-expect-error ...
       if (length != b.length) return false
+      for (i = length; i-- !== 0; )
+        // @ts-expect-error ...
+        if (!deepEqual(a[i], b[i])) return false
+      return true
+    }
+
+    if (a instanceof Map && b instanceof Map) {
+      if (a.size !== b.size) return false
+      for (i of a.entries()) if (!b.has(i[0])) return false
+      for (i of a.entries()) if (!deepEqual(i[1], b.get(i[0]))) return false
+      return true
+    }
+
+    if (a instanceof Set && b instanceof Set) {
+      if (a.size !== b.size) return false
+      for (i of a.entries()) if (!b.has(i[0])) return false
+      return true
+    }
+
+    if (ArrayBuffer.isView(a) && ArrayBuffer.isView(b)) {
       // @ts-expect-error ...
-      for (i = length; i-- !== 0; ) if (!equal(a[i], b[i])) return false
+      length = a.length
+      // @ts-expect-error ...
+      if (length != b.length) return false
+      for (i = length; i-- !== 0; )
+        // @ts-expect-error ...
+        if (a[i] !== b[i]) return false
       return true
     }
 
@@ -22,18 +49,19 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     if (a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf()
     if (a.toString !== Object.prototype.toString) return a.toString() === b.toString()
 
-    const keys = Object.keys(a)
+    keys = Object.keys(a)
     length = keys.length
     if (length !== Object.keys(b).length) return false
 
-    // @ts-expect-error ...
-    for (i = length; i-- !== 0; ) if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false
+    for (i = length; i-- !== 0; )
+      // @ts-expect-error ...
+      if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false
 
     for (i = length; i-- !== 0; ) {
-      const key = keys[i]
+      var key = keys[i]
 
       // @ts-expect-error ...
-      if (!equal(a[key], b[key])) return false
+      if (!deepEqual(a[key], b[key])) return false
     }
 
     return true
