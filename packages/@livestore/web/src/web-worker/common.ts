@@ -217,14 +217,12 @@ export const makeApplyMutation = (
 export const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.tapCauseLogPretty,
-    Effect.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ cause: error }))),
+    Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
     Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
   )
 
 export const mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
-  stream.pipe(
-    Stream.mapError((error) => (Schema.is(UnexpectedError)(error) ? error : new UnexpectedError({ cause: error }))),
-  )
+  stream.pipe(Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))))
 
 const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
   try {

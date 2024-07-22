@@ -8,6 +8,7 @@
   },
   "include": ["./src"],
   "references": [
+    { "path": "../packages/@livestore/effect-playwright" },
     { "path": "../packages/@livestore/common" },
     { "path": "../packages/@livestore/utils" },
     { "path": "../packages/@livestore/web" }

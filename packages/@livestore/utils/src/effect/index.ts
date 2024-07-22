@@ -61,7 +61,7 @@ export {
   JSONSchema,
   ParseResult,
 } from '@effect/schema'
-export * as Schema from './Schema.js'
+export * as Schema from './Schema/index.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'

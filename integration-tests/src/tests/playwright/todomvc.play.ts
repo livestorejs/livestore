@@ -1,52 +1,52 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import process from 'node:process'
 
-import { Deferred, Effect, Exit, Logger, Runtime, Schema } from '@livestore/utils/effect'
-import type { Page } from '@playwright/test'
-import { chromium, expect, test } from '@playwright/test'
+// TODO use normal import path when Playwright ESM/tsconfig bug is fixed
+import * as Playwright from '@livestore/effect-playwright/playwright-workaround'
+import { Effect, Fiber, Layer, Logger } from '@livestore/utils/effect'
+// import * as Playwright from '@livestore/effect-playwright'
+import type * as PW from '@playwright/test'
+import { test } from '@playwright/test'
 
-class SiteError extends Schema.TaggedError<SiteError>()('SiteError', {
-  cause: Schema.CauseDefectUnknown,
-}) {}
+const runTest =
+  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
+  (
+    {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
+    testInfo: PW.TestInfo,
+  ) => {
+    const thread = `playwright-worker-${testInfo.workerIndex}`
+    // @ts-expect-error TODO fix types
+    globalThis.name = thread
 
-const supportedMessageTypes = new Set(['error', 'log', 'warn', 'info', 'debug'])
-let page: Page
+    return eff.pipe(
+      Effect.withSpan(testInfo.title),
+      Effect.scoped,
+      Effect.provide(PWLive),
+      Effect.tapCauseLogPretty,
+      Effect.annotateLogs({ thread }),
+      Effect.provide(Logger.pretty),
+      Effect.runPromise,
+    )
+  }
 
-test.beforeAll(async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
-  console.log('Running Playwright tests in tmp dir:', tmpDir)
-  // Launch a browser with a persistent context.
-  const context = await chromium.launchPersistentContext(tmpDir, {})
-  page = await context.newPage()
-})
+const PWLive = Effect.gen(function* () {
+  const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
-test('basic', ({}) =>
-  Effect.gen(function* () {
-    yield* Effect.promise(() => page.goto(`https://todomvc.livestore.localhost/`))
+  return Playwright.browserContextLayer({ persistentContextPath })
+}).pipe(Layer.unwrapEffect)
 
-    const listenForError = Effect.async<void, SiteError>((cb) => {
-      page.on('console', async (message) => {
-        const msgType = message.type()
-        const msg = message.text()
+test(
+  'basic',
+  runTest(
+    Effect.gen(function* () {
+      const { browserContext } = yield* Playwright.BrowserContext
+      const page = yield* Effect.promise(() => browserContext.newPage())
 
-        if (msgType === 'error') {
-          cb(new SiteError({ cause: msg }))
-        } else {
-          if (supportedMessageTypes.has(msgType)) {
-            ;(console as any)[msgType](msg)
-          }
-        }
-      })
+      const pageConsoleFiber = yield* Playwright.handlePageConsole(page, `tab-1`).pipe(Effect.fork)
 
-      page.on('pageerror', (cause) => cb(new SiteError({ cause })))
-    })
-
-    yield* Effect.promise(() => page.waitForLoadState('load'))
-
-    const restTest = Effect.gen(function* () {
       yield* Effect.promise(async () => {
+        await page.goto(`https://todomvc.livestore.localhost/`)
         // const el = await page.waitForSelector('.new-todo', { timeout: 5000 })
         const el = page.locator('.new-todo')
         await el.waitFor({ timeout: 3000 })
@@ -55,37 +55,7 @@ test('basic', ({}) =>
         await el.press('Enter')
 
         await page.waitForSelector('.todo-list li label:text("Buy milk")')
-      })
-    })
-
-    yield* Effect.race(listenForError, restTest)
-
-    // page.exposeFunction('onMessageReceived', (message: string) => {
-    //   const result = Schema.decodeUnknownOption(Bridge.Result)(message)
-    //   // console.log('onMessageReceived', message)
-
-    //   if (result._tag === 'Some') {
-    //     Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
-    //   }
-    // })
-
-    // yield* Effect.promise(() =>
-    //   page.evaluate(() => {
-    //     window.addEventListener('message', (event) => {
-    //       ;(window as any).onMessageReceived(event.data)
-    //     })
-    //   }),
-    // )
-
-    // const exit = yield* Deferred.await(deferred)
-
-    // expect(exit).toStrictEqual(
-    //   Exit.succeed({
-    //     bootStatusUpdates: [
-    //       { stage: 'loading' },
-    //       { stage: 'migrating', progress: { done: 1, total: 1 } },
-    //       { stage: 'done' },
-    //     ],
-    //   }),
-    // )
-  }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.provide(Logger.pretty), Effect.runPromise))
+      }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber])))
+    }),
+  ),
+)

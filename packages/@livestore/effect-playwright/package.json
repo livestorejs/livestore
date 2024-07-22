@@ -1,27 +1,26 @@
 {
-  "name": "@livestore/tauri",
+  "name": "@livestore/effect-playwright",
   "version": "0.0.54-dev.27",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./playwright-workaround": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "echo No tests yet"
+    "test": "echo 'No tests'"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0"
-  },
-  "devDependencies": {
-    "@tauri-apps/api": "^1.5.6"
+    "@livestore/utils": "workspace:*"
   },
   "peerDependencies": {
-    "@tauri-apps/api": "^1.4.0"
+    "@playwright/test": ">=1.40.0"
   },
   "publishConfig": {
     "access": "public"

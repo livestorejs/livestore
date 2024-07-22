@@ -23,12 +23,15 @@ export * from 'effect/Effect'
 //     console.error(message, ...rest)
 //   })
 
-const getThreadName = () =>
-  typeof self !== 'undefined' && isNonEmptyString(self.name)
-    ? self.name
+const getThreadName = () => {
+  // @ts-expect-error TODO fix types
+  const globalName = globalThis.name
+  return isNonEmptyString(globalName)
+    ? globalName
     : typeof window === 'object'
       ? 'Browser Main Thread'
       : 'unknown-thread'
+}
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>

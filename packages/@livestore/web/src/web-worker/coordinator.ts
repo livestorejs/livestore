@@ -6,7 +6,6 @@ import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
-  Cause,
   Chunk,
   Deferred,
   Effect,
@@ -112,6 +111,7 @@ export const makeCoordinator =
           }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => sharedWorker)),
+        Effect.tapCauseLogPretty,
         Effect.tapErrorCause((cause) => shutdown(cause)),
         Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
         Effect.toForkedDeferred,
@@ -136,7 +136,6 @@ export const makeCoordinator =
 
         const mc = new MessageChannel()
 
-        // TODO handle shutdown
         const worker =
           options.worker instanceof globalThis.Worker
             ? options.worker
@@ -155,14 +154,38 @@ export const makeCoordinator =
         const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
         yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
 
+        yield* Effect.addFinalizer(() =>
+          Effect.gen(function* () {
+            console.log('[@livestore/web:coordinator] coordinator shutdown. sending shutdown message to shared worker')
+
+            // We first try to gracefully shutdown the dedicated worker and then forcefully terminate it
+            yield* Effect.raceFirst(
+              sharedWorker
+                .executeEffect(new WorkerSchema.DedicatedWorkerInner.Shutdown({}))
+                .pipe(Effect.andThen(() => worker.terminate())),
+
+              Effect.sync(() => {
+                console.warn('[@livestore/web:coordinator] Worker did not gracefully shutdown in time, terminating it')
+                worker.terminate()
+              }).pipe(
+                // Seems like we still need to wait a bit for the worker to terminate
+                // TODO improve this implementation (possibly via another weblock?)
+                Effect.delay(1000),
+              ),
+            )
+
+            console.log('[@livestore/web:coordinator] coordinator shutdown. worker terminated')
+          }).pipe(Effect.withSpan('@livestore/web:coordinator:lock:shutdown'), Effect.tapCauseLogPretty, Effect.orDie),
+        )
+
         yield* Effect.never
       }).pipe(Effect.withSpan('@livestore/web:coordinator:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
-        const innerLockDeferred = yield* Deferred.make<void>()
-        yield* WebLock.waitForDeferredLock(innerLockDeferred, LIVESTORE_TAB_LOCK).pipe(
+        // const innerLockDeferred = yield* Deferred.make<void>()
+        yield* WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
           Effect.andThen(() => {
             gotLocky = true
             return runLocked
@@ -297,21 +320,15 @@ export const makeCoordinator =
         // ),
       )
 
-      yield* Effect.addFinalizer((ex) =>
+      yield* Effect.addFinalizer((_ex) =>
         Effect.gen(function* () {
           isShutdownRef.current = true
+          // console.log('[@livestore/web:coordinator] coordinator shutdown', gotLocky, ex)
 
           if (gotLocky) {
-            yield* shutdownWorker
-
             yield* Deferred.succeed(lockDeferred, undefined)
           }
-
-          yield* Effect.logWarning(
-            '[@livestore/web:coordinator] coordinator shutdown',
-            ex._tag === 'Failure' ? Cause.pretty(ex.cause) : ex,
-          )
-        }).pipe(Effect.orDie),
+        }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
       const coordinator = {

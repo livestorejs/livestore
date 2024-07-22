@@ -5,6 +5,7 @@ import { schema } from './domain/schema'
 import App from './App'
 import { seed } from './domain/seed'
 import LiveStoreWorker from './livestore.worker?worker'
+import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { BootStatus } from '@livestore/livestore'
 
 const syncing =
@@ -16,7 +17,12 @@ const syncing =
       }
     : undefined
 
-const adapter = makeAdapter({ worker: LiveStoreWorker, storage: { type: 'opfs' }, syncing })
+const adapter = makeAdapter({
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+  storage: { type: 'opfs' },
+  syncing,
+})
 
 export const Root = () => (
   <LiveStoreProvider schema={schema} adapter={adapter} renderLoading={renderBootStatus} boot={seed}>

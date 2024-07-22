@@ -9,12 +9,12 @@ import { Transition } from '@headlessui/react'
 interface Props {
   title?: string
   isOpen: boolean
-  center: boolean
+  center?: boolean
   className?: string
   /* function called when modal is closed */
   onDismiss?: () => void
   children?: React.ReactNode
-  size: keyof typeof sizeClasses
+  size?: keyof typeof sizeClasses
 }
 const sizeClasses = {
   large: 'w-175',
@@ -22,7 +22,7 @@ const sizeClasses = {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-function Modal({ title, isOpen, center, size, className, onDismiss, children }: Props) {
+const Modal: React.FC<Props> = ({ title, isOpen, center = true, size = 'normal', className, onDismiss, children }) => {
   const ref = useRef<HTMLDivElement>(null) as RefObject<HTMLDivElement>
   const outerRef = useRef(null)
 
@@ -79,11 +79,6 @@ function Modal({ title, isOpen, center, size, className, onDismiss, children }: 
   )
 
   return ReactDOM.createPortal(modal, document.getElementById('root-modal') as Element)
-}
-
-Modal.defaultProps = {
-  size: 'normal',
-  center: true,
 }
 
 const memoed = memo(Modal)

@@ -74,15 +74,17 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessageDeferred)
-          // TODO bring back devtools when supporting multi-devtool connections
-          const isEqual = SchemaEquivalence.make(
-            WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(Schema.omit('devtools')),
+          const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(
+            Schema.omit('devtools', 'needsRecreate'),
           )
-          // const isEqual = SchemaEquivalence.make(WorkerSchema.DedicatedWorkerInner.InitialMessage)
+          const isEqual = SchemaEquivalence.make(messageSchema)
           if (isEqual(message, previousInitialMessage) === false) {
+            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage, message)
+
             yield* new UnexpectedError({
               cause: {
                 message: 'Initial message already sent and was different now',
+                diff,
                 previousInitialMessage,
                 newInitialMessage: message,
               },

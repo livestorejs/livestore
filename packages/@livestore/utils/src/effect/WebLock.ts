@@ -71,13 +71,25 @@ export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName:
   })
 
 export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<boolean>((cb) => {
+  Effect.async<boolean>((cb, signal) => {
     navigator.locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, (lock) => {
       cb(Effect.succeed(lock !== null))
 
       // the code below is still running
 
+      const abortPromise = new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => {
+          resolve()
+        })
+      })
+
       // holding lock until deferred is resolved
-      return Effect.runPromise(Deferred.await(deferred))
+      return Promise.race([
+        Effect.runPromise(Deferred.await(deferred)),
+        // .finally(() =>
+        //   console.log('[@livestore/utils:WebLock] tryGetDeferredLock. finally', lockName),
+        // ),
+        abortPromise,
+      ])
     })
   })

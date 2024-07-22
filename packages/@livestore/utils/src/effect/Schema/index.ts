@@ -4,9 +4,10 @@ import type { ParseOptions } from '@effect/schema/AST'
 import type { ParseError } from '@effect/schema/ParseResult'
 import { Effect, Hash } from 'effect'
 
-import { objectToString } from '../misc.js'
+import { objectToString } from '../../misc.js'
 
 export * from '@effect/schema/Schema'
+export * from './debug-diff.js'
 
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719

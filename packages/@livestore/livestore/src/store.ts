@@ -572,6 +572,8 @@ export class Store<
         window.postMessage(Schema.encodeSync(Devtools.DevtoolsWindowMessage.MessageForContentscript)(message), '*')
       }
 
+      sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
+
       const channelId = this.adapter.coordinator.devtools.channelId
 
       window.addEventListener('message', (event) => {

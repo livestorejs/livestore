@@ -15,11 +15,13 @@ export namespace DevtoolsWindowMessage {
   // 	channelId,
   // }) {}
 
+  export class LoadIframe extends Schema.TaggedStruct('LSD.WindowMessage.LoadIframe', {}) {}
+
   export class StoreReady extends Schema.TaggedStruct('LSD.WindowMessage.StoreReady', {
     channelId,
   }) {}
 
   export class MessageForStore extends Schema.Union(MessagePortReady, ContentscriptListening) {}
 
-  export class MessageForContentscript extends Schema.Union(StoreReady) {}
+  export class MessageForContentscript extends Schema.Union(StoreReady, LoadIframe) {}
 }

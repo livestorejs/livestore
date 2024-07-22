@@ -91,7 +91,7 @@ export function casesHandled(unexpectedCase: never): never {
 
 export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
   console.error(msg, ...args)
-  if (import.meta.env.DEV || import.meta.env.VITE_DEV) {
+  if (isDev()) {
     debugger
   }
 
@@ -231,3 +231,13 @@ export const isPromise = (value: any): value is Promise<unknown> => typeof value
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 
 export { objectToString as errorToString } from './misc.js'
+
+const isDev = memoizeByRef(() => {
+  if (import.meta.env !== undefined) {
+    return import.meta.env.DEV || import.meta.env.VITE_DEV
+  } else if (typeof process !== 'undefined' && process.env !== undefined) {
+    return process.env.DEV
+  } else {
+    return false
+  }
+})
