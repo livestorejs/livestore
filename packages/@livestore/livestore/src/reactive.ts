@@ -25,9 +25,8 @@
 
 import { BoundArray } from '@livestore/common'
 import type { PrettifyFlat } from '@livestore/utils'
-import { shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
-import { isEqual } from 'lodash-es'
 // import { getDurationMsFromSpan } from './otel.js'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
@@ -234,7 +233,7 @@ export class ReactiveGraph<
       super: new Set(),
       label: options?.label,
       meta: options?.meta,
-      equal: options?.equal ?? isEqual,
+      equal: options?.equal ?? deepEqual,
       refreshes: 0,
     }
 
@@ -331,7 +330,7 @@ export class ReactiveGraph<
       recomputations: 0,
       label: options?.label,
       meta: options?.meta,
-      equal: options?.equal ?? isEqual,
+      equal: options?.equal ?? deepEqual,
       __getResult: getResult,
     }
 

@@ -50,7 +50,7 @@ export {
 
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-export { isEqual } from 'lodash-es'
+export { deepEqual } from '@livestore/utils'
 
 export type {
   StoreAdapter as DatabaseImpl,

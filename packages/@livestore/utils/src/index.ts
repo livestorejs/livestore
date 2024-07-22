@@ -8,6 +8,7 @@ export * from './set.js'
 export * from './browser.js'
 export * from './Deferred.js'
 export * from './misc.js'
+export * from './fast-deep-equal.js'
 export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
 

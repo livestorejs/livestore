@@ -1,11 +1,8 @@
 import type { QueryInfo } from '@livestore/common'
-import {} from // deriveCreateMutationDef as deriveCreateMutationDef_,
-// updateMutationForQueryInfo as updateMutationForQueryInfo_,
-'@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
+import { ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
-import { mapValues } from 'lodash-es'
 import React from 'react'
 
 import type { LiveQuery, ReactivityGraph } from '../index.js'
@@ -133,7 +130,7 @@ export const useRow: {
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
-        mapValues(sqliteTableDef.columns, (column, columnName) => (newValueOrFn: any) => {
+        ReadonlyRecord.map(sqliteTableDef.columns, (column, columnName) => (newValueOrFn: any) => {
           const newValue =
             // @ts-expect-error TODO fix typing
             typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current[columnName]) : newValueOrFn

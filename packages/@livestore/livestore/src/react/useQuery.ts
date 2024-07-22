@@ -1,5 +1,5 @@
+import { deepEqual } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
-import { isEqual } from 'lodash-es'
 import React from 'react'
 
 import type { GetResult, LiveQueryAny } from '../reactiveQueries/base-class.js'
@@ -90,7 +90,7 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
         // NOTE: we return a reference to the result object within LiveStore;
         // this implies that app code must not mutate the results, or else
         // there may be weird reactivity bugs.
-        if (isEqual(newValue, valueRef.current) === false) {
+        if (deepEqual(newValue, valueRef.current) === false) {
           setValue(newValue)
         }
       },
