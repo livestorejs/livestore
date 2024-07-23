@@ -12,7 +12,6 @@ import {
   Layer,
   Logger,
   LogLevel,
-  PortPlatformRunner,
   Queue,
   Runtime,
   Scheduler,
@@ -68,7 +67,7 @@ export const makeWorkerRunnerOuter = ({ schema }: WorkerOptions) =>
     InitialMessage: ({ port: incomingRequestsPort }) =>
       Effect.gen(function* () {
         const innerFiber = yield* makeWorkerRunner({ schema }).pipe(
-          Layer.provide(PortPlatformRunner.layer(incomingRequestsPort)),
+          Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
           Layer.launch,
           Effect.scoped,
           Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage:innerFiber'),

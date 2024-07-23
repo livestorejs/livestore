@@ -45,7 +45,7 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
           ...launchOptions,
           headless: false,
           args: [
-            // `--headless=new`, // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
+            process.env.CI ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
           ],

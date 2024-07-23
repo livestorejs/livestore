@@ -32,9 +32,9 @@
     "effect": "^3.3.1"
   },
   "devDependencies": {
-    "@effect/schema": "0.68.23",
+    "@effect/schema": "0.68.27",
     "drizzle-orm": "^0.31.2",
-    "effect": "3.5.3",
+    "effect": "3.5.7",
     "vite": "^5.3.1",
     "vitest": "^1.6.0"
   },

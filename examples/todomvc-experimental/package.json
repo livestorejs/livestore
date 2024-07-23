@@ -9,13 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@effect/schema": "0.68.23",
-    "@livestore/devtools-react": "0.0.54-dev.27",
+    "@effect/schema": "0.68.27",
+    "@livestore/devtools-react": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/web": "workspace:*",
     "@schickling/fps-meter": "^0.1.2",
-    "effect": "3.5.3",
+    "effect": "3.5.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "todomvc-app-css": "^2.4.3",

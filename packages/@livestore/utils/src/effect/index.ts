@@ -66,7 +66,6 @@ export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
 export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
-export * as PortPlatformRunner from './port-platform-runner.js'
 
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'
