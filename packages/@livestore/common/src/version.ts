@@ -1,3 +1,3 @@
-import packageJson from '../package.json' assert { type: 'json' }
+import packageJson from '../package.json' with { type: 'json' }
 
 export const liveStoreVersion = packageJson.version
