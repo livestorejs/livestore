@@ -2,10 +2,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-// TODO use normal import path when Playwright ESM/tsconfig bug is fixed
 import * as Playwright from '@livestore/effect-playwright'
 import { Effect, Fiber, Layer, Logger } from '@livestore/utils/effect'
-// import * as Playwright from '@livestore/effect-playwright'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
 

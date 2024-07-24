@@ -58,7 +58,7 @@ describe('LiveStoreProvider', () => {
     rerender(<Root forceUpdate={2} />)
 
     await waitFor(() => screen.getByText('Loading LiveStore: loading'))
-    await waitForElementToBeRemoved(() => screen.getByText((_) => _.startsWith('Loading LiveStore')))
+    await waitFor(() => screen.getByText((_) => _.includes('buy milk')))
 
     expect(appRenderCount).toBe(2)
 
