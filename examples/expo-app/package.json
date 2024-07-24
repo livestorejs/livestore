@@ -30,7 +30,7 @@
     "@types/react": "~18.3.1",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^8.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "5.5.4"
   },
   "private": true
 }

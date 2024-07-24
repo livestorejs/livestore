@@ -64,8 +64,14 @@ export {
 export * as Schema from './Schema/index.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
-export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'
-export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
+// export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'
+// export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
+export { Transferable, FileSystem, Terminal, HttpServer } from '@effect/platform'
+export * as Worker from './worker-tmp/Worker.js'
+export * as WorkerError from './worker-tmp/WorkerError.js'
+export * as WorkerRunner from './worker-tmp/WorkerRunner.js'
+export * as BrowserWorker from './browser-worker-tmp/BrowserWorker.js'
+export * as BrowserWorkerRunner from './browser-worker-tmp/BrowserWorkerRunner.js'
 
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'

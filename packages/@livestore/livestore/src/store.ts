@@ -364,6 +364,8 @@ export class Store<
     // mutationsEvents.forEach((_) => console.log(_.mutation, _.id, _.args))
     // console.groupEnd()
 
+    let durationMs: number
+
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
       { attributes: { 'livestore.mutateLabel': label } },
@@ -394,8 +396,8 @@ export class Store<
                         writeTables.add(tableName)
                       }
                     } catch (e: any) {
-                      debugger
                       console.error(e, mutationEvent)
+                      throw e
                     }
                   }
                 }
@@ -409,6 +411,7 @@ export class Store<
               } catch (e: any) {
                 console.error(e)
                 span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
+                throw e
               } finally {
                 span.end()
               }
@@ -431,12 +434,16 @@ export class Store<
           // Update all table refs together in a batch, to only trigger one reactive update
           this.reactivityGraph.setRefs(tablesToUpdate, { debugRefreshReason, otelContext, skipRefresh })
         } catch (e: any) {
+          console.error(e)
           span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
+          throw e
         } finally {
           span.end()
 
-          return { durationMs: getDurationMsFromSpan(span) }
+          durationMs = getDurationMsFromSpan(span)
         }
+
+        return { durationMs }
       },
     )
   }

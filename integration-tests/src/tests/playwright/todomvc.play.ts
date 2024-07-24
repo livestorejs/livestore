@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 // TODO use normal import path when Playwright ESM/tsconfig bug is fixed
-import * as Playwright from '@livestore/effect-playwright/playwright-workaround'
+import * as Playwright from '@livestore/effect-playwright'
 import { Effect, Fiber, Layer, Logger } from '@livestore/utils/effect'
 // import * as Playwright from '@livestore/effect-playwright'
 import type * as PW from '@playwright/test'
@@ -46,7 +46,7 @@ test(
       const pageConsoleFiber = yield* Playwright.handlePageConsole(page, `tab-1`).pipe(Effect.fork)
 
       yield* Effect.promise(async () => {
-        await page.goto(`https://todomvc.livestore.localhost/`)
+        await page.goto(`http://localhost:60001/`)
         // const el = await page.waitForSelector('.new-todo', { timeout: 5000 })
         const el = page.locator('.new-todo')
         await el.waitFor({ timeout: 3000 })

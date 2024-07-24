@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.54-dev.27",
+  "version": "0.0.54-dev.28",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -57,7 +57,7 @@
     "@effect/schema": "0.68.27",
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^20.12.11",
-    "@types/web": "^0.0.149",
+    "@types/web": "^0.0.151",
     "effect": "3.5.7",
     "vitest": "^1.6.0"
   },

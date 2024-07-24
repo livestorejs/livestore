@@ -15,7 +15,7 @@
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
-    "@livestore/devtools-react": "0.0.54-dev.27",
+    "@livestore/devtools-react": "0.0.54-dev.28",
     "effect-db-schema": "workspace:*"
   },
   "dependencies": {
@@ -23,8 +23,9 @@
     "madge": "^6.1.0"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.13.0",
-    "@typescript-eslint/parser": "^7.13.0",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "playwright": "1.45.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
@@ -37,7 +38,12 @@
     "eslint-plugin-unicorn": "^52.0.0",
     "prettier": "^3.3.2",
     "prettier-plugin-packagejson": "^2.5.0",
-    "typescript": "^5.4.5"
+    "typescript": "5.5.4"
   },
-  "packageManager": "pnpm@9.3.0"
+  "packageManager": "pnpm@9.3.0",
+  "pnpm": {
+    "patchedDependencies": {
+      "playwright@1.45.3": "patches/playwright@1.45.3.patch"
+    }
+  }
 }

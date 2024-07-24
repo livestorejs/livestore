@@ -8,13 +8,13 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/effect-playwright": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
-    "@livestore/effect-playwright": "workspace:*",
     "@livestore/web": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "1.40.0",
+    "@playwright/test": "1.45.3",
     "vite": "5.3.1"
   }
 }

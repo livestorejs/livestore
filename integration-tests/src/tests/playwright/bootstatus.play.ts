@@ -18,7 +18,6 @@ test('basic', ({ page }) =>
     page.exposeFunction('onMessageReceived', (message: string) => {
       const result = Schema.decodeUnknownOption(Bridge.Result)(message)
       // console.log('onMessageReceived', message)
-
       if (result._tag === 'Some') {
         Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
       }

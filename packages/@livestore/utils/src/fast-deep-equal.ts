@@ -46,8 +46,8 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
 
     // @ts-expect-error ...
     if (a.constructor === RegExp) return a.source === b.source && a.flags === b.flags
-    if (a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf()
-    if (a.toString !== Object.prototype.toString) return a.toString() === b.toString()
+    if (a.valueOf !== undefined && a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf()
+    if (a.toString !== undefined && a.toString !== Object.prototype.toString) return a.toString() === b.toString()
 
     keys = Object.keys(a)
     length = keys.length
