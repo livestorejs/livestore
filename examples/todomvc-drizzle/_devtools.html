@@ -11,9 +11,10 @@
     <script type="module">
       import '@livestore/devtools-react/index.css'
       import { mountDevtools } from '@livestore/devtools-react'
+      import sharedWorker from '@livestore/web/shared-worker?sharedworker'
       import { schema } from './src/schema/index.ts'
 
-      mountDevtools(schema, document.getElementById('root'))
+      mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker })
     </script>
   </body>
 </html>
