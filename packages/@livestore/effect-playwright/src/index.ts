@@ -33,7 +33,7 @@ export const browserContext = ({ extensionPath, persistentContextPath, launchOpt
       browserContext = yield* Effect.promise(() =>
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
-          headless: false,
+          headless: process.env.CI ? true : false,
           devtools: true,
         }),
       )
