@@ -44,7 +44,13 @@ jobs:
       - run: pnpm playwright install --with-deps
         working-directory: integration-tests
       - run: pnpm build:ts
-      - run: pnpm test
+      - run: |
+          pnpm --filter "todomvc" dev & 
+          SERVER_PID=$!
+          # Wait for the server to start and be ready
+          timeout 30s bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://localhost:60001)" != "200" ]]; do sleep 1; done' || exit 1
+          pnpm test
+          kill $SERVER_PID  # Stop the server after tests
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
