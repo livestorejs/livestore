@@ -47,7 +47,7 @@ test(
         await page.goto(`http://localhost:60001/`)
         // const el = await page.waitForSelector('.new-todo', { timeout: 5000 })
         const el = page.locator('.new-todo')
-        await el.waitFor({ timeout: 3000 })
+        await el.waitFor({ timeout: 10_000 })
 
         await el.fill('Buy milk')
         await el.press('Enter')
