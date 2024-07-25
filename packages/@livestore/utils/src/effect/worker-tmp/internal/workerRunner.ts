@@ -170,7 +170,7 @@ export const layer = <I, E, R, O>(
 export const makeSerialized = <
   R,
   I,
-  A extends Schema.TaggedRequest.Any,
+  A extends Schema.TaggedRequest.All,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>,
 >(
   schema: Schema.Schema<A, I, R>,
@@ -225,7 +225,7 @@ export const makeSerialized = <
 export const layerSerialized = <
   R,
   I,
-  A extends Schema.TaggedRequest.Any,
+  A extends Schema.TaggedRequest.All,
   const Handlers extends WorkerRunner.SerializedRunner.Handlers<A>,
 >(
   schema: Schema.Schema<A, I, R>,

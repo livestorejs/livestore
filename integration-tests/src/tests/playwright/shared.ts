@@ -15,20 +15,13 @@ const todos = DbSchema.table(
 export const schema = makeSchema({ tables: [todos] })
 
 export namespace Bridge {
-  // TODO fix with Giulio
-  const tmpExit = Schema.Exit({
-    success: Schema.Struct({
-      bootStatusUpdates: Schema.Array(BootStatus),
-    }),
-    failure: UnexpectedError,
-  })
   export class Result extends Schema.TaggedStruct('Bridge.Result', {
-    exit: tmpExit,
-    // exit: Schema.Exit({
-    //   success: Schema.Struct({
-    //     bootStatusUpdates: Schema.Array(BootStatus),
-    //   }),
-    //   failure: UnexpectedError,
-    // }),
+    exit: Schema.Exit({
+      success: Schema.Struct({
+        bootStatusUpdates: Schema.Array(BootStatus),
+      }),
+      failure: UnexpectedError,
+      defect: Schema.Defect,
+    }),
   }) {}
 }

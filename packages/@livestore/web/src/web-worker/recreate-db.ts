@@ -72,7 +72,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
         break
       }
       case 'hard-reset': {
-        // This is already the case by note doing anything now
+        // This is already the case by not doing anything now
 
         break
       }

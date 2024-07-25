@@ -338,7 +338,7 @@ export const makeCoordinator =
           channelId,
           connect: ({ connectionId, port }) =>
             runInWorker(
-              new WorkerSchema.DedicatedWorkerInner.ConnectDevtools({ port, connectionId, isLeaderTab: gotLocky }),
+              WorkerSchema.DedicatedWorkerInner.ConnectDevtools.make({ port, connectionId, isLeaderTab: gotLocky }),
             ).pipe(
               Effect.timeout(10_000),
               mapToUnexpectedError,

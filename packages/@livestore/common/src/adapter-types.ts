@@ -97,7 +97,7 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
 
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
   sql: Schema.String,
-  bindValues: Schema.Record(Schema.String, Schema.Any),
+  bindValues: Schema.Record({ key: Schema.String, value: Schema.Any }),
   /** The SQLite result code */
   code: Schema.Number,
   /** The original SQLite3 error */

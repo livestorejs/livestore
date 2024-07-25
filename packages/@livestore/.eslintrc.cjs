@@ -31,6 +31,7 @@ module.exports = {
     'unicorn/no-array-callback-reference': 'off',
     'unicorn/consistent-function-scoping': 'off',
     'unicorn/prefer-ternary': 'off',
+    'unicorn/throw-new-error': 'off',
     'unicorn/no-array-reduce': 'off',
     'unicorn/no-array-for-each': 'off',
     'unicorn/no-null': 'off',

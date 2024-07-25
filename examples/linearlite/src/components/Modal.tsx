@@ -54,6 +54,7 @@ const Modal: React.FC<Props> = ({ title, isOpen, center = true, size = 'normal',
   const modal = (
     <div ref={outerRef} onClick={handleClick}>
       <Transition
+        as="div"
         show={isOpen}
         enter="transition ease-out duration-100"
         enterFrom="transform opacity-0 scale-95"

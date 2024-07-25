@@ -155,7 +155,9 @@ export const makeManager = Effect.gen(function* () {
               case 3: {
                 return Queue.offer(
                   queue[0],
-                  response[1] === 2 ? Exit.fail(response[2]) : Exit.failCause(WorkerError.decodeCause(response[2])),
+                  response[1] === 2
+                    ? Exit.fail(response[2])
+                    : Exit.failCause(WorkerError.decodeCause(response[2] as any)),
                 )
               }
             }
@@ -317,7 +319,7 @@ export const makePoolLayer = <Tag, I, O, E>(
 ) => Layer.scoped(tag, makePool(options))
 
 /** @internal */
-export const makeSerialized = <I extends Schema.TaggedRequest.Any>(
+export const makeSerialized = <I extends Schema.TaggedRequest.All>(
   options: Worker.SerializedWorker.Options<I>,
 ): Effect.Effect<Worker.SerializedWorker<I>, WorkerError, Worker.WorkerManager | Worker.Spawner | Scope.Scope> =>
   Effect.gen(function* () {
@@ -356,7 +358,7 @@ export const makeSerialized = <I extends Schema.TaggedRequest.Any>(
   })
 
 /** @internal */
-export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
+export const makePoolSerialized = <I extends Schema.TaggedRequest.All>(
   options: Worker.SerializedWorkerPool.Options<I>,
 ) =>
   Effect.gen(function* () {
@@ -406,7 +408,7 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
   })
 
 /** @internal */
-export const makePoolSerializedLayer = <Tag, I extends Schema.TaggedRequest.Any>(
+export const makePoolSerializedLayer = <Tag, I extends Schema.TaggedRequest.All>(
   tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
   options: Worker.SerializedWorkerPool.Options<I>,
 ) => Layer.scoped(tag, makePoolSerialized(options))

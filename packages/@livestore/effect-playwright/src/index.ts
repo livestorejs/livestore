@@ -199,5 +199,5 @@ export const pageConsole = (page: PW.Page, label: string) =>
 export class SiteError extends Schema.TaggedError<SiteError>()('Playwright.SiteError', {
   // TODO remove `label` again once error tracing works properly with Playwright
   label: Schema.String,
-  messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.CauseDefectUnknown),
+  messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.Defect),
 }) {}

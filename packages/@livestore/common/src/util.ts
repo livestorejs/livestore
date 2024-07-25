@@ -12,7 +12,7 @@ export const SqlValueSchema = Schema.Union(Schema.String, Schema.Number, Schema.
 
 export const PreparedBindValues = Schema.Union(
   Schema.Array(SqlValueSchema),
-  Schema.Record(Schema.String, SqlValueSchema),
+  Schema.Record({ key: Schema.String, value: SqlValueSchema }),
 ).pipe(Schema.brand('PreparedBindValues'))
 
 export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>

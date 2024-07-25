@@ -93,7 +93,7 @@ export const rawSqlMutation = defineMutation(
   'livestore.RawSql',
   Schema.Struct({
     sql: Schema.String,
-    bindValues: Schema.optional(Schema.Record(Schema.String, Schema.Any)),
+    bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
     writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
   }),
   ({ sql, bindValues, writeTables }) => ({ sql, bindValues: bindValues ?? {}, writeTables }),
