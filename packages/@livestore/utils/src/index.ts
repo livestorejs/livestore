@@ -69,8 +69,6 @@ export const recRemoveUndefinedValues = (val: any): void => {
   }
 }
 
-export const debugDeepCopy = <T>(val: T): T => JSON.parse(JSON.stringify(val))
-
 export const prop =
   <T extends {}, K extends keyof T>(key: K) =>
   (obj: T): T[K] =>

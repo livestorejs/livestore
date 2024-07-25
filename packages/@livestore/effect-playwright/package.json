@@ -18,6 +18,9 @@
   "peerDependencies": {
     "@playwright/test": ">=1.40.0"
   },
+  "devDependencies": {
+    "@types/node": "^20.14.12"
+  },
   "publishConfig": {
     "access": "public"
   }
