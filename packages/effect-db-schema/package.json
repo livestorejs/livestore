@@ -1,6 +1,6 @@
 {
   "name": "effect-db-schema",
-  "version": "0.0.54-dev.31",
+  "version": "0.0.54-dev.32",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -28,8 +28,8 @@
     "dprint-node": "^1.0.8"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.67.22",
-    "effect": "^3.3.1"
+    "@effect/schema": "^0.69.1",
+    "effect": "^3.5.7"
   },
   "devDependencies": {
     "@effect/schema": "0.69.1",
