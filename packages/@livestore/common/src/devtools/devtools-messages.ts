@@ -47,6 +47,24 @@ export class DebugInfoRes extends Schema.TaggedStruct('LSD.DebugInfoRes', {
   debugInfo: DebugInfo,
 }).annotations({ identifier: 'LSD.DebugInfoRes' }) {}
 
+export class DebugInfoHistorySubscribe extends Schema.TaggedStruct('LSD.DebugInfoHistorySubscribe', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+}).annotations({ identifier: 'LSD.DebugInfoHistorySubscribe' }) {}
+
+export class DebugInfoHistoryRes extends Schema.TaggedStruct('LSD.DebugInfoHistoryRes', {
+  liveStoreVersion,
+  requestId,
+  debugInfoHistory: Schema.Array(DebugInfo),
+}).annotations({ identifier: 'LSD.DebugInfoHistoryRes' }) {}
+
+export class DebugInfoHistoryUnsubscribe extends Schema.TaggedStruct('LSD.DebugInfoHistoryUnsubscribe', {
+  liveStoreVersion,
+  requestId,
+  channelId,
+}).annotations({ identifier: 'LSD.DebugInfoHistoryUnsubscribe' }) {}
+
 export class DebugInfoResetReq extends Schema.TaggedStruct('LSD.DebugInfoResetReq', {
   liveStoreVersion,
   requestId,
@@ -234,6 +252,8 @@ export type MessageToAppHostCoordinator = typeof MessageToAppHostCoordinator.Typ
 
 export const MessageToAppHostStore = Schema.Union(
   DebugInfoReq,
+  DebugInfoHistorySubscribe,
+  DebugInfoHistoryUnsubscribe,
   DebugInfoResetReq,
   DebugInfoRerunQueryReq,
   ReactivityGraphSubscribe,
@@ -263,6 +283,7 @@ export type MessageFromAppHostCoordinator = typeof MessageFromAppHostCoordinator
 
 export const MessageFromAppHostStore = Schema.Union(
   DebugInfoRes,
+  DebugInfoHistoryRes,
   DebugInfoResetRes,
   DebugInfoRerunQueryRes,
   ReactivityGraphRes,

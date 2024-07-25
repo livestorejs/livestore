@@ -339,7 +339,11 @@ export const makeCoordinator =
           connect: ({ connectionId, port }) =>
             runInWorker(
               new WorkerSchema.DedicatedWorkerInner.ConnectDevtools({ port, connectionId, isLeaderTab: gotLocky }),
-            ).pipe(Effect.timeout(10_000), mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:connect')),
+            ).pipe(
+              Effect.timeout(10_000),
+              mapToUnexpectedError,
+              Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
+            ),
         },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),

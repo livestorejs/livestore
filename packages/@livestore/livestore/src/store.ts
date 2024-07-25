@@ -1,6 +1,7 @@
 import type {
   BootDb,
   BootStatus,
+  DebugInfo,
   ParamsObject,
   PreparedBindValues,
   ResetMode,
@@ -35,7 +36,7 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import { globalReactivityGraph } from './global-state.js'
-import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
+import { emptyDebugInfo as makeEmptyDebugInfo, MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
 import { NOT_REFRESHED_YET } from './reactive.js'
@@ -602,6 +603,7 @@ export class Store<
 
           const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
           const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
+          const debugInfoHistorySubscriptions = new Map<RequestId, Unsub>()
 
           this.adapter.coordinator.devtools
             .connect({ port: message.port, connectionId: this.devtoolsConnectionId })
@@ -663,6 +665,54 @@ export class Store<
                       )
                       break
                     }
+                    case 'LSD.DebugInfoHistorySubscribe': {
+                      const buffer: DebugInfo[] = []
+                      let hasStopped = false
+                      let rafHandle: number | undefined
+
+                      const tick = () => {
+                        buffer.push(this.mainDbWrapper.debugInfo)
+
+                        // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
+                        // will get the empty debug info
+                        // TODO We need to come up with a more graceful way to do this. Probably via a single global
+                        // `requestAnimationFrame` loop that is passed in somehow.
+                        this.mainDbWrapper.debugInfo = makeEmptyDebugInfo()
+
+                        if (buffer.length > 10) {
+                          sendToDevtools(
+                            Devtools.DebugInfoHistoryRes.make({
+                              debugInfoHistory: buffer,
+                              requestId,
+                              liveStoreVersion,
+                            }),
+                          )
+                          buffer.length = 0
+                        }
+
+                        if (hasStopped === false) {
+                          rafHandle = requestAnimationFrame(tick)
+                        }
+                      }
+
+                      rafHandle = requestAnimationFrame(tick)
+
+                      const unsub = () => {
+                        hasStopped = true
+                        if (rafHandle !== undefined) {
+                          cancelAnimationFrame(rafHandle)
+                        }
+                      }
+
+                      debugInfoHistorySubscriptions.set(requestId, unsub)
+
+                      break
+                    }
+                    case 'LSD.DebugInfoHistoryUnsubscribe': {
+                      debugInfoHistorySubscriptions.get(requestId)!()
+                      debugInfoHistorySubscriptions.delete(requestId)
+                      break
+                    }
                     case 'LSD.DebugInfoResetReq': {
                       this.mainDbWrapper.debugInfo.slowQueries.clear()
                       sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
@@ -714,6 +764,7 @@ export class Store<
                     }
                     case 'LSD.LiveQueriesUnsubscribe': {
                       liveQueriesSubscriptions.get(requestId)!()
+                      liveQueriesSubscriptions.delete(requestId)
                       break
                     }
                     // No default

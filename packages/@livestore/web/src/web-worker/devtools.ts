@@ -39,7 +39,8 @@ export const makeDevtoolsContext = (channelId: string) =>
       coordinatorMessagePort,
       connectionScope,
       storeMessagePortDeferred,
-      connectionId,
+      // TODO remove connectionId if not needed
+      // connectionId,
       isLeaderTab,
     }) =>
       Effect.gen(function* () {

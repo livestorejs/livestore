@@ -1,6 +1,6 @@
 {
   "name": "effect-db-schema",
-  "version": "0.0.54-dev.28",
+  "version": "0.0.54-dev.29",
   "sideEffects": false,
   "type": "module",
   "exports": {

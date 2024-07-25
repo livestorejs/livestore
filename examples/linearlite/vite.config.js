@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { VitePWA } from 'vite-plugin-pwa'
 import process from 'node:process'
+// import path from 'path'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -23,6 +24,13 @@ export default defineConfig({
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/sqlite-wasm'],
   },
+  // NOTE This is only in here for convenience while developing the LiveStore devtools (feel free to remove it in your app)
+  // resolve: {
+  //   alias: {
+  //     '@livestore/devtools-react': path.resolve('../../../../packages/@livestore/devtools-react/src'),
+  //     // '@livestore/devtools-react': path.resolve('../../../../packages/@livestore/devtools-react/tmp-build/dist'),
+  //   },
+  // },
   plugins: [
     react(),
     VitePWA({
