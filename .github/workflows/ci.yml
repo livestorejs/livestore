@@ -63,7 +63,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npm install -g netlify-cli
-          netlify deploy --dir=integration-tests/playwright-report
+          netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
 
   build-example-todomvc:
     strategy:
