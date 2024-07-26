@@ -571,6 +571,7 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
+  // #region devtools
   // TODO shutdown behaviour
   private bootDevtools = () =>
     Effect.gen(this, function* () {
@@ -782,6 +783,7 @@ export class Store<
 
       sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
     })
+  // #endregion devtools
 
   __devDownloadDb = () => {
     const data = this.mainDbWrapper.export()
@@ -830,6 +832,7 @@ export const createStorePromise = async <
     return yield* createStore({ ...options, storeScope: scope }).pipe(Scope.extend(scope))
   }).pipe(Effect.withSpan('createStore'), runEffectPromise)
 
+// #region createStore
 export const createStore = <
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
@@ -986,6 +989,7 @@ export const createStore = <
     Effect.provide(TracingLive),
   )
 }
+// #endregion createStore
 
 // TODO consider replacing with Effect's RC data structures
 class ReferenceCountedSet<T> {
