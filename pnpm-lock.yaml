@@ -78,8 +78,8 @@ importers:
   examples/expo-app:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@expo/vector-icons':
         specifier: ^14.0.1
         version: 14.0.2
@@ -142,8 +142,8 @@ importers:
   examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -167,7 +167,7 @@ importers:
         version: 0.1.2(react@18.3.1)
       '@tailwindcss/forms':
         specifier: ^0.5.7
-        version: 0.5.7(tailwindcss@3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))
+        version: 0.5.7(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))
       '@tiptap/core':
         specifier: 2.1.13
         version: 2.1.13(@tiptap/pm@2.1.13)
@@ -202,8 +202,8 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1
       dayjs:
-        specifier: ^1.11.11
-        version: 1.11.11
+        specifier: ^1.11.12
+        version: 1.11.12
       fractional-indexing:
         specifier: ^3.2.0
         version: 3.2.0
@@ -258,7 +258,7 @@ importers:
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))(typescript@5.5.4)
       '@tailwindcss/typography':
         specifier: ^0.5.13
-        version: 0.5.13(tailwindcss@3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))
+        version: 0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))
       '@types/node':
         specifier: ^20.14.12
         version: 20.14.12
@@ -288,7 +288,7 @@ importers:
         version: 7.17.0(eslint@8.57.0)(typescript@5.5.4)
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.19
         version: 10.4.19(postcss@8.4.38)
@@ -311,26 +311,26 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
       tailwindcss:
-        specifier: ^3.4.3
-        version: 3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
+        specifier: ^3.4.7
+        version: 3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
       typescript:
         specifier: 5.5.4
         version: 5.5.4
       vite:
-        specifier: ^5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vite-plugin-pwa:
-        specifier: ^0.20.0
-        version: 0.20.0(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))
+        version: 4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))
 
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.32
         version: 0.0.54-dev.32(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -347,8 +347,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -376,7 +376,7 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.18.0)
@@ -384,17 +384,17 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
       vite:
-        specifier: ^5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vite-plugin-pwa:
-        specifier: ^0.20.0
-        version: 0.20.0(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
 
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.32
         version: 0.0.54-dev.32(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -411,8 +411,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/web
       effect:
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -440,7 +440,7 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.19
         version: 10.4.19(postcss@8.4.38)
@@ -451,23 +451,23 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.18.0)
       tailwindcss:
-        specifier: ^3.4.3
-        version: 3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
+        specifier: ^3.4.7
+        version: 3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
       typescript:
         specifier: 5.5.4
         version: 5.5.4
       vite:
-        specifier: ^5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vite-plugin-pwa:
-        specifier: ^0.20.0
-        version: 0.20.0(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
 
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.32
         version: 0.0.54-dev.32(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -491,10 +491,10 @@ importers:
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240722.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240725.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
       effect:
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -525,7 +525,7 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.18.0)
@@ -533,17 +533,17 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
       vite:
-        specifier: ^5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vite-plugin-pwa:
-        specifier: ^0.20.0
-        version: 0.20.0(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
 
   examples/todomvc-experimental:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@livestore/devtools-react':
         specifier: 0.0.54-dev.32
         version: 0.0.54-dev.32(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -560,8 +560,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -589,7 +589,7 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.18.0)
@@ -597,11 +597,11 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
       vite:
-        specifier: ^5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vite-plugin-pwa:
-        specifier: ^0.20.0
-        version: 0.20.0(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
 
   integration-tests:
     dependencies:
@@ -628,8 +628,8 @@ importers:
         specifier: ^20.14.12
         version: 20.14.12
       vite:
-        specifier: 5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: 5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
 
   packages/@livestore/cf-sync:
     dependencies:
@@ -641,11 +641,11 @@ importers:
         version: link:../utils
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20240722.0
-        version: 4.20240722.0
+        specifier: 4.20240725.0
+        version: 4.20240725.0
       wrangler:
-        specifier: ^3.66.0
-        version: 3.66.0(@cloudflare/workers-types@4.20240722.0)
+        specifier: ^3.67.0
+        version: 3.67.1(@cloudflare/workers-types@4.20240725.0)
 
   packages/@livestore/common:
     dependencies:
@@ -744,8 +744,8 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
       vite:
-        specifier: 5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: 5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vitest:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@20.14.12)(jsdom@24.1.0)(terser@5.31.1)
@@ -782,20 +782,20 @@ importers:
         version: 6.1.1
     devDependencies:
       '@effect/experimental':
-        specifier: 0.20.2
-        version: 0.20.2(@effect/platform@0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7))(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7)(ws@8.18.0)
+        specifier: 0.20.3
+        version: 0.20.3(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)(ws@8.18.0)
       '@effect/opentelemetry':
         specifier: 0.34.40
-        version: 0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.5.7)
+        version: 0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.5.8)
       '@effect/platform':
-        specifier: 0.60.1
-        version: 0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7)
+        specifier: 0.60.2
+        version: 0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)
       '@effect/platform-browser':
-        specifier: 0.39.1
-        version: 0.39.1(@effect/platform@0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7))(effect@3.5.7)
+        specifier: 0.39.2
+        version: 0.39.2(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(effect@3.5.8)
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -806,8 +806,8 @@ importers:
         specifier: ^0.0.151
         version: 0.0.151
       effect:
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       vitest:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@20.14.12)(jsdom@24.1.0)(terser@5.31.1)
@@ -841,17 +841,17 @@ importers:
         version: 1.0.8
     devDependencies:
       '@effect/schema':
-        specifier: 0.69.1
-        version: 0.69.1(effect@3.5.7)
+        specifier: 0.69.2
+        version: 0.69.2(effect@3.5.8)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240722.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240725.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
       effect:
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       vite:
-        specifier: ^5.3.1
-        version: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vitest:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@20.14.12)(jsdom@24.1.0)(terser@5.31.1)
@@ -1665,8 +1665,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cloudflare/workers-types@4.20240722.0':
-    resolution: {integrity: sha512-/N072r7w7jNCgciRtImOQnHODn8CNwl3NHGO2lmC5bCsgevTRNeNj6B2IjS+OgEfo0qFoBgLejISl6ot9QvGvA==}
+  '@cloudflare/workers-types@4.20240725.0':
+    resolution: {integrity: sha512-L6T/Bg50zm9IIACQVQ0CdVcQL+2nLkRXdPz6BsXF3SlzgjyWR5ndVctAbfr/HLV7aKYxWnnEZsIORsTWb+FssA==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -1680,13 +1680,13 @@ packages:
     resolution: {integrity: sha512-1YUvQ+e0eeTWAHoN8Uz2x2U37jZs6IGutiIE5LXId7cxfUGhtZjzxE06FdUiuiRrW+UE0vNCdSNPH2lY4dQCOQ==}
     engines: {node: '>=12'}
 
-  '@effect/experimental@0.20.2':
-    resolution: {integrity: sha512-VJj5BNy9lXiofnWpQiBnSWHW7/yh2OHniASiMlzOv8crUeCzmt9KbLLpmPHYsoqykVIq52aa0gH0E4QlCV6wIA==}
+  '@effect/experimental@0.20.3':
+    resolution: {integrity: sha512-EbjoO4CFaf3S9KxGcKCuvjF/seI/1aqHtYbAirv+QaGQpy4lqYQ5Pc7nNPHHW2P7PhlKqJzFo8ZXjN4wWQooew==}
     peerDependencies:
-      '@effect/platform': ^0.60.1
-      '@effect/platform-node': ^0.55.1
-      '@effect/schema': ^0.69.1
-      effect: ^3.5.7
+      '@effect/platform': ^0.60.2
+      '@effect/platform-node': ^0.55.2
+      '@effect/schema': ^0.69.2
+      effect: ^3.5.8
       ioredis: ^5
       lmdb: ^3
       ws: ^8
@@ -1724,22 +1724,22 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@0.39.1':
-    resolution: {integrity: sha512-i6eBk2IXi1LYPeyqHYK8Qk8fMQvHQ4vrNXGZ+mkpIuMmTxAL+HGTF4zjetoHBgoqTAfsuQxBW18O4WkKv6gZiA==}
+  '@effect/platform-browser@0.39.2':
+    resolution: {integrity: sha512-/zkbTsRJJABVy2kU2eW8dcBBEFsG93nJmCphvfGTvWzj0j/T+dG2+934H6GOlfOWjgWP8wlS8ZWZ2pn0Wt1Jrg==}
     peerDependencies:
-      '@effect/platform': ^0.60.1
-      effect: ^3.5.7
+      '@effect/platform': ^0.60.2
+      effect: ^3.5.8
 
-  '@effect/platform@0.60.1':
-    resolution: {integrity: sha512-yegHTpO0b2ZlGFMUz4bmVsySB/rdNJH5XytdUDoR4zc1hiHtwP1t0eDy4OdYcAI16BOVR4b/3a6u/IEU++ZA1A==}
+  '@effect/platform@0.60.2':
+    resolution: {integrity: sha512-k8hW6r1WAmwZmvUmjMFVE+UQj8pKwbBFmUWcxa4X7MaTmkp9JKP0KdtKlz2A3pgTszPwdWNAbqGWwro/Ow1j3A==}
     peerDependencies:
-      '@effect/schema': ^0.69.1
-      effect: ^3.5.7
+      '@effect/schema': ^0.69.2
+      effect: ^3.5.8
 
-  '@effect/schema@0.69.1':
-    resolution: {integrity: sha512-+Gq3KrQh02B8nxUnha9Df8lCwKwWnK2XgEk7JDY+67/BrJSbGxVf0TjBRRJdlsH8xsqJ+HkCApSngGKPXbWDVQ==}
+  '@effect/schema@0.69.2':
+    resolution: {integrity: sha512-giyj+VX9k5PIzS5QVnmDyKwJe92X2dr4WhckDBWsIZilblSG2xH0J+JMKdBYZAsU0tONZIYtlm11xB4uOMsqMQ==}
     peerDependencies:
-      effect: ^3.5.7
+      effect: ^3.5.8
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3':
     resolution: {integrity: sha512-r3MIryXDeXDOZh7ih1l/yE9ZLORCd5e8vWg02azWRGj5SPTuoh69A2AIyn0Z31V/kHBfZ4HgWJ+OK3GTTwLmnw==}
@@ -4130,8 +4130,8 @@ packages:
   dateformat@4.6.3:
     resolution: {integrity: sha512-2P0p0pFGzHS5EMnhdxQi7aJN+iMheud0UhG4dlE1DLAlvL8JHjJJTX/CSm4JXwV0Ka5nGk3zC5mcb5bUQUxxMA==}
 
-  dayjs@1.11.11:
-    resolution: {integrity: sha512-okzr3f11N6WuqYtZSvm+F776mB41wRZMhKP+hc34YdW+KmtYYK9iqvHSwo2k9FEH3fhGXvOPV6yz2IcSrfRUDg==}
+  dayjs@1.11.12:
+    resolution: {integrity: sha512-Rt2g+nTbLlDWZTwwrIXjy9MeiZmSDI375FvZs72ngxx8PDC6YXOeR3q5LAuPzjZQxhiWdRKac7RKV+YyQYfYIg==}
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
@@ -4496,8 +4496,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.5.7:
-    resolution: {integrity: sha512-PzEncc0R3ZZhqNTR+fXrSX+anF/4Ai6ftKie1ZrUUWY7WPE7d4KjB6wjpeWoGMOC7xWFPGSkBBUudyJN1mx3+g==}
+  effect@3.5.8:
+    resolution: {integrity: sha512-gGrRH3BgsUrfOXx4vbD4puRS+/IyK7JiERhuKnjVYurTVDj3J+lPI7raJB9/AAKr59SGEiV7+Sy59/Q/Vfo5mQ==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -4906,6 +4906,14 @@ packages:
   fbjs@3.0.5:
     resolution: {integrity: sha512-ztsSx77JBtkuMrEypfhgc3cI0+0h+svqeie7xHbh1k/IKdcydnvadp/mUaGgjAOXQmQSxsqgaRhS3q9fy+1kxg==}
 
+  fdir@6.2.0:
+    resolution: {integrity: sha512-9XaWcDl0riOX5j2kYfy0kKdg7skw3IY6kA4LFT8Tk2yF9UdrADUy8D6AJuBLtf7ISm/MksumwAHE3WVbMRyCLw==}
+    peerDependencies:
+      picomatch: ^3 || ^4
+    peerDependenciesMeta:
+      picomatch:
+        optional: true
+
   fetch-retry@4.1.1:
     resolution: {integrity: sha512-e6eB7zN6UBSwGVwrbWVH+gdLnkW9WwHhmq2YDK1Sh30pzx1onRVGBvogTlUeWxwTa+L86NYdo4hFkh7O8ZjSnA==}
 
@@ -5138,12 +5146,15 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -6260,8 +6271,8 @@ packages:
     resolution: {integrity: sha512-r9deDe9p5FJUPZAk3A59wGH7Ii9YrjjWw0jmw/liSbHl2CHiyXj6FcDXDu2K3TjVAXqiJdaw3xxwlZZr9E6nHg==}
     hasBin: true
 
-  miniflare@3.20240718.0:
-    resolution: {integrity: sha512-TKgSeyqPBeT8TBLxbDJOKPWlq/wydoJRHjAyDdgxbw59N6wbP8JucK6AU1vXCfu21eKhrEin77ssXOpbfekzPA==}
+  miniflare@3.20240718.1:
+    resolution: {integrity: sha512-mn3MjGnpgYvarCRTfz4TQyVyY8yW0zz7f8LOAPVai78IGC/lcVcyskZcuIr7Zovb2i+IERmmsJAiEPeZHIIKbA==}
     engines: {node: '>=16.13'}
     hasBin: true
 
@@ -6746,6 +6757,10 @@ packages:
     resolution: {integrity: sha512-I3EurrIQMlRc9IaAZnqRR044Phh2DXY+55o7uJ0V+hYZAcQYSuFWsc9q5PvyDHUSCe1Qxn/iBz+78s86zWnGag==}
     engines: {node: '>=10'}
 
+  picomatch@4.0.2:
+    resolution: {integrity: sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg==}
+    engines: {node: '>=12'}
+
   pify@2.3.0:
     resolution: {integrity: sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog==}
     engines: {node: '>=0.10.0'}
@@ -6849,6 +6864,10 @@ packages:
 
   postcss@8.4.38:
     resolution: {integrity: sha512-Wglpdk03BSfXkHoQa3b/oulrotAkwrlLDRSOb9D0bN86FdRyE9lppSp33aHNPgBa0JKCoB+drFLZkQoRRYae5A==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.4.40:
+    resolution: {integrity: sha512-YF2kKIUzAofPMpfH6hOi2cGnv/HrUlfucspc7pDyvv7kGdqXrfj8SCl/t8owkEgKEuu8ZcRjSOxFxVLqwChZ2Q==}
     engines: {node: ^10 || ^12 || >=14}
 
   pouchdb-collections@1.0.1:
@@ -7351,6 +7370,7 @@ packages:
 
   rollup-plugin-inject@3.0.2:
     resolution: {integrity: sha512-ptg9PQwzs3orn4jkgXJ74bfs5vYz1NCZlSQMBUA0wKcGp5i5pA1AO3fOUEte8enhGUC+iapTCzEWw2jEFFUO/w==}
+    deprecated: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-inject.
 
   rollup-plugin-node-polyfills@0.2.1:
     resolution: {integrity: sha512-4kCrKPTJ6sK4/gLL/U5QzVT8cxJcofO0OU74tnB19F40cmuAKSzH5/siithxlofFEjwvw1YAhPmbvGNA6jEroA==}
@@ -7598,6 +7618,7 @@ packages:
 
   sourcemap-codec@1.4.8:
     resolution: {integrity: sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==}
+    deprecated: Please use @jridgewell/sourcemap-codec instead
 
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
@@ -7831,8 +7852,8 @@ packages:
   tabbable@6.2.0:
     resolution: {integrity: sha512-Cat63mxsVJlzYvN51JmVXIgNoUokrIaT2zLclCXjRd8boZ0004U4KCs/sToJ75C6sdlByWxpYnb5Boif1VSFew==}
 
-  tailwindcss@3.4.4:
-    resolution: {integrity: sha512-ZoyXOdJjISB7/BcLTR6SEsLgKtDStYyYZVLsUtWChO4Ps20CBad7lfJKVDiejocV4ME1hLmyY0WJE3hSDcmQ2A==}
+  tailwindcss@3.4.7:
+    resolution: {integrity: sha512-rxWZbe87YJb4OcSopb7up2Ba4U82BoiSGUdoDr3Ydrg9ckxFS/YWsvhN323GMcddgU65QRy7JndC7ahhInhvlQ==}
     engines: {node: '>=14.0.0'}
     hasBin: true
 
@@ -7908,6 +7929,10 @@ packages:
 
   tinybench@2.8.0:
     resolution: {integrity: sha512-1/eK7zUnIklz4JUUlL+658n58XO2hHLQfSk1Zf2LKieUjxidN16eKFEoDEfjHc3ohofSSqK3X5yO6VGb6iW8Lw==}
+
+  tinyglobby@0.2.0:
+    resolution: {integrity: sha512-+clyYQfAnNlt5a1x7CCQ6RLuTIztDfDAl6mAANvqRUlz6sVy5znCzJOhais8G6oyUyoeeaorLopO3HptVP8niA==}
+    engines: {node: '>=12.0.0'}
 
   tinypool@1.0.0:
     resolution: {integrity: sha512-KIKExllK7jp3uvrNtvRBYBWBOAXSX8ZvoaD8T+7KB/QHIuoJW3Pmr60zucywjAlMb5TeXUkcs/MWeWLu0qvuAQ==}
@@ -8277,8 +8302,8 @@ packages:
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
 
-  vite-plugin-pwa@0.20.0:
-    resolution: {integrity: sha512-/kDZyqF8KqoXRpMUQtR5Atri/7BWayW8Gp7Kz/4bfstsV6zSFTxjREbXZYL7zSuRL40HGA+o2hvUAFRmC+bL7g==}
+  vite-plugin-pwa@0.20.1:
+    resolution: {integrity: sha512-M6Pk4b18i5ryrhKgiIF8Zud0HGphYiCbEfLsCdlvmwn/CEnS6noVwfIDG/+3V7r6yxpPV/gLiKw+rIlCCiCCoQ==}
     engines: {node: '>=16.0.0'}
     peerDependencies:
       '@vite-pwa/assets-generator': ^0.2.4
@@ -8294,8 +8319,8 @@ packages:
     peerDependencies:
       vite: ^2.6.0 || 3 || 4 || 5
 
-  vite@5.3.1:
-    resolution: {integrity: sha512-XBmSKRLXLxiaPYamLv3/hnP/KXDai1NDexN0FpkTaZXTfycHvkRHoenpgl/fvuK/kPbB6xAgoyiryAhQNxYmAQ==}
+  vite@5.3.5:
+    resolution: {integrity: sha512-MdjglKR6AQXQb9JGiS7Rc2wC6uMjcm7Go/NHNO63EwiJXfuk9PgqiP/n5IDJCziMkfw9n4Ubp7lttNwz+8ZVKA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
     peerDependencies:
@@ -8513,8 +8538,8 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
-  wrangler@3.66.0:
-    resolution: {integrity: sha512-5fEyXsP8qvrUeR13kCfA3OG1z/ABx+/a8hzIA55nCUM2/tjI67ZkfeN1VdOmG6cipZDvs4HfN8rp7j+e+21nKA==}
+  wrangler@3.67.1:
+    resolution: {integrity: sha512-lLVJxq/OZMfntvZ79WQJNC1OKfxOCs6PLfogqDBuPFEQ3L/Mwqvd9IZ0bB8ahrwUN/K3lSdDPXynk9HfcGZxVw==}
     engines: {node: '>=16.17.0'}
     hasBin: true
     peerDependencies:
@@ -9695,7 +9720,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20240718.0':
     optional: true
 
-  '@cloudflare/workers-types@4.20240722.0': {}
+  '@cloudflare/workers-types@4.20240725.0': {}
 
   '@colors/colors@1.5.0': {}
 
@@ -9708,43 +9733,43 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 5.0.2
 
-  '@effect/experimental@0.20.2(@effect/platform@0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7))(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7)(ws@8.18.0)':
+  '@effect/experimental@0.20.3(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)(ws@8.18.0)':
     dependencies:
-      '@effect/platform': 0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7)
-      '@effect/schema': 0.69.1(effect@3.5.7)
-      effect: 3.5.7
+      '@effect/platform': 0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)
+      '@effect/schema': 0.69.2(effect@3.5.8)
+      effect: 3.5.8
       msgpackr: 1.10.2
     optionalDependencies:
       ws: 8.18.0
 
   '@effect/language-service@0.1.0': {}
 
-  '@effect/opentelemetry@0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.5.7)':
+  '@effect/opentelemetry@0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.5.8)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 1.25.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.25.1
-      effect: 3.5.7
+      effect: 3.5.8
     optionalDependencies:
       '@opentelemetry/sdk-metrics': 1.25.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.25.1(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@0.39.1(@effect/platform@0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7))(effect@3.5.7)':
+  '@effect/platform-browser@0.39.2(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(effect@3.5.8)':
     dependencies:
-      '@effect/platform': 0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7)
-      effect: 3.5.7
+      '@effect/platform': 0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)
+      effect: 3.5.8
       multipasta: 0.2.2
 
-  '@effect/platform@0.60.1(@effect/schema@0.69.1(effect@3.5.7))(effect@3.5.7)':
+  '@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)':
     dependencies:
-      '@effect/schema': 0.69.1(effect@3.5.7)
-      effect: 3.5.7
+      '@effect/schema': 0.69.2(effect@3.5.8)
+      effect: 3.5.8
       find-my-way-ts: 0.1.5
       multipasta: 0.2.2
 
-  '@effect/schema@0.69.1(effect@3.5.7)':
+  '@effect/schema@0.69.2(effect@3.5.8)':
     dependencies:
-      effect: 3.5.7
+      effect: 3.5.8
       fast-check: 3.20.0
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3(esbuild@0.17.19)':
@@ -10674,7 +10699,7 @@ snapshots:
       supports-color: 8.1.1
       supports-hyperlinks: 2.3.0
       ts-node: 10.9.2(@types/node@20.14.12)(typescript@5.5.4)
-      tslib: 2.6.2
+      tslib: 2.6.3
       widest-line: 3.1.0
       wordwrap: 1.0.0
       wrap-ansi: 7.0.0
@@ -11465,18 +11490,18 @@ snapshots:
     dependencies:
       tslib: 2.6.3
 
-  '@tailwindcss/forms@0.5.7(tailwindcss@3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))':
+  '@tailwindcss/forms@0.5.7(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))':
     dependencies:
       mini-svg-data-uri: 1.4.4
-      tailwindcss: 3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
+      tailwindcss: 3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
 
-  '@tailwindcss/typography@0.5.13(tailwindcss@3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))':
+  '@tailwindcss/typography@0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)))':
     dependencies:
       lodash.castarray: 4.4.0
       lodash.isplainobject: 4.0.6
       lodash.merge: 4.6.2
       postcss-selector-parser: 6.0.10
-      tailwindcss: 3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
+      tailwindcss: 3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4))
 
   '@tanstack/react-virtual@3.8.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -11997,14 +12022,14 @@ snapshots:
     transitivePeerDependencies:
       - graphql
 
-  '@vitejs/plugin-react@4.3.1(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))':
+  '@vitejs/plugin-react@4.3.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))':
     dependencies:
       '@babel/core': 7.24.7
       '@babel/plugin-transform-react-jsx-self': 7.24.7(@babel/core@7.24.7)
       '@babel/plugin-transform-react-jsx-source': 7.24.7(@babel/core@7.24.7)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+      vite: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -12811,7 +12836,7 @@ snapshots:
 
   dateformat@4.6.3: {}
 
-  dayjs@1.11.11: {}
+  dayjs@1.11.12: {}
 
   debug@2.6.9:
     dependencies:
@@ -13072,9 +13097,9 @@ snapshots:
     dependencies:
       detect-libc: 1.0.3
 
-  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240722.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1):
+  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240725.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1):
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20240722.0
+      '@cloudflare/workers-types': 4.20240725.0
       '@opentelemetry/api': 1.9.0
       '@types/react': 18.3.3
       expo-sqlite: 14.0.3(expo@51.0.14)
@@ -13180,7 +13205,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.5.7: {}
+  effect@3.5.8: {}
 
   ejs@3.1.10:
     dependencies:
@@ -13835,6 +13860,10 @@ snapshots:
       ua-parser-js: 1.0.38
     transitivePeerDependencies:
       - encoding
+
+  fdir@6.2.0(picomatch@4.0.2):
+    optionalDependencies:
+      picomatch: 4.0.2
 
   fetch-retry@4.1.1: {}
 
@@ -14946,7 +14975,7 @@ snapshots:
   logkitty@0.7.1:
     dependencies:
       ansi-fragments: 0.2.1
-      dayjs: 1.11.11
+      dayjs: 1.11.12
       yargs: 15.4.1
 
   longest-streak@3.1.0: {}
@@ -15486,7 +15515,7 @@ snapshots:
 
   mini-svg-data-uri@1.4.4: {}
 
-  miniflare@3.20240718.0:
+  miniflare@3.20240718.1:
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       acorn: 8.12.0
@@ -15977,6 +16006,8 @@ snapshots:
 
   picomatch@3.0.1: {}
 
+  picomatch@4.0.2: {}
+
   pify@2.3.0: {}
 
   pify@4.0.1: {}
@@ -16064,6 +16095,12 @@ snapshots:
       quote-unquote: 1.0.0
 
   postcss@8.4.38:
+    dependencies:
+      nanoid: 3.3.7
+      picocolors: 1.0.1
+      source-map-js: 1.2.0
+
+  postcss@8.4.40:
     dependencies:
       nanoid: 3.3.7
       picocolors: 1.0.1
@@ -17241,7 +17278,7 @@ snapshots:
 
   tabbable@6.2.0: {}
 
-  tailwindcss@3.4.4(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)):
+  tailwindcss@3.4.7(ts-node@10.9.2(@types/node@20.14.12)(typescript@5.5.4)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -17346,6 +17383,11 @@ snapshots:
   tiny-queue@0.2.1: {}
 
   tinybench@2.8.0: {}
+
+  tinyglobby@0.2.0:
+    dependencies:
+      fdir: 6.2.0(picomatch@4.0.2)
+      picomatch: 4.0.2
 
   tinypool@1.0.0: {}
 
@@ -17708,7 +17750,7 @@ snapshots:
       debug: 4.3.5(supports-color@8.1.1)
       pathe: 1.1.2
       tinyrainbow: 1.2.0
-      vite: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+      vite: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -17719,32 +17761,32 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-pwa@0.20.0(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0):
+  vite-plugin-pwa@0.20.1(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0):
     dependencies:
       debug: 4.3.5(supports-color@8.1.1)
-      fast-glob: 3.3.2
       pretty-bytes: 6.1.1
-      vite: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+      tinyglobby: 0.2.0
+      vite: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       workbox-build: 7.1.1(@types/babel__core@7.20.5)
       workbox-window: 7.1.0
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-svgr@4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.1(@types/node@20.14.12)(terser@5.31.1)):
+  vite-plugin-svgr@4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.5(@types/node@20.14.12)(terser@5.31.1)):
     dependencies:
       '@rollup/pluginutils': 5.1.0(rollup@2.79.1)
       '@svgr/core': 8.1.0(typescript@5.5.4)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
-      vite: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+      vite: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
     transitivePeerDependencies:
       - rollup
       - supports-color
       - typescript
 
-  vite@5.3.1(@types/node@20.14.12)(terser@5.31.1):
+  vite@5.3.5(@types/node@20.14.12)(terser@5.31.1):
     dependencies:
       esbuild: 0.21.5
-      postcss: 8.4.38
+      postcss: 8.4.40
       rollup: 4.18.0
     optionalDependencies:
       '@types/node': 20.14.12
@@ -17769,7 +17811,7 @@ snapshots:
       tinybench: 2.8.0
       tinypool: 1.0.0
       tinyrainbow: 1.2.0
-      vite: 5.3.1(@types/node@20.14.12)(terser@5.31.1)
+      vite: 5.3.5(@types/node@20.14.12)(terser@5.31.1)
       vite-node: 2.0.4(@types/node@20.14.12)(terser@5.31.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
@@ -18035,7 +18077,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20240718.0
       '@cloudflare/workerd-windows-64': 1.20240718.0
 
-  wrangler@3.66.0(@cloudflare/workers-types@4.20240722.0):
+  wrangler@3.67.1(@cloudflare/workers-types@4.20240725.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.3.4
       '@esbuild-plugins/node-globals-polyfill': 0.2.3(esbuild@0.17.19)
@@ -18044,7 +18086,7 @@ snapshots:
       chokidar: 3.6.0
       date-fns: 3.6.0
       esbuild: 0.17.19
-      miniflare: 3.20240718.0
+      miniflare: 3.20240718.1
       nanoid: 3.3.7
       path-to-regexp: 6.2.2
       resolve: 1.22.8
@@ -18055,7 +18097,7 @@ snapshots:
       workerd: 1.20240718.0
       xxhash-wasm: 1.0.2
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20240722.0
+      '@cloudflare/workers-types': 4.20240725.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil
