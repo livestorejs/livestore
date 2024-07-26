@@ -23,12 +23,10 @@
 
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
+import { BoundArray } from '@livestore/common'
 import type { PrettifyFlat } from '@livestore/utils'
-import { shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
-import { isEqual } from 'lodash-es'
-
-import { BoundArray } from './utils/bounded-collections.js'
 // import { getDurationMsFromSpan } from './otel.js'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
@@ -235,7 +233,7 @@ export class ReactiveGraph<
       super: new Set(),
       label: options?.label,
       meta: options?.meta,
-      equal: options?.equal ?? isEqual,
+      equal: options?.equal ?? deepEqual,
       refreshes: 0,
     }
 
@@ -332,7 +330,7 @@ export class ReactiveGraph<
       recomputations: 0,
       label: options?.label,
       meta: options?.meta,
-      equal: options?.equal ?? isEqual,
+      equal: options?.equal ?? deepEqual,
       __getResult: getResult,
     }
 
@@ -520,7 +518,9 @@ export class ReactiveGraph<
     superComp.sub.add(subComp)
     subComp.super.add(superComp)
 
-    this.runRefreshCallbacks()
+    if (this.currentDebugRefresh === undefined) {
+      this.runRefreshCallbacks()
+    }
   }
 
   removeEdge(
@@ -537,7 +537,9 @@ export class ReactiveGraph<
 
     subComp.super.delete(superComp)
 
-    this.runRefreshCallbacks()
+    if (this.currentDebugRefresh === undefined) {
+      this.runRefreshCallbacks()
+    }
   }
 
   // NOTE This function is performance-optimized (i.e. not using `Array.from`)
@@ -615,7 +617,9 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
   }
 
   const previousResult: EncodedOption<string> = includeResult
-    ? encodedOptionSome(JSON.stringify(atom.previousResult))
+    ? encodedOptionSome(
+        atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : JSON.stringify(atom.previousResult),
+      )
     : encodedOptionNone()
 
   if (atom._tag === 'ref') {

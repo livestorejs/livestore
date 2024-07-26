@@ -1,0 +1,27 @@
+{
+  "name": "@livestore/effect-playwright",
+  "version": "0.0.54-dev.27",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "test": "echo 'No tests'"
+  },
+  "dependencies": {
+    "@livestore/utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

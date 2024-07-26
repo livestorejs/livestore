@@ -15,9 +15,9 @@ import type { StackInfo } from './utils/stack-info.js'
 // NOTE running tests concurrently doesn't work with the default global db graph
 describe.concurrent('useRow', () => {
   it('should update the data based on component key', async () => {
-    using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
+    using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false })
 
-    const { wrapper, AppComponentSchema, store, dbGraph, makeRenderCount } = inputs
+    const { wrapper, AppComponentSchema, store, reactivityGraph, makeRenderCount } = inputs
 
     const renderCount = makeRenderCount()
 
@@ -25,7 +25,7 @@ describe.concurrent('useRow', () => {
       (userId: string) => {
         renderCount.inc()
 
-        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -53,9 +53,9 @@ describe.concurrent('useRow', () => {
   // TODO add a test that makes sure React doesn't re-render when a setter is used to set the same value
 
   it('should update the data reactively - via setState', async () => {
-    using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
+    using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false })
 
-    const { wrapper, AppComponentSchema, dbGraph, makeRenderCount } = inputs
+    const { wrapper, AppComponentSchema, reactivityGraph, makeRenderCount } = inputs
 
     const renderCount = makeRenderCount()
 
@@ -63,7 +63,7 @@ describe.concurrent('useRow', () => {
       (userId: string) => {
         renderCount.inc()
 
-        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -81,9 +81,9 @@ describe.concurrent('useRow', () => {
   })
 
   it('should update the data reactively - via raw store mutation', async () => {
-    using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
+    using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false })
 
-    const { wrapper, AppComponentSchema, store, dbGraph, makeRenderCount } = inputs
+    const { wrapper, AppComponentSchema, store, reactivityGraph, makeRenderCount } = inputs
 
     const renderCount = makeRenderCount()
 
@@ -91,7 +91,7 @@ describe.concurrent('useRow', () => {
       (userId: string) => {
         renderCount.inc()
 
-        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
+        const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
         return { state, setState }
       },
       { wrapper, initialProps: 'u1' },
@@ -115,17 +115,17 @@ describe.concurrent('useRow', () => {
   })
 
   it('should work for a larger app', async () => {
-    using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
-    const { wrapper, store, dbGraph, makeRenderCount, AppRouterSchema } = inputs
+    using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false })
+    const { wrapper, store, reactivityGraph, makeRenderCount, AppRouterSchema } = inputs
 
-    const allTodos$ = LiveStore.querySQL<Todo[]>(`select * from todos`, { label: 'allTodos', dbGraph })
+    const allTodos$ = LiveStore.querySQL<Todo[]>(`select * from todos`, { label: 'allTodos', reactivityGraph })
 
     const appRouterRenderCount = makeRenderCount()
     let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
     const AppRouter: React.FC = () => {
       appRouterRenderCount.inc()
 
-      const [state, setState] = LiveStoreReact.useRow(AppRouterSchema, { dbGraph })
+      const [state, setState] = LiveStoreReact.useRow(AppRouterSchema, { reactivityGraph })
 
       globalSetState = setState
 
@@ -153,7 +153,7 @@ describe.concurrent('useRow', () => {
     }
 
     const TaskDetails: React.FC<{ id: string }> = ({ id }) => {
-      const [todo] = LiveStoreReact.useRow(todos, id, { dbGraph })
+      const [todo] = LiveStoreReact.useRow(todos, id, { reactivityGraph })
       return <div role="content">{JSON.stringify(todo)}</div>
     }
 
@@ -198,8 +198,8 @@ describe.concurrent('useRow', () => {
   })
 
   it('should work for a useRow query chained with a useTemporary query', async () => {
-    using inputs = await makeTodoMvc({ useGlobalDbGraph: false })
-    const { store, wrapper, AppComponentSchema, dbGraph, makeRenderCount } = inputs
+    using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false })
+    const { store, wrapper, AppComponentSchema, reactivityGraph, makeRenderCount } = inputs
     const renderCount = makeRenderCount()
 
     store.mutate(
@@ -211,12 +211,12 @@ describe.concurrent('useRow', () => {
       (userId: string) => {
         renderCount.inc()
 
-        const [_row, _setRow, rowState$] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
+        const [_row, _setRow, rowState$] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
         const todos = LiveStoreReact.useTemporaryQuery(
           () =>
             LiveStore.querySQL<any[]>(
               (get) => LiveStore.sql`select * from todos where text like '%${get(rowState$).text}%'`,
-              { dbGraph, label: 'todosFiltered' },
+              { reactivityGraph, label: 'todosFiltered' },
             ),
           userId,
         )
@@ -262,9 +262,9 @@ describe.concurrent('useRow', () => {
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     it('should update the data based on component key', async () => {
-      using inputs = await makeTodoMvc({ useGlobalDbGraph: false, otelContext, otelTracer })
+      using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false, otelContext, otelTracer })
 
-      const { wrapper, AppComponentSchema, store, dbGraph, makeRenderCount, strictMode } = inputs
+      const { wrapper, AppComponentSchema, store, reactivityGraph, makeRenderCount, strictMode } = inputs
 
       const renderCount = makeRenderCount()
 
@@ -272,7 +272,7 @@ describe.concurrent('useRow', () => {
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { dbGraph })
+          const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
           return { state, setState }
         },
         { wrapper, initialProps: 'u1' },
@@ -297,7 +297,7 @@ describe.concurrent('useRow', () => {
       expect(renderCount.val).toBe(2)
 
       unmount()
-      store.destroy()
+      await store.destroy()
       span.end()
 
       const mapAttributes = (attributes: otel.Attributes) => {

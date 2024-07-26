@@ -5,6 +5,7 @@ import { parseFilterStateString, tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { getLocalId, useQuery } from '@livestore/livestore/react'
 
+// TODO make sure row exists before querying
 const filterClause$ = querySQL(`select value from filter_state where id = '${getLocalId()}'`, {
   map: ([{ value }]) => {
     if (value === undefined) return ''

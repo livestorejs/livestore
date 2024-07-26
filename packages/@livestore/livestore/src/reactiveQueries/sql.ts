@@ -1,15 +1,13 @@
-import type { QueryInfo, QueryInfoNone } from '@livestore/common'
+import { type Bindable, prepareBindValues, type QueryInfo, type QueryInfoNone } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import { globalDbGraph } from '../global-state.js'
+import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { Bindable } from '../utils/util.js'
-import { prepareBindValues } from '../utils/util.js'
-import type { DbContext, DbGraph, GetAtomResult, LiveQuery } from './base-class.js'
+import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
 export type MapRows<TResult, TRaw = any> =
@@ -28,7 +26,7 @@ export const querySQL = <TResult, TRaw = any>(
     queriedTables?: Set<string>
     bindValues?: Bindable
     label?: string
-    dbGraph?: DbGraph
+    reactivityGraph?: ReactivityGraph
   },
 ): LiveQuery<TResult, QueryInfoNone> =>
   new LiveStoreSQLQuery<TResult, QueryInfoNone>({
@@ -36,7 +34,7 @@ export const querySQL = <TResult, TRaw = any>(
     genQueryString: query,
     queriedTables: options?.queriedTables,
     bindValues: options?.bindValues,
-    dbGraph: options?.dbGraph,
+    reactivityGraph: options?.reactivityGraph,
     map: options?.map,
     queryInfo: { _tag: 'None' },
   })
@@ -49,14 +47,14 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
   _tag: 'sql' = 'sql'
 
   /** A reactive thunk representing the query text */
-  queryString$: Thunk<string, DbContext, RefreshReason> | undefined
+  queryString$: Thunk<string, QueryContext, RefreshReason> | undefined
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, DbContext, RefreshReason>
+  results$: Thunk<TResult, QueryContext, RefreshReason>
 
   label: string
 
-  protected dbGraph
+  protected reactivityGraph
 
   /** Currently only used by `rowQuery` for lazy table migrations and eager default row insertion */
   private execBeforeFirstRun
@@ -70,7 +68,7 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
     queriedTables,
     bindValues,
     label: label_,
-    dbGraph,
+    reactivityGraph,
     map,
     execBeforeFirstRun,
     queryInfo,
@@ -79,16 +77,16 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
     genQueryString: string | ((get: GetAtomResult) => string)
     queriedTables?: Set<string>
     bindValues?: Bindable
-    dbGraph?: DbGraph
+    reactivityGraph?: ReactivityGraph
     map?: MapRows<TResult>
-    execBeforeFirstRun?: (ctx: DbContext) => void
+    execBeforeFirstRun?: (ctx: QueryContext) => void
     queryInfo?: TQueryInfo
   }) {
     super()
 
     const label = label_ ?? genQueryString.toString()
     this.label = `sql(${label})`
-    this.dbGraph = dbGraph ?? globalDbGraph
+    this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
     this.execBeforeFirstRun = execBeforeFirstRun
     this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
     this.mapRows =
@@ -126,9 +124,9 @@ Result:`,
             ? map
             : shouldNeverHappen(`Invalid map function ${map}`)
 
-    let queryString$OrQueryString: string | Thunk<string, DbContext, RefreshReason>
+    let queryString$OrQueryString: string | Thunk<string, QueryContext, RefreshReason>
     if (typeof genQueryString === 'function') {
-      queryString$OrQueryString = this.dbGraph.makeThunk(
+      queryString$OrQueryString = this.reactivityGraph.makeThunk(
         (get, setDebugInfo, { rootOtelContext }, otelContext) => {
           const startMs = performance.now()
           const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? rootOtelContext))
@@ -148,7 +146,7 @@ Result:`,
 
     const queriedTablesRef = { current: queriedTables }
 
-    const results$ = this.dbGraph.makeThunk<TResult>(
+    const results$ = this.reactivityGraph.makeThunk<TResult>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
         otelTracer.startActiveSpan(
           'sql:...', // NOTE span name will be overridden further down
@@ -219,7 +217,7 @@ Result:`,
   //     },
   //     label: `${this.label}:js`,
   //     onDestroy: () => this.destroy(),
-  //     dbGraph: this.dbGraph,
+  //     reactivityGraph: this.reactivityGraph,
   //     queryInfo: undefined,
   //   })
 
@@ -237,14 +235,14 @@ Result:`,
   //     },
   //     label: `${this.label}:first`,
   //     onDestroy: () => this.destroy(),
-  //     dbGraph: this.dbGraph,
+  //     reactivityGraph: this.reactivityGraph,
   //   })
 
   destroy = () => {
     if (this.queryString$ !== undefined) {
-      this.dbGraph.destroyNode(this.queryString$)
+      this.reactivityGraph.destroyNode(this.queryString$)
     }
 
-    this.dbGraph.destroyNode(this.results$)
+    this.reactivityGraph.destroyNode(this.results$)
   }
 }

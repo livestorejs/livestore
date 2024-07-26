@@ -1,6 +1,6 @@
 {
   "name": "@livestore/common",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "type": "module",
   "exports": {
     ".": {
@@ -36,7 +36,7 @@
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^1.6.0"
+    "vitest": "^2.0.4"
   },
   "publishConfig": {
     "access": "public"

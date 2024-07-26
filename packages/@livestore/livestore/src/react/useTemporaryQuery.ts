@@ -53,8 +53,8 @@ export const useMakeTemporaryQuery = <TResult, TQueryInfo extends QueryInfo>(
   const fullKey = React.useMemo(
     // NOTE We're using the `makeQuery` function body string to make sure the key is unique across the app
     // TODO we should figure out whether this could cause some problems and/or if there's a better way to do this
-    () => (Array.isArray(key) ? key.join('-') : key) + '-' + store.graph.id + '-' + makeQuery.toString(),
-    [key, makeQuery, store.graph.id],
+    () => (Array.isArray(key) ? key.join('-') : key) + '-' + store.reactivityGraph.id + '-' + makeQuery.toString(),
+    [key, makeQuery, store.reactivityGraph.id],
   )
   const fullKeyRef = React.useRef<string>()
 

@@ -1,14 +1,11 @@
 import type { QueryInfo } from '@livestore/common'
-import {} from // deriveCreateMutationDef as deriveCreateMutationDef_,
-// updateMutationForQueryInfo as updateMutationForQueryInfo_,
-'@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
+import { ReadonlyRecord } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
-import { mapValues } from 'lodash-es'
 import React from 'react'
 
-import type { DbGraph, LiveQuery } from '../index.js'
+import type { LiveQuery, ReactivityGraph } from '../index.js'
 import type { RowResult } from '../row-query.js'
 import { rowQuery } from '../row-query.js'
 import { useStore } from './LiveStoreContext.js'
@@ -26,7 +23,7 @@ export type UseRowOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
 }
 
 export type UseRowOptionsBase = {
-  dbGraph?: DbGraph
+  reactivityGraph?: ReactivityGraph
 }
 
 /**
@@ -76,7 +73,7 @@ export const useRow: {
   const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
     typeof idOrOptions === 'string' ? options_ : idOrOptions
-  const { defaultValues, dbGraph } = options ?? {}
+  const { defaultValues, reactivityGraph } = options ?? {}
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
@@ -100,11 +97,11 @@ export const useRow: {
   const { query$, otelContext } = useMakeTemporaryQuery(
     (otelContext) =>
       DbSchema.tableIsSingleton(table)
-        ? (rowQuery(table, { otelContext, dbGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
+        ? (rowQuery(table, { otelContext, reactivityGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
         : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
             otelContext,
             defaultValues: defaultValues!,
-            dbGraph,
+            reactivityGraph,
           }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
     [id!, tableName],
     {
@@ -133,7 +130,7 @@ export const useRow: {
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
-        mapValues(sqliteTableDef.columns, (column, columnName) => (newValueOrFn: any) => {
+        ReadonlyRecord.map(sqliteTableDef.columns, (column, columnName) => (newValueOrFn: any) => {
           const newValue =
             // @ts-expect-error TODO fix typing
             typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current[columnName]) : newValueOrFn

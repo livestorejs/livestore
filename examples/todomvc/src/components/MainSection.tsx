@@ -1,7 +1,6 @@
 import { Schema } from '@effect/schema'
-import type { Store } from '@livestore/livestore'
 import { querySQL, sql } from '@livestore/livestore'
-import { LiveList, useStore } from '@livestore/livestore/react'
+import { getLocalId, useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import { mutations, tables, type Todo } from '../schema/index.js'
@@ -11,7 +10,8 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 // First, we create a reactive query which defines the filter clause for the SQL query.
 // It gets all the rows from the app table, and pipes them into a transform function.
 // The result is a reactive query whose value is a string containing the filter clause.
-const filterClause$ = querySQL(sql`select filter from app`, {
+// TODO make sure row exists before querying
+const filterClause$ = querySQL(sql`select filter from app where id = '${getLocalId()}'`, {
   map: (rows) => {
     const { filter } = Schema.decodeSync(
       Schema.Array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),
@@ -43,57 +43,24 @@ export const MainSection: React.FC = () => {
     [store],
   )
 
-  const getKey = React.useCallback((todo: Todo): string => todo.id, [])
-  const renderItem = React.useCallback(
-    (todo: Todo, { isInitialListRender }: { index: number; isInitialListRender: boolean }) => (
-      <Item todo={todo} parentHasMounted={!isInitialListRender} store={store} toggleTodo={toggleTodo} />
-    ),
-    [store, toggleTodo],
-  )
+  const visibleTodos = useQuery(visibleTodos$)
 
   return (
     <section className="main">
       <ul className="todo-list">
-        <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} />
+        {visibleTodos.map((todo) => (
+          <li key={todo.id}>
+            <div className="view">
+              <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+              <label>{todo.text}</label>
+              <button
+                className="destroy"
+                onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))}
+              ></button>
+            </div>
+          </li>
+        ))}
       </ul>
     </section>
-  )
-}
-
-const Item = ({
-  todo,
-  toggleTodo,
-  store,
-  parentHasMounted,
-}: {
-  todo: Todo
-  toggleTodo: (_: Todo) => void
-  store: Store
-  parentHasMounted: boolean
-}) => {
-  const [state, setState] = React.useState<'initial' | 'deleting' | 'mounted'>('initial')
-  const isDeletedRef = React.useRef(false)
-
-  React.useEffect(() => setState('mounted'), [])
-  const isZero = parentHasMounted && (state === 'initial' || state === 'deleting')
-
-  return (
-    <li
-      style={{ opacity: isZero ? 0 : 1, height: isZero ? 0 : 58, transition: 'all 0.2s ease-in-out' }}
-      onTransitionEnd={() => {
-        // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
-        // Since using the `setState` doesn't seem to happen "quickly enough"
-        if (state === 'deleting' && todo.deleted === null && !isDeletedRef.current) {
-          store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))
-          isDeletedRef.current = true
-        }
-      }}
-    >
-      <div className="view">
-        <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
-        <label>{todo.text}</label>
-        <button className="destroy" onClick={() => setState('deleting')}></button>
-      </div>
-    </li>
   )
 }

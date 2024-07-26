@@ -1,5 +1,5 @@
-import BoundMap, { BoundSet } from './utils/bounded-collections.js'
-import type { Bindable } from './utils/util.js'
+import type { Bindable } from '@livestore/common'
+import { BoundMap, BoundSet } from '@livestore/common'
 
 type Opaque<BaseType, BrandType = unknown> = BaseType & {
   readonly [Symbols.base]: BaseType

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "test": "echo No tests yet"
+    "test": "vitest"
   },
   "dependencies": {
     "date-fns": "^3.6.0",
@@ -41,24 +41,25 @@
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.16.24",
-    "@effect/opentelemetry": "^0.34.17",
-    "@effect/platform": "^0.57.0",
-    "@effect/platform-browser": "^0.36.0",
-    "@effect/schema": "^0.67.22",
+    "@effect/experimental": "^0.20.3",
+    "@effect/opentelemetry": "^0.34.40",
+    "@effect/platform": "^0.60.2",
+    "@effect/platform-browser": "^0.39.2",
+    "@effect/schema": "^0.69.2",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.3.1"
+    "effect": "^3.5.8"
   },
   "devDependencies": {
-    "@effect/experimental": "0.16.26",
-    "@effect/opentelemetry": "0.34.19",
-    "@effect/platform": "0.57.1",
-    "@effect/platform-browser": "0.36.1",
-    "@effect/schema": "0.67.23",
+    "@effect/experimental": "0.20.3",
+    "@effect/opentelemetry": "0.34.40",
+    "@effect/platform": "0.60.2",
+    "@effect/platform-browser": "0.39.2",
+    "@effect/schema": "0.69.2",
     "@opentelemetry/api": "^1.9.0",
-    "@types/node": "^20.12.11",
-    "@types/web": "^0.0.149",
-    "effect": "3.3.2"
+    "@types/node": "^20.14.12",
+    "@types/web": "^0.0.151",
+    "effect": "3.5.8",
+    "vitest": "^2.0.4"
   },
   "publishConfig": {
     "access": "public"

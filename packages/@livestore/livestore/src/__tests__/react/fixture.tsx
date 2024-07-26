@@ -3,9 +3,9 @@ import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { globalDbGraph } from '../../global-state.js'
+import { globalReactivityGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeDbGraph, makeSchema, ParseUtils, sql } from '../../index.js'
+import { createStorePromise, DbSchema, makeReactivityGraph, makeSchema, ParseUtils, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 
 export type Todo = {
@@ -62,15 +62,15 @@ export const parseTodos = ParseUtils.many(todos)
 export const makeTodoMvc = async ({
   otelTracer,
   otelContext,
-  useGlobalDbGraph = true,
+  useGlobalReactivityGraph = true,
   strictMode = process.env.REACT_STRICT_MODE !== undefined,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
-  useGlobalDbGraph?: boolean
+  useGlobalReactivityGraph?: boolean
   strictMode?: boolean
 } = {}) => {
-  const dbGraph = useGlobalDbGraph ? globalDbGraph : makeDbGraph()
+  const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
 
   const makeRenderCount = () => {
     let val = 0
@@ -87,17 +87,19 @@ export const makeTodoMvc = async ({
     }
   }
 
-  const store = await createStore({
+  const store = await createStorePromise({
     schema,
     boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
     adapter: makeInMemoryAdapter(),
-    dbGraph,
-    otelTracer,
-    otelRootSpanContext: otelContext,
+    reactivityGraph,
+    otelOptions: {
+      tracer: otelTracer,
+      rootSpanContext: otelContext,
+    },
   })
 
   // TODO improve typing of `LiveStoreContext`
-  const storeContext: LiveStoreContext = { store } as TODO
+  const storeContext = { stage: 'running', store } as any as LiveStoreContext
 
   const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
@@ -115,7 +117,7 @@ export const makeTodoMvc = async ({
     AppComponentSchema: userInfo,
     AppRouterSchema,
     store,
-    dbGraph,
+    reactivityGraph,
     makeRenderCount,
     strictMode,
   }

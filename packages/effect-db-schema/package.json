@@ -1,6 +1,6 @@
 {
   "name": "effect-db-schema",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -28,15 +28,15 @@
     "dprint-node": "^1.0.8"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.67.22",
-    "effect": "^3.3.1"
+    "@effect/schema": "^0.69.1",
+    "effect": "^3.5.7"
   },
   "devDependencies": {
-    "@effect/schema": "0.67.23",
-    "drizzle-orm": "^0.31.2",
-    "effect": "3.3.2",
-    "vite": "^5.3.1",
-    "vitest": "^1.6.0"
+    "@effect/schema": "0.69.2",
+    "drizzle-orm": "^0.32.1",
+    "effect": "3.5.8",
+    "vite": "^5.3.5",
+    "vitest": "^2.0.4"
   },
   "publishConfig": {
     "access": "public"

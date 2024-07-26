@@ -7,12 +7,12 @@ import { PriorityOptions, PriorityType } from '../../types/issue'
 interface Props {
   id: string
   button: ReactNode
-  filterKeyword: boolean
+  filterKeyword?: boolean
   className?: string
   onSelect?: (item: PriorityType) => void
 }
 
-function PriorityMenu({ id, button, filterKeyword, className, onSelect }: Props) {
+function PriorityMenu({ id, button, filterKeyword = false, className, onSelect }: Props) {
   const [keyword, setKeyword] = useState('')
 
   const handleSelect = (priority: PriorityType) => {
@@ -55,10 +55,6 @@ function PriorityMenu({ id, button, filterKeyword, className, onSelect }: Props)
       </Portal>
     </>
   )
-}
-
-PriorityMenu.defaultProps = {
-  filterKeyword: false,
 }
 
 export default PriorityMenu

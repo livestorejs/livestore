@@ -1,5 +1,6 @@
-import type { Context, Duration } from 'effect'
-import { Cause, Deferred, Effect, pipe } from 'effect'
+import type { Context, Duration, Scope } from 'effect'
+import { Cause, Deferred, Effect, Fiber, pipe } from 'effect'
+import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
 import { isNonEmptyString } from '../index.js'
@@ -7,33 +8,74 @@ import { UnknownError } from './Error.js'
 
 export * from 'effect/Effect'
 
-export const log = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
-  Effect.sync(() => {
-    console.log(message, ...rest)
-  })
+// export const log = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
+//   Effect.sync(() => {
+//     console.log(message, ...rest)
+//   })
 
-export const logWarn = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
-  Effect.sync(() => {
-    console.warn(message, ...rest)
-  })
+// export const logWarn = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
+//   Effect.sync(() => {
+//     console.warn(message, ...rest)
+//   })
 
-export const logError = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
-  Effect.sync(() => {
-    console.error(message, ...rest)
-  })
+// export const logError = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
+//   Effect.sync(() => {
+//     console.error(message, ...rest)
+//   })
+
+const getThreadName = () => {
+  // @ts-expect-error TODO fix types
+  const globalName = globalThis.name
+  return isNonEmptyString(globalName)
+    ? globalName
+    : typeof window === 'object'
+      ? 'Browser Main Thread'
+      : 'unknown-thread'
+}
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.tapErrorCause(eff, (err) => {
-    if (Cause.isInterruptedOnly(err)) {
+  Effect.tapErrorCause(eff, (cause) => {
+    if (Cause.isInterruptedOnly(cause)) {
+      // console.log('interrupted', Cause.pretty(err), err)
       return Effect.void
     }
 
-    const threadName =
-      typeof window === 'undefined' ? 'NodeJS Main Thread' : isNonEmptyString(self.name) ? self.name : 'unknown-thread'
-
-    return logError(`Error on ${threadName}`, Cause.pretty(err))
+    const threadName = getThreadName()
+    const firstErrLine = cause.toString().split('\n')[0]
+    return Effect.logError(`Error on ${threadName}: ${firstErrLine}`, cause)
   })
+
+export const logWarnIfTakesLongerThan =
+  ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
+  <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<never>()
+
+      let timedOut = false
+
+      const timeoutFiber = Effect.sleep(duration).pipe(
+        Effect.tap(() => {
+          timedOut = true
+          // TODO include span info
+          return Effect.logWarning(`${label}: Took longer than ${duration}ms`)
+        }),
+        Effect.provide(runtime),
+        Effect.runFork,
+      )
+
+      const start = Date.now()
+      const res = yield* eff
+
+      if (timedOut) {
+        const end = Date.now()
+        yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
+      }
+
+      yield* Fiber.interrupt(timeoutFiber)
+
+      return res
+    })
 
 export const tapSync =
   <A>(tapFn: (a: A) => unknown) =>
@@ -62,14 +104,15 @@ export const timeoutDieMsg =
 
 export const toForkedDeferred = <R, E, A>(
   eff: Effect.Effect<A, E, R>,
-): Effect.Effect<Deferred.Deferred<A, E>, never, R> =>
+): Effect.Effect<Deferred.Deferred<A, E>, never, R | Scope.Scope> =>
   pipe(
     Deferred.make<A, E>(),
     Effect.tap((deferred) =>
       pipe(
         Effect.exit(eff),
         Effect.flatMap((ex) => Deferred.done(deferred, ex)),
-        Effect.forkDaemon,
+        tapCauseLogPretty,
+        Effect.forkScoped,
       ),
     ),
   )

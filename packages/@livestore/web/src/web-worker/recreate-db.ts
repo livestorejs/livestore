@@ -1,31 +1,25 @@
 import { initializeSingletonTables, migrateDb, migrateTable, rehydrateFromMutationLog } from '@livestore/common'
 import { mutationLogMetaTable } from '@livestore/common/schema'
-import type * as SqliteWasm from '@livestore/sqlite-wasm'
-import { casesHandled, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { Effect, Queue, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeInMemoryDb } from '../make-in-memory-db.js'
-import type { WorkerCtx } from './common.js'
+import type { SqliteWasm } from '../sqlite-utils.js'
+import type { InnerWorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 
-export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
+export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
   Effect.gen(function* () {
-    // const ctx = yield* WorkerCtx
-    if (workerCtx._tag === 'NoLock') {
-      return shouldNeverHappen('No lock acquired')
-    }
-
-    const { schema } = workerCtx
-    const { db, dbLog, sqlite3 } = workerCtx.ctx
+    const { db, dbLog, sqlite3, schema, bootStatusQueue } = workerCtx
 
     const migrationOptions = schema.migrationOptions
     const hooks = migrationOptions.hooks
 
     yield* Effect.addFinalizer((ex) => {
       if (ex._tag === 'Success') return Effect.void
-      return db.destroy.pipe(Effect.orDie)
+      return db.destroy.pipe(Effect.tapCauseLogPretty, Effect.orDie)
     })
 
     const otelContext = otel.context.active()
@@ -42,7 +36,13 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
       yield* Effect.promise(async () => hooks.init!(tmpInMemoryDb))
     }
 
-    migrateDb({ db: tmpInMemoryDb, otelContext, schema })
+    yield* migrateDb({
+      db: tmpInMemoryDb,
+      otelContext,
+      schema,
+      onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
+    })
+
     initializeSingletonTables(schema, tmpInMemoryDb)
 
     if (hooks?.pre !== undefined) {
@@ -51,7 +51,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
 
     const inMemoryDbLog = makeInMemoryDb(sqlite3, dbLog.dbRef.current)
 
-    migrateTable({
+    yield* migrateTable({
       db: inMemoryDbLog,
       behaviour: 'create-if-not-exists',
       tableAst: mutationLogMetaTable.sqliteDef.ast,
@@ -60,14 +60,19 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
 
     switch (migrationOptions.strategy) {
       case 'from-mutation-log': {
-        yield* Effect.promise(() =>
-          rehydrateFromMutationLog({ db: tmpInMemoryDb, logDb: inMemoryDbLog, schema, migrationOptions }),
-        )
+        yield* rehydrateFromMutationLog({
+          db: tmpInMemoryDb,
+          logDb: inMemoryDbLog,
+          schema,
+          migrationOptions,
+          onProgress: ({ done, total }) =>
+            Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
+        })
 
         break
       }
       case 'hard-reset': {
-        // This is already the case by note doing anything now
+        // This is already the case by not doing anything now
 
         break
       }
@@ -88,7 +93,9 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
       yield* Effect.promise(async () => hooks.post!(tmpInMemoryDb))
     }
 
-    yield* fetchAndApplyRemoteMutations(workerCtx, tmpDb, false)
+    yield* fetchAndApplyRemoteMutations(workerCtx, tmpDb, false, ({ done, total }) =>
+      Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
+    )
 
     const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
     tmpDb.close()
@@ -96,27 +103,40 @@ export const recreateDb = (workerCtx: Context.Tag.Service<WorkerCtx>) =>
     yield* db.import(snapshotFromTmpDb)
 
     return snapshotFromTmpDb
-  }).pipe(Effect.scoped, Effect.withPerformanceMeasure('@livestore/web:worker:Setup'))
+  }).pipe(
+    Effect.scoped,
+    Effect.withSpan('@livestore/web:worker:recreateDb'),
+    Effect.withPerformanceMeasure('@livestore/web:worker:recreateDb'),
+  )
 
 // TODO replace with proper rebasing impl
 export const fetchAndApplyRemoteMutations = (
-  workerCtx: Context.Tag.Service<WorkerCtx>,
+  workerCtx: Context.Tag.Service<InnerWorkerCtx>,
   db: SqliteWasm.Database,
   shouldBroadcast: boolean,
+  onProgress: (_: { done: number; total: number }) => Effect.Effect<void>,
 ) =>
   Effect.gen(function* () {
-    if (workerCtx._tag === 'NoLock' || workerCtx.ctx.sync === undefined) return
-    const { sync } = workerCtx.ctx
+    if (workerCtx.sync === undefined) return
+    const { sync } = workerCtx
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
     const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db)
 
+    let processedMutations = 0
+
     // TODO stash and rebase local mutations on top of remote mutations
     // probably using the SQLite session extension
     yield* sync.inititialMessages.pipe(
-      Stream.tapSync((mutationEventEncoded) =>
-        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast, persisted: true }),
+      Stream.tap((mutationEventEncoded) =>
+        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast, persisted: true }).pipe(
+          Effect.andThen(() => {
+            processedMutations += 1
+            // TODO fix total
+            return onProgress({ done: processedMutations, total: processedMutations })
+          }),
+        ),
       ),
       Stream.runDrain,
     )
-  })
+  }).pipe(Effect.withSpan('@livestore/web:worker:fetchAndApplyRemoteMutations'))

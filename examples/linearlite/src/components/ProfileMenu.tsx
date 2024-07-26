@@ -32,6 +32,7 @@ export default function ProfileMenu({ isOpen, className, onDismiss, setShowAbout
   return (
     <div ref={ref}>
       <Transition
+        as="div"
         show={isOpen}
         enter="transition ease-out duration-100"
         enterFrom="transform opacity-0 scale-95"

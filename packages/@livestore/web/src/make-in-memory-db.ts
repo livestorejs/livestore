@@ -1,10 +1,15 @@
-import type { InMemoryDatabase, PreparedBindValues } from '@livestore/common'
-import type * as Sqlite from '@livestore/sqlite-wasm'
-import { shouldNeverHappen } from '@livestore/utils'
+import {
+  type GetRowsChangedCount,
+  type InMemoryDatabase,
+  type PreparedBindValues,
+  SqliteError,
+} from '@livestore/common'
+
+import type { SqliteWasm } from './sqlite-utils.js'
 
 export const makeInMemoryDb = (
-  sqlite3: Sqlite.Sqlite3Static,
-  db: Sqlite.Database & { capi: Sqlite.CAPI },
+  sqlite3: SqliteWasm.Sqlite3Static,
+  db: SqliteWasm.Database & { capi: SqliteWasm.CAPI },
 ): InMemoryDatabase => {
   return {
     _tag: 'InMemoryDatabase',
@@ -18,12 +23,16 @@ export const makeInMemoryDb = (
               stmt.bind(bindValues)
             }
 
+            let res: GetRowsChangedCount
+
             try {
               stmt.step()
             } finally {
               stmt.reset() // Reset is needed for next execution
-              return () => sqlite3.capi.sqlite3_changes(db)
+              res = () => sqlite3.capi.sqlite3_changes(db)
             }
+
+            return res
           },
           select: <T>(bindValues: PreparedBindValues) => {
             if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
@@ -49,8 +58,12 @@ export const makeInMemoryDb = (
                 }
               }
             } catch (e) {
-              console.error(e)
-              shouldNeverHappen(`Error while executing query ${queryStr}`)
+              throw new SqliteError({
+                sql: queryStr,
+                code: (e as any).resultCode,
+                cause: e,
+                bindValues,
+              })
             } finally {
               // reset the cached statement so we can use it again in the future
               stmt.reset()
@@ -61,8 +74,12 @@ export const makeInMemoryDb = (
           finalize: () => stmt.finalize(),
         }
       } catch (e) {
-        console.error(e)
-        return shouldNeverHappen(`Error while preparing query ${queryStr}`)
+        throw new SqliteError({
+          sql: queryStr,
+          code: (e as any).resultCode,
+          cause: e,
+          bindValues: {},
+        })
       }
     },
     export: () => db.capi.sqlite3_js_db_export(db.pointer!),
@@ -73,17 +90,21 @@ export const makeInMemoryDb = (
         stmt.bind(bindValues)
       }
 
+      let res: GetRowsChangedCount
+
       try {
         stmt.step()
       } finally {
         stmt.finalize()
-        return () => sqlite3.capi.sqlite3_changes(db)
+        res = () => sqlite3.capi.sqlite3_changes(db)
       }
-    },
-    dangerouslyReset: async () => {
-      db.capi.sqlite3_close_v2(db.pointer!)
 
-      db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as Sqlite.Database & { capi: Sqlite.CAPI }
+      return res
     },
+    // dangerouslyReset: async () => {
+    //   db.capi.sqlite3_close_v2(db.pointer!)
+
+    //   db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
+    // },
   } satisfies InMemoryDatabase
 }

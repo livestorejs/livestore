@@ -3,7 +3,7 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
 export class IdbBinaryError extends Schema.TaggedError<IdbBinaryError>()('IDBError', {
-  error: Schema.Any,
+  cause: Schema.Any,
 }) {}
 
 /**
@@ -35,7 +35,7 @@ export class IdbBinary {
     }
 
     openRequest.onerror = () => {
-      cb(new IdbBinaryError({ error: 'Failed to open database.' }))
+      cb(new IdbBinaryError({ cause: 'Failed to open database.' }))
     }
   })
 
@@ -51,7 +51,7 @@ export class IdbBinary {
         }
 
         getRequest.onerror = () => {
-          cb(new IdbBinaryError({ error: 'Failed to get data.' }))
+          cb(new IdbBinaryError({ cause: 'Failed to get data.' }))
         }
       }),
     )
@@ -68,7 +68,7 @@ export class IdbBinary {
         }
 
         putRequest.onerror = () => {
-          cb(new IdbBinaryError({ error: 'Failed to write data.' }))
+          cb(new IdbBinaryError({ cause: 'Failed to write data.' }))
         }
       }),
     )
@@ -80,7 +80,7 @@ export class IdbBinary {
         this.db = null
       }
     },
-    catch: (error) => new IdbBinaryError({ error }),
+    catch: (error) => new IdbBinaryError({ cause: error }),
   })
 
   public deleteDb = Effect.async<void, IdbBinaryError>((cb) => {
@@ -91,7 +91,7 @@ export class IdbBinary {
     }
 
     deleteRequest.onerror = () => {
-      cb(new IdbBinaryError({ error: 'Failed to delete database.' }))
+      cb(new IdbBinaryError({ cause: 'Failed to delete database.' }))
     }
   })
 }

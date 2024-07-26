@@ -45,7 +45,7 @@ const Header = function ({ children }: MenuItemProps) {
 }
 
 export const Menu = (props: MenuProps) => {
-  const { id, size, onKeywordChange, children, className, filterKeyword, searchPlaceholder } = props
+  const { id, size = 'small', onKeywordChange, children, className, filterKeyword, searchPlaceholder } = props
   const ref = useRef<HTMLInputElement>(null)
 
   const classes = classnames('cursor-default bg-white rounded shadow-modal z-100', sizeClasses[size], className)
@@ -85,6 +85,3 @@ export const Menu = (props: MenuProps) => {
 Menu.Item = Item
 Menu.Divider = Divider
 Menu.Header = Header
-Menu.defaultProps = {
-  size: 'small',
-}

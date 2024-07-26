@@ -35,7 +35,8 @@ export default defineConfig({
     headers: credentiallessHeaders,
   },
   build: {
-    sourcemap: true,
+    //   sourcemap: true,
+    //   minify: false,
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {

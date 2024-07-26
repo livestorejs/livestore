@@ -1,8 +1,5 @@
+import { BootStatus, UnexpectedError } from '@livestore/common'
 import { Schema, Transferable } from '@livestore/utils/effect'
-
-export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('UnexpectedError', {
-  error: Schema.Any,
-}) {}
 
 export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
   query: Schema.String,
@@ -28,26 +25,37 @@ export const ExecutionBacklogItem = Schema.Union(
   ExecutionBacklogItemTxn,
 )
 
-export type ExecutionBacklogItem = Schema.Schema.Type<typeof ExecutionBacklogItem>
+export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
 
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
   /** Default is root directory */
-  directory: Schema.optional(Schema.String),
+  directory: Schema.optionalWith(Schema.String, { default: () => '' }),
   /** Default is 'livestore-' */
-  filePrefix: Schema.optional(Schema.String),
+  filePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
 })
+
+export const StorageTypeOpfsSahpoolExperimental = Schema.Struct({
+  type: Schema.Literal('opfs-sahpool-experimental'),
+  /** Default is `.livestore-sahpool-experimental` */
+  directory: Schema.optionalWith(Schema.String, { default: () => '.livestore-sahpool-experimental' }),
+  /** Default is 'livestore-' */
+  filePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
+})
+
+export type StorageTypeOpfsSahpoolExperimental = typeof StorageTypeOpfsSahpoolExperimental.Type
 
 export const StorageTypeIndexeddb = Schema.Struct({
   type: Schema.Literal('indexeddb'),
   /** @default "livestore" */
-  databaseName: Schema.optional(Schema.String),
-  /** @default "livestore" */
-  storeNamePrefix: Schema.optional(Schema.String),
+  databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
+  /** @default "livestore-" */
+  storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
 })
 
-export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb)
-export type StorageType = Schema.Schema.Type<typeof StorageType>
+export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb, StorageTypeOpfsSahpoolExperimental)
+export type StorageType = typeof StorageType.Type
+export type StorageTypeEncoded = typeof StorageType.Encoded
 
 export const SyncingTypeWebsocket = Schema.Struct({
   type: Schema.Literal('websocket'),
@@ -58,61 +66,135 @@ export const SyncingTypeWebsocket = Schema.Struct({
 export const SyncingType = Schema.Union(SyncingTypeWebsocket)
 export type SyncingType = typeof SyncingType.Type
 
-export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()(
-  'InitialMessage',
-  UnexpectedError,
-  Schema.Void,
-  {
-    storageOptions: StorageType,
-    hasLock: Schema.Boolean,
-    needsRecreate: Schema.Boolean,
-    syncOptions: Schema.optional(SyncingType),
-    key: Schema.UndefinedOr(Schema.String),
-  },
-) {}
+export namespace DedicatedWorkerOuter {
+  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
+    payload: { port: Transferable.MessagePort },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
 
-export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', UnexpectedError, Schema.Void, {
-  items: Schema.Array(ExecutionBacklogItem),
-}) {}
+  export class Request extends Schema.Union(InitialMessage) {}
+}
 
-export class Export extends Schema.TaggedRequest<Export>()('Export', UnexpectedError, Transferable.Uint8Array, {}) {}
+export namespace DedicatedWorkerInner {
+  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
+    payload: {
+      storageOptions: StorageType,
+      needsRecreate: Schema.Boolean,
+      syncOptions: Schema.optional(SyncingType),
+      key: Schema.UndefinedOr(Schema.String),
+      devtools: Schema.Struct({
+        enabled: Schema.Boolean,
+        channelId: Schema.String,
+      }),
+    },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
 
-export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()(
-  'GetRecreateSnapshot',
-  UnexpectedError,
-  Transferable.Uint8Array,
-  {},
-) {}
+  export class BootStatusStream extends Schema.TaggedRequest<BootStatusStream>()('BootStatusStream', {
+    payload: {},
+    success: BootStatus,
+    failure: UnexpectedError,
+  }) {}
 
-export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()(
-  'ExportMutationlog',
-  UnexpectedError,
-  Transferable.Uint8Array,
-  {},
-) {}
+  export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', {
+    payload: {
+      items: Schema.Array(ExecutionBacklogItem),
+    },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
 
-export class Setup extends Schema.TaggedRequest<Setup>()('Setup', UnexpectedError, Transferable.Uint8Array, {}) {}
+  export class Export extends Schema.TaggedRequest<Export>()('Export', {
+    payload: {},
+    success: Transferable.Uint8Array,
+    failure: UnexpectedError,
+  }) {}
 
-export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()(
-  'NetworkStatusStream',
-  UnexpectedError,
-  Schema.Struct({
-    isConnected: Schema.Boolean,
-    timestampMs: Schema.Number,
-  }),
-  {},
-) {}
+  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
+    payload: {},
+    success: Transferable.Uint8Array,
+    failure: UnexpectedError,
+  }) {}
 
-export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', UnexpectedError, Schema.Void, {}) {}
+  export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()('ExportMutationlog', {
+    payload: {},
+    success: Transferable.Uint8Array,
+    failure: UnexpectedError,
+  }) {}
 
-export const Request = Schema.Union(
-  InitialMessage,
-  ExecuteBulk,
-  Export,
-  GetRecreateSnapshot,
-  ExportMutationlog,
-  Setup,
-  NetworkStatusStream,
-  Shutdown,
-)
-export type Request = Schema.Schema.Type<typeof Request>
+  export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
+    payload: {},
+    success: Schema.Struct({
+      isConnected: Schema.Boolean,
+      timestampMs: Schema.Number,
+    }),
+    failure: UnexpectedError,
+  }) {}
+
+  /** NOTE we're modeling this case as a stream since streams are interruptible */
+  export class ListenForReloadStream extends Schema.TaggedRequest<ListenForReloadStream>()('ListenForReloadStream', {
+    payload: {},
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
+
+  export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', {
+    payload: {},
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
+
+  export class ConnectDevtools extends Schema.TaggedRequest<ConnectDevtools>()('ConnectDevtools', {
+    payload: {
+      port: Transferable.MessagePort,
+      // TODO double-check if connecitonId is actually needed
+      connectionId: Schema.String,
+      isLeaderTab: Schema.Boolean,
+    },
+    success: Schema.Struct({
+      storeMessagePort: Transferable.MessagePort,
+    }),
+    failure: UnexpectedError,
+  }) {}
+
+  export const Request = Schema.Union(
+    InitialMessage,
+    BootStatusStream,
+    ExecuteBulk,
+    Export,
+    GetRecreateSnapshot,
+    ExportMutationlog,
+    NetworkStatusStream,
+    ListenForReloadStream,
+    Shutdown,
+    ConnectDevtools,
+  )
+  export type Request = typeof Request.Type
+}
+
+export namespace SharedWorker {
+  export class UpdateMessagePort extends Schema.TaggedRequest<UpdateMessagePort>()('UpdateMessagePort', {
+    payload: {
+      port: Transferable.MessagePort,
+    },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
+
+  export class Request extends Schema.Union(
+    DedicatedWorkerInner.InitialMessage,
+    DedicatedWorkerInner.BootStatusStream,
+    DedicatedWorkerInner.ExecuteBulk,
+    DedicatedWorkerInner.Export,
+    DedicatedWorkerInner.GetRecreateSnapshot,
+    DedicatedWorkerInner.ExportMutationlog,
+    DedicatedWorkerInner.NetworkStatusStream,
+    DedicatedWorkerInner.ListenForReloadStream,
+    DedicatedWorkerInner.Shutdown,
+    DedicatedWorkerInner.ConnectDevtools,
+
+    UpdateMessagePort,
+  ) {}
+}

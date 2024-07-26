@@ -86,8 +86,6 @@ export type TableOptions = {
    * @default false
    */
   isSingleton: boolean
-  // TODO remove
-  dynamicRegistration: boolean
   disableAutomaticIdColumn: boolean
   /**
    * Setting this to true will automatically derive insert, update and delete mutations for this table. Example:
@@ -139,7 +137,6 @@ export const table = <
 
   const options_: TableOptions = {
     isSingleton: options?.isSingleton ?? false,
-    dynamicRegistration: options?.dynamicRegistration ?? false,
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
     deriveMutations:
       options?.deriveMutations === true
@@ -239,7 +236,6 @@ type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> =
 
 type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn extends boolean> = {
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
-  dynamicRegistration: TOptionsInput['dynamicRegistration'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
   deriveMutations: TOptionsInput['deriveMutations'] extends true
     ? { enabled: true; localOnly: boolean }

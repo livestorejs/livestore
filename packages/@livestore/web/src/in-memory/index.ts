@@ -1,58 +1,54 @@
-import { type Coordinator, initializeSingletonTables, migrateDb } from '@livestore/common'
+import type { Coordinator, LockStatus } from '@livestore/common'
+import { initializeSingletonTables, migrateDb } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type * as SqliteWasm from '@livestore/sqlite-wasm'
-import sqlite3InitModule from '@livestore/sqlite-wasm'
-import { Effect, Stream, SubscriptionRef, TRef } from '@livestore/utils/effect'
+import { cuid } from '@livestore/utils/cuid'
+import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
 import { makeInMemoryDb } from '../make-in-memory-db.js'
+import type { SqliteWasm } from '../sqlite-utils.js'
 import { configureConnection } from '../web-worker/common.js'
 
-const sqlite3Promise = sqlite3InitModule({
-  print: (message) => console.log(`[sql-client] ${message}`),
-  printErr: (message) => console.error(`[sql-client] ${message}`),
-})
-
 /** NOTE: This coordinator is currently only used for testing */
-export const makeInMemoryAdapter = () => makeAdapterFactory(({ schema }) => Effect.succeed(makeCoordinator(schema)))
+export const makeInMemoryAdapter = (initialData?: Uint8Array) =>
+  makeAdapterFactory(({ schema, sqlite3 }) => makeCoordinator(schema, sqlite3, initialData))
 
-const makeCoordinator = (schema: LiveStoreSchema): Coordinator => {
-  const getInitialSnapshot = () =>
-    Effect.gen(function* ($) {
-      const sqlite3 = yield* $(Effect.tryPromise(() => sqlite3Promise))
+const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Static, initialData?: Uint8Array) =>
+  Effect.gen(function* () {
+    const getInitialSnapshot = Effect.gen(function* () {
+      if (initialData !== undefined) {
+        return initialData
+      }
 
       const otelContext = otel.context.active()
       const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
       tmpDb.capi = sqlite3.capi
+
       configureConnection(tmpDb, { fkEnabled: true })
       const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
 
-      migrateDb({ db: tmpMainDb, otelContext, schema })
+      yield* migrateDb({ db: tmpMainDb, otelContext, schema })
 
       initializeSingletonTables(schema, tmpMainDb)
 
       return tmpMainDb.export()
-    }).pipe(Effect.runPromise)
+    })
 
-  const getMutationLogData = async () => new Uint8Array()
+    const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
+    const syncMutations = Stream.never
 
-  const dangerouslyReset = async () => {}
-  const shutdown = async () => {}
-
-  const hasLock = TRef.make(true).pipe(Effect.runSync)
-  const syncMutations = Stream.never
-
-  return {
-    hasLock,
-    syncMutations,
-    execute: async () => {},
-    mutate: async () => {},
-    export: async () => undefined,
-    getInitialSnapshot,
-    getMutationLogData,
-    dangerouslyReset,
-    shutdown,
-    networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
-  }
-}
+    return {
+      isShutdownRef: { current: false },
+      devtools: { channelId: cuid(), connect: () => Effect.never, enabled: false },
+      lockStatus,
+      syncMutations,
+      execute: () => Effect.void,
+      mutate: () => Effect.void,
+      export: Effect.dieMessage('Not implemented'),
+      getInitialSnapshot,
+      getMutationLogData: Effect.succeed(new Uint8Array()),
+      dangerouslyReset: () => Effect.void,
+      networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+    } satisfies Coordinator
+  })

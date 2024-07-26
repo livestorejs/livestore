@@ -8,12 +8,13 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@effect/schema": "0.67.23",
-    "@livestore/devtools-react": "0.0.53",
+    "@effect/schema": "0.69.2",
+    "@livestore/devtools-react": "0.0.54",
     "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
-    "effect": "3.3.2",
+    "effect": "3.5.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "todomvc-app-css": "^2.4.3",
@@ -23,14 +24,14 @@
   "devDependencies": {
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
-    "@types/uuid": "^9.0.8",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "rollup-plugin-visualizer": "^5.12.0",
-    "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.5",
-    "vite": "^5.3.1",
-    "vite-plugin-pwa": "^0.20.0"
+    "tailwindcss": "^3.4.7",
+    "typescript": "5.5.4",
+    "vite": "^5.3.5",
+    "vite-plugin-pwa": "^0.20.1"
   }
 }

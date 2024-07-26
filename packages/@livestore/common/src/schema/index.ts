@@ -1,6 +1,7 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 import type { ReadonlyArray } from '@livestore/utils/effect'
-import { SqliteAst, type SqliteDsl } from 'effect-db-schema'
+import type { SqliteDsl } from 'effect-db-schema'
+import { SqliteAst } from 'effect-db-schema'
 
 import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
@@ -20,10 +21,14 @@ export * as ParseUtils from './parse-utils.js'
 export * from './mutations.js'
 export * from './schema-helpers.js'
 
+export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
+export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
+
 export type LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
   TMutationsDefRecord extends MutationDefRecord = MutationDefRecord,
 > = {
+  readonly _Type: LiveStoreSchemaSymbol
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
@@ -99,8 +104,9 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   })
 
   return {
-    _DbSchemaType: Symbol('livestore.DbSchemaType') as any,
-    _MutationDefMapType: Symbol('livestore.MutationDefMapType') as any,
+    _Type: LiveStoreSchemaSymbol,
+    _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
+    _MutationDefMapType: Symbol.for('livestore.MutationDefMapType') as any,
     tables,
     mutations,
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },

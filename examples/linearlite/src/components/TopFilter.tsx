@@ -1,7 +1,7 @@
 import MenuIcon from '../assets/icons/menu.svg?react'
 import { useState, useContext } from 'react'
 import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
-import ViewOptionMenu from './ViewOptionMenu'
+import { ViewOptionMenu } from './ViewOptionMenu'
 import FilterMenu from './contextmenu/FilterMenu'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { Issue } from '../types'

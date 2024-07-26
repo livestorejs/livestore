@@ -3,6 +3,9 @@ node_modules
 .idea/
 .DS_Store
 
+test-results
+playwright-report
+
 .envrc.local
 
 tmp*

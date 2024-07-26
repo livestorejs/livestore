@@ -9,9 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@effect/schema": "0.67.23",
+    "@effect/schema": "0.69.2",
     "@expo/vector-icons": "^14.0.1",
-    "@livestore/devtools-react": "0.0.53",
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "babel-preset-expo": "^11.0.5",
@@ -31,7 +30,7 @@
     "@types/react": "~18.3.1",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^8.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "5.5.4"
   },
   "private": true
 }

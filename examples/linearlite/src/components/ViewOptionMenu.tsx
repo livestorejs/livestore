@@ -9,7 +9,7 @@ interface Props {
   isOpen: boolean
   onDismiss?: () => void
 }
-export default function ViewOptionMenu({ isOpen, onDismiss }: Props) {
+export const ViewOptionMenu: React.FC<Props> = ({ isOpen, onDismiss }) => {
   const ref = useRef(null)
   const [filterState, setFilterState] = useFilterState()
 
@@ -26,6 +26,7 @@ export default function ViewOptionMenu({ isOpen, onDismiss }: Props) {
   return (
     <div ref={ref}>
       <Transition
+        as="div"
         show={isOpen}
         enter="transition ease-out duration-100"
         enterFrom="transform opacity-0 scale-95"

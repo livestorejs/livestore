@@ -1,0 +1,14 @@
+diff --git a/lib/transform/esmLoader.js b/lib/transform/esmLoader.js
+index 68f49fd10dc05d83a28011312eec4956e242742e..8e4c43a14fe76d45e606c0a3bb5374b2b6bf1854 100644
+--- a/lib/transform/esmLoader.js
++++ b/lib/transform/esmLoader.js
+@@ -30,7 +30,8 @@ async function resolve(specifier, context, defaultResolve) {
+   if (context.parentURL && context.parentURL.startsWith('file://')) {
+     const filename = _url.default.fileURLToPath(context.parentURL);
+     const resolved = (0, _transform.resolveHook)(filename, specifier);
+-    if (resolved !== undefined) specifier = _url.default.pathToFileURL(resolved).toString();
++    // if (resolved !== undefined) specifier = _url.default.pathToFileURL(resolved).toString();
++    if (resolved !== undefined && !require('fs').statSync(resolved).isDirectory()) specifier = _url.default.pathToFileURL(resolved).toString();
+   }
+   const result = await defaultResolve(specifier, context, defaultResolve);
+   // Note: we collect dependencies here that will be sent to the main thread
