@@ -237,7 +237,7 @@ const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) 
   const migrationOptions = schema.migrationOptions
   const mutationLogExclude =
     migrationOptions.strategy === 'from-mutation-log'
-      ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
+      ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
       : new Set(['livestore.RawSql'])
 
   return (mutationName: string, mutationEventDecoded: MutationEvent.Any): boolean => {

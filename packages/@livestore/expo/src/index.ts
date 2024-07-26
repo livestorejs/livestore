@@ -83,7 +83,7 @@ export const makeAdapter =
 
       const mutationLogExclude =
         migrationOptions.strategy === 'from-mutation-log'
-          ? migrationOptions.excludeMutations ?? new Set(['livestore.RawSql'])
+          ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
           : new Set(['livestore.RawSql'])
 
       const mutationEventSchema = makeMutationEventSchema(schema)

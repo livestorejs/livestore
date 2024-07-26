@@ -56,7 +56,14 @@ export type WebAdapterOptions = {
   /** Specifies where to persist data for this adapter */
   storage: WorkerSchema.StorageTypeEncoded
   syncing?: WorkerSchema.SyncingType
-  /** Can be used to isolate multiple LiveStore apps running in the same origin */
+  /**
+   * Can be used to isolate multiple LiveStore apps running in the same origin
+   *
+   * Make sure you also use this key in the `storage` options (e.g. directory, prefix etc) to make sure
+   * different instances of LiveStore aren't overlapping on the storage level.
+   *
+   * TODO consider making this the default behaviour https://github.com/livestorejs/livestore/issues/99
+   */
   key?: string
   resetPersistence?: boolean
 }
