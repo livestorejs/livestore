@@ -14,7 +14,7 @@
     "@effect/schema": "0.69.2",
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^2.1.2",
-    "@livestore/devtools-react": "workspace:*",
+    "@livestore/devtools-react": "0.0.54-dev.33",
     "@livestore/livestore": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/web": "workspace:*",
