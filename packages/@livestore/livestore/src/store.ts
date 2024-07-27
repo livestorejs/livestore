@@ -22,6 +22,7 @@ import { cuid } from '@livestore/utils/cuid'
 import {
   Effect,
   Exit,
+  FiberSet,
   Layer,
   Logger,
   LogLevel,
@@ -71,7 +72,7 @@ export type StoreOptions<
   otelOptions: OtelOptions
   reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
-  storeScope: Scope.CloseableScope
+  fiberSet: FiberSet.FiberSet
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
   __processedMutationIds: Set<string>
 }
@@ -129,7 +130,7 @@ export class Store<
 > {
   id = uniqueStoreId()
   readonly devtoolsConnectionId = cuid()
-  private storeScope: Scope.CloseableScope
+  private fiberSet: FiberSet.FiberSet
   reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
   adapter: StoreAdapter
@@ -160,13 +161,13 @@ export class Store<
     otelOptions,
     disableDevtools,
     __processedMutationIds,
-    storeScope,
+    fiberSet,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     this.mainDbWrapper = new MainDatabaseWrapper({ otel: otelOptions, db: adapter.mainDb })
     this.adapter = adapter
     this.schema = schema
 
-    this.storeScope = storeScope
+    this.fiberSet = fiberSet
 
     // TODO refactor
     this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
@@ -239,7 +240,9 @@ export class Store<
           otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
         }),
       )
-    }).pipe(Scope.extend(storeScope), Effect.forkIn(storeScope), Effect.scoped, runEffectFork)
+
+      yield* Effect.never
+    }).pipe(Effect.scoped, FiberSet.run(fiberSet), runEffectFork)
   }
 
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
@@ -305,7 +308,7 @@ export class Store<
    * Currently only used when shutting down the app for debugging purposes (e.g. to close Otel spans).
    */
   destroy = async () => {
-    await Scope.close(this.storeScope, Exit.void).pipe(Effect.withSpan('Store:destroy'), runEffectPromise)
+    await FiberSet.clear(this.fiberSet).pipe(Effect.withSpan('Store:destroy'), runEffectPromise)
   }
 
   mutate: {
@@ -829,7 +832,10 @@ export const createStorePromise = async <
       })
     }
 
-    return yield* createStore({ ...options, storeScope: scope }).pipe(Scope.extend(scope))
+    return yield* FiberSet.make().pipe(
+      Effect.andThen((fiberSet) => createStore({ ...options, fiberSet })),
+      Scope.extend(scope),
+    )
   }).pipe(Effect.withSpan('createStore'), runEffectPromise)
 
 // #region createStore
@@ -846,8 +852,8 @@ export const createStore = <
   batchUpdates,
   disableDevtools,
   onBootStatus,
-  storeScope,
-}: CreateStoreOptions<TGraphQLContext, TSchema> & { storeScope: Scope.CloseableScope }): Effect.Effect<
+  fiberSet,
+}: CreateStoreOptions<TGraphQLContext, TSchema> & { fiberSet: FiberSet.FiberSet }): Effect.Effect<
   Store<TGraphQLContext, TSchema>,
   UnexpectedError,
   Scope.Scope
@@ -875,7 +881,11 @@ export const createStore = <
       schema,
       devtoolsEnabled: disableDevtools !== true,
       bootStatusQueue,
-      shutdown: (cause) => Scope.close(storeScope, Exit.failCause(cause)),
+      shutdown: (cause) =>
+        Effect.gen(function* () {
+          yield* Effect.logWarning(`Shutting down LiveStore`, cause)
+          yield* FiberSet.clear(fiberSet)
+        }).pipe(Effect.withSpan('livestore:shutdown')),
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
     if (batchUpdates !== undefined) {
@@ -975,7 +985,7 @@ export const createStore = <
         reactivityGraph,
         disableDevtools,
         __processedMutationIds,
-        storeScope,
+        fiberSet,
       },
       span,
     )

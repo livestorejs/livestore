@@ -97,7 +97,7 @@ export const timeoutDieMsg =
   (options: { error: string; duration: Duration.DurationInput }) =>
   <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.orDie(
-      Effect.timeoutFail({ onTimeout: () => new UnknownError({ error: options.error }), duration: options.duration })(
+      Effect.timeoutFail({ onTimeout: () => new UnknownError({ cause: options.error }), duration: options.duration })(
         self,
       ),
     )

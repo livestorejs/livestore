@@ -1,4 +1,5 @@
-import { casesHandled, ref } from '@livestore/utils'
+import { UnexpectedError } from '@livestore/common'
+import { casesHandled, prettyBytes, ref } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Queue, Schema, Stream } from '@livestore/utils/effect'
 
@@ -128,11 +129,18 @@ export const makePersistedSqliteOpfs = (
           // overwrite the OPFS file with the new data
           const dirHandle = await getDirHandle(directory)
           const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
-          // NOTE we have to use the sync API here as the async API doesn't yet exist in Safari
           const writable = await fileHandle.createSyncAccessHandle()
-          writable.write(data)
+          const numberOfWrittenBytes = writable.write(data.subarray())
+
           writable.flush()
           writable.close()
+
+          if (numberOfWrittenBytes !== data.length) {
+            throw new UnexpectedError({
+              cause: `Import failed. Could only write ${prettyBytes(numberOfWrittenBytes)} of ${prettyBytes(data.length)} to ${fullPath}`,
+              payload: { numberOfWrittenBytes, dataLength: data.length },
+            })
+          }
         })
 
         dbRef.current = new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI }

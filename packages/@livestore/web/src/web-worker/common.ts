@@ -15,7 +15,7 @@ import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { Deferred, Fiber, Queue, Scope } from '@livestore/utils/effect'
-import { Context, Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Context, Effect, Runtime, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
@@ -145,7 +145,7 @@ export const makeApplyMutation = (
         const mutationDefSchemaHash =
           mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
-        execSql(
+        yield* execSql(
           dbLog.dbRef.current,
           ...insertRow({
             tableName: MUTATION_LOG_META_TABLE,
@@ -178,6 +178,8 @@ export const makeApplyMutation = (
         }
       }
 
+      const runtime = yield* Effect.runtime()
+
       // TODO do this via a batched queue
       if (
         excludeFromMutationLogAndSyncing === false &&
@@ -190,7 +192,7 @@ export const makeApplyMutation = (
 
           yield* sync.impl.push(mutationEventEncoded, persisted)
 
-          execSql(
+          yield* execSql(
             dbLog.dbRef.current,
             ...updateRows({
               tableName: MUTATION_LOG_META_TABLE,
@@ -199,10 +201,10 @@ export const makeApplyMutation = (
               updateValues: { syncStatus: 'synced' },
             }),
           )
-        }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+        }).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
       }
     }).pipe(
-      Effect.withSpan(`livestore-webworker: applyMutation`, {
+      Effect.withSpan(`@livestore/web:worker:applyMutation`, {
         attributes: {
           mutationName: mutationEventEncoded.mutation,
           mutationId: mutationEventEncoded.id,
@@ -225,12 +227,11 @@ export const mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, 
   stream.pipe(Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))))
 
 const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
-  try {
-    db.exec({ sql, bind: prepareBindValues(bind, sql) })
-  } catch (e) {
-    console.error(e, sql, bind)
-    return shouldNeverHappen(`Error writing to ${MUTATION_LOG_META_TABLE}`)
-  }
+  const bindValues = prepareBindValues(bind, sql)
+  return Effect.try({
+    try: () => db.exec({ sql, bind: bindValues }),
+    catch: (e) => new SqliteError({ cause: e, bindValues, code: (e as any).resultCode, sql }),
+  })
 }
 
 const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {

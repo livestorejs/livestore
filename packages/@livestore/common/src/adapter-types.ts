@@ -93,6 +93,7 @@ export type BootDb = {
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.AnyError,
+  payload: Schema.optional(Schema.Any),
 }) {}
 
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {

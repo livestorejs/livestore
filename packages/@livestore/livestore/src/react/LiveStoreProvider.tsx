@@ -1,7 +1,7 @@
 import { type BootDb, type BootStatus, type StoreAdapterFactory, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { errorToString } from '@livestore/utils'
-import { Effect, Exit, Logger, LogLevel, Schema, Scope } from '@livestore/utils/effect'
+import { Effect, Exit, FiberSet, Logger, LogLevel, Schema, Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
@@ -153,20 +153,23 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       }
     })
 
-    createStore({
-      storeScope,
-      schema,
-      graphQLOptions,
-      otelOptions,
-      boot,
-      adapter,
-      batchUpdates,
-      disableDevtools,
-      onBootStatus: (status) => {
-        if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
-        setContextValue(status)
-      },
-    }).pipe(
+    FiberSet.make().pipe(
+      Effect.andThen((fiberSet) =>
+        createStore({
+          fiberSet,
+          schema,
+          graphQLOptions,
+          otelOptions,
+          boot,
+          adapter,
+          batchUpdates,
+          disableDevtools,
+          onBootStatus: (status) => {
+            if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
+            setContextValue(status)
+          },
+        }),
+      ),
       Effect.tapSync((store) => setContextValue({ stage: 'running', store })),
       Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
       Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),

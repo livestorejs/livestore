@@ -159,7 +159,9 @@ export const makeCoordinator =
         )
 
         const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
-        yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
+        yield* sharedWorker
+          .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
+          .pipe(Effect.tapErrorCause((cause) => shutdown(cause)))
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {

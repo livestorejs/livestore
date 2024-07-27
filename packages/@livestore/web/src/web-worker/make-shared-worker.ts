@@ -115,8 +115,10 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         const scope = yield* Scope.make()
 
-        const workerDeferred =
-          yield* Deferred.make<Worker.SerializedWorkerPool<WorkerSchema.DedicatedWorkerInner.Request>>()
+        const workerDeferred = yield* Deferred.make<
+          Worker.SerializedWorkerPool<WorkerSchema.DedicatedWorkerInner.Request>,
+          UnexpectedError
+        >()
         // TODO we could also keep the pool instance around to re-use it by removing the previous worker and adding a new one
         yield* Worker.makePoolSerialized<WorkerSchema.DedicatedWorkerInner.Request>({
           size: 1,
@@ -125,6 +127,8 @@ const makeWorkerRunner = Effect.gen(function* () {
         }).pipe(
           Effect.tap((worker) => Deferred.succeed(workerDeferred, worker)),
           Effect.provide(BrowserWorker.layer(() => port)),
+          Effect.catchAllCause((cause) => new UnexpectedError({ cause })),
+          Effect.tapError((cause) => Deferred.fail(workerDeferred, cause)),
           Effect.withSpan('@livestore/web:shared-worker:makeWorkerProxyFromPort'),
           Effect.tapCauseLogPretty,
           Effect.forkIn(scope),

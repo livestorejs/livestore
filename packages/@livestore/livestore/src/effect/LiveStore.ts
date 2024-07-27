@@ -1,7 +1,17 @@
 import type { BootDb, StoreAdapterFactory, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { Cause } from '@livestore/utils/effect'
-import { Context, Deferred, Duration, Effect, Layer, OtelTracer, pipe, Runtime, Scope } from '@livestore/utils/effect'
+import type { Cause, Scope } from '@livestore/utils/effect'
+import {
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  FiberSet,
+  Layer,
+  OtelTracer,
+  pipe,
+  Runtime,
+} from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -88,10 +98,6 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 
       const otelRootSpanContext = otel.context.active()
 
-      const storeScope = yield* Scope.make()
-
-      yield* Effect.addFinalizer((ex) => Scope.close(storeScope, ex))
-
       const otelTracer = yield* OtelTracer.Tracer
 
       const graphQLOptions = yield* graphQLOptions_
@@ -101,6 +107,8 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
       const boot = boot_
         ? (db: BootDb) => boot_(db).pipe(Effect.withSpan('boot'), Effect.tapCauseLogPretty, Runtime.runPromise(runtime))
         : undefined
+
+      const fiberSet = yield* FiberSet.make()
 
       const store = yield* createStore({
         schema,
@@ -112,7 +120,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         boot,
         adapter,
         disableDevtools,
-        storeScope,
+        fiberSet,
       })
 
       window.__debugLiveStore = store
