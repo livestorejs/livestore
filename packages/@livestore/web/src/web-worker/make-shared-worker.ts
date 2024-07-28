@@ -20,7 +20,6 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
-import { mapToUnexpectedError, mapToUnexpectedErrorStream } from './common.js'
 import * as WorkerSchema from './schema.js'
 
 const makeWorkerRunner = Effect.gen(function* () {
@@ -49,7 +48,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         label: `@livestore/web:shared-worker:forwardRequest:${req._tag}`,
         duration: 500,
       }),
-      mapToUnexpectedError,
+      UnexpectedError.mapToUnexpectedError,
       Effect.tapCauseLogPretty,
     ) as any
 
@@ -60,11 +59,11 @@ const makeWorkerRunner = Effect.gen(function* () {
     : never =>
     SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined).pipe(
       Effect.andThen(({ worker }) => worker.execute(req) as Stream.Stream<unknown, unknown, never>),
-      mapToUnexpectedError,
+      UnexpectedError.mapToUnexpectedError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
       // Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-      mapToUnexpectedErrorStream,
+      UnexpectedError.mapToUnexpectedErrorStream,
     ) as any
 
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
@@ -138,7 +137,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         yield* SubscriptionRef.set(dedicatedWorkerContextSubRef, { worker, scope })
       }).pipe(
         Effect.withSpan('@livestore/web:shared-worker:updateMessagePort'),
-        mapToUnexpectedError,
+        UnexpectedError.mapToUnexpectedError,
         Effect.tapCauseLogPretty,
       ),
     BootStatusStream: forwardRequestStream,

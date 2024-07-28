@@ -1,17 +1,7 @@
 import type { BootDb, StoreAdapterFactory, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Cause, Scope } from '@livestore/utils/effect'
-import {
-  Context,
-  Deferred,
-  Duration,
-  Effect,
-  FiberSet,
-  Layer,
-  OtelTracer,
-  pipe,
-  Runtime,
-} from '@livestore/utils/effect'
+import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -42,7 +32,7 @@ export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContex
   schema: LiveStoreSchema
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown> | Effect.Effect<unknown, never, otel.Tracer>
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
@@ -53,7 +43,7 @@ export const LiveStoreContextRunning = Context.GenericTag<LiveStoreContextRunnin
   '@livestore/livestore/effect/LiveStoreContextRunning',
 )
 
-export type DeferredStoreContext = Deferred.Deferred<LiveStoreContextRunning>
+export type DeferredStoreContext = Deferred.Deferred<LiveStoreContextRunning, UnexpectedError>
 export const DeferredStoreContext = Context.GenericTag<DeferredStoreContext>(
   '@livestore/livestore/effect/DeferredStoreContext',
 )
@@ -79,12 +69,15 @@ export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>
     Layer.provide(LiveStoreContextDeferred),
   )
 
-export const LiveStoreContextDeferred = Layer.effect(DeferredStoreContext, Deferred.make<LiveStoreContextRunning>())
+export const LiveStoreContextDeferred = Layer.effect(
+  DeferredStoreContext,
+  Deferred.make<LiveStoreContextRunning, UnexpectedError>(),
+)
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
   schema,
   graphQLOptions: graphQLOptions_,
-  boot: boot_,
+  boot,
   adapter,
   disableDevtools,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
@@ -94,8 +87,6 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 > =>
   pipe(
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<never>()
-
       const otelRootSpanContext = otel.context.active()
 
       const otelTracer = yield* OtelTracer.Tracer
@@ -104,10 +95,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         ? Effect.all({ schema: graphQLOptions_.schema, makeContext: Effect.succeed(graphQLOptions_.makeContext) })
         : Effect.succeed(undefined)
 
-      const boot = boot_
-        ? (db: BootDb) => boot_(db).pipe(Effect.withSpan('boot'), Effect.tapCauseLogPretty, Runtime.runPromise(runtime))
-        : undefined
-
+      // TODO join fiber set and close tear down parent scope in case of error (Needs refactor with Mike A)
       const fiberSet = yield* FiberSet.make()
 
       const store = yield* createStore({
@@ -127,6 +115,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 
       return { stage: 'running', store } satisfies LiveStoreContextRunning
     }),
+    Effect.tapErrorCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     Effect.timeout(Duration.seconds(60)),
     Effect.withSpan('@livestore/livestore/effect:makeLiveStoreContext'),

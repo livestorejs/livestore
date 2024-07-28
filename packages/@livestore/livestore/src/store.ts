@@ -23,6 +23,7 @@ import {
   Effect,
   Exit,
   FiberSet,
+  Inspectable,
   Layer,
   Logger,
   LogLevel,
@@ -127,7 +128,7 @@ export type StoreMutateOptions = {
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
-> {
+> extends Inspectable.Class {
   id = uniqueStoreId()
   readonly devtoolsConnectionId = cuid()
   private fiberSet: FiberSet.FiberSet
@@ -163,6 +164,8 @@ export class Store<
     __processedMutationIds,
     fiberSet,
   }: StoreOptions<TGraphQLContext, TSchema>) {
+    super()
+
     this.mainDbWrapper = new MainDatabaseWrapper({ otel: otelOptions, db: adapter.mainDb })
     this.adapter = adapter
     this.schema = schema
@@ -800,6 +803,13 @@ export class Store<
 
   // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
   dangerouslyResetStorage = (mode: ResetMode) => this.adapter.coordinator.dangerouslyReset(mode).pipe(runEffectPromise)
+
+  toJSON = () => {
+    return {
+      _tag: 'Store',
+      reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults: true }),
+    }
+  }
 }
 
 export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
@@ -808,7 +818,7 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions?: Partial<OtelOptions>
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown> | Effect.Effect<unknown>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -868,7 +878,7 @@ export const createStore = <
   return Effect.gen(function* () {
     const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
 
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
     yield* Queue.take(bootStatusQueue).pipe(
       Effect.tapSync((status) => onBootStatus?.(status)),
@@ -884,6 +894,7 @@ export const createStore = <
       shutdown: (cause) =>
         Effect.gen(function* () {
           yield* Effect.logWarning(`Shutting down LiveStore`, cause)
+          // TODO close parent scope? (Needs refactor with Mike A)
           yield* FiberSet.clear(fiberSet)
         }).pipe(Effect.withSpan('livestore:shutdown')),
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
@@ -963,19 +974,19 @@ export const createStore = <
         },
       }
 
-      const booting = yield* Effect.try({
-        try: () => boot(bootDbImpl, span),
-        catch: (cause) => new UnexpectedError({ cause }),
-      })
-      // NOTE only awaiting if it's actually a promise to avoid unnecessary async/await
-      if (isPromise(booting)) {
-        yield* Effect.tryPromise({ try: () => booting, catch: (cause) => new UnexpectedError({ cause }) })
-      }
+      yield* Effect.try(() => boot(bootDbImpl, span)).pipe(
+        Effect.andThen((booting) =>
+          Effect.isEffect(booting)
+            ? (booting as Effect.Effect<void, unknown, never>)
+            : isPromise(booting)
+              ? Effect.promise(() => booting)
+              : Effect.void,
+        ),
+        UnexpectedError.mapToUnexpectedError,
+        Effect.withSpan('createStore:boot'),
+      )
     }
 
-    // TODO: we can't apply the schema at this point, we've already loaded persisted data!
-    // Think about what to do about this case.
-    // await applySchema(db, schema)
     return Store.createStore<TGraphQLContext, TSchema>(
       {
         adapter,
@@ -990,7 +1001,6 @@ export const createStore = <
       span,
     )
   }).pipe(
-    // Effect.scoped,
     Effect.withSpan('createStore', {
       parent: otelOptions?.rootSpanContext
         ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)

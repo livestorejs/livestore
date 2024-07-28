@@ -1,4 +1,4 @@
-import { Devtools, liveStoreVersion } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
@@ -19,7 +19,7 @@ import { makeInMemoryDb } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import { importBytesToDb } from '../sqlite-utils.js'
 import type { DevtoolsContextEnabled } from './common.js'
-import { InnerWorkerCtx, makeApplyMutation, mapToUnexpectedErrorStream } from './common.js'
+import { InnerWorkerCtx, makeApplyMutation } from './common.js'
 
 type SendMessage = (
   message: Devtools.MessageFromAppHostCoordinator,
@@ -307,7 +307,7 @@ const listenToDevtools = ({
           }
         }).pipe(Effect.withSpan(`@livestore/web:worker:onDevtoolsMessage:${decodedEvent._tag}`)),
       ),
-      mapToUnexpectedErrorStream,
+      UnexpectedError.mapToUnexpectedErrorStream,
       Stream.runDrain,
     )
   })

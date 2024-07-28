@@ -1,4 +1,4 @@
-import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl } from '@livestore/common'
+import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl, UnexpectedError } from '@livestore/common'
 import {
   Devtools,
   getExecArgsFromMutation,
@@ -8,14 +8,13 @@ import {
   prepareBindValues,
   sql,
   SqliteError,
-  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, Queue, Scope } from '@livestore/utils/effect'
-import { Context, Effect, Runtime, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { Deferred, Fiber, Queue, Scope, Stream } from '@livestore/utils/effect'
+import { Context, Effect, Runtime, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
@@ -215,16 +214,6 @@ export const makeApplyMutation = (
       }),
     )
 }
-
-export const mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.tapCauseLogPretty,
-    Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
-    Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
-  )
-
-export const mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
-  stream.pipe(Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))))
 
 const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)

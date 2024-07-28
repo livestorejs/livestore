@@ -1,4 +1,5 @@
-import type { Coordinator, LockStatus, NetworkStatus, ResetMode, UnexpectedError } from '@livestore/common'
+import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled, ref } from '@livestore/utils'
@@ -30,8 +31,6 @@ import {
   getAppDbIdbStoreName,
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
-  mapToUnexpectedError,
-  mapToUnexpectedErrorStream,
 } from './common.js'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
 import * as WorkerSchema from './schema.js'
@@ -199,11 +198,12 @@ export const makeCoordinator =
             gotLocky = true
             return runLocked
           }),
+          Effect.interruptible,
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
         )
       } else {
-        yield* runLocked.pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
       const runInWorker = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
@@ -215,13 +215,13 @@ export const makeCoordinator =
           Effect.flatMap((worker) => worker.executeEffect(req)),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
-          Effect.uninterruptible,
+          // Effect.uninterruptible,
           Effect.logWarnIfTakesLongerThan({
             label: `@livestore/web:coordinator:runInWorker:${req._tag}`,
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/web:coordinator:runInWorker:${req._tag}`),
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
         ) as any
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
@@ -234,7 +234,7 @@ export const makeCoordinator =
           return sharedWorker
             .execute(req)
             .pipe(
-              mapToUnexpectedErrorStream,
+              UnexpectedError.mapToUnexpectedErrorStream,
               Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
             )
         }).pipe(Stream.unwrap) as any
@@ -246,6 +246,7 @@ export const makeCoordinator =
           Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
           Stream.runDrain,
           Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+          Effect.interruptible,
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
         )
@@ -255,16 +256,15 @@ export const makeCoordinator =
         Stream.tapSync((_) => window.location.reload()),
         Stream.runDrain,
         Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+        Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
-      // TODO Make sure boot status events already stream in during snapshot recreation and not after
-      // See https://share.cleanshot.com/7VprVPzL + https://share.cleanshot.com/NZvJwYFY
-      // Will need session with Mike A. / Tim Smart
       yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
+        Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
@@ -285,6 +285,7 @@ export const makeCoordinator =
       }).pipe(
         Effect.tapCauseLogPretty,
         Effect.forever,
+        Effect.interruptible,
         Effect.withSpan('@livestore/web:coordinator:executeBulkLoop'),
         Effect.forkScoped,
       )
@@ -332,7 +333,7 @@ export const makeCoordinator =
       yield* Effect.addFinalizer((_ex) =>
         Effect.gen(function* () {
           isShutdownRef.current = true
-          // console.log('[@livestore/web:coordinator] coordinator shutdown', gotLocky, ex)
+          yield* Effect.logWarning('[@livestore/web:coordinator] coordinator shutdown', gotLocky, _ex)
 
           if (gotLocky) {
             yield* Deferred.succeed(lockDeferred, undefined)
@@ -350,7 +351,8 @@ export const makeCoordinator =
               WorkerSchema.DedicatedWorkerInner.ConnectDevtools.make({ port, connectionId, isLeaderTab: gotLocky }),
             ).pipe(
               Effect.timeout(10_000),
-              mapToUnexpectedError,
+              Effect.interruptible,
+              UnexpectedError.mapToUnexpectedError,
               Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
             ),
         },
@@ -360,7 +362,7 @@ export const makeCoordinator =
 
         export: runInWorker(new WorkerSchema.DedicatedWorkerInner.Export()).pipe(
           Effect.timeout(10_000),
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:coordinator:export'),
         ),
 
@@ -370,7 +372,7 @@ export const makeCoordinator =
 
             // TODO refactor to make use of persisted-sql destory functionality
             yield* resetPersistedData(storageOptions, schema.hash, mode)
-          }).pipe(mapToUnexpectedError),
+          }).pipe(UnexpectedError.mapToUnexpectedError),
 
         execute: (query, bindValues) =>
           Effect.gen(function* () {
@@ -404,7 +406,7 @@ export const makeCoordinator =
 
         getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:coordinator:getMutationLogData'),
         ),
 
@@ -412,7 +414,7 @@ export const makeCoordinator =
       } satisfies Coordinator
 
       return coordinator
-    }).pipe(mapToUnexpectedError)
+    }).pipe(UnexpectedError.mapToUnexpectedError)
 
 const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number) =>
   Effect.promise(async () => {

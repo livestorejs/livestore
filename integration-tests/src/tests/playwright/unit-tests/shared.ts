@@ -15,11 +15,19 @@ const todos = DbSchema.table(
 export const schema = makeSchema({ tables: [todos] })
 
 export namespace Bridge {
-  export class Result extends Schema.TaggedStruct('Bridge.Result', {
+  export class ResultBootStatus extends Schema.TaggedStruct('Bridge.ResultBootStatus', {
     exit: Schema.Exit({
       success: Schema.Struct({
         bootStatusUpdates: Schema.Array(BootStatus),
       }),
+      failure: UnexpectedError,
+      defect: Schema.Defect,
+    }),
+  }) {}
+
+  export class ResultStoreBootError extends Schema.TaggedStruct('Bridge.ResultStoreBootError', {
+    exit: Schema.Exit({
+      success: Schema.Any,
       failure: UnexpectedError,
       defect: Schema.Defect,
     }),

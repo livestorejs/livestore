@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
     "@livestore/effect-playwright": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "@livestore/utils": "workspace:*",

@@ -10,6 +10,7 @@ export {
   FiberSet,
   FiberMap,
   FiberHandle,
+  Inspectable,
   RuntimeFlags,
   PubSub,
   Exit,

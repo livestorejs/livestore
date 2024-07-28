@@ -26,13 +26,7 @@ import { BCMessage } from '../common/index.js'
 import * as OpfsUtils from '../opfs-utils.js'
 import { loadSqlite3Wasm } from '../sqlite-utils.js'
 import type { DevtoolsContext, InitialSetup, ShutdownState } from './common.js'
-import {
-  configureConnection,
-  InnerWorkerCtx,
-  makeApplyMutation,
-  mapToUnexpectedError,
-  OuterWorkerCtx,
-} from './common.js'
+import { configureConnection, InnerWorkerCtx, makeApplyMutation, OuterWorkerCtx } from './common.js'
 import { makeDevtoolsContext } from './devtools.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
@@ -276,7 +270,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           return Layer.succeed(InnerWorkerCtx, innerWorkerCtx)
         }).pipe(
           Effect.tapCauseLogPretty,
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
           Effect.withSpan('@livestore/web:worker:InitialMessage'),
           Layer.unwrapScoped,
@@ -291,21 +285,21 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           } else {
             return yield* workerCtx.db.export
           }
-        }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
+        }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
       Export: () =>
         Effect.andThen(InnerWorkerCtx, (_) => _.db.export).pipe(
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:Export'),
         ),
       ExportMutationlog: () =>
         Effect.andThen(InnerWorkerCtx, (_) => _.dbLog.export).pipe(
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
         ),
       ExecuteBulk: ({ items }) =>
         executeBulk(items).pipe(
           Effect.uninterruptible,
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExecuteBulk'),
         ),
       // BootStatusStream: () =>
@@ -348,7 +342,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           Effect.andThen((_) => SubscriptionRef.waitUntil(_.shutdownStateSubRef, (_) => _ == 'shutdown-requested')),
           Effect.tapSync((_) => console.log('[@livestore/web:worker] ListenForReload: shutdown-requested')),
           Effect.asVoid,
-          mapToUnexpectedError,
+          UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ListenForReload'),
         ),
       Shutdown: () =>
@@ -364,7 +358,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           dbLog.dbRef.current.close()
           yield* db.close
           yield* dbLog.close
-        }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
+        }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       ConnectDevtools: ({ port, connectionId, isLeaderTab }) =>
         Effect.gen(function* () {
           const workerCtx = yield* InnerWorkerCtx
@@ -389,7 +383,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
 
           return { storeMessagePort }
-        }).pipe(mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:ConnectDevtools')),
+        }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:ConnectDevtools')),
     })
   }).pipe(Layer.unwrapScoped)
 

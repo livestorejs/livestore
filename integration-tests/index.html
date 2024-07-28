@@ -8,13 +8,14 @@
   <body>
     <div id="root"></div>
     <script type="module">
-      const modules = import.meta.glob('./src/tests/playwright/**/*.ts')
+      const modules = import.meta.glob('./src/tests/playwright/unit-tests/**/*.ts')
 
       const main = async () => {
         const searchParams = new URLSearchParams(window.location.search)
         const importPath = searchParams.get('importPath')
+        const exportName = searchParams.get('exportName')
         const module = await modules[importPath]()
-        await module.test()
+        await module[exportName]()
       }
 
       main().catch((error) => console.error(error))

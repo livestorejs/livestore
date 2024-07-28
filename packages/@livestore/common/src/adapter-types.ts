@@ -1,5 +1,5 @@
-import type { Cause, Effect, Queue, Scope, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import type { Cause, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
@@ -94,7 +94,19 @@ export type BootDb = {
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.AnyError,
   payload: Schema.optional(Schema.Any),
-}) {}
+}) {
+  static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    effect.pipe(
+      Effect.tapCauseLogPretty,
+      Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
+      Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+    )
+
+  static mapToUnexpectedErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
+    stream.pipe(
+      Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
+    )
+}
 
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
   sql: Schema.String,

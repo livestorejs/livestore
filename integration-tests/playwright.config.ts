@@ -23,7 +23,7 @@ const config: PlaywrightTestConfig = {
   testDir: './src/tests/playwright',
   testMatch: /.*\.play\.ts/,
   /* Maximum time one test can run for. */
-  timeout: 5 * 60 * 1000, // 5 minutes
+  timeout: 1 * 60 * 1000, // 1 minute
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.
