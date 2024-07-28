@@ -21,8 +21,8 @@ import type { SqliteWasm } from '../sqlite-utils.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import type { StorageType } from './schema.js'
 
-export const getAppDbFileName = (prefix: string, schemaHash: number) => {
-  return `${prefix}${schemaHash}.db`
+export const getAppDbFileName = (prefix: string, suffix: number) => {
+  return `${prefix}${suffix}.db`
 }
 
 export const getMutationlogDbFileName = (prefix: string) => {

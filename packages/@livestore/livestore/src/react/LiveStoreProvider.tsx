@@ -14,7 +14,7 @@ import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
   renderLoading: (status: BootStatus) => ReactElement

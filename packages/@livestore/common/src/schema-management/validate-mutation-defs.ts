@@ -1,32 +1,35 @@
-import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 
+import { UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { MutationDef } from '../schema/mutations.js'
 import type { MutationDefInfo, SchemaManager } from './common.js'
 
-export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaManager) => {
-  // Validate mutation definitions
-  const registeredMutationDefInfos = schemaManager.getMutationDefInfos()
+export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaManager) =>
+  Effect.gen(function* () {
+    // Validate mutation definitions
+    const registeredMutationDefInfos = schemaManager.getMutationDefInfos()
 
-  const missingMutationDefs = registeredMutationDefInfos.filter(
-    (registeredMutationDefInfo) => !schema.mutations.has(registeredMutationDefInfo.mutationName),
-  )
-
-  if (missingMutationDefs.length > 0) {
-    shouldNeverHappen(
-      `Missing mutation definitions: ${missingMutationDefs.map((info) => info.mutationName).join(', ')}`,
+    const missingMutationDefs = registeredMutationDefInfos.filter(
+      (registeredMutationDefInfo) => !schema.mutations.has(registeredMutationDefInfo.mutationName),
     )
-  }
 
-  for (const [, mutationDef] of schema.mutations) {
-    const registeredMutationDefInfo = registeredMutationDefInfos.find((info) => info.mutationName === mutationDef.name)
+    if (missingMutationDefs.length > 0) {
+      yield* new UnexpectedError({
+        cause: `Missing mutation definitions: ${missingMutationDefs.map((info) => info.mutationName).join(', ')}`,
+      })
+    }
 
-    validateMutationDef(mutationDef, schemaManager, registeredMutationDefInfo)
-  }
+    for (const [, mutationDef] of schema.mutations) {
+      const registeredMutationDefInfo = registeredMutationDefInfos.find(
+        (info) => info.mutationName === mutationDef.name,
+      )
 
-  // Validate table schemas
-}
+      validateMutationDef(mutationDef, schemaManager, registeredMutationDefInfo)
+    }
+
+    // Validate table schemas
+  })
 
 export const validateMutationDef = (
   mutationDef: MutationDef.Any,

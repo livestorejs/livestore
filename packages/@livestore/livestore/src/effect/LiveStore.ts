@@ -32,7 +32,7 @@ export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContex
   schema: LiveStoreSchema
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown> | Effect.Effect<unknown, never, otel.Tracer>
+  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
@@ -56,7 +56,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
     makeContext: (db: MainDatabaseWrapper) => GraphQLContext
   }
-  boot?: (db: BootDb) => Effect.Effect<void>
+  boot?: (db: BootDb) => Effect.Effect<void, unknown, otel.Tracer>
   adapter: StoreAdapterFactory
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void

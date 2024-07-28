@@ -17,7 +17,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
-import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
+import { assertNever, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
   Effect,
@@ -820,7 +820,7 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions?: Partial<OtelOptions>
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown> | Effect.Effect<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -976,14 +976,7 @@ export const createStore = <
         },
       }
 
-      yield* Effect.try(() => boot(bootDbImpl, span)).pipe(
-        Effect.andThen((booting) =>
-          Effect.isEffect(booting)
-            ? (booting as Effect.Effect<void, unknown, never>)
-            : isPromise(booting)
-              ? Effect.promise(() => booting)
-              : Effect.void,
-        ),
+      yield* Effect.tryAll(() => boot(bootDbImpl, span)).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('createStore:boot'),
       )

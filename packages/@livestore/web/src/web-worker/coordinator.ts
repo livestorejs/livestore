@@ -85,9 +85,11 @@ export const makeCoordinator =
 
       const isShutdownRef = ref(false)
 
+      const dbFileSuffix = schema.migrationOptions.strategy === 'manual' ? 0 : schema.hash
+
       if (options.resetPersistence === true) {
         // TODO refactor to make use of persisted-sql destory functionality
-        yield* resetPersistedData(storageOptions, schema.hash, 'all-data')
+        yield* resetPersistedData(storageOptions, dbFileSuffix, 'all-data')
       }
 
       const broadcastChannel = yield* Effect.succeed(
@@ -95,7 +97,7 @@ export const makeCoordinator =
       ).pipe(Effect.acquireRelease((channel) => Effect.succeed(channel.close())))
 
       // TODO also verify persisted data
-      const dataFromFile = yield* getPersistedData(storageOptions, schema.hash)
+      const dataFromFile = yield* getPersistedData(storageOptions, dbFileSuffix)
 
       const channelId = cuid()
 
@@ -378,7 +380,7 @@ export const makeCoordinator =
             yield* shutdownWorker
 
             // TODO refactor to make use of persisted-sql destory functionality
-            yield* resetPersistedData(storageOptions, schema.hash, mode)
+            yield* resetPersistedData(storageOptions, dbFileSuffix, mode)
           }).pipe(UnexpectedError.mapToUnexpectedError),
 
         execute: (query, bindValues) =>
@@ -423,13 +425,13 @@ export const makeCoordinator =
       return coordinator
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
-const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number) =>
+const getPersistedData = (storage: WorkerSchema.StorageType, fileSuffix: number) =>
   Effect.promise(async () => {
     switch (storage.type) {
       case 'opfs': {
         try {
           const dirHandle = await OpfsUtils.getDirHandle(storage.directory)
-          const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, schemaHash))
+          const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, fileSuffix))
           const file = await fileHandle.getFile()
           const buffer = await file.arrayBuffer()
           const data = new Uint8Array(buffer)
@@ -476,7 +478,7 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
 
         const fileResults = await Promise.all(files.map(tryGetDbFile))
 
-        const appDbFileName = '/' + getAppDbFileName(storage.filePrefix, schemaHash)
+        const appDbFileName = '/' + getAppDbFileName(storage.filePrefix, fileSuffix)
 
         const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
 
@@ -492,7 +494,7 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
       case 'indexeddb': {
         const idb = new IDB(
           storage.databaseName ?? 'livestore',
-          getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+          getAppDbIdbStoreName(storage.storeNamePrefix, fileSuffix),
         )
 
         return await idb.get('db')
@@ -508,12 +510,12 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
   )
 
 // TODO refactor to make use of persisted-sql destory functionality
-const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number, resetMode: ResetMode) =>
+const resetPersistedData = (storage: WorkerSchema.StorageType, fileSuffix: number, resetMode: ResetMode) =>
   Effect.promise(async () => {
     switch (storage.type) {
       case 'opfs': {
         const dirHandle = await OpfsUtils.getDirHandle(storage.directory)
-        await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, schemaHash))
+        await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, fileSuffix))
         if (resetMode === 'all-data') {
           await dirHandle.removeEntry(getMutationlogDbFileName(storage.filePrefix))
         }
@@ -530,7 +532,7 @@ const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: numbe
       case 'indexeddb': {
         const idbApp = new IDB(
           storage.databaseName ?? 'livestore',
-          getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+          getAppDbIdbStoreName(storage.storeNamePrefix, fileSuffix),
         )
         await idbApp.deleteDb()
 

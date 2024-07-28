@@ -1,12 +1,19 @@
-import { initializeSingletonTables, migrateDb, migrateTable, rehydrateFromMutationLog } from '@livestore/common'
+import type { MigrationHooks } from '@livestore/common'
+import {
+  initializeSingletonTables,
+  migrateDb,
+  migrateTable,
+  rehydrateFromMutationLog,
+  UnexpectedError,
+} from '@livestore/common'
 import { mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import { Effect, Queue, Stream } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
 
 import { makeInMemoryDb } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
+import { importBytesToDb } from '../sqlite-utils.js'
 import type { InnerWorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 
@@ -15,14 +22,11 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
     const { db, dbLog, sqlite3, schema, bootStatusQueue } = workerCtx
 
     const migrationOptions = schema.migrationOptions
-    const hooks = migrationOptions.hooks
 
     yield* Effect.addFinalizer((ex) => {
       if (ex._tag === 'Success') return Effect.void
       return db.destroy.pipe(Effect.tapCauseLogPretty, Effect.orDie)
     })
-
-    const otelContext = otel.context.active()
 
     // NOTE to speed up the operations below, we're creating a temporary in-memory database
     // and later we'll overwrite the persisted database with the new data
@@ -30,24 +34,25 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
     tmpDb.capi = sqlite3.capi
     configureConnection(tmpDb, { fkEnabled: true })
 
-    const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
+    const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
+      Effect.gen(function* () {
+        const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
 
-    if (hooks?.init !== undefined) {
-      yield* Effect.promise(async () => hooks.init!(tmpInMemoryDb))
-    }
+        yield* Effect.tryAll(() => hooks?.init?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
-    yield* migrateDb({
-      db: tmpInMemoryDb,
-      otelContext,
-      schema,
-      onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
-    })
+        yield* migrateDb({
+          db: tmpInMemoryDb,
+          schema,
+          onProgress: ({ done, total }) =>
+            Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
+        })
 
-    initializeSingletonTables(schema, tmpInMemoryDb)
+        initializeSingletonTables(schema, tmpInMemoryDb)
 
-    if (hooks?.pre !== undefined) {
-      yield* Effect.promise(async () => hooks.pre!(tmpInMemoryDb))
-    }
+        yield* Effect.tryAll(() => hooks?.pre?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
+
+        return tmpInMemoryDb
+      })
 
     const inMemoryDbLog = makeInMemoryDb(sqlite3, dbLog.dbRef.current)
 
@@ -60,6 +65,9 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 
     switch (migrationOptions.strategy) {
       case 'from-mutation-log': {
+        const hooks = migrationOptions.hooks
+        const tmpInMemoryDb = yield* initDb(hooks)
+
         yield* rehydrateFromMutationLog({
           db: tmpInMemoryDb,
           logDb: inMemoryDbLog,
@@ -69,28 +77,36 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
             Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
         })
 
+        yield* Effect.tryAll(() => hooks?.post?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
+
         break
       }
       case 'hard-reset': {
-        // This is already the case by not doing anything now
+        const hooks = migrationOptions.hooks
+        const tmpInMemoryDb = yield* initDb(hooks)
+
+        // The database is migrated but empty now, so nothing else to do
+
+        yield* Effect.tryAll(() => hooks?.post?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
         break
       }
       case 'manual': {
-        // const migrateFn = migrationStrategy.migrate
-        console.warn('Manual migration strategy not implemented yet')
+        const oldDbData = yield* db.export
 
-        // TODO figure out a way to get previous database file to pass to the migration function
+        const newDbData = (yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
+          UnexpectedError.mapToUnexpectedError,
+        )) as Uint8Array // TODO get rid of this cast
+
+        importBytesToDb(sqlite3, tmpDb, newDbData)
+
+        // TODO validate schema
 
         break
       }
       default: {
         casesHandled(migrationOptions)
       }
-    }
-
-    if (hooks?.post !== undefined) {
-      yield* Effect.promise(async () => hooks.post!(tmpInMemoryDb))
     }
 
     yield* fetchAndApplyRemoteMutations(workerCtx, tmpDb, false, ({ done, total }) =>
@@ -104,7 +120,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 
     return snapshotFromTmpDb
   }).pipe(
-    Effect.scoped,
+    Effect.scoped, // NOTE we're closing the scope here so finalizers are called when the effect is done
     Effect.withSpan('@livestore/web:worker:recreateDb'),
     Effect.withPerformanceMeasure('@livestore/web:worker:recreateDb'),
   )

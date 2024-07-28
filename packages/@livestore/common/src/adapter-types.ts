@@ -127,8 +127,7 @@ export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> 
     }
   | {
       strategy: 'manual'
-      migrate: (oldDb: Uint8Array) => Promise<Uint8Array> | Uint8Array
-      hooks?: Partial<MigrationHooks>
+      migrate: (oldDb: Uint8Array) => Uint8Array | Promise<Uint8Array> | Effect.Effect<Uint8Array, unknown>
     }
 
 export type MigrationHooks = {
@@ -140,7 +139,7 @@ export type MigrationHooks = {
   post: MigrationHook
 }
 
-export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void>
+export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
 
 export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   strategy: 'from-mutation-log'

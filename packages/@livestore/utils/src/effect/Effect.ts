@@ -1,10 +1,11 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import type { Context, Duration, Scope } from 'effect'
 import { Cause, Deferred, Effect, Fiber, pipe } from 'effect'
+import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
-import { isNonEmptyString } from '../index.js'
+import { isNonEmptyString, isPromise } from '../index.js'
 import { UnknownError } from './Error.js'
 
 export * from 'effect/Effect'
@@ -23,6 +24,21 @@ export * from 'effect/Effect'
 //   Effect.sync(() => {
 //     console.error(message, ...rest)
 //   })
+
+export const tryAll: {
+  <A, E, R>(fn: () => Effect.Effect<A, E, R>): Effect.Effect<A, E | UnknownException, R>
+  <A>(fn: () => Promise<A>): Effect.Effect<A, UnknownException, never>
+  <A>(fn: () => A): Effect.Effect<A, UnknownException, never>
+} = <A, E = never, R = never>(fn: () => A | Promise<A> | Effect.Effect<A, E, R>) =>
+  Effect.try(() => fn()).pipe(
+    Effect.andThen((fnRes) =>
+      Effect.isEffect(fnRes)
+        ? (fnRes as any as Effect.Effect<A, E, R>)
+        : isPromise(fnRes)
+          ? Effect.promise(() => fnRes)
+          : Effect.succeed(fnRes),
+    ),
+  ) as any
 
 const getThreadName = () => {
   // @ts-expect-error TODO fix types
