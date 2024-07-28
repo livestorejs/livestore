@@ -1,3 +1,4 @@
+import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import type { Context, Duration, Scope } from 'effect'
 import { Cause, Deferred, Effect, Fiber, pipe } from 'effect'
 import { log } from 'effect/Console'
@@ -35,16 +36,26 @@ const getThreadName = () => {
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.tapErrorCause(eff, (cause) => {
-    if (Cause.isInterruptedOnly(cause)) {
-      // console.log('interrupted', Cause.pretty(err), err)
-      return Effect.void
-    }
+  Effect.tapErrorCause(eff, (cause) =>
+    Effect.gen(function* () {
+      if (Cause.isInterruptedOnly(cause)) {
+        // console.log('interrupted', Cause.pretty(err), err)
+        return
+      }
 
-    const threadName = getThreadName()
-    const firstErrLine = cause.toString().split('\n')[0]
-    return Effect.logError(`Error on ${threadName}: ${firstErrLine}`, cause)
-  })
+      const span = yield* OtelTracer.currentOtelSpan.pipe(
+        Effect.catchTag('NoSuchElementException', (_) => Effect.succeed(undefined)),
+      )
+
+      const threadName = getThreadName()
+      const firstErrLine = cause.toString().split('\n')[0]
+      yield* Effect.logError(`Error on ${threadName}: ${firstErrLine}`, cause).pipe((_) =>
+        span === undefined
+          ? _
+          : Effect.annotateLogs({ spanId: span.spanContext().spanId, traceId: span.spanContext().traceId })(_),
+      )
+    }),
+  )
 
 export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>

@@ -118,7 +118,7 @@ export const makeCoordinator =
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => sharedWorker)),
         Effect.tapCauseLogPretty,
-        Effect.tapErrorCause((cause) => shutdown(cause)),
+        Effect.tapErrorCause(shutdown),
         Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
         Effect.toForkedDeferred,
       )
@@ -151,7 +151,7 @@ export const makeCoordinator =
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
-          Effect.tapErrorCause((cause) => shutdown(cause)),
+          Effect.tapErrorCause(shutdown),
           Effect.withSpan('@livestore/web:coordinator:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -160,7 +160,7 @@ export const makeCoordinator =
         const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
         yield* sharedWorker
           .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
-          .pipe(Effect.tapErrorCause((cause) => shutdown(cause)))
+          .pipe(Effect.tapErrorCause(shutdown))
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
@@ -246,6 +246,7 @@ export const makeCoordinator =
           Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
           Stream.runDrain,
           Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+          Effect.tapErrorCause(shutdown),
           Effect.interruptible,
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -256,6 +257,7 @@ export const makeCoordinator =
         Stream.tapSync((_) => window.location.reload()),
         Stream.runDrain,
         Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+        Effect.tapErrorCause(shutdown),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -264,6 +266,7 @@ export const makeCoordinator =
       yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
+        Effect.tapErrorCause(shutdown),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -274,17 +277,21 @@ export const makeCoordinator =
 
       // Continously take items from the backlog and execute them in the worker if there are any
       yield* Effect.gen(function* () {
-        const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100)
+        const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(Effect.map(Chunk.toReadonlyArray))
 
-        yield* runInWorker(
-          new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items: Chunk.toReadonlyArray(items) }),
-        ).pipe(Effect.timeout(10_000))
+        yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items })).pipe(
+          Effect.timeout(10_000),
+          Effect.tapErrorCause((cause) =>
+            Effect.log('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
+          ),
+        )
 
         // NOTE we're waiting a little bit for more items to come in before executing the batch
         yield* Effect.sleep(20)
       }).pipe(
         Effect.tapCauseLogPretty,
         Effect.forever,
+        Effect.tapErrorCause(shutdown),
         Effect.interruptible,
         Effect.withSpan('@livestore/web:coordinator:executeBulkLoop'),
         Effect.forkScoped,
@@ -350,7 +357,7 @@ export const makeCoordinator =
             runInWorker(
               WorkerSchema.DedicatedWorkerInner.ConnectDevtools.make({ port, connectionId, isLeaderTab: gotLocky }),
             ).pipe(
-              Effect.timeout(10_000),
+              // Effect.timeout(10_000),
               Effect.interruptible,
               UnexpectedError.mapToUnexpectedError,
               Effect.withSpan('@livestore/web:coordinator:devtools:connect'),

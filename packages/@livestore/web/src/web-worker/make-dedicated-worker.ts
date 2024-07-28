@@ -110,7 +110,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               warn: () => {},
             }
           }
-          const sqlite3 = yield* Effect.tryPromise(() => loadSqlite3Wasm())
+          const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
 
           const keySuffix = key ? `-${key}` : ''
 

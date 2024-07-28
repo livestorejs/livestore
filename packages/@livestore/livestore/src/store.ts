@@ -245,7 +245,7 @@ export class Store<
       )
 
       yield* Effect.never
-    }).pipe(Effect.scoped, FiberSet.run(fiberSet), runEffectFork)
+    }).pipe(Effect.scoped, Effect.withSpan('LiveStore:store-constructor'), FiberSet.run(fiberSet), runEffectFork)
   }
 
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
@@ -591,6 +591,8 @@ export class Store<
 
       const channelId = this.adapter.coordinator.devtools.channelId
 
+      const runtime = yield* Effect.runtime()
+
       window.addEventListener('message', (event) => {
         const decodedMessageRes = Schema.decodeOption(Devtools.DevtoolsWindowMessage.MessageForStore)(event.data)
         if (decodedMessageRes._tag === 'None') return
@@ -780,7 +782,7 @@ export class Store<
 
                 storeMessagePort.start()
               }),
-              runEffectFork,
+              Runtime.runFork(runtime),
             )
 
           return

@@ -1,9 +1,9 @@
-import { shouldNeverHappen } from '@livestore/utils'
+import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type InMemoryDatabase, type MigrationOptionsFromMutationLog, SqliteError } from './adapter-types.js'
 import { getExecArgsFromMutation } from './mutation.js'
-import type { LiveStoreSchema, MutationLogMetaRow } from './schema/index.js'
+import type { LiveStoreSchema, MutationDef, MutationLogMetaRow } from './schema/index.js'
 import { MUTATION_LOG_META_TABLE } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
@@ -26,13 +26,15 @@ export const rehydrateFromMutationLog = ({
       .prepare(`SELECT COUNT(*) AS count FROM ${MUTATION_LOG_META_TABLE}`)
       .select<{ count: number }>(undefined)[0]!.count
 
+    const hashMutation = memoizeByRef((mutation: MutationDef.Any) => Schema.hash(mutation.schema))
+
     const processMutation = (row: MutationLogMetaRow) =>
       Effect.gen(function* () {
         const mutationDef = schema.mutations.get(row.mutation) ?? shouldNeverHappen(`Unknown mutation ${row.mutation}`)
 
         if (migrationOptions.excludeMutations?.has(row.mutation) === true) return
 
-        if (Schema.hash(mutationDef.schema) !== row.schemaHash) {
+        if (hashMutation(mutationDef) !== row.schemaHash) {
           console.warn(`Schema hash mismatch for mutation ${row.mutation}. Trying to apply mutation anyway.`)
         }
 

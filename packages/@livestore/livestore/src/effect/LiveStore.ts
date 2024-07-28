@@ -1,4 +1,4 @@
-import type { BootDb, StoreAdapterFactory, UnexpectedError } from '@livestore/common'
+import type { BootDb, BootStatus, StoreAdapterFactory, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Cause, Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe } from '@livestore/utils/effect'
@@ -59,6 +59,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   boot?: (db: BootDb) => Effect.Effect<void>
   adapter: StoreAdapterFactory
   disableDevtools?: boolean
+  onBootStatus?: (status: BootStatus) => void
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
@@ -80,6 +81,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   boot,
   adapter,
   disableDevtools,
+  onBootStatus,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
   LiveStoreContextRunning,
   UnexpectedError | Cause.TimeoutException,
@@ -109,6 +111,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         adapter,
         disableDevtools,
         fiberSet,
+        onBootStatus,
       })
 
       window.__debugLiveStore = store
@@ -117,6 +120,8 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
     }),
     Effect.tapErrorCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
-    Effect.timeout(Duration.seconds(60)),
+    // This can take quite a while.
+    // TODO make this configurable
+    Effect.timeout(Duration.minutes(5)),
     Effect.withSpan('@livestore/livestore/effect:makeLiveStoreContext'),
   )
