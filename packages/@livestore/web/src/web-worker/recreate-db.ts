@@ -94,9 +94,9 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
       case 'manual': {
         const oldDbData = yield* db.export
 
-        const newDbData = (yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
+        const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
           UnexpectedError.mapToUnexpectedError,
-        )) as Uint8Array // TODO get rid of this cast
+        )
 
         importBytesToDb(sqlite3, tmpDb, newDbData)
 

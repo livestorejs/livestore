@@ -25,15 +25,17 @@ export * from 'effect/Effect'
 //     console.error(message, ...rest)
 //   })
 
-export const tryAll: {
-  <A, E, R>(fn: () => Effect.Effect<A, E, R>): Effect.Effect<A, E | UnknownException, R>
-  <A>(fn: () => Promise<A>): Effect.Effect<A, UnknownException, never>
-  <A>(fn: () => A): Effect.Effect<A, UnknownException, never>
-} = <A, E = never, R = never>(fn: () => A | Promise<A> | Effect.Effect<A, E, R>) =>
+export const tryAll = <Res extends any | Promise<any> | Effect.Effect<any>>(
+  fn: () => Res,
+): Res extends Effect.Effect<infer A, infer E, never>
+  ? Effect.Effect<A, E | UnknownException, never>
+  : Res extends Promise<infer A>
+    ? Effect.Effect<A, UnknownException, never>
+    : Effect.Effect<Res, UnknownException, never> =>
   Effect.try(() => fn()).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes)
-        ? (fnRes as any as Effect.Effect<A, E, R>)
+        ? (fnRes as any as Effect.Effect<any>)
         : isPromise(fnRes)
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
