@@ -611,6 +611,9 @@ importers:
       '@livestore/effect-playwright':
         specifier: workspace:*
         version: link:../packages/@livestore/effect-playwright
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../packages/@livestore/livestore
       '@livestore/sqlite-wasm':
         specifier: 3.46.0-build4
         version: 3.46.0-build4
