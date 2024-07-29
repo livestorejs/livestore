@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20240725.0",
-    "wrangler": "^3.67.0"
+    "wrangler": "^3.67.1"
   },
   "publishConfig": {
     "access": "public"

@@ -56,8 +56,8 @@
     "@effect/platform-browser": "0.39.2",
     "@effect/schema": "0.69.2",
     "@opentelemetry/api": "^1.9.0",
-    "@types/node": "^20.14.12",
-    "@types/web": "^0.0.151",
+    "@types/node": "^22.0.0",
+    "@types/web": "^0.0.152",
     "effect": "3.5.8",
     "vitest": "^2.0.4"
   },
