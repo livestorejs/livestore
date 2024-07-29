@@ -1,5 +1,5 @@
 import type { Coordinator, LockStatus } from '@livestore/common'
-import { initializeSingletonTables, migrateDb } from '@livestore/common'
+import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { cuid } from '@livestore/utils/cuid'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -23,7 +23,7 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
       const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
       tmpDb.capi = sqlite3.capi
 
-      configureConnection(tmpDb, { fkEnabled: true })
+      yield* configureConnection(tmpDb, { fkEnabled: true }).pipe(UnexpectedError.mapToUnexpectedError)
       const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
 
       yield* migrateDb({ db: tmpMainDb, schema })

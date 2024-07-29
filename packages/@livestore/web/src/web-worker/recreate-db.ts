@@ -32,7 +32,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
     // and later we'll overwrite the persisted database with the new data
     const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
     tmpDb.capi = sqlite3.capi
-    configureConnection(tmpDb, { fkEnabled: true })
+    yield* configureConnection(tmpDb, { fkEnabled: true })
 
     const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
       Effect.gen(function* () {

@@ -647,6 +647,7 @@ export class Store<
                               Devtools.ReactivityGraphRes.make({
                                 reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
                                 requestId,
+                                channelId,
                                 liveStoreVersion,
                               }),
                             ),
@@ -669,6 +670,7 @@ export class Store<
                         Devtools.DebugInfoRes.make({
                           debugInfo: this.mainDbWrapper.debugInfo,
                           requestId,
+                          channelId,
                           liveStoreVersion,
                         }),
                       )
@@ -693,6 +695,7 @@ export class Store<
                             Devtools.DebugInfoHistoryRes.make({
                               debugInfoHistory: buffer,
                               requestId,
+                              channelId,
                               liveStoreVersion,
                             }),
                           )
@@ -724,13 +727,13 @@ export class Store<
                     }
                     case 'LSD.DebugInfoResetReq': {
                       this.mainDbWrapper.debugInfo.slowQueries.clear()
-                      sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
+                      sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, channelId, liveStoreVersion }))
                       break
                     }
                     case 'LSD.DebugInfoRerunQueryReq': {
                       const { queryStr, bindValues, queriedTables } = decodedMessage
                       this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-                      sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
+                      sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, channelId, liveStoreVersion }))
                       break
                     }
                     case 'LSD.ReactivityGraphUnsubscribe': {
@@ -757,6 +760,7 @@ export class Store<
                                 })),
                                 requestId,
                                 liveStoreVersion,
+                                channelId,
                               }),
                             ),
                           { timeout: 500 },

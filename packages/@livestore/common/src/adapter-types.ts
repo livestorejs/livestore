@@ -93,6 +93,7 @@ export type BootDb = {
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.AnyError,
+  note: Schema.optional(Schema.String),
   payload: Schema.optional(Schema.Any),
 }) {
   static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>

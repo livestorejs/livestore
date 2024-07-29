@@ -10,149 +10,95 @@ const requestId = Schema.String
 const channelId = Schema.String
 const liveStoreVersion = Schema.Literal(pkgVersion)
 
-export class SnapshotReq extends Schema.TaggedStruct('LSD.SnapshotReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.SnapshotReq' }) {}
+const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
+  Schema.TaggedStruct(tag, {
+    liveStoreVersion,
+    ...fields,
+  }).annotations({ identifier: tag })
 
-export class SnapshotRes extends Schema.TaggedStruct('LSD.SnapshotRes', {
-  liveStoreVersion,
-  requestId,
+const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
+  LSDMessage(tag, {
+    channelId,
+    ...fields,
+  })
+
+const LSDReqResMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
+  LSDChannelMessage(tag, {
+    requestId,
+    ...fields,
+  })
+
+export class SnapshotReq extends LSDReqResMessage('LSD.SnapshotReq', {}) {}
+
+export class SnapshotRes extends LSDReqResMessage('LSD.SnapshotRes', {
   snapshot: Transferable.Uint8Array,
-}).annotations({ identifier: 'LSD.SnapshotRes' }) {}
+}) {}
 
-export class LoadDatabaseFileReq extends Schema.TaggedStruct('LSD.LoadDatabaseFileReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class LoadDatabaseFileReq extends LSDReqResMessage('LSD.LoadDatabaseFileReq', {
   data: Transferable.Uint8Array,
-}).annotations({ identifier: 'LSD.LoadDatabaseFileReq' }) {}
+}) {}
 
-export class LoadDatabaseFileRes extends Schema.TaggedStruct('LSD.LoadDatabaseFileRes', {
-  liveStoreVersion,
-  requestId,
+export class LoadDatabaseFileRes extends LSDReqResMessage('LSD.LoadDatabaseFileRes', {
   status: Schema.Literal('ok', 'unsupported-file', 'unsupported-database'),
-}).annotations({ identifier: 'LSD.LoadDatabaseFileRes' }) {}
+}) {}
 
-export class DebugInfoReq extends Schema.TaggedStruct('LSD.DebugInfoReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.DebugInfoReq' }) {}
+export class DebugInfoReq extends LSDReqResMessage('LSD.DebugInfoReq', {}) {}
 
-export class DebugInfoRes extends Schema.TaggedStruct('LSD.DebugInfoRes', {
-  liveStoreVersion,
-  requestId,
+export class DebugInfoRes extends LSDReqResMessage('LSD.DebugInfoRes', {
   debugInfo: DebugInfo,
-}).annotations({ identifier: 'LSD.DebugInfoRes' }) {}
+}) {}
 
-export class DebugInfoHistorySubscribe extends Schema.TaggedStruct('LSD.DebugInfoHistorySubscribe', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.DebugInfoHistorySubscribe' }) {}
+export class DebugInfoHistorySubscribe extends LSDReqResMessage('LSD.DebugInfoHistorySubscribe', {}) {}
 
-export class DebugInfoHistoryRes extends Schema.TaggedStruct('LSD.DebugInfoHistoryRes', {
-  liveStoreVersion,
-  requestId,
+export class DebugInfoHistoryRes extends LSDReqResMessage('LSD.DebugInfoHistoryRes', {
   debugInfoHistory: Schema.Array(DebugInfo),
-}).annotations({ identifier: 'LSD.DebugInfoHistoryRes' }) {}
+}) {}
 
-export class DebugInfoHistoryUnsubscribe extends Schema.TaggedStruct('LSD.DebugInfoHistoryUnsubscribe', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.DebugInfoHistoryUnsubscribe' }) {}
+export class DebugInfoHistoryUnsubscribe extends LSDReqResMessage('LSD.DebugInfoHistoryUnsubscribe', {}) {}
 
-export class DebugInfoResetReq extends Schema.TaggedStruct('LSD.DebugInfoResetReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.DebugInfoResetReq' }) {}
+export class DebugInfoResetReq extends LSDReqResMessage('LSD.DebugInfoResetReq', {}) {}
 
-export class DebugInfoResetRes extends Schema.TaggedStruct('LSD.DebugInfoResetRes', {
-  liveStoreVersion,
-  requestId,
-}).annotations({ identifier: 'LSD.DebugInfoResetRes' }) {}
+export class DebugInfoResetRes extends LSDReqResMessage('LSD.DebugInfoResetRes', {}) {}
 
-export class DebugInfoRerunQueryReq extends Schema.TaggedStruct('LSD.DebugInfoRerunQueryReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class DebugInfoRerunQueryReq extends LSDReqResMessage('LSD.DebugInfoRerunQueryReq', {
   queryStr: Schema.String,
   bindValues: Schema.UndefinedOr(PreparedBindValues),
   queriedTables: Schema.ReadonlySet(Schema.String),
-}).annotations({ identifier: 'LSD.DebugInfoRerunQueryReq' }) {}
+}) {}
 
-export class DebugInfoRerunQueryRes extends Schema.TaggedStruct('LSD.DebugInfoRerunQueryRes', {
-  liveStoreVersion,
-  requestId,
-}).annotations({ identifier: 'LSD.DebugInfoRerunQueryRes' }) {}
+export class DebugInfoRerunQueryRes extends LSDReqResMessage('LSD.DebugInfoRerunQueryRes', {}) {}
 
-export class MutationBroadcast extends Schema.TaggedStruct('LSD.MutationBroadcast', {
-  liveStoreVersion,
+export class MutationBroadcast extends LSDMessage('LSD.MutationBroadcast', {
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
-}).annotations({ identifier: 'LSD.MutationBroadcast' }) {}
+}) {}
 
-export class RunMutationReq extends Schema.TaggedStruct('LSD.RunMutationReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class RunMutationReq extends LSDReqResMessage('LSD.RunMutationReq', {
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
-}).annotations({ identifier: 'LSD.RunMutationReq' }) {}
+}) {}
 
-export class RunMutationRes extends Schema.TaggedStruct('LSD.RunMutationRes', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.RunMutationRes' }) {}
+export class RunMutationRes extends LSDReqResMessage('LSD.RunMutationRes', {}) {}
 
-export class MutationLogReq extends Schema.TaggedStruct('LSD.MutationLogReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.MutationLogReq' }) {}
+export class MutationLogReq extends LSDReqResMessage('LSD.MutationLogReq', {}) {}
 
-export class MutationLogRes extends Schema.TaggedStruct('LSD.MutationLogRes', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class MutationLogRes extends LSDReqResMessage('LSD.MutationLogRes', {
   mutationLog: Transferable.Uint8Array,
-}).annotations({ identifier: 'LSD.MutationLogRes' }) {}
+}) {}
 
-export class ReactivityGraphSubscribe extends Schema.TaggedStruct('LSD.ReactivityGraphSubscribe', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class ReactivityGraphSubscribe extends LSDReqResMessage('LSD.ReactivityGraphSubscribe', {
   includeResults: Schema.Boolean,
-}).annotations({ identifier: 'LSD.ReactivityGraphSubscribe' }) {}
+}) {}
 
-export class ReactivityGraphUnsubscribe extends Schema.TaggedStruct('LSD.ReactivityGraphUnsubscribe', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.ReactivityGraphUnsubscribe' }) {}
+export class ReactivityGraphUnsubscribe extends LSDReqResMessage('LSD.ReactivityGraphUnsubscribe', {}) {}
 
-export class ReactivityGraphRes extends Schema.TaggedStruct('LSD.ReactivityGraphRes', {
-  liveStoreVersion,
-  requestId,
+export class ReactivityGraphRes extends LSDReqResMessage('LSD.ReactivityGraphRes', {
   reactivityGraph: Schema.Any,
-}).annotations({ identifier: 'LSD.ReactivityGraphRes' }) {}
+}) {}
 
-export class LiveQueriesSubscribe extends Schema.TaggedStruct('LSD.LiveQueriesSubscribe', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.LiveQueriesSubscribe' }) {}
+export class LiveQueriesSubscribe extends LSDReqResMessage('LSD.LiveQueriesSubscribe', {}) {}
 
-export class LiveQueriesUnsubscribe extends Schema.TaggedStruct('LSD.LiveQueriesUnsubscribe', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.LiveQueriesUnsubscribe' }) {}
+export class LiveQueriesUnsubscribe extends LSDReqResMessage('LSD.LiveQueriesUnsubscribe', {}) {}
 
 export class SerializedLiveQuery extends Schema.Struct({
   _tag: Schema.Literal('js', 'sql', 'graphql'),
@@ -164,76 +110,48 @@ export class SerializedLiveQuery extends Schema.Struct({
   activeSubscriptions: Schema.Array(
     Schema.Struct({ frames: Schema.Array(Schema.Struct({ name: Schema.String, filePath: Schema.String })) }),
   ),
-}).annotations({ identifier: 'SerializedLiveQuery' }) {}
+}) {}
 
-export class LiveQueriesRes extends Schema.TaggedStruct('LSD.LiveQueriesRes', {
-  liveStoreVersion,
-  requestId,
+export class LiveQueriesRes extends LSDReqResMessage('LSD.LiveQueriesRes', {
   liveQueries: Schema.Array(SerializedLiveQuery),
-}).annotations({ identifier: 'LSD.LiveQueriesRes' }) {}
+}) {}
 
-export class ResetAllDataReq extends Schema.TaggedStruct('LSD.ResetAllDataReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class ResetAllDataReq extends LSDReqResMessage('LSD.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),
-}).annotations({ identifier: 'LSD.ResetAllDataReq' }) {}
+}) {}
 
-export class ResetAllDataRes extends Schema.TaggedStruct('LSD.ResetAllDataRes', {
-  liveStoreVersion,
-  requestId,
-}).annotations({ identifier: 'LSD.ResetAllDataRes' }) {}
+export class ResetAllDataRes extends LSDReqResMessage('LSD.ResetAllDataRes', {}) {}
 
-export class MessagePortForStoreReq extends Schema.TaggedStruct('LSD.MessagePortForStoreReq', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.MessagePortForStoreReq' }) {}
+export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.DatabaseFileInfoReq', {}) {}
 
-export class MessagePortForStoreRes extends Schema.TaggedStruct('LSD.MessagePortForStoreRes', {
-  liveStoreVersion,
-  requestId,
-  channelId,
+export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.DatabaseFileInfoRes', {
+  dbFileSize: Schema.Number,
+  mutationLogFileSize: Schema.Number,
+}) {}
+
+export class MessagePortForStoreReq extends LSDReqResMessage('LSD.MessagePortForStoreReq', {}) {}
+
+export class MessagePortForStoreRes extends LSDReqResMessage('LSD.MessagePortForStoreRes', {
   port: Transferable.MessagePort,
-}).annotations({ identifier: 'LSD.MessagePortForStoreRes' }) {}
+}) {}
 
-export class NetworkStatusChanged extends Schema.TaggedStruct('LSD.NetworkStatusChanged', {
-  liveStoreVersion,
-  channelId,
+export class NetworkStatusChanged extends LSDChannelMessage('LSD.NetworkStatusChanged', {
   networkStatus: NetworkStatus,
-}).annotations({ identifier: 'LSD.NetworkStatusChanged' }) {}
+}) {}
 
-export class DevtoolsReady extends Schema.TaggedStruct('LSD.DevtoolsReady', {
-  liveStoreVersion,
-}).annotations({ identifier: 'LSD.DevtoolsReady' }) {}
+export class DevtoolsReady extends LSDMessage('LSD.DevtoolsReady', {}) {}
 
-export class DevtoolsConnected extends Schema.TaggedStruct('LSD.DevtoolsConnected', {
-  liveStoreVersion,
-  channelId,
-}).annotations({ identifier: 'LSD.DevtoolsConnected' }) {}
+export class DevtoolsConnected extends LSDChannelMessage('LSD.DevtoolsConnected', {}) {}
 
-export class AppHostReady extends Schema.TaggedStruct('LSD.AppHostReady', {
-  liveStoreVersion,
-  channelId,
+export class AppHostReady extends LSDChannelMessage('LSD.AppHostReady', {
   isLeaderTab: Schema.Boolean,
-}).annotations({ identifier: 'LSD.AppHostReady' }) {}
+}) {}
 
-export class Disconnect extends Schema.TaggedStruct('LSD.Disconnect', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.Disconnect' }) {}
+export class Disconnect extends LSDReqResMessage('LSD.Disconnect', {}) {}
 
-export class Ping extends Schema.TaggedStruct('LSD.Ping', {
-  liveStoreVersion,
-  requestId,
-  channelId,
-}).annotations({ identifier: 'LSD.Ping' }) {}
+export class Ping extends LSDReqResMessage('LSD.Ping', {}) {}
 
-export class Pong extends Schema.TaggedStruct('LSD.Pong', {
-  liveStoreVersion,
-  requestId,
-}).annotations({ identifier: 'LSD.Pong' }) {}
+export class Pong extends LSDReqResMessage('LSD.Pong', {}) {}
 
 export const MessageToAppHostCoordinator = Schema.Union(
   SnapshotReq,
@@ -246,6 +164,7 @@ export const MessageToAppHostCoordinator = Schema.Union(
   DevtoolsConnected,
   RunMutationReq,
   Ping,
+  DatabaseFileInfoReq,
 ).annotations({ identifier: 'LSD.MessageToAppHostCoordinator' })
 
 export type MessageToAppHostCoordinator = typeof MessageToAppHostCoordinator.Type
@@ -277,6 +196,7 @@ export const MessageFromAppHostCoordinator = Schema.Union(
   NetworkStatusChanged,
   RunMutationRes,
   Pong,
+  DatabaseFileInfoRes,
 ).annotations({ identifier: 'LSD.MessageFromAppHostCoordinator' })
 
 export type MessageFromAppHostCoordinator = typeof MessageFromAppHostCoordinator.Type

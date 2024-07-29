@@ -129,7 +129,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             schemaHash,
             sqlite3,
             sahUtils,
-            configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: true })),
+            configure: (db) => configureConnection(db, { fkEnabled: true }),
           })
 
           const makeDbLog = makePersistedSqlite({
@@ -138,7 +138,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             schemaHash,
             sqlite3,
             sahUtils,
-            configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: false })),
+            configure: (db) => configureConnection(db, { fkEnabled: false }),
           })
 
           // Might involve some async work, so we're running them concurrently
@@ -180,7 +180,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
 
-          const initialSetupDeferred = yield* Deferred.make<InitialSetup>()
+          const initialSetupDeferred = yield* Deferred.make<InitialSetup, UnexpectedError>()
 
           const innerWorkerCtx = {
             keySuffix,
@@ -206,6 +206,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             yield* recreateDb(innerWorkerCtx).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
               Effect.tap((snapshot) => Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshot })),
+              UnexpectedError.mapToUnexpectedError,
+              Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
               Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )
@@ -215,6 +217,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             ).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
               Effect.tap(() => Deferred.succeed(initialSetupDeferred, { _tag: 'Reuse' })),
+              UnexpectedError.mapToUnexpectedError,
+              Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
               Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )

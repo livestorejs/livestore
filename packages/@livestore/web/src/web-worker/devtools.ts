@@ -192,7 +192,7 @@ const listenToDevtools = ({
 
           switch (decodedEvent._tag) {
             case 'LSD.Ping': {
-              yield* sendMessage(Devtools.Pong.make({ requestId, liveStoreVersion }))
+              yield* sendMessage(Devtools.Pong.make({ requestId, channelId, liveStoreVersion }))
               return
             }
             case 'LSD.Disconnect': {
@@ -211,7 +211,7 @@ const listenToDevtools = ({
             case 'LSD.SnapshotReq': {
               const data = yield* db.export
 
-              yield* sendMessage(Devtools.SnapshotRes.make({ snapshot: data, requestId, liveStoreVersion }))
+              yield* sendMessage(Devtools.SnapshotRes.make({ snapshot: data, requestId, channelId, liveStoreVersion }))
 
               return
             }
@@ -236,7 +236,12 @@ const listenToDevtools = ({
                 tmpDb.close()
               } catch (e) {
                 yield* sendMessage(
-                  Devtools.LoadDatabaseFileRes.make({ requestId, liveStoreVersion, status: 'unsupported-file' }),
+                  Devtools.LoadDatabaseFileRes.make({
+                    requestId,
+                    channelId,
+                    liveStoreVersion,
+                    status: 'unsupported-file',
+                  }),
                 )
 
                 return
@@ -254,12 +259,19 @@ const listenToDevtools = ({
                 yield* db.import(data)
               } else {
                 yield* sendMessage(
-                  Devtools.LoadDatabaseFileRes.make({ requestId, liveStoreVersion, status: 'unsupported-database' }),
+                  Devtools.LoadDatabaseFileRes.make({
+                    requestId,
+                    channelId,
+                    liveStoreVersion,
+                    status: 'unsupported-database',
+                  }),
                 )
                 return
               }
 
-              yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ requestId, liveStoreVersion, status: 'ok' }))
+              yield* sendMessage(
+                Devtools.LoadDatabaseFileRes.make({ requestId, channelId, liveStoreVersion, status: 'ok' }),
+              )
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutdown-requested')
 
@@ -276,9 +288,26 @@ const listenToDevtools = ({
                 yield* dbLog.destroy
               }
 
-              yield* sendMessage(Devtools.ResetAllDataRes.make({ requestId, liveStoreVersion }))
+              yield* sendMessage(Devtools.ResetAllDataRes.make({ requestId, channelId, liveStoreVersion }))
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutdown-requested')
+
+              return
+            }
+            case 'LSD.DatabaseFileInfoReq': {
+              const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
+              const dbFileSize = db.dbRef.current.selectValue(dbSizeQuery) as number
+              const mutationLogFileSize = dbLog.dbRef.current.selectValue(dbSizeQuery) as number
+
+              yield* sendMessage(
+                Devtools.DatabaseFileInfoRes.make({
+                  dbFileSize,
+                  mutationLogFileSize,
+                  requestId,
+                  channelId,
+                  liveStoreVersion,
+                }),
+              )
 
               return
             }
