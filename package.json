@@ -34,7 +34,7 @@
     "eslint-plugin-unicorn": "55.0.0",
     "madge": "^6.1.0",
     "playwright": "1.45.3",
-    "prettier": "3.3.2",
+    "prettier": "3.3.3",
     "prettier-plugin-packagejson": "2.5.1",
     "typescript": "5.5.4"
   },
