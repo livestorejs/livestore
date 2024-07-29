@@ -145,7 +145,12 @@ export const fetchAndApplyRemoteMutations = (
     // probably using the SQLite session extension
     yield* sync.inititialMessages.pipe(
       Stream.tap((mutationEventEncoded) =>
-        applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast, persisted: true }).pipe(
+        applyMutation(mutationEventEncoded, {
+          syncStatus: 'synced',
+          shouldBroadcast,
+          persisted: true,
+          inTransaction: false,
+        }).pipe(
           Effect.andThen(() => {
             processedMutations += 1
             // TODO fix total

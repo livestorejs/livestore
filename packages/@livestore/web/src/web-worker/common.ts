@@ -116,6 +116,7 @@ export type ApplyMutation = (
     syncStatus: SyncStatus
     shouldBroadcast: boolean
     persisted: boolean
+    inTransaction: boolean
   },
 ) => Effect.Effect<void, SqliteError>
 
@@ -126,7 +127,7 @@ export const makeApplyMutation = (
 ): ApplyMutation => {
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
-  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) =>
+  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction }) =>
     Effect.gen(function* () {
       const {
         dbLog,
@@ -148,7 +149,7 @@ export const makeApplyMutation = (
       // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
       const transaction = Effect.gen(function* () {
-        const hasDbTransaction = execArgsArr.length > 1
+        const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
         if (hasDbTransaction) {
           yield* execSql(db, 'BEGIN TRANSACTION', {})
         }

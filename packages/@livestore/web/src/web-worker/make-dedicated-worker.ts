@@ -236,7 +236,12 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               // TODO try to do this in a batched-way if possible
               yield* syncImpl.pushes.pipe(
                 Stream.tap(({ mutationEventEncoded, persisted }) =>
-                  applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true, persisted }),
+                  applyMutation(mutationEventEncoded, {
+                    syncStatus: 'synced',
+                    shouldBroadcast: true,
+                    persisted,
+                    inTransaction: false,
+                  }),
                 ),
                 Stream.runDrain,
                 Effect.withSpan('@livestore/web:worker:syncImpl:pushes'),
@@ -264,6 +269,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                     syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
                     shouldBroadcast: true,
                     persisted,
+                    inTransaction: false,
                   })
                 }
               }).pipe(
@@ -443,6 +449,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
               syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
               shouldBroadcast: true,
               persisted: item.persisted,
+              inTransaction: true,
             })
           } else {
             // TODO handle txn

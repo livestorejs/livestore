@@ -16,7 +16,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
+import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { assertNever, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
@@ -201,8 +201,20 @@ export class Store<
       queriesSpanContext: otelQueriesSpanContext,
     }
 
+    // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
+    // But for now this is a good enough approximation with little downsides
+    const isRunningInDevtools = disableDevtools === true
+
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
-    const allTableNames = new Set(this.schema.tables.keys())
+    const allTableNames = new Set(
+      // NOTE we're excluding the LiveStore schema and mutations tables as they are not user-facing
+      // unless LiveStore is running in the devtools
+      isRunningInDevtools
+        ? this.schema.tables.keys()
+        : Array.from(this.schema.tables.keys()).filter(
+            (_) => _ !== SCHEMA_META_TABLE && _ !== SCHEMA_MUTATIONS_META_TABLE,
+          ),
+    )
     const existingTableRefs = new Map(
       Array.from(this.reactivityGraph.atoms.values())
         .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)

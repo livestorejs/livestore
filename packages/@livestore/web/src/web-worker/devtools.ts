@@ -329,6 +329,7 @@ const listenToDevtools = ({
                 syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
                 shouldBroadcast: true,
                 persisted,
+                inTransaction: false,
               })
 
               yield* sendMessage(Devtools.RunMutationRes.make({ requestId, channelId, liveStoreVersion }))
