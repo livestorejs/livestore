@@ -56,6 +56,8 @@ export * as Stream from './Stream.js'
 
 export * as SubscriptionRef from './SubscriptionRef.js'
 
+export * as BrowserChannel from './BrowserChannel.js'
+
 export {
   TreeFormatter,
   AST as SchemaAST,

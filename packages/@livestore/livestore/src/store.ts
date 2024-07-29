@@ -20,7 +20,9 @@ import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_T
 import { assertNever, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
+  BrowserChannel,
   Effect,
+  Either,
   Exit,
   FiberSet,
   Inspectable,
@@ -590,35 +592,48 @@ export class Store<
     })
 
   // #region devtools
-  // TODO shutdown behaviour
   private bootDevtools = () =>
     Effect.gen(this, function* () {
-      const sendToDevtoolsContentscript = (
-        message: typeof Devtools.DevtoolsWindowMessage.MessageForContentscript.Type,
-      ) => {
-        window.postMessage(Schema.encodeSync(Devtools.DevtoolsWindowMessage.MessageForContentscript)(message), '*')
-      }
+      // const webBridgeBroadcastChannel = Devtools.makeWebBridgeBroadcastChannel()
 
-      sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
+      // webBridgeBroadcastChannel.
 
       const channelId = this.adapter.coordinator.devtools.channelId
 
-      const runtime = yield* Effect.runtime()
+      const windowChannel = yield* BrowserChannel.windowChannel({
+        window,
+        listenSchema: Devtools.DevtoolsWindowMessage.MessageForStore,
+        sendSchema: Devtools.DevtoolsWindowMessage.MessageForContentscript,
+      })
 
-      window.addEventListener('message', (event) => {
-        const decodedMessageRes = Schema.decodeOption(Devtools.DevtoolsWindowMessage.MessageForStore)(event.data)
-        if (decodedMessageRes._tag === 'None') return
+      yield* windowChannel.send(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
 
-        const message = decodedMessageRes.value
+      yield* windowChannel.listen.pipe(
+        Stream.filterMap(Either.getRight),
+        Stream.tap((message) =>
+          Effect.gen(function* () {
+            if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
+              // Send message to contentscript via window (which the contentscript iframe is listening to)
+              yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+              return
+            }
 
-        if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
-          sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-          return
-        }
+            if (message.channelId !== channelId) return
 
-        if (message.channelId !== channelId) return
+            if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
+              yield* connectToDevtools(message.port)
+            }
+          }),
+        ),
+        Stream.runDrain,
 
-        if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
+        Effect.forkScoped,
+      )
+
+      yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+
+      const connectToDevtools = (port: MessagePort) =>
+        Effect.gen(this, function* () {
           type Unsub = () => void
           type RequestId = string
 
@@ -626,186 +641,192 @@ export class Store<
           const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
           const debugInfoHistorySubscriptions = new Map<RequestId, Unsub>()
 
-          this.adapter.coordinator.devtools
-            .connect({ port: message.port, connectionId: this.devtoolsConnectionId })
-            .pipe(
-              Effect.tapSync(({ storeMessagePort }) => {
-                // console.log('storeMessagePort', storeMessagePort)
-                storeMessagePort.addEventListener('message', (event) => {
-                  const decodedMessage = Schema.decodeUnknownSync(Devtools.MessageToAppHostStore)(event.data)
-                  // console.log('storeMessagePort message', decodedMessage)
+          const { storeMessagePort } = yield* this.adapter.coordinator.devtools.connect({
+            port,
+            connectionId: this.devtoolsConnectionId,
+          })
+          // console.log('storeMessagePort', storeMessagePort)
 
-                  if (decodedMessage.channelId !== this.adapter.coordinator.devtools.channelId) {
-                    // console.log(`Unknown message`, event)
-                    return
-                  }
+          const storePortChannel = yield* BrowserChannel.messagePortChannel({
+            port: storeMessagePort,
+            listenSchema: Devtools.MessageToAppHostStore,
+            sendSchema: Devtools.MessageFromAppHostStore,
+          })
 
-                  const requestId = decodedMessage.requestId
-                  const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
-                    storeMessagePort.postMessage(Schema.encodeSync(Devtools.MessageFromAppHostStore)(message))
+          const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
+            storePortChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runSync)
 
-                  const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
+          const onMessage = (decodedMessage: typeof Devtools.MessageToAppHostStore.Type) => {
+            // console.log('storeMessagePort message', decodedMessage)
 
-                  switch (decodedMessage._tag) {
-                    case 'LSD.ReactivityGraphSubscribe': {
-                      const includeResults = decodedMessage.includeResults
+            if (decodedMessage.channelId !== this.adapter.coordinator.devtools.channelId) {
+              // console.log(`Unknown message`, event)
+              return
+            }
 
-                      const send = () =>
-                        // In order to not add more work to the current tick, we use requestIdleCallback
-                        // to send the reactivity graph updates to the devtools
-                        requestIdleCallback(
-                          () =>
-                            sendToDevtools(
-                              Devtools.ReactivityGraphRes.make({
-                                reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
-                                requestId,
-                                channelId,
-                                liveStoreVersion,
-                              }),
-                            ),
-                          { timeout: 500 },
-                        )
+            const requestId = decodedMessage.requestId
 
-                      send()
+            const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
 
-                      // In some cases, there can be A LOT of reactivity graph updates in a short period of time
-                      // so we throttle the updates to avoid sending too much data
-                      // This might need to be tweaked further and possibly be exposed to the user in some way.
-                      const throttledSend = throttle(send, 20)
+            switch (decodedMessage._tag) {
+              case 'LSD.ReactivityGraphSubscribe': {
+                const includeResults = decodedMessage.includeResults
 
-                      reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
-
-                      break
-                    }
-                    case 'LSD.DebugInfoReq': {
+                const send = () =>
+                  // In order to not add more work to the current tick, we use requestIdleCallback
+                  // to send the reactivity graph updates to the devtools
+                  requestIdleCallback(
+                    () =>
                       sendToDevtools(
-                        Devtools.DebugInfoRes.make({
-                          debugInfo: this.mainDbWrapper.debugInfo,
+                        Devtools.ReactivityGraphRes.make({
+                          reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
                           requestId,
                           channelId,
                           liveStoreVersion,
                         }),
-                      )
-                      break
-                    }
-                    case 'LSD.DebugInfoHistorySubscribe': {
-                      const buffer: DebugInfo[] = []
-                      let hasStopped = false
-                      let rafHandle: number | undefined
+                      ),
+                    { timeout: 500 },
+                  )
 
-                      const tick = () => {
-                        buffer.push(this.mainDbWrapper.debugInfo)
+                send()
 
-                        // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
-                        // will get the empty debug info
-                        // TODO We need to come up with a more graceful way to do this. Probably via a single global
-                        // `requestAnimationFrame` loop that is passed in somehow.
-                        this.mainDbWrapper.debugInfo = makeEmptyDebugInfo()
+                // In some cases, there can be A LOT of reactivity graph updates in a short period of time
+                // so we throttle the updates to avoid sending too much data
+                // This might need to be tweaked further and possibly be exposed to the user in some way.
+                const throttledSend = throttle(send, 20)
 
-                        if (buffer.length > 10) {
-                          sendToDevtools(
-                            Devtools.DebugInfoHistoryRes.make({
-                              debugInfoHistory: buffer,
-                              requestId,
-                              channelId,
-                              liveStoreVersion,
-                            }),
-                          )
-                          buffer.length = 0
-                        }
+                reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
 
-                        if (hasStopped === false) {
-                          rafHandle = requestAnimationFrame(tick)
-                        }
-                      }
+                break
+              }
+              case 'LSD.DebugInfoReq': {
+                sendToDevtools(
+                  Devtools.DebugInfoRes.make({
+                    debugInfo: this.mainDbWrapper.debugInfo,
+                    requestId,
+                    channelId,
+                    liveStoreVersion,
+                  }),
+                )
+                break
+              }
+              case 'LSD.DebugInfoHistorySubscribe': {
+                const buffer: DebugInfo[] = []
+                let hasStopped = false
+                let rafHandle: number | undefined
 
-                      rafHandle = requestAnimationFrame(tick)
+                const tick = () => {
+                  buffer.push(this.mainDbWrapper.debugInfo)
 
-                      const unsub = () => {
-                        hasStopped = true
-                        if (rafHandle !== undefined) {
-                          cancelAnimationFrame(rafHandle)
-                        }
-                      }
+                  // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
+                  // will get the empty debug info
+                  // TODO We need to come up with a more graceful way to do this. Probably via a single global
+                  // `requestAnimationFrame` loop that is passed in somehow.
+                  this.mainDbWrapper.debugInfo = makeEmptyDebugInfo()
 
-                      debugInfoHistorySubscriptions.set(requestId, unsub)
-
-                      break
-                    }
-                    case 'LSD.DebugInfoHistoryUnsubscribe': {
-                      debugInfoHistorySubscriptions.get(requestId)!()
-                      debugInfoHistorySubscriptions.delete(requestId)
-                      break
-                    }
-                    case 'LSD.DebugInfoResetReq': {
-                      this.mainDbWrapper.debugInfo.slowQueries.clear()
-                      sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, channelId, liveStoreVersion }))
-                      break
-                    }
-                    case 'LSD.DebugInfoRerunQueryReq': {
-                      const { queryStr, bindValues, queriedTables } = decodedMessage
-                      this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-                      sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, channelId, liveStoreVersion }))
-                      break
-                    }
-                    case 'LSD.ReactivityGraphUnsubscribe': {
-                      reactivityGraphSubcriptions.get(requestId)!()
-                      break
-                    }
-                    case 'LSD.LiveQueriesSubscribe': {
-                      const send = () =>
-                        requestIdleCallback(
-                          () =>
-                            sendToDevtools(
-                              Devtools.LiveQueriesRes.make({
-                                liveQueries: [...this.activeQueries].map((q) => ({
-                                  _tag: q._tag,
-                                  id: q.id,
-                                  label: q.label,
-                                  runs: q.runs,
-                                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                                  lastestResult:
-                                    q.results$.previousResult === NOT_REFRESHED_YET
-                                      ? 'SYMBOL_NOT_REFRESHED_YET'
-                                      : q.results$.previousResult,
-                                  activeSubscriptions: Array.from(q.activeSubscriptions),
-                                })),
-                                requestId,
-                                liveStoreVersion,
-                                channelId,
-                              }),
-                            ),
-                          { timeout: 500 },
-                        )
-
-                      send()
-
-                      // Same as in the reactivity graph subscription case above, we need to throttle the updates
-                      const throttledSend = throttle(send, 20)
-
-                      liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
-
-                      break
-                    }
-                    case 'LSD.LiveQueriesUnsubscribe': {
-                      liveQueriesSubscriptions.get(requestId)!()
-                      liveQueriesSubscriptions.delete(requestId)
-                      break
-                    }
-                    // No default
+                  if (buffer.length > 10) {
+                    sendToDevtools(
+                      Devtools.DebugInfoHistoryRes.make({
+                        debugInfoHistory: buffer,
+                        requestId,
+                        channelId,
+                        liveStoreVersion,
+                      }),
+                    )
+                    buffer.length = 0
                   }
-                })
 
-                storeMessagePort.start()
-              }),
-              Runtime.runFork(runtime),
-            )
+                  if (hasStopped === false) {
+                    rafHandle = requestAnimationFrame(tick)
+                  }
+                }
 
-          return
-        }
-      })
+                rafHandle = requestAnimationFrame(tick)
 
-      sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+                const unsub = () => {
+                  hasStopped = true
+                  if (rafHandle !== undefined) {
+                    cancelAnimationFrame(rafHandle)
+                  }
+                }
+
+                debugInfoHistorySubscriptions.set(requestId, unsub)
+
+                break
+              }
+              case 'LSD.DebugInfoHistoryUnsubscribe': {
+                debugInfoHistorySubscriptions.get(requestId)!()
+                debugInfoHistorySubscriptions.delete(requestId)
+                break
+              }
+              case 'LSD.DebugInfoResetReq': {
+                this.mainDbWrapper.debugInfo.slowQueries.clear()
+                sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, channelId, liveStoreVersion }))
+                break
+              }
+              case 'LSD.DebugInfoRerunQueryReq': {
+                const { queryStr, bindValues, queriedTables } = decodedMessage
+                this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
+                sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, channelId, liveStoreVersion }))
+                break
+              }
+              case 'LSD.ReactivityGraphUnsubscribe': {
+                reactivityGraphSubcriptions.get(requestId)!()
+                break
+              }
+              case 'LSD.LiveQueriesSubscribe': {
+                const send = () =>
+                  requestIdleCallback(
+                    () =>
+                      sendToDevtools(
+                        Devtools.LiveQueriesRes.make({
+                          liveQueries: [...this.activeQueries].map((q) => ({
+                            _tag: q._tag,
+                            id: q.id,
+                            label: q.label,
+                            runs: q.runs,
+                            executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
+                            lastestResult:
+                              q.results$.previousResult === NOT_REFRESHED_YET
+                                ? 'SYMBOL_NOT_REFRESHED_YET'
+                                : q.results$.previousResult,
+                            activeSubscriptions: Array.from(q.activeSubscriptions),
+                          })),
+                          requestId,
+                          liveStoreVersion,
+                          channelId,
+                        }),
+                      ),
+                    { timeout: 500 },
+                  )
+
+                send()
+
+                // Same as in the reactivity graph subscription case above, we need to throttle the updates
+                const throttledSend = throttle(send, 20)
+
+                liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
+
+                break
+              }
+              case 'LSD.LiveQueriesUnsubscribe': {
+                liveQueriesSubscriptions.get(requestId)!()
+                liveQueriesSubscriptions.delete(requestId)
+                break
+              }
+              // No default
+            }
+          }
+
+          yield* storePortChannel.listen.pipe(
+            Stream.flatten(),
+            Stream.tapSync((message) => onMessage(message)),
+            Stream.runDrain,
+            Effect.withSpan('LSD.devtools.onMessage'),
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
+          )
+        })
     })
   // #endregion devtools
 

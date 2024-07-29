@@ -3,13 +3,12 @@ import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE
 import { shouldNeverHappen } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
+  BrowserChannel,
   Deferred,
   Effect,
   Exit,
   PubSub,
   Queue,
-  Runtime,
-  Schema,
   Scope,
   Stream,
   SubscriptionRef,
@@ -44,8 +43,6 @@ export const makeDevtoolsContext = (channelId: string) =>
       isLeaderTab,
     }) =>
       Effect.gen(function* () {
-        const runtime = yield* Effect.runtime<InnerWorkerCtx>()
-
         connectionScopes.add(connectionScope)
 
         yield* Effect.addFinalizer(() => Effect.sync(() => connectionScopes.delete(connectionScope)))
@@ -60,19 +57,16 @@ export const makeDevtoolsContext = (channelId: string) =>
 
         const outgoingMessagesQueue = yield* Queue.unbounded<Devtools.MessageFromAppHostCoordinator>()
 
-        const sendToPort = (msg: typeof Devtools.MessageFromAppHostCoordinator.Type) =>
-          Effect.gen(function* () {
-            const [encodedMessage, transfers] = yield* Schema.encodeWithTransferables(
-              Devtools.MessageFromAppHostCoordinator,
-            )(msg)
-
-            yield* Effect.try(() => coordinatorMessagePort.postMessage(encodedMessage, transfers))
-          }).pipe(Effect.withSpan('@livestore/web:worker:devtools:sendToDevtools'))
+        const portChannel = yield* BrowserChannel.messagePortChannel({
+          port: coordinatorMessagePort,
+          sendSchema: Devtools.MessageFromAppHostCoordinator,
+          listenSchema: Devtools.MessageToAppHostCoordinator,
+        })
 
         const sendMessage: SendMessage = (message, options) =>
           Effect.gen(function* () {
             if (options?.force === true || (yield* SubscriptionRef.get(isConnected))) {
-              yield* sendToPort(message)
+              yield* portChannel.send(message)
             } else {
               yield* Queue.offer(outgoingMessagesQueue, message)
             }
@@ -85,33 +79,29 @@ export const makeDevtoolsContext = (channelId: string) =>
         broadcastCallbacks.add((message) => sendMessage(message))
 
         //       currentRunningPortFiberRef.current =
-        // Effect.gen(function* () {
-        coordinatorMessagePort.addEventListener('message', (event) =>
-          Effect.gen(function* () {
-            const decodedMsg = yield* Schema.decode(Devtools.MessageToAppHostCoordinator)(event.data)
-            // yield* Effect.logDebug('[@livestore/web:worker:devtools] message from port', decodedMsg)
-
-            if (decodedMsg._tag === 'LSD.MessagePortForStoreRes') {
-              yield* Deferred.succeed(storeMessagePortDeferred, decodedMsg.port)
-            } else {
-              yield* PubSub.publish(incomingMessagesPubSub, decodedMsg)
-            }
-          }).pipe(
-            Effect.withSpan('@livestore/web:worker:devtools:onPortMessage'),
-            Effect.tapCauseLogPretty,
-            Runtime.runFork(runtime),
+        yield* portChannel.listen.pipe(
+          Stream.flatten(),
+          Stream.tap((msg) =>
+            Effect.gen(function* () {
+              // yield* Effect.logDebug('[@livestore/web:worker:devtools] message from port', msg)
+              if (msg._tag === 'LSD.MessagePortForStoreRes') {
+                yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
+              } else {
+                yield* PubSub.publish(incomingMessagesPubSub, msg)
+              }
+            }),
           ),
+          Stream.runDrain,
+          Effect.withSpan(`@livestore/web:worker:devtools:onPortMessage`),
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
         )
-
-        coordinatorMessagePort.start()
 
         yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), { force: true })
 
         yield* sendMessage(Devtools.MessagePortForStoreReq.make({ channelId, liveStoreVersion, requestId: cuid() }), {
           force: true,
         })
-
-        yield* Effect.addFinalizer(() => Effect.sync(() => coordinatorMessagePort.close()))
 
         yield* listenToDevtools({ incomingMessages, sendMessage, isConnected, connectionScope, channelId, isLeaderTab })
       }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect'))
