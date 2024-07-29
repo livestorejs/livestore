@@ -89,6 +89,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     keySuffix: string
     storageOptions: StorageType
     schema: LiveStoreSchema
+    mutationSemaphore: Effect.Semaphore
     db: PersistedSqlite
     dbLog: PersistedSqlite
     sqlite3: SqliteWasm.Sqlite3Static
@@ -127,8 +128,16 @@ export const makeApplyMutation = (
 
   return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) =>
     Effect.gen(function* () {
-      const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync, schema } =
-        workerCtx
+      const {
+        dbLog,
+        mutationEventSchema,
+        mutationDefSchemaHashMap,
+        broadcastChannel,
+        devtools,
+        sync,
+        schema,
+        mutationSemaphore,
+      } = workerCtx
       const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
       const mutationName = mutationEventDecoded.mutation
@@ -138,9 +147,9 @@ export const makeApplyMutation = (
 
       // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
-      {
-        const hasTransaction = execArgsArr.length > 1
-        if (hasTransaction) {
+      const transaction = Effect.gen(function* () {
+        const hasDbTransaction = execArgsArr.length > 1
+        if (hasDbTransaction) {
           yield* execSql(db, 'BEGIN TRANSACTION', {})
         }
 
@@ -148,14 +157,16 @@ export const makeApplyMutation = (
           // console.debug(mutationName, statementSql, bindValues)
           // TODO use cached prepared statements instead of exec
           yield* execSqlPrepared(db, statementSql, bindValues).pipe(
-            Effect.tapError(() => (hasTransaction ? execSql(db, 'ROLLBACK', {}) : Effect.void)),
+            Effect.tapError(() => (hasDbTransaction ? execSql(db, 'ROLLBACK', {}) : Effect.void)),
           )
         }
 
-        if (hasTransaction) {
+        if (hasDbTransaction) {
           yield* execSql(db, 'COMMIT', {})
         }
-      }
+      })
+
+      yield* mutationSemaphore.withPermits(1)(transaction)
 
       // console.groupEnd()
 

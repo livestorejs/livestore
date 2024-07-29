@@ -25,7 +25,7 @@ export * from 'effect/Effect'
 //     console.error(message, ...rest)
 //   })
 
-export const tryAll = <Res extends any | Promise<any> | Effect.Effect<any>>(
+export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E, never>
   ? Effect.Effect<A, E | UnknownException, never>

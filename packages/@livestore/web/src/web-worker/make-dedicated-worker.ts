@@ -182,10 +182,13 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const initialSetupDeferred = yield* Deferred.make<InitialSetup, UnexpectedError>()
 
+          const mutationSemaphore = yield* Effect.makeSemaphore(1)
+
           const innerWorkerCtx = {
             keySuffix,
             storageOptions,
             schema,
+            mutationSemaphore,
             shutdownStateSubRef,
             sqlite3,
             initialSetupDeferred,
