@@ -1,5 +1,5 @@
 import type { BootStatus } from '@livestore/common'
-import { Chunk, Effect, Queue, Schema } from '@livestore/utils/effect'
+import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 
@@ -21,7 +21,12 @@ export const test = () =>
       shutdown: () => Effect.void,
     })
 
-    const bootStatusUpdates = yield* Queue.takeAll(bootStatusQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+    // NOTE We can't use `Queue.takeAll` since sometimes it takes a bit longer for the updates to come in
+    const bootStatusUpdates: BootStatus[] = []
+    yield* Queue.take(bootStatusQueue).pipe(
+      Effect.tapSync((update) => bootStatusUpdates.push(update)),
+      Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
+    )
 
     return { bootStatusUpdates }
   }).pipe(
