@@ -323,6 +323,18 @@ const listenToDevtools = ({
               })
 
               yield* sendMessage(Devtools.RunMutationRes.make({ requestId, channelId, liveStoreVersion }))
+
+              return
+            }
+            case 'LSD.SyncingInfoReq': {
+              const syncingInfo = Devtools.SyncingInfo.make({
+                enabled: sync !== undefined,
+                metadata: {},
+              })
+
+              yield* sendMessage(Devtools.SyncingInfoRes.make({ syncingInfo, requestId, channelId, liveStoreVersion }))
+
+              return
             }
           }
         }).pipe(Effect.withSpan(`@livestore/web:worker:onDevtoolsMessage:${decodedEvent._tag}`)),

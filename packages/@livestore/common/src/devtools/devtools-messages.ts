@@ -139,6 +139,17 @@ export class NetworkStatusChanged extends LSDChannelMessage('LSD.NetworkStatusCh
   networkStatus: NetworkStatus,
 }) {}
 
+export class SyncingInfoReq extends LSDReqResMessage('LSD.SyncingInfoReq', {}) {}
+
+export class SyncingInfo extends Schema.Struct({
+  enabled: Schema.Boolean,
+  metadata: Schema.Record({ key: Schema.String, value: Schema.Any }),
+}) {}
+
+export class SyncingInfoRes extends LSDReqResMessage('LSD.SyncingInfoRes', {
+  syncingInfo: SyncingInfo,
+}) {}
+
 export class DevtoolsReady extends LSDMessage('LSD.DevtoolsReady', {}) {}
 
 export class DevtoolsConnected extends LSDChannelMessage('LSD.DevtoolsConnected', {}) {}
@@ -165,6 +176,7 @@ export const MessageToAppHostCoordinator = Schema.Union(
   RunMutationReq,
   Ping,
   DatabaseFileInfoReq,
+  SyncingInfoReq,
 ).annotations({ identifier: 'LSD.MessageToAppHostCoordinator' })
 
 export type MessageToAppHostCoordinator = typeof MessageToAppHostCoordinator.Type
@@ -197,6 +209,7 @@ export const MessageFromAppHostCoordinator = Schema.Union(
   RunMutationRes,
   Pong,
   DatabaseFileInfoRes,
+  SyncingInfoRes,
 ).annotations({ identifier: 'LSD.MessageFromAppHostCoordinator' })
 
 export type MessageFromAppHostCoordinator = typeof MessageFromAppHostCoordinator.Type
