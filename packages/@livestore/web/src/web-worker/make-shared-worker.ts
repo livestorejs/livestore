@@ -31,6 +31,11 @@ const makeWorkerRunner = Effect.gen(function* () {
     | undefined
   >(undefined)
 
+  type ChannelId = string
+  const devtoolsPortDeferreds = new Map<ChannelId, Deferred.Deferred<MessagePort>>()
+  // @ts-expect-error Only for debugging
+  globalThis.__debugDevtoolsPortDeferreds = devtoolsPortDeferreds
+
   const initialMessageDeferred = yield* Deferred.make<WorkerSchema.DedicatedWorkerInner.InitialMessage>()
 
   const waitForWorker = SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined).pipe(
@@ -69,28 +74,36 @@ const makeWorkerRunner = Effect.gen(function* () {
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
     InitialMessage: (message) =>
       Effect.gen(function* () {
+        if (message.payload._tag === 'FromWebBridge') return
+
         const deferredAlreadyDone = yield* Deferred.isDone(initialMessageDeferred)
+        const initialMessage = message.payload.initialMessage
 
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessageDeferred)
           const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(
+            // TODO there can still be a case when recreating from an imported mutation log
+            // where the `needsRecreate` will be different and needs to be respected and propagated
+            // To support this case we probably need to further refactor the `initialMessageDeferred`
+            // into a SubRef to support multiple updates
+            // An alternative path could be to fully shutdown the SharedWorker during import (possibly via a special broadcast channel)
             Schema.omit('devtools', 'needsRecreate'),
           )
           const isEqual = SchemaEquivalence.make(messageSchema)
-          if (isEqual(message, previousInitialMessage) === false) {
-            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage, message)
+          if (isEqual(initialMessage, previousInitialMessage) === false) {
+            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage, initialMessage)
 
             yield* new UnexpectedError({
               cause: {
                 message: 'Initial message already sent and was different now',
                 diff,
                 previousInitialMessage,
-                newInitialMessage: message,
+                newInitialMessage: initialMessage,
               },
             })
           }
         } else {
-          yield* Deferred.succeed(initialMessageDeferred, message)
+          yield* Deferred.succeed(initialMessageDeferred, initialMessage)
         }
       }),
     UpdateMessagePort: ({ port }) =>
@@ -140,6 +153,40 @@ const makeWorkerRunner = Effect.gen(function* () {
         UnexpectedError.mapToUnexpectedError,
         Effect.tapCauseLogPretty,
       ),
+
+    OfferDevtoolsPort: ({ port, channelId }) =>
+      Effect.gen(function* () {
+        console.log('OfferDevtoolsPort', channelId)
+        const existingDeferred = devtoolsPortDeferreds.get(channelId)
+        if (existingDeferred === undefined) {
+          const deferred = yield* Deferred.make<MessagePort>()
+          yield* Deferred.succeed(deferred, port)
+          devtoolsPortDeferreds.set(channelId, deferred)
+        } else {
+          yield* Deferred.succeed(existingDeferred, port)
+        }
+      }).pipe(Effect.withSpan('@livestore/web:shared-worker:offerDevtoolsPort'), UnexpectedError.mapToUnexpectedError),
+
+    WaitForDevtoolsPort: ({ channelId }) =>
+      Effect.gen(function* () {
+        console.log('WaitForDevtoolsPort', channelId)
+        if (!devtoolsPortDeferreds.has(channelId)) {
+          const deferred = yield* Deferred.make<MessagePort>()
+          devtoolsPortDeferreds.set(channelId, deferred)
+        }
+
+        const deferred = devtoolsPortDeferreds.get(channelId)!
+        const port = yield* Deferred.await(deferred)
+
+        devtoolsPortDeferreds.delete(channelId)
+
+        return { port }
+      }).pipe(
+        Effect.withSpan('@livestore/web:shared-worker:waitForDevtoolsPort'),
+        UnexpectedError.mapToUnexpectedError,
+      ),
+
+    // Proxied requests
     BootStatusStream: forwardRequestStream,
     ExecuteBulk: forwardRequest,
     Export: forwardRequest,

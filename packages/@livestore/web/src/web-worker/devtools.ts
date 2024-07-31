@@ -176,26 +176,27 @@ const listenToDevtools = ({
             return
           }
 
-          const { requestId } = decodedEvent
-
           if (decodedEvent.channelId !== channelId) return
+
+          if (decodedEvent._tag === 'LSD.Disconnect') {
+            yield* SubscriptionRef.set(isConnected, false)
+
+            // TODO consider using `return yield* Effect.interrupt` instead
+            yield* Scope.close(connectionScope, Exit.void)
+
+            // TODO is there a better place for this?
+            yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
+              force: true,
+            })
+
+            return
+          }
+
+          const { requestId } = decodedEvent
 
           switch (decodedEvent._tag) {
             case 'LSD.Ping': {
               yield* sendMessage(Devtools.Pong.make({ requestId, channelId, liveStoreVersion }))
-              return
-            }
-            case 'LSD.Disconnect': {
-              yield* SubscriptionRef.set(isConnected, false)
-
-              // TODO consider using `return yield* Effect.interrupt` instead
-              yield* Scope.close(connectionScope, Exit.void)
-
-              // TODO is there a better place for this?
-              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
-                force: true,
-              })
-
               return
             }
             case 'LSD.SnapshotReq': {

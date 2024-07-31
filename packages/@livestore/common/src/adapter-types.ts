@@ -63,6 +63,8 @@ export type Coordinator = {
       port: MessagePort
       connectionId: string
     }) => Effect.Effect<{ storeMessagePort: MessagePort }, UnexpectedError>
+    // TODO refactor to possibly flip the hiearchy so the coordinator connects to the store instead of the store connecting to the coordinator
+    waitForPort: Effect.Effect<MessagePort, UnexpectedError>
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>

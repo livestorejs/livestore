@@ -7,15 +7,13 @@ import type {
   StoreAdapter,
   StoreAdapterFactory,
 } from '@livestore/common'
-import { Devtools, getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
+import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
-  BrowserChannel,
   Effect,
-  Either,
   Exit,
   FiberSet,
   Inspectable,
@@ -37,7 +35,7 @@ import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
 import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
-import { connectStoreToDevtools } from './store-devtools.js'
+import { listenToBrowserExtensionBridge, listenToWebBridge } from './store-devtools.js'
 import { ReferenceCountedSet } from './utils/data-structures.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
@@ -237,7 +235,7 @@ export class Store<
       )
 
       if (disableDevtools !== true) {
-        yield* this.bootDevtools().pipe(Effect.forkScoped)
+        yield* this.bootDevtools.pipe(Effect.forkScoped)
       }
 
       yield* Effect.addFinalizer(() =>
@@ -590,51 +588,13 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
-  // #region devtools
-  private bootDevtools = () =>
-    Effect.gen(this, function* () {
-      // const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
+  private bootDevtools = Effect.gen(this, function* () {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment
+    const store = this
 
-      // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment
-      const store = this
-      const channelId = this.adapter.coordinator.devtools.channelId
-
-      // Chrome extension bridge
-      {
-        const windowChannel = yield* BrowserChannel.windowChannel({
-          window,
-          listenSchema: Devtools.DevtoolsWindowMessage.MessageForStore,
-          sendSchema: Devtools.DevtoolsWindowMessage.MessageForContentscript,
-        })
-
-        yield* windowChannel.send(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
-
-        yield* windowChannel.listen.pipe(
-          Stream.filterMap(Either.getRight),
-          Stream.tap((message) =>
-            Effect.gen(function* () {
-              if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
-                // Send message to contentscript via window (which the contentscript iframe is listening to)
-                yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-                return
-              }
-
-              if (message.channelId !== channelId) return
-
-              if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
-                yield* connectStoreToDevtools({ port: message.port, store })
-              }
-            }),
-          ),
-          Stream.runDrain,
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped,
-        )
-
-        yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-      }
-    })
-  // #endregion devtools
+    yield* listenToWebBridge({ store })
+    yield* listenToBrowserExtensionBridge({ store })
+  }).pipe(UnexpectedError.mapToUnexpectedError)
 
   __devDownloadDb = () => {
     const data = this.mainDbWrapper.export()

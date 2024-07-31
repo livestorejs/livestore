@@ -40,11 +40,20 @@ export type LiveStoreSchema<
   readonly hash: number
 
   migrationOptions: MigrationOptions
+
+  key: string
 }
 
 export type InputSchema = {
   readonly tables: Record<string, TableDef> | ReadonlyArray<TableDef>
   readonly mutations?: ReadonlyArray<MutationDef.Any> | Record<string, MutationDef.Any>
+  /**
+   * Can be used to isolate multiple LiveStore apps running in the same origin
+   *
+   * Make sure you also use this key in the `storage` options (e.g. directory, prefix etc) to make sure
+   * different instances of LiveStore aren't overlapping on the storage level.
+   */
+  readonly key?: string
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
@@ -111,6 +120,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     mutations,
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
     hash,
+    key: inputSchema.key ?? '',
   } satisfies LiveStoreSchema
 }
 

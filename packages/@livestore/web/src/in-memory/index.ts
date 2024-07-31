@@ -38,7 +38,7 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
 
     return {
       isShutdownRef: { current: false },
-      devtools: { channelId: cuid(), connect: () => Effect.never, enabled: false },
+      devtools: { channelId: cuid(), connect: () => Effect.never, enabled: false, waitForPort: Effect.never },
       lockStatus,
       syncMutations,
       execute: () => Effect.void,

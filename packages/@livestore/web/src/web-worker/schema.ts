@@ -175,6 +175,17 @@ export namespace DedicatedWorkerInner {
 }
 
 export namespace SharedWorker {
+  export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
+    payload: {
+      payload: Schema.Union(
+        Schema.TaggedStruct('FromCoordinator', { initialMessage: DedicatedWorkerInner.InitialMessage }),
+        Schema.TaggedStruct('FromWebBridge', {}),
+      ),
+    },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
+
   export class UpdateMessagePort extends Schema.TaggedRequest<UpdateMessagePort>()('UpdateMessagePort', {
     payload: {
       port: Transferable.MessagePort,
@@ -183,8 +194,32 @@ export namespace SharedWorker {
     failure: UnexpectedError,
   }) {}
 
+  export class WaitForDevtoolsPort extends Schema.TaggedRequest<WaitForDevtoolsPort>()('WaitForDevtoolsPort', {
+    payload: {
+      channelId: Schema.String,
+    },
+    success: Schema.Struct({
+      port: Transferable.MessagePort,
+    }),
+    failure: UnexpectedError,
+  }) {}
+
+  export class OfferDevtoolsPort extends Schema.TaggedRequest<OfferDevtoolsPort>()('OfferDevtoolsPort', {
+    payload: {
+      port: Transferable.MessagePort,
+      channelId: Schema.String,
+    },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
+
   export class Request extends Schema.Union(
-    DedicatedWorkerInner.InitialMessage,
+    InitialMessage,
+    UpdateMessagePort,
+    WaitForDevtoolsPort,
+    OfferDevtoolsPort,
+
+    // Proxied requests
     DedicatedWorkerInner.BootStatusStream,
     DedicatedWorkerInner.ExecuteBulk,
     DedicatedWorkerInner.Export,
@@ -194,7 +229,5 @@ export namespace SharedWorker {
     DedicatedWorkerInner.ListenForReloadStream,
     DedicatedWorkerInner.Shutdown,
     DedicatedWorkerInner.ConnectDevtools,
-
-    UpdateMessagePort,
   ) {}
 }

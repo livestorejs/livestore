@@ -52,18 +52,16 @@ export type WebAdapterOptions = {
    * ```
    */
   sharedWorker: globalThis.SharedWorker | (new (options?: { name: string }) => globalThis.SharedWorker)
-  /** Specifies where to persist data for this adapter */
-  storage: WorkerSchema.StorageTypeEncoded
-  syncing?: WorkerSchema.SyncingType
   /**
-   * Can be used to isolate multiple LiveStore apps running in the same origin
+   * Specifies where to persist data for this adapter
    *
-   * Make sure you also use this key in the `storage` options (e.g. directory, prefix etc) to make sure
+   * Make sure you also use the schema key in the `storage` options (e.g. directory, prefix etc) to make sure
    * different instances of LiveStore aren't overlapping on the storage level.
    *
    * TODO consider making this the default behaviour https://github.com/livestorejs/livestore/issues/99
-   */
-  key?: string
+   * */
+  storage: WorkerSchema.StorageTypeEncoded
+  syncing?: WorkerSchema.SyncingType
   resetPersistence?: boolean
 }
 
@@ -77,7 +75,7 @@ export const makeCoordinator =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const keySuffix = options.key ? `-${options.key}` : ''
+      const keySuffix = schema.key.length > 0 ? `-${schema.key}` : ''
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock${keySuffix}`
 
@@ -110,12 +108,17 @@ export const makeCoordinator =
         size: 1,
         concurrency: 100,
         initialMessage: () =>
-          new WorkerSchema.DedicatedWorkerInner.InitialMessage({
-            storageOptions,
-            needsRecreate: dataFromFile === undefined,
-            syncOptions: options.syncing,
-            key: options.key,
-            devtools: { channelId, enabled: devtoolsEnabled },
+          new WorkerSchema.SharedWorker.InitialMessage({
+            payload: {
+              _tag: 'FromCoordinator',
+              initialMessage: new WorkerSchema.DedicatedWorkerInner.InitialMessage({
+                storageOptions,
+                needsRecreate: dataFromFile === undefined,
+                syncOptions: options.syncing,
+                key: schema.key,
+                devtools: { channelId, enabled: devtoolsEnabled },
+              }),
+            },
           }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => sharedWorker)),
@@ -214,7 +217,7 @@ export const makeCoordinator =
         ? Effect.Effect<A, UnexpectedError, R>
         : never =>
         Deferred.await(sharedWorkerDeferred).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.flatMap((worker) => worker.executeEffect(req) as any),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
@@ -234,7 +237,7 @@ export const makeCoordinator =
         Effect.gen(function* () {
           const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
           return sharedWorker
-            .execute(req)
+            .execute(req as any)
             .pipe(
               UnexpectedError.mapToUnexpectedErrorStream,
               Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
@@ -364,6 +367,16 @@ export const makeCoordinator =
               UnexpectedError.mapToUnexpectedError,
               Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
             ),
+          waitForPort: Effect.gen(function* () {
+            const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+            const { port } = yield* sharedWorker.executeEffect(
+              WorkerSchema.SharedWorker.WaitForDevtoolsPort.make({ channelId }),
+            )
+            return port
+          }).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/web:coordinator:devtools:waitForPort'),
+          ),
         },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),

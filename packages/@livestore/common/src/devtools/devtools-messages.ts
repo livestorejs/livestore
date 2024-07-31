@@ -158,7 +158,7 @@ export class AppHostReady extends LSDChannelMessage('LSD.AppHostReady', {
   isLeaderTab: Schema.Boolean,
 }) {}
 
-export class Disconnect extends LSDReqResMessage('LSD.Disconnect', {}) {}
+export class Disconnect extends LSDChannelMessage('LSD.Disconnect', {}) {}
 
 export class Ping extends LSDReqResMessage('LSD.Ping', {}) {}
 

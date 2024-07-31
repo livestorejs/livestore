@@ -14,6 +14,9 @@ export type MapRows<TResult, TRaw = any> =
   | ((rows: ReadonlyArray<TRaw>) => TResult)
   | Schema.Schema<TResult, ReadonlyArray<TRaw>, unknown>
 
+/**
+ * NOTE `querySQL` is only supposed to read data. Don't use it to insert/update/delete data but use mutations instead.
+ */
 export const querySQL = <TResult, TRaw = any>(
   query: string | ((get: GetAtomResult) => string),
   options?: {
