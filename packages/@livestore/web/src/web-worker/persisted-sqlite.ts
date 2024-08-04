@@ -14,7 +14,7 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
 } from './common.js'
-import type { StorageType } from './schema.js'
+import type { StorageType } from './worker-schema.js'
 
 export interface PersistedSqlite {
   /** NOTE the db instance is wrapped in a ref since it can be re-created */

@@ -52,6 +52,14 @@ const getThreadName = () => {
       : 'unknown-thread'
 }
 
+export const acquireReleaseLog = (label: string) =>
+  Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
+
+export const logBefore =
+  (...msgs: any[]) =>
+  <A, E, R>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.andThen(Effect.log(...msgs), eff)
+
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (cause) =>

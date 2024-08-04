@@ -7,9 +7,11 @@ import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
+  Cause,
   Chunk,
   Deferred,
   Effect,
+  Fiber,
   Queue,
   Runtime,
   Schema,
@@ -32,8 +34,10 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
 } from './common.js'
+import { bootDevtools } from './coordinator-devtools.js'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
-import * as WorkerSchema from './schema.js'
+import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel, ShutdownBroadcast } from './shutdown-channel.js'
+import * as WorkerSchema from './worker-schema.js'
 
 export type WebAdapterOptions = {
   worker: globalThis.Worker | (new (options?: { name: string }) => globalThis.Worker)
@@ -67,7 +71,7 @@ export type WebAdapterOptions = {
 
 export const makeCoordinator =
   (options: WebAdapterOptions): MakeCoordinator =>
-  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown }) =>
+  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -97,7 +101,19 @@ export const makeCoordinator =
       // TODO also verify persisted data
       const dataFromFile = yield* getPersistedData(storageOptions, dbFileSuffix)
 
-      const channelId = cuid()
+      const channelId = getChannelId(schema.key)
+
+      const shutdownChannel = yield* makeShutdownChannel(schema.key)
+
+      yield* shutdownChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.filter(Schema.is(ShutdownBroadcast)),
+        Stream.tap(() => shutdown(Cause.fail(UnexpectedError.make({ cause: 'Shutdown' })))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
       const sharedWorker =
         options.sharedWorker instanceof globalThis.SharedWorker
@@ -116,7 +132,7 @@ export const makeCoordinator =
                 needsRecreate: dataFromFile === undefined,
                 syncOptions: options.syncing,
                 key: schema.key,
-                devtools: { channelId, enabled: devtoolsEnabled },
+                devtoolsEnabled,
               }),
             },
           }),
@@ -137,7 +153,9 @@ export const makeCoordinator =
       const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky ? 'has-lock' : 'no-lock')
 
       const runLocked = Effect.gen(function* () {
-        yield* Effect.logDebug(`[@livestore/web:coordinator] Got lock for '${LIVESTORE_TAB_LOCK}'`)
+        yield* Effect.logDebug(
+          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (channelId: ${channelId})`,
+        )
 
         yield* Effect.addFinalizer(() =>
           Effect.logDebug(`[@livestore/web:coordinator] Releasing lock for '${LIVESTORE_TAB_LOCK}'`),
@@ -162,6 +180,8 @@ export const makeCoordinator =
           Effect.forkScoped,
         )
 
+        yield* shutdownChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
+
         const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
         yield* sharedWorker
           .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
@@ -169,7 +189,7 @@ export const makeCoordinator =
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
-            console.log('[@livestore/web:coordinator] coordinator shutdown. sending shutdown message to shared worker')
+            // console.log('[@livestore/web:coordinator] Shutting down dedicated worker')
 
             // We first try to gracefully shutdown the dedicated worker and then forcefully terminate it
             yield* Effect.raceFirst(
@@ -187,8 +207,8 @@ export const makeCoordinator =
               ),
             )
 
-            console.log('[@livestore/web:coordinator] coordinator shutdown. worker terminated')
-          }).pipe(Effect.withSpan('@livestore/web:coordinator:lock:shutdown'), Effect.tapCauseLogPretty, Effect.orDie),
+            // yield* Effect.logDebug('[@livestore/web:coordinator] coordinator shutdown. worker terminated')
+          }).pipe(Effect.withSpan('@livestore/web:coordinator:lock:shutdown'), Effect.ignoreLogged),
         )
 
         yield* Effect.never
@@ -196,8 +216,11 @@ export const makeCoordinator =
 
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
+        yield* Effect.logDebug(
+          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (channelId: ${channelId})`,
+        )
+
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
-        // const innerLockDeferred = yield* Deferred.make<void>()
         yield* WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
           Effect.andThen(() => {
             gotLocky = true
@@ -258,21 +281,17 @@ export const makeCoordinator =
         )
       }
 
-      yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.ListenForReloadStream()).pipe(
-        Stream.tapSync((_) => window.location.reload()),
+      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
+        Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
         Effect.tapErrorCause(shutdown),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
-      yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
-        Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
-        Stream.runDrain,
-        Effect.tapErrorCause(shutdown),
-        Effect.interruptible,
+      yield* Queue.awaitShutdown(bootStatusQueue).pipe(
+        Effect.andThen(Fiber.interrupt(bootStatusFiber)),
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
@@ -287,7 +306,7 @@ export const makeCoordinator =
         yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items })).pipe(
           Effect.timeout(10_000),
           Effect.tapErrorCause((cause) =>
-            Effect.log('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
+            Effect.logDebug('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
           ),
         )
 
@@ -355,29 +374,7 @@ export const makeCoordinator =
 
       const coordinator = {
         isShutdownRef,
-        devtools: {
-          enabled: devtoolsEnabled,
-          channelId,
-          connect: ({ connectionId, port }) =>
-            runInWorker(
-              WorkerSchema.DedicatedWorkerInner.ConnectDevtools.make({ port, connectionId, isLeaderTab: gotLocky }),
-            ).pipe(
-              // Effect.timeout(10_000),
-              Effect.interruptible,
-              UnexpectedError.mapToUnexpectedError,
-              Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
-            ),
-          waitForPort: Effect.gen(function* () {
-            const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
-            const { port } = yield* sharedWorker.executeEffect(
-              WorkerSchema.SharedWorker.WaitForDevtoolsPort.make({ channelId }),
-            )
-            return port
-          }).pipe(
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/web:coordinator:devtools:waitForPort'),
-          ),
-        },
+        devtools: { enabled: devtoolsEnabled, channelId },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: Effect.sync(() => initialSnapshot),
@@ -435,8 +432,59 @@ export const makeCoordinator =
         networkStatus,
       } satisfies Coordinator
 
+      const waitForDevtoolsWebBridgePort = ({ webBridgeId }: { webBridgeId: string }) =>
+        Effect.gen(function* () {
+          const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+          const { port } = yield* sharedWorker.executeEffect(
+            WorkerSchema.SharedWorker.DevtoolsWebBridgeWaitForPort.make({ webBridgeId }),
+          )
+          return port
+        }).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:coordinator:devtools:waitForDevtoolsWebBridgePort'),
+        )
+
+      const connectToDevtools = (coordinatorMessagePort: MessagePort) => {
+        return runInWorkerStream(
+          WorkerSchema.DedicatedWorkerInner.ConnectDevtoolsStream.make({
+            port: coordinatorMessagePort,
+            channelId,
+            isLeaderTab: gotLocky,
+          }),
+        ).pipe(
+          // NOTE the `forkScoped` seems to be needed here since otherwise interruption doesn't work
+          Stream.tap((port) => connectDevtoolsToStore(port).pipe(Effect.forkScoped)),
+          Stream.runDrain,
+          Effect.interruptible,
+          Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
+        )
+      }
+
+      if (devtoolsEnabled) {
+        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, key: schema.key })
+      }
+
       return coordinator
     }).pipe(UnexpectedError.mapToUnexpectedError)
+
+const getChannelId = (key: string) => {
+  // Only use the last 6 characters of the channel id to make it shorter
+  const makeId = () => cuid().slice(-6)
+
+  if (typeof window === 'undefined' || window.sessionStorage === undefined) {
+    return makeId()
+  }
+
+  const fullKey = `livestore:channelid:${key}`
+  const storedKey = sessionStorage.getItem(fullKey)
+
+  if (storedKey) return storedKey
+
+  const newKey = makeId()
+  sessionStorage.setItem(fullKey, newKey)
+
+  return newKey
+}
 
 const getPersistedData = (storage: WorkerSchema.StorageType, fileSuffix: number) =>
   Effect.promise(async () => {

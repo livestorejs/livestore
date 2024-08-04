@@ -24,8 +24,8 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20240725.0",
-    "wrangler": "^3.67.1"
+    "@cloudflare/workers-types": "4.20240729.0",
+    "wrangler": "^3.68.0"
   },
   "publishConfig": {
     "access": "public"

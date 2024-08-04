@@ -4,7 +4,7 @@ const channelId = Schema.String
 
 export namespace DevtoolsWindowMessage {
   /** Message is being created in contentscript-iframe, sent to contentscript and then sent to Store */
-  export class MessagePortReady extends Schema.TaggedStruct('LSD.WindowMessage.MessagePortForStore', {
+  export class MessagePortReady extends Schema.TaggedStruct('LSD.WindowMessage.MessagePortReady', {
     port: Transferable.MessagePort,
     channelId,
   }) {}

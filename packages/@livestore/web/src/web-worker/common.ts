@@ -20,13 +20,13 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, Queue, Scope, Stream } from '@livestore/utils/effect'
+import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream } from '@livestore/utils/effect'
 import { Context, Effect, Runtime, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
-import type { StorageType } from './schema.js'
+import type { StorageType } from './worker-schema.js'
 
 export const getAppDbFileName = (prefix: string, suffix: number) => {
   return `${prefix}${suffix}.db`
@@ -59,20 +59,19 @@ export type DevtoolsContextEnabled = {
   enabled: true
   connect: (options: {
     coordinatorMessagePort: MessagePort
-    storeMessagePortDeferred: Deferred.Deferred<MessagePort>
-    connectionScope: Scope.CloseableScope
-    connectionId: string
+    storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
+    disconnect: Effect.Effect<void>
+    channelId: string
     isLeaderTab: boolean
   }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
-  connectionScopes: Set<Scope.CloseableScope>
+  connections: FiberSet.FiberSet
   broadcast: (
-    message: typeof Devtools.NetworkStatusChanged.Type | typeof Devtools.MutationBroadcast.Type,
+    message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
   ) => Effect.Effect<void>
-  channelId: string
 }
 export type DevtoolsContext = DevtoolsContextEnabled | { enabled: false }
 
-export type ShutdownState = 'running' | 'shutting-down' | 'shutdown-requested'
+export type ShutdownState = 'running' | 'shutting-down'
 
 export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
   OuterWorkerCtx,
@@ -81,7 +80,7 @@ export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
   }
 >() {}
 
-export type InitialSetup = { _tag: 'Recreate'; snapshot: Uint8Array } | { _tag: 'Reuse' }
+export type InitialSetup = { _tag: 'Recreate'; snapshot: Ref.Ref<Uint8Array | undefined> } | { _tag: 'Reuse' }
 
 export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
   InnerWorkerCtx,

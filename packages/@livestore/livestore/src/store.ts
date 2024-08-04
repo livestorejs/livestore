@@ -11,8 +11,10 @@ import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@li
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
+import type { Cause } from '@livestore/utils/effect'
 import {
+  Deferred,
+  Duration,
   Effect,
   Exit,
   FiberSet,
@@ -35,7 +37,7 @@ import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
 import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
-import { listenToBrowserExtensionBridge, listenToWebBridge } from './store-devtools.js'
+import { connectDevtoolsToStore } from './store-devtools.js'
 import { ReferenceCountedSet } from './utils/data-structures.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
@@ -55,6 +57,9 @@ export type OtelOptions = {
   tracer: otel.Tracer
   rootSpanContext: otel.Context
 }
+
+export class ForceStoreShutdown extends Schema.TaggedError<ForceStoreShutdown>()('LiveStore.ForceStoreShutdown', {}) {}
+export class StoreShutdown extends Schema.TaggedError<StoreShutdown>()('LiveStore.StoreShutdown', {}) {}
 
 export type StoreOptions<
   TGraphQLContext extends BaseGraphQLContext,
@@ -124,7 +129,6 @@ export class Store<
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > extends Inspectable.Class {
   id = uniqueStoreId()
-  readonly devtoolsConnectionId = cuid()
   private fiberSet: FiberSet.FiberSet
   reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
@@ -230,13 +234,10 @@ export class Store<
           this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
         }),
         Stream.runDrain,
+        Effect.interruptible,
         Effect.withSpan('LiveStore:syncMutations'),
         Effect.forkScoped,
       )
-
-      if (disableDevtools !== true) {
-        yield* this.bootDevtools.pipe(Effect.forkScoped)
-      }
 
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
@@ -254,7 +255,6 @@ export class Store<
       yield* Effect.never
     }).pipe(Effect.scoped, Effect.withSpan('LiveStore:store-constructor'), FiberSet.run(fiberSet), runEffectFork)
   }
-
   // #endregion constructor
 
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
@@ -588,14 +588,6 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
-  private bootDevtools = Effect.gen(this, function* () {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment
-    const store = this
-
-    yield* listenToWebBridge({ store })
-    yield* listenToBrowserExtensionBridge({ store })
-  }).pipe(UnexpectedError.mapToUnexpectedError)
-
   __devDownloadDb = () => {
     const data = this.mainDbWrapper.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
@@ -688,21 +680,44 @@ export const createStore = <
 
     yield* Queue.take(bootStatusQueue).pipe(
       Effect.tapSync((status) => onBootStatus?.(status)),
+      Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
       Effect.forever,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
 
+    const storeDeferred = yield* Deferred.make<Store>()
+
+    const connectDevtoolsToStore_ = ({ storeMessagePort }: { storeMessagePort: MessagePort }) =>
+      Effect.gen(function* () {
+        const store = yield* Deferred.await(storeDeferred)
+        yield* connectDevtoolsToStore({ storeMessagePort, store })
+      })
+
+    // TODO close parent scope? (Needs refactor with Mike A)
+    const shutdown = (cause: Cause.Cause<unknown>) =>
+      Effect.gen(function* () {
+        yield* Effect.logWarning(`Shutting down LiveStore`, cause)
+
+        FiberSet.clear(fiberSet).pipe(
+          Effect.andThen(() => FiberSet.run(fiberSet, Effect.fail(StoreShutdown.make()))),
+          Effect.timeout(Duration.seconds(1)),
+          Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
+          Effect.catchTag('TimeoutException', () =>
+            Effect.logWarning('Store shutdown timed out. Forcing shutdown.').pipe(
+              Effect.andThen(FiberSet.run(fiberSet, Effect.fail(ForceStoreShutdown.make()))),
+            ),
+          ),
+          runEffectFork, // NOTE we need to fork this separately otherwise it will also be interrupted
+        )
+      }).pipe(Effect.withSpan('livestore:shutdown'))
+
     const adapter: StoreAdapter = yield* adapterFactory({
       schema,
       devtoolsEnabled: disableDevtools !== true,
       bootStatusQueue,
-      shutdown: (cause) =>
-        Effect.gen(function* () {
-          yield* Effect.logWarning(`Shutting down LiveStore`, cause)
-          // TODO close parent scope? (Needs refactor with Mike A)
-          yield* FiberSet.clear(fiberSet)
-        }).pipe(Effect.withSpan('livestore:shutdown')),
+      shutdown,
+      connectDevtoolsToStore: connectDevtoolsToStore_,
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
     if (batchUpdates !== undefined) {
@@ -786,7 +801,7 @@ export const createStore = <
       )
     }
 
-    return Store.createStore<TGraphQLContext, TSchema>(
+    const store = Store.createStore<TGraphQLContext, TSchema>(
       {
         adapter,
         schema,
@@ -799,6 +814,10 @@ export const createStore = <
       },
       span,
     )
+
+    yield* Deferred.succeed(storeDeferred, store as any as Store)
+
+    return store
   }).pipe(
     Effect.withSpan('createStore', {
       parent: otelOptions?.rootSpanContext

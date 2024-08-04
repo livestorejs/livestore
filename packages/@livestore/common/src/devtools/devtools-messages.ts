@@ -135,7 +135,10 @@ export class MessagePortForStoreRes extends LSDReqResMessage('LSD.MessagePortFor
   port: Transferable.MessagePort,
 }) {}
 
-export class NetworkStatusChanged extends LSDChannelMessage('LSD.NetworkStatusChanged', {
+export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.NetworkStatusSubscribe', {}) {}
+export class NetworkStatusUnsubscribe extends LSDReqResMessage('LSD.NetworkStatusUnsubscribe', {}) {}
+
+export class NetworkStatusRes extends LSDReqResMessage('LSD.NetworkStatusRes', {
   networkStatus: NetworkStatus,
 }) {}
 
@@ -170,6 +173,8 @@ export const MessageToAppHostCoordinator = Schema.Union(
   MutationLogReq,
   ResetAllDataReq,
   MessagePortForStoreRes,
+  NetworkStatusSubscribe,
+  NetworkStatusUnsubscribe,
   DevtoolsReady,
   Disconnect,
   DevtoolsConnected,
@@ -205,7 +210,7 @@ export const MessageFromAppHostCoordinator = Schema.Union(
   Disconnect,
   MutationBroadcast,
   AppHostReady,
-  NetworkStatusChanged,
+  NetworkStatusRes,
   RunMutationRes,
   Pong,
   DatabaseFileInfoRes,

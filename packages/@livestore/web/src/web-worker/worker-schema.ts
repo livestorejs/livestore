@@ -82,11 +82,8 @@ export namespace DedicatedWorkerInner {
       storageOptions: StorageType,
       needsRecreate: Schema.Boolean,
       syncOptions: Schema.optional(SyncingType),
-      key: Schema.UndefinedOr(Schema.String),
-      devtools: Schema.Struct({
-        enabled: Schema.Boolean,
-        channelId: Schema.String,
-      }),
+      key: Schema.String,
+      devtoolsEnabled: Schema.Boolean,
     },
     success: Schema.Void,
     failure: UnexpectedError,
@@ -133,24 +130,20 @@ export namespace DedicatedWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  /** NOTE we're modeling this case as a stream since streams are interruptible */
-  export class ListenForReloadStream extends Schema.TaggedRequest<ListenForReloadStream>()('ListenForReloadStream', {
-    payload: {},
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
-
   export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', {
     payload: {},
     success: Schema.Void,
     failure: UnexpectedError,
   }) {}
 
-  export class ConnectDevtools extends Schema.TaggedRequest<ConnectDevtools>()('ConnectDevtools', {
+  /**
+   * NOTE we're modeling this case as a stream since streams which only ever emits one value but stays open
+   * for the lifetime of the connection
+   */
+  export class ConnectDevtoolsStream extends Schema.TaggedRequest<ConnectDevtoolsStream>()('ConnectDevtoolsStream', {
     payload: {
       port: Transferable.MessagePort,
-      // TODO double-check if connecitonId is actually needed
-      connectionId: Schema.String,
+      channelId: Schema.String,
       isLeaderTab: Schema.Boolean,
     },
     success: Schema.Struct({
@@ -167,9 +160,8 @@ export namespace DedicatedWorkerInner {
     GetRecreateSnapshot,
     ExportMutationlog,
     NetworkStatusStream,
-    ListenForReloadStream,
     Shutdown,
-    ConnectDevtools,
+    ConnectDevtoolsStream,
   )
   export type Request = typeof Request.Type
 }
@@ -194,30 +186,36 @@ export namespace SharedWorker {
     failure: UnexpectedError,
   }) {}
 
-  export class WaitForDevtoolsPort extends Schema.TaggedRequest<WaitForDevtoolsPort>()('WaitForDevtoolsPort', {
-    payload: {
-      channelId: Schema.String,
+  export class DevtoolsWebBridgeWaitForPort extends Schema.TaggedRequest<DevtoolsWebBridgeWaitForPort>()(
+    'DevtoolsWebBridgeWaitForPort',
+    {
+      payload: {
+        webBridgeId: Schema.String,
+      },
+      success: Schema.Struct({
+        port: Transferable.MessagePort,
+      }),
+      failure: UnexpectedError,
     },
-    success: Schema.Struct({
-      port: Transferable.MessagePort,
-    }),
-    failure: UnexpectedError,
-  }) {}
+  ) {}
 
-  export class OfferDevtoolsPort extends Schema.TaggedRequest<OfferDevtoolsPort>()('OfferDevtoolsPort', {
-    payload: {
-      port: Transferable.MessagePort,
-      channelId: Schema.String,
+  export class DevtoolsWebBridgeOfferPort extends Schema.TaggedRequest<DevtoolsWebBridgeOfferPort>()(
+    'DevtoolsWebBridgeOfferPort',
+    {
+      payload: {
+        port: Transferable.MessagePort,
+        webBridgeId: Schema.String,
+      },
+      success: Schema.Void,
+      failure: UnexpectedError,
     },
-    success: Schema.Void,
-    failure: UnexpectedError,
-  }) {}
+  ) {}
 
   export class Request extends Schema.Union(
     InitialMessage,
     UpdateMessagePort,
-    WaitForDevtoolsPort,
-    OfferDevtoolsPort,
+    DevtoolsWebBridgeWaitForPort,
+    DevtoolsWebBridgeOfferPort,
 
     // Proxied requests
     DedicatedWorkerInner.BootStatusStream,
@@ -226,8 +224,7 @@ export namespace SharedWorker {
     DedicatedWorkerInner.GetRecreateSnapshot,
     DedicatedWorkerInner.ExportMutationlog,
     DedicatedWorkerInner.NetworkStatusStream,
-    DedicatedWorkerInner.ListenForReloadStream,
     DedicatedWorkerInner.Shutdown,
-    DedicatedWorkerInner.ConnectDevtools,
+    DedicatedWorkerInner.ConnectDevtoolsStream,
   ) {}
 }

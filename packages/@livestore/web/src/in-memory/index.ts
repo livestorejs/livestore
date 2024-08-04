@@ -1,7 +1,6 @@
 import type { Coordinator, LockStatus } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { cuid } from '@livestore/utils/cuid'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
@@ -38,7 +37,7 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
 
     return {
       isShutdownRef: { current: false },
-      devtools: { channelId: cuid(), connect: () => Effect.never, enabled: false, waitForPort: Effect.never },
+      devtools: { channelId: 'in-memory', enabled: false },
       lockStatus,
       syncMutations,
       execute: () => Effect.void,

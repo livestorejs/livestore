@@ -51,7 +51,7 @@ export const runAndGetExit = <Tag extends string, A>({
       page.goto(`http://localhost:${process.env.DEV_SERVER_PORT}/?importPath=${importPath}&exportName=${exportName}`),
     )
 
-    const pageConsoleFiber = yield* Playwright.handlePageConsole(page, `tab-1`).pipe(Effect.fork)
+    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)
 
     return yield* Effect.gen(function* () {
       const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()

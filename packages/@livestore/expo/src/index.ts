@@ -99,7 +99,7 @@ export const makeAdapter =
       const coordinator = {
         isShutdownRef: { current: false },
         // TODO
-        devtools: { channelId: 'todo', connect: () => Effect.never, enabled: false, waitForPort: Effect.never },
+        devtools: { channelId: 'expo', enabled: false },
         lockStatus,
         syncMutations,
         execute: () => Effect.void,

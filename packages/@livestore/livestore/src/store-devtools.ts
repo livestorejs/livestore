@@ -1,7 +1,7 @@
 import type { DebugInfo, StoreAdapter } from '@livestore/common'
-import { Devtools, liveStoreVersion } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
-import { BrowserChannel, Effect, Either, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import { BrowserChannel, Effect, Stream } from '@livestore/utils/effect'
 
 import type { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import { emptyDebugInfo as makeEmptyDebugInfo } from './MainDatabaseWrapper.js'
@@ -11,98 +11,22 @@ import type { ReferenceCountedSet } from './utils/data-structures.js'
 
 type IStore = {
   adapter: StoreAdapter
-  devtoolsConnectionId: string
   reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 }
 
-export const listenToWebBridge = ({ store }: { store: IStore }) =>
-  Effect.gen(function* () {
-    const channelId = store.adapter.coordinator.devtools.channelId
-
-    const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
-
-    yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ channelId }))
-
-    const runtime = yield* Effect.runtime()
-
-    window.addEventListener('beforeunload', () =>
-      webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ channelId }))
-        .pipe(Runtime.runFork(runtime)),
-    )
-
-    yield* webBridgeBroadcastChannel.listen.pipe(
-      Stream.flatten(),
-      Stream.filter(Schema.is(Devtools.WebBridge.DevtoolsReady)),
-      Stream.tap(() => webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ channelId }))),
-      Stream.runDrain,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
-
-    yield* store.adapter.coordinator.devtools.waitForPort.pipe(
-      Effect.tap((port) => connectStoreToDevtools({ port, store }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)),
-      Effect.forever, // Repeat in case devtools disconnects
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
-  })
-
-export const listenToBrowserExtensionBridge = ({ store }: { store: IStore }) =>
-  Effect.gen(function* () {
-    const channelId = store.adapter.coordinator.devtools.channelId
-
-    const windowChannel = yield* BrowserChannel.windowChannel({
-      window,
-      listenSchema: Devtools.DevtoolsWindowMessage.MessageForStore,
-      sendSchema: Devtools.DevtoolsWindowMessage.MessageForContentscript,
-    })
-
-    yield* windowChannel.send(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
-
-    yield* windowChannel.listen.pipe(
-      Stream.filterMap(Either.getRight),
-      Stream.tap((message) =>
-        Effect.gen(function* () {
-          if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
-            // Send message to contentscript via window (which the contentscript iframe is listening to)
-            yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-            return
-          }
-
-          if (message.channelId !== channelId) return
-
-          if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
-            yield* connectStoreToDevtools({ port: message.port, store })
-          }
-        }),
-      ),
-      Stream.runDrain,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
-
-    yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-  })
-
 type Unsub = () => void
 type RequestId = string
 type SubMap = Map<RequestId, Unsub>
 
-const connectStoreToDevtools = ({ port, store }: { port: MessagePort; store: IStore }) =>
+export const connectDevtoolsToStore = ({ storeMessagePort, store }: { storeMessagePort: MessagePort; store: IStore }) =>
   Effect.gen(function* () {
     const channelId = store.adapter.coordinator.devtools.channelId
 
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
-
-    const { storeMessagePort } = yield* store.adapter.coordinator.devtools.connect({
-      port,
-      connectionId: store.devtoolsConnectionId,
-    })
 
     const storePortChannel = yield* BrowserChannel.messagePortChannel({
       port: storeMessagePort,
@@ -281,4 +205,4 @@ const connectStoreToDevtools = ({ port, store }: { port: MessagePort; store: ISt
       Stream.runDrain,
       Effect.withSpan('LSD.devtools.onMessage'),
     )
-  })
+  }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('LSD.devtools.connectStoreToDevtools'))
