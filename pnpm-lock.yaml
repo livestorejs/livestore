@@ -7,7 +7,7 @@ settings:
 overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
-  '@livestore/devtools-react': 0.0.55-dev.2
+  '@livestore/devtools-react': 0.0.55-dev.3
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -77,8 +77,8 @@ importers:
   examples/expo-app:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@expo/vector-icons':
         specifier: ^14.0.1
         version: 14.0.2
@@ -141,8 +141,8 @@ importers:
   examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -150,8 +150,8 @@ importers:
         specifier: ^2.1.2
         version: 2.1.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-react':
-        specifier: 0.0.55-dev.2
-        version: 0.0.55-dev.2(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.55-dev.3
+        version: 0.0.55-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -328,11 +328,11 @@ importers:
   examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55-dev.2
-        version: 0.0.55-dev.2(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.55-dev.3
+        version: 0.0.55-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -346,8 +346,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.5.8
-        version: 3.5.8
+        specifier: 3.6.0
+        version: 3.6.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -392,11 +392,11 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55-dev.2
-        version: 0.0.55-dev.2(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.55-dev.3
+        version: 0.0.55-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -410,8 +410,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/web
       effect:
-        specifier: 3.5.8
-        version: 3.5.8
+        specifier: 3.6.0
+        version: 3.6.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -465,11 +465,11 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55-dev.2
-        version: 0.0.55-dev.2(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.55-dev.3
+        version: 0.0.55-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -490,10 +490,10 @@ importers:
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240725.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
       effect:
-        specifier: 3.5.8
-        version: 3.5.8
+        specifier: 3.6.0
+        version: 3.6.0
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -541,11 +541,11 @@ importers:
   examples/todomvc-experimental:
     dependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55-dev.2
-        version: 0.0.55-dev.2(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.55-dev.3
+        version: 0.0.55-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -559,8 +559,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.5.8
-        version: 3.5.8
+        specifier: 3.6.0
+        version: 3.6.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -643,11 +643,11 @@ importers:
         version: link:../utils
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: 4.20240725.0
-        version: 4.20240725.0
+        specifier: 4.20240729.0
+        version: 4.20240729.0
       wrangler:
-        specifier: ^3.67.1
-        version: 3.67.1(@cloudflare/workers-types@4.20240725.0)
+        specifier: ^3.68.0
+        version: 3.68.0(@cloudflare/workers-types@4.20240729.0)
 
   packages/@livestore/common:
     dependencies:
@@ -784,20 +784,20 @@ importers:
         version: 6.1.1
     devDependencies:
       '@effect/experimental':
-        specifier: 0.20.3
-        version: 0.20.3(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)(ws@8.18.0)
+        specifier: 0.21.2
+        version: 0.21.2(@effect/platform@0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0))(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)(ws@8.18.0)
       '@effect/opentelemetry':
         specifier: 0.34.40
-        version: 0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.5.8)
+        version: 0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.6.0)
       '@effect/platform':
-        specifier: 0.60.2
-        version: 0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)
+        specifier: 0.61.2
+        version: 0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)
       '@effect/platform-browser':
-        specifier: 0.39.2
-        version: 0.39.2(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(effect@3.5.8)
+        specifier: 0.40.2
+        version: 0.40.2(@effect/platform@0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0))(effect@3.6.0)
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -805,11 +805,11 @@ importers:
         specifier: ^22.0.0
         version: 22.0.0
       '@types/web':
-        specifier: ^0.0.152
-        version: 0.0.152
+        specifier: ^0.0.153
+        version: 0.0.153
       effect:
-        specifier: 3.5.8
-        version: 3.5.8
+        specifier: 3.6.0
+        version: 3.6.0
       vitest:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@22.0.0)(jsdom@24.1.0)(terser@5.31.1)
@@ -843,14 +843,14 @@ importers:
         version: 1.0.8
     devDependencies:
       '@effect/schema':
-        specifier: 0.69.2
-        version: 0.69.2(effect@3.5.8)
+        specifier: 0.70.1
+        version: 0.70.1(effect@3.6.0)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240725.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1)
       effect:
-        specifier: 3.5.8
-        version: 3.5.8
+        specifier: 3.6.0
+        version: 3.6.0
       vite:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
@@ -1637,38 +1637,38 @@ packages:
     resolution: {integrity: sha512-YLPHc8yASwjNkmcDMQMY35yiWjoKAKnhUbPRszBRS0YgH+IXtsMp61j+yTcnCE3oO2DgP0U3iejLC8FTtKDC8Q==}
     engines: {node: '>=16.13'}
 
-  '@cloudflare/workerd-darwin-64@1.20240718.0':
-    resolution: {integrity: sha512-BsPZcSCgoGnufog2GIgdPuiKicYTNyO/Dp++HbpLRH+yQdX3x4aWx83M+a0suTl1xv76dO4g9aw7SIB6OSgIyQ==}
+  '@cloudflare/workerd-darwin-64@1.20240725.0':
+    resolution: {integrity: sha512-KpE7eycdZ9ON+tKBuTyqZh8SdFWHGrh2Ru9LcbpeFwb7O9gDQv9ceSdoV/T598qlT0a0yVKM62R6xa5ec0UOWA==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [darwin]
 
-  '@cloudflare/workerd-darwin-arm64@1.20240718.0':
-    resolution: {integrity: sha512-nlr4gaOO5gcJerILJQph3+2rnas/nx/lYsuaot1ntHu4LAPBoQo1q/Pucj2cSIav4UiMzTbDmoDwPlls4Kteog==}
+  '@cloudflare/workerd-darwin-arm64@1.20240725.0':
+    resolution: {integrity: sha512-/UQlI04FdXLpPlDzzsWGz8TuKrMZKLowTo+8PkxgEiWIaBhE4DIDM5bwj3jM4Bs8yOLiL2ovQNpld5CnAKqA8g==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [darwin]
 
-  '@cloudflare/workerd-linux-64@1.20240718.0':
-    resolution: {integrity: sha512-LJ/k3y47pBcjax0ee4K+6ZRrSsqWlfU4lbU8Dn6u5tSC9yzwI4YFNXDrKWInB0vd7RT3w4Yqq1S6ZEbfRrqVUg==}
+  '@cloudflare/workerd-linux-64@1.20240725.0':
+    resolution: {integrity: sha512-Z5t12qYLvHz0b3ZRBBm2HQ93RiHrAnjFfdhtjMcgJypAGkiWpOCEn2xar/WqDhMfqnk0sa8aYiYAbMAlP1WN6w==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [linux]
 
-  '@cloudflare/workerd-linux-arm64@1.20240718.0':
-    resolution: {integrity: sha512-zBEZvy88EcAMGRGfuVtS00Yl7lJdUM9sH7i651OoL+q0Plv9kphlCC0REQPwzxrEYT1qibSYtWcD9IxQGgx2/g==}
+  '@cloudflare/workerd-linux-arm64@1.20240725.0':
+    resolution: {integrity: sha512-j9gYXLOwOyNehLMzP7KxQ+Y6/nxcL9i6LTDJC6RChoaxLRbm0Y/9Otu+hfyzeNeRpt31ip6vqXZ1QQk6ygzI8A==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [linux]
 
-  '@cloudflare/workerd-windows-64@1.20240718.0':
-    resolution: {integrity: sha512-YpCRvvT47XanFum7C3SedOZKK6BfVhqmwdAAVAQFyc4gsCdegZo0JkUkdloC/jwuWlbCACOG2HTADHOqyeolzQ==}
+  '@cloudflare/workerd-windows-64@1.20240725.0':
+    resolution: {integrity: sha512-fkrJLWNN6rrPjZ0eKJx328NVMo4BsainKxAfqaPMEd6uRwjOM8uN8V4sSLsXXP8GQMAx6hAG2hU86givS4GItg==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
 
-  '@cloudflare/workers-types@4.20240725.0':
-    resolution: {integrity: sha512-L6T/Bg50zm9IIACQVQ0CdVcQL+2nLkRXdPz6BsXF3SlzgjyWR5ndVctAbfr/HLV7aKYxWnnEZsIORsTWb+FssA==}
+  '@cloudflare/workers-types@4.20240729.0':
+    resolution: {integrity: sha512-wfe44YQkv5T9aBr/z95P706r2/Ydg32weJYyBOhvge7FqtdY6mM7l39rybNiJrbJoyN16dd0xxyQMf23aJNC6Q==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -1682,13 +1682,13 @@ packages:
     resolution: {integrity: sha512-1YUvQ+e0eeTWAHoN8Uz2x2U37jZs6IGutiIE5LXId7cxfUGhtZjzxE06FdUiuiRrW+UE0vNCdSNPH2lY4dQCOQ==}
     engines: {node: '>=12'}
 
-  '@effect/experimental@0.20.3':
-    resolution: {integrity: sha512-EbjoO4CFaf3S9KxGcKCuvjF/seI/1aqHtYbAirv+QaGQpy4lqYQ5Pc7nNPHHW2P7PhlKqJzFo8ZXjN4wWQooew==}
+  '@effect/experimental@0.21.2':
+    resolution: {integrity: sha512-ZFqA9upyZHv3ny/jugPMcK1/Ru1SCXHkyFr3x2x+qDA1XKfuu2b1lDl273hd9sYBnxX1OCHs3MlIarlfIT477w==}
     peerDependencies:
-      '@effect/platform': ^0.60.2
-      '@effect/platform-node': ^0.55.2
-      '@effect/schema': ^0.69.2
-      effect: ^3.5.8
+      '@effect/platform': ^0.61.2
+      '@effect/platform-node': ^0.56.2
+      '@effect/schema': ^0.70.1
+      effect: ^3.6.0
       ioredis: ^5
       lmdb: ^3
       ws: ^8
@@ -1726,22 +1726,22 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@0.39.2':
-    resolution: {integrity: sha512-/zkbTsRJJABVy2kU2eW8dcBBEFsG93nJmCphvfGTvWzj0j/T+dG2+934H6GOlfOWjgWP8wlS8ZWZ2pn0Wt1Jrg==}
+  '@effect/platform-browser@0.40.2':
+    resolution: {integrity: sha512-UJUl3raqhKIS5G3vyBjW6njMjGCGQRzO5i5mipWrKJmZ2yOGBB41EHzGmbGEJXlxSdMN0hHDrRB61XPp5Q7tjA==}
     peerDependencies:
-      '@effect/platform': ^0.60.2
-      effect: ^3.5.8
+      '@effect/platform': ^0.61.2
+      effect: ^3.6.0
 
-  '@effect/platform@0.60.2':
-    resolution: {integrity: sha512-k8hW6r1WAmwZmvUmjMFVE+UQj8pKwbBFmUWcxa4X7MaTmkp9JKP0KdtKlz2A3pgTszPwdWNAbqGWwro/Ow1j3A==}
+  '@effect/platform@0.61.2':
+    resolution: {integrity: sha512-cZdR+eNmaOS+YWpEoves5a+CecaW83EG9gcesEdthuXBt1mPUKNJhq5ky062uE+N/tktTvRQswVko/hAl27rkg==}
     peerDependencies:
-      '@effect/schema': ^0.69.2
-      effect: ^3.5.8
+      '@effect/schema': ^0.70.1
+      effect: ^3.6.0
 
-  '@effect/schema@0.69.2':
-    resolution: {integrity: sha512-giyj+VX9k5PIzS5QVnmDyKwJe92X2dr4WhckDBWsIZilblSG2xH0J+JMKdBYZAsU0tONZIYtlm11xB4uOMsqMQ==}
+  '@effect/schema@0.70.1':
+    resolution: {integrity: sha512-pxHAmOxWXUs7ZcHBTJUHcMg3ici65bOepxWV7cs//ujv1n9cLQJDQE8phUIzbxtROPcEbZwukGgJy7/HlBjx+w==}
     peerDependencies:
-      effect: ^3.5.8
+      effect: ^3.6.0
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3':
     resolution: {integrity: sha512-r3MIryXDeXDOZh7ih1l/yE9ZLORCd5e8vWg02azWRGj5SPTuoh69A2AIyn0Z31V/kHBfZ4HgWJ+OK3GTTwLmnw==}
@@ -2313,8 +2313,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@livestore/devtools-react@0.0.55-dev.2':
-    resolution: {integrity: sha512-78jazhTLh3ZsJUKJK/kd3PLFMSlcwz2giPTrK90LoFUwyeAsPVVm7MZLq9YxlangkNAR2NPLvQfiRnbFKbi6MQ==}
+  '@livestore/devtools-react@0.0.55-dev.3':
+    resolution: {integrity: sha512-QmzhW0SWaOac3py2lMlJhz59xNSJs7LZ9sIw37LoRDWMaVESMnFOs4AEcPKPKyY2/DOb4861AINmgX01/K1jxw==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
@@ -3248,8 +3248,8 @@ packages:
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
 
-  '@types/web@0.0.152':
-    resolution: {integrity: sha512-Iu1OJ3ahq6/mwSK6jRKj2revI+avfPRWZOADcKeuv1AGCtkwbDl12AkWAl4KjiW2l4s2rkST7WagdhWOVGx9qg==}
+  '@types/web@0.0.153':
+    resolution: {integrity: sha512-44quqF1giOIFKorKCzh0ibbr5tTSDuo9fWe7tiZvVi9UK5RVbPTRodt7DbvQUoA5Pb4sZf00tUyJ4IgkeS93zw==}
 
   '@types/wicg-file-system-access@2023.10.5':
     resolution: {integrity: sha512-e9kZO9kCdLqT2h9Tw38oGv9UNzBBWaR1MzuAavxPcsV/7FJ3tWbU6RI3uB+yKIDPGLkGVbplS52ub0AcRLvrhA==}
@@ -4498,8 +4498,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.5.8:
-    resolution: {integrity: sha512-gGrRH3BgsUrfOXx4vbD4puRS+/IyK7JiERhuKnjVYurTVDj3J+lPI7raJB9/AAKr59SGEiV7+Sy59/Q/Vfo5mQ==}
+  effect@3.6.0:
+    resolution: {integrity: sha512-7bUV/Ytt058F3YWZJyra63MGA80msTk4AnFiVlvCM65RN7afc3LsvLOHpMifLqX/8CG0eDlJLg2lDLByyEnYGQ==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -6270,8 +6270,8 @@ packages:
     resolution: {integrity: sha512-r9deDe9p5FJUPZAk3A59wGH7Ii9YrjjWw0jmw/liSbHl2CHiyXj6FcDXDu2K3TjVAXqiJdaw3xxwlZZr9E6nHg==}
     hasBin: true
 
-  miniflare@3.20240718.1:
-    resolution: {integrity: sha512-mn3MjGnpgYvarCRTfz4TQyVyY8yW0zz7f8LOAPVai78IGC/lcVcyskZcuIr7Zovb2i+IERmmsJAiEPeZHIIKbA==}
+  miniflare@3.20240725.0:
+    resolution: {integrity: sha512-n9NTLI8J9Xt0Cls6dRpqoIPkVFnxD9gMnU/qDkDX9diKfN16HyxpAdA5mto/hKuRpjW19TxnTMcxBo90vZXemw==}
     engines: {node: '>=16.13'}
     hasBin: true
 
@@ -7365,6 +7365,7 @@ packages:
 
   rollup-plugin-inject@3.0.2:
     resolution: {integrity: sha512-ptg9PQwzs3orn4jkgXJ74bfs5vYz1NCZlSQMBUA0wKcGp5i5pA1AO3fOUEte8enhGUC+iapTCzEWw2jEFFUO/w==}
+    deprecated: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-inject.
 
   rollup-plugin-node-polyfills@0.2.1:
     resolution: {integrity: sha512-4kCrKPTJ6sK4/gLL/U5QzVT8cxJcofO0OU74tnB19F40cmuAKSzH5/siithxlofFEjwvw1YAhPmbvGNA6jEroA==}
@@ -7612,6 +7613,7 @@ packages:
 
   sourcemap-codec@1.4.8:
     resolution: {integrity: sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==}
+    deprecated: Please use @jridgewell/sourcemap-codec instead
 
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
@@ -8525,17 +8527,17 @@ packages:
   workbox-window@7.1.0:
     resolution: {integrity: sha512-ZHeROyqR+AS5UPzholQRDttLFqGMwP0Np8MKWAdyxsDETxq3qOAyXvqessc3GniohG6e0mAqSQyKOHmT8zPF7g==}
 
-  workerd@1.20240718.0:
-    resolution: {integrity: sha512-w7lOLRy0XecQTg/ujTLWBiJJuoQvzB3CdQ6/8Wgex3QxFhV9Pbnh3UbwIuUfMw3OCCPQc4o7y+1P+mISAgp6yg==}
+  workerd@1.20240725.0:
+    resolution: {integrity: sha512-VZwgejRcHsQ9FEPtc7v25ebINLAR+stL3q1hC1xByE+quskdoWpTXHkZwZ3IdSgvm9vPVbCbJw9p5mGnDByW2A==}
     engines: {node: '>=16'}
     hasBin: true
 
-  wrangler@3.67.1:
-    resolution: {integrity: sha512-lLVJxq/OZMfntvZ79WQJNC1OKfxOCs6PLfogqDBuPFEQ3L/Mwqvd9IZ0bB8ahrwUN/K3lSdDPXynk9HfcGZxVw==}
+  wrangler@3.68.0:
+    resolution: {integrity: sha512-gsIeglkh5nOn1mHJs0bf1pOq/DvIt+umjO/5a867IYYXaN4j/ar5cRR1+F5ue3S7uEjYCLIZZjs8ESiPTSEt+Q==}
     engines: {node: '>=16.17.0'}
     hasBin: true
     peerDependencies:
-      '@cloudflare/workers-types': ^4.20240718.0
+      '@cloudflare/workers-types': ^4.20240725.0
     peerDependenciesMeta:
       '@cloudflare/workers-types':
         optional: true
@@ -9697,22 +9699,22 @@ snapshots:
     dependencies:
       mime: 3.0.0
 
-  '@cloudflare/workerd-darwin-64@1.20240718.0':
+  '@cloudflare/workerd-darwin-64@1.20240725.0':
     optional: true
 
-  '@cloudflare/workerd-darwin-arm64@1.20240718.0':
+  '@cloudflare/workerd-darwin-arm64@1.20240725.0':
     optional: true
 
-  '@cloudflare/workerd-linux-64@1.20240718.0':
+  '@cloudflare/workerd-linux-64@1.20240725.0':
     optional: true
 
-  '@cloudflare/workerd-linux-arm64@1.20240718.0':
+  '@cloudflare/workerd-linux-arm64@1.20240725.0':
     optional: true
 
-  '@cloudflare/workerd-windows-64@1.20240718.0':
+  '@cloudflare/workerd-windows-64@1.20240725.0':
     optional: true
 
-  '@cloudflare/workers-types@4.20240725.0': {}
+  '@cloudflare/workers-types@4.20240729.0': {}
 
   '@colors/colors@1.5.0': {}
 
@@ -9725,43 +9727,43 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 5.0.2
 
-  '@effect/experimental@0.20.3(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)(ws@8.18.0)':
+  '@effect/experimental@0.21.2(@effect/platform@0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0))(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)(ws@8.18.0)':
     dependencies:
-      '@effect/platform': 0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)
-      '@effect/schema': 0.69.2(effect@3.5.8)
-      effect: 3.5.8
+      '@effect/platform': 0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)
+      '@effect/schema': 0.70.1(effect@3.6.0)
+      effect: 3.6.0
       msgpackr: 1.10.2
     optionalDependencies:
       ws: 8.18.0
 
   '@effect/language-service@0.1.0': {}
 
-  '@effect/opentelemetry@0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.5.8)':
+  '@effect/opentelemetry@0.34.40(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.25.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.25.1)(effect@3.6.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 1.25.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.25.1
-      effect: 3.5.8
+      effect: 3.6.0
     optionalDependencies:
       '@opentelemetry/sdk-metrics': 1.25.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.25.1(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@0.39.2(@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8))(effect@3.5.8)':
+  '@effect/platform-browser@0.40.2(@effect/platform@0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0))(effect@3.6.0)':
     dependencies:
-      '@effect/platform': 0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)
-      effect: 3.5.8
+      '@effect/platform': 0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)
+      effect: 3.6.0
       multipasta: 0.2.2
 
-  '@effect/platform@0.60.2(@effect/schema@0.69.2(effect@3.5.8))(effect@3.5.8)':
+  '@effect/platform@0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)':
     dependencies:
-      '@effect/schema': 0.69.2(effect@3.5.8)
-      effect: 3.5.8
+      '@effect/schema': 0.70.1(effect@3.6.0)
+      effect: 3.6.0
       find-my-way-ts: 0.1.5
       multipasta: 0.2.2
 
-  '@effect/schema@0.69.2(effect@3.5.8)':
+  '@effect/schema@0.70.1(effect@3.6.0)':
     dependencies:
-      effect: 3.5.8
+      effect: 3.6.0
       fast-check: 3.20.0
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3(esbuild@0.17.19)':
@@ -10592,7 +10594,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  '@livestore/devtools-react@0.0.55-dev.2(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@livestore/devtools-react@0.0.55-dev.3(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
@@ -11849,7 +11851,7 @@ snapshots:
 
   '@types/uuid@10.0.0': {}
 
-  '@types/web@0.0.152': {}
+  '@types/web@0.0.153': {}
 
   '@types/wicg-file-system-access@2023.10.5': {}
 
@@ -13089,9 +13091,9 @@ snapshots:
     dependencies:
       detect-libc: 1.0.3
 
-  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240725.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1):
+  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.3)(react@18.3.1):
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20240725.0
+      '@cloudflare/workers-types': 4.20240729.0
       '@opentelemetry/api': 1.9.0
       '@types/react': 18.3.3
       expo-sqlite: 14.0.3(expo@51.0.14)
@@ -13197,7 +13199,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.5.8: {}
+  effect@3.6.0: {}
 
   ejs@3.1.10:
     dependencies:
@@ -15507,7 +15509,7 @@ snapshots:
 
   mini-svg-data-uri@1.4.4: {}
 
-  miniflare@3.20240718.1:
+  miniflare@3.20240725.0:
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       acorn: 8.12.0
@@ -15517,7 +15519,7 @@ snapshots:
       glob-to-regexp: 0.4.1
       stoppable: 1.1.0
       undici: 5.28.4
-      workerd: 1.20240718.0
+      workerd: 1.20240725.0
       ws: 8.18.0
       youch: 3.3.3
       zod: 3.23.8
@@ -18052,15 +18054,15 @@ snapshots:
       '@types/trusted-types': 2.0.7
       workbox-core: 7.1.0
 
-  workerd@1.20240718.0:
+  workerd@1.20240725.0:
     optionalDependencies:
-      '@cloudflare/workerd-darwin-64': 1.20240718.0
-      '@cloudflare/workerd-darwin-arm64': 1.20240718.0
-      '@cloudflare/workerd-linux-64': 1.20240718.0
-      '@cloudflare/workerd-linux-arm64': 1.20240718.0
-      '@cloudflare/workerd-windows-64': 1.20240718.0
+      '@cloudflare/workerd-darwin-64': 1.20240725.0
+      '@cloudflare/workerd-darwin-arm64': 1.20240725.0
+      '@cloudflare/workerd-linux-64': 1.20240725.0
+      '@cloudflare/workerd-linux-arm64': 1.20240725.0
+      '@cloudflare/workerd-windows-64': 1.20240725.0
 
-  wrangler@3.67.1(@cloudflare/workers-types@4.20240725.0):
+  wrangler@3.68.0(@cloudflare/workers-types@4.20240729.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.3.4
       '@esbuild-plugins/node-globals-polyfill': 0.2.3(esbuild@0.17.19)
@@ -18069,7 +18071,7 @@ snapshots:
       chokidar: 3.6.0
       date-fns: 3.6.0
       esbuild: 0.17.19
-      miniflare: 3.20240718.1
+      miniflare: 3.20240725.0
       nanoid: 3.3.7
       path-to-regexp: 6.2.2
       resolve: 1.22.8
@@ -18077,10 +18079,10 @@ snapshots:
       selfsigned: 2.4.1
       source-map: 0.6.1
       unenv: unenv-nightly@1.10.0-1717606461.a117952
-      workerd: 1.20240718.0
+      workerd: 1.20240725.0
       xxhash-wasm: 1.0.2
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20240725.0
+      '@cloudflare/workers-types': 4.20240729.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil
