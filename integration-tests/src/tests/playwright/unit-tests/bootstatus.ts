@@ -19,6 +19,7 @@ export const test = () =>
       devtoolsEnabled: false,
       bootStatusQueue,
       shutdown: () => Effect.void,
+      connectDevtoolsToStore: () => Effect.void,
     })
 
     // NOTE We can't use `Queue.takeAll` since sometimes it takes a bit longer for the updates to come in
