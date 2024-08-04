@@ -19,7 +19,7 @@ export const makeDevtoolsWebBridge = Effect.gen(function* () {
   > = {
     DevtoolsWebBridgeOfferPort: ({ port, webBridgeId }) =>
       Effect.gen(function* () {
-        console.log('OfferDevtoolsPort', webBridgeId, devtoolsPortDeferreds.has(webBridgeId))
+        // console.log('OfferDevtoolsPort', webBridgeId, devtoolsPortDeferreds.has(webBridgeId))
 
         const existingDeferred = devtoolsPortDeferreds.get(webBridgeId)
         if (existingDeferred === undefined) {
@@ -33,7 +33,7 @@ export const makeDevtoolsWebBridge = Effect.gen(function* () {
 
     DevtoolsWebBridgeWaitForPort: ({ webBridgeId }) =>
       Effect.gen(function* () {
-        console.log('WaitForDevtoolsPort', webBridgeId, devtoolsPortDeferreds.has(webBridgeId))
+        // console.log('WaitForDevtoolsPort', webBridgeId, devtoolsPortDeferreds.has(webBridgeId))
 
         if (!devtoolsPortDeferreds.has(webBridgeId)) {
           const deferred = yield* Deferred.make<MessagePort>()
