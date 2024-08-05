@@ -51,19 +51,15 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   })
 
   if (storeCtx.stage === 'error') {
-    return (
-      <div>
-        {Schema.is(UnexpectedError)(storeCtx.error) ? storeCtx.error.toString() : errorToString(storeCtx.error)}
-      </div>
-    )
+    return <>{Schema.is(UnexpectedError)(storeCtx.error) ? storeCtx.error.toString() : errorToString(storeCtx.error)}</>
   }
 
   if (storeCtx.stage === 'shutdown') {
-    return <div>LiveStore Shutdown</div>
+    return <>LiveStore Shutdown</>
   }
 
   if (storeCtx.stage !== 'running') {
-    return <div>{renderLoading(storeCtx)}</div>
+    return <>{renderLoading(storeCtx)}</>
   }
 
   window.__debugLiveStore = storeCtx.store
