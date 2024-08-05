@@ -8,6 +8,7 @@
     { "path": "./examples/todomvc" },
     { "path": "./examples/todomvc-custom-elements" },
     { "path": "./examples/todomvc-drizzle" },
+    { "path": "./examples/todomvc-experimental" },
     { "path": "./integration-tests" },
     { "path": "./packages/effect-db-schema" },
     { "path": "./packages/@livestore/cf-sync" }
