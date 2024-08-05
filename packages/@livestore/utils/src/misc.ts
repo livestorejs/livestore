@@ -10,3 +10,16 @@ export const objectToString = (error: any): string => {
     return 'Error while printing error: ' + e
   }
 }
+
+export const tryAsFunctionAndNew = <TArg, TResult>(
+  fnOrConstructor: ((arg: TArg) => TResult) | (new (arg: TArg) => TResult),
+  arg: TArg,
+): TResult => {
+  try {
+    // @ts-expect-error try out as constructor
+    return new fnOrConstructor(arg)
+  } catch (e) {
+    // @ts-expect-error try out as function
+    return fnOrConstructor(arg)
+  }
+}

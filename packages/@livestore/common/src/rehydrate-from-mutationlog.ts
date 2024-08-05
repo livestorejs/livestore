@@ -1,7 +1,12 @@
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type InMemoryDatabase, type MigrationOptionsFromMutationLog, SqliteError } from './adapter-types.js'
+import {
+  type InMemoryDatabase,
+  type MigrationOptionsFromMutationLog,
+  SqliteError,
+  UnexpectedError,
+} from './adapter-types.js'
 import { getExecArgsFromMutation } from './mutation.js'
 import type { LiveStoreSchema, MutationDef, MutationLogMetaRow } from './schema/index.js'
 import { MUTATION_LOG_META_TABLE } from './schema/index.js'
@@ -35,23 +40,28 @@ export const rehydrateFromMutationLog = ({
         if (migrationOptions.excludeMutations?.has(row.mutation) === true) return
 
         if (hashMutation(mutationDef) !== row.schemaHash) {
-          console.warn(`Schema hash mismatch for mutation ${row.mutation}. Trying to apply mutation anyway.`)
+          yield* Effect.logWarning(
+            `Schema hash mismatch for mutation ${row.mutation}. Trying to apply mutation anyway.`,
+          )
         }
 
-        const argsDecodedEither = Schema.decodeUnknownEither(Schema.parseJson(mutationDef.schema))(row.argsJson)
-        if (argsDecodedEither._tag === 'Left') {
-          return shouldNeverHappen(`\
-There was an error decoding the persisted mutation event args for mutation "${row.mutation}".
+        const argsDecoded = yield* Schema.decodeUnknown(Schema.parseJson(mutationDef.schema))(row.argsJson).pipe(
+          Effect.mapError((cause) =>
+            UnexpectedError.make({
+              cause,
+              note: `\
+There was an error during rehydrating from the mutation log while decoding
+the persisted mutation event args for mutation "${row.mutation}".
 This likely means the schema has changed in an incompatible way.
-
-Error: ${argsDecodedEither.left}
-        `)
-        }
+`,
+            }),
+          ),
+        )
 
         const mutationEventDecoded = {
           id: row.id,
           mutation: row.mutation,
-          args: argsDecodedEither.right,
+          args: argsDecoded,
         }
         // const argsEncoded = JSON.parse(row.args_json)
         // const mutationSqlRes =

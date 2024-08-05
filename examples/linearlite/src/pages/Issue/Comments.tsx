@@ -6,10 +6,11 @@ import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
 import { Issue } from '../../types'
 import { useStore, useTemporaryQuery } from '@livestore/livestore/react'
-import { ParseUtils, querySQL, sql } from '@livestore/livestore'
+import { querySQL, sql } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../../domain/schema'
 import React from 'react'
+import { Schema } from '@effect/schema'
 
 export interface CommentsProps {
   issue: Issue
@@ -21,7 +22,7 @@ function Comments({ issue }: CommentsProps) {
   const comments = useTemporaryQuery(
     () =>
       querySQL(() => sql`SELECT * FROM comment WHERE issueId = '${issue.id}' ORDER BY created ASC`, {
-        map: ParseUtils.many(tables.comment),
+        schema: Schema.Array(tables.comment.schema),
       }),
     [issue.id],
   )

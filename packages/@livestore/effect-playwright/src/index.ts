@@ -1,6 +1,6 @@
 import process from 'node:process'
 
-import { Chunk, Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
 
 export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
@@ -17,8 +17,16 @@ export type MakeBrowserContextParams = {
   launchOptions?: Omit<PW.LaunchOptions, 'headless'>
 }
 
-export const handlePageConsole = (page: PW.Page, name: string) =>
-  pageConsole(page, name).pipe(
+export const handlePageConsole = ({
+  page,
+  name,
+  shouldEvaluateArgs = false,
+}: {
+  page: PW.Page
+  name: string
+  shouldEvaluateArgs?: boolean
+}) =>
+  pageConsole({ page, label: name, shouldEvaluateArgs }).pipe(
     Stream.tapSync((_) => console.log(`${name}[${_.type}]:`, _.message, ..._.args)),
     Stream.runDrain,
     Effect.withSpan(`handlePageConsole-${name}`),
@@ -97,19 +105,22 @@ type PlaywrightConsoleMessageType =
 // https://playwright.dev/docs/api/class-consolemessage
 const parsePlaywrightConsoleMessage = async (
   message: PW.ConsoleMessage,
+  shouldEvaluateArgs: boolean,
 ): Promise<Option.Option<typeof ConsoleMessage.Type>> => {
   const msgType = message.type() as PlaywrightConsoleMessageType
   const msg = message.text()
-  const args_ = await Promise.all(
-    message.args().map(async (argHandle) => {
-      const isDisposable = await argHandle
-        .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
-        .catch((e) => `<Error in serialization: ${e.message}>`)
-      return isDisposable
-        ? '<Disposable>'
-        : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
-    }),
-  )
+  const args_ = shouldEvaluateArgs
+    ? await Promise.all(
+        message.args().map(async (argHandle) => {
+          const isDisposable = await argHandle
+            .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
+            .catch((e) => `<Error in serialization: ${e.message}>`)
+          return isDisposable
+            ? '<Disposable>'
+            : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
+        }),
+      )
+    : []
 
   // We don't want to repeat the message in the args
   const args = args_.join(' ') === msg ? [] : args_
@@ -157,11 +168,19 @@ const parsePlaywrightConsoleMessage = async (
 const ref = <T>(initial: T) => ({ current: initial })
 
 // TODO remove `label` again once error tracing works properly with Playwright
-export const pageConsole = (page: PW.Page, label: string) =>
-  Stream.async<typeof ConsoleMessage.Type, SiteError>((emit) => {
+export const pageConsole = ({
+  page,
+  label,
+  shouldEvaluateArgs,
+}: {
+  page: PW.Page
+  label: string
+  shouldEvaluateArgs: boolean
+}) =>
+  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) => {
     const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
     const onConsole = async (pwConsoleMessage: PW.ConsoleMessage) => {
-      const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage)
+      const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage, shouldEvaluateArgs)
       if (Option.isSome(parsed)) {
         const message = parsed.value
 
@@ -169,25 +188,26 @@ export const pageConsole = (page: PW.Page, label: string) =>
         if ((message.type === 'group' || message.type === 'groupCollapsed') && message.message.includes('%cERROR%c')) {
           errorGroupRef.current = { errorMessages: [message] }
         } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
-          emit(Effect.fail(Option.some(new SiteError({ label, messages: errorGroupRef.current.errorMessages }))))
+          emit.fail(new SiteError({ label, messages: errorGroupRef.current.errorMessages }))
         } else if (
           message.type === 'error' &&
           message.message.includes('Failed to load resource: the server responded with a status of 404 (Not Found)') ===
-            false
+            false &&
+          message.message.includes('All fibers interrupted without errors') === false
         ) {
           if (errorGroupRef.current === undefined) {
-            emit(Effect.fail(Option.some(new SiteError({ label, messages: [message] }))))
+            emit.fail(new SiteError({ label, messages: [message] }))
           } else {
             errorGroupRef.current.errorMessages.push(message)
           }
         } else {
-          emit(Effect.succeed(Chunk.make(message)))
+          emit.single(message)
         }
       }
     }
     page.on('console', onConsole)
 
-    const onPageError = (cause: Error) => emit(Effect.fail(Option.some(new SiteError({ label, messages: [cause] }))))
+    const onPageError = (cause: Error) => emit.fail(new SiteError({ label, messages: [cause] }))
     page.on('pageerror', onPageError)
 
     return Effect.sync(() => {

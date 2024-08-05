@@ -1,12 +1,15 @@
+import { Schema } from '@effect/schema'
 import { querySQL } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
 import * as React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
-const count$ = querySQL<[{ count: number }]>('SELECT count(*) as count FROM todos')
+const count$ = querySQL('SELECT count(*) as count FROM todos', {
+  schema: Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse()),
+})
 
 export const Meta: React.FC = () => {
-  const [{ count }] = useQuery(count$)
+  const count = useQuery(count$)
 
   return (
     <View style={styles.container}>

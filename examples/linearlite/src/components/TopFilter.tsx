@@ -18,8 +18,10 @@ interface Props {
   title?: string
 }
 
-const IssueCountResult = Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse())
-const issueCount$ = querySQL(sql`SELECT COUNT(id) AS c FROM issue`, { map: IssueCountResult })
+const issueCount$ = querySQL(sql`SELECT COUNT(id) AS c FROM issue`, {
+  schema: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
+  label: 'TopFilter.issueCount',
+})
 
 export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {
   const [showViewOption, setShowViewOption] = useState(false)

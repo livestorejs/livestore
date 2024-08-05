@@ -1,10 +1,11 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import type { Context, Duration, Scope } from 'effect'
 import { Cause, Deferred, Effect, Fiber, pipe } from 'effect'
+import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
-import { isNonEmptyString } from '../index.js'
+import { isNonEmptyString, isPromise } from '../index.js'
 import { UnknownError } from './Error.js'
 
 export * from 'effect/Effect'
@@ -24,6 +25,23 @@ export * from 'effect/Effect'
 //     console.error(message, ...rest)
 //   })
 
+export const tryAll = <Res>(
+  fn: () => Res,
+): Res extends Effect.Effect<infer A, infer E, never>
+  ? Effect.Effect<A, E | UnknownException, never>
+  : Res extends Promise<infer A>
+    ? Effect.Effect<A, UnknownException, never>
+    : Effect.Effect<Res, UnknownException, never> =>
+  Effect.try(() => fn()).pipe(
+    Effect.andThen((fnRes) =>
+      Effect.isEffect(fnRes)
+        ? (fnRes as any as Effect.Effect<any>)
+        : isPromise(fnRes)
+          ? Effect.promise(() => fnRes)
+          : Effect.succeed(fnRes),
+    ),
+  ) as any
+
 const getThreadName = () => {
   // @ts-expect-error TODO fix types
   const globalName = globalThis.name
@@ -33,6 +51,14 @@ const getThreadName = () => {
       ? 'Browser Main Thread'
       : 'unknown-thread'
 }
+
+export const acquireReleaseLog = (label: string) =>
+  Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
+
+export const logBefore =
+  (...msgs: any[]) =>
+  <A, E, R>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.andThen(Effect.log(...msgs), eff)
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>

@@ -10,7 +10,6 @@ import {
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
 import * as SQLite from 'expo-sqlite/next'
 
 export type MakeDbOptions = {
@@ -44,9 +43,7 @@ export const makeAdapter =
       })
 
       if (dbWasEmptyWhenOpened) {
-        const otelContext = otel.context.active()
-
-        yield* migrateDb({ db: mainDb, otelContext, schema })
+        yield* migrateDb({ db: mainDb, schema })
 
         initializeSingletonTables(schema, mainDb)
 
@@ -101,7 +98,8 @@ export const makeAdapter =
 
       const coordinator = {
         isShutdownRef: { current: false },
-        devtools: { channelId: 'todo', connect: () => Effect.never, enabled: false },
+        // TODO
+        devtools: { channelId: 'expo', enabled: false },
         lockStatus,
         syncMutations,
         execute: () => Effect.void,

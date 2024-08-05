@@ -1,25 +1,20 @@
 import type {
   BootDb,
   BootStatus,
-  DebugInfo,
   ParamsObject,
   PreparedBindValues,
   ResetMode,
   StoreAdapter,
   StoreAdapterFactory,
 } from '@livestore/common'
-import {
-  Devtools,
-  getExecArgsFromMutation,
-  liveStoreVersion,
-  prepareBindValues,
-  UnexpectedError,
-} from '@livestore/common'
+import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
-import { assertNever, isPromise, makeNoopTracer, shouldNeverHappen, throttle } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
+import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
+import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import type { Cause } from '@livestore/utils/effect'
 import {
+  Deferred,
+  Duration,
   Effect,
   Exit,
   FiberSet,
@@ -38,11 +33,12 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import { globalReactivityGraph } from './global-state.js'
-import { emptyDebugInfo as makeEmptyDebugInfo, MainDatabaseWrapper } from './MainDatabaseWrapper.js'
+import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
-import { NOT_REFRESHED_YET } from './reactive.js'
 import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
+import { connectDevtoolsToStore } from './store-devtools.js'
+import { ReferenceCountedSet } from './utils/data-structures.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
 
@@ -61,6 +57,9 @@ export type OtelOptions = {
   tracer: otel.Tracer
   rootSpanContext: otel.Context
 }
+
+export class ForceStoreShutdown extends Schema.TaggedError<ForceStoreShutdown>()('LiveStore.ForceStoreShutdown', {}) {}
+export class StoreShutdown extends Schema.TaggedError<StoreShutdown>()('LiveStore.StoreShutdown', {}) {}
 
 export type StoreOptions<
   TGraphQLContext extends BaseGraphQLContext,
@@ -130,7 +129,6 @@ export class Store<
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > extends Inspectable.Class {
   id = uniqueStoreId()
-  readonly devtoolsConnectionId = cuid()
   private fiberSet: FiberSet.FiberSet
   reactivityGraph: ReactivityGraph
   mainDbWrapper: MainDatabaseWrapper
@@ -154,6 +152,7 @@ export class Store<
 
   readonly __mutationEventSchema
 
+  // #region constructor
   private constructor({
     adapter,
     schema,
@@ -201,8 +200,20 @@ export class Store<
       queriesSpanContext: otelQueriesSpanContext,
     }
 
+    // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
+    // But for now this is a good enough approximation with little downsides
+    const isRunningInDevtools = disableDevtools === true
+
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
-    const allTableNames = new Set(this.schema.tables.keys())
+    const allTableNames = new Set(
+      // NOTE we're excluding the LiveStore schema and mutations tables as they are not user-facing
+      // unless LiveStore is running in the devtools
+      isRunningInDevtools
+        ? this.schema.tables.keys()
+        : Array.from(this.schema.tables.keys()).filter(
+            (_) => _ !== SCHEMA_META_TABLE && _ !== SCHEMA_MUTATIONS_META_TABLE,
+          ),
+    )
     const existingTableRefs = new Map(
       Array.from(this.reactivityGraph.atoms.values())
         .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)
@@ -223,13 +234,10 @@ export class Store<
           this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
         }),
         Stream.runDrain,
+        Effect.interruptible,
         Effect.withSpan('LiveStore:syncMutations'),
         Effect.forkScoped,
       )
-
-      if (disableDevtools !== true) {
-        yield* this.bootDevtools().pipe(Effect.forkScoped)
-      }
 
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
@@ -247,6 +255,7 @@ export class Store<
       yield* Effect.never
     }).pipe(Effect.scoped, Effect.withSpan('LiveStore:store-constructor'), FiberSet.run(fiberSet), runEffectFork)
   }
+  // #endregion constructor
 
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
     storeOptions: StoreOptions<TGraphQLContext, TSchema>,
@@ -314,6 +323,7 @@ export class Store<
     await FiberSet.clear(this.fiberSet).pipe(Effect.withSpan('Store:destroy'), runEffectPromise)
   }
 
+  // #region mutate
   mutate: {
     <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg): void
     (
@@ -549,6 +559,7 @@ export class Store<
       },
     )
   }
+  // #endregion mutate
 
   /**
    * Directly execute a SQL query on the Store.
@@ -577,222 +588,6 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
-  // #region devtools
-  // TODO shutdown behaviour
-  private bootDevtools = () =>
-    Effect.gen(this, function* () {
-      const sendToDevtoolsContentscript = (
-        message: typeof Devtools.DevtoolsWindowMessage.MessageForContentscript.Type,
-      ) => {
-        window.postMessage(Schema.encodeSync(Devtools.DevtoolsWindowMessage.MessageForContentscript)(message), '*')
-      }
-
-      sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
-
-      const channelId = this.adapter.coordinator.devtools.channelId
-
-      const runtime = yield* Effect.runtime()
-
-      window.addEventListener('message', (event) => {
-        const decodedMessageRes = Schema.decodeOption(Devtools.DevtoolsWindowMessage.MessageForStore)(event.data)
-        if (decodedMessageRes._tag === 'None') return
-
-        const message = decodedMessageRes.value
-
-        if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
-          sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-          return
-        }
-
-        if (message.channelId !== channelId) return
-
-        if (message._tag === 'LSD.WindowMessage.MessagePortForStore') {
-          type Unsub = () => void
-          type RequestId = string
-
-          const reactivityGraphSubcriptions = new Map<RequestId, Unsub>()
-          const liveQueriesSubscriptions = new Map<RequestId, Unsub>()
-          const debugInfoHistorySubscriptions = new Map<RequestId, Unsub>()
-
-          this.adapter.coordinator.devtools
-            .connect({ port: message.port, connectionId: this.devtoolsConnectionId })
-            .pipe(
-              Effect.tapSync(({ storeMessagePort }) => {
-                // console.log('storeMessagePort', storeMessagePort)
-                storeMessagePort.addEventListener('message', (event) => {
-                  const decodedMessage = Schema.decodeUnknownSync(Devtools.MessageToAppHostStore)(event.data)
-                  // console.log('storeMessagePort message', decodedMessage)
-
-                  if (decodedMessage.channelId !== this.adapter.coordinator.devtools.channelId) {
-                    // console.log(`Unknown message`, event)
-                    return
-                  }
-
-                  const requestId = decodedMessage.requestId
-                  const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
-                    storeMessagePort.postMessage(Schema.encodeSync(Devtools.MessageFromAppHostStore)(message))
-
-                  const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
-
-                  switch (decodedMessage._tag) {
-                    case 'LSD.ReactivityGraphSubscribe': {
-                      const includeResults = decodedMessage.includeResults
-
-                      const send = () =>
-                        // In order to not add more work to the current tick, we use requestIdleCallback
-                        // to send the reactivity graph updates to the devtools
-                        requestIdleCallback(
-                          () =>
-                            sendToDevtools(
-                              Devtools.ReactivityGraphRes.make({
-                                reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults }),
-                                requestId,
-                                liveStoreVersion,
-                              }),
-                            ),
-                          { timeout: 500 },
-                        )
-
-                      send()
-
-                      // In some cases, there can be A LOT of reactivity graph updates in a short period of time
-                      // so we throttle the updates to avoid sending too much data
-                      // This might need to be tweaked further and possibly be exposed to the user in some way.
-                      const throttledSend = throttle(send, 20)
-
-                      reactivityGraphSubcriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
-
-                      break
-                    }
-                    case 'LSD.DebugInfoReq': {
-                      sendToDevtools(
-                        Devtools.DebugInfoRes.make({
-                          debugInfo: this.mainDbWrapper.debugInfo,
-                          requestId,
-                          liveStoreVersion,
-                        }),
-                      )
-                      break
-                    }
-                    case 'LSD.DebugInfoHistorySubscribe': {
-                      const buffer: DebugInfo[] = []
-                      let hasStopped = false
-                      let rafHandle: number | undefined
-
-                      const tick = () => {
-                        buffer.push(this.mainDbWrapper.debugInfo)
-
-                        // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
-                        // will get the empty debug info
-                        // TODO We need to come up with a more graceful way to do this. Probably via a single global
-                        // `requestAnimationFrame` loop that is passed in somehow.
-                        this.mainDbWrapper.debugInfo = makeEmptyDebugInfo()
-
-                        if (buffer.length > 10) {
-                          sendToDevtools(
-                            Devtools.DebugInfoHistoryRes.make({
-                              debugInfoHistory: buffer,
-                              requestId,
-                              liveStoreVersion,
-                            }),
-                          )
-                          buffer.length = 0
-                        }
-
-                        if (hasStopped === false) {
-                          rafHandle = requestAnimationFrame(tick)
-                        }
-                      }
-
-                      rafHandle = requestAnimationFrame(tick)
-
-                      const unsub = () => {
-                        hasStopped = true
-                        if (rafHandle !== undefined) {
-                          cancelAnimationFrame(rafHandle)
-                        }
-                      }
-
-                      debugInfoHistorySubscriptions.set(requestId, unsub)
-
-                      break
-                    }
-                    case 'LSD.DebugInfoHistoryUnsubscribe': {
-                      debugInfoHistorySubscriptions.get(requestId)!()
-                      debugInfoHistorySubscriptions.delete(requestId)
-                      break
-                    }
-                    case 'LSD.DebugInfoResetReq': {
-                      this.mainDbWrapper.debugInfo.slowQueries.clear()
-                      sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, liveStoreVersion }))
-                      break
-                    }
-                    case 'LSD.DebugInfoRerunQueryReq': {
-                      const { queryStr, bindValues, queriedTables } = decodedMessage
-                      this.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-                      sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, liveStoreVersion }))
-                      break
-                    }
-                    case 'LSD.ReactivityGraphUnsubscribe': {
-                      reactivityGraphSubcriptions.get(requestId)!()
-                      break
-                    }
-                    case 'LSD.LiveQueriesSubscribe': {
-                      const send = () =>
-                        requestIdleCallback(
-                          () =>
-                            sendToDevtools(
-                              Devtools.LiveQueriesRes.make({
-                                liveQueries: [...this.activeQueries].map((q) => ({
-                                  _tag: q._tag,
-                                  id: q.id,
-                                  label: q.label,
-                                  runs: q.runs,
-                                  executionTimes: q.executionTimes.map((_) => Number(_.toString().slice(0, 5))),
-                                  lastestResult:
-                                    q.results$.previousResult === NOT_REFRESHED_YET
-                                      ? 'SYMBOL_NOT_REFRESHED_YET'
-                                      : q.results$.previousResult,
-                                  activeSubscriptions: Array.from(q.activeSubscriptions),
-                                })),
-                                requestId,
-                                liveStoreVersion,
-                              }),
-                            ),
-                          { timeout: 500 },
-                        )
-
-                      send()
-
-                      // Same as in the reactivity graph subscription case above, we need to throttle the updates
-                      const throttledSend = throttle(send, 20)
-
-                      liveQueriesSubscriptions.set(requestId, this.reactivityGraph.subscribeToRefresh(throttledSend))
-
-                      break
-                    }
-                    case 'LSD.LiveQueriesUnsubscribe': {
-                      liveQueriesSubscriptions.get(requestId)!()
-                      liveQueriesSubscriptions.delete(requestId)
-                      break
-                    }
-                    // No default
-                  }
-                })
-
-                storeMessagePort.start()
-              }),
-              Runtime.runFork(runtime),
-            )
-
-          return
-        }
-      })
-
-      sendToDevtoolsContentscript(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
-    })
-  // #endregion devtools
-
   __devDownloadDb = () => {
     const data = this.mainDbWrapper.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
@@ -806,6 +601,7 @@ export class Store<
   // TODO allow for graceful store reset without requiring a full page reload (which should also call .boot)
   dangerouslyResetStorage = (mode: ResetMode) => this.adapter.coordinator.dangerouslyReset(mode).pipe(runEffectPromise)
 
+  // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
   toJSON = () => {
     return {
       _tag: 'Store',
@@ -820,7 +616,7 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions?: Partial<OtelOptions>
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown> | Effect.Effect<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -884,21 +680,44 @@ export const createStore = <
 
     yield* Queue.take(bootStatusQueue).pipe(
       Effect.tapSync((status) => onBootStatus?.(status)),
+      Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
       Effect.forever,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
 
+    const storeDeferred = yield* Deferred.make<Store>()
+
+    const connectDevtoolsToStore_ = ({ storeMessagePort }: { storeMessagePort: MessagePort }) =>
+      Effect.gen(function* () {
+        const store = yield* Deferred.await(storeDeferred)
+        yield* connectDevtoolsToStore({ storeMessagePort, store })
+      })
+
+    // TODO close parent scope? (Needs refactor with Mike A)
+    const shutdown = (cause: Cause.Cause<unknown>) =>
+      Effect.gen(function* () {
+        yield* Effect.logWarning(`Shutting down LiveStore`, cause)
+
+        FiberSet.clear(fiberSet).pipe(
+          Effect.andThen(() => FiberSet.run(fiberSet, Effect.fail(StoreShutdown.make()))),
+          Effect.timeout(Duration.seconds(1)),
+          Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
+          Effect.catchTag('TimeoutException', () =>
+            Effect.logWarning('Store shutdown timed out. Forcing shutdown.').pipe(
+              Effect.andThen(FiberSet.run(fiberSet, Effect.fail(ForceStoreShutdown.make()))),
+            ),
+          ),
+          runEffectFork, // NOTE we need to fork this separately otherwise it will also be interrupted
+        )
+      }).pipe(Effect.withSpan('livestore:shutdown'))
+
     const adapter: StoreAdapter = yield* adapterFactory({
       schema,
       devtoolsEnabled: disableDevtools !== true,
       bootStatusQueue,
-      shutdown: (cause) =>
-        Effect.gen(function* () {
-          yield* Effect.logWarning(`Shutting down LiveStore`, cause)
-          // TODO close parent scope? (Needs refactor with Mike A)
-          yield* FiberSet.clear(fiberSet)
-        }).pipe(Effect.withSpan('livestore:shutdown')),
+      shutdown,
+      connectDevtoolsToStore: connectDevtoolsToStore_,
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
     if (batchUpdates !== undefined) {
@@ -976,20 +795,13 @@ export const createStore = <
         },
       }
 
-      yield* Effect.try(() => boot(bootDbImpl, span)).pipe(
-        Effect.andThen((booting) =>
-          Effect.isEffect(booting)
-            ? (booting as Effect.Effect<void, unknown, never>)
-            : isPromise(booting)
-              ? Effect.promise(() => booting)
-              : Effect.void,
-        ),
+      yield* Effect.tryAll(() => boot(bootDbImpl, span)).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('createStore:boot'),
       )
     }
 
-    return Store.createStore<TGraphQLContext, TSchema>(
+    const store = Store.createStore<TGraphQLContext, TSchema>(
       {
         adapter,
         schema,
@@ -1002,6 +814,10 @@ export const createStore = <
       },
       span,
     )
+
+    yield* Deferred.succeed(storeDeferred, store as any as Store)
+
+    return store
   }).pipe(
     Effect.withSpan('createStore', {
       parent: otelOptions?.rootSpanContext
@@ -1013,43 +829,7 @@ export const createStore = <
 }
 // #endregion createStore
 
-// TODO consider replacing with Effect's RC data structures
-class ReferenceCountedSet<T> {
-  private map: Map<T, number>
-
-  constructor() {
-    this.map = new Map<T, number>()
-  }
-
-  add = (key: T) => {
-    const count = this.map.get(key) ?? 0
-    this.map.set(key, count + 1)
-  }
-
-  remove = (key: T) => {
-    const count = this.map.get(key) ?? 0
-    if (count === 1) {
-      this.map.delete(key)
-    } else {
-      this.map.set(key, count - 1)
-    }
-  }
-
-  has = (key: T) => {
-    return this.map.has(key)
-  }
-
-  get size() {
-    return this.map.size
-  }
-
-  *[Symbol.iterator]() {
-    for (const key of this.map.keys()) {
-      yield key
-    }
-  }
-}
-
+// TODO propagate runtime
 const runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
   effect.pipe(
     Effect.tapCauseLogPretty,
@@ -1059,6 +839,7 @@ const runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
     Effect.runFork,
   )
 
+// TODO propagate runtime
 const runEffectPromise = <A, E>(effect: Effect.Effect<A, E, never>) =>
   effect.pipe(
     Effect.tapCauseLogPretty,

@@ -1,14 +1,16 @@
+import { Schema } from '@effect/schema'
 import { useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
 import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'
 import * as t from '../drizzle/schema.js'
 import type { TodoInput } from '../schema/index.js'
-import { mutations } from '../schema/index.js'
+import { mutations, tables } from '../schema/index.js'
 
 const filterClause$ = queryDrizzle((qb) => qb.select().from(t.app), {
-  map: ([appState]) =>
-    appState!.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState!.filter === 'completed'),
+  schema: tables.app.schema.pipe(Schema.Array, Schema.headOrElse()),
+  map: (appState) =>
+    appState.filter === 'all' ? undefined : drizzle.eq(t.todos.completed, appState.filter === 'completed'),
 })
 
 const visibleTodos$ = queryDrizzle((qb, get) =>

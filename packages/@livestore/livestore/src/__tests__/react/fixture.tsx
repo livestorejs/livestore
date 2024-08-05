@@ -5,7 +5,7 @@ import React from 'react'
 
 import { globalReactivityGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStorePromise, DbSchema, makeReactivityGraph, makeSchema, ParseUtils, sql } from '../../index.js'
+import { createStorePromise, DbSchema, makeReactivityGraph, makeSchema, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 
 export type Todo = {
@@ -56,8 +56,6 @@ const AppRouterSchema = DbSchema.table(
 
 export const tables = { todos, app, userInfo, AppRouterSchema }
 export const schema = makeSchema({ tables })
-
-export const parseTodos = ParseUtils.many(todos)
 
 export const makeTodoMvc = async ({
   otelTracer,

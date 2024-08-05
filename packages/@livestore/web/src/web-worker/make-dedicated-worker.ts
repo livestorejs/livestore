@@ -1,6 +1,6 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
 import type { BootStatus, NetworkStatus } from '@livestore/common'
-import { Devtools, liveStoreVersion, sql, UnexpectedError } from '@livestore/common'
+import { sql, UnexpectedError } from '@livestore/common'
 import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
@@ -8,15 +8,16 @@ import {
   BrowserWorkerRunner,
   Deferred,
   Effect,
-  Exit,
+  Fiber,
+  FiberSet,
   Layer,
   Logger,
   LogLevel,
   Queue,
+  Ref,
   Runtime,
   Scheduler,
   Schema,
-  Scope,
   Stream,
   SubscriptionRef,
   WorkerRunner,
@@ -30,8 +31,8 @@ import { configureConnection, InnerWorkerCtx, makeApplyMutation, OuterWorkerCtx 
 import { makeDevtoolsContext } from './devtools.js'
 import { makePersistedSqlite } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
-import type { ExecutionBacklogItem } from './schema.js'
-import * as WorkerSchema from './schema.js'
+import type { ExecutionBacklogItem } from './worker-schema.js'
+import * as WorkerSchema from './worker-schema.js'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
@@ -91,13 +92,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     const schemaHash = schema.hash
 
     return WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerInner.Request, {
-      InitialMessage: ({
-        storageOptions,
-        needsRecreate,
-        syncOptions,
-        key,
-        devtools: { channelId, enabled: devtoolsEnabled },
-      }) =>
+      InitialMessage: ({ storageOptions, needsRecreate, syncOptions, key, devtoolsEnabled }) =>
         Effect.gen(function* () {
           if (storageOptions.type === 'opfs-sahpool-experimental') {
             // NOTE We're not using SharedArrayBuffers/Atomics here, so we can ignore the warnings
@@ -129,7 +124,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             schemaHash,
             sqlite3,
             sahUtils,
-            configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: true })),
+            configure: (db) => configureConnection(db, { fkEnabled: true }),
           })
 
           const makeDbLog = makePersistedSqlite({
@@ -138,7 +133,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             schemaHash,
             sqlite3,
             sahUtils,
-            configure: (db) => Effect.sync(() => configureConnection(db, { fkEnabled: false })),
+            configure: (db) => configureConnection(db, { fkEnabled: false }),
           })
 
           // Might involve some async work, so we're running them concurrently
@@ -159,7 +154,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const makeSync = Effect.gen(function* () {
             if (syncImpl === undefined) return undefined
 
-            const waitUntilOnline = SubscriptionRef.changeStreamIncludingCurrent(syncImpl.isConnected).pipe(
+            const waitUntilOnline = syncImpl.isConnected.changes.pipe(
               Stream.filter(Boolean),
               Stream.take(1),
               Stream.runDrain,
@@ -176,16 +171,19 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           const sync = yield* makeSync
 
-          const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext(channelId) : { enabled: false }
+          const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false }
 
           const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
 
-          const initialSetupDeferred = yield* Deferred.make<InitialSetup>()
+          const initialSetupDeferred = yield* Deferred.make<InitialSetup, UnexpectedError>()
+
+          const mutationSemaphore = yield* Effect.makeSemaphore(1)
 
           const innerWorkerCtx = {
             keySuffix,
             storageOptions,
             schema,
+            mutationSemaphore,
             shutdownStateSubRef,
             sqlite3,
             initialSetupDeferred,
@@ -205,7 +203,10 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           if (needsRecreate) {
             yield* recreateDb(innerWorkerCtx).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
+              Effect.flatMap((snapshot) => Ref.make<Uint8Array | undefined>(snapshot)),
               Effect.tap((snapshot) => Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshot })),
+              UnexpectedError.mapToUnexpectedError,
+              Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
               Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )
@@ -215,6 +216,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             ).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
               Effect.tap(() => Deferred.succeed(initialSetupDeferred, { _tag: 'Reuse' })),
+              UnexpectedError.mapToUnexpectedError,
+              Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
               Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )
@@ -229,7 +232,12 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               // TODO try to do this in a batched-way if possible
               yield* syncImpl.pushes.pipe(
                 Stream.tap(({ mutationEventEncoded, persisted }) =>
-                  applyMutation(mutationEventEncoded, { syncStatus: 'synced', shouldBroadcast: true, persisted }),
+                  applyMutation(mutationEventEncoded, {
+                    syncStatus: 'synced',
+                    shouldBroadcast: true,
+                    persisted,
+                    inTransaction: false,
+                  }),
                 ),
                 Stream.runDrain,
                 Effect.withSpan('@livestore/web:worker:syncImpl:pushes'),
@@ -257,6 +265,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                     syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
                     shouldBroadcast: true,
                     persisted,
+                    inTransaction: false,
                   })
                 }
               }).pipe(
@@ -280,11 +289,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const workerCtx = yield* InnerWorkerCtx
           const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
 
-          if (result._tag === 'Recreate') {
-            return result.snapshot
-          } else {
-            return yield* workerCtx.db.export
-          }
+          // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+          const cachedSnapshot =
+            result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshot, undefined) : undefined
+
+          return cachedSnapshot ?? (yield* workerCtx.db.export)
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
       Export: () =>
         Effect.andThen(InnerWorkerCtx, (_) => _.db.export).pipe(
@@ -302,18 +311,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExecuteBulk'),
         ),
-      // BootStatusStream: () =>
-      //   Effect.andThen(InnerWorkerCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
-      BootStatusStream: () => {
-        performance.mark('bootStatusStartBeforeCtx')
-        return Effect.andThen(InnerWorkerCtx, (_) => {
-          performance.mark('bootStatusStart')
-          return Stream.fromQueue(_.bootStatusQueue)
-        }).pipe(
-          Stream.unwrap,
-          Stream.tapSync(() => performance.mark('bootStatusUpdate')),
-        )
-      },
+      BootStatusStream: () =>
+        Effect.andThen(InnerWorkerCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
       NetworkStatusStream: () =>
         Effect.gen(function* (_) {
           const ctx = yield* InnerWorkerCtx
@@ -324,34 +323,15 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
 
           return ctx.sync.impl.isConnected.changes.pipe(
             Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
-            Stream.tap((networkStatus) =>
-              ctx.devtools.enabled
-                ? ctx.devtools.broadcast(
-                    Devtools.NetworkStatusChanged.make({
-                      channelId: ctx.devtools.channelId,
-                      networkStatus,
-                      liveStoreVersion,
-                    }),
-                  )
-                : Effect.void,
-            ),
           )
         }).pipe(Stream.unwrap),
-      ListenForReloadStream: () =>
-        InnerWorkerCtx.pipe(
-          Effect.andThen((_) => SubscriptionRef.waitUntil(_.shutdownStateSubRef, (_) => _ == 'shutdown-requested')),
-          Effect.tapSync((_) => console.log('[@livestore/web:worker] ListenForReload: shutdown-requested')),
-          Effect.asVoid,
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/web:worker:ListenForReload'),
-        ),
       Shutdown: () =>
         Effect.gen(function* () {
-          // TODO get rid of explicit close calls and rely on the finalizers (by dropping the scope from `InitialMessage`)
           const { db, dbLog, devtools } = yield* InnerWorkerCtx
+          yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
 
           if (devtools.enabled) {
-            yield* Effect.forEach(devtools.connectionScopes, (scope) => Scope.close(scope, Exit.void))
+            yield* FiberSet.clear(devtools.connections)
           }
 
           db.dbRef.current.close()
@@ -359,31 +339,38 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           yield* db.close
           yield* dbLog.close
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
-      ConnectDevtools: ({ port, connectionId, isLeaderTab }) =>
-        Effect.gen(function* () {
-          const workerCtx = yield* InnerWorkerCtx
+      // NOTE We're using a stream here to express a scoped effect over the worker boundary
+      // so the code below can cause an interrupt on the worker client side
+      ConnectDevtoolsStream: ({ port, channelId, isLeaderTab }) =>
+        Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, InnerWorkerCtx>((emit) =>
+          Effect.gen(function* () {
+            const workerCtx = yield* InnerWorkerCtx
 
-          if (workerCtx.devtools.enabled === false) {
-            return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
-          }
+            if (workerCtx.devtools.enabled === false) {
+              return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
+            }
 
-          const storeMessagePortDeferred = yield* Deferred.make<MessagePort>()
-          const connectionScope = yield* Scope.make()
+            const storeMessagePortDeferred = yield* Deferred.make<MessagePort, UnexpectedError>()
 
-          yield* workerCtx.devtools
-            .connect({
-              coordinatorMessagePort: port,
-              storeMessagePortDeferred,
-              connectionScope,
-              connectionId,
-              isLeaderTab,
-            })
-            .pipe(Effect.tapCauseLogPretty, Effect.forkIn(connectionScope))
+            const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* workerCtx.devtools
+              .connect({
+                coordinatorMessagePort: port,
+                storeMessagePortDeferred,
+                disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
+                channelId,
+                isLeaderTab,
+              })
+              .pipe(
+                Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
+                Effect.onInterrupt(() => Effect.promise(() => emit.end())),
+                FiberSet.run(workerCtx.devtools.connections),
+              )
 
-          const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
+            const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
 
-          return { storeMessagePort }
-        }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:ConnectDevtools')),
+            emit.single({ storeMessagePort })
+          }),
+        ).pipe(Stream.withSpan('@livestore/web:worker:ConnectDevtools')),
     })
   }).pipe(Layer.unwrapScoped)
 
@@ -436,6 +423,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
               syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
               shouldBroadcast: true,
               persisted: item.persisted,
+              inTransaction: true,
             })
           } else {
             // TODO handle txn

@@ -59,10 +59,9 @@ export type Coordinator = {
     /**
      * Returns a dedicated message port for the store which is established over the message port passed in
      */
-    connect: (options: {
-      port: MessagePort
-      connectionId: string
-    }) => Effect.Effect<{ storeMessagePort: MessagePort }, UnexpectedError>
+    // connect: (options: { port: MessagePort }) => Effect.Effect<{ storeMessagePort: MessagePort }, UnexpectedError>
+    // TODO refactor to possibly flip the hiearchy so the coordinator connects to the store instead of the store connecting to the coordinator
+    // waitForPort: (devtoolsId: string) => Effect.Effect<MessagePort, UnexpectedError>
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
@@ -93,6 +92,7 @@ export type BootDb = {
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.AnyError,
+  note: Schema.optional(Schema.String),
   payload: Schema.optional(Schema.Any),
 }) {
   static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
@@ -127,8 +127,7 @@ export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> 
     }
   | {
       strategy: 'manual'
-      migrate: (oldDb: Uint8Array) => Promise<Uint8Array> | Uint8Array
-      hooks?: Partial<MigrationHooks>
+      migrate: (oldDb: Uint8Array) => Uint8Array | Promise<Uint8Array> | Effect.Effect<Uint8Array, unknown>
     }
 
 export type MigrationHooks = {
@@ -140,7 +139,7 @@ export type MigrationHooks = {
   post: MigrationHook
 }
 
-export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void>
+export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
 
 export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   strategy: 'from-mutation-log'
@@ -156,9 +155,16 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
+export type ConnectDevtoolsToStore = ({
+  storeMessagePort,
+}: {
+  storeMessagePort: MessagePort
+}) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+
 export type StoreAdapterFactory = (opts: {
   schema: LiveStoreSchema
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+  connectDevtoolsToStore: ConnectDevtoolsToStore
 }) => Effect.Effect<StoreAdapter, UnexpectedError, Scope.Scope>

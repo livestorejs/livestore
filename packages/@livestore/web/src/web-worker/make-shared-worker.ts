@@ -11,6 +11,8 @@ import {
   Layer,
   Logger,
   LogLevel,
+  Queue,
+  Ref,
   Schema,
   SchemaEquivalence,
   Scope,
@@ -20,7 +22,9 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
-import * as WorkerSchema from './schema.js'
+import { makeDevtoolsWebBridge } from './shared-worker-devtools-web-bridge.js'
+import { makeShutdownChannel, ShutdownBroadcast } from './shutdown-channel.js'
+import * as WorkerSchema from './worker-schema.js'
 
 const makeWorkerRunner = Effect.gen(function* () {
   const dedicatedWorkerContextSubRef = yield* SubscriptionRef.make<
@@ -31,7 +35,9 @@ const makeWorkerRunner = Effect.gen(function* () {
     | undefined
   >(undefined)
 
-  const initialMessageDeferred = yield* Deferred.make<WorkerSchema.DedicatedWorkerInner.InitialMessage>()
+  const initialMessageDeferredRef = yield* Deferred.make<WorkerSchema.DedicatedWorkerInner.InitialMessage>().pipe(
+    Effect.andThen(Ref.make),
+  )
 
   const waitForWorker = SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),
@@ -43,6 +49,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     ? Effect.Effect<A, UnexpectedError, never>
     : never =>
     waitForWorker.pipe(
+      // Effect.logBefore(`forwardRequest: ${req._tag}`),
       Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, never>),
       Effect.logWarnIfTakesLongerThan({
         label: `@livestore/web:shared-worker:forwardRequest:${req._tag}`,
@@ -52,65 +59,116 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.tapCauseLogPretty,
     ) as any
 
+  // const forwardRequestStream = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
+  //   req: TReq,
+  // ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
+  //   ? Stream.Stream<A, UnexpectedError, never>
+  //   : never =>
+  //   waitForWorker.pipe(
+  //     Effect.logBefore(`forwardRequestStream: ${req._tag}`),
+  //     Effect.andThen((worker) => worker.execute(req) as Stream.Stream<unknown, unknown, never>),
+  //     Effect.interruptible,
+  //     UnexpectedError.mapToUnexpectedError,
+  //     Effect.tapCauseLogPretty,
+  //     Stream.unwrap,
+  //     Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
+  //     UnexpectedError.mapToUnexpectedErrorStream,
+  //   ) as any
+
+  // TODO bring back the `forwardRequestStream` impl above. Needs debugging with Tim Smart
+  // It seems the in-progress streams are not being closed properly if the worker is closed (e.g. by closing the leader tab)
   const forwardRequestStream = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
     req: TReq,
   ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Stream.Stream<A, UnexpectedError, never>
     : never =>
-    SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined).pipe(
-      Effect.andThen(({ worker }) => worker.execute(req) as Stream.Stream<unknown, unknown, never>),
+    Effect.gen(function* () {
+      const { worker, scope } = yield* SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined)
+      const queue = yield* Queue.unbounded()
+
+      yield* Scope.addFinalizer(scope, Queue.shutdown(queue))
+
+      const workerStream = worker.execute(req) as Stream.Stream<unknown, unknown, never>
+
+      yield* workerStream.pipe(
+        Stream.tap((_) => Queue.offer(queue, _)),
+        Stream.runDrain,
+        Effect.forkIn(scope),
+      )
+
+      return Stream.fromQueue(queue)
+    }).pipe(
       UnexpectedError.mapToUnexpectedError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
-      // Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
       UnexpectedError.mapToUnexpectedErrorStream,
+      // Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
     ) as any
+
+  const resetCurrentWorkerCtx = Effect.gen(function* () {
+    const prevWorker = yield* SubscriptionRef.get(dedicatedWorkerContextSubRef)
+    if (prevWorker !== undefined) {
+      // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
+      yield* SubscriptionRef.set(dedicatedWorkerContextSubRef, undefined)
+
+      yield* Scope.close(prevWorker.scope, Exit.void).pipe(
+        Effect.timeout(Duration.seconds(1)),
+        Effect.logWarnIfTakesLongerThan({
+          label: '@livestore/web:shared-worker:close-previous-worker',
+          duration: 500,
+        }),
+        // Effect.catchTag('TimeoutException', () => Scope.close(prevWorker.scope, Exit.fail('boom'))),
+        Effect.ignoreLogged,
+      )
+    }
+  })
+
+  const devtoolsWebBridge = yield* makeDevtoolsWebBridge
+
+  const reset = Effect.gen(function* () {
+    yield* Effect.logDebug('reset')
+
+    const initialMessageDeferred = yield* Deferred.make<WorkerSchema.DedicatedWorkerInner.InitialMessage>()
+    yield* Ref.set(initialMessageDeferredRef, initialMessageDeferred)
+
+    yield* resetCurrentWorkerCtx
+    yield* devtoolsWebBridge.reset
+  })
 
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
     InitialMessage: (message) =>
       Effect.gen(function* () {
+        if (message.payload._tag === 'FromWebBridge') return
+
+        const initialMessageDeferred = yield* Ref.get(initialMessageDeferredRef)
         const deferredAlreadyDone = yield* Deferred.isDone(initialMessageDeferred)
+        const initialMessage = message.payload.initialMessage
 
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessageDeferred)
-          const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(
-            Schema.omit('devtools', 'needsRecreate'),
-          )
+          const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(Schema.omit('needsRecreate'))
           const isEqual = SchemaEquivalence.make(messageSchema)
-          if (isEqual(message, previousInitialMessage) === false) {
-            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage, message)
+          if (isEqual(initialMessage, previousInitialMessage) === false) {
+            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage, initialMessage)
 
             yield* new UnexpectedError({
               cause: {
                 message: 'Initial message already sent and was different now',
                 diff,
                 previousInitialMessage,
-                newInitialMessage: message,
+                newInitialMessage: initialMessage,
               },
             })
           }
         } else {
-          yield* Deferred.succeed(initialMessageDeferred, message)
+          yield* Deferred.succeed(initialMessageDeferred, initialMessage)
         }
       }),
     UpdateMessagePort: ({ port }) =>
       Effect.gen(function* () {
-        const initialMessage = yield* Deferred.await(initialMessageDeferred)
+        const initialMessage = yield* initialMessageDeferredRef.get.pipe(Effect.andThen(Deferred.await))
 
-        const prevWorker = yield* SubscriptionRef.get(dedicatedWorkerContextSubRef)
-        if (prevWorker !== undefined) {
-          // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
-          yield* SubscriptionRef.set(dedicatedWorkerContextSubRef, undefined)
-
-          yield* Scope.close(prevWorker.scope, Exit.void).pipe(
-            Effect.timeout(Duration.seconds(1)),
-            Effect.ignoreLogged,
-            Effect.logWarnIfTakesLongerThan({
-              label: '@livestore/web:shared-worker:close-previous-worker',
-              duration: 500,
-            }),
-          )
-        }
+        yield* resetCurrentWorkerCtx
 
         const scope = yield* Scope.make()
 
@@ -130,16 +188,33 @@ const makeWorkerRunner = Effect.gen(function* () {
           Effect.tapError((cause) => Deferred.fail(workerDeferred, cause)),
           Effect.withSpan('@livestore/web:shared-worker:makeWorkerProxyFromPort'),
           Effect.tapCauseLogPretty,
+          Scope.extend(scope),
+          Effect.forkIn(scope),
+        )
+
+        const shutdownChannel = yield* makeShutdownChannel(initialMessage.key)
+
+        yield* shutdownChannel.listen.pipe(
+          Stream.flatten(),
+          Stream.filter(Schema.is(ShutdownBroadcast)),
+          Stream.tap(() => reset),
+          Stream.runDrain,
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
+          Scope.extend(scope),
           Effect.forkIn(scope),
         )
 
         const worker = yield* Deferred.await(workerDeferred)
+
         yield* SubscriptionRef.set(dedicatedWorkerContextSubRef, { worker, scope })
       }).pipe(
         Effect.withSpan('@livestore/web:shared-worker:updateMessagePort'),
         UnexpectedError.mapToUnexpectedError,
         Effect.tapCauseLogPretty,
       ),
+
+    // Proxied requests
     BootStatusStream: forwardRequestStream,
     ExecuteBulk: forwardRequest,
     Export: forwardRequest,
@@ -147,9 +222,10 @@ const makeWorkerRunner = Effect.gen(function* () {
     ExportMutationlog: forwardRequest,
     Setup: forwardRequest,
     NetworkStatusStream: forwardRequestStream,
-    ListenForReloadStream: forwardRequestStream,
     Shutdown: forwardRequest,
-    ConnectDevtools: forwardRequest,
+    ConnectDevtoolsStream: forwardRequestStream,
+
+    ...devtoolsWebBridge.handlers,
   })
 }).pipe(Layer.unwrapScoped)
 

@@ -2,7 +2,8 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { createStorePromise, ParseUtils, querySQL, rowQuery } from '@livestore/livestore'
+import { Schema } from '@effect/schema'
+import { createStorePromise, querySQL, rowQuery } from '@livestore/livestore'
 import { cuid } from '@livestore/utils/cuid'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
@@ -22,7 +23,7 @@ const store = await createStorePromise({
 })
 
 const appState$ = rowQuery(tables.app)
-const todos$ = querySQL(`select * from todos where deleted is null`, { map: ParseUtils.many(tables.todos) })
+const todos$ = querySQL(`select * from todos where deleted is null`, { schema: Schema.Array(tables.todos.schema) })
 
 const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
 

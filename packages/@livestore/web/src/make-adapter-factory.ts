@@ -17,7 +17,7 @@ const sqlite3Promise = loadSqlite3Wasm()
 
 export const makeAdapterFactory =
   (makeCoordinator: MakeCoordinator): StoreAdapterFactory =>
-  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown }) =>
+  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
 
@@ -27,6 +27,7 @@ export const makeAdapterFactory =
         devtoolsEnabled,
         bootStatusQueue,
         shutdown,
+        connectDevtoolsToStore,
       }).pipe(Effect.withSpan('@livestore/web:coordinator:load'))
 
       const persistedData = yield* coordinator.getInitialSnapshot.pipe(

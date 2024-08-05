@@ -1,4 +1,11 @@
-import type { BootStatus, InvalidPullError, IsOfflineError, SyncImpl, UnexpectedError } from '@livestore/common'
+import type {
+  BootStatus,
+  InvalidPullError,
+  IsOfflineError,
+  PreparedBindValues,
+  SyncImpl,
+  UnexpectedError,
+} from '@livestore/common'
 import {
   Devtools,
   getExecArgsFromMutation,
@@ -13,16 +20,16 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, Queue, Scope, Stream } from '@livestore/utils/effect'
+import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream } from '@livestore/utils/effect'
 import { Context, Effect, Runtime, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
-import type { StorageType } from './schema.js'
+import type { StorageType } from './worker-schema.js'
 
-export const getAppDbFileName = (prefix: string, schemaHash: number) => {
-  return `${prefix}${schemaHash}.db`
+export const getAppDbFileName = (prefix: string, suffix: number) => {
+  return `${prefix}${suffix}.db`
 }
 
 export const getMutationlogDbFileName = (prefix: string) => {
@@ -38,30 +45,33 @@ export const getMutationlogDbIdbStoreName = (prefix: string) => {
 }
 
 export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fkEnabled: boolean }) =>
-  db.exec(sql`
+  execSql(
+    db,
+    sql`
     PRAGMA page_size=8192;
     PRAGMA journal_mode=MEMORY;
     ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
-  `)
+  `,
+    {},
+  )
 
 export type DevtoolsContextEnabled = {
   enabled: true
   connect: (options: {
     coordinatorMessagePort: MessagePort
-    storeMessagePortDeferred: Deferred.Deferred<MessagePort>
-    connectionScope: Scope.CloseableScope
-    connectionId: string
+    storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
+    disconnect: Effect.Effect<void>
+    channelId: string
     isLeaderTab: boolean
   }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
-  connectionScopes: Set<Scope.CloseableScope>
+  connections: FiberSet.FiberSet
   broadcast: (
-    message: typeof Devtools.NetworkStatusChanged.Type | typeof Devtools.MutationBroadcast.Type,
+    message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
   ) => Effect.Effect<void>
-  channelId: string
 }
 export type DevtoolsContext = DevtoolsContextEnabled | { enabled: false }
 
-export type ShutdownState = 'running' | 'shutting-down' | 'shutdown-requested'
+export type ShutdownState = 'running' | 'shutting-down'
 
 export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
   OuterWorkerCtx,
@@ -70,7 +80,7 @@ export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
   }
 >() {}
 
-export type InitialSetup = { _tag: 'Recreate'; snapshot: Uint8Array } | { _tag: 'Reuse' }
+export type InitialSetup = { _tag: 'Recreate'; snapshot: Ref.Ref<Uint8Array | undefined> } | { _tag: 'Reuse' }
 
 export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
   InnerWorkerCtx,
@@ -78,11 +88,12 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     keySuffix: string
     storageOptions: StorageType
     schema: LiveStoreSchema
+    mutationSemaphore: Effect.Semaphore
     db: PersistedSqlite
     dbLog: PersistedSqlite
     sqlite3: SqliteWasm.Sqlite3Static
     bootStatusQueue: Queue.Queue<BootStatus>
-    initialSetupDeferred: Deferred.Deferred<InitialSetup>
+    initialSetupDeferred: Deferred.Deferred<InitialSetup, UnexpectedError>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEventSchema<any>
@@ -104,6 +115,7 @@ export type ApplyMutation = (
     syncStatus: SyncStatus
     shouldBroadcast: boolean
     persisted: boolean
+    inTransaction: boolean
   },
 ) => Effect.Effect<void, SqliteError>
 
@@ -114,10 +126,18 @@ export const makeApplyMutation = (
 ): ApplyMutation => {
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
-  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted }) =>
+  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction }) =>
     Effect.gen(function* () {
-      const { dbLog, mutationEventSchema, mutationDefSchemaHashMap, broadcastChannel, devtools, sync, schema } =
-        workerCtx
+      const {
+        dbLog,
+        mutationEventSchema,
+        mutationDefSchemaHashMap,
+        broadcastChannel,
+        devtools,
+        sync,
+        schema,
+        mutationSemaphore,
+      } = workerCtx
       const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
       const mutationName = mutationEventDecoded.mutation
@@ -127,14 +147,26 @@ export const makeApplyMutation = (
 
       // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
-      for (const { statementSql, bindValues } of execArgsArr) {
-        try {
-          // console.debug(mutationName, statementSql, bindValues)
-          db.exec({ sql: statementSql, bind: bindValues })
-        } catch (error) {
-          yield* new SqliteError({ sql: statementSql, bindValues, cause: error, code: (error as any).resultCode })
+      const transaction = Effect.gen(function* () {
+        const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
+        if (hasDbTransaction) {
+          yield* execSql(db, 'BEGIN TRANSACTION', {})
         }
-      }
+
+        for (const { statementSql, bindValues } of execArgsArr) {
+          // console.debug(mutationName, statementSql, bindValues)
+          // TODO use cached prepared statements instead of exec
+          yield* execSqlPrepared(db, statementSql, bindValues).pipe(
+            Effect.tapError(() => (hasDbTransaction ? execSql(db, 'ROLLBACK', {}) : Effect.void)),
+          )
+        }
+
+        if (hasDbTransaction) {
+          yield* execSql(db, 'COMMIT', {})
+        }
+      })
+
+      yield* mutationSemaphore.withPermits(1)(transaction)
 
       // console.groupEnd()
 
@@ -219,8 +251,15 @@ const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
     try: () => db.exec({ sql, bind: bindValues }),
-    catch: (e) => new SqliteError({ cause: e, bindValues, code: (e as any).resultCode, sql }),
-  })
+    catch: (cause) => new SqliteError({ cause, bindValues, code: (cause as any).resultCode, sql }),
+  }).pipe(Effect.asVoid)
+}
+
+const execSqlPrepared = (db: SqliteWasm.Database, sql: string, bindValues: PreparedBindValues) => {
+  return Effect.try({
+    try: () => db.exec({ sql, bind: bindValues }),
+    catch: (cause) => new SqliteError({ cause, bindValues, code: (cause as any).resultCode, sql }),
+  }).pipe(Effect.asVoid)
 }
 
 const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {

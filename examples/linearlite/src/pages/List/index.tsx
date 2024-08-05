@@ -1,20 +1,19 @@
 import TopFilter from '../../components/TopFilter'
 import IssueList from './IssueList'
-import { ParseUtils, querySQL, sql } from '@livestore/livestore'
-import { parseFilterStateString, tables } from '../../domain/schema'
+import { querySQL, rowQuery, sql } from '@livestore/livestore'
+import { tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { getLocalId, useQuery } from '@livestore/livestore/react'
+import { Schema } from '@effect/schema'
 
-// TODO make sure row exists before querying
-const filterClause$ = querySQL(`select value from filter_state where id = '${getLocalId()}'`, {
-  map: ([{ value }]) => {
-    if (value === undefined) return ''
-    const filterStateObj = parseFilterStateString(value)
-    return filterStateToWhere(filterStateObj) + ' ' + filterStateToOrder(filterStateObj)
-  },
+const filterAndOrderClause$ = rowQuery(tables.filterState, getLocalId(), {
+  map: (_) => `${filterStateToWhere(_)} ${filterStateToOrder(_)}`,
+  label: 'List.filterAndOrderClause',
 })
-const visibleIssues$ = querySQL((get) => sql`select * from issue ${get(filterClause$)}`, {
-  map: ParseUtils.many(tables.issue),
+
+const visibleIssues$ = querySQL((get) => sql`select * from issue ${get(filterAndOrderClause$)}`, {
+  schema: Schema.Array(tables.issue.schema),
+  label: 'List.visibleIssues',
 })
 
 const List: React.FC<{ showSearch?: boolean }> = ({ showSearch = false }) => {

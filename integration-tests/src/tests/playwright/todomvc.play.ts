@@ -11,7 +11,7 @@ test(
       const { browserContext } = yield* Playwright.BrowserContext
       const page = yield* Effect.promise(() => browserContext.newPage())
 
-      const pageConsoleFiber = yield* Playwright.handlePageConsole(page, `tab-1`).pipe(Effect.fork)
+      const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)
 
       yield* Effect.promise(async () => {
         await page.goto(`http://localhost:60001/`)

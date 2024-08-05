@@ -1,6 +1,5 @@
 import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { InMemoryDatabase } from '../adapter-types.js'
@@ -24,7 +23,6 @@ export const makeSchemaManager = (db: InMemoryDatabase): Effect.Effect<SchemaMan
   Effect.gen(function* () {
     yield* migrateTable({
       db,
-      otelContext: otel.context.active(),
       tableAst: schemaMutationsMetaTable.sqliteDef.ast,
       behaviour: 'create-if-not-exists',
     })
@@ -55,19 +53,16 @@ export const makeSchemaManager = (db: InMemoryDatabase): Effect.Effect<SchemaMan
 // TODO more graceful DB migration (e.g. backup DB before destructive migrations)
 export const migrateDb = ({
   db,
-  otelContext = otel.context.active(),
   schema,
   onProgress,
 }: {
   db: InMemoryDatabase
-  otelContext?: otel.Context
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
     yield* migrateTable({
       db,
-      otelContext,
       tableAst: schemaMetaTable.sqliteDef.ast,
       behaviour: 'create-if-not-exists',
     })
@@ -75,7 +70,7 @@ export const migrateDb = ({
     // TODO enforce that migrating tables isn't allowed once the store is running
 
     const schemaManager = yield* makeSchemaManager(db)
-    validateSchema(schema, schemaManager)
+    yield* validateSchema(schema, schemaManager)
 
     const schemaMetaRows = dbSelect<SchemaMetaRow>(db, sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
 
@@ -110,7 +105,7 @@ export const migrateDb = ({
     const tablesCount = tablesToMigrate.size
 
     for (const { tableAst, schemaHash } of tablesToMigrate) {
-      yield* migrateTable({ db, tableAst, otelContext, schemaHash, behaviour: 'create-if-not-exists' })
+      yield* migrateTable({ db, tableAst, schemaHash, behaviour: 'create-if-not-exists' })
 
       if (onProgress !== undefined) {
         processedTables++
@@ -122,14 +117,12 @@ export const migrateDb = ({
 export const migrateTable = ({
   db,
   tableAst,
-  // otelContext,
   schemaHash = SqliteAst.hash(tableAst),
   behaviour,
   skipMetaTable = false,
 }: {
   db: InMemoryDatabase
   tableAst: SqliteAst.Table
-  otelContext?: otel.Context
   schemaHash?: number
   behaviour: 'drop-and-recreate' | 'create-if-not-exists'
   skipMetaTable?: boolean

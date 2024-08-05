@@ -1,20 +1,23 @@
 import { type BootDb, type BootStatus, type StoreAdapterFactory, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { errorToString } from '@livestore/utils'
-import { Effect, Exit, FiberSet, Logger, LogLevel, Schema, Scope } from '@livestore/utils/effect'
+import { Effect, FiberSet, Logger, LogLevel, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
 // TODO refactor so the `react` module doesn't depend on `effect` module
 import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
-import type { BaseGraphQLContext, GraphQLOptions, OtelOptions } from '../store.js'
+import type { BaseGraphQLContext, ForceStoreShutdown, GraphQLOptions, OtelOptions, StoreShutdown } from '../store.js'
 import { createStore } from '../store.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
+export class StoreAbort extends Schema.TaggedError<StoreAbort>()('LiveStore.StoreAbort', {}) {}
+export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {}) {}
+
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
-  boot?: (db: BootDb, parentSpan: otel.Span) => unknown | Promise<unknown>
+  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
   renderLoading: (status: BootStatus) => ReactElement
@@ -81,11 +84,11 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   const [_, rerender] = React.useState(0)
   const ctxValueRef = React.useRef<{
     value: StoreContext_ | BootStatus
-    scope: Scope.CloseableScope | undefined
+    fiberSet: FiberSet.FiberSet | undefined
     counter: number
   }>({
     value: { stage: 'loading' },
-    scope: undefined,
+    fiberSet: undefined,
     counter: 0,
   })
 
@@ -101,6 +104,12 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     disableDevtools,
     signal,
   })
+
+  const interrupt = (fiberSet: FiberSet.FiberSet, error: StoreAbort | StoreInterrupted) =>
+    Effect.gen(function* () {
+      yield* FiberSet.clear(fiberSet)
+      yield* FiberSet.run(fiberSet, Effect.fail(error))
+    }).pipe(Effect.ignoreLogged, Effect.runFork)
 
   if (
     inputPropsCacheRef.current.schema !== schema ||
@@ -122,15 +131,14 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       disableDevtools,
       signal,
     }
-    if (ctxValueRef.current.scope !== undefined) {
-      Scope.close(ctxValueRef.current.scope, Exit.void).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+    if (ctxValueRef.current.fiberSet !== undefined) {
+      interrupt(ctxValueRef.current.fiberSet, new StoreInterrupted())
+      ctxValueRef.current.fiberSet = undefined
     }
-    ctxValueRef.current = { value: { stage: 'loading' }, scope: undefined, counter: ctxValueRef.current.counter + 1 }
+    ctxValueRef.current = { value: { stage: 'loading' }, fiberSet: undefined, counter: ctxValueRef.current.counter + 1 }
   }
 
   React.useEffect(() => {
-    const storeScope = Scope.make().pipe(Effect.runSync)
-
     const counter = ctxValueRef.current.counter
 
     const setContextValue = (value: StoreContext_ | BootStatus) => {
@@ -139,23 +147,23 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       rerender((c) => c + 1)
     }
 
-    Scope.addFinalizer(
-      storeScope,
-      Effect.sync(() => setContextValue({ stage: 'shutdown' })),
-    ).pipe(Effect.runSync)
-
-    ctxValueRef.current.scope = storeScope
-
     signal?.addEventListener('abort', () => {
-      if (ctxValueRef.current.scope !== undefined && ctxValueRef.current.counter === counter) {
-        Scope.close(ctxValueRef.current.scope, Exit.void).pipe(Effect.tapCauseLogPretty, Effect.runFork)
-        ctxValueRef.current.scope = undefined
+      if (ctxValueRef.current.fiberSet !== undefined && ctxValueRef.current.counter === counter) {
+        interrupt(ctxValueRef.current.fiberSet, new StoreAbort())
+        ctxValueRef.current.fiberSet = undefined
       }
     })
 
-    FiberSet.make().pipe(
-      Effect.andThen((fiberSet) =>
-        createStore({
+    Effect.gen(function* () {
+      const fiberSet = yield* FiberSet.make<
+        unknown,
+        UnexpectedError | ForceStoreShutdown | StoreAbort | StoreInterrupted | StoreShutdown
+      >()
+
+      ctxValueRef.current.fiberSet = fiberSet
+
+      yield* Effect.gen(function* () {
+        const store = yield* createStore({
           fiberSet,
           schema,
           graphQLOptions,
@@ -168,13 +176,25 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
             setContextValue(status)
           },
-        }),
-      ),
-      Effect.tapSync((store) => setContextValue({ stage: 'running', store })),
-      Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
-      Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
-      Scope.extend(storeScope),
-      Effect.forkIn(storeScope),
+        })
+
+        setContextValue({ stage: 'running', store })
+
+        yield* Effect.never
+      }).pipe(Effect.scoped, FiberSet.run(fiberSet))
+
+      const shutdownContext = Effect.sync(() => setContextValue({ stage: 'shutdown' }))
+
+      yield* FiberSet.join(fiberSet).pipe(
+        Effect.catchTag('LiveStore.StoreShutdown', () => shutdownContext),
+        Effect.catchTag('LiveStore.ForceStoreShutdown', () => shutdownContext),
+        Effect.catchTag('LiveStore.StoreAbort', () => shutdownContext),
+        Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
+        Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
+        Effect.exit,
+      )
+    }).pipe(
+      Effect.scoped,
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
       Effect.provide(Logger.pretty),
@@ -183,9 +203,9 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     )
 
     return () => {
-      if (ctxValueRef.current.scope !== undefined) {
-        Scope.close(ctxValueRef.current.scope, Exit.void).pipe(Effect.tapCauseLogPretty, Effect.runFork)
-        ctxValueRef.current.scope = undefined
+      if (ctxValueRef.current.fiberSet !== undefined) {
+        interrupt(ctxValueRef.current.fiberSet, new StoreInterrupted())
+        ctxValueRef.current.fiberSet = undefined
       }
     }
   }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal])

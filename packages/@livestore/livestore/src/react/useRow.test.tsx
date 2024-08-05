@@ -1,12 +1,11 @@
-import { ReadonlyRecord } from '@livestore/utils/effect'
+import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { render, renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import type { Todo } from '../__tests__/react/fixture.js'
-import { makeTodoMvc, todos } from '../__tests__/react/fixture.js'
+import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
 import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
 import * as LiveStore from '../index.js'
 import * as LiveStoreReact from './index.js'
@@ -118,7 +117,11 @@ describe.concurrent('useRow', () => {
     using inputs = await makeTodoMvc({ useGlobalReactivityGraph: false })
     const { wrapper, store, reactivityGraph, makeRenderCount, AppRouterSchema } = inputs
 
-    const allTodos$ = LiveStore.querySQL<Todo[]>(`select * from todos`, { label: 'allTodos', reactivityGraph })
+    const allTodos$ = LiveStore.querySQL(`select * from todos`, {
+      label: 'allTodos',
+      schema: Schema.Array(tables.todos.schema),
+      reactivityGraph,
+    })
 
     const appRouterRenderCount = makeRenderCount()
     let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
@@ -176,7 +179,7 @@ describe.concurrent('useRow', () => {
 
     expect(appRouterRenderCount.val).toBe(2)
     expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
-      `"{"id":"t1","text":"buy milk","completed":false}"`,
+      `"{"completed":false,"id":"t1","text":"buy milk"}"`,
     )
 
     expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
@@ -214,10 +217,11 @@ describe.concurrent('useRow', () => {
         const [_row, _setRow, rowState$] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
         const todos = LiveStoreReact.useTemporaryQuery(
           () =>
-            LiveStore.querySQL<any[]>(
-              (get) => LiveStore.sql`select * from todos where text like '%${get(rowState$).text}%'`,
-              { reactivityGraph, label: 'todosFiltered' },
-            ),
+            LiveStore.querySQL((get) => LiveStore.sql`select * from todos where text like '%${get(rowState$).text}%'`, {
+              schema: Schema.Array(tables.todos.schema),
+              reactivityGraph,
+              label: 'todosFiltered',
+            }),
           userId,
         )
 

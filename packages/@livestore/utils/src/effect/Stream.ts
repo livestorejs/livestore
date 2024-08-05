@@ -11,6 +11,11 @@ export const tapSync =
   <R, E>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
     Stream.tap(stream, (a) => Effect.sync(() => tapFn(a)))
 
+export const tapLogWithLabel =
+  (label: string) =>
+  <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
+    tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(label, _))))(stream)
+
 export const tapChunk =
   <R1, E1, A, Z>(f: (a: Chunk.Chunk<A>) => Effect.Effect<Z, E1, R1>) =>
   <R, E>(self: Stream.Stream<A, E, R>): Stream.Stream<A, E1 | E, R1 | R> =>

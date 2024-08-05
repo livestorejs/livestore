@@ -2,14 +2,16 @@ import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livesto
 import { UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { casesHandled, ref } from '@livestore/utils'
+import { casesHandled, ref, tryAsFunctionAndNew } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
+  Cause,
   Chunk,
   Deferred,
   Effect,
+  Fiber,
   Queue,
   Runtime,
   Schema,
@@ -32,11 +34,13 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
 } from './common.js'
+import { bootDevtools } from './coordinator-devtools.js'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
-import * as WorkerSchema from './schema.js'
+import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel, ShutdownBroadcast } from './shutdown-channel.js'
+import * as WorkerSchema from './worker-schema.js'
 
 export type WebAdapterOptions = {
-  worker: globalThis.Worker | (new (options?: { name: string }) => globalThis.Worker)
+  worker: ((options: { name: string }) => globalThis.Worker) | (new (options: { name: string }) => globalThis.Worker)
   /**
    * This is mostly an implementation detail and needed to be exposed into app code
    * due to a current Vite limitation (https://github.com/vitejs/vite/issues/8427).
@@ -51,25 +55,25 @@ export type WebAdapterOptions = {
    * })
    * ```
    */
-  sharedWorker: globalThis.SharedWorker | (new (options?: { name: string }) => globalThis.SharedWorker)
-  /** Specifies where to persist data for this adapter */
-  storage: WorkerSchema.StorageTypeEncoded
-  syncing?: WorkerSchema.SyncingType
+  sharedWorker:
+    | ((options: { name: string }) => globalThis.SharedWorker)
+    | (new (options: { name: string }) => globalThis.SharedWorker)
   /**
-   * Can be used to isolate multiple LiveStore apps running in the same origin
+   * Specifies where to persist data for this adapter
    *
-   * Make sure you also use this key in the `storage` options (e.g. directory, prefix etc) to make sure
+   * Make sure you also use the schema key in the `storage` options (e.g. directory, prefix etc) to make sure
    * different instances of LiveStore aren't overlapping on the storage level.
    *
    * TODO consider making this the default behaviour https://github.com/livestorejs/livestore/issues/99
-   */
-  key?: string
+   * */
+  storage: WorkerSchema.StorageTypeEncoded
+  syncing?: WorkerSchema.SyncingType
   resetPersistence?: boolean
 }
 
 export const makeCoordinator =
   (options: WebAdapterOptions): MakeCoordinator =>
-  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown }) =>
+  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -77,7 +81,7 @@ export const makeCoordinator =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const keySuffix = options.key ? `-${options.key}` : ''
+      const keySuffix = schema.key.length > 0 ? `-${schema.key}` : ''
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock${keySuffix}`
 
@@ -85,9 +89,11 @@ export const makeCoordinator =
 
       const isShutdownRef = ref(false)
 
+      const dbFileSuffix = schema.migrationOptions.strategy === 'manual' ? 0 : schema.hash
+
       if (options.resetPersistence === true) {
         // TODO refactor to make use of persisted-sql destory functionality
-        yield* resetPersistedData(storageOptions, schema.hash, 'all-data')
+        yield* resetPersistedData(storageOptions, dbFileSuffix, 'all-data')
       }
 
       const broadcastChannel = yield* Effect.succeed(
@@ -95,25 +101,39 @@ export const makeCoordinator =
       ).pipe(Effect.acquireRelease((channel) => Effect.succeed(channel.close())))
 
       // TODO also verify persisted data
-      const dataFromFile = yield* getPersistedData(storageOptions, schema.hash)
+      const dataFromFile = yield* getPersistedData(storageOptions, dbFileSuffix)
 
-      const channelId = cuid()
+      const channelId = getChannelId(schema.key)
 
-      const sharedWorker =
-        options.sharedWorker instanceof globalThis.SharedWorker
-          ? options.sharedWorker
-          : new options.sharedWorker({ name: `livestore-shared-worker${keySuffix}` })
+      const shutdownChannel = yield* makeShutdownChannel(schema.key)
+
+      yield* shutdownChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.filter(Schema.is(ShutdownBroadcast)),
+        Stream.tap(() => shutdown(Cause.fail(UnexpectedError.make({ cause: 'Shutdown' })))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+
+      const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker${keySuffix}` })
 
       const sharedWorkerDeferred = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
         concurrency: 100,
         initialMessage: () =>
-          new WorkerSchema.DedicatedWorkerInner.InitialMessage({
-            storageOptions,
-            needsRecreate: dataFromFile === undefined,
-            syncOptions: options.syncing,
-            key: options.key,
-            devtools: { channelId, enabled: devtoolsEnabled },
+          new WorkerSchema.SharedWorker.InitialMessage({
+            payload: {
+              _tag: 'FromCoordinator',
+              initialMessage: new WorkerSchema.DedicatedWorkerInner.InitialMessage({
+                storageOptions,
+                needsRecreate: dataFromFile === undefined,
+                syncOptions: options.syncing,
+                key: schema.key,
+                devtoolsEnabled,
+              }),
+            },
           }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => sharedWorker)),
@@ -132,7 +152,9 @@ export const makeCoordinator =
       const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky ? 'has-lock' : 'no-lock')
 
       const runLocked = Effect.gen(function* () {
-        yield* Effect.logDebug(`[@livestore/web:coordinator] Got lock for '${LIVESTORE_TAB_LOCK}'`)
+        yield* Effect.logDebug(
+          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (channelId: ${channelId})`,
+        )
 
         yield* Effect.addFinalizer(() =>
           Effect.logDebug(`[@livestore/web:coordinator] Releasing lock for '${LIVESTORE_TAB_LOCK}'`),
@@ -142,10 +164,7 @@ export const makeCoordinator =
 
         const mc = new MessageChannel()
 
-        const worker =
-          options.worker instanceof globalThis.Worker
-            ? options.worker
-            : new options.worker({ name: `livestore-worker${keySuffix}` })
+        const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker${keySuffix}` })
 
         yield* Worker.makeSerialized<WorkerSchema.DedicatedWorkerOuter.Request>({
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
@@ -157,6 +176,8 @@ export const makeCoordinator =
           Effect.forkScoped,
         )
 
+        yield* shutdownChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
+
         const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
         yield* sharedWorker
           .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
@@ -164,7 +185,7 @@ export const makeCoordinator =
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
-            console.log('[@livestore/web:coordinator] coordinator shutdown. sending shutdown message to shared worker')
+            // console.log('[@livestore/web:coordinator] Shutting down dedicated worker')
 
             // We first try to gracefully shutdown the dedicated worker and then forcefully terminate it
             yield* Effect.raceFirst(
@@ -182,8 +203,8 @@ export const makeCoordinator =
               ),
             )
 
-            console.log('[@livestore/web:coordinator] coordinator shutdown. worker terminated')
-          }).pipe(Effect.withSpan('@livestore/web:coordinator:lock:shutdown'), Effect.tapCauseLogPretty, Effect.orDie),
+            // yield* Effect.logDebug('[@livestore/web:coordinator] coordinator shutdown. worker terminated')
+          }).pipe(Effect.withSpan('@livestore/web:coordinator:lock:shutdown'), Effect.ignoreLogged),
         )
 
         yield* Effect.never
@@ -191,8 +212,11 @@ export const makeCoordinator =
 
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
+        yield* Effect.logDebug(
+          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (channelId: ${channelId})`,
+        )
+
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
-        // const innerLockDeferred = yield* Deferred.make<void>()
         yield* WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
           Effect.andThen(() => {
             gotLocky = true
@@ -212,7 +236,7 @@ export const makeCoordinator =
         ? Effect.Effect<A, UnexpectedError, R>
         : never =>
         Deferred.await(sharedWorkerDeferred).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.flatMap((worker) => worker.executeEffect(req) as any),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
@@ -232,7 +256,7 @@ export const makeCoordinator =
         Effect.gen(function* () {
           const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
           return sharedWorker
-            .execute(req)
+            .execute(req as any)
             .pipe(
               UnexpectedError.mapToUnexpectedErrorStream,
               Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
@@ -253,21 +277,17 @@ export const makeCoordinator =
         )
       }
 
-      yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.ListenForReloadStream()).pipe(
-        Stream.tapSync((_) => window.location.reload()),
+      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
+        Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
         Effect.tapErrorCause(shutdown),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
-      yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
-        Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
-        Stream.runDrain,
-        Effect.tapErrorCause(shutdown),
-        Effect.interruptible,
+      yield* Queue.awaitShutdown(bootStatusQueue).pipe(
+        Effect.andThen(Fiber.interrupt(bootStatusFiber)),
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
@@ -282,7 +302,7 @@ export const makeCoordinator =
         yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items })).pipe(
           Effect.timeout(10_000),
           Effect.tapErrorCause((cause) =>
-            Effect.log('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
+            Effect.logDebug('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
           ),
         )
 
@@ -350,19 +370,7 @@ export const makeCoordinator =
 
       const coordinator = {
         isShutdownRef,
-        devtools: {
-          enabled: devtoolsEnabled,
-          channelId,
-          connect: ({ connectionId, port }) =>
-            runInWorker(
-              WorkerSchema.DedicatedWorkerInner.ConnectDevtools.make({ port, connectionId, isLeaderTab: gotLocky }),
-            ).pipe(
-              // Effect.timeout(10_000),
-              Effect.interruptible,
-              UnexpectedError.mapToUnexpectedError,
-              Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
-            ),
-        },
+        devtools: { enabled: devtoolsEnabled, channelId },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: Effect.sync(() => initialSnapshot),
@@ -378,7 +386,7 @@ export const makeCoordinator =
             yield* shutdownWorker
 
             // TODO refactor to make use of persisted-sql destory functionality
-            yield* resetPersistedData(storageOptions, schema.hash, mode)
+            yield* resetPersistedData(storageOptions, dbFileSuffix, mode)
           }).pipe(UnexpectedError.mapToUnexpectedError),
 
         execute: (query, bindValues) =>
@@ -420,16 +428,67 @@ export const makeCoordinator =
         networkStatus,
       } satisfies Coordinator
 
+      const waitForDevtoolsWebBridgePort = ({ webBridgeId }: { webBridgeId: string }) =>
+        Effect.gen(function* () {
+          const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+          const { port } = yield* sharedWorker.executeEffect(
+            WorkerSchema.SharedWorker.DevtoolsWebBridgeWaitForPort.make({ webBridgeId }),
+          )
+          return port
+        }).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:coordinator:devtools:waitForDevtoolsWebBridgePort'),
+        )
+
+      const connectToDevtools = (coordinatorMessagePort: MessagePort) => {
+        return runInWorkerStream(
+          WorkerSchema.DedicatedWorkerInner.ConnectDevtoolsStream.make({
+            port: coordinatorMessagePort,
+            channelId,
+            isLeaderTab: gotLocky,
+          }),
+        ).pipe(
+          // NOTE the `forkScoped` seems to be needed here since otherwise interruption doesn't work
+          Stream.tap((port) => connectDevtoolsToStore(port).pipe(Effect.forkScoped)),
+          Stream.runDrain,
+          Effect.interruptible,
+          Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
+        )
+      }
+
+      if (devtoolsEnabled) {
+        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, key: schema.key })
+      }
+
       return coordinator
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
-const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number) =>
+const getChannelId = (key: string) => {
+  // Only use the last 6 characters of the channel id to make it shorter
+  const makeId = () => cuid().slice(-6)
+
+  if (typeof window === 'undefined' || window.sessionStorage === undefined) {
+    return makeId()
+  }
+
+  const fullKey = `livestore:channelid:${key}`
+  const storedKey = sessionStorage.getItem(fullKey)
+
+  if (storedKey) return storedKey
+
+  const newKey = makeId()
+  sessionStorage.setItem(fullKey, newKey)
+
+  return newKey
+}
+
+const getPersistedData = (storage: WorkerSchema.StorageType, fileSuffix: number) =>
   Effect.promise(async () => {
     switch (storage.type) {
       case 'opfs': {
         try {
           const dirHandle = await OpfsUtils.getDirHandle(storage.directory)
-          const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, schemaHash))
+          const fileHandle = await dirHandle.getFileHandle(getAppDbFileName(storage.filePrefix, fileSuffix))
           const file = await fileHandle.getFile()
           const buffer = await file.arrayBuffer()
           const data = new Uint8Array(buffer)
@@ -476,7 +535,7 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
 
         const fileResults = await Promise.all(files.map(tryGetDbFile))
 
-        const appDbFileName = '/' + getAppDbFileName(storage.filePrefix, schemaHash)
+        const appDbFileName = '/' + getAppDbFileName(storage.filePrefix, fileSuffix)
 
         const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
 
@@ -492,7 +551,7 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
       case 'indexeddb': {
         const idb = new IDB(
           storage.databaseName ?? 'livestore',
-          getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+          getAppDbIdbStoreName(storage.storeNamePrefix, fileSuffix),
         )
 
         return await idb.get('db')
@@ -508,12 +567,12 @@ const getPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number)
   )
 
 // TODO refactor to make use of persisted-sql destory functionality
-const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: number, resetMode: ResetMode) =>
+const resetPersistedData = (storage: WorkerSchema.StorageType, fileSuffix: number, resetMode: ResetMode) =>
   Effect.promise(async () => {
     switch (storage.type) {
       case 'opfs': {
         const dirHandle = await OpfsUtils.getDirHandle(storage.directory)
-        await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, schemaHash))
+        await dirHandle.removeEntry(getAppDbFileName(storage.filePrefix, fileSuffix))
         if (resetMode === 'all-data') {
           await dirHandle.removeEntry(getMutationlogDbFileName(storage.filePrefix))
         }
@@ -530,7 +589,7 @@ const resetPersistedData = (storage: WorkerSchema.StorageType, schemaHash: numbe
       case 'indexeddb': {
         const idbApp = new IDB(
           storage.databaseName ?? 'livestore',
-          getAppDbIdbStoreName(storage.storeNamePrefix, schemaHash),
+          getAppDbIdbStoreName(storage.storeNamePrefix, fileSuffix),
         )
         await idbApp.deleteDb()
 

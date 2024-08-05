@@ -1,6 +1,6 @@
 {
   "name": "@livestore/cf-sync",
-  "version": "0.0.54",
+  "version": "0.0.55",
   "type": "module",
   "exports": {
     "./sync-impl": {
@@ -24,8 +24,8 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20240725.0",
-    "wrangler": "^3.67.0"
+    "@cloudflare/workers-types": "4.20240729.0",
+    "wrangler": "^3.68.0"
   },
   "publishConfig": {
     "access": "public"

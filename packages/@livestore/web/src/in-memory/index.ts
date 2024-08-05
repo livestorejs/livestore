@@ -1,9 +1,7 @@
 import type { Coordinator, LockStatus } from '@livestore/common'
-import { initializeSingletonTables, migrateDb } from '@livestore/common'
+import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { cuid } from '@livestore/utils/cuid'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
 import { makeInMemoryDb } from '../make-in-memory-db.js'
@@ -21,14 +19,13 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
         return initialData
       }
 
-      const otelContext = otel.context.active()
       const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
       tmpDb.capi = sqlite3.capi
 
-      configureConnection(tmpDb, { fkEnabled: true })
+      yield* configureConnection(tmpDb, { fkEnabled: true }).pipe(UnexpectedError.mapToUnexpectedError)
       const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
 
-      yield* migrateDb({ db: tmpMainDb, otelContext, schema })
+      yield* migrateDb({ db: tmpMainDb, schema })
 
       initializeSingletonTables(schema, tmpMainDb)
 
@@ -40,7 +37,7 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
 
     return {
       isShutdownRef: { current: false },
-      devtools: { channelId: cuid(), connect: () => Effect.never, enabled: false },
+      devtools: { channelId: 'in-memory', enabled: false },
       lockStatus,
       syncMutations,
       execute: () => Effect.void,

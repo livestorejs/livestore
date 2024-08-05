@@ -74,11 +74,7 @@ const connect = (wsUrl: string) =>
 
     const incomingMessages = yield* PubSub.unbounded<Exclude<WSMessage.IncomingMessage, WSMessage.Pong>>()
 
-    const waitUntilOnline = SubscriptionRef.changeStreamIncludingCurrent(isConnected).pipe(
-      Stream.filter(Boolean),
-      Stream.take(1),
-      Stream.runDrain,
-    )
+    const waitUntilOnline = isConnected.changes.pipe(Stream.filter(Boolean), Stream.take(1), Stream.runDrain)
 
     const send = (message: WSMessage.Message) =>
       Effect.gen(function* () {

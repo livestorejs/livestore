@@ -3,7 +3,7 @@ import { sql } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { SqliteDsl } from 'effect-db-schema'
 
@@ -12,14 +12,16 @@ import { computed } from './reactiveQueries/js.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
 import type { Store } from './store.js'
 
-export type RowQueryOptions = {
+export type RowQueryOptions<TTableDef extends DbSchema.TableDef, TResult = RowResult<TTableDef>> = {
   otelContext?: otel.Context
   skipInsertDefaultRow?: boolean
   reactivityGraph?: ReactivityGraph
+  map?: (result: RowResult<TTableDef>) => TResult
+  label?: string
 }
 
 export type RowQueryOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
-  defaultValues: Partial<RowResult<TTableDef>>
+  defaultValues?: Partial<RowResult<TTableDef>>
 }
 
 export type MakeRowQuery = {
@@ -29,9 +31,10 @@ export type MakeRowQuery = {
       boolean,
       DbSchema.TableOptions & { isSingleton: true }
     >,
+    TResult = RowResult<TTableDef>,
   >(
     table: TTableDef,
-    options?: RowQueryOptions,
+    options?: RowQueryOptions<TTableDef, TResult>,
   ): LiveQuery<RowResult<TTableDef>, QueryInfoRow<TTableDef>>
   <
     TTableDef extends DbSchema.TableDef<
@@ -39,19 +42,20 @@ export type MakeRowQuery = {
       boolean,
       DbSchema.TableOptions & { isSingleton: false }
     >,
+    TResult = RowResult<TTableDef>,
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string,
-    options?: RowQueryOptions & RowQueryOptionsDefaulValues<TTableDef>,
-  ): LiveQuery<RowResult<TTableDef>, QueryInfoRow<TTableDef>>
+    options?: RowQueryOptions<TTableDef, TResult> & RowQueryOptionsDefaulValues<TTableDef>,
+  ): LiveQuery<TResult, QueryInfoRow<TTableDef>>
 }
 
 // TODO also allow other where clauses and multiple rows
 export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
   table: TTableDef,
-  idOrOptions?: string | RowQueryOptions,
-  options_?: RowQueryOptions & RowQueryOptionsDefaulValues<TTableDef>,
+  idOrOptions?: string | RowQueryOptions<TTableDef, any>,
+  options_?: RowQueryOptions<TTableDef, any> & RowQueryOptionsDefaulValues<TTableDef>,
 ) => {
   const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
   const options = typeof idOrOptions === 'string' ? options_ : idOrOptions
@@ -70,8 +74,10 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
   const whereClause = id === undefined ? '' : `where id = '${id}'`
   const queryStr = sql`select * from ${tableName} ${whereClause} limit 1`
 
+  const rowSchema = table.isSingleColumn === true ? table.schema.pipe(Schema.pluck('value' as any)) : table.schema
+
   return new LiveStoreSQLQuery({
-    label: `rowQuery:query:${tableSchema.name}${id === undefined ? '' : `:${id}`}`,
+    label: options?.label ?? `rowQuery:query:${tableSchema.name}${id === undefined ? '' : `:${id}`}`,
     genQueryString: queryStr,
     queriedTables: new Set([tableName]),
     reactivityGraph: options?.reactivityGraph,
@@ -83,18 +89,8 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
       id,
       skipInsertDefaultRow: options?.skipInsertDefaultRow,
     }),
-    map: (results): RowResult<TTableDef> => {
-      if (results.length === 0) return shouldNeverHappen(`No results for query ${queryStr}`)
-
-      const parseResult = Schema.decodeEither(table.schema)(results[0]!)
-
-      if (parseResult._tag === 'Left') {
-        console.error('decode error', TreeFormatter.formatErrorSync(parseResult.left), 'results', results)
-        return shouldNeverHappen(`Error decoding query result for ${queryStr}`)
-      }
-
-      return table.isSingleColumn === true ? parseResult.right.value : parseResult.right
-    },
+    schema: rowSchema.pipe(Schema.Array, Schema.headOrElse()),
+    map: options?.map,
     queryInfo: { _tag: 'Row', table, id: id ?? 'singleton' },
   })
 }

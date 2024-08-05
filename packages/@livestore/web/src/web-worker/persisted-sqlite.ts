@@ -1,3 +1,4 @@
+import type { SqliteError } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import { casesHandled, prettyBytes, ref } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
@@ -13,7 +14,7 @@ import {
   getMutationlogDbFileName,
   getMutationlogDbIdbStoreName,
 } from './common.js'
-import type { StorageType } from './schema.js'
+import type { StorageType } from './worker-schema.js'
 
 export interface PersistedSqlite {
   /** NOTE the db instance is wrapped in a ref since it can be re-created */
@@ -41,7 +42,7 @@ export const makePersistedSqlite = ({
   sahUtils: SahUtils | undefined
   schemaHash: number
   kind: 'app' | 'mutationlog'
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void>
+  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>
 }) => {
   switch (storageOptions.type) {
     case 'opfs': {
@@ -91,7 +92,7 @@ export const makePersistedSqliteOpfs = (
   sqlite3: SqliteWasm.Sqlite3Static,
   directory_: string,
   fileName: string,
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void>,
+  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>,
 ): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
   Effect.gen(function* () {
     const directory = sanitizeOpfsDir(directory_)
@@ -167,7 +168,7 @@ export const makePersistedSqliteOpfsSahpoolExperimental = (
   sahUtils: SahUtils,
   directory: string,
   fileName: string,
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void>,
+  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>,
 ): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
   Effect.gen(function* () {
     // NOTE We're not using the `directory` here since it's already used when creating the SAH pool
@@ -218,7 +219,7 @@ export const makePersistedSqliteIndexedDb = (
   sqlite3: SqliteWasm.Sqlite3Static,
   databaseName: string,
   storeName: string,
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void>,
+  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>,
 ): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
   Effect.gen(function* () {
     const idb = new IdbBinary(databaseName, storeName)

@@ -1,5 +1,5 @@
 import { Schema } from '@effect/schema'
-import { querySQL, sql } from '@livestore/livestore'
+import { querySQL, rowQuery, sql } from '@livestore/livestore'
 import { getLocalId, useQuery, useStore } from '@livestore/livestore/react'
 import React from 'react'
 
@@ -10,14 +10,9 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 // First, we create a reactive query which defines the filter clause for the SQL query.
 // It gets all the rows from the app table, and pipes them into a transform function.
 // The result is a reactive query whose value is a string containing the filter clause.
-// TODO make sure row exists before querying
-const filterClause$ = querySQL(sql`select filter from app where id = '${getLocalId()}'`, {
-  map: (rows) => {
-    const { filter } = Schema.decodeSync(
-      Schema.Array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),
-    )(rows)
-    return `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`
-  },
+const filterClause$ = rowQuery(tables.app, getLocalId(), {
+  map: ({ filter }) => `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`,
+  label: 'filterClause',
 })
 
 // Next, we create the actual query for the visible todos.
@@ -25,7 +20,8 @@ const filterClause$ = querySQL(sql`select filter from app where id = '${getLocal
 // Notice how we call filterClause() as a function--
 // that gets the latest value of that reactive query.
 const visibleTodos$ = querySQL((get) => sql`select * from todos ${get(filterClause$)}`, {
-  map: Schema.Array(tables.todos.schema),
+  schema: Schema.Array(tables.todos.schema),
+  label: 'visibleTodos',
 })
 
 export const MainSection: React.FC = () => {
@@ -36,10 +32,8 @@ export const MainSection: React.FC = () => {
   // when the event gets synced across multiple devices--
   // If another user toggled concurrently, we shouldn't toggle it back
   const toggleTodo = React.useCallback(
-    (todo: Todo) =>
-      store.mutate(
-        todo.completed ? mutations.uncompleteTodo({ id: todo.id }) : mutations.completeTodo({ id: todo.id }),
-      ),
+    ({ id, completed }: Todo) =>
+      store.mutate(completed ? mutations.uncompleteTodo({ id }) : mutations.completeTodo({ id })),
     [store],
   )
 
