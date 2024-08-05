@@ -1,7 +1,7 @@
 import { BootDb, sql } from '@livestore/livestore'
 
 import { nanoid } from 'nanoid'
-import { issue, mutations } from './schema'
+import { Issue, mutations } from './schema'
 import { PriorityType, StatusType } from '../types/issue'
 
 export const names = ['John', 'Jane', 'Sam', 'Anna', 'Michael', 'Sarah', 'Chris', 'Jessica']
