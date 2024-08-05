@@ -1,10 +1,11 @@
+import { Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, todos } from '../__tests__/react/fixture.js'
+import { makeTodoMvc, tables } from '../__tests__/react/fixture.js'
 import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
-import { computed, ParseUtils, querySQL, rawSqlMutation, sql } from '../index.js'
+import { computed, querySQL, rawSqlMutation, sql } from '../index.js'
 
 /*
 TODO write tests for:
@@ -45,7 +46,10 @@ describe('otel', () => {
     using inputs = await makeQuery()
     const { store, exporter, span } = inputs
 
-    const query = querySQL(`select * from todos`, { queriedTables: new Set(['todos']) })
+    const query = querySQL(`select * from todos`, {
+      schema: Schema.Array(tables.todos.schema),
+      queriedTables: new Set(['todos']),
+    })
     expect(query.run()).toMatchInlineSnapshot('[]')
 
     store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
@@ -53,7 +57,7 @@ describe('otel', () => {
     expect(query.run()).toMatchInlineSnapshot(`
       [
         {
-          "completed": 0,
+          "completed": false,
           "id": "t1",
           "text": "buy milk",
         },
@@ -172,7 +176,7 @@ describe('otel', () => {
     const filter = computed(() => `where completed = 0`, { label: 'where-filter' })
     const query = querySQL((get) => `select * from todos ${get(filter)}`, {
       label: 'all todos',
-      map: ParseUtils.first(todos, defaultTodo),
+      schema: Schema.Array(tables.todos.schema).pipe(Schema.headOrElse(() => defaultTodo)),
     })
 
     expect(query.run()).toMatchInlineSnapshot(`

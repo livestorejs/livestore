@@ -1,8 +1,9 @@
+import { Schema } from '@livestore/utils/effect'
 import { renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, parseTodos, todos } from '../__tests__/react/fixture.js'
+import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
 import { querySQL } from '../reactiveQueries/sql.js'
 import * as LiveStoreReact from './index.js'
 
@@ -12,7 +13,7 @@ describe('useQuery', () => {
 
     const renderCount = makeRenderCount()
 
-    const allTodos$ = querySQL(`select * from todos`, { map: parseTodos })
+    const allTodos$ = querySQL(`select * from todos`, { schema: Schema.Array(tables.todos.schema) })
 
     const { result } = renderHook(
       () => {
@@ -38,8 +39,14 @@ describe('useQuery', () => {
 
     const renderCount = makeRenderCount()
 
-    const todo1$ = querySQL(`select * from todos where id = 't1'`, { label: 'libraryTracksView1', map: parseTodos })
-    const todo2$ = querySQL(`select * from todos where id = 't2'`, { label: 'libraryTracksView2', map: parseTodos })
+    const todo1$ = querySQL(`select * from todos where id = 't1'`, {
+      label: 'libraryTracksView1',
+      schema: Schema.Array(tables.todos.schema),
+    })
+    const todo2$ = querySQL(`select * from todos where id = 't2'`, {
+      label: 'libraryTracksView2',
+      schema: Schema.Array(tables.todos.schema),
+    })
 
     store.mutate(
       todos.insert({ id: 't1', text: 'buy milk', completed: false }),

@@ -82,6 +82,6 @@ export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
 export type Description = DbSchema.FromTable.RowDecoded<typeof description>
 export type Comment = DbSchema.FromTable.RowDecoded<typeof comment>
 
-export const tables = { issue, description, comment, filterStateTable }
+export const tables = { issue, description, comment, filterState: filterStateTable }
 
 export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'from-mutation-log' } })

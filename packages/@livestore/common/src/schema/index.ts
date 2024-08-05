@@ -1,5 +1,4 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
-import type { ReadonlyArray } from '@livestore/utils/effect'
 import type { SqliteDsl } from 'effect-db-schema'
 import { SqliteAst } from 'effect-db-schema'
 
@@ -17,7 +16,6 @@ import { type TableDef, tableHasDerivedMutations } from './table-def.js'
 
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
-export * as ParseUtils from './parse-utils.js'
 export * from './mutations.js'
 export * from './schema-helpers.js'
 

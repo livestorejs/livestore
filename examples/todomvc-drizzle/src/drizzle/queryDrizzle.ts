@@ -1,17 +1,13 @@
 // NOTE This file should eventually be turned into a separate package, for now it's part of the app code
 
-import type { GetAtomResult, LiveQuery, MapRows } from '@livestore/livestore'
+import type { Schema } from '@effect/schema'
+import type { GetAtomResult, LiveQuery } from '@livestore/livestore'
 import { querySQL } from '@livestore/livestore'
 import type { NullableFieldsToOptional } from '@livestore/utils'
-// NOTE This currently requires a patch to drizzle-orm to export TypedQueryBuilder 🫠
 import type { TypedQueryBuilder } from 'drizzle-orm/query-builders/query-builder'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
 
 export * as drizzle from 'drizzle-orm'
-
-// NOTE This separate `GetQueryResNonOptional` type is a workaround for the `Invariant` requirement of Effect Schema
-type GetQueryResNonOptional<TQueryBuilder extends TypedQueryBuilder<any, any>> =
-  TQueryBuilder extends TypedQueryBuilder<infer _A, infer B> ? (B extends (infer B2)[] ? B2 : B) : never
 
 type GetQueryRes<TQueryBuilder extends TypedQueryBuilder<any, any>> =
   TQueryBuilder extends TypedQueryBuilder<infer _A, infer B>
@@ -29,11 +25,20 @@ export const queryDrizzle: {
       queriedTables?: Set<string>
     },
   ): LiveQuery<ReadonlyArray<GetQueryRes<TQueryBuilder>>>
-  <TQueryBuilder extends TypedQueryBuilder<any, any>, TResult>(
+  <TQueryBuilder extends TypedQueryBuilder<any, any>, TResultSchema>(
     fn: (qb: QueryBuilder, get: GetAtomResult) => TQueryBuilder,
     options: {
       queriedTables?: Set<string>
-      map?: MapRows<TResult, GetQueryResNonOptional<TQueryBuilder>>
+      schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
+      map?: never
+    },
+  ): LiveQuery<TResultSchema>
+  <TQueryBuilder extends TypedQueryBuilder<any, any>, TResultSchema, TResult>(
+    fn: (qb: QueryBuilder, get: GetAtomResult) => TQueryBuilder,
+    options: {
+      queriedTables?: Set<string>
+      schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
+      map: (rows: TResultSchema) => TResult
     },
   ): LiveQuery<TResult>
 } = (fn: any, options: any) => {

@@ -1,11 +1,12 @@
 import type { BootDb } from '@livestore/common'
 import { sql } from '@livestore/common'
+import { Schema } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import { parseTodos, schema } from '../__tests__/react/fixture.js'
+import { schema, tables } from '../__tests__/react/fixture.js'
 import { querySQL } from '../reactiveQueries/sql.js'
 import * as LiveStoreReact from './index.js'
 import { LiveStoreProvider } from './LiveStoreProvider.js'
@@ -14,7 +15,7 @@ describe('LiveStoreProvider', () => {
   it('simple', async () => {
     let appRenderCount = 0
 
-    const allTodos$ = querySQL(`select * from todos`, { map: parseTodos })
+    const allTodos$ = querySQL(`select * from todos`, { schema: Schema.Array(tables.todos.schema) })
 
     const App = () => {
       appRenderCount++

@@ -10,17 +10,14 @@ import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
-export type MapRows<TResult, TRaw = any> =
-  | ((rows: ReadonlyArray<TRaw>) => TResult)
-  | Schema.Schema<TResult, ReadonlyArray<TRaw>, unknown>
-
 /**
  * NOTE `querySQL` is only supposed to read data. Don't use it to insert/update/delete data but use mutations instead.
  */
-export const querySQL = <TResult, TRaw = any>(
+export const querySQL = <TResultSchema, TResult = TResultSchema>(
   query: string | ((get: GetAtomResult) => string),
-  options?: {
-    map?: MapRows<TResult, TRaw>
+  options: {
+    schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
+    map?: (rows: TResultSchema) => TResult
     /**
      * Can be provided explicitly to slightly speed up initial query performance
      *
@@ -32,21 +29,23 @@ export const querySQL = <TResult, TRaw = any>(
     reactivityGraph?: ReactivityGraph
   },
 ): LiveQuery<TResult, QueryInfoNone> =>
-  new LiveStoreSQLQuery<TResult, QueryInfoNone>({
+  new LiveStoreSQLQuery<TResultSchema, TResult, QueryInfoNone>({
     label: options?.label,
     genQueryString: query,
     queriedTables: options?.queriedTables,
     bindValues: options?.bindValues,
     reactivityGraph: options?.reactivityGraph,
     map: options?.map,
+    schema: options.schema,
     queryInfo: { _tag: 'None' },
   })
 
 /* An object encapsulating a reactive SQL query */
-export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone> extends LiveStoreQueryBase<
-  TResult,
-  TQueryInfo
-> {
+export class LiveStoreSQLQuery<
+  TResultSchema,
+  TResult = TResultSchema,
+  TQueryInfo extends QueryInfo = QueryInfoNone,
+> extends LiveStoreQueryBase<TResult, TQueryInfo> {
   _tag: 'sql' = 'sql'
 
   /** A reactive thunk representing the query text */
@@ -62,7 +61,8 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
   /** Currently only used by `rowQuery` for lazy table migrations and eager default row insertion */
   private execBeforeFirstRun
 
-  private mapRows
+  private mapResult: (rows: TResultSchema) => TResult
+  private schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
 
   queryInfo: TQueryInfo
 
@@ -70,8 +70,9 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
     genQueryString,
     queriedTables,
     bindValues,
-    label: label_,
+    label = genQueryString.toString(),
     reactivityGraph,
+    schema,
     map,
     execBeforeFirstRun,
     queryInfo,
@@ -81,51 +82,20 @@ export class LiveStoreSQLQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo
     queriedTables?: Set<string>
     bindValues?: Bindable
     reactivityGraph?: ReactivityGraph
-    map?: MapRows<TResult>
+    schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
+    map?: (rows: TResultSchema) => TResult
     execBeforeFirstRun?: (ctx: QueryContext) => void
     queryInfo?: TQueryInfo
   }) {
     super()
 
-    const label = label_ ?? genQueryString.toString()
     this.label = `sql(${label})`
     this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
     this.execBeforeFirstRun = execBeforeFirstRun
     this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
-    this.mapRows =
-      map === undefined
-        ? (rows: any) => rows as TResult
-        : Schema.isSchema(map)
-          ? (rows: any, opts: { sqlString: string }) => {
-              const parseResult = Schema.decodeEither(map as Schema.Schema<TResult, ReadonlyArray<any>>)(rows)
-              if (parseResult._tag === 'Left') {
-                const parseErrorStr = TreeFormatter.formatErrorSync(parseResult.left)
-                const expectedSchemaStr = String(map.ast)
-                const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
 
-                console.error(
-                  `\
-Error parsing SQL query result.
-
-Query: ${opts.sqlString}\
-${bindValuesStr}
-
-Expected schema: ${expectedSchemaStr}
-
-Error: ${parseErrorStr}
-
-Result:`,
-                  rows,
-                )
-                // console.error(`Error parsing SQL query result: ${TreeFormatter.formatErrorSync(parseResult.left)}`)
-                return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
-              } else {
-                return parseResult.right as TResult
-              }
-            }
-          : typeof map === 'function'
-            ? map
-            : shouldNeverHappen(`Invalid map function ${map}`)
+    this.schema = schema
+    this.mapResult = map === undefined ? (rows: any) => rows as TResult : map
 
     let queryString$OrQueryString: string | Thunk<string, QueryContext, RefreshReason>
     if (typeof genQueryString === 'function') {
@@ -189,7 +159,31 @@ Result:`,
 
             span.setAttribute('sql.rowsCount', rawResults.length)
 
-            const result = this.mapRows(rawResults, { sqlString })
+            const parsedResult = Schema.decodeEither(this.schema)(rawResults)
+
+            if (parsedResult._tag === 'Left') {
+              const parseErrorStr = TreeFormatter.formatErrorSync(parsedResult.left)
+              const expectedSchemaStr = String(this.schema.ast)
+              const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
+
+              console.error(
+                `\
+Error parsing SQL query result.
+
+Query: ${sqlString}\
+${bindValuesStr}
+
+Expected schema: ${expectedSchemaStr}
+
+Error: ${parseErrorStr}
+
+Result:`,
+                rawResults,
+              )
+              return shouldNeverHappen(`Error parsing SQL query result: ${parsedResult.left}`)
+            }
+
+            const result = this.mapResult(parsedResult.right)
 
             span.end()
 
@@ -207,39 +201,6 @@ Result:`,
 
     this.results$ = results$
   }
-
-  /**
-   * Returns a new reactive query that contains the result of
-   * running an arbitrary JS computation on the results of this SQL query.
-   */
-  // pipe = <U>(fn: (result: Result, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
-  //   new LiveStoreJSQuery({
-  //     fn: (get) => {
-  //       const results = get(this.results$!)
-  //       return fn(results, get)
-  //     },
-  //     label: `${this.label}:js`,
-  //     onDestroy: () => this.destroy(),
-  //     reactivityGraph: this.reactivityGraph,
-  //     queryInfo: undefined,
-  //   })
-
-  /** Returns a reactive query  */
-  // getFirstRow = (args?: { defaultValue?: Result }) =>
-  //   new LiveStoreJSQuery({
-  //     fn: (get) => {
-  //       const results = get(this.results$!)
-  //       if (results.length === 0 && args?.defaultValue === undefined) {
-  //         // const queryLabel = this._tag === 'sql' ? this.queryString$!.computeResult(otelContext) : this.label
-  //         const queryLabel = this.label
-  //         return shouldNeverHappen(`Expected query ${queryLabel} to return at least one result`)
-  //       }
-  //       return results[0] ?? args!.defaultValue!
-  //     },
-  //     label: `${this.label}:first`,
-  //     onDestroy: () => this.destroy(),
-  //     reactivityGraph: this.reactivityGraph,
-  //   })
 
   destroy = () => {
     if (this.queryString$ !== undefined) {

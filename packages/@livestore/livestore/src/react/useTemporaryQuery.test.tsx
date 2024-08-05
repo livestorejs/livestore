@@ -1,7 +1,8 @@
+import { Schema } from '@livestore/utils/effect'
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, parseTodos, todos } from '../__tests__/react/fixture.js'
+import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
 import type * as LiveStore from '../index.js'
 import { querySQL } from '../reactiveQueries/sql.js'
 import * as LiveStoreReact from './index.js'
@@ -24,7 +25,9 @@ describe('useTemporaryQuery', () => {
         renderCount.inc()
 
         return LiveStoreReact.useTemporaryQuery(() => {
-          const query$ = querySQL(`select * from todos where id = '${id}'`, { map: parseTodos })
+          const query$ = querySQL(`select * from todos where id = '${id}'`, {
+            schema: Schema.Array(tables.todos.schema),
+          })
           queryMap.set(id, query$)
           return query$
         }, id)

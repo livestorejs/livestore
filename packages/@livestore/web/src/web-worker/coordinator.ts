@@ -2,7 +2,7 @@ import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livesto
 import { UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { casesHandled, ref } from '@livestore/utils'
+import { casesHandled, ref, tryAsFunctionAndNew } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
@@ -40,7 +40,7 @@ import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel, ShutdownBroadc
 import * as WorkerSchema from './worker-schema.js'
 
 export type WebAdapterOptions = {
-  worker: globalThis.Worker | (new (options?: { name: string }) => globalThis.Worker)
+  worker: ((options: { name: string }) => globalThis.Worker) | (new (options: { name: string }) => globalThis.Worker)
   /**
    * This is mostly an implementation detail and needed to be exposed into app code
    * due to a current Vite limitation (https://github.com/vitejs/vite/issues/8427).
@@ -55,7 +55,9 @@ export type WebAdapterOptions = {
    * })
    * ```
    */
-  sharedWorker: globalThis.SharedWorker | (new (options?: { name: string }) => globalThis.SharedWorker)
+  sharedWorker:
+    | ((options: { name: string }) => globalThis.SharedWorker)
+    | (new (options: { name: string }) => globalThis.SharedWorker)
   /**
    * Specifies where to persist data for this adapter
    *
@@ -115,10 +117,7 @@ export const makeCoordinator =
         Effect.forkScoped,
       )
 
-      const sharedWorker =
-        options.sharedWorker instanceof globalThis.SharedWorker
-          ? options.sharedWorker
-          : new options.sharedWorker({ name: `livestore-shared-worker${keySuffix}` })
+      const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker${keySuffix}` })
 
       const sharedWorkerDeferred = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
@@ -165,10 +164,7 @@ export const makeCoordinator =
 
         const mc = new MessageChannel()
 
-        const worker =
-          options.worker instanceof globalThis.Worker
-            ? options.worker
-            : new options.worker({ name: `livestore-worker${keySuffix}` })
+        const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker${keySuffix}` })
 
         yield* Worker.makeSerialized<WorkerSchema.DedicatedWorkerOuter.Request>({
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
