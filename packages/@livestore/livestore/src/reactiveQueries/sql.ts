@@ -1,10 +1,11 @@
 import { type Bindable, prepareBindValues, type QueryInfo, type QueryInfoNone } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Schema, SchemaEquivalence, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
+import { NOT_REFRESHED_YET } from '../reactive.js'
 import type { RefreshReason } from '../store.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
@@ -107,7 +108,11 @@ export class LiveStoreSQLQuery<
           setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
           return queryString
         },
-        { label: `${label}:queryString`, meta: { liveStoreThunkType: 'sqlQueryString' } },
+        {
+          label: `${label}:queryString`,
+          meta: { liveStoreThunkType: 'sqlQueryString' },
+          equal: (a, b) => a === b,
+        },
       )
 
       this.queryString$ = queryString$OrQueryString
@@ -118,6 +123,15 @@ export class LiveStoreSQLQuery<
     const queryLabel = `${label}:results`
 
     const queriedTablesRef = { current: queriedTables }
+
+    const schemaEqual = SchemaEquivalence.make(schema)
+    // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
+    // This would mean dropping the `map` option
+    const equal =
+      map === undefined
+        ? (a: TResult, b: TResult) =>
+            a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : schemaEqual(a as any, b as any)
+        : undefined
 
     const results$ = this.reactivityGraph.makeThunk<TResult>(
       (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) =>
@@ -196,7 +210,7 @@ Result:`,
             return result
           },
         ),
-      { label: queryLabel },
+      { label: queryLabel, equal },
     )
 
     this.results$ = results$

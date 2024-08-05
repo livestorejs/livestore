@@ -25,7 +25,11 @@ export const queryGraphQL = <
     label,
     reactivityGraph,
     map,
-  }: { label?: string; reactivityGraph?: ReactivityGraph; map?: MapResult<TResultMapped, TResult> } = {},
+  }: {
+    label?: string
+    reactivityGraph?: ReactivityGraph
+    map?: MapResult<TResultMapped, TResult>
+  } = {},
 ): LiveQuery<TResultMapped, QueryInfoNone> =>
   new LiveStoreGraphQLQuery({ document, genVariableValues, label, reactivityGraph, map })
 
