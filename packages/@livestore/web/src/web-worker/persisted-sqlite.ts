@@ -26,7 +26,7 @@ export interface PersistedSqlite {
 }
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
-  cause: Schema.AnyError,
+  cause: Schema.Defect,
 }) {}
 
 export const makePersistedSqlite = ({
