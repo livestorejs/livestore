@@ -9,11 +9,13 @@ import { Todo } from './Todo.tsx'
 
 const filterClause$ = querySQL(sql`select filter from app`, {
   schema: Schema.Array(tables.app.schema.pipe(Schema.pick('filter'))).pipe(Schema.headOrElse()),
-  map: ({ filter }) => (filter === 'all' ? '' : `where completed = ${filter === 'completed'}`),
+  map: ({ filter }) => `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`,
+  label: 'filterClause',
 })
 
 const visibleTodos$ = querySQL((get) => sql`select * from todos ${get(filterClause$)}`, {
   schema: Schema.Array(tables.todos.schema),
+  label: 'visibleTodos',
 })
 
 export const ListTodos: React.FC = () => {

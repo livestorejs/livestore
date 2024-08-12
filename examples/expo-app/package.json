@@ -13,6 +13,9 @@
     "@expo/vector-icons": "14.0.2",
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
+    "@livestore/web": "workspace:*",
+    "@livestore/devtools-react": "0.0.55",
+    "@livestore/devtools-expo-bridge": "workspace:*",
     "babel-preset-expo": "11.0.12",
     "expo": "51.0.24",
     "expo-asset": "10.0.10",
@@ -29,8 +32,11 @@
     "@babel/runtime": "^7.25.0",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
     "@types/react": "~18.3.1",
+    "@types/ws": "8.5.12",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "10.2.2",
+    "vite": "^5.3.5",
+    "ws": "^8.18.0",
     "typescript": "5.5.4"
   },
   "private": true

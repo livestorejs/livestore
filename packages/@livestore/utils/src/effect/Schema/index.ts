@@ -1,5 +1,5 @@
 import { Transferable } from '@effect/platform'
-import { Schema } from '@effect/schema'
+import { ParseResult, Schema } from '@effect/schema'
 import type { ParseOptions } from '@effect/schema/AST'
 import type { ParseError } from '@effect/schema/ParseResult'
 import { Effect, Hash } from 'effect'
@@ -8,6 +8,7 @@ import { objectToString } from '../../misc.js'
 
 export * from '@effect/schema/Schema'
 export * from './debug-diff.js'
+export * from './msgpack.js'
 
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719
@@ -58,3 +59,11 @@ export const encodeWithTransferables =
 
       return [encoded, collector.unsafeRead() as Transferable[]]
     })
+
+export const swap = <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<I, A, R> =>
+  Schema.transformOrFail(Schema.typeSchema(schema), Schema.encodedSchema(schema), {
+    decode: ParseResult.encode(schema),
+    encode: ParseResult.decode(schema),
+  })
+
+export const Base64FromUint8Array: Schema.Schema<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)

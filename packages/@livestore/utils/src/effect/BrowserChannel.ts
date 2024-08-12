@@ -1,6 +1,6 @@
 import type { ParseResult } from '@effect/schema'
-import type { Either, Scope } from 'effect'
-import { Effect, Stream } from 'effect'
+import type { Scope } from 'effect'
+import { Effect, Either, Queue, Stream } from 'effect'
 
 import * as Schema from './Schema/index.js'
 
@@ -88,3 +88,21 @@ export const messagePortChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
 
     return { send, listen }
   }).pipe(Effect.withSpan(`BrowserChannel:messagePortChannel`))
+
+export const queueChannelProxy = <MsgIn, MsgOut>(): Effect.Effect<
+  { browserChannel: BrowserChannel<MsgIn, MsgOut>; sendQueue: Queue.Queue<MsgOut>; listenQueue: Queue.Queue<MsgIn> },
+  never,
+  Scope.Scope
+> =>
+  Effect.gen(function* () {
+    const sendQueue = yield* Queue.unbounded<MsgOut>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const listenQueue = yield* Queue.unbounded<MsgIn>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+    const send = (message: MsgOut) => Queue.offer(sendQueue, message)
+
+    const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
+
+    const browserChannel = { send, listen }
+
+    return { browserChannel, sendQueue, listenQueue }
+  })

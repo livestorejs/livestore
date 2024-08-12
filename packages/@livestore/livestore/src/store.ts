@@ -6,6 +6,7 @@ import type {
   ResetMode,
   StoreAdapter,
   StoreAdapterFactory,
+  StoreDevtoolsChannel,
 } from '@livestore/common'
 import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
@@ -688,10 +689,10 @@ export const createStore = <
 
     const storeDeferred = yield* Deferred.make<Store>()
 
-    const connectDevtoolsToStore_ = ({ storeMessagePort }: { storeMessagePort: MessagePort }) =>
+    const connectDevtoolsToStore_ = (storeDevtoolsChannel: StoreDevtoolsChannel) =>
       Effect.gen(function* () {
         const store = yield* Deferred.await(storeDeferred)
-        yield* connectDevtoolsToStore({ storeMessagePort, store })
+        yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
       })
 
     // TODO close parent scope? (Needs refactor with Mike A)

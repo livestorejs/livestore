@@ -22,5 +22,9 @@
   },
 
   "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"],
-  "references": [{ "path": "../../packages/@livestore/expo" }, { "path": "../../packages/@livestore/livestore" }]
+  "references": [
+    { "path": "../../packages/@livestore/expo" },
+    { "path": "../../packages/@livestore/devtools-expo-bridge" },
+    { "path": "../../packages/@livestore/livestore" },
+  ]
 }

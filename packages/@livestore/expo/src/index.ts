@@ -1,4 +1,4 @@
-import type { Coordinator, InMemoryDatabase, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
+import type { Coordinator, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
@@ -12,6 +12,9 @@ import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
 
+import { makeInMemoryDb } from './common.js'
+import { bootDevtools } from './devtools.js'
+
 export type MakeDbOptions = {
   fileNamePrefix?: string
   subDirectory?: string
@@ -19,7 +22,7 @@ export type MakeDbOptions = {
 
 export const makeAdapter =
   (options?: MakeDbOptions): StoreAdapterFactory =>
-  ({ schema }) =>
+  ({ schema, connectDevtoolsToStore, shutdown }) =>
     Effect.gen(function* () {
       const { fileNamePrefix, subDirectory } = options ?? {}
       const migrationOptions = schema.migrationOptions
@@ -27,31 +30,43 @@ export const makeAdapter =
       const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
       const db = SQLite.openDatabaseSync(fullDbFilePath)
 
-      const mainDb = makeMainDb(db)
+      const dbInMemory = makeInMemoryDb(db)
 
-      const dbWasEmptyWhenOpenedStmt = mainDb.prepare('SELECT 1 FROM sqlite_master')
+      const dbRef = { current: { db, inMemoryDb: dbInMemory } }
+
+      const dbWasEmptyWhenOpenedStmt = dbInMemory.prepare('SELECT 1 FROM sqlite_master')
       const dbWasEmptyWhenOpened = dbWasEmptyWhenOpenedStmt.select(undefined).length === 0
 
       const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
-      const mainDbLog = makeMainDb(dbLog)
+      const dbLogInMemory = makeInMemoryDb(dbLog)
+
+      const dbLogRef = { current: { db: dbLog, inMemoryDb: dbLogInMemory } }
+
+      yield* Effect.addFinalizer(() =>
+        Effect.gen(function* () {
+          // Ignoring in case the database is already closed
+          yield* Effect.try(() => db.closeSync()).pipe(Effect.ignoreLogged)
+          yield* Effect.try(() => dbLog.closeSync()).pipe(Effect.ignoreLogged)
+        }),
+      )
 
       yield* migrateTable({
-        db: mainDbLog,
+        db: dbLogInMemory,
         behaviour: 'create-if-not-exists',
         tableAst: mutationLogMetaTable.sqliteDef.ast,
         skipMetaTable: true,
       })
 
       if (dbWasEmptyWhenOpened) {
-        yield* migrateDb({ db: mainDb, schema })
+        yield* migrateDb({ db: dbInMemory, schema })
 
-        initializeSingletonTables(schema, mainDb)
+        initializeSingletonTables(schema, dbInMemory)
 
         switch (migrationOptions.strategy) {
           case 'from-mutation-log': {
             yield* rehydrateFromMutationLog({
-              db: mainDb,
-              logDb: mainDbLog,
+              db: dbInMemory,
+              logDb: dbLogInMemory,
               schema,
               migrationOptions,
               onProgress: () => Effect.void,
@@ -88,7 +103,7 @@ export const makeAdapter =
         [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
       )
 
-      const newMutationLogStmt = mainDbLog.prepare(
+      const newMutationLogStmt = dbLogInMemory.prepare(
         `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
       )
 
@@ -103,7 +118,7 @@ export const makeAdapter =
         lockStatus,
         syncMutations,
         execute: () => Effect.void,
-        mutate: (mutationEventEncoded, { persisted }) =>
+        mutate: (mutationEventEncoded, { persisted }): Effect.Effect<void, UnexpectedError> =>
           Effect.gen(function* () {
             if (migrationOptions.strategy !== 'from-mutation-log') return
 
@@ -148,58 +163,19 @@ export const makeAdapter =
             } else {
               //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
             }
+
+            yield* devtools.onMutation({ mutationEventEncoded, persisted })
           }),
-        export: Effect.sync(() => mainDb.export()),
+        export: Effect.sync(() => dbInMemory.export()),
         // TODO actually implement this
         getInitialSnapshot: Effect.succeed(new Uint8Array()),
         // TODO actually implement this
         dangerouslyReset: () => Effect.dieMessage('Not implemented'),
-        getMutationLogData: Effect.sync(() => mainDbLog.export()),
+        getMutationLogData: Effect.sync(() => dbLogInMemory.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator
 
-      return { mainDb, coordinator } satisfies StoreAdapter
-    }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause })))
+      const devtools = yield* bootDevtools({ connectDevtoolsToStore, coordinator, schema, dbRef, dbLogRef, shutdown })
 
-const makeMainDb = (db: SQLite.SQLiteDatabase) => {
-  return {
-    _tag: 'InMemoryDatabase',
-    prepare: (value) => {
-      try {
-        const stmt = db.prepareSync(value)
-        return {
-          execute: (bindValues) => {
-            const res = stmt.executeSync(bindValues ?? ([] as any))
-            res.resetSync()
-            return () => res.changes
-          },
-          select: (bindValues) => {
-            const res = stmt.executeSync(bindValues ?? ([] as any))
-            try {
-              return res.getAllSync() as any
-            } finally {
-              res.resetSync()
-            }
-          },
-          finalize: () => stmt.finalizeSync(),
-        }
-      } catch (e) {
-        console.error(`Error preparing statement: ${value}`, e)
-        return shouldNeverHappen(`Error preparing statement: ${value}`)
-      }
-    },
-    execute: (queryStr, bindValues) => {
-      const stmt = db.prepareSync(queryStr)
-      try {
-        const res = stmt.executeSync(bindValues ?? ([] as any))
-        return () => res.changes
-      } finally {
-        stmt.finalizeSync()
-      }
-    },
-    export: () => {
-      console.error(`export not yet implemented`)
-      return new Uint8Array([])
-    },
-  } satisfies InMemoryDatabase
-}
+      return { mainDb: dbInMemory, coordinator } satisfies StoreAdapter
+    }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause })))

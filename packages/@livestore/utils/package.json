@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "date-fns": "^3.6.0",
+    "msgpackr": "^1.11.0",
     "effect-db-schema": "workspace:*",
     "otel-websocket-exporter": "^0.0.29",
     "pretty-bytes": "^6.1.1"

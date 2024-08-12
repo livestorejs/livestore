@@ -1,6 +1,7 @@
-import type { Cause, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
+import type { BrowserChannel, Cause, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
+import type * as Devtools from './devtools/index.js'
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
@@ -56,12 +57,6 @@ export type Coordinator = {
   devtools: {
     enabled: boolean
     channelId: string
-    /**
-     * Returns a dedicated message port for the store which is established over the message port passed in
-     */
-    // connect: (options: { port: MessagePort }) => Effect.Effect<{ storeMessagePort: MessagePort }, UnexpectedError>
-    // TODO refactor to possibly flip the hiearchy so the coordinator connects to the store instead of the store connecting to the coordinator
-    // waitForPort: (devtoolsId: string) => Effect.Effect<MessagePort, UnexpectedError>
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
@@ -155,11 +150,14 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type ConnectDevtoolsToStore = ({
-  storeMessagePort,
-}: {
-  storeMessagePort: MessagePort
-}) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+export type StoreDevtoolsChannel = BrowserChannel.BrowserChannel<
+  Devtools.MessageToAppHostStore,
+  Devtools.MessageFromAppHostStore
+>
+
+export type ConnectDevtoolsToStore = (
+  storeDevtoolsChannel: StoreDevtoolsChannel,
+) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
 export type StoreAdapterFactory = (opts: {
   schema: LiveStoreSchema

@@ -21,14 +21,23 @@ interface LiveStoreProviderProps<GraphQLContext> {
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
   renderLoading: (status: BootStatus) => ReactElement
+  renderError?: (error: UnexpectedError | unknown) => ReactElement
+  renderShutdown?: () => ReactElement
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   signal?: AbortSignal
 }
 
+const defaultRenderError = (error: UnexpectedError | unknown) => (
+  <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
+)
+const defaultRenderShutdown = () => <>LiveStore Shutdown</>
+
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   renderLoading,
+  renderError = defaultRenderError,
+  renderShutdown = defaultRenderShutdown,
   graphQLOptions,
   otelOptions,
   children,
@@ -51,20 +60,32 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   })
 
   if (storeCtx.stage === 'error') {
-    return <>{Schema.is(UnexpectedError)(storeCtx.error) ? storeCtx.error.toString() : errorToString(storeCtx.error)}</>
+    return renderError(storeCtx.error)
   }
 
   if (storeCtx.stage === 'shutdown') {
-    return <>LiveStore Shutdown</>
+    return renderShutdown()
   }
 
   if (storeCtx.stage !== 'running') {
-    return <>{renderLoading(storeCtx)}</>
+    return renderLoading(storeCtx)
   }
 
   window.__debugLiveStore = storeCtx.store
 
   return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
+}
+
+type SchemaKey = string
+const semaphoreMap = new Map<SchemaKey, Effect.Semaphore>()
+
+const withSemaphore = (schemaKey: SchemaKey) => {
+  let semaphore = semaphoreMap.get(schemaKey)
+  if (!semaphore) {
+    semaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
+    semaphoreMap.set(schemaKey, semaphore)
+  }
+  return semaphore.withPermits(1)
 }
 
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
@@ -191,6 +212,10 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       )
     }).pipe(
       Effect.scoped,
+      // NOTE we're running the code above in a semaphore to make sure a previous store is always fully
+      // shutdown before a new one is created - especially when shutdown logic is async. You can't trust `React.useEffect`.
+      // Thank you to Mattia Manzati for this idea.
+      withSemaphore(schema.key),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
       Effect.provide(Logger.pretty),

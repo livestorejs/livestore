@@ -1,11 +1,12 @@
 import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
+import { Devtools, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled, ref, tryAsFunctionAndNew } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
+  BrowserChannel,
   BrowserWorker,
   Cause,
   Chunk,
@@ -440,21 +441,30 @@ export const makeCoordinator =
           Effect.withSpan('@livestore/web:coordinator:devtools:waitForDevtoolsWebBridgePort'),
         )
 
-      const connectToDevtools = (coordinatorMessagePort: MessagePort) => {
-        return runInWorkerStream(
+      const connectToDevtools = (coordinatorMessagePort: MessagePort) =>
+        runInWorkerStream(
           WorkerSchema.DedicatedWorkerInner.ConnectDevtoolsStream.make({
             port: coordinatorMessagePort,
             channelId,
             isLeaderTab: gotLocky,
           }),
         ).pipe(
-          // NOTE the `forkScoped` seems to be needed here since otherwise interruption doesn't work
-          Stream.tap((port) => connectDevtoolsToStore(port).pipe(Effect.forkScoped)),
+          Stream.tap(({ storeMessagePort }) =>
+            Effect.gen(function* () {
+              const storeDevtoolsChannel = yield* BrowserChannel.messagePortChannel({
+                port: storeMessagePort,
+                listenSchema: Devtools.MessageToAppHostStore,
+                sendSchema: Devtools.MessageFromAppHostStore,
+              })
+
+              yield* connectDevtoolsToStore(storeDevtoolsChannel)
+              // NOTE the `forkScoped` seems to be needed here since otherwise interruption doesn't work
+            }).pipe(Effect.forkScoped),
+          ),
           Stream.runDrain,
           Effect.interruptible,
           Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
         )
-      }
 
       if (devtoolsEnabled) {
         yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, key: schema.key })

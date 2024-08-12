@@ -53,15 +53,11 @@
     "vitest": "^2.0.4"
   },
   "peerDependencies": {
-    "@tauri-apps/api": "^1.4.0",
     "graphql": "16.x",
     "react": "^18",
     "react-dom": "^18"
   },
   "peerDependenciesMeta": {
-    "@tauri-apps/api": {
-      "optional": true
-    },
     "graphql": {
       "optional": true
     }

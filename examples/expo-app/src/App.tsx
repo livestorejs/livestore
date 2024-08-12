@@ -1,3 +1,4 @@
+import { useLiveStoreDevtools } from '@livestore/devtools-expo-bridge'
 import { makeAdapter } from '@livestore/expo'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
@@ -11,26 +12,38 @@ import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { schema } from './schema/index.ts'
 
-export const App = () => {
+const adapter = makeAdapter()
+
+export const App = () => (
+  <View style={styles.container}>
+    <LiveStoreProvider
+      schema={schema}
+      renderLoading={(_) => <Text>Loading LiveStore ({_.stage})...</Text>}
+      renderError={(error: any) => <Text>Error: {error.toString()}</Text>}
+      renderShutdown={() => <Text>LiveStore Shutdown</Text>}
+      boot={(db) => {
+        db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'Make coffee', 1)`)
+      }}
+      adapter={adapter}
+      // NOTE This is currently necessary to properly batch updates in React Native
+      batchUpdates={(run) => unstable_batchedUpdates(() => run())}
+    >
+      <InnerApp />
+    </LiveStoreProvider>
+    <StatusBar style="auto" />
+  </View>
+)
+
+const InnerApp = () => {
+  useLiveStoreDevtools()
+
   return (
-    <View style={styles.container}>
-      <LiveStoreProvider
-        schema={schema}
-        renderLoading={(_) => <Text>Loading LiveStore ({_.stage})...</Text>}
-        boot={(db) => {
-          db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
-        }}
-        adapter={makeAdapter()}
-        // NOTE This is currently necessary to properly batch updates in React Native
-        batchUpdates={(run) => unstable_batchedUpdates(() => run())}
-      >
-        <NewTodo />
-        <Meta />
-        <ListTodos />
-        <Filters />
-      </LiveStoreProvider>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <NewTodo />
+      <Meta />
+      <ListTodos />
+      <Filters />
+    </>
   )
 }
 

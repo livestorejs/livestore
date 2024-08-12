@@ -1,7 +1,8 @@
 import type { DebugInfo, StoreAdapter } from '@livestore/common'
 import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
-import { BrowserChannel, Effect, Stream } from '@livestore/utils/effect'
+import type { BrowserChannel } from '@livestore/utils/effect'
+import { Effect, Stream } from '@livestore/utils/effect'
 
 import type { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import { emptyDebugInfo as makeEmptyDebugInfo } from './MainDatabaseWrapper.js'
@@ -20,7 +21,13 @@ type Unsub = () => void
 type RequestId = string
 type SubMap = Map<RequestId, Unsub>
 
-export const connectDevtoolsToStore = ({ storeMessagePort, store }: { storeMessagePort: MessagePort; store: IStore }) =>
+export const connectDevtoolsToStore = ({
+  storeDevtoolsChannel,
+  store,
+}: {
+  storeDevtoolsChannel: BrowserChannel.BrowserChannel<Devtools.MessageToAppHostStore, Devtools.MessageFromAppHostStore>
+  store: IStore
+}) =>
   Effect.gen(function* () {
     const channelId = store.adapter.coordinator.devtools.channelId
 
@@ -28,14 +35,8 @@ export const connectDevtoolsToStore = ({ storeMessagePort, store }: { storeMessa
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
 
-    const storePortChannel = yield* BrowserChannel.messagePortChannel({
-      port: storeMessagePort,
-      listenSchema: Devtools.MessageToAppHostStore,
-      sendSchema: Devtools.MessageFromAppHostStore,
-    })
-
     const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
-      storePortChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runSync)
+      storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runSync)
 
     const onMessage = (decodedMessage: typeof Devtools.MessageToAppHostStore.Type) => {
       // console.log('storeMessagePort message', decodedMessage)
@@ -199,7 +200,7 @@ export const connectDevtoolsToStore = ({ storeMessagePort, store }: { storeMessa
       }
     }
 
-    yield* storePortChannel.listen.pipe(
+    yield* storeDevtoolsChannel.listen.pipe(
       Stream.flatten(),
       Stream.tapSync((message) => onMessage(message)),
       Stream.runDrain,

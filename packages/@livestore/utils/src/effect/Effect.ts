@@ -40,6 +40,8 @@ export const tryAll = <Res>(
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
+    // TODO get rid of this once `UnknownException.error` is renamed to `UnknownException.cause`
+    Effect.mapError((error) => error.error),
   ) as any
 
 const getThreadName = () => {
