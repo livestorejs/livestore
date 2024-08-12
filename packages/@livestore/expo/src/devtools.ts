@@ -18,7 +18,7 @@ import { makeInMemoryDb, overwriteDbFile } from './common.js'
 export const bootDevtools = ({
   connectDevtoolsToStore,
   coordinator,
-  schema,
+  // schema,
   shutdown,
   dbRef,
   dbLogRef,
