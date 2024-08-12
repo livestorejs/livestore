@@ -13,7 +13,7 @@ import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } fro
 import * as SQLite from 'expo-sqlite/next'
 
 import type { DbPairRef } from './common.js'
-import { makeInMemoryDb, overwriteDbFile } from './common.js'
+import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
 
 export const bootDevtools = ({
   connectDevtoolsToStore,
@@ -116,7 +116,7 @@ export const bootDevtools = ({
               try {
                 const tmpDb = SQLite.deserializeDatabaseSync(data)
 
-                const tmpInMemoryDb = makeInMemoryDb(tmpDb)
+                const tmpInMemoryDb = makeSynchronousDatabase(tmpDb)
                 const tableNameResults = tmpInMemoryDb
                   .prepare(`select name from sqlite_master where type = 'table'`)
                   .select<{ name: string }>(undefined)

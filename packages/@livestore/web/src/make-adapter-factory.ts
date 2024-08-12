@@ -1,7 +1,7 @@
 import { type StoreAdapter, type StoreAdapterFactory } from '@livestore/common'
 import { Effect } from '@livestore/utils/effect'
 
-import { makeInMemoryDb } from './make-in-memory-db.js'
+import { makeSynchronousDatabase } from './make-in-memory-db.js'
 import { importBytesToDb, loadSqlite3Wasm, type SqliteWasm } from './sqlite-utils.js'
 import type { MakeCoordinator } from './utils/types.js'
 
@@ -41,7 +41,7 @@ export const makeAdapterFactory =
 
       importBytesToDb(sqlite3, db, persistedData)
 
-      const mainDb = makeInMemoryDb(sqlite3, db)
+      const syncDb = makeSynchronousDatabase(sqlite3, db)
 
-      return { mainDb, coordinator } satisfies StoreAdapter
+      return { syncDb, coordinator } satisfies StoreAdapter
     })

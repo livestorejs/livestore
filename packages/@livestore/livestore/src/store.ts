@@ -34,11 +34,11 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import { globalReactivityGraph } from './global-state.js'
-import { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
 import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
 import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
 import { connectDevtoolsToStore } from './store-devtools.js'
+import { SynchronousDatabaseWrapper } from './SynchronousDatabaseWrapper.js'
 import { ReferenceCountedSet } from './utils/data-structures.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
@@ -51,7 +51,7 @@ export type BaseGraphQLContext = {
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
-  makeContext: (db: MainDatabaseWrapper, tracer: otel.Tracer) => TContext
+  makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer) => TContext
 }
 
 export type OtelOptions = {
@@ -132,7 +132,7 @@ export class Store<
   id = uniqueStoreId()
   private fiberSet: FiberSet.FiberSet
   reactivityGraph: ReactivityGraph
-  mainDbWrapper: MainDatabaseWrapper
+  syncDbWrapper: SynchronousDatabaseWrapper
   adapter: StoreAdapter
   schema: LiveStoreSchema
   graphQLSchema?: GraphQLSchema
@@ -166,7 +166,7 @@ export class Store<
   }: StoreOptions<TGraphQLContext, TSchema>) {
     super()
 
-    this.mainDbWrapper = new MainDatabaseWrapper({ otel: otelOptions, db: adapter.mainDb })
+    this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: adapter.syncDb })
     this.adapter = adapter
     this.schema = schema
 
@@ -226,7 +226,7 @@ export class Store<
 
     if (graphQLOptions) {
       this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(this.mainDbWrapper, this.otel.tracer)
+      this.graphQLContext = graphQLOptions.makeContext(this.syncDbWrapper, this.otel.tracer)
     }
 
     Effect.gen(this, function* () {
@@ -422,7 +422,7 @@ export class Store<
 
                 if (mutationsEvents.length > 1) {
                   // TODO: what to do about coordinator transaction here?
-                  this.mainDbWrapper.txn(applyMutations)
+                  this.syncDbWrapper.txn(applyMutations)
                 } else {
                   applyMutations()
                 }
@@ -532,11 +532,11 @@ export class Store<
         for (const {
           statementSql,
           bindValues,
-          writeTables = this.mainDbWrapper.getTablesUsed(statementSql),
+          writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
         } of execArgsArr) {
           // TODO when the store doesn't have the lock, we need wait for the coordinator to confirm the mutation
           // before executing the mutation on the main db
-          const { durationMs } = this.mainDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
+          const { durationMs } = this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
 
           durationMsTotal += durationMs
           writeTables.forEach((table) => allWriteTables.add(table))
@@ -573,13 +573,13 @@ export class Store<
     writeTables?: ReadonlySet<string>,
     otelContext?: otel.Context,
   ) => {
-    this.mainDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
+    this.syncDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
     this.adapter.coordinator.execute(query, prepareBindValues(params, query)).pipe(runEffectFork)
   }
 
   select = (query: string, params: ParamsObject = {}) => {
-    return this.mainDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
+    return this.syncDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
   }
 
   makeTableRef = (tableName: string) =>
@@ -590,7 +590,7 @@ export class Store<
     })
 
   __devDownloadDb = () => {
-    const data = this.mainDbWrapper.export()
+    const data = this.syncDbWrapper.export()
     downloadBlob(data, `livestore-${Date.now()}.db`)
   }
 
@@ -737,7 +737,7 @@ export const createStore = <
       const bootDbImpl: BootDb = {
         _tag: 'BootDb',
         execute: (queryStr, bindValues) => {
-          const stmt = adapter.mainDb.prepare(queryStr)
+          const stmt = adapter.syncDb.prepare(queryStr)
           stmt.execute(bindValues)
 
           if (isInTxn === true) {
@@ -758,7 +758,7 @@ export const createStore = <
             // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
             for (const { statementSql, bindValues } of execArgsArr) {
-              adapter.mainDb.execute(statementSql, bindValues)
+              adapter.syncDb.execute(statementSql, bindValues)
             }
 
             const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
@@ -769,17 +769,17 @@ export const createStore = <
           }
         },
         select: (queryStr, bindValues) => {
-          const stmt = adapter.mainDb.prepare(queryStr)
+          const stmt = adapter.syncDb.prepare(queryStr)
           return stmt.select(bindValues)
         },
         txn: (callback) => {
           try {
             isInTxn = true
-            adapter.mainDb.execute('BEGIN', undefined)
+            adapter.syncDb.execute('BEGIN', undefined)
 
             callback()
 
-            adapter.mainDb.execute('COMMIT', undefined)
+            adapter.syncDb.execute('COMMIT', undefined)
 
             // adapter.coordinator.execute('BEGIN', undefined, undefined)
             for (const [queryStr, bindValues] of txnExecuteStmnts) {
@@ -787,7 +787,7 @@ export const createStore = <
             }
             // adapter.coordinator.execute('COMMIT', undefined, undefined)
           } catch (e: any) {
-            adapter.mainDb.execute('ROLLBACK', undefined)
+            adapter.syncDb.execute('ROLLBACK', undefined)
             throw e
           } finally {
             isInTxn = false

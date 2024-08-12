@@ -12,14 +12,14 @@ export interface PreparedStatement {
 }
 
 export type StoreAdapter = {
-  /** Main thread database (usually in-memory) */
-  mainDb: InMemoryDatabase
+  /** SQLite database with synchronous API running in the same thread (usually in-memory) */
+  syncDb: SynchronousDatabase
   /** The coordinator is responsible for persisting the database, syncing etc */
   coordinator: Coordinator
 }
 
-export type InMemoryDatabase = {
-  _tag: 'InMemoryDatabase'
+export type SynchronousDatabase = {
+  _tag: 'SynchronousDatabase'
   prepare(queryStr: string): PreparedStatement
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): GetRowsChangedCount
   export(): Uint8Array
@@ -134,7 +134,7 @@ export type MigrationHooks = {
   post: MigrationHook
 }
 
-export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
+export type MigrationHook = (db: SynchronousDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
 
 export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   strategy: 'from-mutation-log'

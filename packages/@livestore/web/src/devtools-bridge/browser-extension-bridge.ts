@@ -1,7 +1,6 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import { Deferred, Effect, PubSub, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 
-import type { PrepareDevtoolsBridge } from '../../../common/dist/devtools/devtools-api.js'
 import { BackgroundMessage, MessagePortInit } from './background-message.js'
 import { makeShared } from './bridge-shared.js'
 import { EscapeKey, IframeReady, MessageToPanel } from './iframe-message.js'
@@ -69,5 +68,5 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
     copyToClipboard,
     sendEscapeKey,
     isLeaderTab,
-  } satisfies PrepareDevtoolsBridge
+  } satisfies Devtools.PrepareDevtoolsBridge
 })

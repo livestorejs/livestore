@@ -1,18 +1,18 @@
 import {
   type GetRowsChangedCount,
-  type InMemoryDatabase,
   type PreparedBindValues,
   SqliteError,
+  type SynchronousDatabase,
 } from '@livestore/common'
 
 import type { SqliteWasm } from './sqlite-utils.js'
 
-export const makeInMemoryDb = (
+export const makeSynchronousDatabase = (
   sqlite3: SqliteWasm.Sqlite3Static,
   db: SqliteWasm.Database & { capi: SqliteWasm.CAPI },
-): InMemoryDatabase => {
+): SynchronousDatabase => {
   return {
-    _tag: 'InMemoryDatabase',
+    _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
         const stmt = db.prepare(queryStr)
@@ -106,5 +106,5 @@ export const makeInMemoryDb = (
 
     //   db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
     // },
-  } satisfies InMemoryDatabase
+  } satisfies SynchronousDatabase
 }

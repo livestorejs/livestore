@@ -14,7 +14,7 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import { makeInMemoryDb } from '../make-in-memory-db.js'
+import { makeSynchronousDatabase } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import { importBytesToDb } from '../sqlite-utils.js'
 import type { DevtoolsContextEnabled } from './common.js'
@@ -203,7 +203,7 @@ const listenToDevtools = ({
 
                 importBytesToDb(sqlite3, tmpDb, data)
 
-                const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
+                const tmpInMemoryDb = makeSynchronousDatabase(sqlite3, tmpDb)
                 const tableNameResults = tmpInMemoryDb
                   .prepare(`select name from sqlite_master where type = 'table'`)
                   .select<{ name: string }>(undefined)

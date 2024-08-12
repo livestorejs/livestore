@@ -5,10 +5,10 @@ import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe 
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import type { MainDatabaseWrapper } from '../MainDatabaseWrapper.js'
 import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, Store } from '../store.js'
 import { createStore } from '../store.js'
+import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 
 // TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
 export type LiveStoreContext =
@@ -54,7 +54,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
-    makeContext: (db: MainDatabaseWrapper) => GraphQLContext
+    makeContext: (db: SynchronousDatabaseWrapper) => GraphQLContext
   }
   boot?: (db: BootDb) => Effect.Effect<void, unknown, otel.Tracer>
   adapter: StoreAdapterFactory

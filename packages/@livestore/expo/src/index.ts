@@ -12,7 +12,7 @@ import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
 
-import { makeInMemoryDb } from './common.js'
+import { makeSynchronousDatabase } from './common.js'
 import { bootDevtools } from './devtools.js'
 
 export type MakeDbOptions = {
@@ -30,17 +30,14 @@ export const makeAdapter =
       const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
       const db = SQLite.openDatabaseSync(fullDbFilePath)
 
-      const dbInMemory = makeInMemoryDb(db)
+      const dbRef = { current: { db, syncDb: makeSynchronousDatabase(db) } }
 
-      const dbRef = { current: { db, inMemoryDb: dbInMemory } }
-
-      const dbWasEmptyWhenOpenedStmt = dbInMemory.prepare('SELECT 1 FROM sqlite_master')
+      const dbWasEmptyWhenOpenedStmt = dbRef.current.syncDb.prepare('SELECT 1 FROM sqlite_master')
       const dbWasEmptyWhenOpened = dbWasEmptyWhenOpenedStmt.select(undefined).length === 0
 
       const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
-      const dbLogInMemory = makeInMemoryDb(dbLog)
 
-      const dbLogRef = { current: { db: dbLog, inMemoryDb: dbLogInMemory } }
+      const dbLogRef = { current: { db: dbLog, syncDb: makeSynchronousDatabase(dbLog) } }
 
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
@@ -51,22 +48,22 @@ export const makeAdapter =
       )
 
       yield* migrateTable({
-        db: dbLogInMemory,
+        db: dbLogRef.current.syncDb,
         behaviour: 'create-if-not-exists',
         tableAst: mutationLogMetaTable.sqliteDef.ast,
         skipMetaTable: true,
       })
 
       if (dbWasEmptyWhenOpened) {
-        yield* migrateDb({ db: dbInMemory, schema })
+        yield* migrateDb({ db: dbRef.current.syncDb, schema })
 
-        initializeSingletonTables(schema, dbInMemory)
+        initializeSingletonTables(schema, dbRef.current.syncDb)
 
         switch (migrationOptions.strategy) {
           case 'from-mutation-log': {
             yield* rehydrateFromMutationLog({
-              db: dbInMemory,
-              logDb: dbLogInMemory,
+              db: dbRef.current.syncDb,
+              logDb: dbLogRef.current.syncDb,
               schema,
               migrationOptions,
               onProgress: () => Effect.void,
@@ -103,7 +100,7 @@ export const makeAdapter =
         [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
       )
 
-      const newMutationLogStmt = dbLogInMemory.prepare(
+      const newMutationLogStmt = dbLogRef.current.syncDb.prepare(
         `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
       )
 
@@ -117,6 +114,7 @@ export const makeAdapter =
         devtools: { channelId: 'expo', enabled: false },
         lockStatus,
         syncMutations,
+        // NOTE not doing anything since syncDb is already persisted
         execute: () => Effect.void,
         mutate: (mutationEventEncoded, { persisted }): Effect.Effect<void, UnexpectedError> =>
           Effect.gen(function* () {
@@ -166,16 +164,16 @@ export const makeAdapter =
 
             yield* devtools.onMutation({ mutationEventEncoded, persisted })
           }),
-        export: Effect.sync(() => dbInMemory.export()),
+        export: Effect.sync(() => dbRef.current.syncDb.export()),
         // TODO actually implement this
         getInitialSnapshot: Effect.succeed(new Uint8Array()),
         // TODO actually implement this
         dangerouslyReset: () => Effect.dieMessage('Not implemented'),
-        getMutationLogData: Effect.sync(() => dbLogInMemory.export()),
+        getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator
 
       const devtools = yield* bootDevtools({ connectDevtoolsToStore, coordinator, schema, dbRef, dbLogRef, shutdown })
 
-      return { mainDb: dbInMemory, coordinator } satisfies StoreAdapter
+      return { syncDb: dbRef.current.syncDb, coordinator } satisfies StoreAdapter
     }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause })))

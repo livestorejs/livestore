@@ -20,7 +20,6 @@ import {
 import type { WebAdapterOptions } from '@livestore/web'
 import { WorkerSchema } from '@livestore/web'
 
-import type { PrepareDevtoolsBridge } from '../../../common/dist/devtools/devtools-api.js'
 import { makeShared } from './bridge-shared.js'
 
 export class WebBridgeChannelInfo extends Schema.Class<WebBridgeChannelInfo>('WebBridgeChannelInfo')({
@@ -49,7 +48,7 @@ export const prepareWebDevtoolsBridge = (
     sharedWorker: WebAdapterOptions['sharedWorker']
     appSchema: LiveStoreSchema
   } & WebBridgeOptions,
-): Effect.Effect<PrepareDevtoolsBridge, never, Scope.Scope> =>
+): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
   Effect.gen(function* () {
     const responsePubSub = yield* PubSub.unbounded<
       Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
@@ -176,5 +175,5 @@ export const prepareWebDevtoolsBridge = (
       copyToClipboard,
       sendEscapeKey: Effect.void,
       isLeaderTab,
-    } satisfies PrepareDevtoolsBridge
+    } satisfies Devtools.PrepareDevtoolsBridge
   }).pipe(Effect.orDie)

@@ -1,12 +1,12 @@
-import type { InMemoryDatabase } from '@livestore/common'
+import type { SynchronousDatabase } from '@livestore/common'
 import { base64, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import * as ExpoFS from 'expo-file-system'
 import type * as SQLite from 'expo-sqlite/next'
 
-export const makeInMemoryDb = (db: SQLite.SQLiteDatabase): InMemoryDatabase => {
+export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousDatabase => {
   return {
-    _tag: 'InMemoryDatabase',
+    _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
         const stmt = db.prepareSync(queryStr)
@@ -44,14 +44,14 @@ export const makeInMemoryDb = (db: SQLite.SQLiteDatabase): InMemoryDatabase => {
     export: () => {
       return db.serializeSync()
     },
-  } satisfies InMemoryDatabase
+  } satisfies SynchronousDatabase
 }
 
 export type DbPairRef = {
   current:
     | {
         db: SQLite.SQLiteDatabase
-        inMemoryDb: InMemoryDatabase
+        syncDb: SynchronousDatabase
       }
     | undefined
 }

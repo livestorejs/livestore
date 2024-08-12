@@ -11,7 +11,7 @@ import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import { Effect, Queue, Stream } from '@livestore/utils/effect'
 
-import { makeInMemoryDb } from '../make-in-memory-db.js'
+import { makeSynchronousDatabase } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import { importBytesToDb } from '../sqlite-utils.js'
 import type { InnerWorkerCtx } from './common.js'
@@ -36,7 +36,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 
     const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
       Effect.gen(function* () {
-        const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
+        const tmpInMemoryDb = makeSynchronousDatabase(sqlite3, tmpDb)
 
         yield* Effect.tryAll(() => hooks?.init?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
@@ -54,10 +54,10 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
         return tmpInMemoryDb
       })
 
-    const inMemoryDbLog = makeInMemoryDb(sqlite3, dbLog.dbRef.current)
+    const syncDbLog = makeSynchronousDatabase(sqlite3, dbLog.dbRef.current)
 
     yield* migrateTable({
-      db: inMemoryDbLog,
+      db: syncDbLog,
       behaviour: 'create-if-not-exists',
       tableAst: mutationLogMetaTable.sqliteDef.ast,
       skipMetaTable: true,
@@ -70,7 +70,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 
         yield* rehydrateFromMutationLog({
           db: tmpInMemoryDb,
-          logDb: inMemoryDbLog,
+          logDb: syncDbLog,
           schema,
           migrationOptions,
           onProgress: ({ done, total }) =>

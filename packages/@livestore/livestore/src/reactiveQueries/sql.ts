@@ -153,7 +153,7 @@ export class LiveStoreSQLQuery<
                 : get(queryString$OrQueryString, otelContext)
 
             if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store.mainDbWrapper.getTablesUsed(sqlString)
+              queriedTablesRef.current = store.syncDbWrapper.getTablesUsed(sqlString)
             }
 
             // Establish a reactive dependency on the tables used in the query
@@ -165,7 +165,7 @@ export class LiveStoreSQLQuery<
             span.setAttribute('sql.query', sqlString)
             span.updateName(`sql:${sqlString.slice(0, 50)}`)
 
-            const rawResults = store.mainDbWrapper.select<any>(sqlString, {
+            const rawResults = store.syncDbWrapper.select<any>(sqlString, {
               queriedTables,
               bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               otelContext,

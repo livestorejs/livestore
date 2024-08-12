@@ -4,16 +4,16 @@ import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 
-import type { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
-import { emptyDebugInfo as makeEmptyDebugInfo } from './MainDatabaseWrapper.js'
 import { NOT_REFRESHED_YET } from './reactive.js'
 import type { LiveQuery, ReactivityGraph } from './reactiveQueries/base-class.js'
+import type { SynchronousDatabaseWrapper } from './SynchronousDatabaseWrapper.js'
+import { emptyDebugInfo as makeEmptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 import type { ReferenceCountedSet } from './utils/data-structures.js'
 
 type IStore = {
   adapter: StoreAdapter
   reactivityGraph: ReactivityGraph
-  mainDbWrapper: MainDatabaseWrapper
+  syncDbWrapper: SynchronousDatabaseWrapper
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 }
 
@@ -84,7 +84,7 @@ export const connectDevtoolsToStore = ({
         case 'LSD.DebugInfoReq': {
           sendToDevtools(
             Devtools.DebugInfoRes.make({
-              debugInfo: store.mainDbWrapper.debugInfo,
+              debugInfo: store.syncDbWrapper.debugInfo,
               requestId,
               channelId,
               liveStoreVersion,
@@ -98,13 +98,13 @@ export const connectDevtoolsToStore = ({
           let rafHandle: number | undefined
 
           const tick = () => {
-            buffer.push(store.mainDbWrapper.debugInfo)
+            buffer.push(store.syncDbWrapper.debugInfo)
 
             // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
             // will get the empty debug info
             // TODO We need to come up with a more graceful way to do store. Probably via a single global
             // `requestAnimationFrame` loop that is passed in somehow.
-            store.mainDbWrapper.debugInfo = makeEmptyDebugInfo()
+            store.syncDbWrapper.debugInfo = makeEmptyDebugInfo()
 
             if (buffer.length > 10) {
               sendToDevtools(
@@ -142,13 +142,13 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.DebugInfoResetReq': {
-          store.mainDbWrapper.debugInfo.slowQueries.clear()
+          store.syncDbWrapper.debugInfo.slowQueries.clear()
           sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, channelId, liveStoreVersion }))
           break
         }
         case 'LSD.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
-          store.mainDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
+          store.syncDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
           sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, channelId, liveStoreVersion }))
           break
         }

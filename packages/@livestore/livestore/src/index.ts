@@ -7,7 +7,7 @@ export type {
   LiveStoreContextRunning as LiveStoreContext,
 } from './effect/LiveStore.js'
 
-export { MainDatabaseWrapper, emptyDebugInfo } from './MainDatabaseWrapper.js'
+export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 
 export type {
   GetAtom,
@@ -40,7 +40,7 @@ export {
   sql,
   type BootDb,
   type BootStatus,
-  type InMemoryDatabase,
+  type SynchronousDatabase,
   type DebugInfo,
   type MutableDebugInfo,
   prepareBindValues,

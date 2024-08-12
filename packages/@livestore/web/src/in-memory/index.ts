@@ -4,7 +4,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { makeAdapterFactory } from '../make-adapter-factory.js'
-import { makeInMemoryDb } from '../make-in-memory-db.js'
+import { makeSynchronousDatabase } from '../make-in-memory-db.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
 import { configureConnection } from '../web-worker/common.js'
 
@@ -23,13 +23,13 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
       tmpDb.capi = sqlite3.capi
 
       yield* configureConnection(tmpDb, { fkEnabled: true }).pipe(UnexpectedError.mapToUnexpectedError)
-      const tmpMainDb = makeInMemoryDb(sqlite3, tmpDb)
+      const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
 
-      yield* migrateDb({ db: tmpMainDb, schema })
+      yield* migrateDb({ db: tmpSyncDb, schema })
 
-      initializeSingletonTables(schema, tmpMainDb)
+      initializeSingletonTables(schema, tmpSyncDb)
 
-      return tmpMainDb.export()
+      return tmpSyncDb.export()
     })
 
     const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
