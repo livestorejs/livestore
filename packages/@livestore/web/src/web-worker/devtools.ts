@@ -38,7 +38,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
     coordinatorMessagePort,
     disconnect,
     storeMessagePortDeferred,
-    channelId,
+    appHostId,
     isLeaderTab,
   }) =>
     Effect.gen(function* () {
@@ -93,14 +93,14 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.forkScoped,
       )
 
-      yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), { force: true })
+      yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), { force: true })
 
-      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ channelId, liveStoreVersion, requestId: cuid() }), {
+      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: cuid() }), {
         force: true,
       })
 
-      yield* listenToDevtools({ incomingMessages, sendMessage, isConnected, disconnect, channelId, isLeaderTab })
-    }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { channelId } }))
+      yield* listenToDevtools({ incomingMessages, sendMessage, isConnected, disconnect, appHostId, isLeaderTab })
+    }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { appHostId } }))
 
   const broadcast: DevtoolsContextEnabled['broadcast'] = (message) =>
     Effect.gen(function* () {
@@ -117,14 +117,14 @@ const listenToDevtools = ({
   sendMessage,
   isConnected,
   disconnect,
-  channelId,
+  appHostId,
   isLeaderTab,
 }: {
   incomingMessages: Stream.Stream<Devtools.MessageToAppHostCoordinator>
   sendMessage: SendMessage
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   disconnect: Effect.Effect<void>
-  channelId: string
+  appHostId: string
   isLeaderTab: boolean
 }) =>
   Effect.gen(function* () {
@@ -145,7 +145,7 @@ const listenToDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
+              yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), {
                 force: true,
               })
             }
@@ -162,7 +162,7 @@ const listenToDevtools = ({
             return
           }
 
-          if (decodedEvent.channelId !== channelId) return
+          if (decodedEvent.appHostId !== appHostId) return
 
           if (decodedEvent._tag === 'LSD.Disconnect') {
             yield* SubscriptionRef.set(isConnected, false)
@@ -170,7 +170,7 @@ const listenToDevtools = ({
             yield* disconnect
 
             // TODO is there a better place for this?
-            yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
+            yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), {
               force: true,
             })
 
@@ -178,7 +178,7 @@ const listenToDevtools = ({
           }
 
           const { requestId } = decodedEvent
-          const reqPayload = { requestId, channelId, liveStoreVersion }
+          const reqPayload = { requestId, appHostId, liveStoreVersion }
 
           switch (decodedEvent._tag) {
             case 'LSD.Ping': {

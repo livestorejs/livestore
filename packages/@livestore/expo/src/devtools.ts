@@ -61,7 +61,7 @@ export const bootDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }))
+              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }))
             }
 
             return
@@ -88,13 +88,13 @@ export const bootDevtools = ({
             // yield* disconnect
 
             // TODO is there a better place for this?
-            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }))
+            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }))
 
             return
           }
 
           const { requestId } = decodedEvent
-          const reqPayload = { requestId, channelId, liveStoreVersion }
+          const reqPayload = { requestId, appHostId, liveStoreVersion }
 
           switch (decodedEvent._tag) {
             case 'LSD.Ping': {
@@ -235,9 +235,9 @@ export const bootDevtools = ({
       Effect.forkScoped,
     )
 
-    const channelId = 'expo'
+    const appHostId = 'expo'
     const isLeaderTab = true
-    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ channelId, isLeaderTab, liveStoreVersion }))
+    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeaderTab, liveStoreVersion }))
 
     const onMutation = ({
       mutationEventEncoded,

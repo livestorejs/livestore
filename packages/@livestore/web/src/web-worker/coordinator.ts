@@ -102,7 +102,7 @@ export const makeCoordinator =
       // TODO also verify persisted data
       const dataFromFile = yield* getPersistedData(storageOptions, dbFileSuffix)
 
-      const channelId = getChannelId(schema.key)
+      const appHostId = getAppHostId(schema.key)
 
       const shutdownChannel = yield* makeShutdownChannel(schema.key)
 
@@ -152,7 +152,7 @@ export const makeCoordinator =
 
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (channelId: ${channelId})`,
+          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (appHostId: ${appHostId})`,
         )
 
         yield* Effect.addFinalizer(() =>
@@ -212,7 +212,7 @@ export const makeCoordinator =
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (channelId: ${channelId})`,
+          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (appHostId: ${appHostId})`,
         )
 
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
@@ -367,7 +367,7 @@ export const makeCoordinator =
       )
 
       const coordinator = {
-        devtools: { enabled: devtoolsEnabled, channelId },
+        devtools: { enabled: devtoolsEnabled, appHostId },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         getInitialSnapshot: Effect.sync(() => initialSnapshot),
@@ -441,7 +441,7 @@ export const makeCoordinator =
         runInWorkerStream(
           WorkerSchema.DedicatedWorkerInner.ConnectDevtoolsStream.make({
             port: coordinatorMessagePort,
-            channelId,
+            appHostId,
             isLeaderTab: gotLocky,
           }),
         ).pipe(
@@ -469,15 +469,15 @@ export const makeCoordinator =
       return coordinator
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
-const getChannelId = (key: string) => {
-  // Only use the last 6 characters of the channel id to make it shorter
+const getAppHostId = (key: string) => {
+  // Only use the last 6 characters of the apphost id to make it shorter
   const makeId = () => cuid().slice(-6)
 
   if (typeof window === 'undefined' || window.sessionStorage === undefined) {
     return makeId()
   }
 
-  const fullKey = `livestore:channelid:${key}`
+  const fullKey = `livestore:devtools:appHostId:${key}`
   const storedKey = sessionStorage.getItem(fullKey)
 
   if (storedKey) return storedKey

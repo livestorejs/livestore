@@ -7,7 +7,7 @@ export * from './devtools-bridge.js'
 
 export namespace WebBridge {
   export class AppHostReady extends Schema.TaggedStruct('LSD.WebBridge.AppHostReady', {
-    channelId: Schema.String,
+    appHostId: Schema.String,
     isLeader: Schema.Boolean,
   }) {}
 
@@ -17,9 +17,9 @@ export namespace WebBridge {
 
   export class ConnectToDevtools extends Schema.TaggedStruct('LSD.WebBridge.ConnectToDevtools', {
     devtoolsId: Schema.String,
-    channelId: Schema.String,
+    appHostId: Schema.String,
     /**
-     * Given the m:n relationship between devtools and app hosts and the fact that channelIds are usually
+     * Given the m:n relationship between devtools and app hosts and the fact that appHostIds are usually
      * sticky, we generate a new unique id for the lifetime of the web bridge.
      */
     webBridgeId: Schema.String,
@@ -27,11 +27,11 @@ export namespace WebBridge {
   }) {}
 
   export class AppHostWillDisconnect extends Schema.TaggedStruct('LSD.WebBridge.AppHostWillDisconnect', {
-    channelId: Schema.String,
+    appHostId: Schema.String,
   }) {}
 
   // export class DevtoolsWillDisconnect extends Schema.TaggedStruct('LSD.WebBridge.DevtoolsWillDisconnect', {
-  //   channelId: Schema.String,
+  //   appHostId: Schema.String,
   // }) {}
 
   export class All extends Schema.Union(AppHostReady, DevtoolsReady, ConnectToDevtools, AppHostWillDisconnect) {}

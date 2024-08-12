@@ -55,7 +55,7 @@ export type BootStatus = typeof BootStatus.Type
 export type Coordinator = {
   devtools: {
     enabled: boolean
-    channelId: string
+    appHostId: string
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>

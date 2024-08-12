@@ -22,25 +22,25 @@ import { WorkerSchema } from '@livestore/web'
 
 import { makeShared } from './bridge-shared.js'
 
-export class WebBridgeChannelInfo extends Schema.Class<WebBridgeChannelInfo>('WebBridgeChannelInfo')({
-  channelId: Schema.String,
+export class WebBridgeInfo extends Schema.Class<WebBridgeInfo>('WebBridgeChannelInfo')({
+  appHostId: Schema.String,
   webBridgeId: Schema.String,
   isLeader: Schema.Boolean,
 }) {
   // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
   [Hash.symbol](): number {
-    return Hash.string(this.channelId)
+    return Hash.string(this.appHostId)
   }
 
   // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
   [Equal.symbol](that: Equal.Equal): boolean {
-    return this.channelId === (that as WebBridgeChannelInfo).channelId
+    return this.appHostId === (that as WebBridgeInfo).appHostId
   }
 }
 
 export type WebBridgeOptions = {
-  selectedChannelInfoDeferred: Deferred.Deferred<WebBridgeChannelInfo>
-  channelInfos: SubscriptionRef.SubscriptionRef<HashSet.HashSet<WebBridgeChannelInfo>>
+  selectedChannelInfoDeferred: Deferred.Deferred<WebBridgeInfo>
+  bridgeInfos: SubscriptionRef.SubscriptionRef<HashSet.HashSet<WebBridgeInfo>>
 }
 
 export const prepareWebDevtoolsBridge = (
@@ -93,8 +93,8 @@ export const prepareWebDevtoolsBridge = (
         Effect.gen(function* () {
           if (devtoolsId !== msg.devtoolsId) return
 
-          const channelInfo = new WebBridgeChannelInfo({
-            channelId: msg.channelId,
+          const bridgeInfo = new WebBridgeInfo({
+            appHostId: msg.appHostId,
             webBridgeId: msg.webBridgeId,
             isLeader: msg.isLeader,
           })
@@ -104,15 +104,15 @@ export const prepareWebDevtoolsBridge = (
           yield* webBridgeBroadcastChannel.listen.pipe(
             Stream.flatten(),
             Stream.filter(Schema.is(Devtools.WebBridge.AppHostWillDisconnect)),
-            Stream.filter((msg) => msg.channelId === channelInfo.channelId),
-            Stream.tap(() => SubscriptionRef.getAndUpdate(options.channelInfos, HashSet.remove(channelInfo))),
+            Stream.filter((msg) => msg.appHostId === bridgeInfo.appHostId),
+            Stream.tap(() => SubscriptionRef.getAndUpdate(options.bridgeInfos, HashSet.remove(bridgeInfo))),
             Stream.runDrain,
             Effect.withSpan(`@livestore/web:devtools:webBridgeChannel:listenForAppHostWillDisconnect`),
             Effect.tapCauseLogPretty,
             FiberSet.run(connectionFiberSet),
           )
 
-          yield* SubscriptionRef.getAndUpdate(options.channelInfos, HashSet.add(channelInfo))
+          yield* SubscriptionRef.getAndUpdate(options.bridgeInfos, HashSet.add(bridgeInfo))
         }),
       ),
       Stream.runDrain,
@@ -140,15 +140,15 @@ export const prepareWebDevtoolsBridge = (
       yield* FiberSet.clear(connectionFiberSet)
     }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const { sendToAppHost, channelId, isLeaderTab } = yield* makeShared({ portForDevtoolsDeferred, responsePubSub })
+    const { sendToAppHost, appHostId, isLeaderTab } = yield* makeShared({ portForDevtoolsDeferred, responsePubSub })
 
-    // NOTE we need a second listener here since we depend on the `channelId` to be set
+    // NOTE we need a second listener here since we depend on the `appHostId` to be set
     yield* webBridgeBroadcastChannel.listen.pipe(
       Stream.flatten(),
       Stream.filter(Schema.is(Devtools.WebBridge.AppHostWillDisconnect)),
-      Stream.filter((msg) => msg.channelId === channelId),
-      Stream.tap(() => SubscriptionRef.getAndUpdate(options.channelInfos, HashSet.remove(selectedChannelInfo))),
-      Stream.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ channelId, liveStoreVersion }))),
+      Stream.filter((msg) => msg.appHostId === appHostId),
+      Stream.tap(() => SubscriptionRef.getAndUpdate(options.bridgeInfos, HashSet.remove(selectedChannelInfo))),
+      Stream.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ appHostId, liveStoreVersion }))),
       Stream.runDrain,
       Effect.withSpan(`@livestore/web:devtools:webBridgeChannel:listenForAppHostWillDisconnect`),
       Effect.ignoreLogged,
@@ -157,7 +157,7 @@ export const prepareWebDevtoolsBridge = (
 
     // NOTE this is not guaranteed to "go through" to the app host but at least we try 🤷
     yield* Stream.fromEventListener(window, 'beforeunload').pipe(
-      Stream.tap(() => sendToAppHost(Devtools.Disconnect.make({ channelId, liveStoreVersion }))),
+      Stream.tap(() => sendToAppHost(Devtools.Disconnect.make({ appHostId, liveStoreVersion }))),
       Stream.runDrain,
       Effect.ignoreLogged,
       Effect.forkScoped,
@@ -171,7 +171,7 @@ export const prepareWebDevtoolsBridge = (
     return {
       responsePubSub,
       sendToAppHost,
-      channelId,
+      appHostId,
       copyToClipboard,
       sendEscapeKey: Effect.void,
       isLeaderTab,

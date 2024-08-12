@@ -29,7 +29,7 @@ export const connectDevtoolsToStore = ({
   store: IStore
 }) =>
   Effect.gen(function* () {
-    const channelId = store.adapter.coordinator.devtools.channelId
+    const appHostId = store.adapter.coordinator.devtools.appHostId
 
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
@@ -41,7 +41,7 @@ export const connectDevtoolsToStore = ({
     const onMessage = (decodedMessage: typeof Devtools.MessageToAppHostStore.Type) => {
       // console.log('storeMessagePort message', decodedMessage)
 
-      if (decodedMessage.channelId !== store.adapter.coordinator.devtools.channelId) {
+      if (decodedMessage.appHostId !== store.adapter.coordinator.devtools.appHostId) {
         // console.log(`Unknown message`, event)
         return
       }
@@ -63,7 +63,7 @@ export const connectDevtoolsToStore = ({
                   Devtools.ReactivityGraphRes.make({
                     reactivityGraph: store.reactivityGraph.getSnapshot({ includeResults }),
                     requestId,
-                    channelId,
+                    appHostId,
                     liveStoreVersion,
                   }),
                 ),
@@ -86,7 +86,7 @@ export const connectDevtoolsToStore = ({
             Devtools.DebugInfoRes.make({
               debugInfo: store.syncDbWrapper.debugInfo,
               requestId,
-              channelId,
+              appHostId,
               liveStoreVersion,
             }),
           )
@@ -111,7 +111,7 @@ export const connectDevtoolsToStore = ({
                 Devtools.DebugInfoHistoryRes.make({
                   debugInfoHistory: buffer,
                   requestId,
-                  channelId,
+                  appHostId,
                   liveStoreVersion,
                 }),
               )
@@ -143,13 +143,13 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.DebugInfoResetReq': {
           store.syncDbWrapper.debugInfo.slowQueries.clear()
-          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, channelId, liveStoreVersion }))
+          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, appHostId, liveStoreVersion }))
           break
         }
         case 'LSD.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
           store.syncDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, channelId, liveStoreVersion }))
+          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, appHostId, liveStoreVersion }))
           break
         }
         case 'LSD.ReactivityGraphUnsubscribe': {
@@ -176,7 +176,7 @@ export const connectDevtoolsToStore = ({
                     })),
                     requestId,
                     liveStoreVersion,
-                    channelId,
+                    appHostId,
                   }),
                 ),
               { timeout: 500 },

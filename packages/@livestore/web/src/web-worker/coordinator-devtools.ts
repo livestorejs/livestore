@@ -54,23 +54,23 @@ const listenToWebBridge = ({
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
   Effect.gen(function* () {
-    const channelId = coordinator.devtools.channelId
+    const appHostId = coordinator.devtools.appHostId
     const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
 
     const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
-    yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ channelId, isLeader }))
+    yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ appHostId, isLeader }))
 
     const runtime = yield* Effect.runtime()
 
     window.addEventListener('beforeunload', () =>
       webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ channelId }))
+        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
         .pipe(Runtime.runFork(runtime)),
     )
 
     yield* Effect.addFinalizer(() =>
       webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ channelId }))
+        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
         .pipe(Effect.ignoreLogged),
     )
 
@@ -88,7 +88,7 @@ const listenToWebBridge = ({
 
           const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
           yield* webBridgeBroadcastChannel.send(
-            Devtools.WebBridge.ConnectToDevtools.make({ channelId, isLeader, devtoolsId, webBridgeId }),
+            Devtools.WebBridge.ConnectToDevtools.make({ appHostId, isLeader, devtoolsId, webBridgeId }),
           )
         }),
       ),
@@ -108,7 +108,7 @@ export const listenToBrowserExtensionBridge = ({
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
   Effect.gen(function* () {
-    const channelId = coordinator.devtools.channelId
+    const appHostId = coordinator.devtools.appHostId
 
     const windowChannel = yield* WebChannel.windowChannel({
       window,
@@ -124,11 +124,11 @@ export const listenToBrowserExtensionBridge = ({
         Effect.gen(function* () {
           if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {
             // Send message to contentscript via window (which the contentscript iframe is listening to)
-            yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+            yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ appHostId }))
             return
           }
 
-          if (message.channelId !== channelId) return
+          if (message.appHostId !== appHostId) return
 
           if (message._tag === 'LSD.WindowMessage.MessagePortReady') {
             yield* connectToDevtools(message.port)
@@ -140,5 +140,5 @@ export const listenToBrowserExtensionBridge = ({
       Effect.forkScoped,
     )
 
-    yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ channelId }))
+    yield* windowChannel.send(Devtools.DevtoolsWindowMessage.StoreReady.make({ appHostId }))
   })

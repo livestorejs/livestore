@@ -109,7 +109,7 @@ export const makeAdapter =
       const syncMutations = Stream.never
 
       const coordinator = {
-        devtools: { channelId: 'expo', enabled: false },
+        devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
         syncMutations,
         // NOTE not doing anything since syncDb is already persisted

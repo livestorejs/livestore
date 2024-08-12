@@ -22,7 +22,7 @@ export namespace BackgroundMessage {
     tabId: Schema.Number,
   }) {}
 
-  export class Disconnect extends Schema.TaggedStruct('Background.Disconnect', { channelId: Schema.String }) {}
+  export class Disconnect extends Schema.TaggedStruct('Background.Disconnect', { appHostId: Schema.String }) {}
 }
 
 export namespace MessagePortInit {
@@ -32,7 +32,7 @@ export namespace MessagePortInit {
   export class PortForDevtools extends Schema.TaggedStruct('MessagePortInit.PortForDevtools', {
     port: Transferable.MessagePort,
     tabId: Schema.Number,
-    channelId: Schema.String,
+    appHostId: Schema.String,
   }) {}
 
   export class OneTimePortFromDevtools extends Schema.TaggedStruct('MessagePortInit.OneTimePortFromDevtools', {

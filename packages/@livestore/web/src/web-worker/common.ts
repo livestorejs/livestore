@@ -62,7 +62,7 @@ export type DevtoolsContextEnabled = {
     coordinatorMessagePort: MessagePort
     storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
     disconnect: Effect.Effect<void>
-    channelId: string
+    appHostId: string
     isLeaderTab: boolean
   }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
   connections: FiberSet.FiberSet

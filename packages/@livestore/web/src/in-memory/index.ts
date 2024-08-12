@@ -36,7 +36,7 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
     const syncMutations = Stream.never
 
     return {
-      devtools: { channelId: 'in-memory', enabled: false },
+      devtools: { appHostId: 'in-memory', enabled: false },
       lockStatus,
       syncMutations,
       execute: () => Effect.void,

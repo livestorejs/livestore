@@ -341,7 +341,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       // NOTE We're using a stream here to express a scoped effect over the worker boundary
       // so the code below can cause an interrupt on the worker client side
-      ConnectDevtoolsStream: ({ port, channelId, isLeaderTab }) =>
+      ConnectDevtoolsStream: ({ port, appHostId, isLeaderTab }) =>
         Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, InnerWorkerCtx>((emit) =>
           Effect.gen(function* () {
             const workerCtx = yield* InnerWorkerCtx
@@ -357,7 +357,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                 coordinatorMessagePort: port,
                 storeMessagePortDeferred,
                 disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
-                channelId,
+                appHostId,
                 isLeaderTab,
               })
               .pipe(

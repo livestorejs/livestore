@@ -14,7 +14,7 @@
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/web": "workspace:*",
-    "@livestore/devtools-react": "0.0.56-dev.1",
+    "@livestore/devtools-react": "0.0.56-dev.2",
     "@livestore/devtools-expo-bridge": "workspace:*",
     "@livestore/sqlite-wasm": "3.46.0-build4",
     "babel-preset-expo": "11.0.12",

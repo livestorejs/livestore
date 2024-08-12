@@ -143,7 +143,7 @@ export namespace DedicatedWorkerInner {
   export class ConnectDevtoolsStream extends Schema.TaggedRequest<ConnectDevtoolsStream>()('ConnectDevtoolsStream', {
     payload: {
       port: Transferable.MessagePort,
-      channelId: Schema.String,
+      appHostId: Schema.String,
       isLeaderTab: Schema.Boolean,
     },
     success: Schema.Struct({

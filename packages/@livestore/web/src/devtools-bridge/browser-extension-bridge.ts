@@ -38,7 +38,7 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
         } else {
           yield* PubSub.publish(
             responsePubSub,
-            Devtools.Disconnect.make({ channelId: msg.channelId, liveStoreVersion }),
+            Devtools.Disconnect.make({ appHostId: msg.appHostId, liveStoreVersion }),
           )
         }
       }),
@@ -54,7 +54,7 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
   // NOTE When using the web bridge and browser extension bridge at the same time, both will show `isLeaderTab: true`
   // even though the page origin is the same, given the browser extension app is running in an iframe
   // this will cause the origin to be "sandboxed" and thus the locks be isolated
-  const { sendToAppHost, channelId, isLeaderTab } = yield* makeShared({ portForDevtoolsDeferred, responsePubSub })
+  const { sendToAppHost, appHostId, isLeaderTab } = yield* makeShared({ portForDevtoolsDeferred, responsePubSub })
 
   const copyToClipboard = (text: string) =>
     panelChannel.send(BackgroundMessage.CopyToClipboard.make({ text })).pipe(Effect.ignoreLogged)
@@ -64,7 +64,7 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
   return {
     responsePubSub,
     sendToAppHost,
-    channelId,
+    appHostId,
     copyToClipboard,
     sendEscapeKey,
     isLeaderTab,
