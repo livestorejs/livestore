@@ -7,7 +7,7 @@ settings:
 overrides:
   '@livestore/livestore': workspace:*
   '@livestore/*': workspace:*
-  '@livestore/devtools-react': 0.0.55
+  '@livestore/devtools-react': 0.0.56-dev.0
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -82,12 +82,21 @@ importers:
       '@expo/vector-icons':
         specifier: 14.0.2
         version: 14.0.2
+      '@livestore/devtools-expo-bridge':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/devtools-expo-bridge
+      '@livestore/devtools-react':
+        specifier: 0.0.56-dev.0
+        version: 0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/expo':
         specifier: workspace:*
         version: link:../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/web
       babel-preset-expo:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
@@ -131,6 +140,9 @@ importers:
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.3
+      '@types/ws':
+        specifier: 8.5.12
+        version: 8.5.12
       babel-plugin-transform-vite-meta-env:
         specifier: ^1.0.3
         version: 1.0.3
@@ -140,6 +152,12 @@ importers:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      ws:
+        specifier: ^8.18.0
+        version: 8.18.0
 
   examples/linearlite:
     dependencies:
@@ -153,8 +171,8 @@ importers:
         specifier: ^2.1.2
         version: 2.1.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-react':
-        specifier: 0.0.55
-        version: 0.0.55(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.56-dev.0
+        version: 0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -334,8 +352,8 @@ importers:
         specifier: 0.70.1
         version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55
-        version: 0.0.55(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.56-dev.0
+        version: 0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -398,8 +416,8 @@ importers:
         specifier: 0.70.1
         version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55
-        version: 0.0.55(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.56-dev.0
+        version: 0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -471,8 +489,8 @@ importers:
         specifier: 0.70.1
         version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55
-        version: 0.0.55(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.56-dev.0
+        version: 0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -547,8 +565,8 @@ importers:
         specifier: 0.70.1
         version: 0.70.1(effect@3.6.0)
       '@livestore/devtools-react':
-        specifier: 0.0.55
-        version: 0.0.55(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.56-dev.0
+        version: 0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -668,6 +686,28 @@ importers:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@22.0.0)(jsdom@24.1.0)(terser@5.31.1)
 
+  packages/@livestore/devtools-expo-bridge:
+    dependencies:
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      expo:
+        specifier: 51.0.24
+        version: 51.0.24
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+
   packages/@livestore/effect-playwright:
     dependencies:
       '@livestore/utils':
@@ -686,6 +726,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/devtools-expo-bridge':
+        specifier: workspace:*
+        version: link:../devtools-expo-bridge
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -693,6 +736,9 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
     devDependencies:
+      expo-file-system:
+        specifier: ^17.0.1
+        version: 17.0.1(expo@51.0.24)
       expo-sqlite:
         specifier: ^14.0.3
         version: 14.0.3(expo@51.0.24)
@@ -779,6 +825,9 @@ importers:
       effect-db-schema:
         specifier: workspace:*
         version: link:../../effect-db-schema
+      msgpackr:
+        specifier: ^1.11.0
+        version: 1.11.0
       otel-websocket-exporter:
         specifier: ^0.0.29
         version: 0.0.29
@@ -1057,7 +1106,6 @@ packages:
   '@babel/plugin-proposal-class-properties@7.18.6':
     resolution: {integrity: sha512-cumfXOF0+nzZrrN8Rf0t7M+tF6sZc7vhQwYQck9q1/5w2OExlD+b4v4RpMJFaV1Z7WcDRgO6FqvxqxGlwo+RHQ==}
     engines: {node: '>=6.9.0'}
-    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -1082,7 +1130,6 @@ packages:
   '@babel/plugin-proposal-nullish-coalescing-operator@7.18.6':
     resolution: {integrity: sha512-wQxQzxYeJqHcfppzBDnm1yAY0jSRkUXR2z8RePZYrKwMKgMlE8+Z6LUno+bd6LvbGh8Gltvy74+9pIYkr+XkKA==}
     engines: {node: '>=6.9.0'}
-    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -1107,7 +1154,6 @@ packages:
   '@babel/plugin-proposal-optional-chaining@7.21.0':
     resolution: {integrity: sha512-p4zeefM72gpmEe2fkUr/OnOXpWEf8nAgk7ZYVqqfFiyIG7oFfVZcCrU64hWn5xp4tQ9LkV4bTIa5rD0KANpKNA==}
     engines: {node: '>=6.9.0'}
-    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -2322,8 +2368,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@livestore/devtools-react@0.0.55':
-    resolution: {integrity: sha512-/FUCR2fmFkytO/UQgepCVCD6n8/UYuJ3+srgGsxFGprvKPkatrrvRCg1YTfTTu7kCmP6uUOWetnPgRpoynFtdg==}
+  '@livestore/devtools-react@0.0.56-dev.0':
+    resolution: {integrity: sha512-5Y72WKbZG3Yk3O/tO5bEp5ckN1wEMiP37u9Di+yN+KgwDB8rvG3SEwiRC3At+/v7FFEc4eRkn5O4rPxVk7Ikyw==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
@@ -3238,6 +3284,9 @@ packages:
 
   '@types/wicg-file-system-access@2023.10.5':
     resolution: {integrity: sha512-e9kZO9kCdLqT2h9Tw38oGv9UNzBBWaR1MzuAavxPcsV/7FJ3tWbU6RI3uB+yKIDPGLkGVbplS52ub0AcRLvrhA==}
+
+  '@types/ws@8.5.12':
+    resolution: {integrity: sha512-3tPRkv1EtkDpzlgyKyI8pGsGZAGPEaXeu0DOj5DI25Ja91bdAYddYHbADRYVrZMRbfW+1l5YwXVDKohDJNQxkQ==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -5141,14 +5190,12 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
-    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -5364,7 +5411,6 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
-    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -6353,8 +6399,8 @@ packages:
     resolution: {integrity: sha512-P0efT1C9jIdVRefqjzOQ9Xml57zpOXnIuS+csaB4MdZbTdmGDLo8XhzBG1N7aO11gKDDkJvBLULeFTo46wwreA==}
     hasBin: true
 
-  msgpackr@1.10.2:
-    resolution: {integrity: sha512-L60rsPynBvNE+8BWipKKZ9jHcSGbtyJYIwjRq0VrIvQ08cRjntGXJYW/tmciZ2IHWIY8WEW32Qa2xbh5+SKBZA==}
+  msgpackr@1.11.0:
+    resolution: {integrity: sha512-I8qXuuALqJe5laEBYoFykChhSXLikZmUhccjGsPuSJ/7uPip2TJ7lwdIQwWSAi0jGZDXv4WOP8Qg65QZRuXxXw==}
 
   multipasta@0.2.2:
     resolution: {integrity: sha512-KKGdmXIJUmt9BV45LsbUdMnju8eCNSyF9KpbyqK2E3wQXjpPQOg52/Hc+nsmBacmEkNxLVT5h1y3ZgEXB4prXg==}
@@ -7042,7 +7088,6 @@ packages:
   querystring@0.2.1:
     resolution: {integrity: sha512-wkvS7mL/JMugcup3/rMitHmd9ecIGd2lhFhK9N3UUQ450h66d1r3Y9nvXzQAW1Lq+wyx61k/1pfKS5KuKiyEbg==}
     engines: {node: '>=0.4.x'}
-    deprecated: The querystring API is considered Legacy. new code should use the URLSearchParams API instead.
 
   querystringify@2.2.0:
     resolution: {integrity: sha512-FIqgj2EUvTa7R50u0rGsyTftzjYmv/a3hO345bZNrqabNqjtgiDMgmo4mkUjd+nzU5oF3dClKqFIPUKybUyqoQ==}
@@ -7346,22 +7391,18 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.6.3:
     resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rollup-plugin-inject@3.0.2:
@@ -8582,18 +8623,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.17.0:
-    resolution: {integrity: sha512-uJq6108EgZMAl20KagGkzCKfMEjxmKvZHG7Tlq0Z6nOky7YF7aq4mOx6xK8TJ/i1LeK4Qus7INktacctDgY8Ow==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.18.0:
     resolution: {integrity: sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==}
     engines: {node: '>=10.0.0'}
@@ -9735,7 +9764,7 @@ snapshots:
       '@effect/platform': 0.61.2(@effect/schema@0.70.1(effect@3.6.0))(effect@3.6.0)
       '@effect/schema': 0.70.1(effect@3.6.0)
       effect: 3.6.0
-      msgpackr: 1.10.2
+      msgpackr: 1.11.0
     optionalDependencies:
       ws: 8.18.0
 
@@ -10617,7 +10646,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  '@livestore/devtools-react@0.0.55(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@livestore/devtools-react@0.0.56-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
@@ -11785,6 +11814,10 @@ snapshots:
   '@types/web@0.0.153': {}
 
   '@types/wicg-file-system-access@2023.10.5': {}
+
+  '@types/ws@8.5.12':
+    dependencies:
+      '@types/node': 22.0.0
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -14688,7 +14721,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.0.0
-      ws: 8.17.0
+      ws: 8.18.0
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -15555,7 +15588,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.3
     optional: true
 
-  msgpackr@1.10.2:
+  msgpackr@1.11.0:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
@@ -18061,8 +18094,6 @@ snapshots:
       async-limiter: 1.0.1
 
   ws@7.5.9: {}
-
-  ws@8.17.0: {}
 
   ws@8.18.0: {}
 
