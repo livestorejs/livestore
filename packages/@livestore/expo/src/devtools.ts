@@ -8,8 +8,8 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-bridge/api'
-import { BrowserChannel, Cause, Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-bridge/web-channel'
+import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
 
 import type { DbPairRef } from './common.js'
@@ -38,7 +38,7 @@ export const bootDevtools = ({
 
     const isConnected = yield* SubscriptionRef.make(false)
 
-    const storeDevtoolsChannelProxy = yield* BrowserChannel.queueChannelProxy<
+    const storeDevtoolsChannelProxy = yield* WebChannel.queueChannelProxy<
       Devtools.MessageToAppHostStore,
       Devtools.MessageFromAppHostStore
     >()
@@ -73,7 +73,7 @@ export const bootDevtools = ({
               return
             }
 
-            yield* connectDevtoolsToStore(storeDevtoolsChannelProxy.browserChannel).pipe(
+            yield* connectDevtoolsToStore(storeDevtoolsChannelProxy.webChannel).pipe(
               Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )

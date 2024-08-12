@@ -1,7 +1,7 @@
 import type { DebugInfo, StoreAdapter } from '@livestore/common'
 import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
-import type { BrowserChannel } from '@livestore/utils/effect'
+import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 
 import type { MainDatabaseWrapper } from './MainDatabaseWrapper.js'
@@ -25,7 +25,7 @@ export const connectDevtoolsToStore = ({
   storeDevtoolsChannel,
   store,
 }: {
-  storeDevtoolsChannel: BrowserChannel.BrowserChannel<Devtools.MessageToAppHostStore, Devtools.MessageFromAppHostStore>
+  storeDevtoolsChannel: WebChannel.WebChannel<Devtools.MessageToAppHostStore, Devtools.MessageFromAppHostStore>
   store: IStore
 }) =>
   Effect.gen(function* () {

@@ -1,8 +1,9 @@
 import type { Effect, Scope } from '@livestore/utils/effect'
-import { BrowserChannel, Schema } from '@livestore/utils/effect'
+import { Schema, WebChannel } from '@livestore/utils/effect'
 
 export * from './devtools-messages.js'
 export * from './devtools-window-message.js'
+export * from './devtools-bridge.js'
 
 export namespace WebBridge {
   export class AppHostReady extends Schema.TaggedStruct('LSD.WebBridge.AppHostReady', {
@@ -37,8 +38,8 @@ export namespace WebBridge {
 
   export const makeBroadcastChannel = (
     key?: string,
-  ): Effect.Effect<BrowserChannel.BrowserChannel<typeof All.Type, typeof All.Type>, never, Scope.Scope> =>
-    BrowserChannel.broadcastChannel({
+  ): Effect.Effect<WebChannel.WebChannel<typeof All.Type, typeof All.Type>, never, Scope.Scope> =>
+    WebChannel.broadcastChannel({
       channelName: `livestore-web-bridge-devtools${key ? `-${key}` : ''}`,
       listenSchema: All,
       sendSchema: All,

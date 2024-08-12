@@ -4,7 +4,7 @@ import { Effect, Either, Queue, Stream } from 'effect'
 
 import * as Schema from './Schema/index.js'
 
-export type BrowserChannel<MsgIn, MsgOut> = {
+export type WebChannel<MsgIn, MsgOut> = {
   send: (a: MsgOut) => Effect.Effect<void, ParseResult.ParseError>
   listen: Stream.Stream<Either.Either<MsgIn, ParseResult.ParseError>>
 }
@@ -17,7 +17,7 @@ export const broadcastChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
   channelName: string
   listenSchema: Schema.Schema<MsgIn, MsgInEncoded>
   sendSchema: Schema.Schema<MsgOut, MsgOutEncoded>
-}): Effect.Effect<BrowserChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
+}): Effect.Effect<WebChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const channel = new BroadcastChannel(channelName)
 
@@ -35,7 +35,7 @@ export const broadcastChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
     )
 
     return { send, listen }
-  }).pipe(Effect.withSpan(`BrowserChannel:broadcastChannel(${channelName})`))
+  }).pipe(Effect.withSpan(`WebChannel:broadcastChannel(${channelName})`))
 
 export const windowChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
   window,
@@ -47,7 +47,7 @@ export const windowChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
   targetOrigin?: string
   listenSchema: Schema.Schema<MsgIn, MsgInEncoded>
   sendSchema: Schema.Schema<MsgOut, MsgOutEncoded>
-}): Effect.Effect<BrowserChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
+}): Effect.Effect<WebChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const send = (message: MsgOut) =>
       Effect.gen(function* () {
@@ -60,7 +60,7 @@ export const windowChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
     )
 
     return { send, listen }
-  }).pipe(Effect.withSpan(`BrowserChannel:windowChannel`))
+  }).pipe(Effect.withSpan(`WebChannel:windowChannel`))
 
 export const messagePortChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
   port,
@@ -70,7 +70,7 @@ export const messagePortChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
   port: MessagePort
   listenSchema: Schema.Schema<MsgIn, MsgInEncoded>
   sendSchema: Schema.Schema<MsgOut, MsgOutEncoded>
-}): Effect.Effect<BrowserChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
+}): Effect.Effect<WebChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const send = (message: MsgOut) =>
       Effect.gen(function* () {
@@ -87,10 +87,10 @@ export const messagePortChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
     yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignoreLogged))
 
     return { send, listen }
-  }).pipe(Effect.withSpan(`BrowserChannel:messagePortChannel`))
+  }).pipe(Effect.withSpan(`WebChannel:messagePortChannel`))
 
 export const queueChannelProxy = <MsgIn, MsgOut>(): Effect.Effect<
-  { browserChannel: BrowserChannel<MsgIn, MsgOut>; sendQueue: Queue.Queue<MsgOut>; listenQueue: Queue.Queue<MsgIn> },
+  { webChannel: WebChannel<MsgIn, MsgOut>; sendQueue: Queue.Queue<MsgOut>; listenQueue: Queue.Queue<MsgIn> },
   never,
   Scope.Scope
 > =>
@@ -102,7 +102,7 @@ export const queueChannelProxy = <MsgIn, MsgOut>(): Effect.Effect<
 
     const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
 
-    const browserChannel = { send, listen }
+    const webChannel = { send, listen }
 
-    return { browserChannel, sendQueue, listenQueue }
+    return { webChannel, sendQueue, listenQueue }
   })

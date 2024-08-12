@@ -1,4 +1,4 @@
-import type { BrowserChannel, Cause, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
+import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
@@ -150,7 +150,7 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type StoreDevtoolsChannel = BrowserChannel.BrowserChannel<
+export type StoreDevtoolsChannel = WebChannel.WebChannel<
   Devtools.MessageToAppHostStore,
   Devtools.MessageFromAppHostStore
 >

@@ -2,7 +2,7 @@ import type { Coordinator, UnexpectedError } from '@livestore/common'
 import { Devtools } from '@livestore/common'
 import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
-import { BrowserChannel, Effect, Either, FiberHandle, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Either, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 
 import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from './shutdown-channel.js'
 
@@ -110,7 +110,7 @@ export const listenToBrowserExtensionBridge = ({
   Effect.gen(function* () {
     const channelId = coordinator.devtools.channelId
 
-    const windowChannel = yield* BrowserChannel.windowChannel({
+    const windowChannel = yield* WebChannel.windowChannel({
       window,
       listenSchema: Devtools.DevtoolsWindowMessage.MessageForStore,
       sendSchema: Devtools.DevtoolsWindowMessage.MessageForContentscript,

@@ -1,5 +1,5 @@
 import type { Effect } from '@livestore/utils/effect'
-import { BrowserChannel, Schema } from '@livestore/utils/effect'
+import { Schema, WebChannel } from '@livestore/utils/effect'
 
 export class ShutdownBroadcast extends Schema.TaggedStruct('ShutdownBroadcast', {
   reason: Schema.Literal('devtools', 'error'),
@@ -10,7 +10,7 @@ export class DedicatedWorkerDisconnectBroadcast extends Schema.TaggedStruct('Ded
 export class All extends Schema.Union(ShutdownBroadcast, DedicatedWorkerDisconnectBroadcast) {}
 
 export const makeShutdownChannel = (key: string) =>
-  BrowserChannel.broadcastChannel({
+  WebChannel.broadcastChannel({
     channelName: `livestore.shutdown.${key}`,
     listenSchema: All,
     sendSchema: All,

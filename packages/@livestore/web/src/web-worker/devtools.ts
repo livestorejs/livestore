@@ -3,7 +3,6 @@ import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE
 import { shouldNeverHappen } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
-  BrowserChannel,
   Deferred,
   Effect,
   FiberMap,
@@ -12,6 +11,7 @@ import {
   Queue,
   Stream,
   SubscriptionRef,
+  WebChannel,
 } from '@livestore/utils/effect'
 
 import { makeInMemoryDb } from '../make-in-memory-db.js'
@@ -54,7 +54,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const portChannel = yield* BrowserChannel.messagePortChannel({
+      const portChannel = yield* WebChannel.messagePortChannel({
         port: coordinatorMessagePort,
         sendSchema: Devtools.MessageFromAppHostCoordinator,
         listenSchema: Devtools.MessageToAppHostCoordinator,

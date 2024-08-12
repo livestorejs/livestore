@@ -6,7 +6,6 @@ import { casesHandled, ref, tryAsFunctionAndNew } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
-  BrowserChannel,
   BrowserWorker,
   Cause,
   Chunk,
@@ -18,6 +17,7 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
+  WebChannel,
   WebLock,
   Worker,
 } from '@livestore/utils/effect'
@@ -451,7 +451,7 @@ export const makeCoordinator =
         ).pipe(
           Stream.tap(({ storeMessagePort }) =>
             Effect.gen(function* () {
-              const storeDevtoolsChannel = yield* BrowserChannel.messagePortChannel({
+              const storeDevtoolsChannel = yield* WebChannel.messagePortChannel({
                 port: storeMessagePort,
                 listenSchema: Devtools.MessageToAppHostStore,
                 sendSchema: Devtools.MessageFromAppHostStore,

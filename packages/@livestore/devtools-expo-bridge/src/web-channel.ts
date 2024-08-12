@@ -1,4 +1,4 @@
-import type { BrowserChannel, Scope } from '@livestore/utils/effect'
+import type { Scope, WebChannel } from '@livestore/utils/effect'
 import { Effect, Either, ParseResult, Schema, Stream } from '@livestore/utils/effect'
 // import * as ExpoDevtools from 'expo/devtools'
 
@@ -8,7 +8,7 @@ import { Effect, Either, ParseResult, Schema, Stream } from '@livestore/utils/ef
 // }: {
 //   listenSchema: Schema.Schema<MsgIn, MsgInEncoded>
 //   sendSchema: Schema.Schema<MsgOut, MsgOutEncoded>
-// }): Effect.Effect<BrowserChannel.BrowserChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
+// }): Effect.Effect<WebChannel.WebChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
 //   Effect.gen(function* () {
 //     const client = yield* Effect.promise(() =>
 //       ExpoDevtools.getDevToolsPluginClientAsync('livestore-devtools', { websocketBinaryType: 'arraybuffer' }),
@@ -45,7 +45,7 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
 }: {
   listenSchema: Schema.Schema<MsgIn, MsgInEncoded>
   sendSchema: Schema.Schema<MsgOut, MsgOutEncoded>
-}): Effect.Effect<BrowserChannel.BrowserChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
+}): Effect.Effect<WebChannel.WebChannel<MsgIn, MsgOut>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const host =
       window.location === undefined ? `192.168.1.168:60100` : window.location.origin.replace(/^https?:\/\//, '')

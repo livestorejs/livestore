@@ -7,9 +7,13 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "default": "./dist/api.js"
+    "./web-channel": {
+      "types": "./dist/web-channel.d.ts",
+      "default": "./dist/web-channel.js"
+    },
+    "./devtools-bridge": {
+      "types": "./dist/devtools-bridge/index.d.ts",
+      "default": "./dist/devtools-bridge/index.js"
     }
   },
   "types": "./dist/index.d.ts",
