@@ -53,7 +53,6 @@ export const BootStatus = Schema.Union(
 export type BootStatus = typeof BootStatus.Type
 
 export type Coordinator = {
-  isShutdownRef: { current: boolean }
   devtools: {
     enabled: boolean
     channelId: string

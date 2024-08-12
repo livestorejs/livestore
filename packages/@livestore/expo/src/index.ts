@@ -109,8 +109,6 @@ export const makeAdapter =
       const syncMutations = Stream.never
 
       const coordinator = {
-        isShutdownRef: { current: false },
-        // TODO
         devtools: { channelId: 'expo', enabled: false },
         lockStatus,
         syncMutations,

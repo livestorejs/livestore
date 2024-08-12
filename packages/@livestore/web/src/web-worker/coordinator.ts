@@ -2,7 +2,7 @@ import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livesto
 import { Devtools, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { casesHandled, ref, tryAsFunctionAndNew } from '@livestore/utils'
+import { casesHandled, tryAsFunctionAndNew } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
@@ -87,8 +87,6 @@ export const makeCoordinator =
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock${keySuffix}`
 
       const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
-
-      const isShutdownRef = ref(false)
 
       const dbFileSuffix = schema.migrationOptions.strategy === 'manual' ? 0 : schema.hash
 
@@ -360,7 +358,6 @@ export const makeCoordinator =
 
       yield* Effect.addFinalizer((_ex) =>
         Effect.gen(function* () {
-          isShutdownRef.current = true
           yield* Effect.logWarning('[@livestore/web:coordinator] coordinator shutdown', gotLocky, _ex)
 
           if (gotLocky) {
@@ -370,7 +367,6 @@ export const makeCoordinator =
       )
 
       const coordinator = {
-        isShutdownRef,
         devtools: { enabled: devtoolsEnabled, channelId },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),

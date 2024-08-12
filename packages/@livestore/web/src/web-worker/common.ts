@@ -10,6 +10,7 @@ import {
   Devtools,
   getExecArgsFromMutation,
   liveStoreVersion,
+  makeShouldExcludeMutationFromLog,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
   prepareBindValues,
@@ -19,9 +20,9 @@ import {
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
-import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen } from '@livestore/utils'
 import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream } from '@livestore/utils/effect'
-import { Context, Effect, Runtime, Schema, SubscriptionRef } from '@livestore/utils/effect'
+import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
 import type { SqliteWasm } from '../sqlite-utils.js'
@@ -209,8 +210,6 @@ export const makeApplyMutation = (
         }
       }
 
-      const runtime = yield* Effect.runtime()
-
       // TODO do this via a batched queue
       if (
         excludeFromMutationLogAndSyncing === false &&
@@ -218,7 +217,7 @@ export const makeApplyMutation = (
         sync !== undefined &&
         syncStatus === 'pending'
       ) {
-        Effect.gen(function* () {
+        yield* Effect.gen(function* () {
           if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
 
           yield* sync.impl.push(mutationEventEncoded, persisted)
@@ -232,7 +231,7 @@ export const makeApplyMutation = (
               updateValues: { syncStatus: 'synced' },
             }),
           )
-        }).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
+        }).pipe(Effect.tapCauseLogPretty, Effect.fork)
       }
     }).pipe(
       Effect.withSpan(`@livestore/web:worker:applyMutation`, {
@@ -261,20 +260,3 @@ const execSqlPrepared = (db: SqliteWasm.Database, sql: string, bindValues: Prepa
     catch: (cause) => new SqliteError({ cause, bindValues, code: (cause as any).resultCode, sql }),
   }).pipe(Effect.asVoid)
 }
-
-const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
-  const migrationOptions = schema.migrationOptions
-  const mutationLogExclude =
-    migrationOptions.strategy === 'from-mutation-log'
-      ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
-      : new Set(['livestore.RawSql'])
-
-  return (mutationName: string, mutationEventDecoded: MutationEvent.Any): boolean => {
-    if (mutationLogExclude.has(mutationName)) return true
-
-    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-    return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
-  }
-})
