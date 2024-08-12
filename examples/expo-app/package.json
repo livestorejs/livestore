@@ -14,7 +14,7 @@
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/web": "workspace:*",
-    "@livestore/devtools-react": "0.0.55",
+    "@livestore/devtools-react": "0.0.56-dev.0",
     "@livestore/devtools-expo-bridge": "workspace:*",
     "babel-preset-expo": "11.0.12",
     "expo": "51.0.24",

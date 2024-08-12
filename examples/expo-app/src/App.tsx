@@ -1,4 +1,3 @@
-import { useLiveStoreDevtools } from '@livestore/devtools-expo-bridge'
 import { makeAdapter } from '@livestore/expo'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
@@ -34,18 +33,14 @@ export const App = () => (
   </View>
 )
 
-const InnerApp = () => {
-  useLiveStoreDevtools()
-
-  return (
-    <>
-      <NewTodo />
-      <Meta />
-      <ListTodos />
-      <Filters />
-    </>
-  )
-}
+const InnerApp = () => (
+  <>
+    <NewTodo />
+    <Meta />
+    <ListTodos />
+    <Filters />
+  </>
+)
 
 const styles = StyleSheet.create({
   container: {
