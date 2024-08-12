@@ -1,6 +1,6 @@
 import type { BrowserChannel, Scope } from '@livestore/utils/effect'
 import { Effect, Either, ParseResult, Schema, Stream } from '@livestore/utils/effect'
-import * as ExpoDevtools from 'expo/devtools'
+// import * as ExpoDevtools from 'expo/devtools'
 
 // export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
 //   listenSchema,
