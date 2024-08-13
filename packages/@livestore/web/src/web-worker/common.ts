@@ -21,7 +21,7 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream } from '@livestore/utils/effect'
+import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
@@ -99,7 +99,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEventSchema<any>
     mutationDefSchemaHashMap: Map<string, number>
-    broadcastChannel: BroadcastChannel
+    broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
     devtools: DevtoolsContext
     sync:
       | {
@@ -197,11 +197,9 @@ export const makeApplyMutation = (
       }
 
       if (shouldBroadcast) {
-        broadcastChannel.postMessage(
-          Schema.encodeSync(BCMessage.Message)(
-            BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }),
-          ),
-        )
+        yield* broadcastChannel
+          .send(BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }))
+          .pipe(Effect.orDie)
 
         if (devtools.enabled) {
           yield* devtools.broadcast(

@@ -1,5 +1,5 @@
 import type { Scope, WebChannel } from '@livestore/utils/effect'
-import { Effect, Either, ParseResult, Schema, Stream } from '@livestore/utils/effect'
+import { Deferred, Effect, Either, ParseResult, PubSub, Schema, Stream } from '@livestore/utils/effect'
 // import * as ExpoDevtools from 'expo/devtools'
 
 // export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -60,9 +60,6 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
       Effect.forkScoped,
     )
 
-    yield* Stream.fromEventListener(ws, 'open', { once: true }).pipe(Stream.take(1), Stream.runDrain)
-    console.log('makeExpoDevtoolsChannel:open')
-
     const packedSendSchema = Schema.MsgPack(sendSchema)
     const packedListenSchema = Schema.MsgPack(listenSchema)
 
@@ -73,6 +70,16 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
         const messageEncoded = yield* Schema.encode(packedSendSchema)(message)
         ws.send(messageEncoded)
       })
+
+    const closedDeferred = yield* Deferred.make<void>()
+
+    yield* Stream.fromEventListener(ws, 'close', { once: true }).pipe(
+      Stream.tapLogWithLabel('makeExpoDevtoolsChannel:closed'),
+      Stream.tap(() => Deferred.succeed(closedDeferred, void 0)),
+      Stream.runDrain,
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
 
     const listen = Stream.fromEventListener<MessageEvent>(ws, 'message').pipe(
       Stream.map((e) => {
@@ -87,7 +94,9 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
       // Stream.tapLogWithLabel('devtools-expo-bridge:makeExpoDevtoolsChannel:listen'),
     )
 
+    yield* Stream.fromEventListener(ws, 'open', { once: true }).pipe(Stream.take(1), Stream.runDrain)
+
     yield* Effect.addFinalizer(() => Effect.sync(() => ws.close()))
 
-    return { send, listen }
+    return { send, listen, closedDeferred }
   }).pipe(Effect.withSpan(`devtools-expo-bridge:makeExpoDevtoolsChannel`))

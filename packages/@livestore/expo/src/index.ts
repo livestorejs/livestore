@@ -7,9 +7,10 @@ import {
   rehydrateFromMutationLog,
   UnexpectedError,
 } from '@livestore/common'
+import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
 
 import { makeSynchronousDatabase } from './common.js'
@@ -106,12 +107,14 @@ export const makeAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const syncMutations = Stream.never
+      const incomingSyncMutationsQueue = yield* Queue.unbounded<MutationEvent.Any>().pipe(
+        Effect.acquireRelease(Queue.shutdown),
+      )
 
       const coordinator = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
-        syncMutations,
+        syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         // NOTE not doing anything since syncDb is already persisted
         execute: () => Effect.void,
         mutate: (mutationEventEncoded, { persisted }): Effect.Effect<void, UnexpectedError> =>
@@ -171,7 +174,15 @@ export const makeAdapter =
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator
 
-      const devtools = yield* bootDevtools({ connectDevtoolsToStore, coordinator, schema, dbRef, dbLogRef, shutdown })
+      const devtools = yield* bootDevtools({
+        connectDevtoolsToStore,
+        coordinator,
+        schema,
+        dbRef,
+        dbLogRef,
+        shutdown,
+        incomingSyncMutationsQueue,
+      })
 
       return { syncDb: dbRef.current.syncDb, coordinator } satisfies StoreAdapter
     }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause })))

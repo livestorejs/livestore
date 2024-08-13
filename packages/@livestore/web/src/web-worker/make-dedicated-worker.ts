@@ -15,11 +15,11 @@ import {
   LogLevel,
   Queue,
   Ref,
-  Runtime,
   Scheduler,
   Schema,
   Stream,
   SubscriptionRef,
+  WebChannel,
   WorkerRunner,
 } from '@livestore/utils/effect'
 
@@ -149,7 +149,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const syncImpl =
             syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
 
-          const broadcastChannel = new BroadcastChannel(`livestore-sync-${schemaHash}${keySuffix}`)
+          const broadcastChannel = yield* WebChannel.broadcastChannel({
+            channelName: `livestore-sync-${schema.hash}${keySuffix}`,
+            listenSchema: BCMessage.Message,
+            sendSchema: BCMessage.Message,
+          })
 
           const makeSync = Effect.gen(function* () {
             if (syncImpl === undefined) return undefined
@@ -246,17 +250,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               )
             }
 
-            const runtime = yield* Effect.runtime<never>()
-
-            broadcastChannel.addEventListener('message', (event) =>
-              Effect.gen(function* () {
-                const { sender, mutationEventEncoded, persisted } = Schema.decodeUnknownSync(BCMessage.Message)(
-                  event.data,
-                )
-                // console.log('[@livestore/web:worker] broadcastChannel message', event.data)
-                if (sender === 'ui-thread') {
-                  // console.log('livestore-webworker: applying mutation from ui-thread', mutationEventEncoded)
-
+            yield* broadcastChannel.listen.pipe(
+              Stream.flatten(),
+              Stream.filter(({ sender }) => sender === 'ui-thread'),
+              Stream.tap(({ mutationEventEncoded, persisted }) =>
+                Effect.gen(function* () {
                   const mutationDef =
                     schema.mutations.get(mutationEventEncoded.mutation) ??
                     shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
@@ -267,12 +265,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                     persisted,
                     inTransaction: false,
                   })
-                }
-              }).pipe(
-                Effect.withSpan('@livestore/web:worker:broadcastChannel:message'),
-                Effect.tapCauseLogPretty,
-                Runtime.runFork(runtime),
+                }).pipe(Effect.withSpan('@livestore/web:worker:broadcastChannel:message')),
               ),
+              Stream.runDrain,
+              Effect.tapCauseLogPretty,
+              Effect.forkScoped,
             )
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 

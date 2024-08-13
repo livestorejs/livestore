@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "jsx": "react-native",
     "lib": ["DOM", "ESNext"],
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "module": "ES2020",
     "noEmit": true,
     "resolveJsonModule": true,
@@ -26,5 +26,6 @@
     { "path": "../../packages/@livestore/expo" },
     { "path": "../../packages/@livestore/devtools-expo-bridge" },
     { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/utils" },
   ]
 }

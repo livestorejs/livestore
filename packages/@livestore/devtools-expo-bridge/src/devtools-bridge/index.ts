@@ -3,6 +3,7 @@ import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-bridge/web-cha
 import type { Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, PubSub, Schema, Stream } from '@livestore/utils/effect'
 
+// TODO use a unique bridgeId for each connection (similar to web bridge)
 export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> = Effect.gen(
   function* () {
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
@@ -38,6 +39,12 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
     yield* expoDevtoolsChannel.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
     const { appHostId, isLeaderTab } = yield* Deferred.await(appHostInfoDeferred)
+
+    yield* Deferred.await(expoDevtoolsChannel.closedDeferred).pipe(
+      Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
 
     const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
       expoDevtoolsChannel.send(msg).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)

@@ -1,12 +1,13 @@
 import type { ParseResult } from '@effect/schema'
 import type { Scope } from 'effect'
-import { Effect, Either, Queue, Stream } from 'effect'
+import { Deferred, Effect, Either, Queue, Stream } from 'effect'
 
 import * as Schema from './Schema/index.js'
 
 export type WebChannel<MsgIn, MsgOut> = {
   send: (a: MsgOut) => Effect.Effect<void, ParseResult.ParseError>
   listen: Stream.Stream<Either.Either<MsgIn, ParseResult.ParseError>>
+  closedDeferred: Deferred.Deferred<void>
 }
 
 export const broadcastChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -34,7 +35,9 @@ export const broadcastChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
       Stream.map((_) => Schema.decodeEither(listenSchema)(_.data)),
     )
 
-    return { send, listen }
+    const closedDeferred = yield* Deferred.make<void>()
+
+    return { send, listen, closedDeferred }
   }).pipe(Effect.withSpan(`WebChannel:broadcastChannel(${channelName})`))
 
 export const windowChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -59,7 +62,9 @@ export const windowChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
       Stream.map((_) => Schema.decodeEither(listenSchema)(_.data)),
     )
 
-    return { send, listen }
+    const closedDeferred = yield* Deferred.make<void>()
+
+    return { send, listen, closedDeferred }
   }).pipe(Effect.withSpan(`WebChannel:windowChannel`))
 
 export const messagePortChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -84,9 +89,11 @@ export const messagePortChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
 
     port.start()
 
+    const closedDeferred = yield* Deferred.make<void>()
+
     yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignoreLogged))
 
-    return { send, listen }
+    return { send, listen, closedDeferred }
   }).pipe(Effect.withSpan(`WebChannel:messagePortChannel`))
 
 export const queueChannelProxy = <MsgIn, MsgOut>(): Effect.Effect<
@@ -102,7 +109,9 @@ export const queueChannelProxy = <MsgIn, MsgOut>(): Effect.Effect<
 
     const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
 
-    const webChannel = { send, listen }
+    const closedDeferred = yield* Deferred.make<void>()
+
+    const webChannel = { send, listen, closedDeferred }
 
     return { webChannel, sendQueue, listenQueue }
   })

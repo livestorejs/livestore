@@ -1,5 +1,5 @@
 import type { Either, ParseResult, Scope, WebChannel } from '@livestore/utils/effect'
-import { Chunk, Effect, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import { Chunk, Deferred, Effect, Runtime, Schema, Stream } from '@livestore/utils/effect'
 
 export const backgroundChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
   listenSchema,
@@ -38,5 +38,7 @@ export const backgroundChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
       })
     })
 
-    return { listen, send }
+    const closedDeferred = yield* Deferred.make<void>()
+
+    return { listen, send, closedDeferred }
   }).pipe(Effect.withSpan(`WebChannel:backgroundChannel`))

@@ -32,7 +32,9 @@ const websocketPlugin = (): Plugin => {
         }
       })
 
-      wsServer.on('connection', (socket) => {
+      wsServer.on('connection', (socket, req) => {
+        const isExpoApp = req.headers['user-agent'] === undefined
+
         socket.on('message', (message) => {
           // console.log(`Received and broadcasting message: ${message}`)
           // Broadcast the message to all connected clients except the sender
@@ -48,6 +50,13 @@ const websocketPlugin = (): Plugin => {
         })
 
         console.log(`New WebSocket connection (${wsServer.clients.size} total)`)
+
+        socket.on('close', (code) => {
+          if (isExpoApp) {
+            console.log('Expo WebSocket connection closed', code, 'Closing devtools connections')
+            wsServer.clients.forEach((client) => client.close())
+          }
+        })
       })
 
       wsServer.on('error', (error) => {

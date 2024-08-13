@@ -3,12 +3,16 @@ import { DbSchema, makeSchema } from '@livestore/livestore'
 import { Filter } from '../types.ts'
 import * as mutations from './mutations.ts'
 
-const todos = DbSchema.table('todos', {
-  id: DbSchema.text({ primaryKey: true }),
-  text: DbSchema.text({ default: '' }),
-  completed: DbSchema.boolean({ default: false }),
-  deleted: DbSchema.integer({ nullable: true }),
-})
+const todos = DbSchema.table(
+  'todos',
+  {
+    id: DbSchema.text({ primaryKey: true }),
+    text: DbSchema.text({ default: '' }),
+    completed: DbSchema.boolean({ default: false }),
+    deleted: DbSchema.integer({ nullable: true }),
+  },
+  { deriveMutations: true },
+)
 
 const app = DbSchema.table(
   'app',

@@ -13,7 +13,6 @@ import {
   Effect,
   Fiber,
   Queue,
-  Runtime,
   Schema,
   Stream,
   SubscriptionRef,
@@ -95,9 +94,11 @@ export const makeCoordinator =
         yield* resetPersistedData(storageOptions, dbFileSuffix, 'all-data')
       }
 
-      const broadcastChannel = yield* Effect.succeed(
-        new BroadcastChannel(`livestore-sync-${schema.hash}${keySuffix}`),
-      ).pipe(Effect.acquireRelease((channel) => Effect.succeed(channel.close())))
+      const broadcastChannel = yield* WebChannel.broadcastChannel({
+        channelName: `livestore-sync-${schema.hash}${keySuffix}`,
+        listenSchema: BCMessage.Message,
+        sendSchema: BCMessage.Message,
+      })
 
       // TODO also verify persisted data
       const dataFromFile = yield* getPersistedData(storageOptions, dbFileSuffix)
@@ -320,24 +321,20 @@ export const makeCoordinator =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const runtime = yield* Effect.runtime<never>()
-
       const mutationEventSchema = makeMutationEventSchema(schema)
 
-      broadcastChannel.addEventListener('message', (event) =>
-        Effect.gen(function* () {
-          const decodedEvent = yield* Schema.decodeUnknown(BCMessage.Message)(event.data)
-          // console.log('[@livestore/web:coordinator] broadcastChannel message', decodedEvent)
-          const { sender, mutationEventEncoded } = decodedEvent
-          if (sender === 'leader-worker') {
-            const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+      yield* broadcastChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.filter(({ sender }) => sender === 'leader-worker'),
+        Stream.tap(({ mutationEventEncoded }) =>
+          Effect.gen(function* () {
+            const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
             yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded).pipe(ensureQueueSuccess)
-          }
-        }).pipe(
-          Effect.withSpan('@livestore/web:coordinator:broadcastChannel:onmessage'),
-          Effect.tapCauseLogPretty,
-          Runtime.runFork(runtime),
+          }),
         ),
+        Stream.runDrain,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
       )
 
       // TODO in case this coordinator holds the dedicated worker, handle shutdown properly
@@ -408,13 +405,12 @@ export const makeCoordinator =
                 WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
               ).pipe(ensureQueueSuccess)
             } else {
-              broadcastChannel.postMessage(
-                Schema.encodeSync(BCMessage.Message)(
-                  BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread', persisted }),
-                ),
+              // In case we don't have the lock, we're broadcasting the mutation to the leader worker
+              yield* broadcastChannel.send(
+                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread', persisted }),
               )
             }
-          }).pipe(Effect.withSpan('@livestore/web:coordinator:mutate')),
+          }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:mutate')),
 
         getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),

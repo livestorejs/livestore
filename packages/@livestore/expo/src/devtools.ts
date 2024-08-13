@@ -8,6 +8,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-bridge/web-channel'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
@@ -18,10 +19,11 @@ import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
 export const bootDevtools = ({
   connectDevtoolsToStore,
   coordinator,
-  // schema,
+  schema,
   shutdown,
   dbRef,
   dbLogRef,
+  incomingSyncMutationsQueue,
 }: {
   connectDevtoolsToStore: ConnectDevtoolsToStore
   coordinator: Coordinator
@@ -29,8 +31,12 @@ export const bootDevtools = ({
   dbRef: DbPairRef
   dbLogRef: DbPairRef
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+  incomingSyncMutationsQueue: Queue.Queue<MutationEvent.Any>
 }) =>
   Effect.gen(function* () {
+    const appHostId = 'expo'
+    const isLeaderTab = true
+
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
       sendSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
       listenSchema: Schema.Union(Devtools.MessageToAppHostCoordinator, Devtools.MessageToAppHostStore),
@@ -49,6 +55,8 @@ export const bootDevtools = ({
       Stream.runDrain,
       Effect.forkScoped,
     )
+
+    const mutationEventSchema = makeMutationEventSchema(schema)
 
     yield* expoDevtoolsChannel.listen.pipe(
       Stream.flatten(),
@@ -204,8 +212,10 @@ export const bootDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              console.log('run mutation req', decodedEvent)
               const { mutationEventEncoded, persisted } = decodedEvent
+
+              const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
+              yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
 
               // const mutationDef =
               //   schema.mutations.get(mutationEventEncoded.mutation) ??
@@ -234,9 +244,6 @@ export const bootDevtools = ({
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-
-    const appHostId = 'expo'
-    const isLeaderTab = true
     yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeaderTab, liveStoreVersion }))
 
     const onMutation = ({
