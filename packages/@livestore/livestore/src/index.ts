@@ -1,11 +1,7 @@
 export { Store, createStorePromise, createStore } from './store.js'
 export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason } from './store.js'
 
-export type {
-  QueryDefinition,
-  LiveStoreCreateStoreOptions,
-  LiveStoreContextRunning as LiveStoreContext,
-} from './effect/LiveStore.js'
+export type { LiveStoreContextRunning as LiveStoreContext } from './effect/LiveStore.js'
 
 export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 
@@ -52,8 +48,4 @@ export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 export { deepEqual } from '@livestore/utils'
 
-export type {
-  StoreAdapter as DatabaseImpl,
-  StoreAdapterFactory as DatabaseFactory,
-  PreparedStatement,
-} from '@livestore/common'
+export type { StoreAdapter, StoreAdapterFactory, PreparedStatement } from '@livestore/common'

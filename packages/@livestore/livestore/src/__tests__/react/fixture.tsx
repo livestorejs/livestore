@@ -1,11 +1,11 @@
-import { Schema as __Schema } from '@livestore/utils/effect'
+import { Effect, FiberSet, Schema as __Schema } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
 import { globalReactivityGraph } from '../../global-state.js'
 import type { LiveStoreContext } from '../../index.js'
-import { createStorePromise, DbSchema, makeReactivityGraph, makeSchema, sql } from '../../index.js'
+import { createStore, DbSchema, makeReactivityGraph, makeSchema, sql } from '../../index.js'
 import * as LiveStoreReact from '../../react/index.js'
 
 export type Todo = {
@@ -57,7 +57,7 @@ const AppRouterSchema = DbSchema.table(
 export const tables = { todos, app, userInfo, AppRouterSchema }
 export const schema = makeSchema({ tables })
 
-export const makeTodoMvc = async ({
+export const makeTodoMvc = ({
   otelTracer,
   otelContext,
   useGlobalReactivityGraph = true,
@@ -67,56 +67,59 @@ export const makeTodoMvc = async ({
   otelContext?: otel.Context
   useGlobalReactivityGraph?: boolean
   strictMode?: boolean
-} = {}) => {
-  const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
+} = {}) =>
+  Effect.gen(function* () {
+    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
 
-  const makeRenderCount = () => {
-    let val = 0
+    const makeRenderCount = () => {
+      let val = 0
 
-    const inc = () => {
-      val += strictMode ? 0.5 : 1
+      const inc = () => {
+        val += strictMode ? 0.5 : 1
+      }
+
+      return {
+        get val() {
+          return val
+        },
+        inc,
+      }
     }
+
+    const fiberSet = yield* FiberSet.make()
+
+    const store = yield* createStore({
+      schema,
+      boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
+      adapter: makeInMemoryAdapter(),
+      reactivityGraph,
+      otelOptions: {
+        tracer: otelTracer,
+        rootSpanContext: otelContext,
+      },
+      fiberSet,
+    })
+
+    // TODO improve typing of `LiveStoreContext`
+    const storeContext = { stage: 'running', store } as any as LiveStoreContext
+
+    const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
+
+    const wrapper = ({ children }: any) => (
+      <MaybeStrictMode>
+        <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>
+          {children}
+        </LiveStoreReact.LiveStoreContext.Provider>
+      </MaybeStrictMode>
+    )
 
     return {
-      get val() {
-        return val
-      },
-      inc,
+      wrapper,
+      AppComponentSchema: userInfo,
+      AppRouterSchema,
+      store,
+      reactivityGraph,
+      makeRenderCount,
+      strictMode,
     }
-  }
-
-  const store = await createStorePromise({
-    schema,
-    boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
-    adapter: makeInMemoryAdapter(),
-    reactivityGraph,
-    otelOptions: {
-      tracer: otelTracer,
-      rootSpanContext: otelContext,
-    },
   })
-
-  // TODO improve typing of `LiveStoreContext`
-  const storeContext = { stage: 'running', store } as any as LiveStoreContext
-
-  const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
-
-  const wrapper = ({ children }: any) => (
-    <MaybeStrictMode>
-      <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>
-        {children}
-      </LiveStoreReact.LiveStoreContext.Provider>
-    </MaybeStrictMode>
-  )
-
-  return {
-    [Symbol.dispose]: () => store.destroy(),
-    wrapper,
-    AppComponentSchema: userInfo,
-    AppRouterSchema,
-    store,
-    reactivityGraph,
-    makeRenderCount,
-    strictMode,
-  }
-}

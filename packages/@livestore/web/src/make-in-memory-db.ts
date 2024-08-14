@@ -101,10 +101,5 @@ export const makeSynchronousDatabase = (
 
       return res
     },
-    // dangerouslyReset: async () => {
-    //   db.capi.sqlite3_close_v2(db.pointer!)
-
-    //   db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-    // },
   } satisfies SynchronousDatabase
 }

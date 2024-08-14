@@ -1,5 +1,5 @@
 import type { Coordinator, LockStatus, NetworkStatus, ResetMode } from '@livestore/common'
-import { Devtools, UnexpectedError } from '@livestore/common'
+import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { casesHandled, tryAsFunctionAndNew } from '@livestore/utils'
@@ -36,7 +36,7 @@ import {
 } from './common.js'
 import { bootDevtools } from './coordinator-devtools.js'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from './opfs-sah-pool.js'
-import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel, ShutdownBroadcast } from './shutdown-channel.js'
+import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from './shutdown-channel.js'
 import * as WorkerSchema from './worker-schema.js'
 
 export type WebAdapterOptions = {
@@ -109,8 +109,8 @@ export const makeCoordinator =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.filter(Schema.is(ShutdownBroadcast)),
-        Stream.tap(() => shutdown(Cause.fail(UnexpectedError.make({ cause: 'Shutdown' })))),
+        Stream.filter(Schema.is(IntentionalShutdownCause)),
+        Stream.tap((msg) => shutdown(Cause.fail(msg))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -138,6 +138,7 @@ export const makeCoordinator =
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => sharedWorker)),
         Effect.tapCauseLogPretty,
+        UnexpectedError.mapToUnexpectedError,
         Effect.tapErrorCause(shutdown),
         Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
         Effect.toForkedDeferred,
@@ -170,6 +171,7 @@ export const makeCoordinator =
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
+          UnexpectedError.mapToUnexpectedError,
           Effect.tapErrorCause(shutdown),
           Effect.withSpan('@livestore/web:coordinator:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
@@ -181,7 +183,7 @@ export const makeCoordinator =
         const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
         yield* sharedWorker
           .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
-          .pipe(Effect.tapErrorCause(shutdown))
+          .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
@@ -311,6 +313,7 @@ export const makeCoordinator =
       }).pipe(
         Effect.tapCauseLogPretty,
         Effect.forever,
+        UnexpectedError.mapToUnexpectedError,
         Effect.tapErrorCause(shutdown),
         Effect.interruptible,
         Effect.withSpan('@livestore/web:coordinator:executeBulkLoop'),
@@ -337,22 +340,6 @@ export const makeCoordinator =
         Effect.forkScoped,
       )
 
-      // TODO in case this coordinator holds the dedicated worker, handle shutdown properly
-      const shutdownWorker = Effect.race(
-        // In case the graceful shutdown didn't finish in time, we terminate the worker
-        runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})).pipe(Effect.timeout(2000)),
-        // runInWorker(new WorkerSchema.DedicatedWorkerInner.Shutdown({})).pipe(Effect.andThen(() => worker.terminate())),
-        Effect.void,
-        // Effect.sync(() => {
-        //   console.warn('[@livestore/web:coordinator] Worker did not gracefully shutdown in time, terminating it')
-        //   // worker.terminate()
-        // }).pipe(
-        //   // Seems like we still need to wait a bit for the worker to terminate
-        //   // TODO improve this implementation (possibly via another weblock?)
-        //   Effect.delay(1000),
-        // ),
-      )
-
       yield* Effect.addFinalizer((_ex) =>
         Effect.gen(function* () {
           yield* Effect.logWarning('[@livestore/web:coordinator] coordinator shutdown', gotLocky, _ex)
@@ -374,14 +361,6 @@ export const makeCoordinator =
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:coordinator:export'),
         ),
-
-        dangerouslyReset: (mode) =>
-          Effect.gen(function* () {
-            yield* shutdownWorker
-
-            // TODO refactor to make use of persisted-sql destory functionality
-            yield* resetPersistedData(storageOptions, dbFileSuffix, mode)
-          }).pipe(UnexpectedError.mapToUnexpectedError),
 
         execute: (query, bindValues) =>
           Effect.gen(function* () {

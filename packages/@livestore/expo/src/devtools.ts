@@ -1,6 +1,7 @@
 import type { ConnectDevtoolsToStore, Coordinator } from '@livestore/common'
 import {
   Devtools,
+  IntentionalShutdownCause,
   liveStoreVersion,
   MUTATION_LOG_META_TABLE,
   SCHEMA_META_TABLE,
@@ -30,7 +31,7 @@ export const bootDevtools = ({
   schema: LiveStoreSchema
   dbRef: DbPairRef
   dbLogRef: DbPairRef
-  shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
   incomingSyncMutationsQueue: Queue.Queue<MutationEvent.Any>
 }) =>
   Effect.gen(function* () {
@@ -168,7 +169,7 @@ export const bootDevtools = ({
 
               yield* expoDevtoolsChannel.send(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'ok' }))
 
-              yield* shutdown(Cause.fail(UnexpectedError.make({ cause: 'Shutdown' })))
+              yield* shutdown(Cause.fail(IntentionalShutdownCause.make({ reason: 'devtools-import' })))
 
               return
             }
@@ -185,7 +186,7 @@ export const bootDevtools = ({
 
               yield* expoDevtoolsChannel.send(Devtools.ResetAllDataRes.make({ ...reqPayload }))
 
-              yield* shutdown(Cause.fail(UnexpectedError.make({ cause: 'Shutdown' })))
+              yield* shutdown(Cause.fail(IntentionalShutdownCause.make({ reason: 'devtools-reset' })))
 
               return
             }

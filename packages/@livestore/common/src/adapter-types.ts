@@ -62,10 +62,11 @@ export type Coordinator = {
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
   mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
-  dangerouslyReset(mode: ResetMode): Effect.Effect<void, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   /**
    * This is different from `export` since in `getInitialSnapshot` is usually the place for migrations etc to happen
+   *
+   * TODO this is only needed in the web adapter, remove from interface
    */
   getInitialSnapshot: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
@@ -101,6 +102,13 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
       Stream.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
     )
 }
+
+export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
+  'LiveStore.IntentionalShutdownCause',
+  {
+    reason: Schema.Literal('devtools-reset', 'devtools-import'),
+  },
+) {}
 
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
   sql: Schema.String,

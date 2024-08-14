@@ -40,20 +40,25 @@ export const makeAdapter =
 
       const dbLogRef = { current: { db: dbLog, syncDb: makeSynchronousDatabase(dbLog) } }
 
+      const dbLogWasEmptyWhenOpenedStmt = dbLogRef.current.syncDb.prepare('SELECT 1 FROM sqlite_master')
+      const dbLogWasEmptyWhenOpened = dbLogWasEmptyWhenOpenedStmt.select(undefined).length === 0
+
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
           // Ignoring in case the database is already closed
-          yield* Effect.try(() => db.closeSync()).pipe(Effect.ignoreLogged)
-          yield* Effect.try(() => dbLog.closeSync()).pipe(Effect.ignoreLogged)
+          yield* Effect.try(() => db.closeSync()).pipe(Effect.ignore)
+          yield* Effect.try(() => dbLog.closeSync()).pipe(Effect.ignore)
         }),
       )
 
-      yield* migrateTable({
-        db: dbLogRef.current.syncDb,
-        behaviour: 'create-if-not-exists',
-        tableAst: mutationLogMetaTable.sqliteDef.ast,
-        skipMetaTable: true,
-      })
+      if (dbLogWasEmptyWhenOpened) {
+        yield* migrateTable({
+          db: dbLogRef.current.syncDb,
+          behaviour: 'create-if-not-exists',
+          tableAst: mutationLogMetaTable.sqliteDef.ast,
+          skipMetaTable: true,
+        })
+      }
 
       if (dbWasEmptyWhenOpened) {
         yield* migrateDb({ db: dbRef.current.syncDb, schema })
@@ -166,10 +171,8 @@ export const makeAdapter =
             yield* devtools.onMutation({ mutationEventEncoded, persisted })
           }),
         export: Effect.sync(() => dbRef.current.syncDb.export()),
-        // TODO actually implement this
-        getInitialSnapshot: Effect.succeed(new Uint8Array()),
-        // TODO actually implement this
-        dangerouslyReset: () => Effect.dieMessage('Not implemented'),
+        // TODO this is only needed in the web-adapter, so find a way to remove it in the adapter interface
+        getInitialSnapshot: Effect.never,
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator

@@ -44,7 +44,6 @@ const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Sta
       export: Effect.dieMessage('Not implemented'),
       getInitialSnapshot,
       getMutationLogData: Effect.succeed(new Uint8Array()),
-      dangerouslyReset: () => Effect.void,
       networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
     } satisfies Coordinator
   })

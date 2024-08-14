@@ -1,5 +1,5 @@
 import type { Scope, WebChannel } from '@livestore/utils/effect'
-import { Deferred, Effect, Either, ParseResult, PubSub, Schema, Stream } from '@livestore/utils/effect'
+import { Deferred, Effect, Either, ParseResult, Schema, Stream } from '@livestore/utils/effect'
 // import * as ExpoDevtools from 'expo/devtools'
 
 // export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -74,7 +74,6 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
     const closedDeferred = yield* Deferred.make<void>()
 
     yield* Stream.fromEventListener(ws, 'close', { once: true }).pipe(
-      Stream.tapLogWithLabel('makeExpoDevtoolsChannel:closed'),
       Stream.tap(() => Deferred.succeed(closedDeferred, void 0)),
       Stream.runDrain,
       Effect.tapCauseLogPretty,

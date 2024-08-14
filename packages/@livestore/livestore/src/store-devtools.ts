@@ -35,6 +35,14 @@ export const connectDevtoolsToStore = ({
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
 
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        reactivityGraphSubcriptions.forEach((unsub) => unsub())
+        liveQueriesSubscriptions.forEach((unsub) => unsub())
+        debugInfoHistorySubscriptions.forEach((unsub) => unsub())
+      }),
+    )
+
     const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
       storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runSync)
 

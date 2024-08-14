@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import { isNotUndefined } from '@livestore/utils'
 import type { Serializable } from '@livestore/utils/effect'
 import {
@@ -23,7 +23,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { makeDevtoolsWebBridge } from './shared-worker-devtools-web-bridge.js'
-import { makeShutdownChannel, ShutdownBroadcast } from './shutdown-channel.js'
+import { makeShutdownChannel } from './shutdown-channel.js'
 import * as WorkerSchema from './worker-schema.js'
 
 const makeWorkerRunner = Effect.gen(function* () {
@@ -196,7 +196,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         yield* shutdownChannel.listen.pipe(
           Stream.flatten(),
-          Stream.filter(Schema.is(ShutdownBroadcast)),
+          Stream.filter(Schema.is(IntentionalShutdownCause)),
           Stream.tap(() => reset),
           Stream.runDrain,
           Effect.tapCauseLogPretty,

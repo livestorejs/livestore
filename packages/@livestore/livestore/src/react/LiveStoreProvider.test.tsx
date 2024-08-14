@@ -65,7 +65,7 @@ describe('LiveStoreProvider', () => {
 
     abortController.abort()
 
-    await waitFor(() => screen.getByText('LiveStore Shutdown'))
+    await waitFor(() => screen.getByText('LiveStore Shutdown due to abort signal'))
   })
 
   it('error during boot', async () => {

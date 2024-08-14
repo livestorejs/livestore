@@ -1,4 +1,5 @@
-import { type BootDb, type BootStatus, type StoreAdapterFactory, UnexpectedError } from '@livestore/common'
+import type { BootDb, BootStatus, IntentionalShutdownCause, StoreAdapterFactory } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { errorToString } from '@livestore/utils'
 import { Effect, FiberSet, Logger, LogLevel, Schema } from '@livestore/utils/effect'
@@ -6,14 +7,11 @@ import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
-// TODO refactor so the `react` module doesn't depend on `effect` module
-import type { LiveStoreContext as StoreContext_, LiveStoreCreateStoreOptions } from '../effect/LiveStore.js'
-import type { BaseGraphQLContext, ForceStoreShutdown, GraphQLOptions, OtelOptions, StoreShutdown } from '../store.js'
+import type { BaseGraphQLContext, CreateStoreOptions, GraphQLOptions, OtelOptions } from '../store.js'
 import { createStore } from '../store.js'
+import type { LiveStoreContext as StoreContext_ } from '../store-context.js'
+import { StoreAbort, StoreInterrupted } from '../store-context.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
-
-export class StoreAbort extends Schema.TaggedError<StoreAbort>()('LiveStore.StoreAbort', {}) {}
-export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {}) {}
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
@@ -22,7 +20,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
   otelOptions?: OtelOptions
   renderLoading: (status: BootStatus) => ReactElement
   renderError?: (error: UnexpectedError | unknown) => ReactElement
-  renderShutdown?: () => ReactElement
+  renderShutdown?: (cause: IntentionalShutdownCause | StoreAbort) => ReactElement
   adapter: StoreAdapterFactory
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
@@ -32,7 +30,18 @@ interface LiveStoreProviderProps<GraphQLContext> {
 const defaultRenderError = (error: UnexpectedError | unknown) => (
   <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
 )
-const defaultRenderShutdown = () => <>LiveStore Shutdown</>
+const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreAbort) => {
+  const reason =
+    cause._tag === 'LiveStore.StoreAbort'
+      ? 'abort signal'
+      : cause.reason === 'devtools-import'
+        ? 'devtools import'
+        : cause.reason === 'devtools-reset'
+          ? 'devtools reset'
+          : 'unknown reason'
+
+  return <>LiveStore Shutdown due to {reason}</>
+}
 
 export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   renderLoading,
@@ -64,14 +73,14 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   }
 
   if (storeCtx.stage === 'shutdown') {
-    return renderShutdown()
+    return renderShutdown(storeCtx.cause)
   }
 
   if (storeCtx.stage !== 'running') {
     return renderLoading(storeCtx)
   }
 
-  window.__debugLiveStore = storeCtx.store
+  window[`__debugLiveStore${schema.key}`] = storeCtx.store
 
   return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
 }
@@ -96,8 +105,9 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   adapter,
   batchUpdates,
   disableDevtools,
+  reactivityGraph,
   signal,
-}: LiveStoreCreateStoreOptions<GraphQLContext>) => {
+}: CreateStoreOptions<GraphQLContext, LiveStoreSchema> & { signal?: AbortSignal }) => {
   const [_, rerender] = React.useState(0)
   const ctxValueRef = React.useRef<{
     value: StoreContext_ | BootStatus
@@ -119,6 +129,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     adapter,
     batchUpdates,
     disableDevtools,
+    reactivityGraph,
     signal,
   })
 
@@ -126,7 +137,10 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     Effect.gen(function* () {
       yield* FiberSet.clear(fiberSet)
       yield* FiberSet.run(fiberSet, Effect.fail(error))
-    }).pipe(Effect.ignoreLogged, Effect.runFork)
+    }).pipe(
+      Effect.tapErrorCause((cause) => Effect.logDebug(`[@livestore/livestore/react] interupting`, cause)),
+      Effect.runFork,
+    )
 
   if (
     inputPropsCacheRef.current.schema !== schema ||
@@ -136,6 +150,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     inputPropsCacheRef.current.adapter !== adapter ||
     inputPropsCacheRef.current.batchUpdates !== batchUpdates ||
     inputPropsCacheRef.current.disableDevtools !== disableDevtools ||
+    inputPropsCacheRef.current.reactivityGraph !== reactivityGraph ||
     inputPropsCacheRef.current.signal !== signal
   ) {
     inputPropsCacheRef.current = {
@@ -146,6 +161,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       adapter,
       batchUpdates,
       disableDevtools,
+      reactivityGraph,
       signal,
     }
     if (ctxValueRef.current.fiberSet !== undefined) {
@@ -174,7 +190,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     Effect.gen(function* () {
       const fiberSet = yield* FiberSet.make<
         unknown,
-        UnexpectedError | ForceStoreShutdown | StoreAbort | StoreInterrupted | StoreShutdown
+        UnexpectedError | IntentionalShutdownCause | StoreAbort | StoreInterrupted
       >()
 
       ctxValueRef.current.fiberSet = fiberSet
@@ -187,6 +203,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           otelOptions,
           boot,
           adapter,
+          reactivityGraph,
           batchUpdates,
           disableDevtools,
           onBootStatus: (status) => {
@@ -200,12 +217,12 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         yield* Effect.never
       }).pipe(Effect.scoped, FiberSet.run(fiberSet))
 
-      const shutdownContext = Effect.sync(() => setContextValue({ stage: 'shutdown' }))
+      const shutdownContext = (cause: IntentionalShutdownCause | StoreAbort) =>
+        Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* FiberSet.join(fiberSet).pipe(
-        Effect.catchTag('LiveStore.StoreShutdown', () => shutdownContext),
-        Effect.catchTag('LiveStore.ForceStoreShutdown', () => shutdownContext),
-        Effect.catchTag('LiveStore.StoreAbort', () => shutdownContext),
+        Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
+        Effect.catchTag('LiveStore.StoreAbort', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
         Effect.exit,
@@ -229,7 +246,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         ctxValueRef.current.fiberSet = undefined
       }
     }
-  }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal])
+  }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal, reactivityGraph])
 
   return ctxValueRef.current.value
 }

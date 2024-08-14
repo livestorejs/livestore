@@ -1,13 +1,10 @@
+import { IntentionalShutdownCause } from '@livestore/common'
 import type { Effect } from '@livestore/utils/effect'
 import { Schema, WebChannel } from '@livestore/utils/effect'
 
-export class ShutdownBroadcast extends Schema.TaggedStruct('ShutdownBroadcast', {
-  reason: Schema.Literal('devtools', 'error'),
-}) {}
-
 export class DedicatedWorkerDisconnectBroadcast extends Schema.TaggedStruct('DedicatedWorkerDisconnectBroadcast', {}) {}
 
-export class All extends Schema.Union(ShutdownBroadcast, DedicatedWorkerDisconnectBroadcast) {}
+export class All extends Schema.Union(IntentionalShutdownCause, DedicatedWorkerDisconnectBroadcast) {}
 
 export const makeShutdownChannel = (key: string) =>
   WebChannel.broadcastChannel({
