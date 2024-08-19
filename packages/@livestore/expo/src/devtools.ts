@@ -124,11 +124,10 @@ export const bootDevtools = ({
 
               try {
                 const tmpDb = SQLite.deserializeDatabaseSync(data)
-
-                const tmpInMemoryDb = makeSynchronousDatabase(tmpDb)
-                const tableNameResults = tmpInMemoryDb
-                  .prepare(`select name from sqlite_master where type = 'table'`)
-                  .select<{ name: string }>(undefined)
+                const tmpSyncDb = makeSynchronousDatabase(tmpDb)
+                const tableNameResults = tmpSyncDb.select<{ name: string }>(
+                  `select name from sqlite_master where type = 'table'`,
+                )
 
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 

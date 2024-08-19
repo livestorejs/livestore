@@ -5,7 +5,7 @@ import * as ExpoFS from 'expo-file-system'
 import type * as SQLite from 'expo-sqlite/next'
 
 export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousDatabase => {
-  return {
+  const syncDb: SynchronousDatabase = {
     _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
@@ -44,7 +44,15 @@ export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousD
     export: () => {
       return db.serializeSync()
     },
+    select: (queryStr, bindValues) => {
+      const stmt = syncDb.prepare(queryStr)
+      const res = stmt.select(bindValues)
+      stmt.finalize()
+      return res as any
+    },
   } satisfies SynchronousDatabase
+
+  return syncDb
 }
 
 export type DbPairRef = {

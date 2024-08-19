@@ -22,9 +22,9 @@ export const rehydrateFromMutationLog = ({
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
-    const mutationsCount = logDb
-      .prepare(`SELECT COUNT(*) AS count FROM ${MUTATION_LOG_META_TABLE}`)
-      .select<{ count: number }>(undefined)[0]!.count
+    const mutationsCount = logDb.select<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM ${MUTATION_LOG_META_TABLE}`,
+    )[0]!.count
 
     const hashMutation = memoizeByRef((mutation: MutationDef.Any) => Schema.hash(mutation.schema))
 

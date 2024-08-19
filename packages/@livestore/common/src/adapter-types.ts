@@ -23,9 +23,10 @@ export type SynchronousDatabase = {
   prepare(queryStr: string): PreparedStatement
   execute(
     queryStr: string,
-    bindValues: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues | undefined,
     options?: { onRowsChanged?: (rowsChanged: number) => void },
   ): void
+  select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
 }
 

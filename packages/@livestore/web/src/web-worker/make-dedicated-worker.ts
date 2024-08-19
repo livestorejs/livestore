@@ -129,17 +129,12 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           // Might involve some async work, so we're running them concurrently
           const [db, dbLog] = yield* Effect.all([makeDb, makeDbLog], { concurrency: 2 })
 
-          const cursor = yield* Effect.try(() => {
-            const stmt = dbLog.dbRef.current.syncDb.prepare(
-              sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
-            )
-
-            const res = stmt.select<{ id: string }>(undefined)[0]?.id
-
-            stmt.finalize()
-
-            return res
-          }).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+          const cursor = yield* Effect.try(
+            () =>
+              dbLog.dbRef.current.syncDb.select<{ id: string }>(
+                sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
+              )[0]?.id,
+          ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
 
           const syncImpl =
             syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)

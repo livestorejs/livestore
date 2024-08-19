@@ -4,7 +4,7 @@ import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 import { exportDb } from './sqlite-utils.js'
 
 export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): SynchronousDatabase => {
-  const syncDb = {
+  const syncDb: SynchronousDatabase = {
     _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
@@ -93,6 +93,12 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
       const stmt = syncDb.prepare(queryStr)
       stmt.execute(bindValues, options)
       stmt.finalize()
+    },
+    select: (queryStr, bindValues) => {
+      const stmt = syncDb.prepare(queryStr)
+      const results = stmt.select(bindValues)
+      stmt.finalize()
+      return results as ReadonlyArray<any>
     },
   } satisfies SynchronousDatabase
 

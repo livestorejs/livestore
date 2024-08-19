@@ -213,9 +213,9 @@ const listenToDevtools = ({
                 WaSqlite.importBytesToDb(sqlite3, tmpDb, data)
 
                 const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
-                const tableNameResultsStmt = tmpSyncDb.prepare(`select name from sqlite_master where type = 'table'`)
-                const tableNameResults = tableNameResultsStmt.select<{ name: string }>(undefined)
-                tableNameResultsStmt.finalize()
+                const tableNameResults = tmpSyncDb.select<{ name: string }>(
+                  `select name from sqlite_master where type = 'table'`,
+                )
 
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 
@@ -270,12 +270,12 @@ const listenToDevtools = ({
             case 'LSD.DatabaseFileInfoReq': {
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
 
-              const dbFileSize = db.dbRef.current.syncDb.prepare(dbSizeQuery).select<{ size: number }>(undefined)[0]!
-                .size
+              const dbFileSize = db.dbRef.current.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
-              const mutationLogFileSize = dbLog.dbRef.current.syncDb
-                .prepare(dbSizeQuery)
-                .select<{ size: number }>(undefined)[0]!.size
+              const mutationLogFileSize = dbLog.dbRef.current.syncDb.select<{ size: number }>(
+                dbSizeQuery,
+                undefined,
+              )[0]!.size
 
               yield* sendMessage(
                 Devtools.DatabaseFileInfoRes.make({

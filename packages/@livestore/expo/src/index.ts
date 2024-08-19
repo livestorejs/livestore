@@ -33,15 +33,13 @@ export const makeAdapter =
 
       const dbRef = { current: { db, syncDb: makeSynchronousDatabase(db) } }
 
-      const dbWasEmptyWhenOpenedStmt = dbRef.current.syncDb.prepare('SELECT 1 FROM sqlite_master')
-      const dbWasEmptyWhenOpened = dbWasEmptyWhenOpenedStmt.select(undefined).length === 0
+      const dbWasEmptyWhenOpened = dbRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
 
       const dbLogRef = { current: { db: dbLog, syncDb: makeSynchronousDatabase(dbLog) } }
 
-      const dbLogWasEmptyWhenOpenedStmt = dbLogRef.current.syncDb.prepare('SELECT 1 FROM sqlite_master')
-      const dbLogWasEmptyWhenOpened = dbLogWasEmptyWhenOpenedStmt.select(undefined).length === 0
+      const dbLogWasEmptyWhenOpened = dbLogRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
