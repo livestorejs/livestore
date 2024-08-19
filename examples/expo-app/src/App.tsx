@@ -1,38 +1,60 @@
 import { makeAdapter } from '@livestore/expo'
 import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/livestore/react'
+import { cuid } from '@livestore/utils/cuid'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
-import { StyleSheet, Text, unstable_batchedUpdates, View } from 'react-native'
+import { Button, StyleSheet, Text, unstable_batchedUpdates, View } from 'react-native'
 
 import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
-import { schema } from './schema/index.ts'
+import { mutations, schema } from './schema/index.ts'
+
+const adapter = makeAdapter()
 
 export const App = () => {
+  const [, rerender] = React.useState({})
+
   return (
     <View style={styles.container}>
       <LiveStoreProvider
         schema={schema}
         renderLoading={(_) => <Text>Loading LiveStore ({_.stage})...</Text>}
-        boot={(db) => {
-          db.execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'call johannes', 1)`)
+        renderError={(error: any) => <Text>Error: {error.toString()}</Text>}
+        renderShutdown={() => {
+          return (
+            <View>
+              <Text>LiveStore Shutdown</Text>
+              <Button title="Reload" onPress={() => rerender({})} />
+            </View>
+          )
         }}
-        adapter={makeAdapter()}
+        boot={(db) => {
+          if (db.select<{ count: number }>(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
+            db.mutate(mutations.addTodo({ id: cuid(), text: 'Make coffee' }))
+          }
+        }}
+        adapter={adapter}
         // NOTE This is currently necessary to properly batch updates in React Native
         batchUpdates={(run) => unstable_batchedUpdates(() => run())}
       >
-        <NewTodo />
-        <Meta />
-        <ListTodos />
-        <Filters />
+        <InnerApp />
       </LiveStoreProvider>
       <StatusBar style="auto" />
     </View>
   )
 }
+
+const InnerApp = () => (
+  <>
+    <NewTodo />
+    <Meta />
+    <ListTodos />
+    <Filters />
+  </>
+)
 
 const styles = StyleSheet.create({
   container: {

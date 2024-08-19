@@ -11,7 +11,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@livestore/sqlite-wasm': '@livestore/sqlite-wasm/node',
+      '@livestore/wa-sqlite/dist/wa-sqlite.mjs': '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs',
     },
   },
 })

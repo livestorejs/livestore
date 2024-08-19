@@ -1,0 +1,40 @@
+{
+  "name": "@livestore/devtools-expo-bridge",
+  "version": "0.0.56",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./web-channel": {
+      "types": "./dist/web-channel.d.ts",
+      "default": "./dist/web-channel.js"
+    },
+    "./devtools-bridge": {
+      "types": "./dist/devtools-bridge/index.d.ts",
+      "default": "./dist/devtools-bridge/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "react": "^18.3.1",
+    "expo": "51.0.24"
+  },
+  "peerDependencies": {
+    "react": "18.x",
+    "expo": "51.x"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

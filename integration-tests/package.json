@@ -10,7 +10,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/effect-playwright": "workspace:*",
     "@livestore/livestore": "workspace:*",
-    "@livestore/sqlite-wasm": "3.46.0-build4",
+    "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*"
   },

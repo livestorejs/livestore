@@ -5,40 +5,12 @@ import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe 
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import type { MainDatabaseWrapper } from '../MainDatabaseWrapper.js'
-import type { LiveQuery } from '../reactiveQueries/base-class.js'
-import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, Store } from '../store.js'
+import type { BaseGraphQLContext } from '../store.js'
 import { createStore } from '../store.js'
+import type { LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store-context.js'
+import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 
-// TODO get rid of `LiveStoreContext` wrapper and only expose the `Store` directly
-export type LiveStoreContext =
-  | LiveStoreContextRunning
-  | {
-      stage: 'error'
-      error: UnexpectedError | unknown
-    }
-  | {
-      stage: 'shutdown'
-    }
-
-export type LiveStoreContextRunning = {
-  stage: 'running'
-  store: Store
-}
-
-export type QueryDefinition = <TResult>(store: Store) => LiveQuery<TResult>
-
-export type LiveStoreCreateStoreOptions<GraphQLContext extends BaseGraphQLContext> = {
-  schema: LiveStoreSchema
-  graphQLOptions?: GraphQLOptions<GraphQLContext>
-  otelOptions?: OtelOptions
-  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
-  adapter: StoreAdapterFactory
-  batchUpdates?: (run: () => void) => void
-  disableDevtools?: boolean
-  signal?: AbortSignal
-}
-
+export type LiveStoreContextRunning = LiveStoreContextRunning_
 export const LiveStoreContextRunning = Context.GenericTag<LiveStoreContextRunning>(
   '@livestore/livestore/effect/LiveStoreContextRunning',
 )
@@ -48,13 +20,11 @@ export const DeferredStoreContext = Context.GenericTag<DeferredStoreContext>(
   '@livestore/livestore/effect/DeferredStoreContext',
 )
 
-// export const DeferredStoreContext = Effect.cached(Effect.flatMap(StoreContext, (_) => Effect.succeed(_)))
-
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
-    makeContext: (db: MainDatabaseWrapper) => GraphQLContext
+    makeContext: (db: SynchronousDatabaseWrapper) => GraphQLContext
   }
   boot?: (db: BootDb) => Effect.Effect<void, unknown, otel.Tracer>
   adapter: StoreAdapterFactory
@@ -114,7 +84,8 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         onBootStatus,
       })
 
-      window.__debugLiveStore = store
+      window.__debugLiveStore ??= {}
+      window.__debugLiveStore[schema.key] = store
 
       return { stage: 'running', store } satisfies LiveStoreContextRunning
     }),

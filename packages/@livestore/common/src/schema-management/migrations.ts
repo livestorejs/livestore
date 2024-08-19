@@ -2,7 +2,7 @@ import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 import { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
-import type { InMemoryDatabase } from '../adapter-types.js'
+import type { SynchronousDatabase } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/index.js'
 import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
 import {
@@ -19,7 +19,7 @@ import { validateSchema } from './validate-mutation-defs.js'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
-export const makeSchemaManager = (db: InMemoryDatabase): Effect.Effect<SchemaManager> =>
+export const makeSchemaManager = (db: SynchronousDatabase): Effect.Effect<SchemaManager> =>
   Effect.gen(function* () {
     yield* migrateTable({
       db,
@@ -28,14 +28,9 @@ export const makeSchemaManager = (db: InMemoryDatabase): Effect.Effect<SchemaMan
     })
 
     return {
-      getMutationDefInfos: () => {
-        const schemaMutationsMetaRows = dbSelect<SchemaMutationsMetaRow>(
-          db,
-          sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`,
-        )
+      getMutationDefInfos: () =>
+        dbSelect<SchemaMutationsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`),
 
-        return schemaMutationsMetaRows
-      },
       setMutationDefInfo: (info) => {
         dbExecute(
           db,
@@ -56,7 +51,7 @@ export const migrateDb = ({
   schema,
   onProgress,
 }: {
-  db: InMemoryDatabase
+  db: SynchronousDatabase
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
 }) =>
@@ -121,14 +116,14 @@ export const migrateTable = ({
   behaviour,
   skipMetaTable = false,
 }: {
-  db: InMemoryDatabase
+  db: SynchronousDatabase
   tableAst: SqliteAst.Table
   schemaHash?: number
   behaviour: 'drop-and-recreate' | 'create-if-not-exists'
   skipMetaTable?: boolean
 }) =>
   Effect.gen(function* () {
-    console.log(`Migrating table '${tableAst.name}'...`)
+    // console.log(`Migrating table '${tableAst.name}'...`)
     const tableName = tableAst.name
     const columnSpec = makeColumnSpec(tableAst)
 

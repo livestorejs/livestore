@@ -34,10 +34,10 @@ export default defineConfig({
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
-    // TODO remove @livestore/sqlite-wasm once fixed https://github.com/vitejs/vite/issues/8427
+    // TODO remove @livestore/wa-sqlite once fixed https://github.com/vitejs/vite/issues/8427
     // TODO figure out why `fsevents` is needed. Otherwise seems to throw error when starting Vite
     // Error: `No loader is configured for ".node" files`
-    exclude: ['@livestore/sqlite-wasm', 'fsevents'],
+    exclude: ['@livestore/wa-sqlite', 'fsevents'],
   },
   plugins: [
     // Needed for OPFS Sqlite to work

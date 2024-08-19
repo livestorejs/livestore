@@ -1,26 +1,32 @@
-import type { Cause, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
+import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
+import type * as Devtools from './devtools/index.js'
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
-  execute(bindValues: PreparedBindValues | undefined): GetRowsChangedCount
+  execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
   select<T>(bindValues: PreparedBindValues | undefined): ReadonlyArray<T>
   finalize(): void
 }
 
 export type StoreAdapter = {
-  /** Main thread database (usually in-memory) */
-  mainDb: InMemoryDatabase
+  /** SQLite database with synchronous API running in the same thread (usually in-memory) */
+  syncDb: SynchronousDatabase
   /** The coordinator is responsible for persisting the database, syncing etc */
   coordinator: Coordinator
 }
 
-export type InMemoryDatabase = {
-  _tag: 'InMemoryDatabase'
+export type SynchronousDatabase = {
+  _tag: 'SynchronousDatabase'
   prepare(queryStr: string): PreparedStatement
-  execute(queryStr: string, bindValues: PreparedBindValues | undefined): GetRowsChangedCount
+  execute(
+    queryStr: string,
+    bindValues?: PreparedBindValues | undefined,
+    options?: { onRowsChanged?: (rowsChanged: number) => void },
+  ): void
+  select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
 }
 
@@ -52,33 +58,19 @@ export const BootStatus = Schema.Union(
 export type BootStatus = typeof BootStatus.Type
 
 export type Coordinator = {
-  isShutdownRef: { current: boolean }
   devtools: {
     enabled: boolean
-    channelId: string
-    /**
-     * Returns a dedicated message port for the store which is established over the message port passed in
-     */
-    // connect: (options: { port: MessagePort }) => Effect.Effect<{ storeMessagePort: MessagePort }, UnexpectedError>
-    // TODO refactor to possibly flip the hiearchy so the coordinator connects to the store instead of the store connecting to the coordinator
-    // waitForPort: (devtoolsId: string) => Effect.Effect<MessagePort, UnexpectedError>
+    appHostId: string
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
   mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
-  dangerouslyReset(mode: ResetMode): Effect.Effect<void, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
-  /**
-   * This is different from `export` since in `getInitialSnapshot` is usually the place for migrations etc to happen
-   */
-  getInitialSnapshot: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
-
-export type GetRowsChangedCount = () => number
 
 export type LockStatus = 'has-lock' | 'no-lock'
 
@@ -91,7 +83,7 @@ export type BootDb = {
 }
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
-  cause: Schema.AnyError,
+  cause: Schema.Defect,
   note: Schema.optional(Schema.String),
   payload: Schema.optional(Schema.Any),
 }) {
@@ -108,13 +100,24 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
     )
 }
 
+export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
+  'LiveStore.IntentionalShutdownCause',
+  {
+    reason: Schema.Literal('devtools-reset', 'devtools-import'),
+  },
+) {}
+
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
-  sql: Schema.String,
-  bindValues: Schema.Record({ key: Schema.String, value: Schema.Any }),
+  query: Schema.optional(
+    Schema.Struct({
+      sql: Schema.String,
+      bindValues: Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Any }), Schema.Array(Schema.Any)),
+    }),
+  ),
   /** The SQLite result code */
-  code: Schema.Number,
+  code: Schema.optional(Schema.Number),
   /** The original SQLite3 error */
-  cause: Schema.AnyError,
+  cause: Schema.Defect,
 }) {}
 
 // TODO possibly allow a combination of these options
@@ -139,7 +142,7 @@ export type MigrationHooks = {
   post: MigrationHook
 }
 
-export type MigrationHook = (db: InMemoryDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
+export type MigrationHook = (db: SynchronousDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
 
 export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   strategy: 'from-mutation-log'
@@ -155,11 +158,14 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type ConnectDevtoolsToStore = ({
-  storeMessagePort,
-}: {
-  storeMessagePort: MessagePort
-}) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+export type StoreDevtoolsChannel = WebChannel.WebChannel<
+  Devtools.MessageToAppHostStore,
+  Devtools.MessageFromAppHostStore
+>
+
+export type ConnectDevtoolsToStore = (
+  storeDevtoolsChannel: StoreDevtoolsChannel,
+) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
 export type StoreAdapterFactory = (opts: {
   schema: LiveStoreSchema

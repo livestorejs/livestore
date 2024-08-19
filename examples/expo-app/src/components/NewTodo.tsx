@@ -1,4 +1,6 @@
 import { useRow, useStore } from '@livestore/livestore/react'
+import { cuid } from '@livestore/utils/cuid'
+import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 
 import { mutations, tables } from '../schema/index.ts'
@@ -14,19 +16,33 @@ export const NewTodo: React.FC = () => {
       mutations.updateNewTodoText({ text: '' }),
     )
   const addRandom50 = () => {
-    const idPrefix = new Date().toISOString()
-    const todos = Array.from({ length: 50 }, (_, i) => ({ id: `${idPrefix}-${i}`, text: `Todo ${i}` }))
+    const todos = Array.from({ length: 50 }, (_, i) => ({ id: cuid(), text: `Todo ${i}` }))
     store.mutate(...todos.map((todo) => mutations.addTodo(todo)))
   }
   const reset = () => store.mutate(mutations.clearAll({ deleted: Date.now() }))
 
+  const inputRef = React.useRef<TextInput>(null)
+
   return (
-    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+    <TouchableWithoutFeedback
+      onPress={() => {
+        Keyboard.dismiss()
+        inputRef.current?.blur()
+      }}
+    >
       <View style={styles.container}>
         <TextInput
+          ref={inputRef}
           style={styles.input}
           value={newTodoText}
           onChangeText={updateNewTodoText}
+          onKeyPress={(e) => {
+            console.log(e.nativeEvent.key)
+            if (e.nativeEvent.key === 'Escape' || e.nativeEvent.key === 'Tab') {
+              Keyboard.dismiss()
+              inputRef.current?.blur()
+            }
+          }}
           onSubmitEditing={addTodo}
         />
         <Pressable onPress={addTodo}>

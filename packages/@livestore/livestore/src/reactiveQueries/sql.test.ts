@@ -1,4 +1,4 @@
-import { Schema } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
@@ -17,7 +17,7 @@ TODO write tests for:
 describe('otel', () => {
   let cachedProvider: BasicTracerProvider | undefined
 
-  const makeQuery = async () => {
+  const makeQuery = Effect.gen(function* () {
     const exporter = new InMemorySpanExporter()
 
     const provider = cachedProvider ?? new BasicTracerProvider()
@@ -30,31 +30,30 @@ describe('otel', () => {
     const span = otelTracer.startSpan('test')
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const { store } = await makeTodoMvc({ otelTracer, otelContext })
+    const { store } = yield* makeTodoMvc({ otelTracer, otelContext })
 
     return {
-      [Symbol.dispose]: () => store.destroy(),
       store,
       otelTracer,
       exporter,
       span,
       provider,
     }
-  }
+  })
 
   it('otel', async () => {
-    using inputs = await makeQuery()
-    const { store, exporter, span } = inputs
+    const { exporter } = await Effect.gen(function* () {
+      const { store, exporter, span } = yield* makeQuery
 
-    const query = querySQL(`select * from todos`, {
-      schema: Schema.Array(tables.todos.schema),
-      queriedTables: new Set(['todos']),
-    })
-    expect(query.run()).toMatchInlineSnapshot('[]')
+      const query = querySQL(`select * from todos`, {
+        schema: Schema.Array(tables.todos.schema),
+        queriedTables: new Set(['todos']),
+      })
+      expect(query.run()).toMatchInlineSnapshot('[]')
 
-    store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-    expect(query.run()).toMatchInlineSnapshot(`
+      expect(query.run()).toMatchInlineSnapshot(`
       [
         {
           "completed": false,
@@ -64,9 +63,11 @@ describe('otel', () => {
       ]
     `)
 
-    await store.destroy()
-    query.destroy()
-    span.end()
+      query.destroy()
+      span.end()
+
+      return { exporter }
+    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 
     expect(getSimplifiedRootSpan(exporter)).toMatchInlineSnapshot(`
       {
@@ -101,7 +102,7 @@ describe('otel', () => {
                     },
                     "children": [
                       {
-                        "_name": "LiveStore:mutatetWithoutRefresh",
+                        "_name": "LiveStore:mutateWithoutRefresh",
                         "attributes": {
                           "livestore.args": "{
         "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"
@@ -168,18 +169,18 @@ describe('otel', () => {
   })
 
   it('with thunks', async () => {
-    using inputs = await makeQuery()
-    const { store, exporter, span } = inputs
+    const { exporter } = await Effect.gen(function* () {
+      const { store, exporter, span } = yield* makeQuery
 
-    const defaultTodo = { id: '', text: '', completed: false }
+      const defaultTodo = { id: '', text: '', completed: false }
 
-    const filter = computed(() => `where completed = 0`, { label: 'where-filter' })
-    const query = querySQL((get) => `select * from todos ${get(filter)}`, {
-      label: 'all todos',
-      schema: Schema.Array(tables.todos.schema).pipe(Schema.headOrElse(() => defaultTodo)),
-    })
+      const filter = computed(() => `where completed = 0`, { label: 'where-filter' })
+      const query = querySQL((get) => `select * from todos ${get(filter)}`, {
+        label: 'all todos',
+        schema: Schema.Array(tables.todos.schema).pipe(Schema.headOrElse(() => defaultTodo)),
+      })
 
-    expect(query.run()).toMatchInlineSnapshot(`
+      expect(query.run()).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "",
@@ -187,9 +188,9 @@ describe('otel', () => {
       }
     `)
 
-    store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-    expect(query.run()).toMatchInlineSnapshot(`
+      expect(query.run()).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "t1",
@@ -197,9 +198,11 @@ describe('otel', () => {
       }
     `)
 
-    await store.destroy()
-    query.destroy()
-    span.end()
+      query.destroy()
+      span.end()
+
+      return { exporter }
+    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 
     expect(getSimplifiedRootSpan(exporter)).toMatchInlineSnapshot(`
       {
@@ -234,7 +237,7 @@ describe('otel', () => {
                     },
                     "children": [
                       {
-                        "_name": "LiveStore:mutatetWithoutRefresh",
+                        "_name": "LiveStore:mutateWithoutRefresh",
                         "attributes": {
                           "livestore.args": "{
         "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"

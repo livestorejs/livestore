@@ -1,0 +1,6 @@
+{
+  "platforms": ["devtools"],
+  "devtools": {
+    "webpageRoot": "webui-dist"
+  }
+}

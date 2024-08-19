@@ -1,19 +1,11 @@
 import type { MigrationHooks } from '@livestore/common'
-import {
-  initializeSingletonTables,
-  migrateDb,
-  migrateTable,
-  rehydrateFromMutationLog,
-  UnexpectedError,
-} from '@livestore/common'
-import { mutationLogMetaTable } from '@livestore/common/schema'
+import { initializeSingletonTables, migrateDb, rehydrateFromMutationLog, UnexpectedError } from '@livestore/common'
 import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import { Effect, Queue, Stream } from '@livestore/utils/effect'
 
-import { makeInMemoryDb } from '../make-in-memory-db.js'
-import type { SqliteWasm } from '../sqlite-utils.js'
-import { importBytesToDb } from '../sqlite-utils.js'
+import { WaSqlite } from '../sqlite/index.js'
+import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
 import type { InnerWorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 
@@ -30,54 +22,45 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 
     // NOTE to speed up the operations below, we're creating a temporary in-memory database
     // and later we'll overwrite the persisted database with the new data
-    const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-    tmpDb.capi = sqlite3.capi
-    yield* configureConnection(tmpDb, { fkEnabled: true })
+    const tmpDb = WaSqlite.makeInMemoryDb(sqlite3)
+    const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
+    yield* configureConnection({ syncDb: tmpSyncDb }, { fkEnabled: true })
 
     const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
       Effect.gen(function* () {
-        const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
-
-        yield* Effect.tryAll(() => hooks?.init?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.init?.(tmpSyncDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
         yield* migrateDb({
-          db: tmpInMemoryDb,
+          db: tmpSyncDb,
           schema,
           onProgress: ({ done, total }) =>
             Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
         })
 
-        initializeSingletonTables(schema, tmpInMemoryDb)
+        initializeSingletonTables(schema, tmpSyncDb)
 
-        yield* Effect.tryAll(() => hooks?.pre?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.pre?.(tmpSyncDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
-        return tmpInMemoryDb
+        return tmpSyncDb
       })
 
-    const inMemoryDbLog = makeInMemoryDb(sqlite3, dbLog.dbRef.current)
-
-    yield* migrateTable({
-      db: inMemoryDbLog,
-      behaviour: 'create-if-not-exists',
-      tableAst: mutationLogMetaTable.sqliteDef.ast,
-      skipMetaTable: true,
-    })
+    const syncDbLog = dbLog.dbRef.current.syncDb
 
     switch (migrationOptions.strategy) {
       case 'from-mutation-log': {
         const hooks = migrationOptions.hooks
-        const tmpInMemoryDb = yield* initDb(hooks)
+        const tmpSyncDb = yield* initDb(hooks)
 
         yield* rehydrateFromMutationLog({
-          db: tmpInMemoryDb,
-          logDb: inMemoryDbLog,
+          db: tmpSyncDb,
+          logDb: syncDbLog,
           schema,
           migrationOptions,
           onProgress: ({ done, total }) =>
             Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
         })
 
-        yield* Effect.tryAll(() => hooks?.post?.(tmpInMemoryDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.post?.(tmpSyncDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
         break
       }
@@ -98,7 +81,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
           UnexpectedError.mapToUnexpectedError,
         )
 
-        importBytesToDb(sqlite3, tmpDb, newDbData)
+        WaSqlite.importBytesToDb(sqlite3, tmpDb, newDbData)
 
         // TODO validate schema
 
@@ -113,10 +96,11 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
       Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
     )
 
-    const snapshotFromTmpDb = tmpDb.capi.sqlite3_js_db_export(tmpDb.pointer!)
-    tmpDb.close()
+    yield* db.import({ pointer: tmpDb })
 
-    yield* db.import(snapshotFromTmpDb)
+    const snapshotFromTmpDb = WaSqlite.exportDb(sqlite3, tmpDb)
+
+    sqlite3.close(tmpDb)
 
     return snapshotFromTmpDb
   }).pipe(
@@ -128,7 +112,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 // TODO replace with proper rebasing impl
 export const fetchAndApplyRemoteMutations = (
   workerCtx: Context.Tag.Service<InnerWorkerCtx>,
-  db: SqliteWasm.Database,
+  db: number,
   shouldBroadcast: boolean,
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>,
 ) =>

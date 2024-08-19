@@ -7,7 +7,7 @@ import { PreparedBindValues } from '../util.js'
 import { liveStoreVersion as pkgVersion } from '../version.js'
 
 const requestId = Schema.String
-const channelId = Schema.String
+const appHostId = Schema.String
 const liveStoreVersion = Schema.Literal(pkgVersion)
 
 const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
@@ -18,7 +18,7 @@ const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag
 
 const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {
-    channelId,
+    appHostId,
     ...fields,
   })
 
@@ -124,9 +124,14 @@ export class ResetAllDataRes extends LSDReqResMessage('LSD.ResetAllDataRes', {})
 
 export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.DatabaseFileInfoReq', {}) {}
 
+export class DatabaseFileInfo extends Schema.Struct({
+  fileSize: Schema.Number,
+  persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
+}) {}
+
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.DatabaseFileInfoRes', {
-  dbFileSize: Schema.Number,
-  mutationLogFileSize: Schema.Number,
+  db: DatabaseFileInfo,
+  mutationLog: DatabaseFileInfo,
 }) {}
 
 export class MessagePortForStoreReq extends LSDReqResMessage('LSD.MessagePortForStoreReq', {}) {}

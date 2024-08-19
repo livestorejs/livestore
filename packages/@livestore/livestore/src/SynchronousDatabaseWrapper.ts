@@ -2,13 +2,12 @@
 
 import type {
   DebugInfo,
-  InMemoryDatabase,
   MutableDebugInfo,
   PreparedBindValues,
   PreparedStatement,
+  SynchronousDatabase,
 } from '@livestore/common'
 import { BoundArray, BoundMap, sql } from '@livestore/common'
-import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
@@ -21,12 +20,12 @@ export const emptyDebugInfo = (): DebugInfo => ({
   events: new BoundArray(1000),
 })
 
-export class MainDatabaseWrapper {
+export class SynchronousDatabaseWrapper {
   // TODO: how many unique active statements are expected?
   private cachedStmts = new BoundMap<string, PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, Set<string>>(200)
   private resultCache = new QueryCache()
-  private db: InMemoryDatabase
+  private db: SynchronousDatabase
   private otelTracer: otel.Tracer
   private otelRootSpanContext: otel.Context
   private tablesUsedStmt
@@ -36,7 +35,7 @@ export class MainDatabaseWrapper {
     db,
     otel,
   }: {
-    db: InMemoryDatabase
+    db: SynchronousDatabase
     otel: {
       tracer: otel.Tracer
       rootSpanContext: otel.Context
@@ -118,17 +117,13 @@ export class MainDatabaseWrapper {
       { attributes: { 'sql.query': queryStr } },
       options?.otelContext ?? this.otelRootSpanContext,
       (span) => {
-        try {
-          let stmt = this.cachedStmts.get(queryStr)
-          if (stmt === undefined) {
-            stmt = this.db.prepare(queryStr)
-            this.cachedStmts.set(queryStr, stmt)
-          }
-
-          stmt.execute(bindValues)
-        } catch (error) {
-          shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify({ query: queryStr, bindValues })}`)
+        let stmt = this.cachedStmts.get(queryStr)
+        if (stmt === undefined) {
+          stmt = this.db.prepare(queryStr)
+          this.cachedStmts.set(queryStr, stmt)
         }
+
+        stmt.execute(bindValues)
 
         if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
           // TODO use write tables instead
@@ -223,11 +218,8 @@ export class MainDatabaseWrapper {
           }
 
           return result
-        } catch (e) {
+        } finally {
           span.end()
-          console.error(queryStr)
-          console.error(bindValues)
-          shouldNeverHappen(`Error executing select query: ${e} \n ${JSON.stringify({ query: queryStr, bindValues })}`)
         }
       },
     )
@@ -244,7 +236,7 @@ export class MainDatabaseWrapper {
 }
 
 /** Set up SQLite performance; hasn't been super carefully optimized yet. */
-const configureSQLite = (db: MainDatabaseWrapper) => {
+const configureSQLite = (db: SynchronousDatabaseWrapper) => {
   db.execute(
     // TODO: revisit these tuning parameters for max performance
     sql`

@@ -163,7 +163,7 @@ const insertRowWithDefaultValuesOrIgnore = ({
   otelContext: otel.Context
   explicitDefaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
 }) => {
-  const rowExists = store.mainDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
+  const rowExists = store.syncDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
   if (rowExists) return
 
   // const mutationDef = deriveCreateMutationDef(table)

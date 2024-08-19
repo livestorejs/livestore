@@ -1,9 +1,9 @@
-import type { InMemoryDatabase } from './adapter-types.js'
+import type { SynchronousDatabase } from './adapter-types.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import { getDefaultValuesEncoded } from './schema/schema-helpers.js'
 import { prepareBindValues, sql } from './util.js'
 
-export const initializeSingletonTables = (schema: LiveStoreSchema, db: InMemoryDatabase) => {
+export const initializeSingletonTables = (schema: LiveStoreSchema, db: SynchronousDatabase) => {
   for (const [, tableDef] of schema.tables) {
     if (tableDef.options.isSingleton) {
       const defaultValues = getDefaultValuesEncoded(tableDef, undefined)

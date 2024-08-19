@@ -1,9 +1,8 @@
-import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { cuid } from '@livestore/utils/cuid'
 import {
-  BrowserChannel,
   Deferred,
   Effect,
   FiberMap,
@@ -12,14 +11,14 @@ import {
   Queue,
   Stream,
   SubscriptionRef,
+  WebChannel,
 } from '@livestore/utils/effect'
 
-import { makeInMemoryDb } from '../make-in-memory-db.js'
-import type { SqliteWasm } from '../sqlite-utils.js'
-import { importBytesToDb } from '../sqlite-utils.js'
-import type { DevtoolsContextEnabled } from './common.js'
+import { WaSqlite } from '../sqlite/index.js'
+import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
+import type { DevtoolsContextEnabled, PersistenceInfoPair } from './common.js'
 import { InnerWorkerCtx, makeApplyMutation } from './common.js'
-import { makeShutdownChannel, ShutdownBroadcast } from './shutdown-channel.js'
+import { makeShutdownChannel } from './shutdown-channel.js'
 
 type SendMessage = (
   message: Devtools.MessageFromAppHostCoordinator,
@@ -38,8 +37,9 @@ export const makeDevtoolsContext = Effect.gen(function* () {
     coordinatorMessagePort,
     disconnect,
     storeMessagePortDeferred,
-    channelId,
+    appHostId,
     isLeaderTab,
+    persistenceInfo,
   }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(false)
@@ -54,7 +54,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const portChannel = yield* BrowserChannel.messagePortChannel({
+      const portChannel = yield* WebChannel.messagePortChannel({
         port: coordinatorMessagePort,
         sendSchema: Devtools.MessageFromAppHostCoordinator,
         listenSchema: Devtools.MessageToAppHostCoordinator,
@@ -93,14 +93,22 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.forkScoped,
       )
 
-      yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), { force: true })
+      yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), { force: true })
 
-      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ channelId, liveStoreVersion, requestId: cuid() }), {
+      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: cuid() }), {
         force: true,
       })
 
-      yield* listenToDevtools({ incomingMessages, sendMessage, isConnected, disconnect, channelId, isLeaderTab })
-    }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { channelId } }))
+      yield* listenToDevtools({
+        incomingMessages,
+        sendMessage,
+        isConnected,
+        disconnect,
+        appHostId,
+        isLeaderTab,
+        persistenceInfo,
+      })
+    }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { appHostId } }))
 
   const broadcast: DevtoolsContextEnabled['broadcast'] = (message) =>
     Effect.gen(function* () {
@@ -117,21 +125,23 @@ const listenToDevtools = ({
   sendMessage,
   isConnected,
   disconnect,
-  channelId,
+  appHostId,
   isLeaderTab,
+  persistenceInfo,
 }: {
   incomingMessages: Stream.Stream<Devtools.MessageToAppHostCoordinator>
   sendMessage: SendMessage
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   disconnect: Effect.Effect<void>
-  channelId: string
+  appHostId: string
   isLeaderTab: boolean
+  persistenceInfo: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* InnerWorkerCtx
     const { sync, sqlite3, db, dbLog, schema, shutdownStateSubRef } = innerWorkerCtx
 
-    const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current)
+    const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current.pointer)
 
     const shutdownChannel = yield* makeShutdownChannel(schema.key)
 
@@ -145,7 +155,7 @@ const listenToDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
+              yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), {
                 force: true,
               })
             }
@@ -162,7 +172,7 @@ const listenToDevtools = ({
             return
           }
 
-          if (decodedEvent.channelId !== channelId) return
+          if (decodedEvent.appHostId !== appHostId) return
 
           if (decodedEvent._tag === 'LSD.Disconnect') {
             yield* SubscriptionRef.set(isConnected, false)
@@ -170,7 +180,7 @@ const listenToDevtools = ({
             yield* disconnect
 
             // TODO is there a better place for this?
-            yield* sendMessage(Devtools.AppHostReady.make({ channelId, liveStoreVersion, isLeaderTab }), {
+            yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), {
               force: true,
             })
 
@@ -178,7 +188,7 @@ const listenToDevtools = ({
           }
 
           const { requestId } = decodedEvent
-          const reqPayload = { requestId, channelId, liveStoreVersion }
+          const reqPayload = { requestId, appHostId, liveStoreVersion }
 
           switch (decodedEvent._tag) {
             case 'LSD.Ping': {
@@ -198,20 +208,20 @@ const listenToDevtools = ({
               let tableNames: Set<string>
 
               try {
-                const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-                tmpDb.capi = sqlite3.capi
+                const tmpDb = WaSqlite.makeInMemoryDb(sqlite3)
 
-                importBytesToDb(sqlite3, tmpDb, data)
+                WaSqlite.importBytesToDb(sqlite3, tmpDb, data)
 
-                const tmpInMemoryDb = makeInMemoryDb(sqlite3, tmpDb)
-                const tableNameResults = tmpInMemoryDb
-                  .prepare(`select name from sqlite_master where type = 'table'`)
-                  .select<{ name: string }>(undefined)
+                const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
+                const tableNameResults = tmpSyncDb.select<{ name: string }>(
+                  `select name from sqlite_master where type = 'table'`,
+                )
 
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 
-                tmpDb.close()
+                sqlite3.close(tmpDb)
               } catch (e) {
+                yield* Effect.logError(`Error importing database file`, e)
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }))
 
                 return
@@ -227,6 +237,8 @@ const listenToDevtools = ({
                 yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
                 yield* db.import(data)
+
+                yield* dbLog.destroy
               } else {
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }))
                 return
@@ -234,7 +246,7 @@ const listenToDevtools = ({
 
               yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'ok' }))
 
-              yield* shutdownChannel.send(ShutdownBroadcast.make({ reason: 'devtools' }))
+              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
 
               return
             }
@@ -251,16 +263,27 @@ const listenToDevtools = ({
 
               yield* sendMessage(Devtools.ResetAllDataRes.make({ ...reqPayload }))
 
-              yield* shutdownChannel.send(ShutdownBroadcast.make({ reason: 'devtools' }))
+              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' }))
 
               return
             }
             case 'LSD.DatabaseFileInfoReq': {
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
-              const dbFileSize = db.dbRef.current.selectValue(dbSizeQuery) as number
-              const mutationLogFileSize = dbLog.dbRef.current.selectValue(dbSizeQuery) as number
 
-              yield* sendMessage(Devtools.DatabaseFileInfoRes.make({ dbFileSize, mutationLogFileSize, ...reqPayload }))
+              const dbFileSize = db.dbRef.current.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+
+              const mutationLogFileSize = dbLog.dbRef.current.syncDb.select<{ size: number }>(
+                dbSizeQuery,
+                undefined,
+              )[0]!.size
+
+              yield* sendMessage(
+                Devtools.DatabaseFileInfoRes.make({
+                  db: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.db },
+                  mutationLog: { fileSize: mutationLogFileSize, persistenceInfo: persistenceInfo.mutationLog },
+                  ...reqPayload,
+                }),
+              )
 
               return
             }

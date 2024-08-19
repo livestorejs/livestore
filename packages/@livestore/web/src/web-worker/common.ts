@@ -3,6 +3,7 @@ import type {
   InvalidPullError,
   IsOfflineError,
   PreparedBindValues,
+  SynchronousDatabase,
   SyncImpl,
   UnexpectedError,
 } from '@livestore/common'
@@ -10,6 +11,7 @@ import {
   Devtools,
   getExecArgsFromMutation,
   liveStoreVersion,
+  makeShouldExcludeMutationFromLog,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
   prepareBindValues,
@@ -19,34 +21,22 @@ import {
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
-import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream } from '@livestore/utils/effect'
-import { Context, Effect, Runtime, Schema, SubscriptionRef } from '@livestore/utils/effect'
+import { shouldNeverHappen } from '@livestore/utils'
+import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
-import type { SqliteWasm } from '../sqlite-utils.js'
+import type { WaSqlite } from '../sqlite/index.js'
+import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
 import type { PersistedSqlite } from './persisted-sqlite.js'
 import type { StorageType } from './worker-schema.js'
 
-export const getAppDbFileName = (prefix: string, suffix: number) => {
-  return `${prefix}${suffix}.db`
-}
-
-export const getMutationlogDbFileName = (prefix: string) => {
-  return `${prefix}mutationlog.db`
-}
-
-export const getAppDbIdbStoreName = (prefix: string, schemaHash: number) => {
-  return `${prefix}${schemaHash}`
-}
-
-export const getMutationlogDbIdbStoreName = (prefix: string) => {
-  return `${prefix}mutationlog`
-}
-
-export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fkEnabled: boolean }) =>
+export const configureConnection = (
+  { syncDb }: { syncDb: SynchronousDatabase },
+  { fkEnabled }: { fkEnabled: boolean },
+) =>
   execSql(
-    db,
+    syncDb,
     sql`
     PRAGMA page_size=8192;
     PRAGMA journal_mode=MEMORY;
@@ -55,14 +45,21 @@ export const configureConnection = (db: SqliteWasm.Database, { fkEnabled }: { fk
     {},
   )
 
+export type PersistenceInfo = {
+  fileName: string
+} & Record<string, any>
+
+export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
+
 export type DevtoolsContextEnabled = {
   enabled: true
   connect: (options: {
     coordinatorMessagePort: MessagePort
     storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
     disconnect: Effect.Effect<void>
-    channelId: string
+    appHostId: string
     isLeaderTab: boolean
+    persistenceInfo: PersistenceInfoPair
   }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
   connections: FiberSet.FiberSet
   broadcast: (
@@ -85,20 +82,19 @@ export type InitialSetup = { _tag: 'Recreate'; snapshot: Ref.Ref<Uint8Array | un
 export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
   InnerWorkerCtx,
   {
-    keySuffix: string
-    storageOptions: StorageType
     schema: LiveStoreSchema
+    storageOptions: StorageType
     mutationSemaphore: Effect.Semaphore
     db: PersistedSqlite
     dbLog: PersistedSqlite
-    sqlite3: SqliteWasm.Sqlite3Static
+    sqlite3: WaSqlite.SQLiteAPI
     bootStatusQueue: Queue.Queue<BootStatus>
     initialSetupDeferred: Deferred.Deferred<InitialSetup, UnexpectedError>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEventSchema<any>
     mutationDefSchemaHashMap: Map<string, number>
-    broadcastChannel: BroadcastChannel
+    broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
     devtools: DevtoolsContext
     sync:
       | {
@@ -122,7 +118,7 @@ export type ApplyMutation = (
 export const makeApplyMutation = (
   workerCtx: Context.Tag.Service<InnerWorkerCtx>,
   createdAtMemo: () => string,
-  db: SqliteWasm.Database,
+  db: number,
 ): ApplyMutation => {
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
@@ -137,6 +133,7 @@ export const makeApplyMutation = (
         sync,
         schema,
         mutationSemaphore,
+        sqlite3,
       } = workerCtx
       const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
@@ -145,24 +142,27 @@ export const makeApplyMutation = (
 
       const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
+      const syncDb = makeSynchronousDatabase(sqlite3, db)
+      const syncDbLog = dbLog.dbRef.current.syncDb
+
       // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
       const transaction = Effect.gen(function* () {
         const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
         if (hasDbTransaction) {
-          yield* execSql(db, 'BEGIN TRANSACTION', {})
+          yield* execSql(syncDb, 'BEGIN TRANSACTION', {})
         }
 
         for (const { statementSql, bindValues } of execArgsArr) {
           // console.debug(mutationName, statementSql, bindValues)
           // TODO use cached prepared statements instead of exec
-          yield* execSqlPrepared(db, statementSql, bindValues).pipe(
-            Effect.tapError(() => (hasDbTransaction ? execSql(db, 'ROLLBACK', {}) : Effect.void)),
+          yield* execSqlPrepared(syncDb, statementSql, bindValues).pipe(
+            Effect.tapError(() => (hasDbTransaction ? execSql(syncDb, 'ROLLBACK', {}) : Effect.void)),
           )
         }
 
         if (hasDbTransaction) {
-          yield* execSql(db, 'COMMIT', {})
+          yield* execSql(syncDb, 'COMMIT', {})
         }
       })
 
@@ -177,7 +177,7 @@ export const makeApplyMutation = (
           mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
         yield* execSql(
-          dbLog.dbRef.current,
+          syncDbLog,
           ...insertRow({
             tableName: MUTATION_LOG_META_TABLE,
             columns: mutationLogMetaTable.sqliteDef.columns,
@@ -196,11 +196,9 @@ export const makeApplyMutation = (
       }
 
       if (shouldBroadcast) {
-        broadcastChannel.postMessage(
-          Schema.encodeSync(BCMessage.Message)(
-            BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }),
-          ),
-        )
+        yield* broadcastChannel
+          .send(BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }))
+          .pipe(Effect.orDie)
 
         if (devtools.enabled) {
           yield* devtools.broadcast(
@@ -209,8 +207,6 @@ export const makeApplyMutation = (
         }
       }
 
-      const runtime = yield* Effect.runtime()
-
       // TODO do this via a batched queue
       if (
         excludeFromMutationLogAndSyncing === false &&
@@ -218,13 +214,13 @@ export const makeApplyMutation = (
         sync !== undefined &&
         syncStatus === 'pending'
       ) {
-        Effect.gen(function* () {
+        yield* Effect.gen(function* () {
           if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
 
           yield* sync.impl.push(mutationEventEncoded, persisted)
 
           yield* execSql(
-            dbLog.dbRef.current,
+            syncDbLog,
             ...updateRows({
               tableName: MUTATION_LOG_META_TABLE,
               columns: mutationLogMetaTable.sqliteDef.columns,
@@ -232,7 +228,7 @@ export const makeApplyMutation = (
               updateValues: { syncStatus: 'synced' },
             }),
           )
-        }).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
+        }).pipe(Effect.tapCauseLogPretty, Effect.fork)
       }
     }).pipe(
       Effect.withSpan(`@livestore/web:worker:applyMutation`, {
@@ -247,34 +243,19 @@ export const makeApplyMutation = (
     )
 }
 
-const execSql = (db: SqliteWasm.Database, sql: string, bind: BindValues) => {
+const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
-    try: () => db.exec({ sql, bind: bindValues }),
-    catch: (cause) => new SqliteError({ cause, bindValues, code: (cause as any).resultCode, sql }),
+    try: () => syncDb.execute(sql, bindValues),
+    catch: (cause) =>
+      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(Effect.asVoid)
 }
 
-const execSqlPrepared = (db: SqliteWasm.Database, sql: string, bindValues: PreparedBindValues) => {
+const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindValues: PreparedBindValues) => {
   return Effect.try({
-    try: () => db.exec({ sql, bind: bindValues }),
-    catch: (cause) => new SqliteError({ cause, bindValues, code: (cause as any).resultCode, sql }),
+    try: () => syncDb.execute(sql, bindValues),
+    catch: (cause) =>
+      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(Effect.asVoid)
 }
-
-const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
-  const migrationOptions = schema.migrationOptions
-  const mutationLogExclude =
-    migrationOptions.strategy === 'from-mutation-log'
-      ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
-      : new Set(['livestore.RawSql'])
-
-  return (mutationName: string, mutationEventDecoded: MutationEvent.Any): boolean => {
-    if (mutationLogExclude.has(mutationName)) return true
-
-    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-    return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
-  }
-})
