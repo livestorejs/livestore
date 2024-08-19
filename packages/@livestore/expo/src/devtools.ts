@@ -200,7 +200,14 @@ export const bootDevtools = ({
                 .getFirstSync()!.size as number
 
               yield* expoDevtoolsChannel.send(
-                Devtools.DatabaseFileInfoRes.make({ dbFileSize, mutationLogFileSize, ...reqPayload }),
+                Devtools.DatabaseFileInfoRes.make({
+                  db: { fileSize: dbFileSize, persistenceInfo: { fileName: 'livestore.db' } },
+                  mutationLog: {
+                    fileSize: mutationLogFileSize,
+                    persistenceInfo: { fileName: 'livestore-mutationlog.db' },
+                  },
+                  ...reqPayload,
+                }),
               )
 
               return

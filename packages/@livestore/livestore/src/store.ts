@@ -12,8 +12,8 @@ import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@li
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
-import type { Cause } from '@livestore/utils/effect'
 import {
+  Cause,
   Deferred,
   Duration,
   Effect,
@@ -121,6 +121,10 @@ export type StoreMutateOptions = {
    * @default true
    */
   persisted?: boolean
+}
+
+if (typeof window !== 'undefined') {
+  window.__debugDownloadBlob = downloadBlob
 }
 
 export class Store<
@@ -705,7 +709,11 @@ export const createStore = <
     const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
       Effect.gen(function* () {
         // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
-        yield* Effect.logDebug(`Shutting down LiveStore`, cause.toString())
+        const logCause =
+          Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
+            ? cause.toString()
+            : cause
+        yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
 
         FiberSet.clear(fiberSet).pipe(
           Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
@@ -782,11 +790,11 @@ export const createStore = <
         txn: (callback) => {
           try {
             isInTxn = true
-            adapter.syncDb.execute('BEGIN', undefined)
+            // adapter.syncDb.execute('BEGIN TRANSACTION', undefined)
 
             callback()
 
-            adapter.syncDb.execute('COMMIT', undefined)
+            // adapter.syncDb.execute('COMMIT', undefined)
 
             // adapter.coordinator.execute('BEGIN', undefined, undefined)
             for (const [queryStr, bindValues] of txnExecuteStmnts) {
@@ -794,7 +802,7 @@ export const createStore = <
             }
             // adapter.coordinator.execute('COMMIT', undefined, undefined)
           } catch (e: any) {
-            adapter.syncDb.execute('ROLLBACK', undefined)
+            // adapter.syncDb.execute('ROLLBACK', undefined)
             throw e
           } finally {
             isInTxn = false

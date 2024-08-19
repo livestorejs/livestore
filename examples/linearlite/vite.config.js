@@ -22,7 +22,7 @@ export default defineConfig({
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/sqlite-wasm'],
+    exclude: ['@livestore/wa-sqlite'],
   },
   // NOTE This is only in here for convenience while developing the LiveStore devtools (feel free to remove it in your app)
   // resolve: {

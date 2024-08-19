@@ -171,8 +171,6 @@ export const makeAdapter =
             yield* devtools.onMutation({ mutationEventEncoded, persisted })
           }),
         export: Effect.sync(() => dbRef.current.syncDb.export()),
-        // TODO this is only needed in the web-adapter, so find a way to remove it in the adapter interface
-        getInitialSnapshot: Effect.never,
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator

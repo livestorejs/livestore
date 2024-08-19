@@ -124,9 +124,14 @@ export class ResetAllDataRes extends LSDReqResMessage('LSD.ResetAllDataRes', {})
 
 export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.DatabaseFileInfoReq', {}) {}
 
+export class DatabaseFileInfo extends Schema.Struct({
+  fileSize: Schema.Number,
+  persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
+}) {}
+
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.DatabaseFileInfoRes', {
-  dbFileSize: Schema.Number,
-  mutationLogFileSize: Schema.Number,
+  db: DatabaseFileInfo,
+  mutationLog: DatabaseFileInfo,
 }) {}
 
 export class MessagePortForStoreReq extends LSDReqResMessage('LSD.MessagePortForStoreReq', {}) {}

@@ -29,31 +29,29 @@ export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
 
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
-  /** Default is root directory */
-  directory: Schema.optionalWith(Schema.String, { default: () => '' }),
-  /** Default is 'livestore-' */
-  filePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
+  /**
+   * Default is `livestore-${schema.key}`
+   *
+   * When providing this option, make sure to include the `schema.key` in the path to avoid
+   * conflicts with other LiveStore apps.
+   */
+  directory: Schema.optional(Schema.String),
 })
 
-export const StorageTypeOpfsSahpoolExperimental = Schema.Struct({
-  type: Schema.Literal('opfs-sahpool-experimental'),
-  /** Default is `.livestore-sahpool-experimental` */
-  directory: Schema.optionalWith(Schema.String, { default: () => '.livestore-sahpool-experimental' }),
-  /** Default is 'livestore-' */
-  filePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
-})
+export type StorageTypeOpfs = typeof StorageTypeOpfs.Type
 
-export type StorageTypeOpfsSahpoolExperimental = typeof StorageTypeOpfsSahpoolExperimental.Type
+// export const StorageTypeIndexeddb = Schema.Struct({
+//   type: Schema.Literal('indexeddb'),
+//   /** @default "livestore" */
+//   databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
+//   /** @default "livestore-" */
+//   storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
+// })
 
-export const StorageTypeIndexeddb = Schema.Struct({
-  type: Schema.Literal('indexeddb'),
-  /** @default "livestore" */
-  databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
-  /** @default "livestore-" */
-  storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
-})
-
-export const StorageType = Schema.Union(StorageTypeOpfs, StorageTypeIndexeddb, StorageTypeOpfsSahpoolExperimental)
+export const StorageType = Schema.Union(
+  StorageTypeOpfs,
+  // StorageTypeIndexeddb
+)
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
@@ -82,7 +80,6 @@ export namespace DedicatedWorkerInner {
       storageOptions: StorageType,
       needsRecreate: Schema.Boolean,
       syncOptions: Schema.optional(SyncingType),
-      key: Schema.String,
       devtoolsEnabled: Schema.Boolean,
     },
     success: Schema.Void,
@@ -167,12 +164,14 @@ export namespace DedicatedWorkerInner {
 }
 
 export namespace SharedWorker {
+  export class InitialMessagePayloadFromCoordinator extends Schema.TaggedStruct('FromCoordinator', {
+    initialMessage: DedicatedWorkerInner.InitialMessage,
+    schemaKey: Schema.String,
+  }) {}
+
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
-      payload: Schema.Union(
-        Schema.TaggedStruct('FromCoordinator', { initialMessage: DedicatedWorkerInner.InitialMessage }),
-        Schema.TaggedStruct('FromWebBridge', {}),
-      ),
+      payload: Schema.Union(InitialMessagePayloadFromCoordinator, Schema.TaggedStruct('FromWebBridge', {})),
     },
     success: Schema.Void,
     failure: UnexpectedError,

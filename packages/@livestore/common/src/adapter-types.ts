@@ -6,7 +6,7 @@ import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
-  execute(bindValues: PreparedBindValues | undefined): GetRowsChangedCount
+  execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
   select<T>(bindValues: PreparedBindValues | undefined): ReadonlyArray<T>
   finalize(): void
 }
@@ -21,7 +21,11 @@ export type StoreAdapter = {
 export type SynchronousDatabase = {
   _tag: 'SynchronousDatabase'
   prepare(queryStr: string): PreparedStatement
-  execute(queryStr: string, bindValues: PreparedBindValues | undefined): GetRowsChangedCount
+  execute(
+    queryStr: string,
+    bindValues: PreparedBindValues | undefined,
+    options?: { onRowsChanged?: (rowsChanged: number) => void },
+  ): void
   export(): Uint8Array
 }
 
@@ -63,17 +67,9 @@ export type Coordinator = {
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
   mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
-  /**
-   * This is different from `export` since in `getInitialSnapshot` is usually the place for migrations etc to happen
-   *
-   * TODO this is only needed in the web adapter, remove from interface
-   */
-  getInitialSnapshot: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
-
-export type GetRowsChangedCount = () => number
 
 export type LockStatus = 'has-lock' | 'no-lock'
 
@@ -111,10 +107,14 @@ export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShut
 ) {}
 
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
-  sql: Schema.String,
-  bindValues: Schema.Record({ key: Schema.String, value: Schema.Any }),
+  query: Schema.optional(
+    Schema.Struct({
+      sql: Schema.String,
+      bindValues: Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Any }), Schema.Array(Schema.Any)),
+    }),
+  ),
   /** The SQLite result code */
-  code: Schema.Number,
+  code: Schema.optional(Schema.Number),
   /** The original SQLite3 error */
   cause: Schema.Defect,
 }) {}

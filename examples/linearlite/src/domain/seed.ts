@@ -126,6 +126,8 @@ export function* createIssues(numTasks: number): Generator<Issue & { description
     return [`${action} ${feature}`, `${action} ${feature} ${purpose}. ${context}.`]
   }
 
+  const now = Date.now()
+  const ONE_DAY = 24 * 60 * 60 * 1000
   for (let i = 0; i < numTasks; i++) {
     const [title, description] = generateText()
     const issue = {
@@ -133,8 +135,8 @@ export function* createIssues(numTasks: number): Generator<Issue & { description
       // id: ++issueId,
       creator: getRandomItem(names),
       title,
-      created: Date.now() - i * 5 * 24 * 60 * 60 * 1000,
-      modified: Date.now() - i * 2 * 24 * 60 * 60 * 1000,
+      created: now - i * 5 * ONE_DAY,
+      modified: now - i * 2 * ONE_DAY,
       deleted: null,
       status: getRandomItem(statuses),
       priority: getRandomItem(priorities),

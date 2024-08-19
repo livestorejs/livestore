@@ -1,7 +1,12 @@
 import { makeWsSync } from '@livestore/cf-sync/sync-impl'
 import type { BootStatus, NetworkStatus } from '@livestore/common'
-import { sql, UnexpectedError } from '@livestore/common'
-import { type LiveStoreSchema, makeMutationEventSchema, MUTATION_LOG_META_TABLE } from '@livestore/common/schema'
+import { migrateTable, sql, UnexpectedError } from '@livestore/common'
+import {
+  type LiveStoreSchema,
+  makeMutationEventSchema,
+  MUTATION_LOG_META_TABLE,
+  mutationLogMetaTable,
+} from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Context } from '@livestore/utils/effect'
 import {
@@ -25,11 +30,11 @@ import {
 
 import { BCMessage } from '../common/index.js'
 import * as OpfsUtils from '../opfs-utils.js'
-import { loadSqlite3Wasm } from '../sqlite-utils.js'
+import { WaSqlite } from '../sqlite/index.js'
 import type { DevtoolsContext, InitialSetup, ShutdownState } from './common.js'
 import { configureConnection, InnerWorkerCtx, makeApplyMutation, OuterWorkerCtx } from './common.js'
 import { makeDevtoolsContext } from './devtools.js'
-import { makePersistedSqlite } from './persisted-sqlite.js'
+import { makePersistedSqlite, prepareVfs } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
 import type { ExecutionBacklogItem } from './worker-schema.js'
 import * as WorkerSchema from './worker-schema.js'
@@ -89,68 +94,58 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
-    const schemaHash = schema.hash
-
     return WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerInner.Request, {
-      InitialMessage: ({ storageOptions, needsRecreate, syncOptions, key, devtoolsEnabled }) =>
+      InitialMessage: ({ storageOptions, needsRecreate, syncOptions, devtoolsEnabled }) =>
         Effect.gen(function* () {
-          if (storageOptions.type === 'opfs-sahpool-experimental') {
-            // NOTE We're not using SharedArrayBuffers/Atomics here, so we can ignore the warnings
-            // See https://sqlite.org/forum/info/9d4f722c6912799d
-            // TODO hopefully this won't be needed in future versions of SQLite where when using SAHPool, SQLite
-            // won't attempt to spawn the async OPFS proxy
-            // See https://sqlite.org/forum/info/9d4f722c6912799d and https://github.com/sqlite/sqlite-wasm/issues/62
-            // @ts-expect-error Missing types
-            globalThis.sqlite3ApiConfig = {
-              warn: () => {},
-            }
-          }
-          const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+          const sqlite3 = yield* Effect.promise(() => WaSqlite.loadSqlite3Wasm())
 
-          const keySuffix = key ? `-${key}` : ''
+          const schemaKey = schema.key
+          const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
           const shutdownStateSubRef = yield* SubscriptionRef.make<ShutdownState>('running')
 
-          let sahUtils: Awaited<ReturnType<typeof sqlite3.installOpfsSAHPoolVfs>> | undefined
-          if (storageOptions.type === 'opfs-sahpool-experimental') {
-            sahUtils = yield* Effect.tryPromise(() =>
-              sqlite3.installOpfsSAHPoolVfs({ directory: storageOptions.directory }),
-            )
-          }
+          const vfs = yield* prepareVfs({ sqlite3, storageOptions, schemaKey })
 
           const makeDb = makePersistedSqlite({
             storageOptions,
             kind: 'app',
-            schemaHash,
+            schemaHashSuffix,
+            schemaKey,
             sqlite3,
-            sahUtils,
             configure: (db) => configureConnection(db, { fkEnabled: true }),
+            vfs,
           })
 
           const makeDbLog = makePersistedSqlite({
             storageOptions,
             kind: 'mutationlog',
-            schemaHash,
+            schemaHashSuffix,
+            schemaKey,
             sqlite3,
-            sahUtils,
             configure: (db) => configureConnection(db, { fkEnabled: false }),
+            vfs,
           })
 
           // Might involve some async work, so we're running them concurrently
           const [db, dbLog] = yield* Effect.all([makeDb, makeDbLog], { concurrency: 2 })
 
-          const cursor = yield* Effect.try(
-            () =>
-              dbLog.dbRef.current.selectValue(
-                sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
-              ) as string | undefined,
-          ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+          const cursor = yield* Effect.try(() => {
+            const stmt = dbLog.dbRef.current.syncDb.prepare(
+              sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
+            )
+
+            const res = stmt.select<{ id: string }>(undefined)[0]?.id
+
+            stmt.finalize()
+
+            return res
+          }).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
 
           const syncImpl =
             syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
 
           const broadcastChannel = yield* WebChannel.broadcastChannel({
-            channelName: `livestore-sync-${schema.hash}${keySuffix}`,
+            channelName: `livestore-sync-${schema.hash}-${schemaKey}`,
             listenSchema: BCMessage.Message,
             sendSchema: BCMessage.Message,
           })
@@ -184,7 +179,6 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const mutationSemaphore = yield* Effect.makeSemaphore(1)
 
           const innerWorkerCtx = {
-            keySuffix,
             storageOptions,
             schema,
             mutationSemaphore,
@@ -204,6 +198,13 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           // @ts-expect-error For debugging purposes
           globalThis.__innerWorkerCtx = innerWorkerCtx
 
+          yield* migrateTable({
+            db: dbLog.dbRef.current.syncDb,
+            behaviour: 'create-if-not-exists',
+            tableAst: mutationLogMetaTable.sqliteDef.ast,
+            skipMetaTable: true,
+          })
+
           if (needsRecreate) {
             yield* recreateDb(innerWorkerCtx).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
@@ -215,7 +216,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               Effect.forkScoped,
             )
           } else {
-            yield* fetchAndApplyRemoteMutations(innerWorkerCtx, db.dbRef.current, true, ({ done, total }) =>
+            yield* fetchAndApplyRemoteMutations(innerWorkerCtx, db.dbRef.current.pointer, true, ({ done, total }) =>
               Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
             ).pipe(
               Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
@@ -230,7 +231,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           yield* Effect.gen(function* () {
             yield* Deferred.await(initialSetupDeferred)
 
-            const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current)
+            const applyMutation = makeApplyMutation(
+              innerWorkerCtx,
+              () => new Date().toISOString(),
+              db.dbRef.current.pointer,
+            )
 
             if (syncImpl !== undefined) {
               // TODO try to do this in a batched-way if possible
@@ -324,17 +329,15 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
         }).pipe(Stream.unwrap),
       Shutdown: () =>
         Effect.gen(function* () {
-          const { db, dbLog, devtools } = yield* InnerWorkerCtx
+          const { db, dbLog, devtools, sqlite3 } = yield* InnerWorkerCtx
           yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
 
           if (devtools.enabled) {
             yield* FiberSet.clear(devtools.connections)
           }
 
-          db.dbRef.current.close()
-          dbLog.dbRef.current.close()
-          yield* db.close
-          yield* dbLog.close
+          sqlite3.close(db.dbRef.current.pointer)
+          sqlite3.close(dbLog.dbRef.current.pointer)
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       // NOTE We're using a stream here to express a scoped effect over the worker boundary
       // so the code below can cause an interrupt on the worker client side
@@ -356,6 +359,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                 disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
                 appHostId,
                 isLeaderTab,
+                persistenceInfo: { db: workerCtx.db.persistenceInfo, mutationLog: workerCtx.dbLog.persistenceInfo },
               })
               .pipe(
                 Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
@@ -383,14 +387,14 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
     }
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db.dbRef.current)
+    const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db.dbRef.current.pointer)
 
     let offset = 0
 
     while (offset < executionItems.length) {
       try {
-        db.dbRef.current.exec('BEGIN TRANSACTION') // Start the transaction
-        dbLog.dbRef.current.exec('BEGIN TRANSACTION') // Start the transaction
+        db.dbRef.current.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        dbLog.dbRef.current.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
         batchItems = executionItems.slice(offset, offset + 50)
         offset += 50
@@ -408,7 +412,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item
-            db.dbRef.current.exec({ sql: query, bind: bindValues })
+            db.dbRef.current.syncDb.execute(query, bindValues)
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
@@ -427,12 +431,12 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
           }
         }
 
-        db.dbRef.current.exec('COMMIT') // Commit the transaction
-        dbLog.dbRef.current.exec('COMMIT') // Commit the transaction
+        db.dbRef.current.syncDb.execute('COMMIT', undefined) // Commit the transaction
+        dbLog.dbRef.current.syncDb.execute('COMMIT', undefined) // Commit the transaction
       } catch (error) {
         try {
-          db.dbRef.current.exec('ROLLBACK') // Rollback in case of an error
-          dbLog.dbRef.current.exec('ROLLBACK') // Rollback in case of an error
+          db.dbRef.current.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
+          dbLog.dbRef.current.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
         } catch (e) {
           console.error('Error rolling back transaction', e)
         }
