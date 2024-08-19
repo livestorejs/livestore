@@ -28,14 +28,9 @@ export const makeSchemaManager = (db: SynchronousDatabase): Effect.Effect<Schema
     })
 
     return {
-      getMutationDefInfos: () => {
-        const schemaMutationsMetaRows = dbSelect<SchemaMutationsMetaRow>(
-          db,
-          sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`,
-        )
+      getMutationDefInfos: () =>
+        dbSelect<SchemaMutationsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`),
 
-        return schemaMutationsMetaRows
-      },
       setMutationDefInfo: (info) => {
         dbExecute(
           db,
@@ -128,7 +123,7 @@ export const migrateTable = ({
   skipMetaTable?: boolean
 }) =>
   Effect.gen(function* () {
-    console.log(`Migrating table '${tableAst.name}'...`)
+    // console.log(`Migrating table '${tableAst.name}'...`)
     const tableName = tableAst.name
     const columnSpec = makeColumnSpec(tableAst)
 

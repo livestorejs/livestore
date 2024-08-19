@@ -84,7 +84,8 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         onBootStatus,
       })
 
-      window[`__debugLiveStore${schema.key}`] = store
+      window.__debugLiveStore ??= {}
+      window.__debugLiveStore[schema.key] = store
 
       return { stage: 'running', store } satisfies LiveStoreContextRunning
     }),

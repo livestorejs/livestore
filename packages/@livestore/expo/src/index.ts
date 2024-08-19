@@ -33,15 +33,13 @@ export const makeAdapter =
 
       const dbRef = { current: { db, syncDb: makeSynchronousDatabase(db) } }
 
-      const dbWasEmptyWhenOpenedStmt = dbRef.current.syncDb.prepare('SELECT 1 FROM sqlite_master')
-      const dbWasEmptyWhenOpened = dbWasEmptyWhenOpenedStmt.select(undefined).length === 0
+      const dbWasEmptyWhenOpened = dbRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
 
       const dbLogRef = { current: { db: dbLog, syncDb: makeSynchronousDatabase(dbLog) } }
 
-      const dbLogWasEmptyWhenOpenedStmt = dbLogRef.current.syncDb.prepare('SELECT 1 FROM sqlite_master')
-      const dbLogWasEmptyWhenOpened = dbLogWasEmptyWhenOpenedStmt.select(undefined).length === 0
+      const dbLogWasEmptyWhenOpened = dbLogRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
@@ -171,8 +169,6 @@ export const makeAdapter =
             yield* devtools.onMutation({ mutationEventEncoded, persisted })
           }),
         export: Effect.sync(() => dbRef.current.syncDb.export()),
-        // TODO this is only needed in the web-adapter, so find a way to remove it in the adapter interface
-        getInitialSnapshot: Effect.never,
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator

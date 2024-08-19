@@ -1,49 +1,52 @@
-import type { Coordinator, LockStatus } from '@livestore/common'
+import type { Coordinator, LockStatus, StoreAdapterFactory } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
-import { makeAdapterFactory } from '../make-adapter-factory.js'
-import { makeSynchronousDatabase } from '../make-in-memory-db.js'
-import type { SqliteWasm } from '../sqlite-utils.js'
+import { WaSqlite } from '../sqlite/index.js'
+import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
 import { configureConnection } from '../web-worker/common.js'
 
-/** NOTE: This coordinator is currently only used for testing */
-export const makeInMemoryAdapter = (initialData?: Uint8Array) =>
-  makeAdapterFactory(({ schema, sqlite3 }) => makeCoordinator(schema, sqlite3, initialData))
+// NOTE we're starting to initialize the sqlite wasm binary here to speed things up
+const sqlite3Promise = WaSqlite.loadSqlite3Wasm()
 
-const makeCoordinator = (schema: LiveStoreSchema, sqlite3: SqliteWasm.Sqlite3Static, initialData?: Uint8Array) =>
-  Effect.gen(function* () {
-    const getInitialSnapshot = Effect.gen(function* () {
-      if (initialData !== undefined) {
-        return initialData
+/** NOTE: This coordinator is currently only used for testing */
+export const makeInMemoryAdapter =
+  (initialData?: Uint8Array): StoreAdapterFactory =>
+  ({
+    schema,
+    // devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore
+  }) =>
+    Effect.gen(function* () {
+      const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
+
+      const db = WaSqlite.makeInMemoryDb(sqlite3)
+      const syncDb = makeSynchronousDatabase(sqlite3, db)
+
+      if (initialData === undefined) {
+        yield* configureConnection({ syncDb }, { fkEnabled: true })
+
+        yield* migrateDb({ db: syncDb, schema })
+
+        initializeSingletonTables(schema, syncDb)
+      } else {
+        WaSqlite.importBytesToDb(sqlite3, db, initialData)
+
+        yield* configureConnection({ syncDb }, { fkEnabled: true })
       }
 
-      const tmpDb = new sqlite3.oo1.DB({}) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-      tmpDb.capi = sqlite3.capi
+      const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
+      const syncMutations = Stream.never
 
-      yield* configureConnection(tmpDb, { fkEnabled: true }).pipe(UnexpectedError.mapToUnexpectedError)
-      const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
+      const coordinator = {
+        devtools: { appHostId: 'in-memory', enabled: false },
+        lockStatus,
+        syncMutations,
+        execute: () => Effect.void,
+        mutate: () => Effect.void,
+        export: Effect.dieMessage('Not implemented'),
+        getMutationLogData: Effect.succeed(new Uint8Array()),
+        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+      } satisfies Coordinator
 
-      yield* migrateDb({ db: tmpSyncDb, schema })
-
-      initializeSingletonTables(schema, tmpSyncDb)
-
-      return tmpSyncDb.export()
-    })
-
-    const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
-    const syncMutations = Stream.never
-
-    return {
-      devtools: { appHostId: 'in-memory', enabled: false },
-      lockStatus,
-      syncMutations,
-      execute: () => Effect.void,
-      mutate: () => Effect.void,
-      export: Effect.dieMessage('Not implemented'),
-      getInitialSnapshot,
-      getMutationLogData: Effect.succeed(new Uint8Array()),
-      networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
-    } satisfies Coordinator
-  })
+      return { coordinator, syncDb }
+    }).pipe(UnexpectedError.mapToUnexpectedError)

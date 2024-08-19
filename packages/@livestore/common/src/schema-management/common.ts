@@ -16,6 +16,8 @@ export const dbExecute = (db: SynchronousDatabase, queryStr: string, bindValues?
   const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
 
   stmt.execute(preparedBindValues)
+
+  stmt.finalize()
 }
 
 export const dbSelect = <T>(db: SynchronousDatabase, queryStr: string, bindValues?: ParamsObject) => {
@@ -25,7 +27,9 @@ export const dbSelect = <T>(db: SynchronousDatabase, queryStr: string, bindValue
   // cachedStmts.set(queryStr, stmt)
   // }
 
-  return stmt.select<T>(bindValues ? prepareBindValues(bindValues, queryStr) : undefined)
+  const res = stmt.select<T>(bindValues ? prepareBindValues(bindValues, queryStr) : undefined)
+  stmt.finalize()
+  return res
 }
 
 export interface SchemaManager {

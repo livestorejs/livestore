@@ -15,7 +15,7 @@
   "resolutions": {
     "@livestore/livestore": "workspace:*",
     "@livestore/*": "workspace:*",
-    "@livestore/devtools-react": "0.0.56-dev.2",
+    "@livestore/devtools-react": "0.0.56-dev.3",
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {

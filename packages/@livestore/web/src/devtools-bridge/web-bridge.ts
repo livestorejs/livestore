@@ -55,9 +55,10 @@ export const prepareWebDevtoolsBridge = (
     >()
 
     const devtoolsId = cuid()
-    const keySuffix = options.appSchema.key.length > 0 ? `-${options.appSchema.key}` : ''
 
-    const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker${keySuffix}` })
+    const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, {
+      name: `livestore-shared-worker-${options.appSchema.key}`,
+    })
 
     const sharedWorkerDeferred = yield* Worker.makeSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
       initialMessage: () => new WorkerSchema.SharedWorker.InitialMessage({ payload: { _tag: 'FromWebBridge' } }),

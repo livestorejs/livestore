@@ -40,7 +40,7 @@ export default defineConfig({
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-    exclude: ['@livestore/sqlite-wasm'],
+    exclude: ['@livestore/wa-sqlite'],
   },
   plugins: [
     react(),

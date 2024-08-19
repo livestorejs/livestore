@@ -1,28 +1,21 @@
-import type { SqliteError } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
-import { casesHandled, prettyBytes, ref } from '@livestore/utils'
+import type { SqliteError, SynchronousDatabase } from '@livestore/common'
+import { ref } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Effect, Queue, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 
-import { getDirHandle } from '../opfs-utils.js'
-import type { SahUtils, SqliteWasm } from '../sqlite-utils.js'
-import { importBytesToDb } from '../sqlite-utils.js'
-import { IdbBinary } from '../utils/idb-eff.js'
-import {
-  getAppDbFileName,
-  getAppDbIdbStoreName,
-  getMutationlogDbFileName,
-  getMutationlogDbIdbStoreName,
-} from './common.js'
-import type { StorageType } from './worker-schema.js'
+import * as OpfsUtils from '../opfs-utils.js'
+import { WaSqlite } from '../sqlite/index.js'
+import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '../sqlite/opfs-sah-pool.js'
+import type { PersistenceInfo } from './common.js'
+import type * as WorkerSchema from './worker-schema.js'
 
 export interface PersistedSqlite {
   /** NOTE the db instance is wrapped in a ref since it can be re-created */
-  dbRef: { current: SqliteWasm.Database & { capi: SqliteWasm.CAPI } }
+  dbRef: { current: { pointer: number; syncDb: SynchronousDatabase } }
   destroy: Effect.Effect<void, PersistedSqliteError>
   export: Effect.Effect<Uint8Array>
-  close: Effect.Effect<void>
-  import: (data: Uint8Array) => Effect.Effect<void, PersistedSqliteError>
+  import: (source: { pointer: number } | Uint8Array) => Effect.Effect<void, PersistedSqliteError>
+  persistenceInfo: PersistenceInfo
 }
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -32,53 +25,45 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
 export const makePersistedSqlite = ({
   storageOptions,
   sqlite3,
-  sahUtils,
-  schemaHash,
+  schemaHashSuffix,
+  schemaKey,
   kind,
   configure,
+  vfs,
 }: {
-  storageOptions: StorageType
-  sqlite3: SqliteWasm.Sqlite3Static
-  sahUtils: SahUtils | undefined
-  schemaHash: number
+  storageOptions: WorkerSchema.StorageType
+  sqlite3: WaSqlite.SQLiteAPI
+  schemaHashSuffix: string
+  schemaKey: string
   kind: 'app' | 'mutationlog'
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>
+  configure: (db: { pointer: number; syncDb: SynchronousDatabase }) => Effect.Effect<void, SqliteError>
+  vfs: WaSqlite.SQLiteVFS
 }) => {
-  switch (storageOptions.type) {
-    case 'opfs': {
-      const fileName =
-        kind === 'app'
-          ? getAppDbFileName(storageOptions.filePrefix, schemaHash)
-          : getMutationlogDbFileName(storageOptions.filePrefix)
+  // // switch (storageOptions.type) {
+  // //   case 'opfs': {
+  return makePersistedSqliteOpfs({
+    sqlite3,
+    storageOptions,
+    schemaHashSuffix,
+    schemaKey,
+    kind,
+    configure,
+    vfs: vfs as WaSqlite.AccessHandlePoolVFS,
+  })
+  //   }
+  // case 'indexeddb': {
+  //   // const storeName =
+  //   //   kind === 'app'
+  //   //     ? getAppDbIdbStoreName(storageOptions.storeNamePrefix, schemaHash)
+  //   //     : getMutationlogDbIdbStoreName(storageOptions.storeNamePrefix)
 
-      return makePersistedSqliteOpfs(sqlite3, storageOptions.directory, fileName, configure)
-    }
-    case 'opfs-sahpool-experimental': {
-      const fileName =
-        kind === 'app'
-          ? getAppDbFileName(storageOptions.filePrefix, schemaHash)
-          : getMutationlogDbFileName(storageOptions.filePrefix)
-
-      return makePersistedSqliteOpfsSahpoolExperimental(
-        sqlite3,
-        sahUtils!,
-        storageOptions.directory,
-        fileName,
-        configure,
-      )
-    }
-    case 'indexeddb': {
-      const storeName =
-        kind === 'app'
-          ? getAppDbIdbStoreName(storageOptions.storeNamePrefix, schemaHash)
-          : getMutationlogDbIdbStoreName(storageOptions.storeNamePrefix)
-
-      return makePersistedSqliteIndexedDb(sqlite3, storageOptions.databaseName, storeName, configure)
-    }
-    default: {
-      return casesHandled(storageOptions)
-    }
-  }
+  //   // return makePersistedSqliteIndexedDb(sqlite3, storageOptions.databaseName, storeName, configure)
+  //   return Effect.die(new Error('Not implemented'))
+  // }
+  // default: {
+  //   return casesHandled(storageOptions)
+  // }
+  // }
 }
 
 // TODO remove this once bun-types has fixed the type for ArrayBuffer
@@ -88,64 +73,119 @@ declare global {
   }
 }
 
-export const makePersistedSqliteOpfs = (
-  sqlite3: SqliteWasm.Sqlite3Static,
-  directory_: string,
-  fileName: string,
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>,
-): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
+export const prepareVfs = ({
+  sqlite3,
+  storageOptions,
+  schemaKey,
+}: {
+  sqlite3: WaSqlite.SQLiteAPI
+  storageOptions: WorkerSchema.StorageType
+  schemaKey: string
+}) =>
   Effect.gen(function* () {
-    const directory = sanitizeOpfsDir(directory_)
-    const fullPath = `${directory}${fileName}`
+    const vfsName = getVfsName({ storageOptions, schemaKey })
 
-    const dbRef = ref(new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI })
-    dbRef.current.capi = sqlite3.capi
+    if (storageOptions.type === 'opfs') {
+      const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+      const vfs = yield* Effect.promise(() =>
+        WaSqlite.AccessHandlePoolVFS.create(vfsName, directory, (sqlite3 as any).module),
+      )
+
+      sqlite3.vfs_register(vfs as any as SQLiteVFS, false)
+
+      return vfs
+    } else {
+      // TODO bring back indexeddb
+      return undefined as never
+    }
+  })
+
+const getVfsName = ({ storageOptions, schemaKey }: { storageOptions: WorkerSchema.StorageType; schemaKey: string }) => {
+  if (storageOptions.type === 'opfs') {
+    const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+    // Replace all special characters with underscores
+    const safePath = directory.replaceAll(/["*/:<>?\\|]/g, '_')
+    const pathSegment = safePath.length === 0 ? '' : `-${safePath}`
+    return `opfs${pathSegment}`
+  } else {
+    return 'indexeddb'
+  }
+}
+
+export const makePersistedSqliteOpfs = ({
+  sqlite3,
+  storageOptions,
+  schemaHashSuffix,
+  schemaKey,
+  kind,
+  configure,
+  vfs,
+}: {
+  sqlite3: WaSqlite.SQLiteAPI
+  storageOptions: WorkerSchema.StorageTypeOpfs
+  schemaHashSuffix: string
+  schemaKey: string
+  kind: 'app' | 'mutationlog'
+  configure: (db: { pointer: number; syncDb: SynchronousDatabase }) => Effect.Effect<void, SqliteError>
+  vfs: WaSqlite.AccessHandlePoolVFS
+}): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
+  Effect.gen(function* () {
+    const fileName = kind === 'app' ? getAppDbFileName(schemaHashSuffix) : 'mutationlog.db'
+
+    const vfsName = getVfsName({ storageOptions, schemaKey })
+
+    const pointer = yield* Effect.sync(() => sqlite3.open_v2Sync(fileName, undefined, vfsName))
+    // TODO get rid of ref since we never replace it
+    const dbRef = ref({ pointer, syncDb: WaSqlite.makeSynchronousDatabase(sqlite3, pointer) })
+
+    const opfsDirectory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+    const opfsFileName = vfs.getOpfsFileName(fileName)
+    const opfsPath = `${opfsDirectory}/${opfsFileName}`
+
+    const persistenceInfo = { fileName, opfsPath }
 
     // Log below can be useful to debug state of loaded DB
+    // console.debug('makePersistedSqliteOpfs:', 'vfsName', vfsName, 'fileName', fileName, 'pointer', pointer)
     // console.debug(
     //   'makePersistedSqliteOpfs: sqlite_master for',
-    //   fullPath,
+    //   opfsPath,
     //   dbRef.current.selectObjects('select * from sqlite_master'),
     // )
 
-    yield* Effect.addFinalizer(() => Effect.sync(() => dbRef.current.close()))
+    yield* Effect.addFinalizer(() => Effect.sync(() => sqlite3.close(dbRef.current)))
 
     yield* configure(dbRef.current)
 
-    const destroy = opfsDeleteFile(fullPath).pipe(
+    const destroy = Effect.gen(function* () {
+      try {
+        sqlite3.close(dbRef.current.pointer)
+      } catch (error) {
+        console.error('Error closing database', error)
+      }
+
+      vfs.resetAccessHandle(fileName)
+    }).pipe(
       Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
       Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:destroy'),
+      Effect.tapCauseLogPretty,
+    )
+    // const destroy = opfsDeleteAbs(opfsPath).pipe(
+    //   Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
+    //   Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:destroy'),
+    //   Effect.tapCauseLogPretty,
+    // )
+
+    const export_ = Effect.sync(() => WaSqlite.exportDb(sqlite3, dbRef.current.pointer)).pipe(
+      Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:export'),
     )
 
-    const export_ = Effect.sync(() => {
-      if (dbRef.current.pointer === undefined) throw new Error(`dbRef.current.pointer is undefined`)
-      return dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer)
-    }).pipe(Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:export'))
-
-    const import_ = (data: Uint8Array) =>
+    const import_ = (source: { pointer: number } | Uint8Array) =>
       Effect.gen(function* () {
-        dbRef.current.close()
-
-        yield* Effect.promise(async () => {
-          // overwrite the OPFS file with the new data
-          const dirHandle = await getDirHandle(directory)
-          const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
-          const writable = await fileHandle.createSyncAccessHandle()
-          const numberOfWrittenBytes = writable.write(data.subarray())
-
-          writable.flush()
-          writable.close()
-
-          if (numberOfWrittenBytes !== data.length) {
-            throw new UnexpectedError({
-              cause: `Import failed. Could only write ${prettyBytes(numberOfWrittenBytes)} of ${prettyBytes(data.length)} to ${fullPath}`,
-              payload: { numberOfWrittenBytes, dataLength: data.length },
-            })
-          }
-        })
-
-        dbRef.current = new sqlite3.oo1.OpfsDb(fullPath, 'c') as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-        dbRef.current.capi = sqlite3.capi
+        if (source instanceof Uint8Array) {
+          WaSqlite.importBytesToDb(sqlite3, dbRef.current.pointer, source)
+        } else {
+          sqlite3.backup(dbRef.current.pointer, 'main', source.pointer, 'main')
+        }
 
         yield* configure(dbRef.current)
       }).pipe(
@@ -153,176 +193,104 @@ export const makePersistedSqliteOpfs = (
         Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:import'),
       )
 
-    const close = Effect.gen(function* () {})
-
-    return { dbRef, destroy, export: export_, import: import_, close }
+    return { dbRef, destroy, export: export_, import: import_, persistenceInfo } satisfies PersistedSqlite
   }).pipe(
-    Effect.mapError((error) => new PersistedSqliteError({ cause: error })),
+    Effect.mapError((cause) => new PersistedSqliteError({ cause })),
     Effect.withSpan('@livestore/web:worker:makePersistedSqliteOpfs', {
-      attributes: { directory: directory_, fileName },
+      attributes: { directory: storageOptions.directory },
     }),
   )
 
-export const makePersistedSqliteOpfsSahpoolExperimental = (
-  sqlite3: SqliteWasm.Sqlite3Static,
-  sahUtils: SahUtils,
-  directory: string,
-  fileName: string,
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>,
-): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
+export const readPersistedAppDbFromCoordinator = ({
+  storageOptions,
+  schemaKey,
+  schemaHashSuffix,
+}: {
+  storageOptions: WorkerSchema.StorageType
+  schemaKey: string
+  schemaHashSuffix: string
+}) =>
   Effect.gen(function* () {
-    // NOTE We're not using the `directory` here since it's already used when creating the SAH pool
-    const filePath = `/${fileName}`
+    if (storageOptions.type === 'opfs') {
+      return yield* Effect.promise(async () => {
+        const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+        const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(directory).catch(() => undefined)
 
-    const dbRef = ref(new sahUtils.OpfsSAHPoolDb(filePath) as SqliteWasm.Database & { capi: SqliteWasm.CAPI })
-    dbRef.current.capi = sqlite3.capi
+        if (sahPoolOpaqueDir === undefined) {
+          return undefined
+        }
 
-    yield* Effect.addFinalizer(() => Effect.sync(() => dbRef.current.close()))
+        const tryGetDbFile = async (fileHandle: FileSystemFileHandle) => {
+          const file = await fileHandle.getFile()
+          const fileName = await decodeSAHPoolFilename(file)
+          return fileName ? { fileName, file } : undefined
+        }
 
-    yield* configure(dbRef.current)
-
-    const destroy = opfsDeleteFile(directory).pipe(
-      Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
-      Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:destroy'),
-    )
-
-    const export_ = Effect.sync(() => {
-      if (dbRef.current.pointer === undefined) throw new Error(`dbRef.current.pointer is undefined`)
-      return dbRef.current.capi.sqlite3_js_db_export(dbRef.current.pointer)
-    }).pipe(Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:export'))
-
-    const import_ = (data: Uint8Array) =>
-      Effect.gen(function* () {
-        yield* Effect.try(() => sahUtils.importDb(filePath, data))
-        // importBytesToDb(sqlite3, dbRef.current, data)
-        // dbRef.current = new sahUtils.OpfsSAHPoolDb(fullPath) as SqliteWasm.Database & { capi: SqliteWasm.CAPI }
-
-        yield* configure(dbRef.current)
-      }).pipe(
-        Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
-        Effect.withSpan('@livestore/web:worker:persistedSqliteOpfsSahpoolExperimental:import'),
-      )
-
-    const close = Effect.gen(function* () {
-      // sahUtils.unlink(filePath)
-    })
-
-    return { dbRef, destroy, export: export_, import: import_, close }
-  }).pipe(
-    Effect.mapError((error) => new PersistedSqliteError({ cause: error })),
-    Effect.withSpan('@livestore/web:worker:makePersistedSqliteOpfsSahpoolExperimental', {
-      attributes: { directory, fileName },
-    }),
-  )
-
-export const makePersistedSqliteIndexedDb = (
-  sqlite3: SqliteWasm.Sqlite3Static,
-  databaseName: string,
-  storeName: string,
-  configure: (db: SqliteWasm.Database & { capi: SqliteWasm.CAPI }) => Effect.Effect<void, SqliteError>,
-): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
-  Effect.gen(function* () {
-    const idb = new IdbBinary(databaseName, storeName)
-    yield* Effect.addFinalizer(() => idb.close.pipe(Effect.tapCauseLogPretty, Effect.orDie))
-
-    const key = 'db'
-
-    const db = new sqlite3.oo1.DB({ filename: ':memory:', flags: 'c' }) as SqliteWasm.Database & {
-      capi: SqliteWasm.CAPI
-    }
-    db.capi = sqlite3.capi
-
-    yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
-
-    yield* configure(db)
-
-    const initialData = yield* idb.get(key)
-
-    if (initialData !== undefined) {
-      importBytesToDb(sqlite3, db, initialData)
-    }
-
-    const persistDebounceQueue = yield* Queue.unbounded<void>().pipe(Effect.acquireRelease(Queue.shutdown))
-
-    // NOTE in case of an interrupt, it's possible that the last debounced persist is not executed
-    // we need to replace the indexeddb sqlite impl anyway, so it's fine for now
-    yield* Stream.fromQueue(persistDebounceQueue).pipe(
-      Stream.debounce(1000),
-      Stream.tap(() => idb.put(key, db.capi.sqlite3_js_db_export(db.pointer!))),
-      Stream.runDrain,
-      Effect.forkScoped,
-    )
-
-    const persist = () => Queue.unsafeOffer(persistDebounceQueue, void 0)
-
-    const originalExec = db.exec
-
-    // @ts-expect-error TODO
-    db.exec = (...args) => {
-      // @ts-expect-error TODO
-      const result = originalExec.apply(db, args)
-      persist()
-      return result
-    }
-
-    const originalPrepare = db.prepare
-
-    db.prepare = (...args: any[]) => {
-      // @ts-expect-error TODO
-      const stmt = originalPrepare.apply(db, args)
-
-      return new Proxy(stmt, {
-        // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-        get(target, prop, receiver) {
-          const value = Reflect.get(target, prop, receiver)
-          if (typeof value === 'function') {
-            // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-            return function (...args: any[]) {
-              const result = value.apply(stmt, args)
-              persist()
-              return result
+        const getAllFiles = async (asyncIterator: AsyncIterable<FileSystemHandle>): Promise<FileSystemFileHandle[]> => {
+          const results: FileSystemFileHandle[] = []
+          for await (const value of asyncIterator) {
+            if (value.kind === 'file') {
+              results.push(value as FileSystemFileHandle)
             }
           }
-          return value
-        },
+          return results
+        }
+
+        const files = await getAllFiles(sahPoolOpaqueDir.values())
+
+        const fileResults = await Promise.all(files.map(tryGetDbFile))
+
+        const appDbFileName = '/' + getAppDbFileName(schemaHashSuffix)
+
+        const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
+        // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
+
+        if (dbFileRes !== undefined) {
+          const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
+
+          // Given the SAH pool always eagerly creates files with empty non-header data,
+          // we want to return undefined if the file exists but is empty
+          if (data.byteLength === 0) {
+            return undefined
+          }
+
+          return new Uint8Array(data)
+        }
+
+        return undefined
       })
+    } else if (storageOptions.type === 'indexeddb') {
+      // const idb = new IDB(
+      //   storage.databaseName ?? 'livestore',
+      //   getAppDbIdbStoreName(storage.storeNamePrefix, fileSuffix),
+      // )
+      // return await idb.get('db')
     }
-
-    const originalClose = db.close
-
-    db.close = () => {
-      persist()
-      idb.close.pipe(Effect.tapCauseLogPretty, Effect.runFork)
-      originalClose.apply(db)
-    }
-
-    const destroy = idb.deleteDb.pipe(Effect.mapError((error) => new PersistedSqliteError({ cause: error })))
-
-    const export_ = Effect.sync(() => db.capi.sqlite3_js_db_export(db.pointer!))
-
-    const import_ = (data: Uint8Array) =>
-      Effect.sync(() => {
-        importBytesToDb(sqlite3, db, data)
-
-        // trigger persisting the data to IndexedDB
-        persist()
-      })
-
-    const close = Effect.gen(function* () {})
-
-    return { dbRef: ref(db), destroy, export: export_, import: import_, close }
   }).pipe(
-    Effect.mapError((error) => new PersistedSqliteError({ cause: error })),
-    Effect.withSpan('@livestore/web:worker:makePersistedSqliteIndexedDb'),
+    Effect.logWarnIfTakesLongerThan({ duration: 1000, label: '@livestore/web:readPersistedAppDbFromCoordinator' }),
+    Effect.withPerformanceMeasure('@livestore/web:readPersistedAppDbFromCoordinator'),
+    Effect.withSpan('@livestore/web:readPersistedAppDbFromCoordinator'),
   )
 
-const opfsDeleteFile = (absFilePath: string) =>
+export const resetPersistedDataFromCoordinator = ({
+  storageOptions,
+  schemaKey,
+}: {
+  storageOptions: WorkerSchema.StorageType
+  schemaKey: string
+}) =>
+  Effect.gen(function* () {
+    const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+    yield* opfsDeleteAbs(directory)
+  }).pipe(Effect.withSpan('@livestore/web:resetPersistedDataFromCoordinator'))
+
+const opfsDeleteAbs = (absPath: string) =>
   Effect.promise(async () => {
     // Get the root directory handle
-    const root = await navigator.storage.getDirectory()
+    const root = await OpfsUtils.rootHandlePromise
 
     // Split the absolute path to traverse directories
-    const pathParts = absFilePath.split('/').filter((part) => part.length)
+    const pathParts = absPath.split('/').filter((part) => part.length)
 
     try {
       // Traverse to the target file handle
@@ -331,11 +299,8 @@ const opfsDeleteFile = (absFilePath: string) =>
         currentDir = await currentDir.getDirectoryHandle(pathParts[i]!)
       }
 
-      // Get the file handle
-      const fileHandle = await currentDir.getFileHandle(pathParts.at(-1)!)
-
       // Delete the file
-      await currentDir.removeEntry(fileHandle.name)
+      await currentDir.removeEntry(pathParts.at(-1)!)
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotFoundError') {
         // Can ignore as it's already been deleted or not there in the first place
@@ -344,13 +309,19 @@ const opfsDeleteFile = (absFilePath: string) =>
         throw error
       }
     }
-  }).pipe(Effect.withSpan('@livestore/web:worker:opfsDeleteFile', { attributes: { absFilePath } }))
+  }).pipe(Effect.withSpan('@livestore/web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }))
 
-const sanitizeOpfsDir = (directory: string) => {
+const sanitizeOpfsDir = (directory: string | undefined, schemaKey: string) => {
   // Root dir should be `''` not `/`
-  if (directory === '' || directory === '/') return ''
+  if (directory === undefined || directory === '' || directory === '/') return `livestore-${schemaKey}`
 
-  if (directory.endsWith('/')) return directory
+  if (directory.includes('/')) {
+    throw new Error(`@livestore/web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`)
+  }
 
-  return `${directory}/`
+  // if (directory.endsWith('/')) return directory
+
+  return `${directory}`
 }
+
+const getAppDbFileName = (suffix: string) => `app${suffix}.db`

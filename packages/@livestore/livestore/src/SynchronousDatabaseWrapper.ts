@@ -8,7 +8,6 @@ import type {
   SynchronousDatabase,
 } from '@livestore/common'
 import { BoundArray, BoundMap, sql } from '@livestore/common'
-import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
@@ -118,17 +117,13 @@ export class SynchronousDatabaseWrapper {
       { attributes: { 'sql.query': queryStr } },
       options?.otelContext ?? this.otelRootSpanContext,
       (span) => {
-        try {
-          let stmt = this.cachedStmts.get(queryStr)
-          if (stmt === undefined) {
-            stmt = this.db.prepare(queryStr)
-            this.cachedStmts.set(queryStr, stmt)
-          }
-
-          stmt.execute(bindValues)
-        } catch (error) {
-          shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify({ query: queryStr, bindValues })}`)
+        let stmt = this.cachedStmts.get(queryStr)
+        if (stmt === undefined) {
+          stmt = this.db.prepare(queryStr)
+          this.cachedStmts.set(queryStr, stmt)
         }
+
+        stmt.execute(bindValues)
 
         if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
           // TODO use write tables instead
@@ -223,11 +218,8 @@ export class SynchronousDatabaseWrapper {
           }
 
           return result
-        } catch (e) {
+        } finally {
           span.end()
-          console.error(queryStr)
-          console.error(bindValues)
-          shouldNeverHappen(`Error executing select query: ${e} \n ${JSON.stringify({ query: queryStr, bindValues })}`)
         }
       },
     )

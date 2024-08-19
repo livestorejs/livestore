@@ -35,9 +35,9 @@ const makeWorkerRunner = Effect.gen(function* () {
     | undefined
   >(undefined)
 
-  const initialMessageDeferredRef = yield* Deferred.make<WorkerSchema.DedicatedWorkerInner.InitialMessage>().pipe(
-    Effect.andThen(Ref.make),
-  )
+  const initialMessagePayloadDeferredRef = yield* Deferred.make<
+    typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromCoordinator.Type
+  >().pipe(Effect.andThen(Ref.make))
 
   const waitForWorker = SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),
@@ -128,8 +128,9 @@ const makeWorkerRunner = Effect.gen(function* () {
   const reset = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
 
-    const initialMessageDeferred = yield* Deferred.make<WorkerSchema.DedicatedWorkerInner.InitialMessage>()
-    yield* Ref.set(initialMessageDeferredRef, initialMessageDeferred)
+    const initialMessagePayloadDeferred =
+      yield* Deferred.make<typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromCoordinator.Type>()
+    yield* Ref.set(initialMessagePayloadDeferredRef, initialMessagePayloadDeferred)
 
     yield* resetCurrentWorkerCtx
     yield* devtoolsWebBridge.reset
@@ -140,16 +141,16 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.gen(function* () {
         if (message.payload._tag === 'FromWebBridge') return
 
-        const initialMessageDeferred = yield* Ref.get(initialMessageDeferredRef)
-        const deferredAlreadyDone = yield* Deferred.isDone(initialMessageDeferred)
+        const initialMessagePayloadDeferred = yield* Ref.get(initialMessagePayloadDeferredRef)
+        const deferredAlreadyDone = yield* Deferred.isDone(initialMessagePayloadDeferred)
         const initialMessage = message.payload.initialMessage
 
         if (deferredAlreadyDone) {
-          const previousInitialMessage = yield* Deferred.await(initialMessageDeferred)
+          const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
           const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(Schema.omit('needsRecreate'))
           const isEqual = SchemaEquivalence.make(messageSchema)
-          if (isEqual(initialMessage, previousInitialMessage) === false) {
-            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage, initialMessage)
+          if (isEqual(initialMessage, previousInitialMessage.initialMessage) === false) {
+            const diff = Schema.debugDiff(messageSchema)(previousInitialMessage.initialMessage, initialMessage)
 
             yield* new UnexpectedError({
               cause: {
@@ -161,12 +162,12 @@ const makeWorkerRunner = Effect.gen(function* () {
             })
           }
         } else {
-          yield* Deferred.succeed(initialMessageDeferred, initialMessage)
+          yield* Deferred.succeed(initialMessagePayloadDeferred, message.payload)
         }
       }),
     UpdateMessagePort: ({ port }) =>
       Effect.gen(function* () {
-        const initialMessage = yield* initialMessageDeferredRef.get.pipe(Effect.andThen(Deferred.await))
+        const initialMessagePayload = yield* initialMessagePayloadDeferredRef.get.pipe(Effect.andThen(Deferred.await))
 
         yield* resetCurrentWorkerCtx
 
@@ -180,7 +181,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         yield* Worker.makePoolSerialized<WorkerSchema.DedicatedWorkerInner.Request>({
           size: 1,
           concurrency: 100,
-          initialMessage: () => initialMessage,
+          initialMessage: () => initialMessagePayload.initialMessage,
         }).pipe(
           Effect.tap((worker) => Deferred.succeed(workerDeferred, worker)),
           Effect.provide(BrowserWorker.layer(() => port)),
@@ -192,7 +193,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           Effect.forkIn(scope),
         )
 
-        const shutdownChannel = yield* makeShutdownChannel(initialMessage.key)
+        const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.schemaKey)
 
         yield* shutdownChannel.listen.pipe(
           Stream.flatten(),

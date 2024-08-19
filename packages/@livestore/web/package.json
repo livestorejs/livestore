@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.56-dev.2",
+  "version": "0.0.56-dev.3",
   "type": "module",
   "exports": {
     ".": {
@@ -19,9 +19,9 @@
       "types": "./dist/web-worker/make-shared-worker.d.ts",
       "default": "./dist/web-worker/make-shared-worker.js"
     },
-    "./sqlite-utils": {
-      "types": "./dist/sqlite-utils.d.ts",
-      "default": "./dist/sqlite-utils.js"
+    "./sqlite": {
+      "types": "./dist/sqlite/index.d.ts",
+      "default": "./dist/sqlite/index.js"
     },
     "./opfs-utils": {
       "types": "./dist/opfs-utils.d.ts",
@@ -44,11 +44,11 @@
       "shared-worker": [
         "./dist/web-worker/make-shared-worker.d.ts"
       ],
-      "sqlite-utils": [
-        "./dist/sqlite-utils.d.ts"
+      "sqlite": [
+        "./dist/sqlite/index.d.ts"
       ],
       "opfs-utils": [
-        "./dist/opfs-utils.d.ts"
+        "./dist/opfs.d.ts"
       ],
       "devtools-bridge": [
         "./dist/devtools-bridge/index.d.ts"
@@ -61,7 +61,7 @@
   "dependencies": {
     "@livestore/cf-sync": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/sqlite-wasm": "3.46.0-build4",
+    "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
