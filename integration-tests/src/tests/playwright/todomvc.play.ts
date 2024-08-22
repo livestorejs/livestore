@@ -14,7 +14,7 @@ test(
       const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)
 
       yield* Effect.promise(async () => {
-        await page.goto(`http://localhost:60001/`)
+        await page.goto(`http://localhost:${process.env.DEV_SERVER_PORT}/`)
         // const el = await page.waitForSelector('.new-todo', { timeout: 5000 })
         const el = page.locator('.new-todo')
         await el.waitFor({ timeout: 10_000 })

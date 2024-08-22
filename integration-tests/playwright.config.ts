@@ -31,6 +31,7 @@ const config: PlaywrightTestConfig = {
      */
     timeout: 5000,
   },
+  outputDir: `test-results/${process.env.PLAYWRIGHT_SUITE}`,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

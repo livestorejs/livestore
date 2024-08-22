@@ -22,7 +22,7 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 // https://vitejs.dev/config
 export default defineConfig({
   server: {
-    port: 60_001,
+    port: process.env.PORT ? Number(process.env.PORT) : 60_001,
     hmr: process.env.DISABLE_HMR === undefined ? true : false,
     headers: credentiallessHeaders,
     fs: {

@@ -40,17 +40,17 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+        with:
+          # Mostly to avoid GitHub rate limiting
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - run: pnpm install
       - run: pnpm playwright install --with-deps
         working-directory: integration-tests
       - run: pnpm build:ts
-      - run: |
-          pnpm --filter "todomvc" dev & 
-          SERVER_PID=$!
-          # Wait for the server to start and be ready
-          timeout 30s bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://localhost:60001)" != "200" ]]; do sleep 1; done' || exit 1
-          pnpm test
-          kill $SERVER_PID  # Stop the server after tests
+      - run: nix develop --command pnpm test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

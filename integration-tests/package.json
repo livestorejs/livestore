@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "DEV_SERVER_PORT=61001 DEV_SERVER_COMMAND='pnpm vite dev' playwright test"
+    "test": "pnpm test:unit & pnpm test:todomvc",
+    "test:unit": "PLAYWRIGHT_SUITE=unit DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='pnpm vite dev' playwright test src/tests/playwright/unit-tests.play.ts",
+    "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND=\"PORT=$DEV_SERVER_PORT pnpm --filter todomvc dev\" playwright test src/tests/playwright/todomvc.play.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",

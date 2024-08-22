@@ -24,12 +24,18 @@
       in
       {
 
+        packages = {
+          find-free-port = pkgs.callPackage ./nix/find-free-port.nix { };
+        };
+
         devShell = with pkgs; pkgs.mkShell {
           buildInputs = [
             nodejs_22
             corepack
             pkgsUnstable.bun
             caddy
+            
+            self.packages.${system}.find-free-port
 
             # needed for Expo
             cocoapods
