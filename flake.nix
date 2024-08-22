@@ -38,7 +38,9 @@
             self.packages.${system}.find-free-port
 
             # needed for Expo
-            cocoapods
+            (lib.optionals stdenv.isDarwin [
+              cocoapods
+            ])
           ];
 
           # See version https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/web/playwright/driver.nix#L33
