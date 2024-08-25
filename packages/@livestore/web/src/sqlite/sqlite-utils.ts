@@ -34,6 +34,8 @@ export const importBytesToDb = (
     sqlite3.deserialize(db, 'main', bytes, bytes.length, bytes.length, FREE_ON_CLOSE | RESIZEABLE)
   } else {
     const tmpDb = makeInMemoryDb(sqlite3)
+    // TODO find a way to do this more efficiently with sqlite to avoid either of the deserialize + backup call
+    // Maybe this can be done via the VFS API
     sqlite3.deserialize(tmpDb, 'main', bytes, bytes.length, bytes.length, FREE_ON_CLOSE | RESIZEABLE)
     sqlite3.backup(db, 'main', tmpDb, 'main')
     sqlite3.close(tmpDb)

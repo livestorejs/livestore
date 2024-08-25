@@ -128,7 +128,7 @@ export const makeAdapter =
 
       const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${schemaKey}` })
 
-      const sharedWorkerDeferred = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
+      const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
         concurrency: 100,
         initialMessage: () =>
@@ -150,7 +150,7 @@ export const makeAdapter =
         UnexpectedError.mapToUnexpectedError,
         Effect.tapErrorCause(shutdown),
         Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
-        Effect.toForkedDeferred,
+        Effect.forkScoped,
       )
 
       const lockDeferred = yield* Deferred.make<void>()
@@ -189,7 +189,7 @@ export const makeAdapter =
 
         yield* shutdownChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
-        const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+        const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
         yield* sharedWorker
           .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
           .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
@@ -246,7 +246,7 @@ export const makeAdapter =
       ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
         ? Effect.Effect<A, UnexpectedError, R>
         : never =>
-        Deferred.await(sharedWorkerDeferred).pipe(
+        Fiber.join(sharedWorkerFiber).pipe(
           Effect.flatMap((worker) => worker.executeEffect(req) as any),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
@@ -265,7 +265,7 @@ export const makeAdapter =
         ? Stream.Stream<A, UnexpectedError, R>
         : never =>
         Effect.gen(function* () {
-          const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
           return sharedWorker
             .execute(req as any)
             .pipe(
@@ -419,7 +419,7 @@ export const makeAdapter =
 
       const waitForDevtoolsWebBridgePort = ({ webBridgeId }: { webBridgeId: string }) =>
         Effect.gen(function* () {
-          const sharedWorker = yield* Deferred.await(sharedWorkerDeferred)
+          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
           const { port } = yield* sharedWorker.executeEffect(
             WorkerSchema.SharedWorker.DevtoolsWebBridgeWaitForPort.make({ webBridgeId }),
           )
