@@ -34,12 +34,14 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
   return str + template[template.length - 1]
 }
 
-/** Prepare bind values to send to SQLite
-/*  Add $ to the beginning of keys; which we use as our interpolation syntax
-/*  We also strip out any params that aren't used in the statement,
-/*  because rusqlite doesn't allow unused named params
-/*  TODO: Search for unused params via proper parsing, not string search
-**/
+/**
+ * Prepare bind values to send to SQLite
+ * Add $ to the beginning of keys; which we use as our interpolation syntax
+ * We also strip out any params that aren't used in the statement,
+ * because rusqlite doesn't allow unused named params
+ * TODO: Search for unused params via proper parsing, not string search
+ * TODO: Also make sure that the SQLite binding limit of 1000 is respected
+ */
 export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
   if (Array.isArray(values)) return values as any as PreparedBindValues
 
