@@ -28,10 +28,10 @@ const issue = DbSchema.table(
 )
 
 const OrderDirection = Schema.Literal('asc', 'desc')
-export type OrderDirection = Schema.Schema.Type<typeof OrderDirection>
+export type OrderDirection = typeof OrderDirection.Type
 
 const OrderBy = Schema.Literal('priority', 'status', 'created', 'modified')
-export type OrderBy = Schema.Schema.Type<typeof OrderBy>
+export type OrderBy = typeof OrderBy.Type
 
 const description = DbSchema.table(
   'description',
@@ -70,7 +70,7 @@ export const FilterState = Schema.Struct({
 
 export const parseFilterStateString = Schema.decodeSync(Schema.parseJson(FilterState))
 
-export type FilterState = Schema.Schema.Type<typeof FilterState>
+export type FilterState = typeof FilterState.Type
 
 export const filterStateTable = DbSchema.table(
   'filter_state',

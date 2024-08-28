@@ -311,6 +311,15 @@ export const makeAdapter =
 
       WaSqlite.importBytesToDb(sqlite3, dbPointer, initialSnapshot)
 
+      const numberOfTables =
+        syncDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
+      if (numberOfTables === 0) {
+        yield* UnexpectedError.make({
+          cause: `Encountered empty or corrupted database`,
+          payload: { snapshotByteLength: initialSnapshot.byteLength, storageOptions: options.storage },
+        })
+      }
+
       // Continously take items from the backlog and execute them in the worker if there are any
       yield* Effect.gen(function* () {
         const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(Effect.map(Chunk.toReadonlyArray))

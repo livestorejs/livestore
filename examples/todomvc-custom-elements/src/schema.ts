@@ -9,6 +9,7 @@ const todos = DbSchema.table('todos', {
 })
 
 const Filter = Schema.Literal('all', 'active', 'completed')
+export type Filter = typeof Filter.Type
 
 const app = DbSchema.table(
   'app',
@@ -20,7 +21,6 @@ const app = DbSchema.table(
 )
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
-export type Filter = Schema.Schema.Type<typeof Filter>
 export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
