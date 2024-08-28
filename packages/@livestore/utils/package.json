@@ -36,30 +36,30 @@
   },
   "dependencies": {
     "date-fns": "^3.6.0",
-    "msgpackr": "^1.11.0",
     "effect-db-schema": "workspace:*",
+    "msgpackr": "^1.11.0",
     "otel-websocket-exporter": "^0.0.29",
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.21.2",
-    "@effect/opentelemetry": "^0.34.40",
-    "@effect/platform": "^0.61.2",
-    "@effect/platform-browser": "^0.40.2",
-    "@effect/schema": "^0.70.1",
+    "@effect/experimental": "^0.23.6",
+    "@effect/opentelemetry": "^0.35.7",
+    "@effect/platform": "^0.62.4",
+    "@effect/platform-browser": "^0.41.4",
+    "@effect/schema": "^0.71.3",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.6.0"
+    "effect": "^3.6.7"
   },
   "devDependencies": {
-    "@effect/experimental": "0.21.2",
-    "@effect/opentelemetry": "0.34.40",
-    "@effect/platform": "0.61.2",
-    "@effect/platform-browser": "0.40.2",
-    "@effect/schema": "0.70.1",
+    "@effect/experimental": "0.23.6",
+    "@effect/opentelemetry": "0.35.7",
+    "@effect/platform": "0.62.4",
+    "@effect/platform-browser": "0.41.4",
+    "@effect/schema": "0.71.3",
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^22.0.0",
     "@types/web": "^0.0.153",
-    "effect": "3.6.0",
+    "effect": "3.6.7",
     "vitest": "^2.0.4"
   },
   "publishConfig": {

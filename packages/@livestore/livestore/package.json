@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.25.1",
+    "@opentelemetry/sdk-trace-base": "1.26.0",
     "@tauri-apps/api": "^1.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/react": "^18.3.1",
