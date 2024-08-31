@@ -1,7 +1,6 @@
 import type { MigrationHooks } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, rehydrateFromMutationLog, UnexpectedError } from '@livestore/common'
 import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
-import type { Context } from '@livestore/utils/effect'
 import { Effect, Queue, Stream } from '@livestore/utils/effect'
 
 import { WaSqlite } from '../sqlite/index.js'
@@ -9,7 +8,7 @@ import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
 import type { InnerWorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 
-export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
+export const recreateDb = (workerCtx: typeof InnerWorkerCtx.Service) =>
   Effect.gen(function* () {
     const { db, dbLog, sqlite3, schema, bootStatusQueue } = workerCtx
 
@@ -111,7 +110,7 @@ export const recreateDb = (workerCtx: Context.Tag.Service<InnerWorkerCtx>) =>
 
 // TODO replace with proper rebasing impl
 export const fetchAndApplyRemoteMutations = (
-  workerCtx: Context.Tag.Service<InnerWorkerCtx>,
+  workerCtx: typeof InnerWorkerCtx.Service,
   db: number,
   shouldBroadcast: boolean,
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>,

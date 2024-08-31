@@ -8,7 +8,6 @@ import {
   mutationLogMetaTable,
 } from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
-import type { Context } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
   Deferred,
@@ -188,7 +187,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             broadcastChannel,
             devtools,
             sync,
-          } satisfies Context.Tag.Service<InnerWorkerCtx>
+          } satisfies typeof InnerWorkerCtx.Service
 
           // @ts-expect-error For debugging purposes
           globalThis.__innerWorkerCtx = innerWorkerCtx

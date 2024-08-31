@@ -116,7 +116,7 @@ export type ApplyMutation = (
 ) => Effect.Effect<void, SqliteError>
 
 export const makeApplyMutation = (
-  workerCtx: Context.Tag.Service<InnerWorkerCtx>,
+  workerCtx: typeof InnerWorkerCtx.Service,
   createdAtMemo: () => string,
   db: number,
 ): ApplyMutation => {
