@@ -1,6 +1,6 @@
---- examples/todomvc-drizzle/tsconfig.json	2024-09-02 19:30:05.616597090 +0200
+--- examples/todomvc-drizzle/tsconfig.json	2024-09-02 19:37:34.103217752 +0200
 +++ examples-monorepo/examples/todomvc-drizzle/tsconfig.json	2024-09-02 19:30:35.408549776 +0200
-@@ -1,24 +1,12 @@
+@@ -1,25 +1,12 @@
  {
 +  "extends": "../../../tsconfig.base.json",
    "compilerOptions": {
@@ -16,13 +16,13 @@
 -    "resolveJsonModule": true,
 -    "isolatedModules": true,
 -    "noEmit": true,
+     "jsx": "react",
 -
 -    /* Linting */
 -    "strict": true,
 -    // "noUnusedLocals": true,
 -    // "noUnusedParameters": true,
 -    "noFallthroughCasesInSwitch": true
-+    "jsx": "react",
 +    "outDir": "./dist",
 +    "rootDir": "./src",
 +    "tsBuildInfoFile": "./dist/.tsbuildinfo"

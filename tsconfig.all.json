@@ -4,11 +4,17 @@
   "include": [],
   "references": [
     { "path": "./examples/expo-app" },
+    { "path": "./examples-monorepo/examples/expo-app" },
     { "path": "./examples/linearlite" },
+    { "path": "./examples-monorepo/examples/linearlite" },
     { "path": "./examples/todomvc" },
+    { "path": "./examples-monorepo/examples/todomvc" },
     { "path": "./examples/todomvc-custom-elements" },
+    { "path": "./examples-monorepo/examples/todomvc-custom-elements" },
     { "path": "./examples/todomvc-drizzle" },
+    { "path": "./examples-monorepo/examples/todomvc-drizzle" },
     { "path": "./examples/todomvc-experimental" },
+    { "path": "./examples-monorepo/examples/todomvc-experimental" },
     { "path": "./integration-tests" },
     { "path": "./packages/effect-db-schema" },
     { "path": "./packages/@livestore/cf-sync" }

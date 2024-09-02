@@ -1,6 +1,6 @@
---- examples/todomvc-experimental/tsconfig.json	2024-09-02 19:31:42.303148166 +0200
+--- examples/todomvc-experimental/tsconfig.json	2024-09-02 19:37:38.378342733 +0200
 +++ examples-monorepo/examples/todomvc-experimental/tsconfig.json	2024-09-02 19:31:56.723486767 +0200
-@@ -1,24 +1,12 @@
+@@ -1,25 +1,12 @@
  {
 +  "extends": "../../../tsconfig.base.json",
    "compilerOptions": {
@@ -16,13 +16,13 @@
 -    "resolveJsonModule": true,
 -    "isolatedModules": true,
 -    "noEmit": true,
+     "jsx": "react",
 -
 -    /* Linting */
 -    "strict": true,
 -    // "noUnusedLocals": true,
 -    // "noUnusedParameters": true,
 -    "noFallthroughCasesInSwitch": true
-+    "jsx": "react",
 +    "outDir": "./dist",
 +    "rootDir": "./src",
 +    "tsBuildInfoFile": "./dist/.tsbuildinfo"
