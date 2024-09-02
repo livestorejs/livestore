@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/no-process-exit */
 /// <reference types="node" />
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -11,51 +12,80 @@ const PATCHES_DIR = 'examples-monorepo/patches'
 const DEST_DIR = 'examples-monorepo/examples'
 
 // Helper function to sync src to src-patched
-const syncDirectories = async () => {
-  // From https://unix.stackexchange.com/a/168602
-  // This tells rsync to look in each directory for a file .gitignore:
-  // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
-  await $`rsync -a --delete --filter='dir-merge,- .gitignore' ${SRC_DIR}/ ${DEST_DIR}/`
+const syncDirectories = async (reverse: boolean = false) => {
+  if (reverse) {
+    // Reverse direction: patched-to-src
+    await $`rsync -a --delete --filter='dir-merge,- .gitignore' ${DEST_DIR}/ ${SRC_DIR}/`
 
-  // Apply patches
-  const applyPatches = async (dir: string) => {
-    const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const fullPath = `${dir}/${entry.name}`
-      if (entry.isDirectory()) {
-        await applyPatches(fullPath)
-      } else if (entry.isFile() && entry.name.endsWith('.patch')) {
-        const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
-        const targetFile = `${DEST_DIR}${relativePath}`
-        try {
-          await $`patch -u ${targetFile} -i ${fullPath}`.nothrow()
-          console.log(`Applied patch: ${fullPath} to ${targetFile}`)
-        } catch (error) {
-          console.error(`Failed to apply patch ${fullPath}: ${error}`)
+    // Reverse patches
+    const reversePatches = async (dir: string) => {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        const fullPath = `${dir}/${entry.name}`
+        if (entry.isDirectory()) {
+          await reversePatches(fullPath)
+        } else if (entry.isFile() && entry.name.endsWith('.patch')) {
+          const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
+          const targetFile = `${SRC_DIR}${relativePath}`
+          try {
+            await $`patch -R -u ${targetFile} -i ${fullPath}`.nothrow()
+            console.log(`Reversed patch: ${fullPath} from ${targetFile}`)
+          } catch (error) {
+            console.error(`Failed to reverse patch ${fullPath}: ${error}`)
+          }
         }
       }
     }
+
+    await reversePatches(PATCHES_DIR)
+
+    console.log(`[${new Date().toISOString()}] Synced and reversed patches from ${DEST_DIR} to ${SRC_DIR}`)
+  } else {
+    // From https://unix.stackexchange.com/a/168602
+    // This tells rsync to look in each directory for a file .gitignore:
+    // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
+    await $`rsync -a --delete --filter='dir-merge,- .gitignore' ${SRC_DIR}/ ${DEST_DIR}/`
+
+    // Apply patches
+    const applyPatches = async (dir: string) => {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        const fullPath = `${dir}/${entry.name}`
+        if (entry.isDirectory()) {
+          await applyPatches(fullPath)
+        } else if (entry.isFile() && entry.name.endsWith('.patch')) {
+          const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
+          const targetFile = `${DEST_DIR}${relativePath}`
+          try {
+            await $`patch -u ${targetFile} -i ${fullPath}`.nothrow()
+            console.log(`Applied patch: ${fullPath} to ${targetFile}`)
+          } catch (error) {
+            console.error(`Failed to apply patch ${fullPath}: ${error}`)
+          }
+        }
+      }
+    }
+
+    await applyPatches(PATCHES_DIR)
+
+    console.log(`[${new Date().toISOString()}] Synced and patched ${SRC_DIR} to ${DEST_DIR}`)
   }
-
-  await applyPatches(PATCHES_DIR)
-
-  console.log(`[${new Date().toISOString()}] Synced and patched ${SRC_DIR} to ${DEST_DIR}`)
 }
 
 // Watchman configuration and commands
-const setupWatchman = async () => {
-  const watchDirs = [
-    { dir: SRC_DIR, name: 'listen-example-changes' },
-    { dir: PATCHES_DIR, name: 'listen-patch-changes' },
-  ]
-
-  const bunBin = await $`which bun`.text()
-
-  console.log(`Using bun from ${bunBin}`)
+const setupWatchman = async (reverse: boolean) => {
+  const watchDirs = reverse
+    ? [
+        { dir: DEST_DIR, name: 'listen-dest-changes' },
+        { dir: PATCHES_DIR, name: 'listen-patch-changes' },
+      ]
+    : [
+        { dir: SRC_DIR, name: 'listen-example-changes' },
+        { dir: PATCHES_DIR, name: 'listen-patch-changes' },
+      ]
 
   for (const { dir, name } of watchDirs) {
     await $`watchman watch ${dir}`
-    await $`watchman -- trigger ${dir} ${name} '**' -- ${bunBin} sync-examples.ts --single-run`
     console.log(`Set up watch on ${dir}`)
 
     // Subscribe to changes
@@ -81,7 +111,7 @@ const setupWatchman = async () => {
         const changes = JSON.parse(data.toString())
         if (changes.files) {
           console.log(`Changes detected in ${dir}:`, changes.files.map((f: { name: string }) => f.name).join(', '))
-          syncDirectories()
+          syncDirectories(reverse)
         }
       } catch (error) {
         console.error(`Error parsing Watchman output: ${error}`)
@@ -97,7 +127,9 @@ const setupWatchman = async () => {
     })
   }
 
-  console.log('Watchman setup complete. Listening for changes...')
+  console.log(
+    `Watchman setup complete. Listening for file changes in ${PATCHES_DIR} and ${reverse ? SRC_DIR : DEST_DIR}...`,
+  )
 }
 
 // Main function
@@ -138,17 +170,18 @@ const main = async () => {
     fs.mkdirSync(DEST_DIR, { recursive: true })
   }
 
+  const reverse = args.has('--reverse')
+
   if (args.has('--single-run')) {
-    await syncDirectories()
+    await syncDirectories(reverse)
   } else if (args.has('--watch')) {
-    await setupWatchman()
+    await setupWatchman(reverse)
 
     // Set up signal handlers for graceful shutdown
     const teardownWatchman = async () => {
       console.log('Tearing down Watchman...')
       await $`watchman shutdown-server`.nothrow()
       console.log('Watchman teardown complete')
-      // eslint-disable-next-line unicorn/no-process-exit
       process.exit(0)
     }
 
@@ -167,6 +200,5 @@ const main = async () => {
 // Run the main function
 await main().catch((err) => {
   console.error(err)
-  // eslint-disable-next-line unicorn/no-process-exit
   process.exit(1)
 })

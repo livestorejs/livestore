@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {},
-  "include": ["./sync-examples.ts"],
+  "include": [],
   "references": [
     { "path": "./examples-monorepo/examples/expo-app" },
     { "path": "./examples-monorepo/examples/linearlite" },
