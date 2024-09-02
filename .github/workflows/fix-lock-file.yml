@@ -33,7 +33,7 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
       - name: Derive monorepo examples
-        run: nix develop --command bun sync-examples.ts --single-run
+        run: nix develop --command bun scripts/sync-examples.ts --single-run
 
       - name: Create new branch
         run: |
