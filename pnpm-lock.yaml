@@ -74,35 +74,35 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-  examples/expo-app:
+  examples-monorepo/examples/expo-app:
     dependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       '@expo/vector-icons':
         specifier: 14.0.2
         version: 14.0.2
       '@livestore/devtools-expo-bridge':
         specifier: workspace:*
-        version: link:../../packages/@livestore/devtools-expo-bridge
+        version: link:../../../packages/@livestore/devtools-expo-bridge
       '@livestore/devtools-react':
         specifier: 0.0.56
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/expo':
         specifier: workspace:*
-        version: link:../../packages/@livestore/expo
+        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       babel-preset-expo:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
@@ -165,11 +165,11 @@ importers:
         specifier: ^8.18.0
         version: 8.18.0
 
-  examples/linearlite:
+  examples-monorepo/examples/linearlite:
     dependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
         version: 5.1.1(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -181,13 +181,13 @@ importers:
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -352,11 +352,385 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
 
-  examples/todomvc:
+  examples-monorepo/examples/todomvc:
     dependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/livestore
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/web
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.18.0)
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples-monorepo/examples/todomvc-custom-elements:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/utils
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/web
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+      autoprefixer:
+        specifier: ^10.4.19
+        version: 10.4.19(postcss@8.4.40)
+      postcss:
+        specifier: ^8.4.40
+        version: 8.4.40
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.18.0)
+      tailwindcss:
+        specifier: ^3.4.7
+        version: 3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4))
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples-monorepo/examples/todomvc-drizzle:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/utils
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/web
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
+      drizzle-orm:
+        specifier: ^0.32.1
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1)
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      effect-db-schema:
+        specifier: workspace:*
+        version: link:../../../packages/effect-db-schema
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.18.0)
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples-monorepo/examples/todomvc-experimental:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/livestore
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/web
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.18.0)
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples/expo-app:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@expo/vector-icons':
+        specifier: 14.0.2
+        version: 14.0.2
+      '@livestore/devtools-expo-bridge':
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/expo':
+        specifier: 0.0.56
+        version: 0.0.56(2si3udhwsi5e3d4wsayjhcnmoq)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      babel-preset-expo:
+        specifier: 11.0.12
+        version: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo:
+        specifier: 51.0.24
+        version: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo-asset:
+        specifier: 10.0.10
+        version: 10.0.10(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-crypto:
+        specifier: 13.0.2
+        version: 13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-sqlite:
+        specifier: 14.0.6
+        version: 14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-status-bar:
+        specifier: 1.12.1
+        version: 1.12.1
+      fast-text-encoding:
+        specifier: ^1.0.6
+        version: 1.0.6
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-native:
+        specifier: 0.74.3
+        version: 0.74.3(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(@types/react@18.3.3)(react@18.3.1)
+      react-native-web:
+        specifier: ~0.19.11
+        version: 0.19.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    devDependencies:
+      '@babel/core':
+        specifier: ^7.24.5
+        version: 7.24.7
+      '@babel/plugin-syntax-import-attributes':
+        specifier: ^7.24.7
+        version: 7.24.7(@babel/core@7.24.7)
+      '@babel/runtime':
+        specifier: ^7.25.0
+        version: 7.25.0
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.3
+      '@types/ws':
+        specifier: 8.5.12
+        version: 8.5.12
+      babel-plugin-transform-vite-meta-env:
+        specifier: ^1.0.3
+        version: 1.0.3
+      eas-cli:
+        specifier: 10.2.2
+        version: 10.2.2(@types/node@22.0.0)(expo-modules-autolinking@1.11.1)(typescript@5.5.4)
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      ws:
+        specifier: ^8.18.0
+        version: 8.18.0
+
+  examples/linearlite:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@firefox-devtools/react-contextmenu':
+        specifier: ^5.1.1
+        version: 5.1.1(prop-types@15.8.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@headlessui/react':
+        specifier: ^2.1.2
+        version: 2.1.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-react':
         specifier: 0.0.56
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -367,14 +741,195 @@ importers:
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
+      '@tailwindcss/forms':
+        specifier: ^0.5.7
+        version: 0.5.7(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4)))
+      '@tiptap/core':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/pm@2.1.13)
+      '@tiptap/extension-placeholder':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))(@tiptap/pm@2.1.13)
+      '@tiptap/extension-table':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))(@tiptap/pm@2.1.13)
+      '@tiptap/extension-table-cell':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))
+      '@tiptap/extension-table-header':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))
+      '@tiptap/extension-table-row':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))
+      '@tiptap/pm':
+        specifier: 2.1.13
+        version: 2.1.13
+      '@tiptap/react':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))(@tiptap/pm@2.1.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tiptap/starter-kit':
+        specifier: 2.1.13
+        version: 2.1.13(@tiptap/pm@2.1.13)
+      animate.css:
+        specifier: ^4.1.1
+        version: 4.1.1
+      classnames:
+        specifier: ^2.5.1
+        version: 2.5.1
+      dayjs:
+        specifier: ^1.11.12
+        version: 1.11.12
+      fractional-indexing:
+        specifier: ^3.2.0
+        version: 3.2.0
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.2
+      nanoid:
+        specifier: ^5.0.7
+        version: 5.0.7
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-beautiful-dnd:
+        specifier: ^13.1.1
+        version: 13.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      react-icons:
+        specifier: ^4.10.1
+        version: 4.12.0(react@18.3.1)
+      react-markdown:
+        specifier: ^9.0.1
+        version: 9.0.1(@types/react@18.3.3)(react@18.3.1)
+      react-router-dom:
+        specifier: ^6.25.1
+        version: 6.25.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-toastify:
+        specifier: ^9.1.3
+        version: 9.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-virtualized-auto-sizer:
+        specifier: ^1.0.23
+        version: 1.0.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-window:
+        specifier: ^1.8.10
+        version: 1.8.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      tiptap-markdown:
+        specifier: 0.8.10
+        version: 0.8.10(@tiptap/core@2.1.13(@tiptap/pm@2.1.13))
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@svgr/plugin-jsx':
+        specifier: ^8.1.0
+        version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
+      '@svgr/plugin-svgo':
+        specifier: ^8.1.0
+        version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))(typescript@5.5.4)
+      '@tailwindcss/typography':
+        specifier: ^0.5.13
+        version: 0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4)))
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.0.0
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-beautiful-dnd':
+        specifier: ^13.1.8
+        version: 13.1.8
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/react-router-dom':
+        specifier: ^5.3.3
+        version: 5.3.3
+      '@types/react-window':
+        specifier: ^1.8.8
+        version: 1.8.8
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^7.17.0
+        version: 7.17.0(@typescript-eslint/parser@7.17.0(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)(typescript@5.5.4)
+      '@typescript-eslint/parser':
+        specifier: ^7.17.0
+        version: 7.17.0(eslint@8.57.0)(typescript@5.5.4)
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+      autoprefixer:
+        specifier: ^10.4.19
+        version: 10.4.19(postcss@8.4.40)
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.0
+      eslint-plugin-react-hooks:
+        specifier: ^4.6.2
+        version: 4.6.2(eslint@8.57.0)
+      eslint-plugin-react-refresh:
+        specifier: ^0.4.9
+        version: 0.4.9(eslint@8.57.0)
+      fs-extra:
+        specifier: ^11.2.0
+        version: 11.2.0
+      postcss:
+        specifier: ^8.4.40
+        version: 8.4.40
+      prompt:
+        specifier: ^1.3.0
+        version: 1.3.0
+      tailwindcss:
+        specifier: ^3.4.7
+        version: 3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4))
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+      vite-plugin-svgr:
+        specifier: ^4.2.0
+        version: 4.2.0(rollup@4.18.0)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+
+  examples/todomvc:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../packages/@livestore/livestore
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.0
+        version: 3.7.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -419,8 +974,8 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       '@livestore/devtools-react':
         specifier: 0.0.56
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -428,17 +983,17 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
       '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
       effect:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.0
+        version: 3.7.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -492,8 +1047,8 @@ importers:
   examples/todomvc-drizzle:
     dependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       '@livestore/devtools-react':
         specifier: 0.0.56
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -501,14 +1056,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
       '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -517,10 +1072,10 @@ importers:
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6)(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1)
       effect:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.0
+        version: 3.7.0
       effect-db-schema:
         specifier: workspace:*
         version: link:../../packages/effect-db-schema
@@ -568,8 +1123,8 @@ importers:
   examples/todomvc-experimental:
     dependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       '@livestore/devtools-react':
         specifier: 0.0.56
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -580,14 +1135,14 @@ importers:
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.0
+        version: 3.7.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -713,6 +1268,8 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+
+  packages/@livestore/devtools-expo-metro-plugin: {}
 
   packages/@livestore/effect-playwright:
     dependencies:
@@ -842,20 +1399,20 @@ importers:
         version: 6.1.1
     devDependencies:
       '@effect/experimental':
-        specifier: 0.23.6
-        version: 0.23.6(@effect/platform@0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7))(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7)(ws@8.18.0)
+        specifier: 0.24.0
+        version: 0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0)
       '@effect/opentelemetry':
-        specifier: 0.35.7
-        version: 0.35.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.6.7)
+        specifier: 0.36.0
+        version: 0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0)
       '@effect/platform':
-        specifier: 0.62.4
-        version: 0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7)
+        specifier: 0.63.0
+        version: 0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
       '@effect/platform-browser':
-        specifier: 0.41.4
-        version: 0.41.4(@effect/platform@0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7))(effect@3.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0)
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -866,8 +1423,8 @@ importers:
         specifier: ^0.0.153
         version: 0.0.153
       effect:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.0
+        version: 3.7.0
       vitest:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@22.0.0)(jsdom@24.1.0)(terser@5.31.1)
@@ -904,14 +1461,14 @@ importers:
         version: 1.0.8
     devDependencies:
       '@effect/schema':
-        specifier: 0.71.3
-        version: 0.71.3(effect@3.6.7)
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6)(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1)
       effect:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.0
+        version: 3.7.0
       vite:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
@@ -1743,13 +2300,13 @@ packages:
     resolution: {integrity: sha512-1YUvQ+e0eeTWAHoN8Uz2x2U37jZs6IGutiIE5LXId7cxfUGhtZjzxE06FdUiuiRrW+UE0vNCdSNPH2lY4dQCOQ==}
     engines: {node: '>=12'}
 
-  '@effect/experimental@0.23.6':
-    resolution: {integrity: sha512-plu/mE19VQvmKIAPq4PWp6GdG0RJJulu0p0k+86GFcbuSJPG7sI3fPXwt/3VHeUngOWao0W8ESE/uKGtV5XcDA==}
+  '@effect/experimental@0.24.0':
+    resolution: {integrity: sha512-LiZhzOOXm4/I3nmNJ/tD3hUcl8Dm0iHexFaKIbmoLksz2pbKMfIvC/vy+bDRzW/ktXOIYiq/kK/8xsK6dJrMjA==}
     peerDependencies:
-      '@effect/platform': ^0.62.4
-      '@effect/platform-node': ^0.57.4
-      '@effect/schema': ^0.71.3
-      effect: ^3.6.7
+      '@effect/platform': ^0.63.0
+      '@effect/platform-node': ^0.58.0
+      '@effect/schema': ^0.72.0
+      effect: ^3.7.0
       ioredis: ^5
       lmdb: ^3
       ws: ^8
@@ -1766,8 +2323,8 @@ packages:
   '@effect/language-service@0.1.0':
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
 
-  '@effect/opentelemetry@0.35.7':
-    resolution: {integrity: sha512-sR9V9Z+vj3MwbuKwO5GBj0TKv7l2XXxBoPnjUcnfPPjdfAJGy3pOZ6RQlZQoET7xH2afrfH5Hrz12RYVdl7eGA==}
+  '@effect/opentelemetry@0.36.0':
+    resolution: {integrity: sha512-tIRNSP6z/c6KatiA/ivW8E24Zsv6cMOffCXbEIFzk6NyCFa9a5klvwXKDDle8mf9fBt/an+EpL2DTtDKHrRXBg==}
     peerDependencies:
       '@opentelemetry/api': ^1.6
       '@opentelemetry/resources': ^1.22
@@ -1776,7 +2333,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^1.22
       '@opentelemetry/sdk-trace-web': ^1.22
       '@opentelemetry/semantic-conventions': ^1.24.1
-      effect: ^3.6.7
+      effect: ^3.7.0
     peerDependenciesMeta:
       '@opentelemetry/sdk-metrics':
         optional: true
@@ -1787,22 +2344,22 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@0.41.4':
-    resolution: {integrity: sha512-AQVSEEpCAgRZlsCKu7ywUbx8Odw3CFTMAYuNQ3DZzRcEbRrUVoR4NArqimxhMuR6MX6G2HR6fcikXdmmVa1f5Q==}
+  '@effect/platform-browser@0.42.0':
+    resolution: {integrity: sha512-mF2I17Y52BXzU7NOgkjkEWiyb8zZHDm+nkVPFb/GkjLsHM9tl5Zm4KuuiJzDUPeKYi+1UGlCt5X9BmCahOzreA==}
     peerDependencies:
-      '@effect/platform': ^0.62.4
-      effect: ^3.6.7
+      '@effect/platform': ^0.63.0
+      effect: ^3.7.0
 
-  '@effect/platform@0.62.4':
-    resolution: {integrity: sha512-XbIG9+qPyW2g1C7uhqFFGoCe9k9Jn3mgTTmoj1IC+xgoUla48MKZkqp7GMt7z9RJDncpzIkcELwkqwe+uBem+g==}
+  '@effect/platform@0.63.0':
+    resolution: {integrity: sha512-24AtBGkTNzkYU4XOH3SLo9M4PyeHtW81PFwqovKPSm9+yxTLYR2lAVqFftIfaGfBqgsNVuNrh0SaELDWGdSP6Q==}
     peerDependencies:
-      '@effect/schema': ^0.71.3
-      effect: ^3.6.7
+      '@effect/schema': ^0.72.0
+      effect: ^3.7.0
 
-  '@effect/schema@0.71.3':
-    resolution: {integrity: sha512-bj0ZxbV7cN/gppBmcREMrHJHLDIea1OZbCVQS9dtssp2qNd+WO51f3SOy3a4OohulFUIy7l/XTu260ZWKlwgFg==}
+  '@effect/schema@0.72.0':
+    resolution: {integrity: sha512-I25wIy0Njx+002lmXk8xqcdFGMGkScl6EfxRE0nkoyecQVg+v1mw7DHkSwzR6CcL4s2tITwM3Z40ALJjArPqgA==}
     peerDependencies:
-      effect: ^3.6.7
+      effect: ^3.7.0
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3':
     resolution: {integrity: sha512-r3MIryXDeXDOZh7ih1l/yE9ZLORCd5e8vWg02azWRGj5SPTuoh69A2AIyn0Z31V/kHBfZ4HgWJ+OK3GTTwLmnw==}
@@ -2313,6 +2870,7 @@ packages:
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
     engines: {node: '>=10.10.0'}
+    deprecated: Use @eslint/config-array instead
 
   '@humanwhocodes/module-importer@1.0.1':
     resolution: {integrity: sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA==}
@@ -2320,6 +2878,7 @@ packages:
 
   '@humanwhocodes/object-schema@2.0.3':
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
+    deprecated: Use @eslint/object-schema instead
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -2377,6 +2936,18 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
+  '@livestore/cf-sync@0.0.56':
+    resolution: {integrity: sha512-U8XeUUzTZWNyi0+POXyc0LvRNyz1/Ho7ZpoEb8IwQDryjnE30rYqAlsqSpiOwz83LtDCGGJZoerBSU81K0m9+g==}
+
+  '@livestore/common@0.0.56':
+    resolution: {integrity: sha512-/OTlyz2UYON/+z6BuH9yvkDbM44ZczlZXmVL8JRdpdQJC+DogkNWfvXyFDBzhvas58S5gEHQl+zXDHBjBFbuNA==}
+
+  '@livestore/devtools-expo-bridge@0.0.56':
+    resolution: {integrity: sha512-9zCR+iaEiFOxe7eDiaMhPqyKnl6PTqNyGq0qlcg//zM6L3R8rW6FH530Pn4Ee+BrU/s06Ib6X+gSMlKhYPA06Q==}
+    peerDependencies:
+      expo: 51.x
+      react: 18.x
+
   '@livestore/devtools-react@0.0.56':
     resolution: {integrity: sha512-7nahl5YUlWY76wkX60KC7XMp3ErjpyZs1L43KBtpO/4WTt8qkdnHWL58eBwTew5gBaW3m8C/u1ndKG+27I1SCA==}
     peerDependencies:
@@ -2384,8 +2955,28 @@ packages:
       react: ^18
       react-dom: ^18
 
+  '@livestore/expo@0.0.56':
+    resolution: {integrity: sha512-Wj4VKx7e2PLPWbUW4RGGdeFXbqPA4VZmPpM1H+PbYuLckIsX7Djrzkm82Tf4Qlyh8IiHb8nAHjJtm45FQ6nItA==}
+    peerDependencies:
+      expo-file-system: '*'
+      expo-sqlite: '*'
+
+  '@livestore/utils@0.0.56':
+    resolution: {integrity: sha512-Ya0bm/EGTb4p2ZEtHTDwaOMlkv8AtFU6G1pz1JE9UsOzkiaHaojnooaJuUg4ZSdn7rmLlRnLy2PkAtpV7CtZ8g==}
+    peerDependencies:
+      '@effect/experimental': ^0.21.2
+      '@effect/opentelemetry': ^0.34.40
+      '@effect/platform': ^0.61.2
+      '@effect/platform-browser': ^0.40.2
+      '@effect/schema': ^0.70.1
+      '@opentelemetry/api': ^1.9.0
+      effect: ^3.6.0
+
   '@livestore/wa-sqlite@1.0.1-dev.29':
     resolution: {integrity: sha512-9hDwwNrLFQIy4eBZttZmSdYGqGAZb/1UF1CB0a4GXVr6H4i1EGTZ/HKprHOV41pqPBZgJBujvxGHwk12BKglxA==}
+
+  '@livestore/web@0.0.56':
+    resolution: {integrity: sha512-1VO3KdjC1xrijEU1X2lR6jp4qRs1PbZQJ9Wi/qMq98EN0s9fbwbhxhg8VtP7Z3up7Vb65Q3cKZSrZwTswzE6gg==}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
     resolution: {integrity: sha512-QZHtlVgbAdy2zAqNA9Gu1UpIuI8Xvsd1v8ic6B2pZmeFnFcMWiPLfWXh7TVw4eGEZ/C9TH281KwhVoeQUKbyjw==}
@@ -2674,9 +3265,6 @@ packages:
 
   '@react-native/normalize-color@2.1.0':
     resolution: {integrity: sha512-Z1jQI2NpdFJCVgpY+8Dq/Bt3d+YUi1928Q+/CZm/oh66fzM0RUl54vvuXlPJKybH4pdCZey1eDTPaLHkMPNgWA==}
-
-  '@react-native/normalize-colors@0.74.84':
-    resolution: {integrity: sha512-Y5W6x8cC5RuakUcTVUFNAIhUZ/tYpuqHZlRBoAuakrTwVuoNHXfQki8lj1KsYU7rW6e3VWgdEx33AfOQpdNp6A==}
 
   '@react-native/normalize-colors@0.74.85':
     resolution: {integrity: sha512-pcE4i0X7y3hsAE0SpIl7t6dUc0B0NZLd1yv7ssm4FrLhWG+CGyIq4eFDXpmPU1XHmL5PPySxTAjEMiwv6tAmOw==}
@@ -4555,8 +5143,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.6.7:
-    resolution: {integrity: sha512-txHuQLxiwOHw6SZfZeWVH6PySULva3dsaaA+BgrE61wj06nTe50rh471FYLPqBYKSE0y/JaOuC2FSDfsIo0Kww==}
+  effect@3.7.0:
+    resolution: {integrity: sha512-TXrb4SHTHrij396NfvGgpOD/5Sh503LtN2AeskkB7YO6Oe1tWSekk8dcrj3AWbMDOJ/fXOvcf6HD+Svus2zIeA==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -5210,12 +5798,14 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -5431,6 +6021,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -7411,18 +8002,22 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.6.3:
     resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rollup-plugin-inject@3.0.2:
@@ -9779,43 +10374,43 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 5.0.2
 
-  '@effect/experimental@0.23.6(@effect/platform@0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7))(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7)(ws@8.18.0)':
+  '@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0)':
     dependencies:
-      '@effect/platform': 0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7)
-      '@effect/schema': 0.71.3(effect@3.6.7)
-      effect: 3.6.7
+      '@effect/platform': 0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@effect/schema': 0.72.0(effect@3.7.0)
+      effect: 3.7.0
       msgpackr: 1.11.0
     optionalDependencies:
       ws: 8.18.0
 
   '@effect/language-service@0.1.0': {}
 
-  '@effect/opentelemetry@0.35.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.6.7)':
+  '@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 1.26.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.27.0
-      effect: 3.6.7
+      effect: 3.7.0
     optionalDependencies:
       '@opentelemetry/sdk-metrics': 1.25.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.26.0(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@0.41.4(@effect/platform@0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7))(effect@3.6.7)':
+  '@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0)':
     dependencies:
-      '@effect/platform': 0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7)
-      effect: 3.6.7
+      '@effect/platform': 0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      effect: 3.7.0
       multipasta: 0.2.5
 
-  '@effect/platform@0.62.4(@effect/schema@0.71.3(effect@3.6.7))(effect@3.6.7)':
+  '@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)':
     dependencies:
-      '@effect/schema': 0.71.3(effect@3.6.7)
-      effect: 3.6.7
+      '@effect/schema': 0.72.0(effect@3.7.0)
+      effect: 3.7.0
       find-my-way-ts: 0.1.5
       multipasta: 0.2.5
 
-  '@effect/schema@0.71.3(effect@3.6.7)':
+  '@effect/schema@0.72.0(effect@3.7.0)':
     dependencies:
-      effect: 3.6.7
+      effect: 3.7.0
       fast-check: 3.22.0
 
   '@esbuild-plugins/node-globals-polyfill@0.2.3(esbuild@0.17.19)':
@@ -10666,13 +11261,103 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
 
+  '@livestore/cf-sync@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)':
+    dependencies:
+      '@livestore/common': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+    transitivePeerDependencies:
+      - '@effect/experimental'
+      - '@effect/opentelemetry'
+      - '@effect/platform'
+      - '@effect/platform-browser'
+      - '@effect/schema'
+      - '@opentelemetry/api'
+      - effect
+
+  '@livestore/common@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)':
+    dependencies:
+      '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+      '@opentelemetry/api': 1.9.0
+      effect-db-schema: link:packages/effect-db-schema
+    transitivePeerDependencies:
+      - '@effect/experimental'
+      - '@effect/opentelemetry'
+      - '@effect/platform'
+      - '@effect/platform-browser'
+      - '@effect/schema'
+      - effect
+
+  '@livestore/devtools-expo-bridge@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)':
+    dependencies:
+      '@livestore/common': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@livestore/livestore': link:packages/@livestore/livestore
+      '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      react: 18.3.1
+    transitivePeerDependencies:
+      - '@effect/experimental'
+      - '@effect/opentelemetry'
+      - '@effect/platform'
+      - '@effect/platform-browser'
+      - '@effect/schema'
+      - '@opentelemetry/api'
+      - effect
+
   '@livestore/devtools-react@0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
+  '@livestore/expo@0.0.56(2si3udhwsi5e3d4wsayjhcnmoq)':
+    dependencies:
+      '@livestore/common': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@livestore/devtools-expo-bridge': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)
+      '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+      '@opentelemetry/api': 1.9.0
+      expo-file-system: 17.0.1(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-sqlite: 14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+    transitivePeerDependencies:
+      - '@effect/experimental'
+      - '@effect/opentelemetry'
+      - '@effect/platform'
+      - '@effect/platform-browser'
+      - '@effect/schema'
+      - effect
+      - expo
+      - react
+
+  '@livestore/utils@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)':
+    dependencies:
+      '@effect/experimental': 0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0)
+      '@effect/opentelemetry': 0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0)
+      '@effect/platform': 0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@effect/platform-browser': 0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0)
+      '@effect/schema': 0.72.0(effect@3.7.0)
+      '@opentelemetry/api': 1.9.0
+      date-fns: 3.6.0
+      effect: 3.7.0
+      effect-db-schema: link:packages/effect-db-schema
+      msgpackr: 1.11.0
+      otel-websocket-exporter: 0.0.29
+      pretty-bytes: 6.1.1
+
   '@livestore/wa-sqlite@1.0.1-dev.29': {}
+
+  '@livestore/web@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)':
+    dependencies:
+      '@livestore/cf-sync': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+      '@livestore/common': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
+      '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
+      '@livestore/wa-sqlite': 1.0.1-dev.29
+      '@opentelemetry/api': 1.9.0
+    transitivePeerDependencies:
+      - '@effect/experimental'
+      - '@effect/opentelemetry'
+      - '@effect/platform'
+      - '@effect/platform-browser'
+      - '@effect/schema'
+      - effect
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
     optional: true
@@ -11207,8 +11892,6 @@ snapshots:
 
   '@react-native/normalize-color@2.1.0': {}
 
-  '@react-native/normalize-colors@0.74.84': {}
-
   '@react-native/normalize-colors@0.74.85': {}
 
   '@react-native/virtualized-lists@0.74.85(@types/react@18.3.3)(react-native@0.74.3(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(@types/react@18.3.3)(react@18.3.1))(react@18.3.1)':
@@ -11294,6 +11977,14 @@ snapshots:
       picomatch: 2.3.1
     optionalDependencies:
       rollup: 2.79.1
+
+  '@rollup/pluginutils@5.1.0(rollup@4.18.0)':
+    dependencies:
+      '@types/estree': 1.0.5
+      estree-walker: 2.0.2
+      picomatch: 2.3.1
+    optionalDependencies:
+      rollup: 4.18.0
 
   '@rollup/rollup-android-arm-eabi@4.18.0':
     optional: true
@@ -11745,7 +12436,7 @@ snapshots:
 
   '@types/hast@3.0.4':
     dependencies:
-      '@types/unist': 2.0.10
+      '@types/unist': 3.0.2
 
   '@types/history@4.7.11': {}
 
@@ -11775,7 +12466,7 @@ snapshots:
 
   '@types/mdast@4.0.4':
     dependencies:
-      '@types/unist': 2.0.10
+      '@types/unist': 3.0.2
 
   '@types/mdurl@1.0.5': {}
 
@@ -13098,12 +13789,12 @@ snapshots:
     dependencies:
       detect-libc: 1.0.3
 
-  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6)(react@18.3.1):
+  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240729.0
       '@opentelemetry/api': 1.9.0
       '@types/react': 18.3.3
-      expo-sqlite: 14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-sqlite: 14.0.6(expo@51.0.24)
       react: 18.3.1
 
   dtrace-provider@0.8.8:
@@ -13206,7 +13897,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.6.7: {}
+  effect@3.7.0: {}
 
   ejs@3.1.10:
     dependencies:
@@ -13749,6 +14440,12 @@ snapshots:
     dependencies:
       '@expo/websql': 1.0.1
       expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+
+  expo-sqlite@14.0.6(expo@51.0.24):
+    dependencies:
+      '@expo/websql': 1.0.1
+      expo: 51.0.24
+    optional: true
 
   expo-status-bar@1.12.1: {}
 
@@ -16426,7 +17123,7 @@ snapshots:
   react-native-web@0.19.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.25.0
-      '@react-native/normalize-colors': 0.74.84
+      '@react-native/normalize-colors': 0.74.85
       fbjs: 3.0.5
       inline-style-prefixer: 6.0.4
       memoize-one: 6.0.0
@@ -17767,6 +18464,17 @@ snapshots:
   vite-plugin-svgr@4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1)):
     dependencies:
       '@rollup/pluginutils': 5.1.0(rollup@2.79.1)
+      '@svgr/core': 8.1.0(typescript@5.5.4)
+      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
+      vite: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+    transitivePeerDependencies:
+      - rollup
+      - supports-color
+      - typescript
+
+  vite-plugin-svgr@4.2.0(rollup@4.18.0)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1)):
+    dependencies:
+      '@rollup/pluginutils': 5.1.0(rollup@4.18.0)
       '@svgr/core': 8.1.0(typescript@5.5.4)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
       vite: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
