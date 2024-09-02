@@ -38,7 +38,7 @@
     "prettier-plugin-packagejson": "2.5.1",
     "typescript": "5.5.4"
   },
-  "packageManager": "pnpm@9.3.0",
+  "packageManager": "pnpm@9.9.0",
   "pnpm": {
     "patchedDependencies": {
       "playwright@1.45.3": "patches/playwright@1.45.3.patch"

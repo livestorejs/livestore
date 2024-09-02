@@ -1,0 +1,33 @@
+--- examples/todomvc-custom-elements/tsconfig.json	2024-09-02 19:29:43.580871219 +0200
++++ examples-monorepo/examples/todomvc-custom-elements/tsconfig.json	2024-09-02 19:30:41.897411574 +0200
+@@ -1,24 +1,11 @@
+ {
++  "extends": "../../../tsconfig.base.json",
+   "compilerOptions": {
+-    "target": "ES2022",
+-    "useDefineForClassFields": true,
+-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+-    "module": "ESNext",
+-    "skipLibCheck": true,
+-
+-    /* Bundler mode */
+-    "moduleResolution": "bundler",
+-    "allowImportingTsExtensions": true,
+-    "resolveJsonModule": true,
+-    "isolatedModules": true,
+-    "noEmit": true,
+-
+-    /* Linting */
+-    "strict": true,
+-    // "noUnusedLocals": true,
+-    // "noUnusedParameters": true,
+-    "noFallthroughCasesInSwitch": true
++    "outDir": "./dist",
++    "rootDir": "./src",
++    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+   },
+   "include": ["./src"],
+-  "exclude": ["node_modules"]
++  "exclude": ["node_modules"],
++  "references": [{ "path": "../../packages/@livestore/livestore" }, { "path": "../../packages/@livestore/utils" }, { "path": "../../packages/@livestore/web" }]
+ }

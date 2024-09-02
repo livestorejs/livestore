@@ -1,0 +1,24 @@
+--- examples/todomvc-drizzle/package.json	2024-09-02 18:30:02.307964758 +0200
++++ examples-monorepo/examples/todomvc-drizzle/package.json	2024-09-02 19:09:36.843306411 +0200
+@@ -10,16 +10,16 @@
+   },
+   "dependencies": {
+     "@effect/schema": "0.72.0",
+-    "@livestore/devtools-react": "0.0.56",
+-    "@livestore/livestore": "0.0.56",
+-    "@livestore/utils": "0.0.56",
++    "@livestore/devtools-react": "workspace:*",
++    "@livestore/livestore": "workspace:*",
++    "@livestore/utils": "workspace:*",
+     "@livestore/wa-sqlite": "1.0.1-dev.29",
+-    "@livestore/web": "0.0.56",
++    "@livestore/web": "workspace:*",
+     "@opentelemetry/api": "^1.9.0",
+     "@schickling/fps-meter": "^0.1.2",
+     "drizzle-orm": "^0.32.1",
+     "effect": "3.7.0",
+-    "effect-db-schema": "0.0.56",
++    "effect-db-schema": "workspace:*",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1",
+     "todomvc-app-css": "^2.4.3",

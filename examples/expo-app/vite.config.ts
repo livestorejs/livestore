@@ -77,7 +77,6 @@ export default defineConfig({
   server: {
     port: 60_100,
     host: '0.0.0.0',
-    hmr: process.env.DISABLE_HMR === undefined ? true : false,
     headers: credentiallessHeaders,
     fs: {
       // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)

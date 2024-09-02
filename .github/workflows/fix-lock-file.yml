@@ -25,6 +25,16 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
 
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+        with:
+          # Mostly to avoid GitHub rate limiting
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive monorepo examples
+        run: nix develop --command bun sync-examples.ts --single-run
+
       - name: Create new branch
         run: |
           git config --global user.name 'github-actions[bot]'

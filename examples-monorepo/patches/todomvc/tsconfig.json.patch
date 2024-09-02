@@ -1,0 +1,34 @@
+--- examples/todomvc/tsconfig.json	2024-09-02 19:25:26.927854117 +0200
++++ examples-monorepo/examples/todomvc/tsconfig.json	2024-03-06 17:29:52.000000000 +0100
+@@ -1,25 +1,12 @@
+ {
++  "extends": "../../tsconfig.base.json",
+   "compilerOptions": {
+-    "target": "ES2022",
+-    "useDefineForClassFields": true,
+-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+-    "module": "ESNext",
+-    "skipLibCheck": true,
+-
+-    /* Bundler mode */
+-    "moduleResolution": "bundler",
+-    "allowImportingTsExtensions": true,
+-    "resolveJsonModule": true,
+-    "isolatedModules": true,
+-    "noEmit": true,
+     "jsx": "react",
+-
+-    /* Linting */
+-    "strict": true,
+-    // "noUnusedLocals": true,
+-    // "noUnusedParameters": true,
+-    "noFallthroughCasesInSwitch": true
++    "outDir": "./dist",
++    "rootDir": "./src",
++    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+   },
+   "include": ["./src"],
+-  "exclude": ["node_modules"]
++  "exclude": ["node_modules"],
++  "references": [{ "path": "../../packages/@livestore/livestore" }, { "path": "../../packages/@livestore/web" }]
+ }

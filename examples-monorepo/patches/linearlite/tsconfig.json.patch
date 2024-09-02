@@ -1,0 +1,16 @@
+--- examples/linearlite/tsconfig.json	2024-09-02 19:25:31.827254860 +0200
++++ examples-monorepo/examples/linearlite/tsconfig.json	2024-09-02 19:30:49.861940089 +0200
+@@ -1,4 +1,5 @@
+ {
++  "extends": "../../../tsconfig.base.json",
+   "compilerOptions": {
+     "target": "ES2022",
+     "useDefineForClassFields": true,
+@@ -20,5 +21,6 @@
+     // "noUnusedParameters": true,
+     "noFallthroughCasesInSwitch": true
+   },
+-  "include": ["src"]
++  "include": ["src"],
++  "references": [{ "path": "../../packages/@livestore/livestore" }, { "path": "../../packages/@livestore/web" }]
+ }

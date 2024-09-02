@@ -1,0 +1,34 @@
+--- examples/todomvc-drizzle/tsconfig.json	2024-09-02 19:30:05.616597090 +0200
++++ examples-monorepo/examples/todomvc-drizzle/tsconfig.json	2024-09-02 19:30:35.408549776 +0200
+@@ -1,24 +1,12 @@
+ {
++  "extends": "../../../tsconfig.base.json",
+   "compilerOptions": {
+-    "target": "ES2022",
+-    "useDefineForClassFields": true,
+-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+-    "module": "ESNext",
+-    "skipLibCheck": true,
+-
+-    /* Bundler mode */
+-    "moduleResolution": "bundler",
+-    "allowImportingTsExtensions": true,
+-    "resolveJsonModule": true,
+-    "isolatedModules": true,
+-    "noEmit": true,
+-
+-    /* Linting */
+-    "strict": true,
+-    // "noUnusedLocals": true,
+-    // "noUnusedParameters": true,
+-    "noFallthroughCasesInSwitch": true
++    "jsx": "react",
++    "outDir": "./dist",
++    "rootDir": "./src",
++    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+   },
+   "include": ["./src"],
+-  "exclude": ["node_modules"]
++  "exclude": ["node_modules"],
++  "references": [{ "path": "../../packages/@livestore/livestore" }, { "path": "../../packages/@livestore/utils" }, { "path": "../../packages/@livestore/web" }]
+ }
