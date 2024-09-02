@@ -48,6 +48,8 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
       - run: pnpm install
       - run: pnpm playwright install --with-deps
         working-directory: integration-tests
@@ -90,6 +92,8 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
       - run: pnpm install
       - run: pnpm build:ts
       - run: pnpm build

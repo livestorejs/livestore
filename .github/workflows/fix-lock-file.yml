@@ -34,6 +34,8 @@ jobs:
 
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
 
       - name: Create new branch
         run: |
