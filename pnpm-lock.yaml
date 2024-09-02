@@ -517,7 +517,7 @@ importers:
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)))(react@18.3.1)
       effect:
         specifier: 3.7.0
         version: 3.7.0
@@ -1072,7 +1072,7 @@ importers:
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)))(react@18.3.1)
       effect:
         specifier: 3.7.0
         version: 3.7.0
@@ -2870,7 +2870,6 @@ packages:
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
     engines: {node: '>=10.10.0'}
-    deprecated: Use @eslint/config-array instead
 
   '@humanwhocodes/module-importer@1.0.1':
     resolution: {integrity: sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA==}
@@ -2878,7 +2877,6 @@ packages:
 
   '@humanwhocodes/object-schema@2.0.3':
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
-    deprecated: Use @eslint/object-schema instead
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -5798,14 +5796,12 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
-    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -6021,7 +6017,6 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
-    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -8002,22 +7997,18 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.6.3:
     resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
-    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rollup-plugin-inject@3.0.2:
@@ -13789,6 +13780,14 @@ snapshots:
     dependencies:
       detect-libc: 1.0.3
 
+  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)))(react@18.3.1):
+    optionalDependencies:
+      '@cloudflare/workers-types': 4.20240729.0
+      '@opentelemetry/api': 1.9.0
+      '@types/react': 18.3.3
+      expo-sqlite: 14.0.6(expo@51.0.24(@babel/core@7.24.7))
+      react: 18.3.1
+
   drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240729.0
@@ -14363,6 +14362,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  expo-asset@10.0.10(expo@51.0.24(@babel/core@7.24.7)):
+    dependencies:
+      expo: 51.0.24(@babel/core@7.24.7)
+      expo-constants: 16.0.2(expo@51.0.24(@babel/core@7.24.7))
+      invariant: 2.2.4
+      md5-file: 3.2.3
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
+
   expo-asset@10.0.10(expo@51.0.24):
     dependencies:
       expo: 51.0.24
@@ -14379,6 +14388,15 @@ snapshots:
       expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
     transitivePeerDependencies:
       - supports-color
+
+  expo-constants@16.0.2(expo@51.0.24(@babel/core@7.24.7)):
+    dependencies:
+      '@expo/config': 9.0.2
+      '@expo/env': 0.3.0
+      expo: 51.0.24(@babel/core@7.24.7)
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
 
   expo-constants@16.0.2(expo@51.0.24):
     dependencies:
@@ -14397,6 +14415,11 @@ snapshots:
     dependencies:
       expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
+  expo-file-system@17.0.1(expo@51.0.24(@babel/core@7.24.7)):
+    dependencies:
+      expo: 51.0.24(@babel/core@7.24.7)
+    optional: true
+
   expo-file-system@17.0.1(expo@51.0.24):
     dependencies:
       expo: 51.0.24
@@ -14406,6 +14429,12 @@ snapshots:
       expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       fontfaceobserver: 2.3.0
 
+  expo-font@12.0.9(expo@51.0.24(@babel/core@7.24.7)):
+    dependencies:
+      expo: 51.0.24(@babel/core@7.24.7)
+      fontfaceobserver: 2.3.0
+    optional: true
+
   expo-font@12.0.9(expo@51.0.24):
     dependencies:
       expo: 51.0.24
@@ -14414,6 +14443,11 @@ snapshots:
   expo-keep-awake@13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
       expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+
+  expo-keep-awake@13.0.2(expo@51.0.24(@babel/core@7.24.7)):
+    dependencies:
+      expo: 51.0.24(@babel/core@7.24.7)
+    optional: true
 
   expo-keep-awake@13.0.2(expo@51.0.24):
     dependencies:
@@ -14440,6 +14474,12 @@ snapshots:
     dependencies:
       '@expo/websql': 1.0.1
       expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+
+  expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)):
+    dependencies:
+      '@expo/websql': 1.0.1
+      expo: 51.0.24(@babel/core@7.24.7)
+    optional: true
 
   expo-sqlite@14.0.6(expo@51.0.24):
     dependencies:
@@ -14473,6 +14513,32 @@ snapshots:
       - encoding
       - supports-color
       - utf-8-validate
+
+  expo@51.0.24(@babel/core@7.24.7):
+    dependencies:
+      '@babel/runtime': 7.25.0
+      '@expo/cli': 0.18.26(expo-modules-autolinking@1.11.1)
+      '@expo/config': 9.0.3
+      '@expo/config-plugins': 8.0.8
+      '@expo/metro-config': 0.18.10
+      '@expo/vector-icons': 14.0.2
+      babel-preset-expo: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo-asset: 10.0.10(expo@51.0.24(@babel/core@7.24.7))
+      expo-file-system: 17.0.1(expo@51.0.24(@babel/core@7.24.7))
+      expo-font: 12.0.9(expo@51.0.24(@babel/core@7.24.7))
+      expo-keep-awake: 13.0.2(expo@51.0.24(@babel/core@7.24.7))
+      expo-modules-autolinking: 1.11.1
+      expo-modules-core: 1.12.20
+      fbemitter: 3.0.0
+      whatwg-url-without-unicode: 8.0.0-3
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@babel/preset-env'
+      - bufferutil
+      - encoding
+      - supports-color
+      - utf-8-validate
+    optional: true
 
   expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)):
     dependencies:
