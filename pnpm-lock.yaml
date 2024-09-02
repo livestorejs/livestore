@@ -22,18 +22,12 @@ importers:
       '@effect/language-service':
         specifier: ^0.1.0
         version: 0.1.0
-      '@types/node':
-        specifier: ^22.5.2
-        version: 22.5.2
       '@typescript-eslint/eslint-plugin':
         specifier: 7.17.0
         version: 7.17.0(@typescript-eslint/parser@7.17.0(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)(typescript@5.5.4)
       '@typescript-eslint/parser':
         specifier: 7.17.0
         version: 7.17.0(eslint@8.57.0)(typescript@5.5.4)
-      bun-types:
-        specifier: ^1.1.26
-        version: 1.1.26
       eslint:
         specifier: 8.57.0
         version: 8.57.0
@@ -1481,6 +1475,15 @@ importers:
       vitest:
         specifier: ^2.0.4
         version: 2.0.4(@types/node@22.5.2)(jsdom@24.1.0)(terser@5.31.1)
+
+  scripts:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.5.2
+        version: 22.5.2
+      bun-types:
+        specifier: ^1.1.26
+        version: 1.1.26
 
 packages:
 
