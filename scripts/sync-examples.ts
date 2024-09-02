@@ -1,5 +1,4 @@
 /* eslint-disable unicorn/no-process-exit */
-/// <reference types="node" />
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import process from 'node:process'
@@ -164,6 +163,14 @@ const updatePatches = async () => {
 }
 
 const main = async () => {
+  const workspaceRoot = process.env.WORKSPACE_ROOT
+  if (!workspaceRoot) {
+    console.error('WORKSPACE_ROOT environment variable is not set')
+    process.exit(1)
+  }
+
+  process.chdir(workspaceRoot)
+
   const args = new Set(process.argv.slice(2))
 
   if (!fs.existsSync(DEST_DIR)) {

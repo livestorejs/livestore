@@ -3,6 +3,7 @@
   "compilerOptions": {},
   "include": [],
   "references": [
+    { "path": "./scripts" },
     { "path": "./examples-monorepo/examples/expo-app" },
     { "path": "./examples-monorepo/examples/linearlite" },
     { "path": "./examples-monorepo/examples/todomvc" },
