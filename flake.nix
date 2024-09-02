@@ -33,6 +33,7 @@
             nodejs_22
             corepack
             pkgsUnstable.bun
+            watchman
             caddy
             
             self.packages.${system}.find-free-port

@@ -19,11 +19,11 @@ export function seed(db: BootDb) {
     }
     let howMany = parseInt(seedParam)
     const rows = db.select<{ c: number }>(sql`SELECT count(*) as c FROM issue`)
-    if (rows[0].c >= howMany) {
+    if (rows[0]!.c >= howMany) {
       return
     }
 
-    howMany -= rows[0].c
+    howMany -= rows[0]!.c
 
     console.log('SEEDING WITH ', howMany, ' ADDITIONAL ROWS')
 
@@ -116,14 +116,14 @@ export function* createIssues(numTasks: number): Generator<Issue & { description
     'And ensure proper error feedback to the user',
   ]
 
-  const getRandomItem = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)]
+  const getRandomItem = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)]!
 
   const generateText = () => {
     const action = getRandomItem(actionPhrases)
     const feature = getRandomItem(featurePhrases)
     const purpose = getRandomItem(purposePhrases)
     const context = getRandomItem(contextPhrases)
-    return [`${action} ${feature}`, `${action} ${feature} ${purpose}. ${context}.`]
+    return [`${action} ${feature}`, `${action} ${feature} ${purpose}. ${context}.`] as const
   }
 
   const now = Date.now()

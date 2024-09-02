@@ -2,9 +2,9 @@
   "private": true,
   "scripts": {
     "build": "pnpm run build:ts",
-    "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o -name 'dist' -type d -exec rm -rf {} +\"",
-    "build:ts": "tsc --build tsconfig.all.json",
-    "dev:ts": "pnpm run build:ts --watch",
+    "build:clean": "bash -c \"find {examples,packages,examples-monorepo} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
+    "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
+    "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
@@ -20,6 +20,8 @@
   },
   "devDependencies": {
     "@effect/language-service": "^0.1.0",
+    "@types/node": "^22.5.2",
+    "bun-types": "^1.1.26",
     "@typescript-eslint/eslint-plugin": "7.17.0",
     "@typescript-eslint/parser": "7.17.0",
     "eslint": "8.57.0",

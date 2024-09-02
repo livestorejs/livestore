@@ -1,4 +1,7 @@
+/// <reference types="node" />
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import process from 'node:process'
 
 import { $ } from 'bun'
 
@@ -9,7 +12,10 @@ const DEST_DIR = 'examples-monorepo/examples'
 
 // Helper function to sync src to src-patched
 const syncDirectories = async () => {
-  await $`rsync -a --delete ${SRC_DIR}/ ${DEST_DIR}/`
+  // From https://unix.stackexchange.com/a/168602
+  // This tells rsync to look in each directory for a file .gitignore:
+  // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
+  await $`rsync -a --delete --filter='dir-merge,- .gitignore' ${SRC_DIR}/ ${DEST_DIR}/`
 
   // Apply patches
   const applyPatches = async (dir: string) => {
@@ -38,30 +44,60 @@ const syncDirectories = async () => {
 
 // Watchman configuration and commands
 const setupWatchman = async () => {
-  await $`watchman watch ${SRC_DIR}`
-  await $`watchman watch ${PATCHES_DIR}`
+  const watchDirs = [
+    { dir: SRC_DIR, name: 'listen-example-changes' },
+    { dir: PATCHES_DIR, name: 'listen-patch-changes' },
+  ]
 
-  const triggerCommand = `
-    watchman -j <<-EOT
-    ["trigger", "${SRC_DIR}", {
-      "name": "sync",
-      "expression": ["allof", ["match", "*"]],
-      "command": ["bun", "sync.ts", "--single-run"]
-    }]
-    EOT
-  `
-  await $`${triggerCommand}`
+  const bunBin = await $`which bun`.text()
 
-  const triggerCommandPatches = `
-    watchman -j <<-EOT
-    ["trigger", "${PATCHES_DIR}", {
-      "name": "sync-patches",
-      "expression": ["allof", ["match", "*"]],
-      "command": ["bun", "sync.ts", "--single-run"]
-    }]
-    EOT
-  `
-  await $`${triggerCommandPatches}`
+  console.log(`Using bun from ${bunBin}`)
+
+  for (const { dir, name } of watchDirs) {
+    await $`watchman watch ${dir}`
+    await $`watchman -- trigger ${dir} ${name} '**' -- ${bunBin} sync-examples.ts --single-run`
+    console.log(`Set up watch on ${dir}`)
+
+    // Subscribe to changes
+    const subscriptionProcess = spawn('watchman', ['-j', '-p', '--no-pretty', '--output-encoding=json'], {
+      stdio: ['pipe', 'pipe', 'inherit'],
+    })
+
+    subscriptionProcess.stdin.write(
+      JSON.stringify([
+        'subscribe',
+        dir,
+        name,
+        {
+          expression: ['allof', ['match', '**']],
+          fields: ['name', 'size', 'mtime_ms', 'exists', 'type'],
+        },
+      ]),
+    )
+    subscriptionProcess.stdin.end()
+
+    subscriptionProcess.stdout.on('data', (data) => {
+      try {
+        const changes = JSON.parse(data.toString())
+        if (changes.files) {
+          console.log(`Changes detected in ${dir}:`, changes.files.map((f: { name: string }) => f.name).join(', '))
+          syncDirectories()
+        }
+      } catch (error) {
+        console.error(`Error parsing Watchman output: ${error}`)
+      }
+    })
+
+    subscriptionProcess.on('error', (error) => {
+      console.error(`Watchman process error for ${dir}:`, error)
+    })
+
+    subscriptionProcess.on('exit', (code) => {
+      console.log(`Watchman process for ${dir} exited with code ${code}`)
+    })
+  }
+
+  console.log('Watchman setup complete. Listening for changes...')
 }
 
 // Main function
@@ -80,8 +116,13 @@ const updatePatches = async () => {
       const patchFile = `${patchDir}/${file}.patch`
 
       if (fs.existsSync(srcFile) && fs.existsSync(destFile)) {
-        const diffResult = await $`diff -u ${srcFile} ${destFile}`.nothrow().text()
-        if (diffResult !== '') {
+        const diffResult =
+          await $`diff -u --minimal --unidirectional-new-file --label=${file} --label=${file} ${srcFile} ${destFile}`
+            .nothrow()
+            .text()
+        if (diffResult === '') {
+          console.log(`No changes detected for ${file} in ${exampleDir}`)
+        } else {
           await fs.promises.writeFile(patchFile, diffResult)
           console.log(`Updated patch for ${file} in ${exampleDir}`)
         }
@@ -101,11 +142,25 @@ const main = async () => {
     await syncDirectories()
   } else if (args.has('--watch')) {
     await setupWatchman()
-    console.log('Watching for changes...')
+
+    // Set up signal handlers for graceful shutdown
+    const teardownWatchman = async () => {
+      console.log('Tearing down Watchman...')
+      await $`watchman shutdown-server`.nothrow()
+      console.log('Watchman teardown complete')
+      // eslint-disable-next-line unicorn/no-process-exit
+      process.exit(0)
+    }
+
+    process.on('SIGTERM', teardownWatchman)
+    process.on('SIGINT', teardownWatchman)
+
+    // Keep the script running
+    await new Promise(() => {})
   } else if (args.has('--update-patches')) {
     await updatePatches()
   } else {
-    console.log('Usage: bun sync.ts [--single-run | --watch | --update-patches]')
+    console.log('Usage: bun sync-examples.ts [--single-run | --watch | --update-patches]')
   }
 }
 

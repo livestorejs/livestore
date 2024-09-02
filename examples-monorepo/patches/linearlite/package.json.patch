@@ -1,5 +1,5 @@
---- examples/linearlite/package.json	2024-09-02 18:30:01.931549816 +0200
-+++ examples-monorepo/examples/linearlite/package.json	2024-09-02 19:09:36.847668681 +0200
+--- package.json
++++ package.json
 @@ -14,10 +14,10 @@
      "@effect/schema": "0.72.0",
      "@firefox-devtools/react-contextmenu": "^5.1.1",

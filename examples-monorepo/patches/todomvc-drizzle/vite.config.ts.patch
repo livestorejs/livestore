@@ -1,5 +1,5 @@
---- examples/todomvc-drizzle/vite.config.ts	2024-09-02 19:18:19.447736853 +0200
-+++ examples-monorepo/examples/todomvc-drizzle/vite.config.ts	2024-09-02 19:19:34.816918124 +0200
+--- vite.config.ts
++++ vite.config.ts
 @@ -24,10 +24,18 @@
    server: {
      port: 60_003,

@@ -1,5 +1,5 @@
---- examples/todomvc/vite.config.ts	2024-09-02 19:18:31.710742475 +0200
-+++ examples-monorepo/examples/todomvc/vite.config.ts	2024-09-02 19:19:16.645308510 +0200
+--- vite.config.ts
++++ vite.config.ts
 @@ -24,10 +24,19 @@
    server: {
      port: process.env.PORT ? Number(process.env.PORT) : 60_001,

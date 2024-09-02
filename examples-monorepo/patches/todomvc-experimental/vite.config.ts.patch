@@ -1,5 +1,5 @@
---- examples/todomvc-experimental/vite.config.ts	2024-09-02 19:24:04.742665023 +0200
-+++ examples-monorepo/examples/todomvc-experimental/vite.config.ts	2024-09-02 19:20:26.605516887 +0200
+--- vite.config.ts
++++ vite.config.ts
 @@ -24,6 +24,11 @@
    server: {
      port: 60_001,

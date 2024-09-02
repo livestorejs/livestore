@@ -1,5 +1,5 @@
---- examples/expo-app/package.json	2024-09-02 18:51:58.007447015 +0200
-+++ examples-monorepo/examples/expo-app/package.json	2024-09-02 19:09:36.858816961 +0200
+--- package.json
++++ package.json
 @@ -11,13 +11,13 @@
    "dependencies": {
      "@effect/schema": "0.72.0",

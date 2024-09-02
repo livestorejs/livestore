@@ -1,5 +1,5 @@
---- examples/linearlite/vite.config.js	2024-09-02 19:06:47.080312022 +0200
-+++ examples-monorepo/examples/linearlite/vite.config.js	2024-09-02 19:09:36.851542318 +0200
+--- vite.config.js
++++ vite.config.js
 @@ -5,6 +5,7 @@
  import svgr from 'vite-plugin-svgr'
  import { VitePWA } from 'vite-plugin-pwa'

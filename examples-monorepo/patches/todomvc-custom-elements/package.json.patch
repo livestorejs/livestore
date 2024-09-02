@@ -1,5 +1,5 @@
---- examples/todomvc-custom-elements/package.json	2024-09-02 18:54:55.130149346 +0200
-+++ examples-monorepo/examples/todomvc-custom-elements/package.json	2024-09-02 19:09:36.829099005 +0200
+--- package.json
++++ package.json
 @@ -9,11 +9,11 @@
    },
    "dependencies": {

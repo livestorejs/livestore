@@ -100,7 +100,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
    * @param issueBefore The issue immediately before one that needs fixing
    * @returns The new kanbanorder that was set for the issue
    */
-  const fixKanbanOrder = (issue: Issue, issueBefore: Issue) => {
+  const fixKanbanOrder = (issue: Issue, issueBefore: Issue | undefined) => {
     // First we find the issue immediately after the issue that needs fixing.
     const issueIndex = issuesByStatus[issue.status]?.indexOf(issue)
     const issueAfter = issuesByStatus[issue.status]?.[issueIndex || 0 + 1]
@@ -138,7 +138,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
    * @param issueAfter The issue immediately after the issue being moved
    * @returns The new kanbanorder
    */
-  const getNewKanbanOrder = (issueBefore: Issue, issueAfter: Issue) => {
+  const getNewKanbanOrder = (issueBefore: Issue | undefined, issueAfter: Issue | undefined) => {
     const prevKanbanOrder = issueBefore?.kanbanorder
     let nextKanbanOrder = issueAfter?.kanbanorder
     if (nextKanbanOrder && nextKanbanOrder === prevKanbanOrder) {
@@ -146,7 +146,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
       // we need to fix the kanbanorder of the next issue.
       // This can happen when two users move issues into the same position at the same
       // time.
-      nextKanbanOrder = fixKanbanOrder(issueAfter, issueBefore)
+      nextKanbanOrder = fixKanbanOrder(issueAfter!, issueBefore)
     }
     return generateKeyBetween(prevKanbanOrder, nextKanbanOrder)
   }
