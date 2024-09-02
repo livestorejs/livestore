@@ -13,9 +13,9 @@ overrides:
   effect-db-schema: workspace:*
 
 patchedDependencies:
-  playwright@1.45.3:
+  playwright@1.46.1:
     hash: bgbgs3geyoekwfwbwsmgpnzyv4
-    path: patches/playwright@1.45.3.patch
+    path: patches/playwright@1.46.1.patch
 
 importers:
 
@@ -64,8 +64,8 @@ importers:
         specifier: ^6.1.0
         version: 6.1.0(typescript@5.5.4)
       playwright:
-        specifier: 1.45.3
-        version: 1.45.3(patch_hash=bgbgs3geyoekwfwbwsmgpnzyv4)
+        specifier: 1.46.1
+        version: 1.46.1(patch_hash=bgbgs3geyoekwfwbwsmgpnzyv4)
       prettier:
         specifier: 3.3.3
         version: 3.3.3
@@ -1208,8 +1208,8 @@ importers:
         version: link:../packages/@livestore/web
     devDependencies:
       '@playwright/test':
-        specifier: 1.45.3
-        version: 1.45.3
+        specifier: ^1.46.1
+        version: 1.46.1
       '@types/node':
         specifier: ^22.0.0
         version: 22.0.0
@@ -1279,8 +1279,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@playwright/test':
-        specifier: '>=1.40.0'
-        version: 1.45.3
+        specifier: '>=1.46.1'
+        version: 1.46.1
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -3153,8 +3153,8 @@ packages:
     resolution: {integrity: sha512-cq8o4cWH0ibXh9VGi5P20Tu9XF/0fFXl9EUinr9QfTM7a7p0oTA4iJRCQWppXR1Pg8dSM0UCItCkPwsk9qWWYA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@playwright/test@1.45.3':
-    resolution: {integrity: sha512-UKF4XsBfy+u3MFWEH44hva1Q8Da28G6RFtR2+5saw+jgAFQV5yYnB1fu68Mz7fO+5GJF3wgwAIs0UelU8TxFrA==}
+  '@playwright/test@1.46.1':
+    resolution: {integrity: sha512-Fq6SwLujA/DOIvNC2EL/SojJnkKf/rAwJ//APpJJHRyMi1PdKrY3Az+4XNQ51N4RTbItbIByQ0jgd1tayq1aeA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -7442,13 +7442,13 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
-  playwright-core@1.45.3:
-    resolution: {integrity: sha512-+ym0jNbcjikaOwwSZycFbwkWgfruWvYlJfThKYAlImbxUgdWFO2oW70ojPm4OpE4t6TAo2FY/smM+hpVTtkhDA==}
+  playwright-core@1.46.1:
+    resolution: {integrity: sha512-h9LqIQaAv+CYvWzsZ+h3RsrqCStkBHlgo6/TJlFst3cOTlLghBQlJwPOZKQJTKNaD3QIB7aAVQ+gfWbN3NXB7A==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.45.3:
-    resolution: {integrity: sha512-QhVaS+lpluxCaioejDZ95l4Y4jSFCsBvl2UZkpeXlzxmqS+aABr5c82YmfMHrL6x27nvrvykJAFpkzT2eWdJww==}
+  playwright@1.46.1:
+    resolution: {integrity: sha512-oPcr1yqoXLCkgKtD5eNUPLiN40rYEM39odNpIb6VE6S7/15gJmA1NzVv6zJYusV0e7tzvkU/utBFNa/Kpxmwng==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -11556,9 +11556,9 @@ snapshots:
 
   '@pkgr/core@0.1.1': {}
 
-  '@playwright/test@1.45.3':
+  '@playwright/test@1.46.1':
     dependencies:
-      playwright: 1.45.3(patch_hash=bgbgs3geyoekwfwbwsmgpnzyv4)
+      playwright: 1.46.1(patch_hash=bgbgs3geyoekwfwbwsmgpnzyv4)
 
   '@popperjs/core@2.11.8': {}
 
@@ -16801,11 +16801,11 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
-  playwright-core@1.45.3: {}
+  playwright-core@1.46.1: {}
 
-  playwright@1.45.3(patch_hash=bgbgs3geyoekwfwbwsmgpnzyv4):
+  playwright@1.46.1(patch_hash=bgbgs3geyoekwfwbwsmgpnzyv4):
     dependencies:
-      playwright-core: 1.45.3
+      playwright-core: 1.46.1
     optionalDependencies:
       fsevents: 2.3.2
 
