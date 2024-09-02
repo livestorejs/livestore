@@ -1,3 +1,4 @@
+import React from 'react'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
 import { useMemo, useState, useEffect } from 'react'
 import { Status, StatusDisplay, StatusType } from '../../types/issue'

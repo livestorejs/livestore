@@ -1,3 +1,4 @@
+import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import IssueList from './IssueList'
 import { querySQL, rowQuery, sql } from '@livestore/livestore'

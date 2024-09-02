@@ -1,3 +1,4 @@
+import React from 'react'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { FPSMeter } from '@schickling/fps-meter'
 import { makeAdapter } from '@livestore/web'

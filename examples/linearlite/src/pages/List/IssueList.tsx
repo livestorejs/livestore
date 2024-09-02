@@ -1,3 +1,4 @@
+import React from 'react'
 import { FixedSizeList as List, areEqual } from 'react-window'
 import { memo, type CSSProperties } from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'

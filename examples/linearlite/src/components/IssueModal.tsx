@@ -1,3 +1,4 @@
+import React from 'react'
 import { memo, useEffect, useRef, useState } from 'react'
 
 import { BsChevronRight as ChevronRight } from 'react-icons/bs'

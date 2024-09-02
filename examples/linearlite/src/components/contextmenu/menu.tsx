@@ -1,3 +1,4 @@
+import React from 'react'
 import classnames from 'classnames'
 import { ReactNode, useRef } from 'react'
 import { ContextMenu, MenuItem, type MenuItemProps as CMMenuItemProps } from '@firefox-devtools/react-contextmenu'

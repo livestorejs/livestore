@@ -1,3 +1,4 @@
+import React from 'react'
 import { MouseEventHandler } from 'react'
 import classnames from 'classnames'
 import AvatarImg from '../assets/icons/avatar.svg'

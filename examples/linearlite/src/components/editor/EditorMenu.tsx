@@ -1,3 +1,4 @@
+import React from 'react'
 import type { Editor as TipTapEditor } from '@tiptap/react'
 import classNames from 'classnames'
 
