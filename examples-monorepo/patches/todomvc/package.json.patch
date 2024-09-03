@@ -1,5 +1,12 @@
 --- package.json
 +++ package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "todomvc",
++  "name": "todomvc-monorepo",
+   "private": true,
+   "type": "module",
+   "scripts": {
 @@ -10,10 +10,10 @@
    },
    "dependencies": {
