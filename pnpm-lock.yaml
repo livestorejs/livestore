@@ -10,6 +10,7 @@ overrides:
   '@livestore/utils': workspace:*
   '@livestore/common': workspace:*
   '@livestore/devtools-react': 0.0.56
+  '@livestore/devtools-expo-metro-plugin': workspace:*
   effect-db-schema: workspace:*
 
 patchedDependencies:
@@ -76,7 +77,7 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-  examples-monorepo/examples/expo-app:
+  examples-monorepo/expo-app:
     dependencies:
       '@effect/schema':
         specifier: 0.72.0
@@ -86,40 +87,34 @@ importers:
         version: 14.0.2
       '@livestore/devtools-expo-bridge':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/devtools-expo-bridge
-      '@livestore/devtools-react':
-        specifier: 0.0.56
-        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: link:../../packages/@livestore/devtools-expo-bridge
+      '@livestore/devtools-expo-metro-plugin':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/devtools-expo-metro-plugin
       '@livestore/expo':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/expo
+        version: link:../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/livestore
+        version: link:../../packages/@livestore/livestore
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
-      '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
+        version: link:../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       expo:
-        specifier: 51.0.24
-        version: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+        specifier: 51.0.32
+        version: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       expo-asset:
         specifier: 10.0.10
-        version: 10.0.10(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        version: 10.0.10(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-crypto:
         specifier: 13.0.2
-        version: 13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        version: 13.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-sqlite:
         specifier: 14.0.6
-        version: 14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        version: 14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-status-bar:
         specifier: 1.12.1
         version: 1.12.1
@@ -132,9 +127,6 @@ importers:
       react-native:
         specifier: 0.74.3
         version: 0.74.3(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(@types/react@18.3.3)(react@18.3.1)
-      react-native-web:
-        specifier: ~0.19.11
-        version: 0.19.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.24.5
@@ -143,31 +135,22 @@ importers:
         specifier: ^7.24.7
         version: 7.24.7(@babel/core@7.24.7)
       '@babel/runtime':
-        specifier: ^7.25.0
-        version: 7.25.0
+        specifier: ^7.25.6
+        version: 7.25.6
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.3
-      '@types/ws':
-        specifier: 8.5.12
-        version: 8.5.12
       babel-plugin-transform-vite-meta-env:
         specifier: ^1.0.3
         version: 1.0.3
       eas-cli:
         specifier: 10.2.2
-        version: 10.2.2(@types/node@22.5.2)(expo-modules-autolinking@1.11.1)(typescript@5.5.4)
+        version: 10.2.2(@types/node@22.5.2)(expo-modules-autolinking@1.11.2)(typescript@5.5.4)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
-      ws:
-        specifier: ^8.18.0
-        version: 8.18.0
 
-  examples-monorepo/examples/linearlite:
+  examples-monorepo/linearlite:
     dependencies:
       '@effect/schema':
         specifier: 0.72.0
@@ -183,19 +166,19 @@ importers:
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/livestore
+        version: link:../../packages/@livestore/livestore
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/web
+        version: link:../../packages/@livestore/web
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       '@tailwindcss/forms':
         specifier: ^0.5.7
-        version: 0.5.7(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4)))
+        version: 0.5.7(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4)))
       '@tiptap/core':
         specifier: 2.1.13
         version: 2.1.13(@tiptap/pm@2.1.13)
@@ -286,10 +269,10 @@ importers:
         version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))(typescript@5.5.4)
       '@tailwindcss/typography':
         specifier: ^0.5.13
-        version: 0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4)))
+        version: 0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4)))
       '@types/node':
         specifier: ^22.0.0
-        version: 22.0.0
+        version: 22.5.2
       '@types/react':
         specifier: ^18.3.1
         version: 18.3.3
@@ -316,7 +299,7 @@ importers:
         version: 7.17.0(eslint@8.57.0)(typescript@5.5.4)
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.19
         version: 10.4.19(postcss@8.4.40)
@@ -340,158 +323,21 @@ importers:
         version: 1.3.0
       tailwindcss:
         specifier: ^3.4.7
-        version: 3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4))
-      typescript:
-        specifier: 5.5.4
-        version: 5.5.4
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
-      vite-plugin-pwa:
-        specifier: ^0.20.1
-        version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
-      vite-plugin-svgr:
-        specifier: ^4.2.0
-        version: 4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
-
-  examples-monorepo/examples/todomvc:
-    dependencies:
-      '@effect/schema':
-        specifier: 0.72.0
-        version: 0.72.0(effect@3.7.0)
-      '@livestore/devtools-react':
-        specifier: 0.0.56
-        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@livestore/livestore':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/livestore
-      '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
-      '@schickling/fps-meter':
-        specifier: ^0.1.2
-        version: 0.1.2(react@18.3.1)
-      effect:
-        specifier: 3.7.0
-        version: 3.7.0
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      todomvc-app-css:
-        specifier: ^2.4.3
-        version: 2.4.3
-      uuid:
-        specifier: ^10.0.0
-        version: 10.0.0
-      workbox-window:
-        specifier: ^7.1.0
-        version: 7.1.0
-    devDependencies:
-      '@types/react':
-        specifier: ^18.3.1
-        version: 18.3.3
-      '@types/react-dom':
-        specifier: ^18.3.0
-        version: 18.3.0
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
-      typescript:
-        specifier: 5.5.4
-        version: 5.5.4
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
-      vite-plugin-pwa:
-        specifier: ^0.20.1
-        version: 0.20.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
-
-  examples-monorepo/examples/todomvc-custom-elements:
-    dependencies:
-      '@effect/schema':
-        specifier: 0.72.0
-        version: 0.72.0(effect@3.7.0)
-      '@livestore/devtools-react':
-        specifier: 0.0.56
-        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@livestore/livestore':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/livestore
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
-      '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
-      effect:
-        specifier: 3.7.0
-        version: 3.7.0
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      todomvc-app-css:
-        specifier: ^2.4.3
-        version: 2.4.3
-      uuid:
-        specifier: ^10.0.0
-        version: 10.0.0
-      workbox-window:
-        specifier: ^7.1.0
-        version: 7.1.0
-    devDependencies:
-      '@types/react':
-        specifier: ^18.3.1
-        version: 18.3.3
-      '@types/react-dom':
-        specifier: ^18.3.0
-        version: 18.3.0
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
-      autoprefixer:
-        specifier: ^10.4.19
-        version: 10.4.19(postcss@8.4.40)
-      postcss:
-        specifier: ^8.4.40
-        version: 8.4.40
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
-      tailwindcss:
-        specifier: ^3.4.7
         version: 3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4))
       typescript:
         specifier: 5.5.4
         version: 5.5.4
       vite:
         specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
+        version: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
       vite-plugin-pwa:
         specifier: ^0.20.1
-        version: 0.20.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        version: 0.20.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+      vite-plugin-svgr:
+        specifier: ^4.2.0
+        version: 4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))
 
-  examples-monorepo/examples/todomvc-drizzle:
+  examples-monorepo/todomvc:
     dependencies:
       '@effect/schema':
         specifier: 0.72.0
@@ -501,89 +347,13 @@ importers:
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/livestore
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
+        version: link:../../packages/@livestore/livestore
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../../packages/@livestore/web
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.0
-      '@schickling/fps-meter':
-        specifier: ^0.1.2
-        version: 0.1.2(react@18.3.1)
-      drizzle-orm:
-        specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)))(react@18.3.1)
-      effect:
-        specifier: 3.7.0
-        version: 3.7.0
-      effect-db-schema:
-        specifier: workspace:*
-        version: link:../../../packages/effect-db-schema
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      todomvc-app-css:
-        specifier: ^2.4.3
-        version: 2.4.3
-      uuid:
-        specifier: ^10.0.0
-        version: 10.0.0
-      workbox-window:
-        specifier: ^7.1.0
-        version: 7.1.0
-    devDependencies:
-      '@types/react':
-        specifier: ^18.3.1
-        version: 18.3.3
-      '@types/react-dom':
-        specifier: ^18.3.0
-        version: 18.3.0
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
-      rollup-plugin-visualizer:
-        specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
-      typescript:
-        specifier: 5.5.4
-        version: 5.5.4
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
-      vite-plugin-pwa:
-        specifier: ^0.20.1
-        version: 0.20.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
-
-  examples-monorepo/examples/todomvc-experimental:
-    dependencies:
-      '@effect/schema':
-        specifier: 0.72.0
-        version: 0.72.0(effect@3.7.0)
-      '@livestore/devtools-react':
-        specifier: 0.0.56
-        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@livestore/livestore':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/livestore
-      '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
+        version: link:../../packages/@livestore/web
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -617,37 +387,28 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
+        version: 5.12.0(rollup@4.21.2)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
       vite:
         specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
+        version: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
       vite-plugin-pwa:
         specifier: ^0.20.1
-        version: 0.20.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+        version: 0.20.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
 
-  examples/expo-app:
+  examples-monorepo/todomvc-custom-elements:
     dependencies:
       '@effect/schema':
         specifier: 0.72.0
         version: 0.72.0(effect@3.7.0)
-      '@expo/vector-icons':
-        specifier: 14.0.2
-        version: 14.0.2
-      '@livestore/devtools-expo-bridge':
-        specifier: 0.0.56
-        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)
       '@livestore/devtools-react':
         specifier: 0.0.56
         version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@livestore/expo':
-        specifier: 0.0.56
-        version: 0.0.56(2si3udhwsi5e3d4wsayjhcnmoq)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -660,21 +421,237 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))
+      autoprefixer:
+        specifier: ^10.4.19
+        version: 10.4.19(postcss@8.4.40)
+      postcss:
+        specifier: ^8.4.40
+        version: 8.4.40
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.21.2)
+      tailwindcss:
+        specifier: ^3.4.7
+        version: 3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4))
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples-monorepo/todomvc-drizzle:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/web
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
+      drizzle-orm:
+        specifier: ^0.32.1
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(react@18.3.1)
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      effect-db-schema:
+        specifier: workspace:*
+        version: link:../../packages/effect-db-schema
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.21.2)
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples-monorepo/todomvc-experimental:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/web
+      '@schickling/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
+      effect:
+        specifier: 3.7.0
+        version: 3.7.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      workbox-window:
+        specifier: ^7.1.0
+        version: 7.1.0
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))
+      rollup-plugin-visualizer:
+        specifier: ^5.12.0
+        version: 5.12.0(rollup@4.21.2)
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+      vite:
+        specifier: ^5.3.5
+        version: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
+      vite-plugin-pwa:
+        specifier: ^0.20.1
+        version: 0.20.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
+
+  examples/expo-app:
+    dependencies:
+      '@effect/schema':
+        specifier: 0.72.0
+        version: 0.72.0(effect@3.7.0)
+      '@expo/vector-icons':
+        specifier: 14.0.2
+        version: 14.0.2
+      '@livestore/devtools-expo-bridge':
+        specifier: 0.0.56
+        version: 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)
+      '@livestore/devtools-expo-metro-plugin':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/devtools-expo-metro-plugin
+      '@livestore/expo':
+        specifier: 0.0.56
+        version: 0.0.56(dca5ibdooxljkecwe6vs57ywy4)
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       expo:
-        specifier: 51.0.24
-        version: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+        specifier: 51.0.32
+        version: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       expo-asset:
         specifier: 10.0.10
-        version: 10.0.10(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        version: 10.0.10(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-crypto:
         specifier: 13.0.2
-        version: 13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        version: 13.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-sqlite:
         specifier: 14.0.6
-        version: 14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        version: 14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-status-bar:
         specifier: 1.12.1
         version: 1.12.1
@@ -687,9 +664,6 @@ importers:
       react-native:
         specifier: 0.74.3
         version: 0.74.3(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(@types/react@18.3.3)(react@18.3.1)
-      react-native-web:
-        specifier: ~0.19.11
-        version: 0.19.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.24.5
@@ -698,29 +672,20 @@ importers:
         specifier: ^7.24.7
         version: 7.24.7(@babel/core@7.24.7)
       '@babel/runtime':
-        specifier: ^7.25.0
-        version: 7.25.0
+        specifier: ^7.25.6
+        version: 7.25.6
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.3
-      '@types/ws':
-        specifier: 8.5.12
-        version: 8.5.12
       babel-plugin-transform-vite-meta-env:
         specifier: ^1.0.3
         version: 1.0.3
       eas-cli:
         specifier: 10.2.2
-        version: 10.2.2(@types/node@22.5.2)(expo-modules-autolinking@1.11.1)(typescript@5.5.4)
+        version: 10.2.2(@types/node@22.5.2)(expo-modules-autolinking@1.11.2)(typescript@5.5.4)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
-      ws:
-        specifier: ^8.18.0
-        version: 8.18.0
 
   examples/linearlite:
     dependencies:
@@ -907,7 +872,7 @@ importers:
         version: 0.20.1(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.2.0(rollup@4.18.0)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
+        version: 4.2.0(rollup@4.21.2)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1))
 
   examples/todomvc:
     dependencies:
@@ -962,7 +927,7 @@ importers:
         version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
+        version: 5.12.0(rollup@4.21.2)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
@@ -1032,7 +997,7 @@ importers:
         version: 8.4.40
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
+        version: 5.12.0(rollup@4.21.2)
       tailwindcss:
         specifier: ^3.4.7
         version: 3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4))
@@ -1074,7 +1039,7 @@ importers:
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)))(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(react@18.3.1)
       effect:
         specifier: 3.7.0
         version: 3.7.0
@@ -1111,7 +1076,7 @@ importers:
         version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
+        version: 5.12.0(rollup@4.21.2)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
@@ -1175,7 +1140,7 @@ importers:
         version: 4.3.1(vite@5.3.5(@types/node@22.5.2)(terser@5.31.1))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.18.0)
+        version: 5.12.0(rollup@4.21.2)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
@@ -1265,13 +1230,42 @@ importers:
         specifier: ^18.3.1
         version: 18.3.3
       expo:
-        specifier: 51.0.24
-        version: 51.0.24
+        specifier: 51.0.32
+        version: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      react-native:
+        specifier: 0.74.3
+        version: 0.74.3(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(@types/react@18.3.3)(react@18.3.1)
 
-  packages/@livestore/devtools-expo-metro-plugin: {}
+  packages/@livestore/devtools-expo-metro-plugin:
+    dependencies:
+      '@livestore/devtools-react':
+        specifier: 0.0.56
+        version: 0.0.56(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../web
+      vite:
+        specifier: ^5.4.2
+        version: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
+      ws:
+        specifier: ^8.18.0
+        version: 8.18.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.5.2
+        version: 22.5.2
+      '@types/ws':
+        specifier: 8.5.12
+        version: 8.5.12
+      expo:
+        specifier: 51.0.32
+        version: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
   packages/@livestore/effect-playwright:
     dependencies:
@@ -1303,10 +1297,10 @@ importers:
     devDependencies:
       expo-file-system:
         specifier: ^17.0.1
-        version: 17.0.1(expo@51.0.24)
+        version: 17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-sqlite:
         specifier: ^14.0.3
-        version: 14.0.3(expo@51.0.24)
+        version: 14.0.3(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
 
   packages/@livestore/livestore:
     dependencies:
@@ -1467,7 +1461,7 @@ importers:
         version: 0.72.0(effect@3.7.0)
       drizzle-orm:
         specifier: ^0.32.1
-        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1)
+        version: 0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(react@18.3.1)
       effect:
         specifier: 3.7.0
         version: 3.7.0
@@ -1677,12 +1671,14 @@ packages:
   '@babel/plugin-proposal-async-generator-functions@7.20.7':
     resolution: {integrity: sha512-xMbiLsn/8RK7Wq7VeVytytS2L6qE69bXPB10YCmMdDZbKF4okCqY74pI/jJQ/8U0b/F6NrT2+14b8/P9/3AMGA==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-async-generator-functions instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
   '@babel/plugin-proposal-class-properties@7.18.6':
     resolution: {integrity: sha512-cumfXOF0+nzZrrN8Rf0t7M+tF6sZc7vhQwYQck9q1/5w2OExlD+b4v4RpMJFaV1Z7WcDRgO6FqvxqxGlwo+RHQ==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -1701,36 +1697,42 @@ packages:
   '@babel/plugin-proposal-logical-assignment-operators@7.20.7':
     resolution: {integrity: sha512-y7C7cZgpMIjWlKE5T7eJwp+tnRYM89HmRvWM5EQuB5BoHEONjmQ8lSNmBUwOyy/GFRsohJED51YBF79hE1djug==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-logical-assignment-operators instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
   '@babel/plugin-proposal-nullish-coalescing-operator@7.18.6':
     resolution: {integrity: sha512-wQxQzxYeJqHcfppzBDnm1yAY0jSRkUXR2z8RePZYrKwMKgMlE8+Z6LUno+bd6LvbGh8Gltvy74+9pIYkr+XkKA==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
   '@babel/plugin-proposal-numeric-separator@7.18.6':
     resolution: {integrity: sha512-ozlZFogPqoLm8WBr5Z8UckIoE4YQ5KESVcNudyXOR8uqIkliTEgJ3RoketfG6pmzLdeZF0H/wjE9/cCEitBl7Q==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-numeric-separator instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
   '@babel/plugin-proposal-object-rest-spread@7.20.7':
     resolution: {integrity: sha512-d2S98yCiLxDVmBmE8UjGcfPvNEUbA1U5q5WxaWFUGRzJSVAZqm5W6MbPct0jxnegUZ0niLeNX+IOzEs7wYg9Dg==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-object-rest-spread instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
   '@babel/plugin-proposal-optional-catch-binding@7.18.6':
     resolution: {integrity: sha512-Q40HEhs9DJQyaZfUjjn6vE8Cv4GmMHCYuMGIWUnlxH6400VGxOuwWsPt4FxXxJkC/5eOzgn0z21M9gMT4MOhbw==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-catch-binding instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
   '@babel/plugin-proposal-optional-chaining@7.21.0':
     resolution: {integrity: sha512-p4zeefM72gpmEe2fkUr/OnOXpWEf8nAgk7ZYVqqfFiyIG7oFfVZcCrU64hWn5xp4tQ9LkV4bTIa5rD0KANpKNA==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -2246,8 +2248,8 @@ packages:
   '@babel/regjsgen@0.8.0':
     resolution: {integrity: sha512-x/rqGMdzj+fWZvCOYForTghzbtqPDZ5gPwaoNGHdgDfF2QA/XZbCBp4Moo5scrkAMPhB7z26XM/AaHuIJdgauA==}
 
-  '@babel/runtime@7.25.0':
-    resolution: {integrity: sha512-7dRy4DwXwtzBrPbZflqxnvfxLF8kdZXPkhymtDeFoFqE6ldzjQFgYTtYIFARcLEYDrqfBfYcZt1WqFxRoyC9Rw==}
+  '@babel/runtime@7.25.6':
+    resolution: {integrity: sha512-VBj9MYyDb9tuLq7yzqjgzt6Q+IBQLrGZfdjOekyEirZPHxXWoTSGUTMrpsfi58Up73d13NfYLv8HT9vmznjzhQ==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.24.7':
@@ -2678,8 +2680,8 @@ packages:
     resolution: {integrity: sha512-Ydf4LidRB/EBI+YrB+cVLqIseiRfjUI/AeHBgjGMtq3GroraDu81OV7zqophRgupngoL3iS3JUMDMnxO7g39qA==}
     engines: {'0': node >=0.10.0}
 
-  '@expo/cli@0.18.26':
-    resolution: {integrity: sha512-u9bTTXgcjaTloE9CHwxgrb8Me/Al4jiPykbVQpJydakH3GsIZfHy1zaLc7O39CoLjRz37WWi6Y5ZdgtQw9dCPQ==}
+  '@expo/cli@0.18.29':
+    resolution: {integrity: sha512-X810C48Ss+67RdZU39YEO1khNYo1RmjouRV+vVe0QhMoTe8R6OA3t+XYEdwaNbJ5p/DJN7szfHfNmX2glpC7xg==}
     hasBin: true
 
   '@expo/code-signing-certificates@0.0.5':
@@ -2687,9 +2689,6 @@ packages:
 
   '@expo/config-plugins@7.8.4':
     resolution: {integrity: sha512-hv03HYxb/5kX8Gxv/BTI8TLc9L06WzqAfHRRXdbar4zkLcP2oTzvsLEF4/L/TIpD3rsnYa0KU42d0gWRxzPCJg==}
-
-  '@expo/config-plugins@8.0.5':
-    resolution: {integrity: sha512-VGseKX1dYvaf2qHUDGzIQwSOJrO5fomH0gE5cKSQyi6wn+Q6rcV2Dj2E5aga+9aKNPL6FxZ0dqRFC3t2sbhaSA==}
 
   '@expo/config-plugins@8.0.8':
     resolution: {integrity: sha512-Fvu6IO13EUw0R9WeqxUO37FkM62YJBNcZb9DyJAOgMz7Ez/vaKQGEjKt9cwT+Q6uirtCATMgaq6VWAW7YW8xXw==}
@@ -2702,9 +2701,6 @@ packages:
 
   '@expo/config@8.5.4':
     resolution: {integrity: sha512-ggOLJPHGzJSJHVBC1LzwXwR6qUn8Mw7hkc5zEKRIdhFRuIQ6s2FE4eOvP87LrNfDF7eZGa6tJQYsiHSmZKG+8Q==}
-
-  '@expo/config@9.0.2':
-    resolution: {integrity: sha512-BKQ4/qBf3OLT8hHp5kjObk2vxwoRQ1yYQBbG/OM9Jdz32yYtrU8opTbKRAxfZEWH5i3ZHdLrPdC1rO0I6WxtTw==}
 
   '@expo/config@9.0.3':
     resolution: {integrity: sha512-eOTNM8eOC8gZNHgenySRlc/lwmYY1NOgvjwA8LHuvPT7/eUwD93zrxu3lPD1Cc/P6C/2BcVdfH4hf0tLmDxnsg==}
@@ -2741,8 +2737,8 @@ packages:
   '@expo/logger@1.0.117':
     resolution: {integrity: sha512-tuCT5fmjRjED6HYAf4HgE+UbiHT3JYrkUzUv9FC769goxo4LuuewBNQiDUkeecQTha7aTS5aO2YHlfdipI8gzg==}
 
-  '@expo/metro-config@0.18.10':
-    resolution: {integrity: sha512-HTYQqKfV0JSuRp5aDvrPHezj5udXOWoXqHOjfTSnce2m13j6D0yYXTJNaKRhlgpPBrkg5DL7z1fL3zwDUpLM4w==}
+  '@expo/metro-config@0.18.11':
+    resolution: {integrity: sha512-/uOq55VbSf9yMbUO1BudkUM2SsGW1c5hr9BnhIqYqcsFv0Jp5D3DtJ4rljDKaUeNLbwr6m7pqIrkSMq5NrYf4Q==}
 
   '@expo/multipart-body-parser@1.1.0':
     resolution: {integrity: sha512-XOaS79wFIJgx0J7oUzRb+kZsnZmFqGpisu0r8RPO3b0wjbW7xpWgiXmRR4RavKeGiVAPauZOi4vad7cJ3KCspg==}
@@ -3228,14 +3224,30 @@ packages:
     resolution: {integrity: sha512-48TSDclRB5OMXiImiJkLxyCfRyLsqkCgI8buugCZzvXcYslfV7gCvcyFyQldtcOmerV+CK4RAj7QS4hmB5Mr8Q==}
     engines: {node: '>=18'}
 
+  '@react-native/babel-plugin-codegen@0.74.87':
+    resolution: {integrity: sha512-+vJYpMnENFrwtgvDfUj+CtVJRJuUnzAUYT0/Pb68Sq9RfcZ5xdcCuUgyf7JO+akW2VTBoJY427wkcxU30qrWWw==}
+    engines: {node: '>=18'}
+
   '@react-native/babel-preset@0.74.85':
     resolution: {integrity: sha512-yMHUlN8INbK5BBwiBuQMftdWkpm1IgCsoJTKcGD2OpSgZhwwm8RUSvGhdRMzB2w7bsqqBmaEMleGtW6aCR7B9w==}
     engines: {node: '>=18'}
     peerDependencies:
       '@babel/core': '*'
 
+  '@react-native/babel-preset@0.74.87':
+    resolution: {integrity: sha512-hyKpfqzN2nxZmYYJ0tQIHG99FQO0OWXp/gVggAfEUgiT+yNKas1C60LuofUsK7cd+2o9jrpqgqW4WzEDZoBlTg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@babel/core': '*'
+
   '@react-native/codegen@0.74.85':
     resolution: {integrity: sha512-N7QwoS4Hq/uQmoH83Ewedy6D0M7xbQsOU3OMcQf0eY3ltQ7S2hd9/R4UTalQWRn1OUJfXR6OG12QJ4FStKgV6Q==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@babel/preset-env': ^7.1.6
+
+  '@react-native/codegen@0.74.87':
+    resolution: {integrity: sha512-GMSYDiD+86zLKgMMgz9z0k6FxmRn+z6cimYZKkucW4soGbxWsbjUAZoZ56sJwt2FJ3XVRgXCrnOCgXoH/Bkhcg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@babel/preset-env': ^7.1.6
@@ -3358,8 +3370,18 @@ packages:
     cpu: [arm]
     os: [android]
 
+  '@rollup/rollup-android-arm-eabi@4.21.2':
+    resolution: {integrity: sha512-fSuPrt0ZO8uXeS+xP3b+yYTCBUd05MoSp2N/MFOgjhhUhMmchXlpTQrTpI8T+YAwAQuK7MafsCOxW7VrPMrJcg==}
+    cpu: [arm]
+    os: [android]
+
   '@rollup/rollup-android-arm64@4.18.0':
     resolution: {integrity: sha512-avCea0RAP03lTsDhEyfy+hpfr85KfyTctMADqHVhLAF3MlIkq83CP8UfAHUssgXTYd+6er6PaAhx/QGv4L1EiA==}
+    cpu: [arm64]
+    os: [android]
+
+  '@rollup/rollup-android-arm64@4.21.2':
+    resolution: {integrity: sha512-xGU5ZQmPlsjQS6tzTTGwMsnKUtu0WVbl0hYpTPauvbRAnmIvpInhJtgjj3mcuJpEiuUw4v1s4BimkdfDWlh7gA==}
     cpu: [arm64]
     os: [android]
 
@@ -3368,8 +3390,18 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
+  '@rollup/rollup-darwin-arm64@4.21.2':
+    resolution: {integrity: sha512-99AhQ3/ZMxU7jw34Sq8brzXqWH/bMnf7ZVhvLk9QU2cOepbQSVTns6qoErJmSiAvU3InRqC2RRZ5ovh1KN0d0Q==}
+    cpu: [arm64]
+    os: [darwin]
+
   '@rollup/rollup-darwin-x64@4.18.0':
     resolution: {integrity: sha512-n2LMsUz7Ynu7DoQrSQkBf8iNrjOGyPLrdSg802vk6XT3FtsgX6JbE8IHRvposskFm9SNxzkLYGSq9QdpLYpRNA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@rollup/rollup-darwin-x64@4.21.2':
+    resolution: {integrity: sha512-ZbRaUvw2iN/y37x6dY50D8m2BnDbBjlnMPotDi/qITMJ4sIxNY33HArjikDyakhSv0+ybdUxhWxE6kTI4oX26w==}
     cpu: [x64]
     os: [darwin]
 
@@ -3378,8 +3410,18 @@ packages:
     cpu: [arm]
     os: [linux]
 
+  '@rollup/rollup-linux-arm-gnueabihf@4.21.2':
+    resolution: {integrity: sha512-ztRJJMiE8nnU1YFcdbd9BcH6bGWG1z+jP+IPW2oDUAPxPjo9dverIOyXz76m6IPA6udEL12reYeLojzW2cYL7w==}
+    cpu: [arm]
+    os: [linux]
+
   '@rollup/rollup-linux-arm-musleabihf@4.18.0':
     resolution: {integrity: sha512-l3m9ewPgjQSXrUMHg93vt0hYCGnrMOcUpTz6FLtbwljo2HluS4zTXFy2571YQbisTnfTKPZ01u/ukJdQTLGh9A==}
+    cpu: [arm]
+    os: [linux]
+
+  '@rollup/rollup-linux-arm-musleabihf@4.21.2':
+    resolution: {integrity: sha512-flOcGHDZajGKYpLV0JNc0VFH361M7rnV1ee+NTeC/BQQ1/0pllYcFmxpagltANYt8FYf9+kL6RSk80Ziwyhr7w==}
     cpu: [arm]
     os: [linux]
 
@@ -3388,8 +3430,18 @@ packages:
     cpu: [arm64]
     os: [linux]
 
+  '@rollup/rollup-linux-arm64-gnu@4.21.2':
+    resolution: {integrity: sha512-69CF19Kp3TdMopyteO/LJbWufOzqqXzkrv4L2sP8kfMaAQ6iwky7NoXTp7bD6/irKgknDKM0P9E/1l5XxVQAhw==}
+    cpu: [arm64]
+    os: [linux]
+
   '@rollup/rollup-linux-arm64-musl@4.18.0':
     resolution: {integrity: sha512-be6Yx37b24ZwxQ+wOQXXLZqpq4jTckJhtGlWGZs68TgdKXJgw54lUUoFYrg6Zs/kjzAQwEwYbp8JxZVzZLRepQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@rollup/rollup-linux-arm64-musl@4.21.2':
+    resolution: {integrity: sha512-48pD/fJkTiHAZTnZwR0VzHrao70/4MlzJrq0ZsILjLW/Ab/1XlVUStYyGt7tdyIiVSlGZbnliqmult/QGA2O2w==}
     cpu: [arm64]
     os: [linux]
 
@@ -3398,8 +3450,18 @@ packages:
     cpu: [ppc64]
     os: [linux]
 
+  '@rollup/rollup-linux-powerpc64le-gnu@4.21.2':
+    resolution: {integrity: sha512-cZdyuInj0ofc7mAQpKcPR2a2iu4YM4FQfuUzCVA2u4HI95lCwzjoPtdWjdpDKyHxI0UO82bLDoOaLfpZ/wviyQ==}
+    cpu: [ppc64]
+    os: [linux]
+
   '@rollup/rollup-linux-riscv64-gnu@4.18.0':
     resolution: {integrity: sha512-ROCM7i+m1NfdrsmvwSzoxp9HFtmKGHEqu5NNDiZWQtXLA8S5HBCkVvKAxJ8U+CVctHwV2Gb5VUaK7UAkzhDjlg==}
+    cpu: [riscv64]
+    os: [linux]
+
+  '@rollup/rollup-linux-riscv64-gnu@4.21.2':
+    resolution: {integrity: sha512-RL56JMT6NwQ0lXIQmMIWr1SW28z4E4pOhRRNqwWZeXpRlykRIlEpSWdsgNWJbYBEWD84eocjSGDu/XxbYeCmwg==}
     cpu: [riscv64]
     os: [linux]
 
@@ -3408,8 +3470,18 @@ packages:
     cpu: [s390x]
     os: [linux]
 
+  '@rollup/rollup-linux-s390x-gnu@4.21.2':
+    resolution: {integrity: sha512-PMxkrWS9z38bCr3rWvDFVGD6sFeZJw4iQlhrup7ReGmfn7Oukrr/zweLhYX6v2/8J6Cep9IEA/SmjXjCmSbrMQ==}
+    cpu: [s390x]
+    os: [linux]
+
   '@rollup/rollup-linux-x64-gnu@4.18.0':
     resolution: {integrity: sha512-xuglR2rBVHA5UsI8h8UbX4VJ470PtGCf5Vpswh7p2ukaqBGFTnsfzxUBetoWBWymHMxbIG0Cmx7Y9qDZzr648w==}
+    cpu: [x64]
+    os: [linux]
+
+  '@rollup/rollup-linux-x64-gnu@4.21.2':
+    resolution: {integrity: sha512-B90tYAUoLhU22olrafY3JQCFLnT3NglazdwkHyxNDYF/zAxJt5fJUB/yBoWFoIQ7SQj+KLe3iL4BhOMa9fzgpw==}
     cpu: [x64]
     os: [linux]
 
@@ -3418,8 +3490,18 @@ packages:
     cpu: [x64]
     os: [linux]
 
+  '@rollup/rollup-linux-x64-musl@4.21.2':
+    resolution: {integrity: sha512-7twFizNXudESmC9oneLGIUmoHiiLppz/Xs5uJQ4ShvE6234K0VB1/aJYU3f/4g7PhssLGKBVCC37uRkkOi8wjg==}
+    cpu: [x64]
+    os: [linux]
+
   '@rollup/rollup-win32-arm64-msvc@4.18.0':
     resolution: {integrity: sha512-7J6TkZQFGo9qBKH0pk2cEVSRhJbL6MtfWxth7Y5YmZs57Pi+4x6c2dStAUvaQkHQLnEQv1jzBUW43GvZW8OFqA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@rollup/rollup-win32-arm64-msvc@4.21.2':
+    resolution: {integrity: sha512-9rRero0E7qTeYf6+rFh3AErTNU1VCQg2mn7CQcI44vNUWM9Ze7MSRS/9RFuSsox+vstRt97+x3sOhEey024FRQ==}
     cpu: [arm64]
     os: [win32]
 
@@ -3428,8 +3510,18 @@ packages:
     cpu: [ia32]
     os: [win32]
 
+  '@rollup/rollup-win32-ia32-msvc@4.21.2':
+    resolution: {integrity: sha512-5rA4vjlqgrpbFVVHX3qkrCo/fZTj1q0Xxpg+Z7yIo3J2AilW7t2+n6Q8Jrx+4MrYpAnjttTYF8rr7bP46BPzRw==}
+    cpu: [ia32]
+    os: [win32]
+
   '@rollup/rollup-win32-x64-msvc@4.18.0':
     resolution: {integrity: sha512-UOo5FdvOL0+eIVTgS4tIdbW+TtnBLWg1YBCcU2KWM7nuNwRz9bksDX1bekJJCpu25N1DVWaCwnT39dVQxzqS8g==}
+    cpu: [x64]
+    os: [win32]
+
+  '@rollup/rollup-win32-x64-msvc@4.21.2':
+    resolution: {integrity: sha512-6UUxd0+SKomjdzuAcp+HAmxw1FlGBnl1v2yEPSabtx4lBfdXHDVsW7+lQkgz9cNFJGY3AWR7+V8P5BqkD9L9nA==}
     cpu: [x64]
     os: [win32]
 
@@ -4323,6 +4415,9 @@ packages:
   babel-preset-expo@11.0.12:
     resolution: {integrity: sha512-hUuKdzSo8+H1oXQvKvlHRMHTxl+nN6YhFGlKiIxPa0E+gYfMEp8FnnStc/2Hwmip5rgJzQs6KF63KKRUc75xAg==}
 
+  babel-preset-expo@11.0.14:
+    resolution: {integrity: sha512-4BVYR0Sc2sSNxYTiE/OLSnPiOp+weFNy8eV+hX3aD6YAIbBnw+VubKRWqJV/sOJauzOLz0SgYAYyFciYMqizRA==}
+
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
 
@@ -4722,9 +4817,6 @@ packages:
 
   css-box-model@1.2.1:
     resolution: {integrity: sha512-a7Vr4Q/kd/aw96bnJG332W9V9LkJO69JRcaCYDUqjp6/z0w6VcZjgAcTbgFxEPfBgdnAwlh3iwu+hLopa+flJw==}
-
-  css-in-js-utils@3.1.0:
-    resolution: {integrity: sha512-fJAcud6B3rRu+KHYk+Bwf+WFL2MDCJJ1XG9x137tJQ0xYxor7XziQtuGFbWNdqrvF4Tk26O3H73nfVqXt/fW1A==}
 
   css-select@5.1.0:
     resolution: {integrity: sha512-nwoRF1rvRRnnCqqY7updORDsuqKzqYJ28+oSMaJMMgOauh3fvwHqMS7EZpIPqK8GL+g9mKxF1vP/ZjSeNjEVHg==}
@@ -5484,8 +5576,8 @@ packages:
     peerDependencies:
       expo: '*'
 
-  expo-font@12.0.9:
-    resolution: {integrity: sha512-seTCyf0tbgkAnp3ZI9ZfK9QVtURQUgFnuj+GuJ5TSnN0XsOtVe1s2RxTvmMgkfuvfkzcjJ69gyRpsZS1cC8hjw==}
+  expo-font@12.0.10:
+    resolution: {integrity: sha512-Q1i2NuYri3jy32zdnBaHHCya1wH1yMAsI+3CCmj9zlQzlhsS9Bdwcj2W3c5eU5FvH2hsNQy4O+O1NnM6o/pDaQ==}
     peerDependencies:
       expo: '*'
 
@@ -5494,12 +5586,12 @@ packages:
     peerDependencies:
       expo: '*'
 
-  expo-modules-autolinking@1.11.1:
-    resolution: {integrity: sha512-2dy3lTz76adOl7QUvbreMCrXyzUiF8lygI7iFJLjgIQIVH+43KnFWE5zBumpPbkiaq0f0uaFpN9U0RGQbnKiMw==}
+  expo-modules-autolinking@1.11.2:
+    resolution: {integrity: sha512-fdcaNO8ucHA3yLNY52ZUENBcAG7KEx8QyMmnVNavO1JVBGRMZG8JyVcbrhYQDtVtpxkbai5YzwvLutINvbDZDQ==}
     hasBin: true
 
-  expo-modules-core@1.12.20:
-    resolution: {integrity: sha512-CCXjlgT8lDAufgt912P1W7TwD+KAylfIttc1Doh1a0hAfkdkUsDRmrgthnYrrxEo2ECVpbaB71Epp1bnZ1rRrA==}
+  expo-modules-core@1.12.24:
+    resolution: {integrity: sha512-3geIe2ecizlp7l26iY8Nmc59z2d1RUC5nQZtI9iJoi5uHEUV/zut8e4zRLFVnZb8KOcMcEDsrvaBL5DPnqdfpg==}
 
   expo-sqlite@14.0.3:
     resolution: {integrity: sha512-H9+QXpB9ppPFeI5ZIPzIZJAdj4hgP2XJEoNe6xlhSUqcEhiq7k55Hs4mf1LX2r1JgSbIjucMEuDlMT8ntU4Pew==}
@@ -5514,8 +5606,8 @@ packages:
   expo-status-bar@1.12.1:
     resolution: {integrity: sha512-/t3xdbS8KB0prj5KG5w7z+wZPFlPtkgs95BsmrP/E7Q0xHXTcDcQ6Cu2FkFuRM+PKTb17cJDnLkawyS5vDLxMA==}
 
-  expo@51.0.24:
-    resolution: {integrity: sha512-HoOuNIWXzS6Gxifcb0N+qRt5K6iR9YitQaWIVNB8elyupvQdyI566IMgMBiO45NgpO5es0sfFNNBasxBHLkbUw==}
+  expo@51.0.32:
+    resolution: {integrity: sha512-6GEhYvHRnyS/6BytQagGkClsaqbuwAtlN3A6oDfnNMRKLmz6NE/r+Rjg9zbQgUO6zigqb60Yj5lAX32DmixRDw==}
     hasBin: true
 
   extend@3.0.2:
@@ -5544,9 +5636,6 @@ packages:
 
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
-
-  fast-loops@1.1.3:
-    resolution: {integrity: sha512-8EZzEP0eKkEEVX+drtd9mtuQ+/QrlfW/5MlwcwK5Nds6EkZ/tRzEexkzUY2mIssnAyVLT+TKHuRXmFNNXYUd6g==}
 
   fast-text-encoding@1.0.6:
     resolution: {integrity: sha512-VhXlQgj9ioXCqGstD37E/HBeqEGV/qOD/kmbVG8h5xKBYvM1L3lR1Zn4555cQ8GkYbJa8aJSipLPndE1k6zK2w==}
@@ -5810,12 +5899,15 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -5981,9 +6073,6 @@ packages:
     resolution: {integrity: sha512-Ty8UblRWFEcfSuIaajM34LdPXIhbs1ajEX/BBPv24J+enSVaEVY63xQ6lTO9VRYS5LAoghIG0IDJ+p+IPzKUQQ==}
     engines: {node: '>=4'}
 
-  hyphenate-style-name@1.0.5:
-    resolution: {integrity: sha512-fedL7PRwmeVkgyhu9hLeTBaI6wcGk7JGJswdaRsa5aUbkXI1kr1xZwTPBtaYPpwf56878iDek6VbVnuWMebJmw==}
-
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
@@ -6031,6 +6120,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -6040,9 +6130,6 @@ packages:
 
   inline-style-parser@0.2.3:
     resolution: {integrity: sha512-qlD8YNDqyTKTyuITrDOffsl6Tdhv+UC4hcdAVuQsK4IMQ99nSgd1MIA/Q+jQYoh9r3hVUXhYh7urSRmXPkW04g==}
-
-  inline-style-prefixer@6.0.4:
-    resolution: {integrity: sha512-FwXmZC2zbeeS7NzGjJ6pAiqRhXR0ugUShSNb6GApMl6da0/XGc4MOJsoWAywia52EEWbXNSy0pzkwz/+Y+swSg==}
 
   internal-ip@4.3.0:
     resolution: {integrity: sha512-S1zBo1D6zcsyuC6PMmY5+55YMILQ9av8lotMx447Bq6SAgo/sDK6y6uUKmuYhW7eacnIhFfsPmCNYdDzsnnDCg==}
@@ -6751,9 +6838,6 @@ packages:
   memoize-one@5.2.1:
     resolution: {integrity: sha512-zYiwtZUcYyXKo/np96AGZAckk+FWWsUdJ3cHGGmld7+AhvcWmQyGCYUh1hc4Q/pkOhb65dQR/pqCyK0cOaHz4Q==}
 
-  memoize-one@6.0.0:
-    resolution: {integrity: sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==}
-
   memory-cache@0.2.0:
     resolution: {integrity: sha512-OcjA+jzjOYzKmKS6IQVALHLVz+rNTMPoJvCztFaZxwG14wtAW7VRZjwTQu06vKCYOxh4jVnik7ya0SXTB0W+xA==}
 
@@ -7293,6 +7377,7 @@ packages:
 
   osenv@0.1.5:
     resolution: {integrity: sha512-0CWcCECdMVc2Rw3U5w9ZjqX6ga6ubk1xDVKxtBQPK7wis/0F2r9T6k4ydGYhecl7YUBxBVxhL5oisPsNxAPe2g==}
+    deprecated: This package is no longer supported.
 
   otel-websocket-exporter@0.0.29:
     resolution: {integrity: sha512-EJG8P2AcsmO+bqHyomapa9gOp8bi+GUGrw44aCx0AObGtveznExD+SQQB3wvDY+wyOt46/9TeQau6kCcVAG5BQ==}
@@ -7525,6 +7610,10 @@ packages:
 
   postcss@8.4.40:
     resolution: {integrity: sha512-YF2kKIUzAofPMpfH6hOi2cGnv/HrUlfucspc7pDyvv7kGdqXrfj8SCl/t8owkEgKEuu8ZcRjSOxFxVLqwChZ2Q==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.4.45:
+    resolution: {integrity: sha512-7KTLTdzdZZYscUc65XmjFiB73vBhBfbPztCYdUNvlaso9PrzjzcmjqBPR0lNGkcVlcO4BjiO5rK/qNz+XAen1Q==}
     engines: {node: ^10 || ^12 || >=14}
 
   pouchdb-collections@1.0.1:
@@ -7769,12 +7858,6 @@ packages:
       '@types/react': '>=18'
       react: '>=18'
 
-  react-native-web@0.19.12:
-    resolution: {integrity: sha512-o2T0oztoVDQjztt4YksO9S1XRjoH/AqcSvifgWLrPJgGVbMWsfhILgl6lfUdEamVZzZSVV/2gqDVMAk/qq7mZw==}
-    peerDependencies:
-      react: ^18.0.0
-      react-dom: ^18.0.0
-
   react-native@0.74.3:
     resolution: {integrity: sha512-UFutCC6WEw6HkxlcpQ2BemKqi0JkwrgDchYB5Svi8Sp4Xwt4HA6LGEjNQgZ+3KM44bjyFRpofQym0uh0jACGng==}
     engines: {node: '>=18'}
@@ -8011,18 +8094,22 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.6.3:
     resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.7.1:
     resolution: {integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rollup-plugin-inject@3.0.2:
@@ -8051,6 +8138,11 @@ packages:
 
   rollup@4.18.0:
     resolution: {integrity: sha512-QmJz14PX3rzbJCN1SG4Xe/bAAX2a6NpCP8ab2vfu2GiUr8AQcr2nCV/oEO3yneFarB67zk8ShlIyWb2LGTb3Sg==}
+    engines: {node: '>=18.0.0', npm: '>=8.0.0'}
+    hasBin: true
+
+  rollup@4.21.2:
+    resolution: {integrity: sha512-e3TapAgYf9xjdLvKQCkQTnbTKd4a6jwlpQSJJFokHGaX2IVjoEqkIIhiQfqsi0cdwlOD+tQGuOd5AJkc5RngBw==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
@@ -8437,9 +8529,6 @@ packages:
 
   style-to-object@1.0.6:
     resolution: {integrity: sha512-khxq+Qm3xEyZfKd/y9L3oIWQimxuc4STrQKtQn8aSDRHb8mFgpukgX1hdzfrMEW6JCjyJ8p89x+IUMVnCBI1PA==}
-
-  styleq@0.1.3:
-    resolution: {integrity: sha512-3ZUifmCDCQanjeej1f6kyl/BeP/Vae5EYkQ9iJfUm/QwZvlgnZzyflqAsAWYURdtea8Vkvswu2GrC57h3qffcA==}
 
   stylus-lookup@3.0.2:
     resolution: {integrity: sha512-oEQGHSjg/AMaWlKe7gqsnYzan8DLcGIHe0dUaFkucZZ14z4zjENRlQMCHT4FNsiWnJf17YN9OvrCfCoi7VvOyg==}
@@ -8996,6 +9085,37 @@ packages:
       lightningcss:
         optional: true
       sass:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+
+  vite@5.4.3:
+    resolution: {integrity: sha512-IH+nl64eq9lJjFqU+/yrRnrHPVTlgy42/+IzbOdaFDVlyLgI/wDlf+FCobXLX1cT0X5+7LMyH1mIy2xJdLfo8Q==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || >=20.0.0
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      sass-embedded: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
         optional: true
       stylus:
         optional: true
@@ -10319,7 +10439,7 @@ snapshots:
 
   '@babel/regjsgen@0.8.0': {}
 
-  '@babel/runtime@7.25.0':
+  '@babel/runtime@7.25.6':
     dependencies:
       regenerator-runtime: 0.14.1
 
@@ -10598,9 +10718,9 @@ snapshots:
       mv: 2.1.1
       safe-json-stringify: 1.2.0
 
-  '@expo/cli@0.18.26(expo-modules-autolinking@1.11.1)':
+  '@expo/cli@0.18.29(expo-modules-autolinking@1.11.2)':
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       '@expo/code-signing-certificates': 0.0.5
       '@expo/config': 9.0.3
       '@expo/config-plugins': 8.0.8
@@ -10608,11 +10728,11 @@ snapshots:
       '@expo/env': 0.3.0
       '@expo/image-utils': 0.5.1
       '@expo/json-file': 8.3.3
-      '@expo/metro-config': 0.18.10
+      '@expo/metro-config': 0.18.11
       '@expo/osascript': 2.1.3
       '@expo/package-manager': 1.5.2
       '@expo/plist': 0.1.3
-      '@expo/prebuild-config': 7.0.8(expo-modules-autolinking@1.11.1)
+      '@expo/prebuild-config': 7.0.8(expo-modules-autolinking@1.11.2)
       '@expo/rudder-sdk-node': 1.1.1
       '@expo/spawn-async': 1.7.2
       '@expo/xcpretty': 4.3.1
@@ -10711,26 +10831,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@expo/config-plugins@8.0.5':
-    dependencies:
-      '@expo/config-types': 51.0.1
-      '@expo/json-file': 8.3.3
-      '@expo/plist': 0.1.3
-      '@expo/sdk-runtime-versions': 1.0.0
-      chalk: 4.1.2
-      debug: 4.3.5(supports-color@8.1.1)
-      find-up: 5.0.0
-      getenv: 1.0.0
-      glob: 7.1.6
-      resolve-from: 5.0.0
-      semver: 7.6.2
-      slash: 3.0.0
-      slugify: 1.6.6
-      xcode: 3.0.1
-      xml2js: 0.6.0
-    transitivePeerDependencies:
-      - supports-color
-
   '@expo/config-plugins@8.0.8':
     dependencies:
       '@expo/config-types': 51.0.1
@@ -10766,22 +10866,6 @@ snapshots:
       require-from-string: 2.0.2
       resolve-from: 5.0.0
       semver: 7.5.3
-      slugify: 1.6.6
-      sucrase: 3.34.0
-    transitivePeerDependencies:
-      - supports-color
-
-  '@expo/config@9.0.2':
-    dependencies:
-      '@babel/code-frame': 7.10.4
-      '@expo/config-plugins': 8.0.5
-      '@expo/config-types': 51.0.1
-      '@expo/json-file': 8.3.3
-      getenv: 1.0.0
-      glob: 7.1.6
-      require-from-string: 2.0.2
-      resolve-from: 5.0.0
-      semver: 7.6.2
       slugify: 1.6.6
       sucrase: 3.34.0
     transitivePeerDependencies:
@@ -10911,7 +10995,7 @@ snapshots:
       '@types/bunyan': 1.8.11
       bunyan: 1.8.15
 
-  '@expo/metro-config@0.18.10':
+  '@expo/metro-config@0.18.11':
     dependencies:
       '@babel/core': 7.24.7
       '@babel/generator': 7.24.7
@@ -11021,7 +11105,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@expo/prebuild-config@6.7.3(expo-modules-autolinking@1.11.1)':
+  '@expo/prebuild-config@6.7.3(expo-modules-autolinking@1.11.2)':
     dependencies:
       '@expo/config': 8.5.4
       '@expo/config-plugins': 7.8.4
@@ -11029,7 +11113,7 @@ snapshots:
       '@expo/image-utils': 0.4.2
       '@expo/json-file': 8.3.3
       debug: 4.3.5(supports-color@8.1.1)
-      expo-modules-autolinking: 1.11.1
+      expo-modules-autolinking: 1.11.2
       fs-extra: 9.1.0
       resolve-from: 5.0.0
       semver: 7.5.3
@@ -11038,7 +11122,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@expo/prebuild-config@7.0.8(expo-modules-autolinking@1.11.1)':
+  '@expo/prebuild-config@7.0.8(expo-modules-autolinking@1.11.2)':
     dependencies:
       '@expo/config': 9.0.3
       '@expo/config-plugins': 8.0.8
@@ -11047,7 +11131,7 @@ snapshots:
       '@expo/json-file': 8.3.3
       '@react-native/normalize-colors': 0.74.85
       debug: 4.3.5(supports-color@8.1.1)
-      expo-modules-autolinking: 1.11.1
+      expo-modules-autolinking: 1.11.2
       fs-extra: 9.1.0
       resolve-from: 5.0.0
       semver: 7.6.2
@@ -11282,12 +11366,12 @@ snapshots:
       - '@effect/schema'
       - effect
 
-  '@livestore/devtools-expo-bridge@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)':
+  '@livestore/devtools-expo-bridge@0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)':
     dependencies:
       '@livestore/common': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
       '@livestore/livestore': link:packages/@livestore/livestore
       '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       react: 18.3.1
     transitivePeerDependencies:
       - '@effect/experimental'
@@ -11304,14 +11388,14 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@livestore/expo@0.0.56(2si3udhwsi5e3d4wsayjhcnmoq)':
+  '@livestore/expo@0.0.56(dca5ibdooxljkecwe6vs57ywy4)':
     dependencies:
       '@livestore/common': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)
-      '@livestore/devtools-expo-bridge': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)
+      '@livestore/devtools-expo-bridge': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))(react@18.3.1)
       '@livestore/utils': 0.0.56(@effect/experimental@0.24.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0)(ws@8.18.0))(@effect/opentelemetry@0.36.0(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.0))(@effect/platform-browser@0.42.0(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(effect@3.7.0))(@effect/platform@0.63.0(@effect/schema@0.72.0(effect@3.7.0))(effect@3.7.0))(@effect/schema@0.72.0(effect@3.7.0))(@opentelemetry/api@1.9.0)(effect@3.7.0)
       '@opentelemetry/api': 1.9.0
-      expo-file-system: 17.0.1(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
-      expo-sqlite: 14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-file-system: 17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-sqlite: 14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
     transitivePeerDependencies:
       - '@effect/experimental'
       - '@effect/opentelemetry'
@@ -11749,6 +11833,13 @@ snapshots:
       - '@babel/preset-env'
       - supports-color
 
+  '@react-native/babel-plugin-codegen@0.74.87(@babel/preset-env@7.24.7(@babel/core@7.24.7))':
+    dependencies:
+      '@react-native/codegen': 0.74.87(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+    transitivePeerDependencies:
+      - '@babel/preset-env'
+      - supports-color
+
   '@react-native/babel-preset@0.74.85(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))':
     dependencies:
       '@babel/core': 7.24.7
@@ -11798,7 +11889,69 @@ snapshots:
       - '@babel/preset-env'
       - supports-color
 
+  '@react-native/babel-preset@0.74.87(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))':
+    dependencies:
+      '@babel/core': 7.24.7
+      '@babel/plugin-proposal-async-generator-functions': 7.20.7(@babel/core@7.24.7)
+      '@babel/plugin-proposal-class-properties': 7.18.6(@babel/core@7.24.7)
+      '@babel/plugin-proposal-export-default-from': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-proposal-logical-assignment-operators': 7.20.7(@babel/core@7.24.7)
+      '@babel/plugin-proposal-nullish-coalescing-operator': 7.18.6(@babel/core@7.24.7)
+      '@babel/plugin-proposal-numeric-separator': 7.18.6(@babel/core@7.24.7)
+      '@babel/plugin-proposal-object-rest-spread': 7.20.7(@babel/core@7.24.7)
+      '@babel/plugin-proposal-optional-catch-binding': 7.18.6(@babel/core@7.24.7)
+      '@babel/plugin-proposal-optional-chaining': 7.21.0(@babel/core@7.24.7)
+      '@babel/plugin-syntax-dynamic-import': 7.8.3(@babel/core@7.24.7)
+      '@babel/plugin-syntax-export-default-from': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-syntax-flow': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-syntax-nullish-coalescing-operator': 7.8.3(@babel/core@7.24.7)
+      '@babel/plugin-syntax-optional-chaining': 7.8.3(@babel/core@7.24.7)
+      '@babel/plugin-transform-arrow-functions': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-async-to-generator': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-block-scoping': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-classes': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-computed-properties': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-destructuring': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-flow-strip-types': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-function-name': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-literals': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-modules-commonjs': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-named-capturing-groups-regex': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-parameters': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-private-methods': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-private-property-in-object': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-react-display-name': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-react-jsx': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-react-jsx-self': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-react-jsx-source': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-runtime': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-shorthand-properties': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-spread': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-sticky-regex': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-typescript': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-unicode-regex': 7.24.7(@babel/core@7.24.7)
+      '@babel/template': 7.24.7
+      '@react-native/babel-plugin-codegen': 0.74.87(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      babel-plugin-transform-flow-enums: 0.0.2(@babel/core@7.24.7)
+      react-refresh: 0.14.2
+    transitivePeerDependencies:
+      - '@babel/preset-env'
+      - supports-color
+
   '@react-native/codegen@0.74.85(@babel/preset-env@7.24.7(@babel/core@7.24.7))':
+    dependencies:
+      '@babel/parser': 7.24.7
+      '@babel/preset-env': 7.24.7(@babel/core@7.24.7)
+      glob: 7.2.3
+      hermes-parser: 0.19.1
+      invariant: 2.2.4
+      jscodeshift: 0.14.0(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      mkdirp: 0.5.6
+      nullthrows: 1.1.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@react-native/codegen@0.74.87(@babel/preset-env@7.24.7(@babel/core@7.24.7))':
     dependencies:
       '@babel/parser': 7.24.7
       '@babel/preset-env': 7.24.7(@babel/core@7.24.7)
@@ -11958,60 +12111,108 @@ snapshots:
     optionalDependencies:
       rollup: 2.79.1
 
-  '@rollup/pluginutils@5.1.0(rollup@4.18.0)':
+  '@rollup/pluginutils@5.1.0(rollup@4.21.2)':
     dependencies:
       '@types/estree': 1.0.5
       estree-walker: 2.0.2
       picomatch: 2.3.1
     optionalDependencies:
-      rollup: 4.18.0
+      rollup: 4.21.2
 
   '@rollup/rollup-android-arm-eabi@4.18.0':
+    optional: true
+
+  '@rollup/rollup-android-arm-eabi@4.21.2':
     optional: true
 
   '@rollup/rollup-android-arm64@4.18.0':
     optional: true
 
+  '@rollup/rollup-android-arm64@4.21.2':
+    optional: true
+
   '@rollup/rollup-darwin-arm64@4.18.0':
+    optional: true
+
+  '@rollup/rollup-darwin-arm64@4.21.2':
     optional: true
 
   '@rollup/rollup-darwin-x64@4.18.0':
     optional: true
 
+  '@rollup/rollup-darwin-x64@4.21.2':
+    optional: true
+
   '@rollup/rollup-linux-arm-gnueabihf@4.18.0':
+    optional: true
+
+  '@rollup/rollup-linux-arm-gnueabihf@4.21.2':
     optional: true
 
   '@rollup/rollup-linux-arm-musleabihf@4.18.0':
     optional: true
 
+  '@rollup/rollup-linux-arm-musleabihf@4.21.2':
+    optional: true
+
   '@rollup/rollup-linux-arm64-gnu@4.18.0':
+    optional: true
+
+  '@rollup/rollup-linux-arm64-gnu@4.21.2':
     optional: true
 
   '@rollup/rollup-linux-arm64-musl@4.18.0':
     optional: true
 
+  '@rollup/rollup-linux-arm64-musl@4.21.2':
+    optional: true
+
   '@rollup/rollup-linux-powerpc64le-gnu@4.18.0':
+    optional: true
+
+  '@rollup/rollup-linux-powerpc64le-gnu@4.21.2':
     optional: true
 
   '@rollup/rollup-linux-riscv64-gnu@4.18.0':
     optional: true
 
+  '@rollup/rollup-linux-riscv64-gnu@4.21.2':
+    optional: true
+
   '@rollup/rollup-linux-s390x-gnu@4.18.0':
+    optional: true
+
+  '@rollup/rollup-linux-s390x-gnu@4.21.2':
     optional: true
 
   '@rollup/rollup-linux-x64-gnu@4.18.0':
     optional: true
 
+  '@rollup/rollup-linux-x64-gnu@4.21.2':
+    optional: true
+
   '@rollup/rollup-linux-x64-musl@4.18.0':
+    optional: true
+
+  '@rollup/rollup-linux-x64-musl@4.21.2':
     optional: true
 
   '@rollup/rollup-win32-arm64-msvc@4.18.0':
     optional: true
 
+  '@rollup/rollup-win32-arm64-msvc@4.21.2':
+    optional: true
+
   '@rollup/rollup-win32-ia32-msvc@4.18.0':
     optional: true
 
+  '@rollup/rollup-win32-ia32-msvc@4.21.2':
+    optional: true
+
   '@rollup/rollup-win32-x64-msvc@4.18.0':
+    optional: true
+
+  '@rollup/rollup-win32-x64-msvc@4.21.2':
     optional: true
 
   '@schickling/fps-meter@0.1.2(react@18.3.1)':
@@ -12140,6 +12341,11 @@ snapshots:
       mini-svg-data-uri: 1.4.4
       tailwindcss: 3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4))
 
+  '@tailwindcss/forms@0.5.7(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4)))':
+    dependencies:
+      mini-svg-data-uri: 1.4.4
+      tailwindcss: 3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4))
+
   '@tailwindcss/typography@0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4)))':
     dependencies:
       lodash.castarray: 4.4.0
@@ -12147,6 +12353,14 @@ snapshots:
       lodash.merge: 4.6.2
       postcss-selector-parser: 6.0.10
       tailwindcss: 3.4.7(ts-node@10.9.2(@types/node@22.0.0)(typescript@5.5.4))
+
+  '@tailwindcss/typography@0.5.13(tailwindcss@3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4)))':
+    dependencies:
+      lodash.castarray: 4.4.0
+      lodash.isplainobject: 4.0.6
+      lodash.merge: 4.6.2
+      postcss-selector-parser: 6.0.10
+      tailwindcss: 3.4.7(ts-node@10.9.2(@types/node@22.5.2)(typescript@5.5.4))
 
   '@tanstack/react-virtual@3.8.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -12161,7 +12375,7 @@ snapshots:
   '@testing-library/dom@10.1.0':
     dependencies:
       '@babel/code-frame': 7.24.7
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       chalk: 4.1.2
@@ -12171,7 +12385,7 @@ snapshots:
 
   '@testing-library/react@16.0.0(@testing-library/dom@10.1.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       '@testing-library/dom': 10.1.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -12529,7 +12743,7 @@ snapshots:
 
   '@types/ws@8.5.12':
     dependencies:
-      '@types/node': 22.0.0
+      '@types/node': 22.5.2
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -12718,6 +12932,17 @@ snapshots:
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
       vite: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vitejs/plugin-react@4.3.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))':
+    dependencies:
+      '@babel/core': 7.24.7
+      '@babel/plugin-transform-react-jsx-self': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-react-jsx-source': 7.24.7(@babel/core@7.24.7)
+      '@types/babel__core': 7.20.5
+      react-refresh: 0.14.2
+      vite: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -13043,7 +13268,7 @@ snapshots:
 
   babel-plugin-transform-vite-meta-env@1.0.3:
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       '@types/babel__core': 7.20.5
 
   babel-preset-expo@11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)):
@@ -13055,6 +13280,23 @@ snapshots:
       '@babel/preset-react': 7.24.7(@babel/core@7.24.7)
       '@babel/preset-typescript': 7.24.7(@babel/core@7.24.7)
       '@react-native/babel-preset': 0.74.85(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      babel-plugin-react-compiler: 0.0.0
+      babel-plugin-react-native-web: 0.19.12
+      react-refresh: 0.14.2
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@babel/preset-env'
+      - supports-color
+
+  babel-preset-expo@11.0.14(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)):
+    dependencies:
+      '@babel/plugin-proposal-decorators': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-export-namespace-from': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-object-rest-spread': 7.24.7(@babel/core@7.24.7)
+      '@babel/plugin-transform-parameters': 7.24.7(@babel/core@7.24.7)
+      '@babel/preset-react': 7.24.7(@babel/core@7.24.7)
+      '@babel/preset-typescript': 7.24.7(@babel/core@7.24.7)
+      '@react-native/babel-preset': 0.74.87(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       babel-plugin-react-compiler: 0.0.0
       babel-plugin-react-native-web: 0.19.12
       react-refresh: 0.14.2
@@ -13463,10 +13705,6 @@ snapshots:
     dependencies:
       tiny-invariant: 1.3.3
 
-  css-in-js-utils@3.1.0:
-    dependencies:
-      hyphenate-style-name: 1.0.5
-
   css-select@5.1.0:
     dependencies:
       boolbase: 1.0.0
@@ -13793,22 +14031,13 @@ snapshots:
     dependencies:
       detect-libc: 1.0.3
 
-  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)))(react@18.3.1):
+  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(react@18.3.1):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240729.0
       '@opentelemetry/api': 1.9.0
       '@types/react': 18.3.3
       bun-types: 1.1.26
-      expo-sqlite: 14.0.6(expo@51.0.24(@babel/core@7.24.7))
-      react: 18.3.1
-
-  drizzle-orm@0.32.1(@cloudflare/workers-types@4.20240729.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.3)(bun-types@1.1.26)(expo-sqlite@14.0.6(expo@51.0.24))(react@18.3.1):
-    optionalDependencies:
-      '@cloudflare/workers-types': 4.20240729.0
-      '@opentelemetry/api': 1.9.0
-      '@types/react': 18.3.3
-      bun-types: 1.1.26
-      expo-sqlite: 14.0.6(expo@51.0.24)
+      expo-sqlite: 14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       react: 18.3.1
 
   dtrace-provider@0.8.8:
@@ -13816,7 +14045,7 @@ snapshots:
       nan: 2.20.0
     optional: true
 
-  eas-cli@10.2.2(@types/node@22.5.2)(expo-modules-autolinking@1.11.1)(typescript@5.5.4):
+  eas-cli@10.2.2(@types/node@22.5.2)(expo-modules-autolinking@1.11.2)(typescript@5.5.4):
     dependencies:
       '@expo/apple-utils': 1.7.1
       '@expo/code-signing-certificates': 0.0.5
@@ -13834,7 +14063,7 @@ snapshots:
       '@expo/plist': 0.0.20
       '@expo/plugin-help': 5.1.23(@types/node@22.5.2)(typescript@5.5.4)
       '@expo/plugin-warn-if-update-available': 2.5.1(@types/node@22.5.2)(typescript@5.5.4)
-      '@expo/prebuild-config': 6.7.3(expo-modules-autolinking@1.11.1)
+      '@expo/prebuild-config': 6.7.3(expo-modules-autolinking@1.11.2)
       '@expo/results': 1.0.0
       '@expo/rudder-sdk-node': 1.1.1
       '@expo/spawn-async': 1.7.0
@@ -14368,208 +14597,82 @@ snapshots:
 
   exit-hook@2.2.1: {}
 
-  expo-asset@10.0.10(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
+  expo-asset@10.0.10(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
-      expo-constants: 16.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo-constants: 16.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       invariant: 2.2.4
       md5-file: 3.2.3
     transitivePeerDependencies:
       - supports-color
 
-  expo-asset@10.0.10(expo@51.0.24(@babel/core@7.24.7)):
+  expo-constants@16.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)
-      expo-constants: 16.0.2(expo@51.0.24(@babel/core@7.24.7))
-      invariant: 2.2.4
-      md5-file: 3.2.3
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
-  expo-asset@10.0.10(expo@51.0.24):
-    dependencies:
-      expo: 51.0.24
-      expo-constants: 16.0.2(expo@51.0.24)
-      invariant: 2.2.4
-      md5-file: 3.2.3
-    transitivePeerDependencies:
-      - supports-color
-
-  expo-constants@16.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
-    dependencies:
-      '@expo/config': 9.0.2
+      '@expo/config': 9.0.3
       '@expo/env': 0.3.0
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
     transitivePeerDependencies:
       - supports-color
 
-  expo-constants@16.0.2(expo@51.0.24(@babel/core@7.24.7)):
-    dependencies:
-      '@expo/config': 9.0.2
-      '@expo/env': 0.3.0
-      expo: 51.0.24(@babel/core@7.24.7)
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
-  expo-constants@16.0.2(expo@51.0.24):
-    dependencies:
-      '@expo/config': 9.0.2
-      '@expo/env': 0.3.0
-      expo: 51.0.24
-    transitivePeerDependencies:
-      - supports-color
-
-  expo-crypto@13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
+  expo-crypto@13.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
       base64-js: 1.5.1
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
-  expo-file-system@17.0.1(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
+  expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
-  expo-file-system@17.0.1(expo@51.0.24(@babel/core@7.24.7)):
+  expo-font@12.0.10(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)
-    optional: true
-
-  expo-file-system@17.0.1(expo@51.0.24):
-    dependencies:
-      expo: 51.0.24
-
-  expo-font@12.0.9(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
-    dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       fontfaceobserver: 2.3.0
 
-  expo-font@12.0.9(expo@51.0.24(@babel/core@7.24.7)):
+  expo-keep-awake@13.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)
-      fontfaceobserver: 2.3.0
-    optional: true
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
-  expo-font@12.0.9(expo@51.0.24):
-    dependencies:
-      expo: 51.0.24
-      fontfaceobserver: 2.3.0
-
-  expo-keep-awake@13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
-    dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
-
-  expo-keep-awake@13.0.2(expo@51.0.24(@babel/core@7.24.7)):
-    dependencies:
-      expo: 51.0.24(@babel/core@7.24.7)
-    optional: true
-
-  expo-keep-awake@13.0.2(expo@51.0.24):
-    dependencies:
-      expo: 51.0.24
-
-  expo-modules-autolinking@1.11.1:
+  expo-modules-autolinking@1.11.2:
     dependencies:
       chalk: 4.1.2
       commander: 7.2.0
       fast-glob: 3.3.2
       find-up: 5.0.0
       fs-extra: 9.1.0
+      require-from-string: 2.0.2
+      resolve-from: 5.0.0
 
-  expo-modules-core@1.12.20:
+  expo-modules-core@1.12.24:
     dependencies:
       invariant: 2.2.4
 
-  expo-sqlite@14.0.3(expo@51.0.24):
+  expo-sqlite@14.0.3(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
       '@expo/websql': 1.0.1
-      expo: 51.0.24
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
-  expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
+  expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))):
     dependencies:
       '@expo/websql': 1.0.1
-      expo: 51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
-
-  expo-sqlite@14.0.6(expo@51.0.24(@babel/core@7.24.7)):
-    dependencies:
-      '@expo/websql': 1.0.1
-      expo: 51.0.24(@babel/core@7.24.7)
-    optional: true
-
-  expo-sqlite@14.0.6(expo@51.0.24):
-    dependencies:
-      '@expo/websql': 1.0.1
-      expo: 51.0.24
-    optional: true
+      expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
 
   expo-status-bar@1.12.1: {}
 
-  expo@51.0.24:
+  expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)):
     dependencies:
-      '@babel/runtime': 7.25.0
-      '@expo/cli': 0.18.26(expo-modules-autolinking@1.11.1)
+      '@babel/runtime': 7.25.6
+      '@expo/cli': 0.18.29(expo-modules-autolinking@1.11.2)
       '@expo/config': 9.0.3
       '@expo/config-plugins': 8.0.8
-      '@expo/metro-config': 0.18.10
+      '@expo/metro-config': 0.18.11
       '@expo/vector-icons': 14.0.2
-      babel-preset-expo: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
-      expo-asset: 10.0.10(expo@51.0.24)
-      expo-file-system: 17.0.1(expo@51.0.24)
-      expo-font: 12.0.9(expo@51.0.24)
-      expo-keep-awake: 13.0.2(expo@51.0.24)
-      expo-modules-autolinking: 1.11.1
-      expo-modules-core: 1.12.20
-      fbemitter: 3.0.0
-      whatwg-url-without-unicode: 8.0.0-3
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@babel/preset-env'
-      - bufferutil
-      - encoding
-      - supports-color
-      - utf-8-validate
-
-  expo@51.0.24(@babel/core@7.24.7):
-    dependencies:
-      '@babel/runtime': 7.25.0
-      '@expo/cli': 0.18.26(expo-modules-autolinking@1.11.1)
-      '@expo/config': 9.0.3
-      '@expo/config-plugins': 8.0.8
-      '@expo/metro-config': 0.18.10
-      '@expo/vector-icons': 14.0.2
-      babel-preset-expo: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
-      expo-asset: 10.0.10(expo@51.0.24(@babel/core@7.24.7))
-      expo-file-system: 17.0.1(expo@51.0.24(@babel/core@7.24.7))
-      expo-font: 12.0.9(expo@51.0.24(@babel/core@7.24.7))
-      expo-keep-awake: 13.0.2(expo@51.0.24(@babel/core@7.24.7))
-      expo-modules-autolinking: 1.11.1
-      expo-modules-core: 1.12.20
-      fbemitter: 3.0.0
-      whatwg-url-without-unicode: 8.0.0-3
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@babel/preset-env'
-      - bufferutil
-      - encoding
-      - supports-color
-      - utf-8-validate
-    optional: true
-
-  expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)):
-    dependencies:
-      '@babel/runtime': 7.25.0
-      '@expo/cli': 0.18.26(expo-modules-autolinking@1.11.1)
-      '@expo/config': 9.0.3
-      '@expo/config-plugins': 8.0.8
-      '@expo/metro-config': 0.18.10
-      '@expo/vector-icons': 14.0.2
-      babel-preset-expo: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
-      expo-asset: 10.0.10(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
-      expo-file-system: 17.0.1(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
-      expo-font: 12.0.9(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
-      expo-keep-awake: 13.0.2(expo@51.0.24(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
-      expo-modules-autolinking: 1.11.1
-      expo-modules-core: 1.12.20
+      babel-preset-expo: 11.0.14(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
+      expo-asset: 10.0.10(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-file-system: 17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-font: 12.0.10(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-keep-awake: 13.0.2(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      expo-modules-autolinking: 1.11.2
+      expo-modules-core: 1.12.24
       fbemitter: 3.0.0
       whatwg-url-without-unicode: 8.0.0-3
     transitivePeerDependencies:
@@ -14603,8 +14706,6 @@ snapshots:
   fast-json-stable-stringify@2.1.0: {}
 
   fast-levenshtein@2.0.6: {}
-
-  fast-loops@1.1.3: {}
 
   fast-text-encoding@1.0.6: {}
 
@@ -15110,8 +15211,6 @@ snapshots:
 
   hyperlinker@1.0.0: {}
 
-  hyphenate-style-name@1.0.5: {}
-
   iconv-lite@0.6.3:
     dependencies:
       safer-buffer: 2.1.2
@@ -15156,11 +15255,6 @@ snapshots:
   ini@1.3.8: {}
 
   inline-style-parser@0.2.3: {}
-
-  inline-style-prefixer@6.0.4:
-    dependencies:
-      css-in-js-utils: 3.1.0
-      fast-loops: 1.1.3
 
   internal-ip@4.3.0:
     dependencies:
@@ -15959,8 +16053,6 @@ snapshots:
 
   memoize-one@5.2.1: {}
 
-  memoize-one@6.0.0: {}
-
   memory-cache@0.2.0: {}
 
   merge-stream@2.0.0: {}
@@ -16027,7 +16119,7 @@ snapshots:
 
   metro-runtime@0.80.9:
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
 
   metro-source-map@0.80.9:
     dependencies:
@@ -16887,6 +16979,12 @@ snapshots:
       picocolors: 1.0.1
       source-map-js: 1.2.0
 
+  postcss@8.4.45:
+    dependencies:
+      nanoid: 3.3.7
+      picocolors: 1.0.1
+      source-map-js: 1.2.0
+
   pouchdb-collections@1.0.1: {}
 
   precinct@8.3.1:
@@ -17156,7 +17254,7 @@ snapshots:
 
   react-beautiful-dnd@13.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       css-box-model: 1.2.1
       memoize-one: 5.2.1
       raf-schd: 4.0.3
@@ -17208,21 +17306,6 @@ snapshots:
       vfile: 6.0.2
     transitivePeerDependencies:
       - supports-color
-
-  react-native-web@0.19.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@babel/runtime': 7.25.0
-      '@react-native/normalize-colors': 0.74.85
-      fbjs: 3.0.5
-      inline-style-prefixer: 6.0.4
-      memoize-one: 6.0.0
-      nullthrows: 1.1.1
-      postcss-value-parser: 4.2.0
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      styleq: 0.1.3
-    transitivePeerDependencies:
-      - encoding
 
   react-native@0.74.3(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(@types/react@18.3.3)(react@18.3.1):
     dependencies:
@@ -17276,7 +17359,7 @@ snapshots:
 
   react-redux@7.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       '@types/react-redux': 7.1.33
       hoist-non-react-statics: 3.3.2
       loose-envify: 1.4.0
@@ -17319,7 +17402,7 @@ snapshots:
 
   react-window@1.8.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       memoize-one: 5.2.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -17384,7 +17467,7 @@ snapshots:
 
   redux@4.2.1:
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
 
   reflect.getprototypeof@1.0.6:
     dependencies:
@@ -17408,7 +17491,7 @@ snapshots:
 
   regenerator-transform@0.15.2:
     dependencies:
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
 
   regexp-tree@0.1.27: {}
 
@@ -17545,14 +17628,14 @@ snapshots:
     dependencies:
       rollup-plugin-inject: 3.0.2
 
-  rollup-plugin-visualizer@5.12.0(rollup@4.18.0):
+  rollup-plugin-visualizer@5.12.0(rollup@4.21.2):
     dependencies:
       open: 8.4.2
       picomatch: 2.3.1
       source-map: 0.7.4
       yargs: 17.7.2
     optionalDependencies:
-      rollup: 4.18.0
+      rollup: 4.21.2
 
   rollup-pluginutils@2.8.2:
     dependencies:
@@ -17582,6 +17665,28 @@ snapshots:
       '@rollup/rollup-win32-arm64-msvc': 4.18.0
       '@rollup/rollup-win32-ia32-msvc': 4.18.0
       '@rollup/rollup-win32-x64-msvc': 4.18.0
+      fsevents: 2.3.3
+
+  rollup@4.21.2:
+    dependencies:
+      '@types/estree': 1.0.5
+    optionalDependencies:
+      '@rollup/rollup-android-arm-eabi': 4.21.2
+      '@rollup/rollup-android-arm64': 4.21.2
+      '@rollup/rollup-darwin-arm64': 4.21.2
+      '@rollup/rollup-darwin-x64': 4.21.2
+      '@rollup/rollup-linux-arm-gnueabihf': 4.21.2
+      '@rollup/rollup-linux-arm-musleabihf': 4.21.2
+      '@rollup/rollup-linux-arm64-gnu': 4.21.2
+      '@rollup/rollup-linux-arm64-musl': 4.21.2
+      '@rollup/rollup-linux-powerpc64le-gnu': 4.21.2
+      '@rollup/rollup-linux-riscv64-gnu': 4.21.2
+      '@rollup/rollup-linux-s390x-gnu': 4.21.2
+      '@rollup/rollup-linux-x64-gnu': 4.21.2
+      '@rollup/rollup-linux-x64-musl': 4.21.2
+      '@rollup/rollup-win32-arm64-msvc': 4.21.2
+      '@rollup/rollup-win32-ia32-msvc': 4.21.2
+      '@rollup/rollup-win32-x64-msvc': 4.21.2
       fsevents: 2.3.3
 
   rope-sequence@1.3.4: {}
@@ -17978,8 +18083,6 @@ snapshots:
   style-to-object@1.0.6:
     dependencies:
       inline-style-parser: 0.2.3
-
-  styleq@0.1.3: {}
 
   stylus-lookup@3.0.2:
     dependencies:
@@ -18576,12 +18679,13 @@ snapshots:
       debug: 4.3.5(supports-color@8.1.1)
       pathe: 1.1.2
       tinyrainbow: 1.2.0
-      vite: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite: 5.4.3(@types/node@22.0.0)(terser@5.31.1)
     transitivePeerDependencies:
       - '@types/node'
       - less
       - lightningcss
       - sass
+      - sass-embedded
       - stylus
       - sugarss
       - supports-color
@@ -18593,12 +18697,13 @@ snapshots:
       debug: 4.3.5(supports-color@8.1.1)
       pathe: 1.1.2
       tinyrainbow: 1.2.0
-      vite: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
+      vite: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
     transitivePeerDependencies:
       - '@types/node'
       - less
       - lightningcss
       - sass
+      - sass-embedded
       - stylus
       - sugarss
       - supports-color
@@ -18626,20 +18731,31 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-svgr@4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1)):
+  vite-plugin-pwa@0.20.1(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1))(workbox-build@7.1.1(@types/babel__core@7.20.5))(workbox-window@7.1.0):
+    dependencies:
+      debug: 4.3.5(supports-color@8.1.1)
+      pretty-bytes: 6.1.1
+      tinyglobby: 0.2.0
+      vite: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
+      workbox-build: 7.1.1(@types/babel__core@7.20.5)
+      workbox-window: 7.1.0
+    transitivePeerDependencies:
+      - supports-color
+
+  vite-plugin-svgr@4.2.0(rollup@2.79.1)(typescript@5.5.4)(vite@5.4.3(@types/node@22.5.2)(terser@5.31.1)):
     dependencies:
       '@rollup/pluginutils': 5.1.0(rollup@2.79.1)
       '@svgr/core': 8.1.0(typescript@5.5.4)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
-      vite: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
     transitivePeerDependencies:
       - rollup
       - supports-color
       - typescript
 
-  vite-plugin-svgr@4.2.0(rollup@4.18.0)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1)):
+  vite-plugin-svgr@4.2.0(rollup@4.21.2)(typescript@5.5.4)(vite@5.3.5(@types/node@22.0.0)(terser@5.31.1)):
     dependencies:
-      '@rollup/pluginutils': 5.1.0(rollup@4.18.0)
+      '@rollup/pluginutils': 5.1.0(rollup@4.21.2)
       '@svgr/core': 8.1.0(typescript@5.5.4)
       '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
       vite: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
@@ -18668,6 +18784,26 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.31.1
 
+  vite@5.4.3(@types/node@22.0.0)(terser@5.31.1):
+    dependencies:
+      esbuild: 0.21.5
+      postcss: 8.4.45
+      rollup: 4.21.2
+    optionalDependencies:
+      '@types/node': 22.0.0
+      fsevents: 2.3.3
+      terser: 5.31.1
+
+  vite@5.4.3(@types/node@22.5.2)(terser@5.31.1):
+    dependencies:
+      esbuild: 0.21.5
+      postcss: 8.4.45
+      rollup: 4.21.2
+    optionalDependencies:
+      '@types/node': 22.5.2
+      fsevents: 2.3.3
+      terser: 5.31.1
+
   vitest@2.0.4(@types/node@22.0.0)(jsdom@24.1.0)(terser@5.31.1):
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -18686,7 +18822,7 @@ snapshots:
       tinybench: 2.8.0
       tinypool: 1.0.0
       tinyrainbow: 1.2.0
-      vite: 5.3.5(@types/node@22.0.0)(terser@5.31.1)
+      vite: 5.4.3(@types/node@22.0.0)(terser@5.31.1)
       vite-node: 2.0.4(@types/node@22.0.0)(terser@5.31.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
@@ -18696,6 +18832,7 @@ snapshots:
       - less
       - lightningcss
       - sass
+      - sass-embedded
       - stylus
       - sugarss
       - supports-color
@@ -18719,7 +18856,7 @@ snapshots:
       tinybench: 2.8.0
       tinypool: 1.0.0
       tinyrainbow: 1.2.0
-      vite: 5.3.5(@types/node@22.5.2)(terser@5.31.1)
+      vite: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
       vite-node: 2.0.4(@types/node@22.5.2)(terser@5.31.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
@@ -18729,6 +18866,7 @@ snapshots:
       - less
       - lightningcss
       - sass
+      - sass-embedded
       - stylus
       - sugarss
       - supports-color
@@ -18878,7 +19016,7 @@ snapshots:
       '@apideck/better-ajv-errors': 0.3.6(ajv@8.16.0)
       '@babel/core': 7.24.7
       '@babel/preset-env': 7.24.7(@babel/core@7.24.7)
-      '@babel/runtime': 7.25.0
+      '@babel/runtime': 7.25.6
       '@rollup/plugin-babel': 5.3.1(@babel/core@7.24.7)(@types/babel__core@7.20.5)(rollup@2.79.1)
       '@rollup/plugin-node-resolve': 15.2.3(rollup@2.79.1)
       '@rollup/plugin-replace': 2.4.2(rollup@2.79.1)
