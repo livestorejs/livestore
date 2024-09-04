@@ -7,8 +7,8 @@ import { $ } from 'bun'
 
 // Directories
 const SRC_DIR = 'examples'
-const PATCHES_DIR = 'examples-monorepo/patches'
-const DEST_DIR = 'examples-monorepo/examples'
+const PATCHES_DIR = 'examples-patches'
+const DEST_DIR = 'examples-monorepo'
 
 // Helper function to sync src to src-patched
 const syncDirectories = async (reverse: boolean = false) => {

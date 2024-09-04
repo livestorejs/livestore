@@ -1,8 +1,8 @@
 --- tsconfig.json
 +++ tsconfig.json
-@@ -1,27 +1,14 @@
+@@ -1,26 +1,17 @@
  {
-+  "extends": "../../../tsconfig.base.json",
++  "extends": "../../tsconfig.base.json",
    "compilerOptions": {
 -    "target": "ES2022",
 -    "useDefineForClassFields": true,
@@ -16,7 +16,6 @@
 -    "resolveJsonModule": true,
 -    "isolatedModules": true,
 -    "noEmit": true,
-     "jsx": "react",
 -
 -    /* Linting */
 -    "strict": true,
@@ -25,6 +24,9 @@
 -    // "noUnusedLocals": true,
 -    // "noUnusedParameters": true,
 -    "noFallthroughCasesInSwitch": true
++    "declaration": false,
++    "declarationMap": false,
++    "composite": false,
 +    "outDir": "./dist",
 +    "rootDir": "./src",
 +    "tsBuildInfoFile": "./dist/.tsbuildinfo"
@@ -33,7 +35,8 @@
 -  "exclude": ["node_modules"]
 +  "include": ["src"],
 +  "references": [
-+    { "path": "../../../packages/@livestore/livestore" },
-+    { "path": "../../../packages/@livestore/web" }
++    { "path": "../../packages/@livestore/livestore" },
++    { "path": "../../packages/@livestore/utils" },
++    { "path": "../../packages/@livestore/web" }
 +  ]
  }

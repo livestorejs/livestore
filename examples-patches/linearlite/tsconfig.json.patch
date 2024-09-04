@@ -2,7 +2,7 @@
 +++ tsconfig.json
 @@ -1,4 +1,5 @@
  {
-+  "extends": "../../../tsconfig.base.json",
++  "extends": "../../tsconfig.base.json",
    "compilerOptions": {
      "target": "ES2022",
      "useDefineForClassFields": true,
@@ -13,7 +13,7 @@
 -  "include": ["src"]
 +  "include": ["src"],
 +  "references": [
-+    { "path": "../../../packages/@livestore/livestore" },
-+    { "path": "../../../packages/@livestore/web" }
++    { "path": "../../packages/@livestore/livestore" },
++    { "path": "../../packages/@livestore/web" }
 +  ]
  }

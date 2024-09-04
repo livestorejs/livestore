@@ -25,4 +25,4 @@ dist
 .wrangler
 .vercel
 
-examples-monorepo/examples
+examples-monorepo
