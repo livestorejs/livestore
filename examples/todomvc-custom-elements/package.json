@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@effect/schema": "0.72.0",
-    "@livestore/devtools-react": "0.0.56",
+    "@livestore/devtools-react": "0.0.57-dev.0",
     "@livestore/livestore": "0.0.56",
     "@livestore/utils": "0.0.56",
     "@livestore/wa-sqlite": "1.0.1-dev.29",

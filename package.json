@@ -18,7 +18,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-react": "0.0.56",
+    "@livestore/devtools-react": "0.0.57-dev.0",
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {
