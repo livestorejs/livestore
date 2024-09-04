@@ -40,12 +40,12 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
-      - name: Install Nix
-        uses: cachix/install-nix-action@v17
+      - uses: cachix/install-nix-action@v18
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v12
         with:
-          # Mostly to avoid GitHub rate limiting
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          name: schickling
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
         env:
@@ -84,12 +84,12 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
-      - name: Install Nix
-        uses: cachix/install-nix-action@v17
+      - uses: cachix/install-nix-action@v18
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v12
         with:
-          # Mostly to avoid GitHub rate limiting
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          name: schickling
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
         env:
