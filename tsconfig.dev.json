@@ -12,7 +12,6 @@
     { "path": "./examples-monorepo/todomvc-experimental" },
     { "path": "./integration-tests" },
     { "path": "./packages/effect-db-schema" },
-    { "path": "./packages/@livestore/devtools-expo-metro-plugin" },
     { "path": "./packages/@livestore/cf-sync" }
   ]
 }

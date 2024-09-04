@@ -1,16 +1,14 @@
 --- package.json
 +++ package.json
-@@ -11,11 +11,11 @@
+@@ -11,10 +11,10 @@
    "dependencies": {
      "@effect/schema": "0.72.0",
      "@expo/vector-icons": "14.0.2",
--    "@livestore/devtools-expo-bridge": "0.0.56",
--    "@livestore/devtools-expo-metro-plugin": "0.0.56",
+-    "@livestore/devtools-expo": "0.0.56",
 -    "@livestore/expo": "0.0.56",
 -    "@livestore/livestore": "0.0.56",
 -    "@livestore/utils": "0.0.56",
-+    "@livestore/devtools-expo-bridge": "workspace:*",
-+    "@livestore/devtools-expo-metro-plugin": "workspace:*",
++    "@livestore/devtools-expo": "workspace:*",
 +    "@livestore/expo": "workspace:*",
 +    "@livestore/livestore": "workspace:*",
 +    "@livestore/utils": "workspace:*",

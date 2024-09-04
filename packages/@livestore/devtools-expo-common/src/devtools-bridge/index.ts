@@ -1,7 +1,8 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
-import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-bridge/web-channel'
 import type { Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, PubSub, Schema, Stream } from '@livestore/utils/effect'
+
+import { makeExpoDevtoolsChannel } from '../web-channel/index.js'
 
 // TODO use a unique bridgeId for each connection (similar to web bridge)
 export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> = Effect.gen(

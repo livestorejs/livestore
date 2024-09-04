@@ -9,7 +9,7 @@
  
  config.watchFolders = [monorepoRoot]
  
-@@ -22,7 +22,14 @@
+@@ -22,7 +22,16 @@
    path.resolve(monorepoRoot, 'node_modules'),
  ]
  
@@ -18,7 +18,9 @@
 +  schemaPath: './src/schema/index.ts',
 +  viteConfig: (viteConfig) => {
 +    viteConfig.server.fs ??= {}
-+    viteConfig.server.fs.allow = ['../../../..']
++    // Point to Overtone monorepo root
++    viteConfig.server.fs.allow = [process.env.WORKSPACE_ROOT + '/../..']
++    viteConfig.optimizeDeps.force = true
 +    return viteConfig
 +  },
 +})

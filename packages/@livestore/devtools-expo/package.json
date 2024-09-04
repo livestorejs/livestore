@@ -1,8 +1,7 @@
 {
-  "name": "@livestore/devtools-expo-metro-plugin",
+  "name": "@livestore/devtools-expo",
   "version": "0.0.56",
-  "type": "commonjs",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "scripts": {
     "test": "echo No tests yet"

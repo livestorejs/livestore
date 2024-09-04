@@ -1,57 +1,17 @@
 import * as http from 'node:http'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-import type { MetroConfig } from 'expo/metro-config'
 import * as Vite from 'vite'
 
-type Middleware = (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => void
+import type { Options } from './metro-config.cjs'
 
-type Options = {
-  viteConfig?: (config: Vite.UserConfig) => Vite.UserConfig
-  schemaPath: string
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-/**
- * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
- */
-export const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, options: Options) => {
-  const viteMiddleware = makeLiveStoreDevtoolsMiddleware(options)
-
-  const previousEnhanceMiddleware = config.server.enhanceMiddleware as (
-    metroMiddleware: Middleware,
-    server: any,
-  ) => Middleware
-
-  const enhanceMiddleware = (metroMiddleware: Middleware, server: any): Middleware => {
-    const enhancedMiddleware = previousEnhanceMiddleware(metroMiddleware, server)
-
-    return (req, res, next) =>
-      req.url?.startsWith('/livestore-devtools')
-        ? viteMiddleware(req, res, () => enhancedMiddleware(req, res, next))
-        : enhancedMiddleware(req, res, next)
-  }
-
-  config.server.enhanceMiddleware = enhanceMiddleware
-}
-
-export const makeLiveStoreDevtoolsMiddleware = (options: Options) => {
-  const viteServerPromise = makeViteServer(options)
-
-  const middleware = async (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => {
-    // console.log('req.url', req.url)
-    if (req.url?.startsWith('/livestore-devtools') == false) {
-      return next()
-    }
-
-    const viteServer = await viteServerPromise
-
-    return viteServer.middlewares(req, res, next)
-  }
-
-  return middleware
-}
-const makeViteServer = async (options: Options) => {
+export const makeViteServer = async (options: Options) => {
   const hmrPort = await getFreePort()
+
+  const cwd = process.cwd()
 
   const defaultViteConfig = Vite.defineConfig({
     server: {
@@ -62,7 +22,7 @@ const makeViteServer = async (options: Options) => {
     },
     resolve: {
       alias: {
-        '@schema': path.resolve(process.cwd(), options.schemaPath),
+        '@schema': path.resolve(cwd, options.schemaPath),
       },
     },
     appType: 'spa',
@@ -70,9 +30,12 @@ const makeViteServer = async (options: Options) => {
       // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
       exclude: ['@livestore/wa-sqlite'],
     },
+    root: __dirname,
     base: '/livestore-devtools/',
     plugins: [virtualHtmlPlugin],
   })
+
+  console.log('alias', defaultViteConfig.resolve?.alias)
 
   const viteConfig = options.viteConfig?.(defaultViteConfig) ?? defaultViteConfig
 
@@ -142,9 +105,4 @@ const getFreePort = (): Promise<number> => {
       server.close(() => reject(err))
     })
   })
-}
-
-/** Remove readonly from all properties */
-type MutableDeep<T> = {
-  -readonly [P in keyof T]: MutableDeep<T[P]>
 }

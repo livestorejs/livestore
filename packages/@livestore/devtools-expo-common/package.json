@@ -1,11 +1,11 @@
 {
-  "name": "@livestore/devtools-expo-bridge",
+  "name": "@livestore/devtools-expo-common",
   "version": "0.0.56",
   "type": "module",
   "exports": {
     "./web-channel": {
-      "types": "./dist/web-channel.d.ts",
-      "default": "./dist/web-channel.js"
+      "types": "./dist/web-channel/index.d.ts",
+      "default": "./dist/web-channel/index.js"
     },
     "./devtools-bridge": {
       "types": "./dist/devtools-bridge/index.d.ts",
@@ -17,18 +17,12 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@types/react": "^18.3.1",
-    "react": "^18.3.1",
-    "react-native": "0.74.3",
     "expo": "51.0.32"
   },
   "peerDependencies": {
-    "react-native": "0.74.x",
-    "react": "18.x",
     "expo": "51.x"
   },
   "publishConfig": {

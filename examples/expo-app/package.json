@@ -11,8 +11,7 @@
   "dependencies": {
     "@effect/schema": "0.72.0",
     "@expo/vector-icons": "14.0.2",
-    "@livestore/devtools-expo-bridge": "0.0.56",
-    "@livestore/devtools-expo-metro-plugin": "0.0.56",
+    "@livestore/devtools-expo": "0.0.56",
     "@livestore/expo": "0.0.56",
     "@livestore/livestore": "0.0.56",
     "@livestore/utils": "0.0.56",
