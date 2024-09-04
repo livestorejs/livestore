@@ -4,9 +4,9 @@ import { Deferred, Effect, Either, Queue, Stream } from 'effect'
 
 import * as Schema from './Schema/index.js'
 
-export type WebChannel<MsgIn, MsgOut> = {
-  send: (a: MsgOut) => Effect.Effect<void, ParseResult.ParseError>
-  listen: Stream.Stream<Either.Either<MsgIn, ParseResult.ParseError>>
+export type WebChannel<MsgIn, MsgOut, E = never> = {
+  send: (a: MsgOut) => Effect.Effect<void, ParseResult.ParseError | E>
+  listen: Stream.Stream<Either.Either<MsgIn, ParseResult.ParseError>, E>
   closedDeferred: Deferred.Deferred<void>
 }
 

@@ -18,6 +18,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-react": "0.0.56",
+    "@livestore/devtools-expo-metro-plugin": "workspace:*",
     "effect-db-schema": "workspace:*"
   },
   "devDependencies": {

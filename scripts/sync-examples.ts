@@ -27,8 +27,8 @@ const syncDirectories = async (reverse: boolean = false) => {
           const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
           const targetFile = `${SRC_DIR}${relativePath}`
           try {
-            await $`patch -R -u ${targetFile} -i ${fullPath}`.nothrow()
-            console.log(`Reversed patch: ${fullPath} from ${targetFile}`)
+            await $`patch -R -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`.nothrow()
+            // console.log(`Reversed patch: ${fullPath} from ${targetFile}`)
           } catch (error) {
             console.error(`Failed to reverse patch ${fullPath}: ${error}`)
           }
@@ -56,8 +56,8 @@ const syncDirectories = async (reverse: boolean = false) => {
           const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
           const targetFile = `${DEST_DIR}${relativePath}`
           try {
-            await $`patch -u ${targetFile} -i ${fullPath}`.nothrow()
-            console.log(`Applied patch: ${fullPath} to ${targetFile}`)
+            await $`patch -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`.nothrow()
+            // console.log(`Applied patch: ${fullPath} to ${targetFile}`)
           } catch (error) {
             console.error(`Failed to apply patch ${fullPath}: ${error}`)
           }
@@ -136,7 +136,7 @@ const updatePatches = async () => {
   await $`rm -rf ${PATCHES_DIR}`
 
   const exampleDirs = fs.readdirSync(SRC_DIR).filter((item) => fs.statSync(`${SRC_DIR}/${item}`).isDirectory())
-  const filesToPatch = ['package.json', 'tsconfig.json', 'vite.config.ts', 'vite.config.js']
+  const filesToPatch = ['package.json', 'tsconfig.json', 'vite.config.ts', 'vite.config.js', 'metro.config.js']
   for (const exampleDir of exampleDirs) {
     const patchDir = `${PATCHES_DIR}/${exampleDir}`
     await $`mkdir -p ${patchDir}`

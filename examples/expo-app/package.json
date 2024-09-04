@@ -12,34 +12,28 @@
     "@effect/schema": "0.72.0",
     "@expo/vector-icons": "14.0.2",
     "@livestore/devtools-expo-bridge": "0.0.56",
-    "@livestore/devtools-react": "0.0.56",
+    "@livestore/devtools-expo-metro-plugin": "0.0.56",
     "@livestore/expo": "0.0.56",
     "@livestore/livestore": "0.0.56",
     "@livestore/utils": "0.0.56",
-    "@livestore/wa-sqlite": "1.0.1-dev.29",
-    "@livestore/web": "0.0.56",
     "babel-preset-expo": "11.0.12",
-    "expo": "51.0.24",
+    "expo": "51.0.32",
     "expo-asset": "10.0.10",
     "expo-crypto": "13.0.2",
     "expo-sqlite": "14.0.6",
     "expo-status-bar": "1.12.1",
     "fast-text-encoding": "^1.0.6",
     "react": "18.3.1",
-    "react-native": "0.74.3",
-    "react-native-web": "~0.19.11"
+    "react-native": "0.74.3"
   },
   "devDependencies": {
     "@babel/core": "^7.24.5",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
-    "@babel/runtime": "^7.25.0",
+    "@babel/runtime": "^7.25.6",
     "@types/react": "~18.3.1",
-    "@types/ws": "8.5.12",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "10.2.2",
-    "typescript": "5.5.4",
-    "vite": "^5.3.5",
-    "ws": "^8.18.0"
+    "typescript": "5.5.4"
   },
   "private": true
 }

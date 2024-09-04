@@ -2,6 +2,7 @@
 
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config')
+const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo-metro-plugin')
 const path = require('node:path')
 
 /** @type {import('expo/metro-config').MetroConfig} */
@@ -20,6 +21,8 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(monorepoRoot, 'node_modules'),
 ]
+
+addLiveStoreDevtoolsMiddleware(config, { schemaPath: './src/schema/index.ts' })
 
 // console.log(config)
 module.exports = config

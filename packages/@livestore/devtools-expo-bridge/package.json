@@ -3,10 +3,6 @@
   "version": "0.0.56",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
     "./web-channel": {
       "types": "./dist/web-channel.d.ts",
       "default": "./dist/web-channel.js"
@@ -16,7 +12,6 @@
       "default": "./dist/devtools-bridge/index.js"
     }
   },
-  "types": "./dist/index.d.ts",
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -28,9 +23,11 @@
   "devDependencies": {
     "@types/react": "^18.3.1",
     "react": "^18.3.1",
-    "expo": "51.0.24"
+    "react-native": "0.74.3",
+    "expo": "51.0.32"
   },
   "peerDependencies": {
+    "react-native": "0.74.x",
     "react": "18.x",
     "expo": "51.x"
   },

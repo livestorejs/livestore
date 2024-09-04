@@ -1,0 +1,27 @@
+--- metro.config.js
++++ metro.config.js
+@@ -13,7 +13,7 @@
+ 
+ // Needed for monorepo setup (can be removed in standalone projects)
+ const projectRoot = __dirname
+-const monorepoRoot = path.resolve(projectRoot, '../..')
++const monorepoRoot = path.resolve(projectRoot, '../../../..')
+ 
+ config.watchFolders = [monorepoRoot]
+ 
+@@ -22,7 +22,14 @@
+   path.resolve(monorepoRoot, 'node_modules'),
+ ]
+ 
+-addLiveStoreDevtoolsMiddleware(config, { schemaPath: './src/schema/index.ts' })
++addLiveStoreDevtoolsMiddleware(config, {
++  schemaPath: './src/schema/index.ts',
++  viteConfig: (viteConfig) => {
++    viteConfig.server.fs ??= {}
++    viteConfig.server.fs.allow = ['../../../..']
++    return viteConfig
++  },
++})
+ 
+ // console.log(config)
+ module.exports = config
