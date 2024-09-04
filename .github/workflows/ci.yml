@@ -56,21 +56,10 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        id: test_trace_deployment
+          # TODO surface deploy url in github UI via environments
         run: |
-          npm install -g netlify-cli
-          OUTPUT=$(netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests --json)
-          DEPLOY_URL=$(echo $OUTPUT | jq -r '.deploy_ssl_url')
-          echo "deploy_url=$DEPLOY_URL" >> $GITHUB_OUTPUT
-
-      - name: Create test trace deployment
-        uses: actions/create-github-app-token@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          environment: Preview
-          environment_url: ${{ steps.test_trace_deployment.outputs.deploy_url }}
-          auto_inactive: true
+          nix develop --command pnpm add -g netlify-cli
+          nix develop --command netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
 
   build-example-todomvc:
     strategy:
