@@ -14,7 +14,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -32,24 +32,19 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
+      - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v25
       - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - name: Build nix env
+        run: nix develop --command true
+      - name: Install pnpm
+        run: nix develop --command pnpm install
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
         env:
           WORKSPACE_ROOT: ${{ github.workspace }}
-      - run: pnpm install
-      - run: pnpm playwright install --with-deps
-        working-directory: integration-tests
-      - run: pnpm build:ts
+      - run: nix develop --command pnpm install
+      - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -72,7 +67,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -82,6 +77,8 @@ jobs:
           cache: pnpm
       - uses: cachix/install-nix-action@v25
       - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - name: Build nix env
+        run: nix develop --command true
       - name: Derive monorepo examples
         run: nix develop --command bun scripts/sync-examples.ts --single-run
         env:
