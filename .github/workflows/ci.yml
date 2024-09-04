@@ -34,6 +34,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v25
+        with:
+          # Mostly to avoid GitHub rate limiting
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - uses: DeterminateSystems/magic-nix-cache-action@v2
       - name: Build nix env
         run: nix develop --command true
@@ -76,6 +80,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - uses: cachix/install-nix-action@v25
+        with:
+          # Mostly to avoid GitHub rate limiting
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - uses: DeterminateSystems/magic-nix-cache-action@v2
       - name: Build nix env
         run: nix develop --command true
