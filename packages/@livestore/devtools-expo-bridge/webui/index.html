@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveStore DevTools Redirect</title>
+    <script>
+        const currentUrl = new URL(window.location.href);
+        const redirectUrl = `http://localhost:${currentUrl.port}/livestore-devtools/`;
+        window.location.href = redirectUrl;
+    </script>
+</head>
+<body>
+    <p>If you are not redirected, <a href="javascript:void(0);" onclick="window.location.href=redirectUrl">click here</a>.</p>
+</body>
+</html>
