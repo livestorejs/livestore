@@ -2,13 +2,7 @@ import type * as http from 'node:http'
 
 import type { MetroConfig } from 'expo/metro-config'
 
-type Middleware = (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => void
-
-export type Options = {
-  viteConfig?: (config: any) => any
-  // viteConfig?: (config: Vite.UserConfig) => Vite.UserConfig
-  schemaPath: string
-}
+import type { Middleware, Options } from '../types.js'
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
@@ -60,3 +54,5 @@ module.exports = {
   addLiveStoreDevtoolsMiddleware,
   makeLiveStoreDevtoolsMiddleware,
 }
+
+export type { addLiveStoreDevtoolsMiddleware, makeLiveStoreDevtoolsMiddleware }

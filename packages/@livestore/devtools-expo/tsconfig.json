@@ -6,7 +6,7 @@
     "verbatimModuleSyntax": true, 
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
+  "include": ["./src", "types.d.ts"],
   "references": [
     { "path": "../web" }
   ]

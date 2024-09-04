@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import * as Vite from 'vite'
 
-import type { Options } from './metro-config.cjs'
+import type { Options } from '../types.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -34,8 +34,6 @@ export const makeViteServer = async (options: Options) => {
     base: '/livestore-devtools/',
     plugins: [virtualHtmlPlugin],
   })
-
-  console.log('alias', defaultViteConfig.resolve?.alias)
 
   const viteConfig = options.viteConfig?.(defaultViteConfig) ?? defaultViteConfig
 
