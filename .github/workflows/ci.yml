@@ -93,12 +93,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          path: examples/expo-app
+          sparse-checkout: examples/expo-app
       - name: Adjust workspace
         run: |
+          ls -la
+          ls -la examples
+          ls -la examples/expo-app
           mv examples/expo-app/* .
           mv examples/expo-app/.* . 2>/dev/null || true
           rm -rf examples
+          ls -la
+          ls -la examples
+          ls -la examples/expo-app
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
