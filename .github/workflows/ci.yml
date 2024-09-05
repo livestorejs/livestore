@@ -94,6 +94,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: examples/expo-app
+      - name: Adjust workspace
+        run: |
+          mv examples/expo-app/* examples/expo-app/.* .
+          rm -rf examples
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
