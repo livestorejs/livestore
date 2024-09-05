@@ -93,33 +93,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: examples/expo-app
+          sparse-checkout: |
+            examples/expo-app
+          sparse-checkout-cone-mode: false
       - name: Adjust workspace
         run: |
-          ls -la
-          ls -la examples
-          ls -la examples/expo-app
           mv examples/expo-app/* .
           mv examples/expo-app/.* . 2>/dev/null || true
           rm -rf examples
-          ls -la
-          ls -la examples
-          ls -la examples/expo-app
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      # - name: Bootstrap example
-      #   run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Install dependencies
-        run: |
-          cd expo-app
-          pnpm install
+        run: pnpm install
       - name: Run TypeScript compiler
-        run: |
-          cd expo-app
-          pnpm tsc
+        run: pnpm tsc
       # TODO EAS build
 
