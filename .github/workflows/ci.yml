@@ -84,19 +84,22 @@ jobs:
       - run: nix develop --command pnpm build
         working-directory: examples/todomvc
   
-  build-example-expo-tiged:
+  build-example-expo-standalone:
     strategy:
       matrix:
         node-version: [20]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          path: examples/expo-app
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Bootstrap example
-        run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
+      # - name: Bootstrap example
+      #   run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Install dependencies
