@@ -108,6 +108,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+      # - name: Bootstrap example
+      #   run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
       - name: Install dependencies
         run: pnpm install
       - name: Run TypeScript compiler

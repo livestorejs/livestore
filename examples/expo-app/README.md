@@ -1,16 +1,14 @@
-## Setup requirements
+## Setup
 
+- Set up project via `npx tiged --mode=git livestorejs/livestore/examples/expo-app`
+- Run `pnpm install` to install the dependencies
 - Set `export RCT_NEW_ARCH_ENABLED=1` in your shell to enable the new React Native architecture (required for transactional state updates)
-
-- Until Expo properly supports PNPM we also need the following
-  - Some workarounds in `metro.config.js` + `@babel/runtime` in `package.json`
 
 ## Running
 
 The easiest way to run the app locally is using Expo Go. Just run `pnpm ios` or `pnpm android`.
 
 You can open the LiveStore devtools by pressing `Shift+m` and select `@livestore/devtools-expo`.
-
 
 ### Custom builds
 
@@ -31,4 +29,6 @@ Run `open $(xcrun simctl get_app_container booted dev.livestore.livestore-expo d
 
 ## Notes
 
-- Doesn't yet support Expo Web (see [#130](https://github.com/livestorejs/livestore/issues/130))
+- Until Expo properly supports PNPM we also need the following
+  - Some workarounds in `metro.config.js` + `@babel/runtime` in `package.json`
+- LiveStore doesn't yet support Expo Web (see [#130](https://github.com/livestorejs/livestore/issues/130))
