@@ -60,6 +60,8 @@ jobs:
         run: |
           nix develop --command pnpm add -g netlify-cli
           nix develop --command netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
+  
+  # TODO test cloning examples standalone 
 
   build-example-todomvc:
     strategy:
@@ -81,3 +83,24 @@ jobs:
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm build
         working-directory: examples/todomvc
+  
+  build-example-expo-tiged:
+    strategy:
+      matrix:
+        node-version: [20]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - name: Bootstrap example
+        run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
+      - run: pnpm install
+      - run: pnpm tsc
+      # TODO EAS build
+
