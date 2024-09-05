@@ -19,7 +19,7 @@ If you need a custom build, you could run `pnpm expo run:ios` or `pnpm expo run:
 
 ### With Expo Go
 
-Run `open $(xcrun simctl get_app_container booted host.exp.Exponent data)/Documents/ExponentExperienceData/@$USER/livestore-expo/SQLite` to open the database in Finder.
+Run `open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore-expo*" -print -quit)/SQLite` to open the database in Finder.
 
 ### With custom builds
 
