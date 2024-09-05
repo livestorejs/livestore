@@ -100,6 +100,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       # - name: Bootstrap example
       #   run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
+      - run: ls -la && pwd
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Install dependencies
