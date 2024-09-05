@@ -546,6 +546,12 @@ importers:
       '@effect/schema':
         specifier: 0.72.0
         version: 0.72.0(effect@3.7.0)
+      '@expo/vector-icons':
+        specifier: 14.0.2
+        version: 14.0.2
+      '@livestore/devtools-expo-bridge':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/devtools-expo-bridge
       '@livestore/devtools-react':
         specifier: 0.0.57-dev.0
         version: 0.0.57-dev.0(@livestore/livestore@packages+@livestore+livestore)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
