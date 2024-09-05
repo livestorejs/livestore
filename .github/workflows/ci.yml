@@ -91,16 +91,21 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      # - name: Install pnpm
-      #   uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: pnpm
       - name: Bootstrap example
         run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
-      - run: pnpm install
-      - run: pnpm tsc
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+      - name: Install dependencies
+        run: |
+          cd expo-app
+          pnpm install
+      - name: Run TypeScript compiler
+        run: |
+          cd expo-app
+          pnpm tsc
       # TODO EAS build
 
