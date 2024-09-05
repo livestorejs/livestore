@@ -13,13 +13,7 @@
     "test": "CI=1 pnpm --parallel run test"
   },
   "resolutions": {
-    "@livestore/livestore": "workspace:*",
-    "@livestore/web": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/common": "workspace:*",
-    "@livestore/devtools-expo": "workspace:*",
-    "@livestore/devtools-react": "0.0.57-dev.0",
-    "effect-db-schema": "workspace:*"
+    "@livestore/devtools-react": "0.0.57-dev.0"
   },
   "devDependencies": {
     "@effect/language-service": "^0.1.0",

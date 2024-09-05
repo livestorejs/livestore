@@ -97,7 +97,7 @@ jobs:
       - name: Adjust workspace
         run: |
           mv examples/expo-app/* .
-          mv examples/expo-app/.* .
+          mv examples/expo-app/.* . 2>/dev/null || true
           rm -rf examples
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
