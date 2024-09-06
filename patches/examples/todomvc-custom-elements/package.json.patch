@@ -3,13 +3,13 @@
 @@ -10,10 +10,10 @@
    "dependencies": {
      "@effect/schema": "0.72.2",
-     "@livestore/devtools-react": "0.0.57-dev.7",
--    "@livestore/livestore": "0.0.57-dev.7",
--    "@livestore/utils": "0.0.57-dev.7",
+     "@livestore/devtools-react": "0.0.57-dev.8",
+-    "@livestore/livestore": "0.0.57-dev.8",
+-    "@livestore/utils": "0.0.57-dev.8",
 +    "@livestore/livestore": "workspace:*",
 +    "@livestore/utils": "workspace:*",
      "@livestore/wa-sqlite": "1.0.1-dev.29",
--    "@livestore/web": "0.0.57-dev.7",
+-    "@livestore/web": "0.0.57-dev.8",
 +    "@livestore/web": "workspace:*",
      "effect": "3.7.2",
      "react": "^18.3.1",
