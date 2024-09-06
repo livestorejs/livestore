@@ -23,7 +23,7 @@
     "expo": "51.0.32"
   },
   "peerDependencies": {
-    "expo": "51.x"
+    "expo": "^51"
   },
   "publishConfig": {
     "access": "public"

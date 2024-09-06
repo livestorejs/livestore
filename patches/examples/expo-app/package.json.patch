@@ -2,7 +2,7 @@
 +++ package.json
 @@ -11,10 +11,10 @@
    "dependencies": {
-     "@effect/schema": "0.72.0",
+     "@effect/schema": "0.72.2",
      "@expo/vector-icons": "14.0.2",
 -    "@livestore/devtools-expo": "0.0.57-dev.7",
 -    "@livestore/expo": "0.0.57-dev.7",

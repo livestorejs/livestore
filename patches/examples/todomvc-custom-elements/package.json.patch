@@ -2,7 +2,7 @@
 +++ package.json
 @@ -10,10 +10,10 @@
    "dependencies": {
-     "@effect/schema": "0.72.0",
+     "@effect/schema": "0.72.2",
      "@livestore/devtools-react": "0.0.57-dev.7",
 -    "@livestore/livestore": "0.0.57-dev.7",
 -    "@livestore/utils": "0.0.57-dev.7",
@@ -11,6 +11,6 @@
      "@livestore/wa-sqlite": "1.0.1-dev.29",
 -    "@livestore/web": "0.0.57-dev.7",
 +    "@livestore/web": "workspace:*",
-     "effect": "3.7.0",
+     "effect": "3.7.2",
      "react": "^18.3.1",
      "react-dom": "^18.3.1",
