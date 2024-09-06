@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@livestore/devtools-react': 0.0.57-dev.8
+  '@livestore/devtools-react': 0.0.57
 
 patchedDependencies:
   playwright@1.46.1:
@@ -156,8 +156,8 @@ importers:
         specifier: ^2.1.2
         version: 2.1.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -337,8 +337,8 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -401,8 +401,8 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -474,8 +474,8 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -550,8 +550,8 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -617,17 +617,17 @@ importers:
         specifier: 14.0.2
         version: 14.0.2
       '@livestore/devtools-expo':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(5ufclsfhqm45cvyhr7w4hjxkqu)
+        specifier: 0.0.57
+        version: 0.0.57(eqfspwgacil544xcnj7rutsyrm)
       '@livestore/expo':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       '@livestore/livestore':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0)
       '@livestore/utils':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       babel-preset-expo:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
@@ -690,17 +690,17 @@ importers:
         specifier: ^2.1.2
         version: 2.1.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -871,17 +871,17 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -935,20 +935,20 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
       '@livestore/utils':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       effect:
         specifier: 3.7.2
         version: 3.7.2
@@ -1008,20 +1008,20 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
       '@livestore/utils':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1084,17 +1084,17 @@ importers:
         specifier: 0.72.2
         version: 0.72.2(effect@3.7.2)
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
       '@livestore/livestore':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+        specifier: 0.0.57
+        version: 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       '@schickling/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -1208,8 +1208,8 @@ importers:
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/devtools-react':
-        specifier: 0.0.57-dev.8
-        version: 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
+        specifier: 0.0.57
+        version: 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
@@ -3261,36 +3261,36 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@livestore/cf-sync@0.0.57-dev.8':
-    resolution: {integrity: sha512-u4A3hm4PRH0IO03oUGgef9dKd0xzh45RuA9ubxEBXmy+sn8MmvAgoKkuPTM3GIBSAXgGDkoUuA+rtUUH+oomYQ==}
+  '@livestore/cf-sync@0.0.57':
+    resolution: {integrity: sha512-32R6anAHcp6TWeEWrQWWNHvghYTYN++I9aMMSDmDFsfOcnqM0tMgk14uq5ri+L8G39PAQFK1ANe0gn6unHQ/1Q==}
 
-  '@livestore/common@0.0.57-dev.8':
-    resolution: {integrity: sha512-xVNQG04JHxfL911CHnB7WcyoeGpZnlkQVpskhBcxSyHYHYieAo9dP25CIA7VVp6WZsLerh4db1tDCPuQ5NYYHg==}
+  '@livestore/common@0.0.57':
+    resolution: {integrity: sha512-PyOd1OeQc5eAsrknTGdKJ22Glo65MxThYg9OmFiUp4zvsGC2jQX2gwb5OY6OnmmNhIidXjptqq2wUTuHM17oVg==}
 
-  '@livestore/devtools-expo-common@0.0.57-dev.8':
-    resolution: {integrity: sha512-iXdqjBx+iTnW2BVczPU6r4N+AcUHcixJ7Q9LGxPz9HgIjil9m3Q+sUyriym+fIrLCEz3H1miDEPi05+UT5d64Q==}
+  '@livestore/devtools-expo-common@0.0.57':
+    resolution: {integrity: sha512-EE3af5Kd8l+bMeSo4H8LnBC6Q7gTU35l6gU6hqa/iTJX3IJwLITROhX982VIpEFUPgvJ5CGo8lkR4EX3iACYCg==}
     peerDependencies:
       expo: ^51
 
-  '@livestore/devtools-expo@0.0.57-dev.8':
-    resolution: {integrity: sha512-RNShhh3f8A2bYWKH1qn6deelzSE5GbbUAJ6cQ8NnBmUublUPC9b2UIAXEaVP9BLEIA+dUP2S/mYOjluEw3Z2tg==}
+  '@livestore/devtools-expo@0.0.57':
+    resolution: {integrity: sha512-vci+piHQIZomVZRSjBhe4DCyxMGKf7wSZDC5RQKs+lanThh2LGQHqaO4WH1XHk5/79QO6LAIywf2t/Z87/hr6A==}
     peerDependencies:
       expo: ^51
 
-  '@livestore/devtools-react@0.0.57-dev.8':
-    resolution: {integrity: sha512-SVj1swVfrO5TGLboQkf7C6CMPxKX//eHdqSetOamM+FlP2G+DiNqMEh//b5Xj2CWLVsmu8+0SQIvvVG88T7vfA==}
+  '@livestore/devtools-react@0.0.57':
+    resolution: {integrity: sha512-7DbhrloMV1e468mc4hEwCYfdF3wN+Zsp0otWY6zcepdabou00yWoXbKaFjjt9c1p734xzvS9fB6aSYcTKydWFg==}
     peerDependencies:
-      '@livestore/livestore': ^0.0.57-dev.8
+      '@livestore/livestore': ^0.0.57
       react: ^18
 
-  '@livestore/expo@0.0.57-dev.8':
-    resolution: {integrity: sha512-6dtsz8t7jf+I7Yyo3YJAE83kfY0mUQmWWu6YtGPiswJtffQeaaVEqlvEHBgpxnQ+5Z/6GJGmVMFaiVUhgpuMOA==}
+  '@livestore/expo@0.0.57':
+    resolution: {integrity: sha512-MJ6sPT4yVnx/zvt+qlKxwnqxN94RR+KMdhGrw8uRQr3b/vRtvymXK3yQIesgu5s335ozeR6u2n5/JjMDFjKTkQ==}
     peerDependencies:
       expo-file-system: '*'
       expo-sqlite: '*'
 
-  '@livestore/livestore@0.0.57-dev.8':
-    resolution: {integrity: sha512-ZHG7vu8jYhfgOlvXJt42C6B/eih0CKoCmx4RsB1iGiVrauOk8gxYAyw8fKocDBMX29P6Cfj4YDVKi/bxhgVoXg==}
+  '@livestore/livestore@0.0.57':
+    resolution: {integrity: sha512-J1vR3vTU1T9KEy4779yFNXtdTZ/VDdx/lB1PtvaoJinrwsJzZv/tZXikuh77XPkI0JMbrO3CfkooCFhy1+1RYQ==}
     peerDependencies:
       graphql: 16.x
       react: ^18
@@ -3298,8 +3298,8 @@ packages:
       graphql:
         optional: true
 
-  '@livestore/utils@0.0.57-dev.8':
-    resolution: {integrity: sha512-+90vfafdue906urptOFh1GJj/gIX9pCOwVozl6jzIytVVtAln6qaq323MInREdr1YnKdNNEkJPVnbZY9NrE/vA==}
+  '@livestore/utils@0.0.57':
+    resolution: {integrity: sha512-hGj6WnfA/Y8s/ZgaRu4CLp2SJEyD+9HVO1pl8OVw2xQeJzYWWi21aQcHlg3FR/4CkPkgZmq09NCJKHqPCIAppA==}
     peerDependencies:
       '@effect/experimental': ^0.24.4
       '@effect/opentelemetry': ^0.36.2
@@ -3312,8 +3312,8 @@ packages:
   '@livestore/wa-sqlite@1.0.1-dev.29':
     resolution: {integrity: sha512-9hDwwNrLFQIy4eBZttZmSdYGqGAZb/1UF1CB0a4GXVr6H4i1EGTZ/HKprHOV41pqPBZgJBujvxGHwk12BKglxA==}
 
-  '@livestore/web@0.0.57-dev.8':
-    resolution: {integrity: sha512-s5elz8WWhgn3teoME6KWwMub+FIjU8Lu3fEfAutIU7RYERGysMs48INs7yzgCDRtpmUEWgz3ehucykpI1ixMEw==}
+  '@livestore/web@0.0.57':
+    resolution: {integrity: sha512-O0tLW2rL4Dz8I6Z1fmOcR641F5yHLzJ2OMHdX943hohFIUDLgWGJK8yNk5nR36IRPFxV8NtcpMlMmHylLmH56Q==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -6338,17 +6338,17 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
+  effect-db-schema@0.0.57:
+    resolution: {integrity: sha512-GG15MgyIG5bM4T1sqB9M4YYApTjf8Wosbf/s4SfGi7ijGXHZYDK+6y/0K5ToOxlnAlUa849D6e8sADDZ/Rs1Gg==}
+    peerDependencies:
+      '@effect/schema': ^0.72.2
+      effect: ^3.7.2
+
   effect-db-schema@0.0.57-dev.0:
     resolution: {integrity: sha512-8iBlhu2KtOpfxe1xANKOajIQ+JvpBPxvP8Wqa0Z9T1gutvaJILcYIXqJMnhbsdGOWb4LanmjDISzHIqfUMZI5w==}
     peerDependencies:
       '@effect/schema': ^0.71.3
       effect: ^3.7.0
-
-  effect-db-schema@0.0.57-dev.8:
-    resolution: {integrity: sha512-34NHiiIoRPnO6EXFqJUQaqvX8EFMvMvKbYjHV+vqIT4uZz78z4kQF0+TuP0CUx7jfoFcYdJSjATvRts6O/HCJQ==}
-    peerDependencies:
-      '@effect/schema': ^0.72.2
-      effect: ^3.7.2
 
   effect@3.7.2:
     resolution: {integrity: sha512-pV7l1+LSZFvVObj4zuy4nYiBaC7qZOfrKV6s/Ef4p3KueiQwZFgamazklwyZ+x7Nyj2etRDFvHE/xkThTfQD1w==}
@@ -14142,10 +14142,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  '@livestore/cf-sync@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)':
+  '@livestore/cf-sync@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)':
     dependencies:
-      '@livestore/common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
     transitivePeerDependencies:
       - '@effect/experimental'
       - '@effect/opentelemetry'
@@ -14155,11 +14155,11 @@ snapshots:
       - '@opentelemetry/api'
       - effect
 
-  '@livestore/common@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)':
+  '@livestore/common@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)':
     dependencies:
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@opentelemetry/api': 1.9.0
-      effect-db-schema: 0.0.57-dev.8(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      effect-db-schema: 0.0.57(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
     transitivePeerDependencies:
       - '@effect/experimental'
       - '@effect/opentelemetry'
@@ -14168,10 +14168,10 @@ snapshots:
       - '@effect/schema'
       - effect
 
-  '@livestore/devtools-expo-common@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))':
+  '@livestore/devtools-expo-common@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))':
     dependencies:
-      '@livestore/common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
     transitivePeerDependencies:
       - '@effect/experimental'
@@ -14182,11 +14182,11 @@ snapshots:
       - '@opentelemetry/api'
       - effect
 
-  '@livestore/devtools-expo@0.0.57-dev.8(5ufclsfhqm45cvyhr7w4hjxkqu)':
+  '@livestore/devtools-expo@0.0.57(eqfspwgacil544xcnj7rutsyrm)':
     dependencies:
-      '@livestore/devtools-react': 0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0))(react@18.2.0)
+      '@livestore/devtools-react': 0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0))(react@18.2.0)
       '@livestore/wa-sqlite': 1.0.1-dev.29
-      '@livestore/web': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/web': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       expo: 51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))
       vite: 5.4.3(@types/node@22.5.2)(terser@5.31.1)
       ws: 8.18.0
@@ -14210,26 +14210,26 @@ snapshots:
       - terser
       - utf-8-validate
 
-  '@livestore/devtools-react@0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0))(react@18.2.0)':
+  '@livestore/devtools-react@0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0))(react@18.2.0)':
     dependencies:
-      '@livestore/livestore': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0)
+      '@livestore/livestore': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0)
       react: 18.2.0
 
-  '@livestore/devtools-react@0.0.57-dev.8(@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)':
+  '@livestore/devtools-react@0.0.57(@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@livestore/livestore': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
+      '@livestore/livestore': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)
       react: 18.3.1
 
-  '@livestore/devtools-react@0.0.57-dev.8(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-react@0.0.57(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
 
-  ? '@livestore/expo@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))'
-  : dependencies:
-      '@livestore/common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
-      '@livestore/devtools-expo-common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+  '@livestore/expo@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))))(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))':
+    dependencies:
+      '@livestore/common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/devtools-expo-common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@opentelemetry/api': 1.9.0
       expo-file-system: 17.0.1(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
       expo-sqlite: 14.0.6(expo@51.0.32(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7)))
@@ -14242,13 +14242,13 @@ snapshots:
       - effect
       - expo
 
-  '@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0)':
+  '@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.2.0)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.8.2)
-      '@livestore/common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@opentelemetry/api': 1.9.0
-      effect-db-schema: 0.0.57-dev.8(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      effect-db-schema: 0.0.57(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       react: 18.2.0
     optionalDependencies:
       graphql: 16.8.2
@@ -14260,13 +14260,13 @@ snapshots:
       - '@effect/schema'
       - effect
 
-  '@livestore/livestore@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)':
+  '@livestore/livestore@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(graphql@16.8.2)(react@18.3.1)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.8.2)
-      '@livestore/common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@opentelemetry/api': 1.9.0
-      effect-db-schema: 0.0.57-dev.8(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      effect-db-schema: 0.0.57(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       react: 18.3.1
     optionalDependencies:
       graphql: 16.8.2
@@ -14278,7 +14278,7 @@ snapshots:
       - '@effect/schema'
       - effect
 
-  '@livestore/utils@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)':
+  '@livestore/utils@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)':
     dependencies:
       '@effect/experimental': 0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0)
       '@effect/opentelemetry': 0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2)
@@ -14288,18 +14288,18 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       date-fns: 3.6.0
       effect: 3.7.2
-      effect-db-schema: 0.0.57-dev.8(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      effect-db-schema: 0.0.57(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
       msgpackr: 1.11.0
       otel-websocket-exporter: 0.0.29
       pretty-bytes: 6.1.1
 
   '@livestore/wa-sqlite@1.0.1-dev.29': {}
 
-  '@livestore/web@0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)':
+  '@livestore/web@0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)':
     dependencies:
-      '@livestore/cf-sync': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
-      '@livestore/common': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
-      '@livestore/utils': 0.0.57-dev.8(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/cf-sync': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
+      '@livestore/common': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)
+      '@livestore/utils': 0.0.57(@effect/experimental@0.24.4(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2)(ws@8.18.0))(@effect/opentelemetry@0.36.2(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.25.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.26.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.7.2))(@effect/platform-browser@0.42.3(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(effect@3.7.2))(@effect/platform@0.63.3(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2))(@effect/schema@0.72.2(effect@3.7.2))(@opentelemetry/api@1.9.0)(effect@3.7.2)
       '@livestore/wa-sqlite': 1.0.1-dev.29
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
@@ -18027,13 +18027,13 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect-db-schema@0.0.57-dev.0(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2):
+  effect-db-schema@0.0.57(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2):
     dependencies:
       '@effect/schema': 0.72.2(effect@3.7.2)
       dprint-node: 1.0.8
       effect: 3.7.2
 
-  effect-db-schema@0.0.57-dev.8(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2):
+  effect-db-schema@0.0.57-dev.0(@effect/schema@0.72.2(effect@3.7.2))(effect@3.7.2):
     dependencies:
       '@effect/schema': 0.72.2(effect@3.7.2)
       dprint-node: 1.0.8
