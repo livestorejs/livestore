@@ -1,6 +1,6 @@
 {
   "name": "@livestore/expo",
-  "version": "0.0.57-dev.3",
+  "version": "0.0.57-dev.4",
   "type": "module",
   "exports": {
     ".": {

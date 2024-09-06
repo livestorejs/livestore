@@ -1,13 +1,13 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.0.57-dev.3",
+  "version": "0.0.57-dev.4",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.cts",
   "scripts": {
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/devtools-react": "0.0.57-dev.3",
+    "@livestore/devtools-react": "0.0.57-dev.4",
     "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/web": "workspace:*",
     "vite": "^5.4.2",
