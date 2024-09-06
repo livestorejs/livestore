@@ -12,8 +12,12 @@ const SRC_DIR = `${cwd}/examples`
 const PATCHES_DIR = `${cwd}/patches/examples`
 const DEST_DIR = `${cwd}/examples-monorepo`
 
+if (fs.existsSync(DEST_DIR) === false) {
+  fs.mkdirSync(DEST_DIR, { recursive: true })
+}
+
 // Fails if dirs don't exist
-if (!fs.existsSync(SRC_DIR) || !fs.existsSync(PATCHES_DIR) || !fs.existsSync(DEST_DIR)) {
+if (!fs.existsSync(SRC_DIR) || !fs.existsSync(PATCHES_DIR)) {
   console.error('Directories do not exist')
   process.exit(1)
 }
