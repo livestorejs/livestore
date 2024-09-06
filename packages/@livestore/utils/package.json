@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.57-dev.4",
+  "version": "0.0.57-dev.5",
   "sideEffects": false,
   "type": "module",
   "exports": {
