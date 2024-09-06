@@ -28,7 +28,7 @@
     "dprint-node": "^1.0.8"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.71.3",
+    "@effect/schema": "^0.72.0",
     "effect": "^3.7.0"
   },
   "devDependencies": {
