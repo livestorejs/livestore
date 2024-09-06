@@ -71,3 +71,24 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 </Steps>
 
+## Custom builds
+
+If you need a custom build, you could run `pnpm expo run:ios` or `pnpm expo run:android` to build the app locally.
+
+## Database location
+
+### With Expo Go
+
+Run `open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore-expo*" -print -quit)/SQLite` to open the database in Finder.
+
+### With custom builds
+
+The app SQLite database is stored in the app's `Library` directory (e.g. `/Users/<USERNAME>/Library/Developer/CoreSimulator/Devices/<DEVICE_ID>/data/Containers/Data/Application/<APP_ID>/Documents/SQLite/app.db`)
+
+Run `open $(xcrun simctl get_app_container booted dev.livestore.livestore-expo data)/Documents/SQLite` to open the directory in Finder
+
+## Further notes
+
+- Until Expo properly supports PNPM we also need the following
+  - Some workarounds in `metro.config.js` + `@babel/runtime` in `package.json`
+- LiveStore doesn't yet support Expo Web (see [#130](https://github.com/livestorejs/livestore/issues/130))
