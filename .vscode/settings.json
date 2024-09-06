@@ -35,11 +35,13 @@
     "**/playwright-report": true,
     "**/.direnv": true,
     "**/.DS_Store": true,
-    "**/flake.lock": true
+    "**/flake.lock": true,
+    "**/examples-monorepo/**": false
   },
   "search.exclude": {
     "**/.expo": true,
     "**/build": true,
+    "**/examples-monorepo/**": false,
     "**/.vercel": true,
     "**/.direnv": true,
     "**/dist": true,
@@ -50,7 +52,5 @@
   "workbench.editor.customLabels.patterns": {
     "**/examples/**/*": "${filename} - EX",
     "**/packages/**/*": "${filename} - LIB"
-},
-  "vitest.commandLine": "direnv exec . vitest",
-  "vitest.exclude": ["**/node_modules/**", "**/dist/**", "**/.{idea,git,cache,output,temp,direnv}/**"]
+  },
 }

@@ -184,4 +184,7 @@ export const makeAdapter =
       })
 
       return { syncDb: dbRef.current.syncDb, coordinator } satisfies StoreAdapter
-    }).pipe(Effect.mapError((cause) => new UnexpectedError({ cause })))
+    }).pipe(
+      Effect.mapError((cause) => (cause._tag === 'LiveStore.UnexpectedError' ? cause : new UnexpectedError({ cause }))),
+      Effect.tapCauseLogPretty,
+    )

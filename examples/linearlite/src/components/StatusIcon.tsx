@@ -1,3 +1,4 @@
+import React from 'react'
 import classNames from 'classnames'
 import { StatusIcons, StatusType } from '../types/issue'
 

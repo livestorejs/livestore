@@ -10,7 +10,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-bridge/web-channel'
+import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
 

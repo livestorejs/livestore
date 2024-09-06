@@ -14,16 +14,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v25
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
+      - name: Derive monorepo examples
+        run: nix develop --command bun scripts/sync-examples.ts --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
 
       - name: Create new branch
         run: |
@@ -36,7 +34,7 @@ jobs:
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
           git checkout -b $BRANCH_NAME
 
-      - run: pnpm install --fix-lockfile --no-frozen-lockfile
+      - run: nix develop --command pnpm install --fix-lockfile --no-frozen-lockfile
 
       - name: Check for changes
         id: check_changes

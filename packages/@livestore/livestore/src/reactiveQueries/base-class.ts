@@ -1,6 +1,5 @@
 import type { QueryInfo, QueryInfoNone } from '@livestore/common'
 import type * as otel from '@opentelemetry/api'
-import ReactDOM from 'react-dom'
 
 import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
@@ -9,15 +8,13 @@ import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'
 export type ReactivityGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, QueryContext>
 
 export const makeReactivityGraph = (): ReactivityGraph =>
-  new ReactiveGraph<RefreshReason, QueryDebugInfo, QueryContext>({
-    // TODO also find a better way to only use this effects wrapper when used in a React app
-    effectsWrapper: (run) => ReactDOM.unstable_batchedUpdates(() => run()),
-  })
+  new ReactiveGraph<RefreshReason, QueryDebugInfo, QueryContext>()
 
 export type QueryContext = {
   store: Store
   otelTracer: otel.Tracer
   rootOtelContext: otel.Context
+  effectsWrapper: (run: () => void) => void
 }
 
 export type UnsubscribeQuery = () => void

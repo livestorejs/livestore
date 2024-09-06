@@ -109,10 +109,6 @@ export type DebugRefreshReasonBase =
 
 export type DebugRefreshReason<T extends string = string> = DebugRefreshReasonBase | { _tag: T }
 
-export type ReactiveGraphOptions = {
-  effectsWrapper?: (runEffects: () => void) => void
-}
-
 export type AtomDebugInfo<TDebugThunkInfo extends DebugThunkInfo> = {
   atom: SerializedAtom
   resultChanged: boolean
@@ -194,13 +190,12 @@ const uniqueGraphId = () => `graph-${++globalGraphIdCounter}`
 export class ReactiveGraph<
   TDebugRefreshReason extends DebugRefreshReason,
   TDebugThunkInfo extends DebugThunkInfo,
-  TContext = {},
+  TContext extends { effectsWrapper?: (runEffects: () => void) => void } = {},
 > {
   id = uniqueGraphId()
 
   readonly atoms: Set<Atom<any, TContext, TDebugRefreshReason>> = new Set()
   readonly effects: Set<Effect> = new Set()
-  effectsWrapper: (runEffects: () => void) => void
 
   context: TContext | undefined
 
@@ -213,10 +208,6 @@ export class ReactiveGraph<
   private deferredEffects: Map<Effect, Set<TDebugRefreshReason>> = new Map()
 
   private refreshCallbacks: Set<() => void> = new Set()
-
-  constructor(options: ReactiveGraphOptions) {
-    this.effectsWrapper = options?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
-  }
 
   makeRef<T>(
     val: T,
@@ -463,7 +454,8 @@ export class ReactiveGraph<
       otelContext?: otel.Context
     },
   ) => {
-    this.effectsWrapper(() => {
+    const effectsWrapper = this.context?.effectsWrapper ?? ((runEffects: () => void) => runEffects())
+    effectsWrapper(() => {
       this.currentDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
 
       for (const effect of effectsToRefresh) {

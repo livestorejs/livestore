@@ -23,20 +23,10 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 export default defineConfig({
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 60_001,
-    hmr: process.env.DISABLE_HMR === undefined ? true : false,
     headers: credentiallessHeaders,
-    fs: {
-      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
-      // Feel free to remove this if you're just copying this example
-      allow: ['../../../..'],
-    },
   },
   preview: {
     headers: credentiallessHeaders,
-  },
-  build: {
-    //   sourcemap: true,
-    //   minify: false,
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {

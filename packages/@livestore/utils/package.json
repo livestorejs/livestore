@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.56",
+  "version": "0.0.57",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -42,24 +42,24 @@
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.23.6",
-    "@effect/opentelemetry": "^0.36.0",
-    "@effect/platform": "^0.62.4",
-    "@effect/platform-browser": "^0.41.4",
-    "@effect/schema": "^0.71.3",
+    "@effect/experimental": "^0.24.4",
+    "@effect/opentelemetry": "^0.36.2",
+    "@effect/platform": "^0.63.3",
+    "@effect/platform-browser": "^0.42.3",
+    "@effect/schema": "^0.72.2",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.7.0"
+    "effect": "^3.7.2"
   },
   "devDependencies": {
-    "@effect/experimental": "0.24.0",
-    "@effect/opentelemetry": "0.36.0",
-    "@effect/platform": "0.63.0",
-    "@effect/platform-browser": "0.42.0",
-    "@effect/schema": "0.72.0",
+    "@effect/experimental": "0.24.4",
+    "@effect/opentelemetry": "0.36.2",
+    "@effect/platform": "0.63.3",
+    "@effect/platform-browser": "0.42.3",
+    "@effect/schema": "0.72.2",
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^22.0.0",
     "@types/web": "^0.0.153",
-    "effect": "3.7.0",
+    "effect": "3.7.2",
     "vitest": "^2.0.4"
   },
   "publishConfig": {

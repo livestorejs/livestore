@@ -79,6 +79,8 @@ export const makeAdapter =
   (options: WebAdapterOptions): StoreAdapterFactory =>
   ({ schema, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
+      yield* ensureBrowserRequirements
+
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
@@ -488,3 +490,22 @@ const getAppHostId = (key: string) => {
 
   return newKey
 }
+
+const ensureBrowserRequirements = Effect.gen(function* () {
+  const validate = (condition: boolean, label: string) =>
+    Effect.gen(function* () {
+      if (condition) {
+        yield* UnexpectedError.make({
+          cause: `[@livestore/web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
+        })
+      }
+    })
+
+  yield* Effect.all([
+    validate(typeof navigator === 'undefined', 'navigator'),
+    validate(navigator.locks === undefined, 'navigator.locks'),
+    validate(navigator.storage === undefined, 'navigator.storage'),
+    validate(typeof window === 'undefined', 'window'),
+    validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
+  ])
+})

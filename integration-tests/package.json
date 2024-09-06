@@ -6,19 +6,19 @@
   "scripts": {
     "test": "pnpm test:unit & pnpm test:todomvc",
     "test:unit": "PLAYWRIGHT_SUITE=unit DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='pnpm vite dev' playwright test src/tests/playwright/unit-tests.play.ts",
-    "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='PORT=$DEV_SERVER_PORT pnpm --filter todomvc dev' playwright test src/tests/playwright/todomvc.play.ts"
+    "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='PORT=$DEV_SERVER_PORT pnpm --filter todomvc-monorepo dev' playwright test src/tests/playwright/todomvc.play.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/effect-playwright": "workspace:*",
     "@livestore/livestore": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/utils": "workspace:*",
+    "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/web": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "1.45.3",
+    "@playwright/test": "^1.46.1",
     "@types/node": "^22.0.0",
-    "vite": "5.3.5"
+    "vite": "5.4.3"
   }
 }

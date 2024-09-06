@@ -14,7 +14,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -32,24 +32,19 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build nix env
+        run: nix develop --command true
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - name: Install Nix
-        uses: cachix/install-nix-action@v17
-        with:
-          # Mostly to avoid GitHub rate limiting
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      - run: pnpm install
-      - run: pnpm playwright install --with-deps
-        working-directory: integration-tests
-      - run: pnpm build:ts
+        run: nix develop --command pnpm install
+      - name: Derive monorepo examples
+        run: nix develop --command bun scripts/sync-examples.ts --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
+      - run: nix develop --command pnpm install
+      - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -61,9 +56,11 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          # TODO surface deploy url in github UI via environments
         run: |
-          npm install -g netlify-cli
-          netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
+          nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
+  
+  # TODO test cloning examples standalone 
 
   build-example-todomvc:
     strategy:
@@ -72,15 +69,50 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build nix env
+        run: nix develop --command true
+      - name: Derive monorepo examples
+        run: nix develop --command bun scripts/sync-examples.ts --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
+      - run: nix develop --command pnpm install
+      - run: nix develop --command pnpm build:ts
+      - run: nix develop --command pnpm build
+        working-directory: examples/todomvc
+  
+  build-example-expo-standalone:
+    strategy:
+      matrix:
+        node-version: [20]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            examples/expo-app
+          sparse-checkout-cone-mode: false
+      - name: Adjust workspace
+        run: |
+          mv examples/expo-app/* .
+          mv examples/expo-app/.* . 2>/dev/null || true
+          rm -rf examples
       - name: Install pnpm
         uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install
-      - run: pnpm build:ts
-      - run: pnpm build
-        working-directory: examples/todomvc
+      # - name: Bootstrap example
+      #   run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run TypeScript compiler
+        run: pnpm tsc
+      # TODO EAS build
+

@@ -4,7 +4,7 @@ import { ReactiveGraph } from './reactive.js'
 
 describe('a trivial graph', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({})
+    const graph = new ReactiveGraph()
     graph.context = {}
     const a = graph.makeRef(1, { label: 'a' })
     const b = graph.makeRef(2, { label: 'b' })
@@ -253,7 +253,7 @@ describe('a trivial graph', () => {
 
 describe('a dynamic graph', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({})
+    const graph = new ReactiveGraph()
     graph.context = {}
 
     const a = graph.makeRef(1, { label: 'a' })
@@ -323,7 +323,7 @@ describe('a dynamic graph', () => {
 
 describe('a diamond shaped graph', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({})
+    const graph = new ReactiveGraph()
     graph.context = {}
     const a = graph.makeRef(1)
     const b = graph.makeThunk((get) => get(a) + 1)
@@ -381,7 +381,7 @@ describe('a diamond shaped graph', () => {
 
 describe('a trivial graph with undefined', () => {
   const makeGraph = () => {
-    const graph = new ReactiveGraph({})
+    const graph = new ReactiveGraph()
     graph.context = {}
     const a = graph.makeRef(1)
     const b = graph.makeRef(undefined)
@@ -416,7 +416,7 @@ describe('a trivial graph with undefined', () => {
 
 describe('error handling', () => {
   it('throws an error when no context is set', () => {
-    const graph = new ReactiveGraph({})
+    const graph = new ReactiveGraph()
     const a = graph.makeRef(1)
     const b = graph.makeThunk((get) => get(a) + 1)
     expect(() => b.computeResult()).toThrowErrorMatchingInlineSnapshot(

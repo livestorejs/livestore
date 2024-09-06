@@ -2,9 +2,9 @@
   "private": true,
   "scripts": {
     "build": "pnpm run build:ts",
-    "build:clean": "bash -c \"find {examples,packages} -path '*node_modules*' -prune -o -name 'dist' -type d -exec rm -rf {} +\"",
-    "build:ts": "tsc --build tsconfig.all.json",
-    "dev:ts": "pnpm run build:ts --watch",
+    "build:clean": "bash -c \"find {examples,packages,examples-monorepo} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
+    "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
+    "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
@@ -13,10 +13,7 @@
     "test": "CI=1 pnpm --parallel run test"
   },
   "resolutions": {
-    "@livestore/livestore": "workspace:*",
-    "@livestore/*": "workspace:*",
-    "@livestore/devtools-react": "0.0.56",
-    "effect-db-schema": "workspace:*"
+    "@livestore/devtools-react": "0.0.57"
   },
   "devDependencies": {
     "@effect/language-service": "^0.1.0",
@@ -33,15 +30,16 @@
     "eslint-plugin-simple-import-sort": "12.1.1",
     "eslint-plugin-unicorn": "55.0.0",
     "madge": "^6.1.0",
-    "playwright": "1.45.3",
+    "netlify-cli": "^17.34.3",
+    "playwright": "1.46.1",
     "prettier": "3.3.3",
     "prettier-plugin-packagejson": "2.5.1",
     "typescript": "5.5.4"
   },
-  "packageManager": "pnpm@9.3.0",
+  "packageManager": "pnpm@9.9.0",
   "pnpm": {
     "patchedDependencies": {
-      "playwright@1.45.3": "patches/playwright@1.45.3.patch"
+      "playwright@1.46.1": "patches/playwright@1.46.1.patch"
     }
   }
 }

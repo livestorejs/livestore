@@ -1,5 +1,7 @@
 packages:
+  - scripts
   - packages/*
   - packages/@livestore/*
   - examples/*
+  - examples-monorepo/*
   - integration-tests

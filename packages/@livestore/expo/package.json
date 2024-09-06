@@ -1,6 +1,6 @@
 {
   "name": "@livestore/expo",
-  "version": "0.0.56",
+  "version": "0.0.57",
   "type": "module",
   "exports": {
     ".": {
@@ -15,7 +15,7 @@
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/devtools-expo-bridge": "workspace:*",
+    "@livestore/devtools-expo-common": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {

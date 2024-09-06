@@ -5,7 +5,16 @@ import { prettyBytes } from '@livestore/utils'
 // To improve LiveStore compatibility with e.g. Node.js we're guarding for `navigator` / `navigator.storage` to be defined.
 export const rootHandlePromise =
   typeof navigator === 'undefined' || navigator.storage === undefined
-    ? new Promise<never>(() => {})
+    ? // We're using a proxy here to make the promise reject lazy
+      (new Proxy(
+        {},
+        {
+          get: () =>
+            Promise.reject(
+              new Error(`Can't get OPFS root handle in this environment as navigator.storage is undefined`),
+            ),
+        },
+      ) as never)
     : navigator.storage.getDirectory()
 
 export const getDirHandle = async (absDirPath: string | undefined) => {

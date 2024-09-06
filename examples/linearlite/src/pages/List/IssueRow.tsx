@@ -1,3 +1,4 @@
+import React from 'react'
 import type { CSSProperties } from 'react'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import StatusMenu from '../../components/contextmenu/StatusMenu'

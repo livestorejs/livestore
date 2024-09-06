@@ -1,3 +1,4 @@
+import React from 'react'
 import StatusIcon from '../../components/StatusIcon'
 import { CSSProperties, memo } from 'react'
 import {
@@ -41,7 +42,7 @@ function IssueCol({ title, status, issues = [] }: Props) {
         type="category"
         mode="virtual"
         renderClone={(provided, snapshot, rubric) => {
-          const issue = issues[rubric.source.index]
+          const issue = issues[rubric.source.index]!
           return (
             <IssueItem
               provided={provided}

@@ -30,6 +30,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   adapter: StoreAdapterFactory
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
+  batchUpdates: (run: () => void) => void
 }
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
@@ -52,6 +53,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   adapter,
   disableDevtools,
   onBootStatus,
+  batchUpdates,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
   LiveStoreContextRunning,
   UnexpectedError | Cause.TimeoutException,
@@ -82,6 +84,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         disableDevtools,
         fiberSet,
         onBootStatus,
+        batchUpdates,
       })
 
       window.__debugLiveStore ??= {}

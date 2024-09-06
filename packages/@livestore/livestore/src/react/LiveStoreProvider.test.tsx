@@ -4,6 +4,7 @@ import { Schema } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import React from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { describe, expect, it } from 'vitest'
 
 import { schema, tables } from '../__tests__/react/fixture.js'
@@ -42,6 +43,7 @@ describe('LiveStoreProvider', () => {
           adapter={adapterMemo}
           boot={bootCb}
           signal={abortController.signal}
+          batchUpdates={batchUpdates}
         >
           <App />
         </LiveStoreProvider>
@@ -91,6 +93,7 @@ describe('LiveStoreProvider', () => {
           renderLoading={(status) => <div>Loading LiveStore: {status.stage}</div>}
           adapter={adapterMemo}
           boot={bootCb}
+          batchUpdates={batchUpdates}
         >
           <App />
         </LiveStoreProvider>

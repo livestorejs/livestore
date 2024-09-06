@@ -22,7 +22,19 @@ interface LiveStoreProviderProps<GraphQLContext> {
   renderError?: (error: UnexpectedError | unknown) => ReactElement
   renderShutdown?: (cause: IntentionalShutdownCause | StoreAbort) => ReactElement
   adapter: StoreAdapterFactory
-  batchUpdates?: (run: () => void) => void
+  /**
+   * In order for LiveStore to apply multiple mutations in a single render,
+   * you need to pass the `batchUpdates` function from either `react-dom` or `react-native`.
+   *
+   * ```ts
+   * // With React DOM
+   * import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+   *
+   * // With React Native
+   * import { unstable_batchedUpdates as batchUpdates } from 'react-native'
+   * ```
+   */
+  batchUpdates: (run: () => void) => void
   disableDevtools?: boolean
   signal?: AbortSignal
 }

@@ -1,0 +1,22 @@
+--- package.json
++++ package.json
+@@ -11,15 +11,15 @@
+   "dependencies": {
+     "@effect/schema": "0.72.2",
+     "@livestore/devtools-react": "0.0.57",
+-    "@livestore/livestore": "0.0.57",
+-    "@livestore/utils": "0.0.57",
++    "@livestore/livestore": "workspace:*",
++    "@livestore/utils": "workspace:*",
+     "@livestore/wa-sqlite": "1.0.1-dev.29",
+-    "@livestore/web": "0.0.57",
++    "@livestore/web": "workspace:*",
+     "@opentelemetry/api": "^1.9.0",
+     "@schickling/fps-meter": "^0.1.2",
+     "drizzle-orm": "^0.32.1",
+     "effect": "3.7.2",
+-    "effect-db-schema": "0.0.57-dev.0",
++    "effect-db-schema": "workspace:*",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1",
+     "todomvc-app-css": "^2.4.3",

@@ -1,0 +1,27 @@
+{
+  "name": "@livestore/devtools-expo",
+  "version": "0.0.57",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/devtools-react": "0.0.57",
+    "@livestore/wa-sqlite": "1.0.1-dev.29",
+    "@livestore/web": "workspace:*",
+    "vite": "^5.4.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.2",
+    "@types/ws": "8.5.12",
+    "expo": "51.0.32"
+  },
+  "peerDependencies": {
+    "expo": "^51"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,38 +1,37 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/release-24.05";
     nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     playwright.url = "github:pietdevries94/playwright-web-flake";
   };
 
-  outputs = { self, nixpkgs, nixpkgsUnstable, flake-utils, playwright }:
+  outputs = { self, nixpkgsUnstable, flake-utils, playwright }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlay = final: prev: {
           inherit (playwright.packages.${system}) playwright-driver;
         };
-        pkgs = import nixpkgs {
+        pkgsUnstable = import nixpkgsUnstable {
           inherit system;
           overlays = [ overlay ];
         };
-        pkgsUnstable = nixpkgsUnstable.legacyPackages.${system};
-        corepack = pkgs.runCommand "corepack-enable" {} ''
+        corepack = pkgsUnstable.runCommand "corepack-enable" {} ''
           mkdir -p $out/bin
-          ${pkgs.nodejs_22}/bin/corepack enable --install-directory $out/bin
+          ${pkgsUnstable.nodejs_22}/bin/corepack enable --install-directory $out/bin
         '';
       in
       {
 
         packages = {
-          find-free-port = pkgs.callPackage ./nix/find-free-port.nix { };
+          find-free-port = pkgsUnstable.callPackage ./nix/find-free-port.nix { };
         };
 
-        devShell = with pkgs; pkgs.mkShell {
+        devShell = with pkgsUnstable; pkgsUnstable.mkShell {
           buildInputs = [
             nodejs_22
             corepack
-            pkgsUnstable.bun
+            bun
+            watchman
             caddy
             
             self.packages.${system}.find-free-port

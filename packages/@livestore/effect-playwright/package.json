@@ -16,7 +16,7 @@
     "@livestore/utils": "workspace:*"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.40.0"
+    "@playwright/test": ">=1.46.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

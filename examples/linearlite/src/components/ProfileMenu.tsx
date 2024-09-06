@@ -1,3 +1,4 @@
+import React from 'react'
 import { Transition } from '@headlessui/react'
 import classnames from 'classnames'
 import { useClickOutside } from '../hooks/useClickOutside'
@@ -21,7 +22,7 @@ export default function ProfileMenu({ isOpen, className, onDismiss, setShowAbout
   const ref = useRef(null)
 
   const connectivityConnected = connectivityState !== 'disconnected'
-  const connectivityStateDisplay = connectivityState[0].toUpperCase() + connectivityState.slice(1)
+  const connectivityStateDisplay = connectivityState[0]?.toUpperCase() + connectivityState.slice(1)
 
   useClickOutside(ref, () => {
     if (isOpen && onDismiss) {

@@ -5,7 +5,6 @@ import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { VitePWA } from 'vite-plugin-pwa'
 import process from 'node:process'
-// import path from 'path'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -13,24 +12,12 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 export default defineConfig({
   server: {
     port: 60000,
-    fs: {
-      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
-      // Feel free to remove this if you're just copying this example
-      allow: ['../../../..'],
-    },
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/wa-sqlite'],
   },
-  // NOTE This is only in here for convenience while developing the LiveStore devtools (feel free to remove it in your app)
-  // resolve: {
-  //   alias: {
-  //     '@livestore/devtools-react': path.resolve('../../../../packages/@livestore/devtools-react/src'),
-  //     // '@livestore/devtools-react': path.resolve('../../../../packages/@livestore/devtools-react/tmp-build/dist'),
-  //   },
-  // },
   plugins: [
     react(),
     VitePWA({
