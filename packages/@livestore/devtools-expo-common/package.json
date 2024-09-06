@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo-common",
-  "version": "0.0.57-dev.8",
+  "version": "0.0.57",
   "type": "module",
   "exports": {
     "./web-channel": {
