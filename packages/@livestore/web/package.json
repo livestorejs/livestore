@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.57-dev.6",
+  "version": "0.0.57-dev.7",
   "type": "module",
   "exports": {
     ".": {
