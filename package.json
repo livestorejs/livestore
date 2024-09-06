@@ -6,8 +6,8 @@
     "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
-    "lint:check": "eslint examples packages --ext .ts,.tsx --max-warnings=0",
-    "lint:fix": "eslint examples packages --ext .ts,.tsx --fix",
+    "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",
+    "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish --no-git-checks",
     "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
     "test": "CI=1 pnpm --parallel run test"

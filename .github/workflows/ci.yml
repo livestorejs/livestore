@@ -10,7 +10,7 @@ jobs:
   lint:
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [22]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -28,7 +28,7 @@ jobs:
   test:
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [22]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -65,7 +65,7 @@ jobs:
   build-example-todomvc:
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [22]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -86,7 +86,7 @@ jobs:
   build-example-expo-standalone:
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [22]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -116,3 +116,21 @@ jobs:
         run: pnpm tsc
       # TODO EAS build
 
+  build-website:
+    strategy:
+      matrix:
+        node-version: [22]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm build
+        working-directory: website

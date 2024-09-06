@@ -32,6 +32,23 @@
       }
     },
     {
+      "label": "dev:website",
+      "type": "shell",
+      "command": "direnv exec . pnpm dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/website"
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "website",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
       "label": "dev:proxy",
       "type": "shell",
       "command": "direnv exec . fkill --silent :443 && caddy run",
