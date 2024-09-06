@@ -19,6 +19,10 @@ export const makeViteServer = async (options: Options) => {
       hmr: {
         port: hmrPort,
       },
+      fs: {
+        // Adds `node_modules` so we can import `@livestore/wa-sqlite` for WASM to work
+        allow: [path.resolve(__dirname, '..', '..')],
+      },
     },
     resolve: {
       alias: {
