@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.57-dev.5",
+  "version": "0.0.57-dev.6",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -35,6 +35,13 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@effect/experimental": "0.24.0",
+    "@effect/opentelemetry": "0.36.0",
+    "@effect/platform": "0.63.0",
+    "@effect/platform-browser": "0.42.0",
+    "@effect/schema": "0.72.0",
+    "@opentelemetry/api": "^1.9.0",
+    "effect": "3.7.0",
     "date-fns": "^3.6.0",
     "effect-db-schema": "workspace:*",
     "msgpackr": "^1.11.0",
@@ -51,15 +58,8 @@
     "effect": "^3.7.0"
   },
   "devDependencies": {
-    "@effect/experimental": "0.24.0",
-    "@effect/opentelemetry": "0.36.0",
-    "@effect/platform": "0.63.0",
-    "@effect/platform-browser": "0.42.0",
-    "@effect/schema": "0.72.0",
-    "@opentelemetry/api": "^1.9.0",
     "@types/node": "^22.0.0",
     "@types/web": "^0.0.153",
-    "effect": "3.7.0",
     "vitest": "^2.0.4"
   },
   "publishConfig": {

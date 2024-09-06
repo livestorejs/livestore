@@ -5,10 +5,18 @@ import process from 'node:process'
 
 import { $ } from 'bun'
 
+const cwd = process.cwd()
+
 // Directories
-const SRC_DIR = 'examples'
-const PATCHES_DIR = 'patches/examples'
-const DEST_DIR = 'examples-monorepo'
+const SRC_DIR = `${cwd}/examples`
+const PATCHES_DIR = `${cwd}/patches/examples`
+const DEST_DIR = `${cwd}/examples-monorepo`
+
+// Fails if dirs don't exist
+if (!fs.existsSync(SRC_DIR) || !fs.existsSync(PATCHES_DIR) || !fs.existsSync(DEST_DIR)) {
+  console.error('Directories do not exist')
+  process.exit(1)
+}
 
 // Helper function to sync src to src-patched
 const syncDirectories = async (reverse: boolean = false) => {
