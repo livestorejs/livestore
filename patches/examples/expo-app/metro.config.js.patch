@@ -29,7 +29,7 @@
 +  viteConfig: (viteConfig) => {
 +    viteConfig.server.fs ??= {}
 +    // Point to Overtone monorepo root
-+    viteConfig.server.fs.allow = [process.env.WORKSPACE_ROOT + '/../..']
++    viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
 +    viteConfig.optimizeDeps.force = true
 +    return viteConfig
 +  },

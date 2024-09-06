@@ -72,6 +72,7 @@ export type StoreOptions<
   disableDevtools?: boolean
   fiberSet: FiberSet.FiberSet
   runtime: Runtime.Runtime<Scope.Scope>
+  batchUpdates: (runUpdates: () => void) => void
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
   __processedMutationIds: Set<string>
 }
@@ -165,6 +166,7 @@ export class Store<
     reactivityGraph,
     otelOptions,
     disableDevtools,
+    batchUpdates,
     __processedMutationIds,
     fiberSet,
     runtime,
@@ -199,6 +201,7 @@ export class Store<
       store: this as unknown as Store<BaseGraphQLContext, LiveStoreSchema>,
       otelTracer: otelOptions.tracer,
       rootOtelContext: otelQueriesSpanContext,
+      effectsWrapper: batchUpdates,
     }
 
     this.otel = {
@@ -736,10 +739,6 @@ export const createStore = <
       connectDevtoolsToStore: connectDevtoolsToStore_,
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
-    if (batchUpdates !== undefined) {
-      reactivityGraph.effectsWrapper = batchUpdates
-    }
-
     const mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
     const __processedMutationIds = new Set<string>()
@@ -828,6 +827,7 @@ export const createStore = <
         __processedMutationIds,
         fiberSet,
         runtime,
+        batchUpdates: batchUpdates ?? ((run) => run()),
       },
       span,
     )

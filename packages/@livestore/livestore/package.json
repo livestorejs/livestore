@@ -54,8 +54,7 @@
   },
   "peerDependencies": {
     "graphql": "16.x",
-    "react": "^18",
-    "react-dom": "^18"
+    "react": "^18"
   },
   "peerDependenciesMeta": {
     "graphql": {

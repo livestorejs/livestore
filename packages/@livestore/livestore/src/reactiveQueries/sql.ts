@@ -143,7 +143,7 @@ export class LiveStoreSQLQuery<
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
             if (this.execBeforeFirstRun !== undefined) {
-              this.execBeforeFirstRun({ store, otelTracer, rootOtelContext })
+              this.execBeforeFirstRun({ store, otelTracer, rootOtelContext, effectsWrapper: (run) => run() })
               this.execBeforeFirstRun = undefined
             }
 

@@ -4,7 +4,7 @@ import { LiveStoreProvider } from '@livestore/livestore/react'
 import { cuid } from '@livestore/utils/cuid'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
-import { Button, StyleSheet, Text, unstable_batchedUpdates, View } from 'react-native'
+import { Button, StyleSheet, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
 
 import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
@@ -37,8 +37,7 @@ export const App = () => {
           }
         }}
         adapter={adapter}
-        // NOTE This is currently necessary to properly batch updates in React Native
-        batchUpdates={(run) => unstable_batchedUpdates(() => run())}
+        batchUpdates={batchUpdates}
       >
         <InnerApp />
       </LiveStoreProvider>

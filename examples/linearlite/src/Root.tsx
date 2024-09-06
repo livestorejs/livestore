@@ -1,4 +1,5 @@
 import React from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { LiveStoreProvider } from '@livestore/livestore/react'
 import { FPSMeter } from '@schickling/fps-meter'
 import { makeAdapter } from '@livestore/web'
@@ -26,7 +27,13 @@ const adapter = makeAdapter({
 })
 
 export const Root = () => (
-  <LiveStoreProvider schema={schema} adapter={adapter} renderLoading={renderBootStatus} boot={seed}>
+  <LiveStoreProvider
+    schema={schema}
+    adapter={adapter}
+    renderLoading={renderBootStatus}
+    boot={seed}
+    batchUpdates={batchUpdates}
+  >
     <FPSMeter className="absolute left-1/2 z-50 top-0 bg-black/30" height={40} />
     <App />
   </LiveStoreProvider>

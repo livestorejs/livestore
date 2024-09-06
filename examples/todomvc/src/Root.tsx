@@ -3,6 +3,7 @@ import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { FPSMeter } from '@schickling/fps-meter'
 import React from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
@@ -29,6 +30,7 @@ export const App: React.FC = () => (
     schema={schema}
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
+    batchUpdates={batchUpdates}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />
