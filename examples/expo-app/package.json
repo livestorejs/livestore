@@ -22,14 +22,14 @@
     "expo-sqlite": "14.0.6",
     "expo-status-bar": "1.12.1",
     "fast-text-encoding": "^1.0.6",
-    "react": "18.3.1",
+    "react": "18.2.0",
     "react-native": "0.74.3"
   },
   "devDependencies": {
     "@babel/core": "^7.24.5",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
     "@babel/runtime": "^7.25.6",
-    "@types/react": "~18.3.1",
+    "@types/react": "~18.2.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "10.2.2",
     "typescript": "5.5.4"
