@@ -90,6 +90,7 @@ export const makeTodoMvc = ({
 
     const store = yield* createStore({
       schema,
+      storeId: 'default',
       boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
       adapter: makeInMemoryAdapter(),
       reactivityGraph,

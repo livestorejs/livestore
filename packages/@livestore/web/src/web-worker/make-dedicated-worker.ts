@@ -94,22 +94,21 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
     )
 
     return WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerInner.Request, {
-      InitialMessage: ({ storageOptions, needsRecreate, syncOptions, devtoolsEnabled }) =>
+      InitialMessage: ({ storageOptions, storeId, needsRecreate, syncOptions, devtoolsEnabled }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.promise(() => WaSqlite.loadSqlite3Wasm())
 
-          const schemaKey = schema.key
           const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
           const shutdownStateSubRef = yield* SubscriptionRef.make<ShutdownState>('running')
 
-          const vfs = yield* prepareVfs({ sqlite3, storageOptions, schemaKey })
+          const vfs = yield* prepareVfs({ sqlite3, storageOptions, storeId })
 
           const makeDb = makePersistedSqlite({
             storageOptions,
             kind: 'app',
             schemaHashSuffix,
-            schemaKey,
+            storeId,
             sqlite3,
             configure: (db) => configureConnection(db, { fkEnabled: true }),
             vfs,
@@ -119,7 +118,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             storageOptions,
             kind: 'mutationlog',
             schemaHashSuffix,
-            schemaKey,
+            storeId,
             sqlite3,
             configure: (db) => configureConnection(db, { fkEnabled: false }),
             vfs,
@@ -139,7 +138,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
 
           const broadcastChannel = yield* WebChannel.broadcastChannel({
-            channelName: `livestore-sync-${schema.hash}-${schemaKey}`,
+            channelName: `livestore-sync-${schema.hash}-${storeId}`,
             listenSchema: BCMessage.Message,
             sendSchema: BCMessage.Message,
           })
@@ -175,6 +174,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           const innerWorkerCtx = {
             storageOptions,
             schema,
+            storeId,
             mutationSemaphore,
             shutdownStateSubRef,
             sqlite3,
@@ -351,6 +351,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                 coordinatorMessagePort: port,
                 storeMessagePortDeferred,
                 disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
+                storeId: workerCtx.storeId,
                 appHostId,
                 isLeaderTab,
                 persistenceInfo: { db: workerCtx.db.persistenceInfo, mutationLog: workerCtx.dbLog.persistenceInfo },

@@ -169,6 +169,7 @@ export type ConnectDevtoolsToStore = (
 
 export type StoreAdapterFactory = (opts: {
   schema: LiveStoreSchema
+  storeId: string
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>

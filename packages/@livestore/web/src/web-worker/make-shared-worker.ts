@@ -193,7 +193,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           Effect.forkIn(scope),
         )
 
-        const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.schemaKey)
+        const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
 
         yield* shutdownChannel.listen.pipe(
           Stream.flatten(),

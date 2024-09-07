@@ -37,6 +37,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
     coordinatorMessagePort,
     disconnect,
     storeMessagePortDeferred,
+    storeId,
     appHostId,
     isLeaderTab,
     persistenceInfo,
@@ -104,6 +105,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         sendMessage,
         isConnected,
         disconnect,
+        storeId,
         appHostId,
         isLeaderTab,
         persistenceInfo,
@@ -126,6 +128,7 @@ const listenToDevtools = ({
   isConnected,
   disconnect,
   appHostId,
+  storeId,
   isLeaderTab,
   persistenceInfo,
 }: {
@@ -134,6 +137,7 @@ const listenToDevtools = ({
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   disconnect: Effect.Effect<void>
   appHostId: string
+  storeId: string
   isLeaderTab: boolean
   persistenceInfo: PersistenceInfoPair
 }) =>
@@ -143,7 +147,7 @@ const listenToDevtools = ({
 
     const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current.pointer)
 
-    const shutdownChannel = yield* makeShutdownChannel(schema.key)
+    const shutdownChannel = yield* makeShutdownChannel(storeId)
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()

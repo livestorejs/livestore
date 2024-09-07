@@ -38,11 +38,6 @@ export type LiveStoreSchema<
   readonly hash: number
 
   migrationOptions: MigrationOptions
-
-  /**
-   * @default 'default'
-   */
-  key: string
 }
 
 export type InputSchema = {
@@ -118,7 +113,6 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     mutations,
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
     hash,
-    key: inputSchema.key ?? 'default',
   } satisfies LiveStoreSchema
 }
 

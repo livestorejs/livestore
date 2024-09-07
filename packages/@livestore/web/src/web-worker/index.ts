@@ -77,7 +77,7 @@ export type WebAdapterOptions = {
 
 export const makeAdapter =
   (options: WebAdapterOptions): StoreAdapterFactory =>
-  ({ schema, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
+  ({ schema, storeId, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       yield* ensureBrowserRequirements
 
@@ -89,20 +89,18 @@ export const makeAdapter =
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const schemaKey = schema.key
-
-      const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${schemaKey}`
+      const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
 
       const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
 
       const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
       if (options.resetPersistence === true) {
-        yield* resetPersistedDataFromCoordinator({ storageOptions, schemaKey })
+        yield* resetPersistedDataFromCoordinator({ storageOptions, storeId })
       }
 
       const broadcastChannel = yield* WebChannel.broadcastChannel({
-        channelName: `livestore-sync-${schema.hash}-${schemaKey}`,
+        channelName: `livestore-sync-${schema.hash}-${storeId}`,
         listenSchema: BCMessage.Message,
         sendSchema: BCMessage.Message,
       })
@@ -110,13 +108,13 @@ export const makeAdapter =
       // TODO also verify persisted data
       const dataFromFile = yield* readPersistedAppDbFromCoordinator({
         storageOptions,
-        schemaKey,
+        storeId,
         schemaHashSuffix,
       })
 
-      const appHostId = getAppHostId(schema.key)
+      const appHostId = getAppHostId(storeId)
 
-      const shutdownChannel = yield* makeShutdownChannel(schema.key)
+      const shutdownChannel = yield* makeShutdownChannel(storeId)
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
@@ -128,7 +126,7 @@ export const makeAdapter =
         Effect.forkScoped,
       )
 
-      const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${schemaKey}` })
+      const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
       const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
@@ -137,9 +135,9 @@ export const makeAdapter =
           new WorkerSchema.SharedWorker.InitialMessage({
             payload: {
               _tag: 'FromCoordinator',
-              schemaKey,
               initialMessage: new WorkerSchema.DedicatedWorkerInner.InitialMessage({
                 storageOptions,
+                storeId,
                 needsRecreate: dataFromFile === undefined,
                 syncOptions: options.syncing,
                 devtoolsEnabled,
@@ -176,7 +174,7 @@ export const makeAdapter =
 
         const mc = new MessageChannel()
 
-        const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${schemaKey}` })
+        const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}` })
 
         yield* Worker.makeSerialized<WorkerSchema.DedicatedWorkerOuter.Request>({
           initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
@@ -466,7 +464,7 @@ export const makeAdapter =
         )
 
       if (devtoolsEnabled) {
-        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, key: schema.key })
+        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, key: storeId })
       }
 
       return { coordinator, syncDb }

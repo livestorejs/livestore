@@ -6,9 +6,9 @@ export class DedicatedWorkerDisconnectBroadcast extends Schema.TaggedStruct('Ded
 
 export class All extends Schema.Union(IntentionalShutdownCause, DedicatedWorkerDisconnectBroadcast) {}
 
-export const makeShutdownChannel = (schemaKey: string) =>
+export const makeShutdownChannel = (storeId: string) =>
   WebChannel.broadcastChannel({
-    channelName: `livestore.shutdown.${schemaKey}`,
+    channelName: `livestore.shutdown.${storeId}`,
     listenSchema: All,
     sendSchema: All,
   })

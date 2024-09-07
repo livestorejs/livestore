@@ -65,6 +65,7 @@ export type StoreOptions<
 > = {
   adapter: StoreAdapter
   schema: TSchema
+  storeId: string
   // TODO remove graphql-related stuff from store and move to GraphQL query directly
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions: OtelOptions
@@ -615,6 +616,7 @@ export class Store<
 export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
   schema: TSchema
   adapter: StoreAdapterFactory
+  storeId: string
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions?: Partial<OtelOptions>
@@ -661,9 +663,10 @@ export const createStore = <
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >({
   schema,
+  adapter: adapterFactory,
+  storeId,
   graphQLOptions,
   otelOptions,
-  adapter: adapterFactory,
   boot,
   reactivityGraph = globalReactivityGraph,
   batchUpdates,
@@ -733,6 +736,7 @@ export const createStore = <
 
     const adapter: StoreAdapter = yield* adapterFactory({
       schema,
+      storeId,
       devtoolsEnabled: disableDevtools !== true,
       bootStatusQueue,
       shutdown,
@@ -828,6 +832,7 @@ export const createStore = <
         fiberSet,
         runtime,
         batchUpdates: batchUpdates ?? ((run) => run()),
+        storeId,
       },
       span,
     )
