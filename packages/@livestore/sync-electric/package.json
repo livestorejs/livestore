@@ -1,0 +1,23 @@
+{
+  "name": "@livestore/sync-electric",
+  "version": "0.0.57",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

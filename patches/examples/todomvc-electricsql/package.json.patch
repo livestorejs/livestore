@@ -1,0 +1,29 @@
+--- package.json
++++ package.json
+@@ -10,12 +10,12 @@
+   },
+   "dependencies": {
+     "@effect/schema": "0.72.2",
+-    "@livestore/common": "0.0.57",
++    "@livestore/common": "workspace:*",
+     "@livestore/devtools-react": "0.0.57",
+-    "@livestore/sync-electric": "0.0.57",
+-    "@livestore/livestore": "0.0.57",
++    "@livestore/livestore": "workspace:*",
++    "@livestore/sync-electric": "workspace:*",
+     "@livestore/wa-sqlite": "1.0.1-dev.29",
+-    "@livestore/web": "0.0.57",
++    "@livestore/web": "workspace:*",
+     "react-error-boundary": "^4.0.13",
+     "@remix-run/node": "^2.11.2",
+     "@remix-run/react": "^2.11.2",
+@@ -36,8 +36,7 @@
+     "@types/uuid": "^10.0.0",
+     "@vitejs/plugin-react": "^4.2.1",
+     "rollup-plugin-visualizer": "^5.12.0",
+-    "@types/pg": "^8.11.8",
+-    "pg": "^8.12.0",
++    "postgres": "^3.4.4",
+     "typescript": "5.5.4",
+     "vite": "^5.4.3",
+     "@vite-pwa/remix": "^0.1.3",
