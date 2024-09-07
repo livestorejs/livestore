@@ -1,6 +1,6 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -24,10 +24,19 @@
+@@ -24,9 +24,18 @@
    server: {
      port: process.env.PORT ? Number(process.env.PORT) : 60_001,
      headers: credentiallessHeaders,
@@ -12,11 +12,10 @@
    },
    preview: {
      headers: credentiallessHeaders,
-   },
++  },
 +  build: {
 +    //   sourcemap: true,
 +    //   minify: false,
-+  },
+   },
    worker: isProdBuild ? { format: 'es' } : undefined,
    optimizeDeps: {
-     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427

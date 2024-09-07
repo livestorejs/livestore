@@ -7,6 +7,7 @@
     { "path": "./examples-monorepo/expo-app" },
     { "path": "./examples-monorepo/linearlite" },
     { "path": "./examples-monorepo/todomvc" },
+    { "path": "./examples-monorepo/todomvc-electricsql" },
     { "path": "./examples-monorepo/todomvc-custom-elements" },
     { "path": "./examples-monorepo/todomvc-drizzle" },
     { "path": "./examples-monorepo/todomvc-experimental" },

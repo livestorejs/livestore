@@ -70,7 +70,19 @@ export {
 export * as Schema from './Schema/index.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
-export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'
+export {
+  Transferable,
+  FileSystem,
+  Worker,
+  WorkerError,
+  WorkerRunner,
+  Terminal,
+  HttpServer,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+} from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 
 export * as Effect from './Effect.js'
