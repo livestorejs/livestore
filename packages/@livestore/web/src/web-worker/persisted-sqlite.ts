@@ -26,7 +26,7 @@ export const makePersistedSqlite = ({
   storageOptions,
   sqlite3,
   schemaHashSuffix,
-  schemaKey,
+  storeId,
   kind,
   configure,
   vfs,
@@ -34,7 +34,7 @@ export const makePersistedSqlite = ({
   storageOptions: WorkerSchema.StorageType
   sqlite3: WaSqlite.SQLiteAPI
   schemaHashSuffix: string
-  schemaKey: string
+  storeId: string
   kind: 'app' | 'mutationlog'
   configure: (db: { pointer: number; syncDb: SynchronousDatabase }) => Effect.Effect<void, SqliteError>
   vfs: WaSqlite.SQLiteVFS
@@ -45,7 +45,7 @@ export const makePersistedSqlite = ({
     sqlite3,
     storageOptions,
     schemaHashSuffix,
-    schemaKey,
+    storeId,
     kind,
     configure,
     vfs: vfs as WaSqlite.AccessHandlePoolVFS,
@@ -76,17 +76,17 @@ declare global {
 export const prepareVfs = ({
   sqlite3,
   storageOptions,
-  schemaKey,
+  storeId,
 }: {
   sqlite3: WaSqlite.SQLiteAPI
   storageOptions: WorkerSchema.StorageType
-  schemaKey: string
+  storeId: string
 }) =>
   Effect.gen(function* () {
-    const vfsName = getVfsName({ storageOptions, schemaKey })
+    const vfsName = getVfsName({ storageOptions, storeId })
 
     if (storageOptions.type === 'opfs') {
-      const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+      const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
       const vfs = yield* Effect.promise(() =>
         WaSqlite.AccessHandlePoolVFS.create(vfsName, directory, (sqlite3 as any).module),
       )
@@ -100,9 +100,9 @@ export const prepareVfs = ({
     }
   })
 
-const getVfsName = ({ storageOptions, schemaKey }: { storageOptions: WorkerSchema.StorageType; schemaKey: string }) => {
+const getVfsName = ({ storageOptions, storeId }: { storageOptions: WorkerSchema.StorageType; storeId: string }) => {
   if (storageOptions.type === 'opfs') {
-    const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
     // Replace all special characters with underscores
     const safePath = directory.replaceAll(/["*/:<>?\\|]/g, '_')
     const pathSegment = safePath.length === 0 ? '' : `-${safePath}`
@@ -116,7 +116,7 @@ export const makePersistedSqliteOpfs = ({
   sqlite3,
   storageOptions,
   schemaHashSuffix,
-  schemaKey,
+  storeId,
   kind,
   configure,
   vfs,
@@ -124,7 +124,7 @@ export const makePersistedSqliteOpfs = ({
   sqlite3: WaSqlite.SQLiteAPI
   storageOptions: WorkerSchema.StorageTypeOpfs
   schemaHashSuffix: string
-  schemaKey: string
+  storeId: string
   kind: 'app' | 'mutationlog'
   configure: (db: { pointer: number; syncDb: SynchronousDatabase }) => Effect.Effect<void, SqliteError>
   vfs: WaSqlite.AccessHandlePoolVFS
@@ -132,13 +132,13 @@ export const makePersistedSqliteOpfs = ({
   Effect.gen(function* () {
     const fileName = kind === 'app' ? getAppDbFileName(schemaHashSuffix) : 'mutationlog.db'
 
-    const vfsName = getVfsName({ storageOptions, schemaKey })
+    const vfsName = getVfsName({ storageOptions, storeId })
 
     const pointer = yield* Effect.sync(() => sqlite3.open_v2Sync(fileName, undefined, vfsName))
     // TODO get rid of ref since we never replace it
     const dbRef = ref({ pointer, syncDb: WaSqlite.makeSynchronousDatabase(sqlite3, pointer) })
 
-    const opfsDirectory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+    const opfsDirectory = sanitizeOpfsDir(storageOptions.directory, storeId)
     const opfsFileName = vfs.getOpfsFileName(fileName)
     const opfsPath = `${opfsDirectory}/${opfsFileName}`
 
@@ -203,17 +203,17 @@ export const makePersistedSqliteOpfs = ({
 
 export const readPersistedAppDbFromCoordinator = ({
   storageOptions,
-  schemaKey,
+  storeId,
   schemaHashSuffix,
 }: {
   storageOptions: WorkerSchema.StorageType
-  schemaKey: string
+  storeId: string
   schemaHashSuffix: string
 }) =>
   Effect.gen(function* () {
     if (storageOptions.type === 'opfs') {
       return yield* Effect.promise(async () => {
-        const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+        const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
         const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(directory).catch(() => undefined)
 
         if (sahPoolOpaqueDir === undefined) {
@@ -274,13 +274,13 @@ export const readPersistedAppDbFromCoordinator = ({
 
 export const resetPersistedDataFromCoordinator = ({
   storageOptions,
-  schemaKey,
+  storeId,
 }: {
   storageOptions: WorkerSchema.StorageType
-  schemaKey: string
+  storeId: string
 }) =>
   Effect.gen(function* () {
-    const directory = sanitizeOpfsDir(storageOptions.directory, schemaKey)
+    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* opfsDeleteAbs(directory)
   }).pipe(Effect.withSpan('@livestore/web:resetPersistedDataFromCoordinator'))
 
@@ -311,9 +311,9 @@ const opfsDeleteAbs = (absPath: string) =>
     }
   }).pipe(Effect.withSpan('@livestore/web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }))
 
-const sanitizeOpfsDir = (directory: string | undefined, schemaKey: string) => {
+const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
   // Root dir should be `''` not `/`
-  if (directory === undefined || directory === '' || directory === '/') return `livestore-${schemaKey}`
+  if (directory === undefined || directory === '' || directory === '/') return `livestore-${storeId}`
 
   if (directory.includes('/')) {
     throw new Error(`@livestore/web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`)

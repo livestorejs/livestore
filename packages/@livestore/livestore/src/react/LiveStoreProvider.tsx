@@ -15,6 +15,15 @@ import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {
   schema: LiveStoreSchema
+  /**
+   * The `storeId` can be used to isolate multiple stores from each other.
+   * So it can be useful for multi-tenancy scenarios.
+   *
+   * The `storeId` is also used for persistence.
+   *
+   * @default 'default'
+   */
+  storeId?: string
   boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
@@ -63,6 +72,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   otelOptions,
   children,
   schema,
+  storeId = 'default',
   boot,
   adapter,
   batchUpdates,
@@ -70,6 +80,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   signal,
 }: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
   const storeCtx = useCreateStore({
+    storeId,
     schema,
     graphQLOptions,
     otelOptions,
@@ -93,7 +104,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   }
 
   window.__debugLiveStore ??= {}
-  window.__debugLiveStore[schema.key] = storeCtx.store
+  window.__debugLiveStore[storeId] = storeCtx.store
 
   return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
 }
@@ -112,6 +123,7 @@ const withSemaphore = (schemaKey: SchemaKey) => {
 
 const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   schema,
+  storeId,
   graphQLOptions,
   otelOptions,
   boot,
@@ -212,6 +224,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         const store = yield* createStore({
           fiberSet,
           schema,
+          storeId,
           graphQLOptions,
           otelOptions,
           boot,
@@ -245,7 +258,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       // NOTE we're running the code above in a semaphore to make sure a previous store is always fully
       // shutdown before a new one is created - especially when shutdown logic is async. You can't trust `React.useEffect`.
       // Thank you to Mattia Manzati for this idea.
-      withSemaphore(schema.key),
+      withSemaphore(storeId),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
       Effect.provide(Logger.pretty),
@@ -259,7 +272,18 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         ctxValueRef.current.fiberSet = undefined
       }
     }
-  }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal, reactivityGraph])
+  }, [
+    schema,
+    graphQLOptions,
+    otelOptions,
+    boot,
+    adapter,
+    batchUpdates,
+    disableDevtools,
+    signal,
+    reactivityGraph,
+    storeId,
+  ])
 
   return ctxValueRef.current.value
 }

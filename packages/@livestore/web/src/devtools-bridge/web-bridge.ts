@@ -47,6 +47,7 @@ export const prepareWebDevtoolsBridge = (
   options: {
     sharedWorker: WebAdapterOptions['sharedWorker']
     appSchema: LiveStoreSchema
+    appId: string
   } & WebBridgeOptions,
 ): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
   Effect.gen(function* () {
@@ -57,7 +58,7 @@ export const prepareWebDevtoolsBridge = (
     const devtoolsId = cuid()
 
     const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, {
-      name: `livestore-shared-worker-${options.appSchema.key}`,
+      name: `livestore-shared-worker-${options.appId}`,
     })
 
     const sharedWorkerDeferred = yield* Worker.makeSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({

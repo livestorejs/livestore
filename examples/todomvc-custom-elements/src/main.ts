@@ -20,6 +20,7 @@ export const css = (strings: TemplateStringsArray, ...values: unknown[]) => Stri
 const store = await createStorePromise({
   schema,
   adapter: makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, sharedWorker: LiveStoreSharedWorker }),
+  storeId: 'todomvc',
 })
 
 const appState$ = rowQuery(tables.app)

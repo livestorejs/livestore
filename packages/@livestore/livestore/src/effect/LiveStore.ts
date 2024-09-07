@@ -22,6 +22,15 @@ export const DeferredStoreContext = Context.GenericTag<DeferredStoreContext>(
 
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
+  /**
+   * The `storeId` can be used to isolate multiple stores from each other.
+   * So it can be useful for multi-tenancy scenarios.
+   *
+   * The `storeId` is also used for persistence.
+   *
+   * @default 'default'
+   */
+  storeId?: string
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
     makeContext: (db: SynchronousDatabaseWrapper) => GraphQLContext
@@ -48,6 +57,7 @@ export const LiveStoreContextDeferred = Layer.effect(
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
   schema,
+  storeId = 'default',
   graphQLOptions: graphQLOptions_,
   boot,
   adapter,
@@ -74,6 +84,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 
       const store = yield* createStore({
         schema,
+        storeId,
         graphQLOptions,
         otelOptions: {
           tracer: otelTracer,
@@ -88,7 +99,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
       })
 
       window.__debugLiveStore ??= {}
-      window.__debugLiveStore[schema.key] = store
+      // window.__debugLiveStore[schema.key] = store
 
       return { stage: 'running', store } satisfies LiveStoreContextRunning
     }),

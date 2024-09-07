@@ -57,6 +57,7 @@ export type DevtoolsContextEnabled = {
     coordinatorMessagePort: MessagePort
     storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
     disconnect: Effect.Effect<void>
+    storeId: string
     appHostId: string
     isLeaderTab: boolean
     persistenceInfo: PersistenceInfoPair
@@ -83,6 +84,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
   InnerWorkerCtx,
   {
     schema: LiveStoreSchema
+    storeId: string
     storageOptions: StorageType
     mutationSemaphore: Effect.Semaphore
     db: PersistedSqlite

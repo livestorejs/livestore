@@ -81,6 +81,7 @@ export namespace DedicatedWorkerInner {
       needsRecreate: Schema.Boolean,
       syncOptions: Schema.optional(SyncingType),
       devtoolsEnabled: Schema.Boolean,
+      storeId: Schema.String,
     },
     success: Schema.Void,
     failure: UnexpectedError,
@@ -166,7 +167,6 @@ export namespace DedicatedWorkerInner {
 export namespace SharedWorker {
   export class InitialMessagePayloadFromCoordinator extends Schema.TaggedStruct('FromCoordinator', {
     initialMessage: DedicatedWorkerInner.InitialMessage,
-    schemaKey: Schema.String,
   }) {}
 
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
