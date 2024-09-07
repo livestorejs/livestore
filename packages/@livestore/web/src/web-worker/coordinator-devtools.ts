@@ -41,7 +41,9 @@ export const bootDevtools = ({
       Effect.forkScoped,
     )
 
-    yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
+    if (typeof window !== 'undefined') {
+      yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
+    }
   })
 
 const listenToWebBridge = ({
@@ -57,16 +59,21 @@ const listenToWebBridge = ({
     const appHostId = coordinator.devtools.appHostId
     const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
 
+    console.log('listenToWebBridge', appHostId)
+
     const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
     yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ appHostId, isLeader }))
 
     const runtime = yield* Effect.runtime()
 
-    window.addEventListener('beforeunload', () =>
-      webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
-        .pipe(Runtime.runFork(runtime)),
-    )
+    // TODO handle shutdown case for worker
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () =>
+        webBridgeBroadcastChannel
+          .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
+          .pipe(Runtime.runFork(runtime)),
+      )
+    }
 
     yield* Effect.addFinalizer(() =>
       webBridgeBroadcastChannel
@@ -96,6 +103,8 @@ const listenToWebBridge = ({
       Effect.ignoreLogged,
       Effect.forkScoped,
     )
+
+    console.log('listenToWebBridge done', appHostId)
 
     yield* Effect.never
   }).pipe(Effect.scoped)
