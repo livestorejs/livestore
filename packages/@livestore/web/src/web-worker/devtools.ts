@@ -327,7 +327,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.NetworkStatusSubscribe': {
-              if (sync?.impl !== undefined) {
+              if (sync?.backend !== undefined) {
                 const { requestId } = decodedEvent
 
                 // TODO investigate and fix bug. seems that when sending messages right after
@@ -335,7 +335,7 @@ const listenToDevtools = ({
                 // This is probably the same "flaky databrowser loading" bug as we're seeing in the playwright tests
                 yield* Effect.sleep(1000)
 
-                yield* sync.impl.isConnected.changes.pipe(
+                yield* sync.backend.isConnected.changes.pipe(
                   Stream.tap((isConnected) =>
                     sendMessage(
                       Devtools.NetworkStatusRes.make({

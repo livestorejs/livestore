@@ -59,7 +59,6 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/cf-sync": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/utils": "workspace:*",

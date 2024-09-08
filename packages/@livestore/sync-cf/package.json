@@ -1,0 +1,26 @@
+{
+  "name": "@livestore/sync-cf",
+  "version": "0.0.58-dev.5",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/sync-impl/index.d.ts",
+      "default": "./dist/sync-impl/index.js"
+    }
+  },
+  "scripts": {
+    "deploy": "wrangler publish",
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20240729.0",
+    "wrangler": "^3.68.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,4 +1,10 @@
-import type { Coordinator, LockStatus, NetworkStatus, StoreAdapterFactory } from '@livestore/common'
+import type {
+  Coordinator,
+  LockStatus,
+  NetworkStatus,
+  StoreAdapterFactory,
+  SyncBackendOptionsBase,
+} from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
@@ -42,6 +48,8 @@ if (import.meta.env.DEV) {
   globalThis.__opfsUtils = OpfsUtils
 }
 
+type GlobalSyncBackend = LiveStoreGlobal extends { syncBackend: infer TSyncBackend } ? TSyncBackend : never
+
 export type WebAdapterOptions = {
   worker: ((options: { name: string }) => globalThis.Worker) | (new (options: { name: string }) => globalThis.Worker)
   /**
@@ -65,7 +73,7 @@ export type WebAdapterOptions = {
    * Specifies where to persist data for this adapter
    */
   storage: WorkerSchema.StorageTypeEncoded
-  syncing?: WorkerSchema.SyncingType
+  syncBackend?: GlobalSyncBackend
   /**
    * Warning: This will reset both the app and mutationlog database.
    * This should only be used during development.
@@ -139,7 +147,7 @@ export const makeAdapter =
                 storageOptions,
                 storeId,
                 needsRecreate: dataFromFile === undefined,
-                syncOptions: options.syncing,
+                syncOptions: options.syncBackend as SyncBackendOptionsBase | undefined,
                 devtoolsEnabled,
               }),
             },
@@ -276,7 +284,7 @@ export const makeAdapter =
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
 
-      if (options.syncing !== undefined) {
+      if (options.syncBackend !== undefined) {
         yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.NetworkStatusStream()).pipe(
           Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
           Stream.runDrain,

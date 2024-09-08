@@ -12,3 +12,9 @@ export * as Devtools from './devtools/index.js'
 export * from './debug-info.js'
 export * from './bounded-collections.js'
 export * from './version.js'
+
+declare global {
+  interface LiveStoreGlobal {
+    // syncBackend: never
+  }
+}

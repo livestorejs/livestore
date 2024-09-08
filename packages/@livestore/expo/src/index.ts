@@ -19,6 +19,7 @@ import { bootDevtools } from './devtools.js'
 export type MakeDbOptions = {
   fileNamePrefix?: string
   subDirectory?: string
+  // syncBackend?: TODO
 }
 
 export const makeAdapter =

@@ -7,12 +7,14 @@
     { "path": "./examples-monorepo/expo-app" },
     { "path": "./examples-monorepo/linearlite" },
     { "path": "./examples-monorepo/todomvc" },
-    { "path": "./examples-monorepo/todomvc-electricsql" },
     { "path": "./examples-monorepo/todomvc-custom-elements" },
     { "path": "./examples-monorepo/todomvc-drizzle" },
     { "path": "./examples-monorepo/todomvc-experimental" },
+    { "path": "./examples-monorepo/todomvc-sync-cf" },
+    { "path": "./examples-monorepo/todomvc-sync-electric" },
     { "path": "./integration-tests" },
     { "path": "./packages/effect-db-schema" },
-    { "path": "./packages/@livestore/cf-sync" }
+    { "path": "./packages/@livestore/sync-electric" },
+    { "path": "./packages/@livestore/sync-cf" }
   ]
 }

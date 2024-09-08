@@ -42,3 +42,18 @@ export const swap = <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<I, 
   })
 
 export const Base64FromUint8Array: Schema.Schema<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)
+
+export interface JsonArray extends ReadonlyArray<JsonValue> {}
+export interface JsonObject {
+  [key: string]: JsonValue
+}
+export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
+
+export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
+  Schema.String,
+  Schema.Number,
+  Schema.Boolean,
+  Schema.Null,
+  Schema.Array(Schema.suspend(() => JsonValue)),
+  Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
+)

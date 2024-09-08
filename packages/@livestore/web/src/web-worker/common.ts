@@ -3,8 +3,8 @@ import type {
   InvalidPullError,
   IsOfflineError,
   PreparedBindValues,
+  SyncBackend,
   SynchronousDatabase,
-  SyncImpl,
   UnexpectedError,
 } from '@livestore/common'
 import {
@@ -100,7 +100,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     devtools: DevtoolsContext
     sync:
       | {
-          impl: SyncImpl
+          backend: SyncBackend
           inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
         }
       | undefined
@@ -217,9 +217,9 @@ export const makeApplyMutation = (
         syncStatus === 'pending'
       ) {
         yield* Effect.gen(function* () {
-          if ((yield* SubscriptionRef.get(sync.impl.isConnected)) === false) return
+          if ((yield* SubscriptionRef.get(sync.backend.isConnected)) === false) return
 
-          yield* sync.impl.push(mutationEventEncoded, persisted)
+          yield* sync.backend.push(mutationEventEncoded, persisted)
 
           yield* execSql(
             syncDbLog,

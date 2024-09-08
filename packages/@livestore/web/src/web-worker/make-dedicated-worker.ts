@@ -1,5 +1,4 @@
-import { makeWsSync } from '@livestore/cf-sync/sync-impl'
-import type { BootStatus, NetworkStatus } from '@livestore/common'
+import type { BootStatus, NetworkStatus, SyncBackend } from '@livestore/common'
 import { migrateTable, sql, UnexpectedError } from '@livestore/common'
 import {
   type LiveStoreSchema,
@@ -8,6 +7,7 @@ import {
   mutationLogMetaTable,
 } from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import type { Scope } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
   Deferred,
@@ -40,6 +40,7 @@ import * as WorkerSchema from './worker-schema.js'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
+  makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend, UnexpectedError, Scope.Scope>
 }
 
 // @ts-expect-error TODO fix types
@@ -61,11 +62,11 @@ export const makeWorker = (options: WorkerOptions) => {
   )
 }
 
-export const makeWorkerRunnerOuter = ({ schema }: WorkerOptions) =>
+export const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerOuter.InitialMessage, {
     InitialMessage: ({ port: incomingRequestsPort }) =>
       Effect.gen(function* () {
-        const innerFiber = yield* makeWorkerRunner({ schema }).pipe(
+        const innerFiber = yield* makeWorkerRunner(workerOptions).pipe(
           Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
           Layer.launch,
           Effect.scoped,
@@ -83,7 +84,7 @@ export const makeWorkerRunnerOuter = ({ schema }: WorkerOptions) =>
       }).pipe(Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
   })
 
-const makeWorkerRunner = ({ schema }: WorkerOptions) =>
+const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
   Effect.gen(function* () {
     const mutationEventSchema = makeMutationEventSchema(schema)
     const mutationDefSchemaHashMap = new Map(
@@ -134,8 +135,11 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               )[0]?.id,
           ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
 
-          const syncImpl =
-            syncOptions === undefined ? undefined : yield* makeWsSync(syncOptions.url, syncOptions.roomId)
+          // TODO handle cases where options are provided but makeSyncBackend is not provided
+          // TODO handle cases where makeSyncBackend is provided but options are not
+          // TODO handle cases where backend and options don't match
+          const syncBackend =
+            syncOptions === undefined || makeSyncBackend === undefined ? undefined : yield* makeSyncBackend(syncOptions)
 
           const broadcastChannel = yield* WebChannel.broadcastChannel({
             channelName: `livestore-sync-${schema.hash}-${storeId}`,
@@ -144,9 +148,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
           })
 
           const makeSync = Effect.gen(function* () {
-            if (syncImpl === undefined) return undefined
+            if (syncBackend === undefined) return undefined
 
-            const waitUntilOnline = syncImpl.isConnected.changes.pipe(
+            const waitUntilOnline = syncBackend.isConnected.changes.pipe(
               Stream.filter(Boolean),
               Stream.take(1),
               Stream.runDrain,
@@ -156,8 +160,8 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             yield* waitUntilOnline
 
             return {
-              impl: syncImpl,
-              inititialMessages: syncImpl.pull(cursor),
+              backend: syncBackend,
+              inititialMessages: syncBackend.pull(cursor),
             }
           })
 
@@ -231,9 +235,9 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
               db.dbRef.current.pointer,
             )
 
-            if (syncImpl !== undefined) {
+            if (syncBackend !== undefined) {
               // TODO try to do this in a batched-way if possible
-              yield* syncImpl.pushes.pipe(
+              yield* syncBackend.pushes.pipe(
                 Stream.tap(({ mutationEventEncoded, persisted }) =>
                   applyMutation(mutationEventEncoded, {
                     syncStatus: 'synced',
@@ -243,7 +247,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
                   }),
                 ),
                 Stream.runDrain,
-                Effect.withSpan('@livestore/web:worker:syncImpl:pushes'),
+                Effect.withSpan('@livestore/web:worker:syncBackend:pushes'),
                 Effect.tapCauseLogPretty,
                 Effect.forkScoped,
               )
@@ -317,7 +321,7 @@ const makeWorkerRunner = ({ schema }: WorkerOptions) =>
             return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now() })
           }
 
-          return ctx.sync.impl.isConnected.changes.pipe(
+          return ctx.sync.backend.isConnected.changes.pipe(
             Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
           )
         }).pipe(Stream.unwrap),
