@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sync-electric",
-  "version": "0.0.57",
+  "version": "0.0.58-dev.5",
   "type": "module",
   "exports": {
     ".": {
@@ -15,8 +15,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "publishConfig": {
     "access": "public"
   }

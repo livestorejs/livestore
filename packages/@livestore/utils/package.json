@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.57",
+  "version": "0.0.58-dev.5",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -35,10 +35,8 @@
     "test": "vitest"
   },
   "dependencies": {
-    "date-fns": "^3.6.0",
     "effect-db-schema": "workspace:*",
     "msgpackr": "^1.11.0",
-    "otel-websocket-exporter": "^0.0.29",
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {

@@ -25,9 +25,9 @@ You'll need to have a recent version the following tools installed:
 git clone git@github.com:livestorejs/livestore.git
 cd livestore
 direnv allow
-bun setup-monorepo-examples
-bun install
-bun build
+bun scripts/sync-examples.ts --single-run
+pnpm install
+pnpm build
 ```
 
 ## Monorepo

@@ -16,8 +16,6 @@ import type * as otel from '@opentelemetry/api'
 
 import { objectToString } from './misc.js'
 
-export * as dateFns from 'date-fns'
-
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
 export type PrettifyFlat<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 

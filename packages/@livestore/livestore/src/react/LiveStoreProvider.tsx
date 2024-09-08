@@ -21,6 +21,8 @@ interface LiveStoreProviderProps<GraphQLContext> {
    *
    * The `storeId` is also used for persistence.
    *
+   * Make sure to also provide `storeId` to `mountDevtools` in `_devtools.html`.
+   *
    * @default 'default'
    */
   storeId?: string
@@ -112,11 +114,11 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
 type SchemaKey = string
 const semaphoreMap = new Map<SchemaKey, Effect.Semaphore>()
 
-const withSemaphore = (schemaKey: SchemaKey) => {
-  let semaphore = semaphoreMap.get(schemaKey)
+const withSemaphore = (storeId: SchemaKey) => {
+  let semaphore = semaphoreMap.get(storeId)
   if (!semaphore) {
     semaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
-    semaphoreMap.set(schemaKey, semaphore)
+    semaphoreMap.set(storeId, semaphore)
   }
   return semaphore.withPermits(1)
 }
