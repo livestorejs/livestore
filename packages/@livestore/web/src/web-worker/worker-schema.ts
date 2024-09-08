@@ -55,14 +55,15 @@ export const StorageType = Schema.Union(
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
-export const SyncingTypeWebsocket = Schema.Struct({
-  type: Schema.Literal('websocket'),
-  url: Schema.String,
-  roomId: Schema.String,
-})
+// export const SyncBackendOptionsWebsocket = Schema.Struct({
+//   type: Schema.Literal('websocket'),
+//   url: Schema.String,
+//   roomId: Schema.String,
+// })
 
-export const SyncingType = Schema.Union(SyncingTypeWebsocket)
-export type SyncingType = typeof SyncingType.Type
+// export const SyncBackendOptions = Schema.Union(SyncBackendOptionsWebsocket)
+export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
+export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
 export namespace DedicatedWorkerOuter {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
@@ -79,7 +80,7 @@ export namespace DedicatedWorkerInner {
     payload: {
       storageOptions: StorageType,
       needsRecreate: Schema.Boolean,
-      syncOptions: Schema.optional(SyncingType),
+      syncOptions: Schema.optional(SyncBackendOptions),
       devtoolsEnabled: Schema.Boolean,
       storeId: Schema.String,
     },

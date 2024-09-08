@@ -22,6 +22,14 @@ const AppBody: React.FC = () => (
 const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
+  syncBackend:
+    import.meta.env.VITE_LIVESTORE_SYNC_URL && import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID
+      ? {
+          type: 'cf',
+          url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
+          roomId: import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID,
+        }
+      : undefined,
   sharedWorker: LiveStoreSharedWorker,
 })
 
