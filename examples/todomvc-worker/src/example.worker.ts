@@ -13,9 +13,7 @@ const main = async () => {
 
 addEventListener('message', (event) => {
   const port = event.ports[0]!
-  console.log('received message from main thread', event)
   bootAdapter(port)
-  // console.log('message from main thread', event)
 })
 
 const bootAdapter = async (sharedWorker: MessagePort) => {
@@ -50,7 +48,7 @@ const bootAdapter = async (sharedWorker: MessagePort) => {
     store.mutate(mutations.addTodo({ id, text: 'new todo ' + id }))
     // }
     // toggle = !toggle
-  }, 1000)
+  }, 10_000)
 }
 
 main().catch(console.error)
