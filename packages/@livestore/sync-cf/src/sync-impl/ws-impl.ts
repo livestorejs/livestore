@@ -4,7 +4,7 @@ import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, PubSub, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Deferred, Effect, Option, PubSub, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { WSMessage } from '../common/index.js'
 
@@ -28,30 +28,45 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
 
     const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
 
+    const metadata = Option.none()
+
     const api = {
       isConnected,
-      pull: (cursor) =>
-        Effect.gen(function* () {
-          const requestId = cuid()
+      pull: (args, { listenForNew }) =>
+        listenForNew
+          ? Stream.fromPubSub(incomingMessages).pipe(
+              Stream.tap((_) =>
+                _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
+              ),
+              Stream.filter(Schema.is(WSMessage.PushBroadcast)),
+              Stream.map((_) => ({
+                mutationEventEncoded: _.mutationEventEncoded,
+                persisted: _.persisted,
+                metadata,
+              })),
+            )
+          : Effect.gen(function* () {
+              const requestId = cuid()
+              const cursor = Option.getOrUndefined(args)?.cursor
 
-          yield* send(WSMessage.PullReq.make({ cursor, requestId }))
+              yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
-          return Stream.fromPubSub(incomingMessages).pipe(
-            Stream.filter((_) => _.requestId === requestId),
-            Stream.tap((_) =>
-              _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
-            ),
-            Stream.filter(Schema.is(WSMessage.PullRes)),
-            Stream.takeUntil((_) => _.hasMore === false),
-            Stream.map((_) => _.events),
-            Stream.flattenIterables,
-            Stream.map((mutationEventEncoded) => ({ mutationEventEncoded, metadata: null })),
-          )
-        }).pipe(Stream.unwrap),
-      pushes: Stream.fromPubSub(incomingMessages).pipe(
-        Stream.filter(Schema.is(WSMessage.PushBroadcast)),
-        Stream.map((_) => ({ mutationEventEncoded: _.mutationEventEncoded, persisted: _.persisted, metadata: null })),
-      ),
+              return Stream.fromPubSub(incomingMessages).pipe(
+                Stream.filter((_) => _.requestId === requestId),
+                Stream.tap((_) =>
+                  _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
+                ),
+                Stream.filter(Schema.is(WSMessage.PullRes)),
+                Stream.takeUntil((_) => _.hasMore === false),
+                Stream.map((_) => _.events),
+                Stream.flattenIterables,
+                Stream.map((mutationEventEncoded) => ({
+                  mutationEventEncoded,
+                  metadata,
+                  persisted: true,
+                })),
+              )
+            }).pipe(Stream.unwrap),
       push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
           const ready = yield* Deferred.make<void, InvalidPushError>()
@@ -77,7 +92,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
 
           yield* Deferred.await(ready)
 
-          return { metadata: null }
+          return { metadata }
         }),
     } satisfies SyncBackend<null>
 

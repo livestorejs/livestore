@@ -83,6 +83,7 @@ declare global {
 
 type SyncMetadata = {
   offset: string
+  // TODO move this into "global" sync metadata as it's the same for each event
   shapeId: string
 }
 
@@ -90,13 +91,11 @@ export const makeSyncBackend = ({
   electricHost,
   roomId,
   pushEventEndpoint,
-}: SyncBackendOptions): Effect.Effect<SyncBackend<SyncMetadata | null>, never, Scope.Scope> => {
-  return Effect.gen(function* () {
+}: SyncBackendOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>
+  Effect.gen(function* () {
     const endpointUrl = `${electricHost}/v1/shape/events_${roomId}`
 
     const isConnected = yield* SubscriptionRef.make(true)
-
-    const initialCursorDeferred = yield* Deferred.make<SyncMetadata>()
 
     const initRoom = HttpClientRequest.schemaBody(ApiInitRoomPayload)(
       HttpClientRequest.post(pushEventEndpoint),
@@ -105,10 +104,13 @@ export const makeSyncBackend = ({
 
     const pendingPushDeferredMap = new Map<string, Deferred.Deferred<SyncMetadata>>()
 
-    const pull = ({ offset, shapeId }: { offset: string | undefined; shapeId: string | undefined }) =>
+    const pull = (args: Option.Option<SyncMetadata>, { listenForNew }: { listenForNew: boolean }) =>
       Effect.gen(function* () {
+        const liveParam = listenForNew ? '&live=true' : ''
         const url =
-          offset === undefined ? `${endpointUrl}?offset=-1` : `${endpointUrl}?offset=${offset}&shape_id=${shapeId}`
+          args._tag === 'None'
+            ? `${endpointUrl}?offset=-1`
+            : `${endpointUrl}?offset=${args.value.offset}&shape_id=${args.value.shapeId}${liveParam}`
 
         const resp = yield* HttpClientRequest.get(url).pipe(
           HttpClient.fetchOk,
@@ -126,82 +128,54 @@ export const makeSyncBackend = ({
           shapeId: headers['x-electric-shape-id'],
         }
 
+        // Electric completes the long-poll request after ~20 seconds with a 204 status
+        // In this case we just retry where we left off
+        if (resp.status === 204) {
+          return Option.some([Chunk.empty(), Option.some(nextCursor)] as const)
+        }
+
         const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem))(resp)
 
         const items = body
           .filter((item) => item.value !== undefined)
           .map((item) => ({
-            metadata: { offset: item.offset!, shapeId: nextCursor.shapeId },
+            metadata: Option.some({ offset: item.offset!, shapeId: nextCursor.shapeId }),
             mutationEventEncoded: {
               mutation: item.value!.mutation,
               args: JSON.parse(item.value!.args),
               id: item.value!.id,
             },
+            persisted: true,
           }))
 
-        if (items.length === 0) {
-          yield* Deferred.succeed(initialCursorDeferred, nextCursor)
+        if (listenForNew === false && items.length === 0) {
           return Option.none()
         }
 
-        return Option.some([Chunk.fromIterable(items), nextCursor] as const)
+        const [newItems, pendingPushItems] = Chunk.fromIterable(items).pipe(
+          Chunk.partition((item) => pendingPushDeferredMap.has(item.mutationEventEncoded.id)),
+        )
+
+        for (const item of pendingPushItems) {
+          const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)!
+          yield* Deferred.succeed(deferred, Option.getOrThrow(item.metadata))
+        }
+
+        return Option.some([newItems, Option.some(nextCursor)] as const)
       }).pipe(
         Effect.scoped,
         Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
       )
 
     return {
-      pull: (_cursor, metadata) =>
-        Stream.unfoldChunkEffect({ offset: metadata?.offset, shapeId: metadata?.shapeId }, ({ offset, shapeId }) =>
-          pull({ offset, shapeId }),
+      pull: (args, { listenForNew }) =>
+        Stream.unfoldChunkEffect(
+          args.pipe(
+            Option.map((_) => _.metadata),
+            Option.flatten,
+          ),
+          (metadataOption) => pull(metadataOption, { listenForNew }),
         ),
-
-      pushes: Effect.gen(function* () {
-        const initialCursor = yield* Deferred.await(initialCursorDeferred)
-
-        return Stream.unfoldChunkEffect(initialCursor, ({ offset, shapeId }) =>
-          Effect.gen(function* () {
-            const url = `${endpointUrl}?offset=${offset}&shape_id=${shapeId}&live=true`
-
-            const resp = yield* HttpClientRequest.get(url).pipe(HttpClient.fetchOk)
-
-            const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
-            const nextCursor = {
-              offset: headers['x-electric-chunk-last-offset'],
-              shapeId,
-            }
-
-            if (resp.status === 204) {
-              return Option.some([Chunk.empty(), nextCursor] as const)
-            }
-
-            const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem))(resp)
-
-            const items = body
-              .filter((item) => item.value !== undefined)
-              .map((item) => ({
-                metadata: { offset: item.offset!, shapeId },
-                mutationEventEncoded: {
-                  mutation: item.value!.mutation,
-                  args: JSON.parse(item.value!.args),
-                  id: item.value!.id,
-                },
-                persisted: true,
-              }))
-
-            const [newItems, pendingPushItems] = Chunk.fromIterable(items).pipe(
-              Chunk.partition((item) => pendingPushDeferredMap.has(item.mutationEventEncoded.id)),
-            )
-
-            for (const item of pendingPushItems) {
-              const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)!
-              yield* Deferred.succeed(deferred, item.metadata)
-            }
-
-            return Option.some([newItems, nextCursor] as const)
-          }).pipe(Effect.scoped, Effect.orDie),
-        )
-      }).pipe(Stream.unwrap),
 
       push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
@@ -224,9 +198,10 @@ export const makeSyncBackend = ({
 
           const metadata = yield* Deferred.await(deferred)
 
-          return { metadata }
+          pendingPushDeferredMap.delete(mutationEventEncoded.id)
+
+          return { metadata: Option.some(metadata) }
         }),
       isConnected,
-    } satisfies SyncBackend<SyncMetadata | null>
+    } satisfies SyncBackend<SyncMetadata>
   })
-}

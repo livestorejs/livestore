@@ -1,4 +1,5 @@
-import { type Effect, Schema, type Stream, type SubscriptionRef } from '@livestore/utils/effect'
+import type { Effect, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
 import type { MutationEvent } from '../schema/mutations.js'
 
@@ -8,27 +9,25 @@ export interface SyncBackendOptionsBase {
 }
 
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
-  // TODO consider unifying `pull` and `pushed` into a single stream with a "marker event" after the initial loading is completed
   pull: (
-    cursor: string | undefined,
-    metadata: TSyncMetadata,
+    args: Option.Option<{
+      cursor: string
+      metadata: Option.Option<TSyncMetadata>
+    }>,
+    options: { listenForNew: boolean },
   ) => Stream.Stream<
     {
       mutationEventEncoded: MutationEvent.AnyEncoded
-      metadata: TSyncMetadata
+      metadata: Option.Option<TSyncMetadata>
+      persisted: boolean
     },
     IsOfflineError | InvalidPullError
   >
-  pushes: Stream.Stream<{
-    mutationEventEncoded: MutationEvent.AnyEncoded
-    persisted: boolean
-    metadata: TSyncMetadata
-  }>
   // TODO support batching
   push: (
     mutationEventEncoded: MutationEvent.AnyEncoded,
     persisted: boolean,
-  ) => Effect.Effect<{ metadata: TSyncMetadata }, IsOfflineError | InvalidPushError>
+  ) => Effect.Effect<{ metadata: Option.Option<TSyncMetadata> }, IsOfflineError | InvalidPushError>
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
 }
 

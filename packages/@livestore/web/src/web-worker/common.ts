@@ -1,7 +1,5 @@
 import type {
   BootStatus,
-  InvalidPullError,
-  IsOfflineError,
   PreparedBindValues,
   SyncBackend,
   SynchronousDatabase,
@@ -22,7 +20,7 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, FiberSet, Queue, Ref, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import type { Deferred, Fiber, FiberSet, Option, Queue, Ref, Scope, WebChannel } from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
@@ -78,7 +76,14 @@ export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
   }
 >() {}
 
-export type InitialSetup = { _tag: 'Recreate'; snapshot: Ref.Ref<Uint8Array | undefined> } | { _tag: 'Reuse' }
+export type InitialSyncInfo = Option.Option<{
+  cursor: string
+  metadata: Option.Option<Schema.JsonValue>
+}>
+
+export type InitialSetup =
+  | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
+  | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
 export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
   InnerWorkerCtx,
@@ -98,15 +103,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     mutationDefSchemaHashMap: Map<string, number>
     broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
     devtools: DevtoolsContext
-    sync:
-      | {
-          backend: SyncBackend
-          inititialMessages: Stream.Stream<
-            { mutationEventEncoded: MutationEvent.AnyEncoded; metadata: Schema.JsonValue | null },
-            InvalidPullError | IsOfflineError
-          >
-        }
-      | undefined
+    syncBackend: SyncBackend | undefined
   }
 >() {}
 
@@ -117,7 +114,7 @@ export type ApplyMutation = (
     shouldBroadcast: boolean
     persisted: boolean
     inTransaction: boolean
-    syncMetadataJson: Schema.JsonValue | null
+    syncMetadataJson: Option.Option<Schema.JsonValue>
   },
 ) => Effect.Effect<void, SqliteError>
 
@@ -136,7 +133,7 @@ export const makeApplyMutation = (
         mutationDefSchemaHashMap,
         broadcastChannel,
         devtools,
-        sync,
+        syncBackend,
         schema,
         mutationSemaphore,
         sqlite3,
@@ -218,13 +215,13 @@ export const makeApplyMutation = (
       if (
         excludeFromMutationLogAndSyncing === false &&
         mutationDef.options.localOnly === false &&
-        sync !== undefined &&
+        syncBackend !== undefined &&
         syncStatus === 'pending'
       ) {
         yield* Effect.gen(function* () {
-          if ((yield* SubscriptionRef.get(sync.backend.isConnected)) === false) return
+          if ((yield* SubscriptionRef.get(syncBackend.isConnected)) === false) return
 
-          const { metadata } = yield* sync.backend.push(mutationEventEncoded, persisted)
+          const { metadata } = yield* syncBackend.push(mutationEventEncoded, persisted)
 
           yield* execSql(
             syncDbLog,

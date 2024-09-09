@@ -1,11 +1,6 @@
 import type { BootStatus, NetworkStatus, SyncBackend } from '@livestore/common'
-import { migrateTable, sql, UnexpectedError } from '@livestore/common'
-import {
-  type LiveStoreSchema,
-  makeMutationEventSchema,
-  MUTATION_LOG_META_TABLE,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
+import { migrateTable, UnexpectedError } from '@livestore/common'
+import { type LiveStoreSchema, makeMutationEventSchema, mutationLogMetaTable } from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -17,6 +12,7 @@ import {
   Layer,
   Logger,
   LogLevel,
+  Option,
   Queue,
   Ref,
   Scheduler,
@@ -128,36 +124,13 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
           // Might involve some async work, so we're running them concurrently
           const [db, dbLog] = yield* Effect.all([makeDb, makeDbLog], { concurrency: 2 })
 
-          const MutationlogQuerySchema = Schema.Struct({
-            id: Schema.String,
-            syncMetadataJson: Schema.NullOr(Schema.parseJson(Schema.JsonValue)),
-          }).pipe(Schema.Array, Schema.headOrElse())
-
-          const syncPullInfo = yield* Effect.try(() =>
-            dbLog.dbRef.current.syncDb.select<{ id: string; syncMetadataJson: string | null }>(
-              sql`SELECT id, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
-            ),
-          ).pipe(
-            Effect.andThen(Schema.decode(MutationlogQuerySchema)),
-            // NOTE this initially fails when the table doesn't exist yet
-            Effect.catchAll(() => Effect.succeed(undefined)),
-          )
-
           // TODO handle cases where options are provided but makeSyncBackend is not provided
           // TODO handle cases where makeSyncBackend is provided but options are not
           // TODO handle cases where backend and options don't match
           const syncBackend =
             syncOptions === undefined || makeSyncBackend === undefined ? undefined : yield* makeSyncBackend(syncOptions)
 
-          const broadcastChannel = yield* WebChannel.broadcastChannel({
-            channelName: `livestore-sync-${schema.hash}-${storeId}`,
-            listenSchema: BCMessage.Message,
-            sendSchema: BCMessage.Message,
-          })
-
-          const makeSync = Effect.gen(function* () {
-            if (syncBackend === undefined) return undefined
-
+          if (syncBackend !== undefined) {
             const waitUntilOnline = syncBackend.isConnected.changes.pipe(
               Stream.filter(Boolean),
               Stream.take(1),
@@ -166,14 +139,13 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
 
             // Wait first until we're online
             yield* waitUntilOnline
+          }
 
-            return {
-              backend: syncBackend,
-              inititialMessages: syncBackend.pull(syncPullInfo?.id, syncPullInfo?.syncMetadataJson ?? null),
-            }
+          const broadcastChannel = yield* WebChannel.broadcastChannel({
+            channelName: `livestore-sync-${schema.hash}-${storeId}`,
+            listenSchema: BCMessage.Message,
+            sendSchema: BCMessage.Message,
           })
-
-          const sync = yield* makeSync
 
           const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false }
 
@@ -198,7 +170,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             mutationEventSchema,
             broadcastChannel,
             devtools,
-            sync,
+            syncBackend,
           } satisfies typeof InnerWorkerCtx.Service
 
           // @ts-expect-error For debugging purposes
@@ -213,29 +185,37 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
 
           if (needsRecreate) {
             yield* recreateDb(innerWorkerCtx).pipe(
-              Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
-              Effect.flatMap((snapshot) => Ref.make<Uint8Array | undefined>(snapshot)),
-              Effect.tap((snapshot) => Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshot })),
+              Effect.tap(({ snapshot, syncInfo }) =>
+                Effect.gen(function* () {
+                  yield* Queue.offer(bootStatusQueue, { stage: 'done' })
+                  const snapshotRef = yield* Ref.make<Uint8Array | undefined>(snapshot)
+                  yield* Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshotRef, syncInfo })
+                }),
+              ),
               UnexpectedError.mapToUnexpectedError,
+              // NOTE we don't need to log the error here as we log it on the `await` side
               Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
-              Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )
           } else {
             yield* fetchAndApplyRemoteMutations(innerWorkerCtx, db.dbRef.current.pointer, true, ({ done, total }) =>
               Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
             ).pipe(
-              Effect.tap(() => Queue.offer(bootStatusQueue, { stage: 'done' })),
-              Effect.tap(() => Deferred.succeed(initialSetupDeferred, { _tag: 'Reuse' })),
+              Effect.tap((syncInfo) =>
+                Effect.gen(function* () {
+                  yield* Queue.offer(bootStatusQueue, { stage: 'done' })
+                  yield* Deferred.succeed(initialSetupDeferred, { _tag: 'Reuse', syncInfo })
+                }),
+              ),
               UnexpectedError.mapToUnexpectedError,
+              // NOTE we don't need to log the error here as we log it on the `await` side
               Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
-              Effect.tapCauseLogPretty,
               Effect.forkScoped,
             )
           }
 
           yield* Effect.gen(function* () {
-            yield* Deferred.await(initialSetupDeferred)
+            const { syncInfo } = yield* Deferred.await(initialSetupDeferred)
 
             const applyMutation = makeApplyMutation(
               innerWorkerCtx,
@@ -245,7 +225,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
 
             if (syncBackend !== undefined) {
               // TODO try to do this in a batched-way if possible
-              yield* syncBackend.pushes.pipe(
+              yield* syncBackend.pull(syncInfo, { listenForNew: true }).pipe(
                 Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
                   applyMutation(mutationEventEncoded, {
                     syncStatus: 'synced',
@@ -276,7 +256,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
                     shouldBroadcast: true,
                     persisted,
                     inTransaction: false,
-                    syncMetadataJson: null,
+                    syncMetadataJson: Option.none(),
                   })
                 }).pipe(Effect.withSpan('@livestore/web:worker:broadcastChannel:message')),
               ),
@@ -301,7 +281,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
 
           // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
           const cachedSnapshot =
-            result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshot, undefined) : undefined
+            result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
           return cachedSnapshot ?? (yield* workerCtx.db.export)
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
@@ -327,11 +307,11 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
         Effect.gen(function* (_) {
           const ctx = yield* InnerWorkerCtx
 
-          if (ctx.sync === undefined) {
+          if (ctx.syncBackend === undefined) {
             return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now() })
           }
 
-          return ctx.sync.backend.isConnected.changes.pipe(
+          return ctx.syncBackend.isConnected.changes.pipe(
             Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
           )
         }).pipe(Stream.unwrap),
@@ -434,7 +414,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
               persisted: item.persisted,
               inTransaction: true,
               syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
-              syncMetadataJson: null,
+              syncMetadataJson: Option.none(),
             })
           } else {
             // TODO handle txn

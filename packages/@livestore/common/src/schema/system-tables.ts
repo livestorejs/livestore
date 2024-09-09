@@ -56,7 +56,7 @@ export const mutationLogMetaTable = table(
     /** ISO date format */
     createdAt: SqliteDsl.text({ nullable: false }),
     syncStatus: SqliteDsl.text({ schema: SyncStatus }),
-    syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.JsonValue), nullable: true }),
+    syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
   { disableAutomaticIdColumn: true },
 )
