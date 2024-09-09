@@ -40,7 +40,7 @@ import * as WorkerSchema from './worker-schema.js'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
-  makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend, UnexpectedError, Scope.Scope>
+  makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
 }
 
 // @ts-expect-error TODO fix types
@@ -128,12 +128,20 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
           // Might involve some async work, so we're running them concurrently
           const [db, dbLog] = yield* Effect.all([makeDb, makeDbLog], { concurrency: 2 })
 
-          const cursor = yield* Effect.try(
-            () =>
-              dbLog.dbRef.current.syncDb.select<{ id: string }>(
-                sql`SELECT id FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
-              )[0]?.id,
-          ).pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+          const MutationlogQuerySchema = Schema.Struct({
+            id: Schema.String,
+            syncMetadataJson: Schema.NullOr(Schema.parseJson(Schema.JsonValue)),
+          }).pipe(Schema.Array, Schema.headOrElse())
+
+          const syncPullInfo = yield* Effect.try(() =>
+            dbLog.dbRef.current.syncDb.select<{ id: string; syncMetadataJson: string | null }>(
+              sql`SELECT id, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
+            ),
+          ).pipe(
+            Effect.andThen(Schema.decode(MutationlogQuerySchema)),
+            // NOTE this initially fails when the table doesn't exist yet
+            Effect.catchAll(() => Effect.succeed(undefined)),
+          )
 
           // TODO handle cases where options are provided but makeSyncBackend is not provided
           // TODO handle cases where makeSyncBackend is provided but options are not
@@ -161,7 +169,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
 
             return {
               backend: syncBackend,
-              inititialMessages: syncBackend.pull(cursor),
+              inititialMessages: syncBackend.pull(syncPullInfo?.id, syncPullInfo?.syncMetadataJson ?? null),
             }
           })
 
@@ -238,12 +246,13 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             if (syncBackend !== undefined) {
               // TODO try to do this in a batched-way if possible
               yield* syncBackend.pushes.pipe(
-                Stream.tap(({ mutationEventEncoded, persisted }) =>
+                Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
                   applyMutation(mutationEventEncoded, {
                     syncStatus: 'synced',
                     shouldBroadcast: true,
                     persisted,
                     inTransaction: false,
+                    syncMetadataJson: metadata,
                   }),
                 ),
                 Stream.runDrain,
@@ -267,6 +276,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
                     shouldBroadcast: true,
                     persisted,
                     inTransaction: false,
+                    syncMetadataJson: null,
                   })
                 }).pipe(Effect.withSpan('@livestore/web:worker:broadcastChannel:message')),
               ),
@@ -420,10 +430,11 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
               shouldNeverHappen(`Unknown mutation: ${item.mutationEventEncoded.mutation}`)
 
             yield* applyMutation(item.mutationEventEncoded, {
-              syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
               shouldBroadcast: true,
               persisted: item.persisted,
               inTransaction: true,
+              syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
+              syncMetadataJson: null,
             })
           } else {
             // TODO handle txn

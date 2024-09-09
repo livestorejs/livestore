@@ -1,4 +1,4 @@
-const getAppId = () => {
+export const getAppId = () => {
   if (typeof window === 'undefined') return 'unused'
 
   const searchParams = new URLSearchParams(window.location.search)
@@ -10,5 +10,3 @@ const getAppId = () => {
 
   window.location.search = searchParams.toString()
 }
-
-export const appId = getAppId()

@@ -22,7 +22,7 @@ declare global {
   interface LiveStoreGlobal extends LiveStoreGlobalCf {}
 }
 
-export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend, never, Scope.Scope> =>
+export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<null>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const wsUrl = `${options.url}/websocket?room=${options.roomId}`
 
@@ -45,11 +45,12 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend, n
             Stream.takeUntil((_) => _.hasMore === false),
             Stream.map((_) => _.events),
             Stream.flattenIterables,
+            Stream.map((mutationEventEncoded) => ({ mutationEventEncoded, metadata: null })),
           )
         }).pipe(Stream.unwrap),
       pushes: Stream.fromPubSub(incomingMessages).pipe(
         Stream.filter(Schema.is(WSMessage.PushBroadcast)),
-        Stream.map((_) => ({ mutationEventEncoded: _.mutationEventEncoded, persisted: _.persisted })),
+        Stream.map((_) => ({ mutationEventEncoded: _.mutationEventEncoded, persisted: _.persisted, metadata: null })),
       ),
       push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
@@ -75,8 +76,10 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend, n
           yield* send(WSMessage.PushReq.make({ mutationEventEncoded, requestId, persisted }))
 
           yield* Deferred.await(ready)
+
+          return { metadata: null }
         }),
-    } satisfies SyncBackend
+    } satisfies SyncBackend<null>
 
     return api
   })

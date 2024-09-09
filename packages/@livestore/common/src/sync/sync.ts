@@ -7,15 +7,28 @@ export interface SyncBackendOptionsBase {
   [key: string]: Schema.JsonValue
 }
 
-export type SyncBackend = {
+export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   // TODO consider unifying `pull` and `pushed` into a single stream with a "marker event" after the initial loading is completed
-  pull: (cursor: string | undefined) => Stream.Stream<MutationEvent.AnyEncoded, IsOfflineError | InvalidPullError>
-  pushes: Stream.Stream<{ mutationEventEncoded: MutationEvent.AnyEncoded; persisted: boolean }>
+  pull: (
+    cursor: string | undefined,
+    metadata: TSyncMetadata,
+  ) => Stream.Stream<
+    {
+      mutationEventEncoded: MutationEvent.AnyEncoded
+      metadata: TSyncMetadata
+    },
+    IsOfflineError | InvalidPullError
+  >
+  pushes: Stream.Stream<{
+    mutationEventEncoded: MutationEvent.AnyEncoded
+    persisted: boolean
+    metadata: TSyncMetadata
+  }>
   // TODO support batching
   push: (
     mutationEventEncoded: MutationEvent.AnyEncoded,
     persisted: boolean,
-  ) => Effect.Effect<void, IsOfflineError | InvalidPushError>
+  ) => Effect.Effect<{ metadata: TSyncMetadata }, IsOfflineError | InvalidPushError>
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
 }
 

@@ -1,3 +1,5 @@
+import 'todomvc-app-css/index.css'
+
 import type { MetaFunction } from '@remix-run/node'
 import React from 'react'
 

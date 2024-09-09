@@ -310,6 +310,7 @@ const listenToDevtools = ({
                 shouldBroadcast: true,
                 persisted,
                 inTransaction: false,
+                syncMetadataJson: null,
               })
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
