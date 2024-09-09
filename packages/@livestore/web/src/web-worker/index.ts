@@ -302,7 +302,7 @@ export const makeAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause(shutdown),
+        Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,

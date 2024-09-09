@@ -65,7 +65,7 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
   Effect.tapErrorCause(eff, (cause) =>
     Effect.gen(function* () {
       if (Cause.isInterruptedOnly(cause)) {
-        // console.log('interrupted', Cause.pretty(err), err)
+        // console.log('interrupted', Cause.pretty(cause), cause)
         return
       }
 

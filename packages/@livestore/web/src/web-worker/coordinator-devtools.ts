@@ -59,8 +59,6 @@ const listenToWebBridge = ({
     const appHostId = coordinator.devtools.appHostId
     const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
 
-    console.log('listenToWebBridge', appHostId)
-
     const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
     yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ appHostId, isLeader }))
 
@@ -103,8 +101,6 @@ const listenToWebBridge = ({
       Effect.ignoreLogged,
       Effect.forkScoped,
     )
-
-    console.log('listenToWebBridge done', appHostId)
 
     yield* Effect.never
   }).pipe(Effect.scoped)
