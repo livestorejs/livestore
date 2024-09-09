@@ -89,7 +89,6 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
 }) {
   static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
-      Effect.tapCauseLogPretty,
       Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
       Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
     )

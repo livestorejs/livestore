@@ -7,6 +7,7 @@ import {
   Effect,
   FiberMap,
   FiberSet,
+  Option,
   PubSub,
   Queue,
   Stream,
@@ -143,7 +144,7 @@ const listenToDevtools = ({
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* InnerWorkerCtx
-    const { sync, sqlite3, db, dbLog, schema, shutdownStateSubRef } = innerWorkerCtx
+    const { syncBackend, sqlite3, db, dbLog, schema, shutdownStateSubRef } = innerWorkerCtx
 
     const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current.pointer)
 
@@ -310,7 +311,7 @@ const listenToDevtools = ({
                 shouldBroadcast: true,
                 persisted,
                 inTransaction: false,
-                syncMetadataJson: null,
+                syncMetadataJson: Option.none(),
               })
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
@@ -319,7 +320,7 @@ const listenToDevtools = ({
             }
             case 'LSD.SyncingInfoReq': {
               const syncingInfo = Devtools.SyncingInfo.make({
-                enabled: sync !== undefined,
+                enabled: syncBackend !== undefined,
                 metadata: {},
               })
 
@@ -328,7 +329,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.NetworkStatusSubscribe': {
-              if (sync?.backend !== undefined) {
+              if (syncBackend !== undefined) {
                 const { requestId } = decodedEvent
 
                 // TODO investigate and fix bug. seems that when sending messages right after
@@ -336,7 +337,7 @@ const listenToDevtools = ({
                 // This is probably the same "flaky databrowser loading" bug as we're seeing in the playwright tests
                 yield* Effect.sleep(1000)
 
-                yield* sync.backend.isConnected.changes.pipe(
+                yield* syncBackend.isConnected.changes.pipe(
                   Stream.tap((isConnected) =>
                     sendMessage(
                       Devtools.NetworkStatusRes.make({

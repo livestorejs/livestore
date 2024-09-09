@@ -1,11 +1,18 @@
 import type { MigrationHooks } from '@livestore/common'
-import { initializeSingletonTables, migrateDb, rehydrateFromMutationLog, UnexpectedError } from '@livestore/common'
+import {
+  initializeSingletonTables,
+  migrateDb,
+  MUTATION_LOG_META_TABLE,
+  rehydrateFromMutationLog,
+  sql,
+  UnexpectedError,
+} from '@livestore/common'
 import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
-import { Effect, Queue, Stream } from '@livestore/utils/effect'
+import { Effect, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
-import type { InnerWorkerCtx } from './common.js'
+import type { InitialSyncInfo, InnerWorkerCtx } from './common.js'
 import { configureConnection, makeApplyMutation } from './common.js'
 
 export const recreateDb = (workerCtx: typeof InnerWorkerCtx.Service) =>
@@ -91,7 +98,7 @@ export const recreateDb = (workerCtx: typeof InnerWorkerCtx.Service) =>
       }
     }
 
-    yield* fetchAndApplyRemoteMutations(workerCtx, tmpDb, false, ({ done, total }) =>
+    const syncInfo = yield* fetchAndApplyRemoteMutations(workerCtx, tmpDb, false, ({ done, total }) =>
       Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
     )
 
@@ -101,7 +108,7 @@ export const recreateDb = (workerCtx: typeof InnerWorkerCtx.Service) =>
 
     sqlite3.close(tmpDb)
 
-    return snapshotFromTmpDb
+    return { snapshot: snapshotFromTmpDb, syncInfo }
   }).pipe(
     Effect.scoped, // NOTE we're closing the scope here so finalizers are called when the effect is done
     Effect.withSpan('@livestore/web:worker:recreateDb'),
@@ -116,17 +123,19 @@ export const fetchAndApplyRemoteMutations = (
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>,
 ) =>
   Effect.gen(function* () {
-    if (workerCtx.sync === undefined) return
-    const { sync } = workerCtx
+    if (workerCtx.syncBackend === undefined) return Option.none() as InitialSyncInfo
+    const { syncBackend } = workerCtx
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
     const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db)
 
     let processedMutations = 0
 
+    const cursorInfo = yield* getCursorInfo(workerCtx)
+
     // TODO stash and rebase local mutations on top of remote mutations
     // probably using the SQLite session extension
-    yield* sync.inititialMessages.pipe(
+    const lastSyncEvent = yield* syncBackend.pull(cursorInfo, { listenForNew: false }).pipe(
       Stream.tap(({ mutationEventEncoded, metadata }) =>
         applyMutation(mutationEventEncoded, {
           syncStatus: 'synced',
@@ -142,6 +151,43 @@ export const fetchAndApplyRemoteMutations = (
           }),
         ),
       ),
-      Stream.runDrain,
+      Stream.runLast,
     )
+
+    // In case there weren't any new synced events, we return the current cursor info
+    if (lastSyncEvent._tag === 'None') return cursorInfo
+
+    return lastSyncEvent.pipe(
+      Option.map((lastSyncEvent) => ({
+        cursor: lastSyncEvent.mutationEventEncoded.id,
+        metadata: lastSyncEvent.metadata,
+      })),
+    ) as InitialSyncInfo
   }).pipe(Effect.withSpan('@livestore/web:worker:fetchAndApplyRemoteMutations'))
+
+const getCursorInfo = (workerCtx: typeof InnerWorkerCtx.Service): Effect.Effect<InitialSyncInfo> =>
+  Effect.gen(function* () {
+    const { dbLog } = workerCtx
+
+    const MutationlogQuerySchema = Schema.Struct({
+      id: Schema.String,
+      syncMetadataJson: Schema.parseJson(Schema.Option(Schema.JsonValue)),
+    }).pipe(Schema.Array, Schema.headOrElse())
+
+    const syncPullInfo = yield* Effect.try(() =>
+      dbLog.dbRef.current.syncDb.select<{ id: string; syncMetadataJson: string }>(
+        sql`SELECT id, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
+      ),
+    ).pipe(
+      Effect.andThen(Schema.decode(MutationlogQuerySchema)),
+      // NOTE this initially fails when the table doesn't exist yet
+      Effect.catchAll(() => Effect.succeed(undefined)),
+    )
+
+    if (syncPullInfo === undefined) return Option.none()
+
+    return Option.some({
+      cursor: syncPullInfo.id,
+      metadata: syncPullInfo.syncMetadataJson,
+    }) satisfies InitialSyncInfo
+  })
