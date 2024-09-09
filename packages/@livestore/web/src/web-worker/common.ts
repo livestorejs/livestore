@@ -101,7 +101,10 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     sync:
       | {
           backend: SyncBackend
-          inititialMessages: Stream.Stream<MutationEvent.Any, InvalidPullError | IsOfflineError>
+          inititialMessages: Stream.Stream<
+            { mutationEventEncoded: MutationEvent.AnyEncoded; metadata: Schema.JsonValue | null },
+            InvalidPullError | IsOfflineError
+          >
         }
       | undefined
   }
@@ -114,6 +117,7 @@ export type ApplyMutation = (
     shouldBroadcast: boolean
     persisted: boolean
     inTransaction: boolean
+    syncMetadataJson: Schema.JsonValue | null
   },
 ) => Effect.Effect<void, SqliteError>
 
@@ -124,7 +128,7 @@ export const makeApplyMutation = (
 ): ApplyMutation => {
   const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
-  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction }) =>
+  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
     Effect.gen(function* () {
       const {
         dbLog,
@@ -190,6 +194,7 @@ export const makeApplyMutation = (
               schemaHash: mutationDefSchemaHash,
               createdAt: createdAtMemo(),
               syncStatus,
+              syncMetadataJson,
             },
           }),
         )
@@ -219,7 +224,7 @@ export const makeApplyMutation = (
         yield* Effect.gen(function* () {
           if ((yield* SubscriptionRef.get(sync.backend.isConnected)) === false) return
 
-          yield* sync.backend.push(mutationEventEncoded, persisted)
+          const { metadata } = yield* sync.backend.push(mutationEventEncoded, persisted)
 
           yield* execSql(
             syncDbLog,
@@ -227,7 +232,7 @@ export const makeApplyMutation = (
               tableName: MUTATION_LOG_META_TABLE,
               columns: mutationLogMetaTable.sqliteDef.columns,
               where: { id: mutationEventEncoded.id },
-              updateValues: { syncStatus: 'synced' },
+              updateValues: { syncStatus: 'synced', syncMetadataJson: metadata },
             }),
           )
         }).pipe(Effect.tapCauseLogPretty, Effect.fork)

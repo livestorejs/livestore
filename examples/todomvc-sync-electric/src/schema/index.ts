@@ -1,7 +1,5 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
 
-import { appId } from '@/util/app-id.js'
-
 import { Filter } from '../types.js'
 import * as mutations from './mutations.js'
 

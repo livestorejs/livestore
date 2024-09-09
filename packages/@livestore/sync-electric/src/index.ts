@@ -1,9 +1,6 @@
 import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import type { MutationEvent } from '@livestore/common/schema'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
-import { isNotUndefined } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -13,8 +10,6 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   Option,
-  Queue,
-  ReadonlyArray,
   Schema,
   Stream,
   SubscriptionRef,
@@ -76,10 +71,6 @@ export interface SyncBackendOptions extends SyncBackendOptionsBase {
    * @example "https://api.myapp.com/push-event"
    */
   pushEventEndpoint: string
-  // pushEvent: (
-  //   mutationEventEncoded: MutationEvent.AnyEncoded,
-  //   persisted: boolean,
-  // ) => Effect.Effect<void, InvalidPushError>
 }
 
 interface LiveStoreGlobalElectric {
@@ -90,67 +81,79 @@ declare global {
   interface LiveStoreGlobal extends LiveStoreGlobalElectric {}
 }
 
+type SyncMetadata = {
+  offset: string
+  shapeId: string
+}
+
 export const makeSyncBackend = ({
   electricHost,
   roomId,
-  // pushEvent,
   pushEventEndpoint,
-}: SyncBackendOptions): Effect.Effect<SyncBackend, never, Scope.Scope> => {
+}: SyncBackendOptions): Effect.Effect<SyncBackend<SyncMetadata | null>, never, Scope.Scope> => {
   return Effect.gen(function* () {
     const endpointUrl = `${electricHost}/v1/shape/events_${roomId}`
-    // ?offset=-1
 
     const isConnected = yield* SubscriptionRef.make(true)
 
-    const initialCursorDeferred = yield* Deferred.make<{ offset: string; shapeId: string }>()
+    const initialCursorDeferred = yield* Deferred.make<SyncMetadata>()
 
     const initRoom = HttpClientRequest.schemaBody(ApiInitRoomPayload)(
       HttpClientRequest.post(pushEventEndpoint),
       ApiInitRoomPayload.make({ roomId }),
     ).pipe(Effect.andThen(HttpClient.fetchOk))
 
-    return {
-      pull: (cursor) =>
-        Stream.unfoldChunkEffect({ offset: cursor, shapeId: undefined as undefined | string }, ({ offset, shapeId }) =>
-          Effect.gen(function* () {
-            const url =
-              offset === undefined ? `${endpointUrl}?offset=-1` : `${endpointUrl}?offset=${offset}&shape_id=${shapeId}`
+    const pendingPushDeferredMap = new Map<string, Deferred.Deferred<SyncMetadata>>()
 
-            const resp = yield* HttpClientRequest.get(url).pipe(
-              HttpClient.fetchOk,
-              Effect.tapErrorTag('ResponseError', (error) =>
-                error.response.status === 400 ? initRoom : Effect.fail(error),
-              ),
-              Effect.retry({ times: 1 }),
-            )
+    const pull = ({ offset, shapeId }: { offset: string | undefined; shapeId: string | undefined }) =>
+      Effect.gen(function* () {
+        const url =
+          offset === undefined ? `${endpointUrl}?offset=-1` : `${endpointUrl}?offset=${offset}&shape_id=${shapeId}`
 
-            const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
-            const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem))(resp)
-
-            const items = body
-              .map((item) => item.value)
-              .filter(isNotUndefined)
-              .map((item) => ({
-                mutation: item.mutation,
-                args: JSON.parse(item.args),
-                id: item.id,
-              }))
-
-            const nextCursor = {
-              offset: headers['x-electric-chunk-last-offset'],
-              shapeId: headers['x-electric-shape-id'],
-            }
-
-            if (items.length === 0) {
-              yield* Deferred.succeed(initialCursorDeferred, nextCursor)
-              return Option.none()
-            }
-
-            return Option.some([Chunk.fromIterable(items), nextCursor] as const)
-          }).pipe(
-            Effect.scoped,
-            Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
+        const resp = yield* HttpClientRequest.get(url).pipe(
+          HttpClient.fetchOk,
+          Effect.tapErrorTag('ResponseError', (error) =>
+            // TODO handle 409 error when the shapeId you request no longer exists for whatever reason.
+            // The correct behavior here is to refetch the shape from scratch and to reset the local state.
+            error.response.status === 400 ? initRoom : Effect.fail(error),
           ),
+          Effect.retry({ times: 1 }),
+        )
+
+        const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
+        const nextCursor = {
+          offset: headers['x-electric-chunk-last-offset'],
+          shapeId: headers['x-electric-shape-id'],
+        }
+
+        const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem))(resp)
+
+        const items = body
+          .filter((item) => item.value !== undefined)
+          .map((item) => ({
+            metadata: { offset: item.offset!, shapeId: nextCursor.shapeId },
+            mutationEventEncoded: {
+              mutation: item.value!.mutation,
+              args: JSON.parse(item.value!.args),
+              id: item.value!.id,
+            },
+          }))
+
+        if (items.length === 0) {
+          yield* Deferred.succeed(initialCursorDeferred, nextCursor)
+          return Option.none()
+        }
+
+        return Option.some([Chunk.fromIterable(items), nextCursor] as const)
+      }).pipe(
+        Effect.scoped,
+        Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
+      )
+
+    return {
+      pull: (_cursor, metadata) =>
+        Stream.unfoldChunkEffect({ offset: metadata?.offset, shapeId: metadata?.shapeId }, ({ offset, shapeId }) =>
+          pull({ offset, shapeId }),
         ),
 
       pushes: Effect.gen(function* () {
@@ -163,37 +166,48 @@ export const makeSyncBackend = ({
             const resp = yield* HttpClientRequest.get(url).pipe(HttpClient.fetchOk)
 
             const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
+            const nextCursor = {
+              offset: headers['x-electric-chunk-last-offset'],
+              shapeId,
+            }
+
+            if (resp.status === 204) {
+              return Option.some([Chunk.empty(), nextCursor] as const)
+            }
+
             const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem))(resp)
 
             const items = body
-              .map((item) => item.value)
-              .filter(isNotUndefined)
+              .filter((item) => item.value !== undefined)
               .map((item) => ({
-                mutation: item.mutation,
-                args: JSON.parse(item.args),
-                id: item.id,
+                metadata: { offset: item.offset!, shapeId },
+                mutationEventEncoded: {
+                  mutation: item.value!.mutation,
+                  args: JSON.parse(item.value!.args),
+                  id: item.value!.id,
+                },
+                persisted: true,
               }))
 
-            if (items.length === 0) {
-              return Option.none()
+            const [newItems, pendingPushItems] = Chunk.fromIterable(items).pipe(
+              Chunk.partition((item) => pendingPushDeferredMap.has(item.mutationEventEncoded.id)),
+            )
+
+            for (const item of pendingPushItems) {
+              const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)!
+              yield* Deferred.succeed(deferred, item.metadata)
             }
 
-            const nextCursor = {
-              offset: headers['x-electric-chunk-last-offset'],
-              shapeId: headers['x-electric-shape-id'],
-            }
-
-            return Option.some([Chunk.fromIterable(items), nextCursor] as const)
+            return Option.some([newItems, nextCursor] as const)
           }).pipe(Effect.scoped, Effect.orDie),
         )
-      }).pipe(
-        Stream.unwrap,
-        Stream.map((mutationEventEncoded) => ({ mutationEventEncoded, persisted: true })),
-      ),
+      }).pipe(Stream.unwrap),
 
-      // push: (mutationEventEncoded, persisted) => pushEvent(mutationEventEncoded, persisted),
       push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
+          const deferred = yield* Deferred.make<SyncMetadata>()
+          pendingPushDeferredMap.set(mutationEventEncoded.id, deferred)
+
           const resp = yield* HttpClientRequest.schemaBody(ApiPushEventPayload)(
             HttpClientRequest.post(pushEventEndpoint),
             ApiPushEventPayload.make({ roomId, mutationEventEncoded, persisted }),
@@ -207,8 +221,12 @@ export const makeSyncBackend = ({
           if (!resp.success) {
             yield* InvalidPushError.make({ message: 'Push failed' })
           }
+
+          const metadata = yield* Deferred.await(deferred)
+
+          return { metadata }
         }),
       isConnected,
-    } satisfies SyncBackend
+    } satisfies SyncBackend<SyncMetadata | null>
   })
 }

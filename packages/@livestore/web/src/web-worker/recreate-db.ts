@@ -127,12 +127,13 @@ export const fetchAndApplyRemoteMutations = (
     // TODO stash and rebase local mutations on top of remote mutations
     // probably using the SQLite session extension
     yield* sync.inititialMessages.pipe(
-      Stream.tap((mutationEventEncoded) =>
+      Stream.tap(({ mutationEventEncoded, metadata }) =>
         applyMutation(mutationEventEncoded, {
           syncStatus: 'synced',
           shouldBroadcast,
           persisted: true,
           inTransaction: false,
+          syncMetadataJson: metadata,
         }).pipe(
           Effect.andThen(() => {
             processedMutations += 1

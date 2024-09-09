@@ -65,31 +65,6 @@ export default defineConfig({
       //   // suppressWarnings: true,
       // },
     }),
-    // react({}),
-    {
-      name: 'serve-custom-html',
-      configureServer: (server) => {
-        // Middleware to intercept the custom.html request
-        server.middlewares.use(async (req, res, next) => {
-          if (req.url === '/_devtools.html') {
-            const filePath = path.resolve(__dirname, '_devtools.html')
-
-            try {
-              // Read and process the custom.html file
-              const html = await server.transformIndexHtml(req.url, fs.readFileSync(filePath, 'utf8'))
-
-              res.setHeader('Content-Type', 'text/html')
-              res.end(html)
-            } catch (err) {
-              console.error('Error serving custom.html:', err)
-              next()
-            }
-          } else {
-            next()
-          }
-        })
-      },
-    },
     // Needed for OPFS Sqlite to work
     {
       name: 'configure-response-headers',
