@@ -22,6 +22,8 @@ Example data:
 ,{"key":"\"public\".\"events\"/\"1725703554783\"","value":{"id":"1725703554783","mutation":"test","args_json":"{\"test\":\"test\"}","schema_hash":"1","created_at":"2024-09-07T10:05:54.783Z"},"headers":{"operation":"insert","relation":["public","events"]},"offset":"0_0"}
 ,{"headers":{"control":"up-to-date"}}]
 
+Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript-client/src/client.ts
+
 */
 
 const ResponseItem = Schema.Struct({
