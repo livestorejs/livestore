@@ -3,13 +3,13 @@
 @@ -11,15 +11,15 @@
    "dependencies": {
      "@effect/schema": "0.72.2",
-     "@livestore/devtools-react": "0.0.58-dev.5",
--    "@livestore/livestore": "0.0.58-dev.5",
--    "@livestore/utils": "0.0.58-dev.5",
+     "@livestore/devtools-react": "0.0.58-dev.6",
+-    "@livestore/livestore": "0.0.58-dev.6",
+-    "@livestore/utils": "0.0.58-dev.6",
 +    "@livestore/livestore": "workspace:*",
 +    "@livestore/utils": "workspace:*",
      "@livestore/wa-sqlite": "1.0.1-dev.29",
--    "@livestore/web": "0.0.58-dev.5",
+-    "@livestore/web": "0.0.58-dev.6",
 +    "@livestore/web": "workspace:*",
      "@opentelemetry/api": "^1.9.0",
      "@schickling/fps-meter": "^0.1.2",
