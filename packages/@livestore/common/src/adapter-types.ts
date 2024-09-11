@@ -64,9 +64,12 @@ export type Coordinator = {
   }
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
+  syncMutations: Stream.Stream<MutationEvent.Any, UnexpectedError>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
-  mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
+  mutate(
+    mutationEventEncoded: MutationEvent.AnyEncoded,
+    options: { persisted: boolean },
+  ): Effect.Effect<void, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>

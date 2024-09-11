@@ -1,5 +1,10 @@
 import { makeColumnSpec } from '@livestore/common'
-import { DbSchema, type MutationEvent } from '@livestore/common/schema'
+import {
+  DbSchema,
+  type MutationEvent,
+  mutationEventRootIdSchema,
+  mutationEventSchemaAny,
+} from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
@@ -18,10 +23,10 @@ const encodeMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Message))
 const decodeMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.Message))
 
 export const mutationLogTable = DbSchema.table('__unused', {
-  // TODO add parent ids (see https://vlcn.io/blog/crdt-substrate)
   id: DbSchema.text({ primaryKey: true }),
-  mutation: DbSchema.text({ nullable: false }),
-  args: DbSchema.text({ nullable: false, schema: Schema.parseJson(Schema.Any) }),
+  parentId: DbSchema.text({ schema: Schema.Union(Schema.String, mutationEventRootIdSchema) }),
+  mutation: DbSchema.text({}),
+  args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
 })
 
 // Durable Object
@@ -79,9 +84,10 @@ export class WebSocketServer extends DurableObject<Env> {
         // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
         while (true) {
           const events = remainingEvents.splice(0, CHUNK_SIZE)
+          const encodedEvents = Schema.encodeSync(Schema.Array(mutationEventSchemaAny))(events)
           const hasMore = remainingEvents.length > 0
 
-          ws.send(encodeMessage(WSMessage.PullRes.make({ events, hasMore, requestId })))
+          ws.send(encodeMessage(WSMessage.PullRes.make({ events: encodedEvents, hasMore, requestId })))
 
           if (hasMore === false) {
             break

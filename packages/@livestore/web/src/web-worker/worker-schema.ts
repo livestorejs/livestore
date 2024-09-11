@@ -1,4 +1,5 @@
 import { BootStatus, UnexpectedError } from '@livestore/common'
+import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
@@ -7,11 +8,7 @@ export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
 })
 
 export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-  mutationEventEncoded: Schema.Struct({
-    mutation: Schema.String,
-    args: Schema.Any,
-    id: Schema.String,
-  }),
+  mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
 })
 

@@ -43,8 +43,8 @@ export type MutationDef<TName extends string, TFrom, TTo> = {
     localOnly: boolean
   }
 
-  /** Helper function to construct mutation event */
-  (args: TTo): { mutation: TName; args: TTo; id: string }
+  /** Helper function to construct a partial mutation event */
+  (args: TTo): { mutation: TName; args: TTo; id: string; parentId: string | MUTATION_EVENT_ROOT_ID }
 }
 
 export namespace MutationDef {
@@ -63,7 +63,12 @@ export const defineMutation = <TName extends string, TFrom, TTo>(
     localOnly?: boolean
   },
 ): MutationDef<TName, TFrom, TTo> => {
-  const makeEvent = (args: TTo) => ({ mutation: name, args, id: cuid() })
+  const makeEvent = (args: TTo) => ({
+    mutation: name,
+    args,
+    id: cuid(),
+    parentId: 'TODO-implement-parent-id',
+  })
 
   Object.defineProperty(makeEvent, 'name', { value: name })
   Object.defineProperty(makeEvent, 'schema', { value: schema })
@@ -102,16 +107,31 @@ export const rawSqlMutation = defineMutation(
 export type RawSqlMutation = typeof rawSqlMutation
 export type RawSqlMutationEvent = ReturnType<typeof rawSqlMutation>
 
+export const MUTATION_EVENT_ROOT_ID = Symbol.for('livestore.MutationEventRootId')
+export type MUTATION_EVENT_ROOT_ID = typeof MUTATION_EVENT_ROOT_ID
+
+export const mutationEventRootIdSchema = Schema.transform(
+  Schema.Literal('livestore.MutationEventRootId'),
+  Schema.UniqueSymbolFromSelf(MUTATION_EVENT_ROOT_ID),
+  {
+    strict: false,
+    decode: () => MUTATION_EVENT_ROOT_ID,
+    encode: String,
+  },
+).annotations({ title: 'livestore.MutationEventRootId' })
+
 export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
   args: Schema.Schema.Type<TMutationsDef['schema']>
   id: string
+  parentId: string | MUTATION_EVENT_ROOT_ID
 }
 
 export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
   args: Schema.Schema.Encoded<TMutationsDef['schema']>
   id: string
+  parentId: string
 }
 
 export namespace MutationEvent {
@@ -129,6 +149,7 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
       mutation: K
       args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
       id: string
+      parentId: string | MUTATION_EVENT_ROOT_ID
     }
   }[keyof TMutationsDefRecord],
   {
@@ -136,6 +157,7 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
       mutation: K
       args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
       id: string
+      parentId: string
     }
   }[keyof TMutationsDefRecord]
 >
@@ -149,20 +171,24 @@ export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
         mutation: Schema.Literal(def.name),
         args: def.schema,
         id: Schema.String,
+        parentId: Schema.Union(Schema.String, mutationEventRootIdSchema),
       }),
     ),
   ).annotations({ title: 'MutationEventSchema' }) as any
 
 export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 
-export const mutationEventSchemaDecodedAny = Schema.Struct({
+export const mutationEventSchemaAny = Schema.Struct({
   mutation: Schema.String,
   args: Schema.Any,
   id: Schema.String,
-}).annotations({ title: 'MutationEventSchema.DecodedAny' })
+  parentId: Schema.Union(Schema.String, mutationEventRootIdSchema),
+}).annotations({ title: 'MutationEventSchema.Any' })
 
-export const mutationEventSchemaEncodedAny = Schema.Struct({
-  mutation: Schema.String,
-  args: Schema.Any,
-  id: Schema.String,
-}).annotations({ title: 'MutationEventSchema.EncodedAny' })
+export const mutationEventSchemaDecodedAny = Schema.typeSchema(mutationEventSchemaAny).annotations({
+  title: 'MutationEventSchema.DecodedAny',
+})
+
+export const mutationEventSchemaEncodedAny = Schema.encodedSchema(mutationEventSchemaAny).annotations({
+  title: 'MutationEventSchema.EncodedAny',
+})

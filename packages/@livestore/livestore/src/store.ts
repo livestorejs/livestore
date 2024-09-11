@@ -549,7 +549,7 @@ export class Store<
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
           this.adapter.coordinator
             .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
-            .pipe(Runtime.runFork(this.runtime))
+            .pipe(this.runEffectFork)
         }
 
         // Uncomment to print a list of queries currently registered on the store
@@ -568,7 +568,7 @@ export class Store<
    * This should only be used for framework-internal purposes;
    * all app writes should go through mutate.
    */
-  execute = (
+  __execute = (
     query: string,
     params: ParamsObject = {},
     writeTables?: ReadonlySet<string>,
@@ -579,7 +579,7 @@ export class Store<
     this.adapter.coordinator.execute(query, prepareBindValues(params, query)).pipe(this.runEffectFork)
   }
 
-  select = (query: string, params: ParamsObject = {}) => {
+  __select = (query: string, params: ParamsObject = {}) => {
     return this.syncDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
   }
 
