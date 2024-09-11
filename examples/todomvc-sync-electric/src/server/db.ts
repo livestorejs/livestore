@@ -1,4 +1,3 @@
-import type { MutationLogMetaRow } from '@livestore/common'
 import type { MutationEvent } from '@livestore/livestore'
 import postgres from 'postgres'
 
