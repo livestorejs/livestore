@@ -1,10 +1,8 @@
 // @ts-check
-import fs from 'node:fs'
 import path from 'node:path'
 
 import { vitePlugin as remix } from '@remix-run/dev'
 import { RemixVitePWA } from '@vite-pwa/remix'
-import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 
