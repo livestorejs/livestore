@@ -257,7 +257,7 @@ export const bootDevtools = ({
       mutationEventEncoded,
       persisted,
     }: {
-      mutationEventEncoded: MutationEvent.Any
+      mutationEventEncoded: MutationEvent.AnyEncoded
       persisted: boolean
     }) =>
       expoDevtoolsChannel

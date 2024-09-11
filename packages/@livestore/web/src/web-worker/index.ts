@@ -9,7 +9,6 @@ import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
 import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
@@ -27,6 +26,7 @@ import {
   WebLock,
   Worker,
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
@@ -479,9 +479,10 @@ export const makeAdapter =
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
 const getAppHostId = (key: string) => {
-  // Only use the last 6 characters of the apphost id to make it shorter
-  const makeId = () => cuid().slice(-6)
+  const makeId = () => nanoid(6)
 
+  // in case of a worker, we need the appHostId of the parent window, to keep the app host id consistent
+  // we also need to handle the case where there are multiple workers being spawned by the same window
   if (typeof window === 'undefined' || window.sessionStorage === undefined) {
     return makeId()
   }

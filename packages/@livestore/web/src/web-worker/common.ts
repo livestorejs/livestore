@@ -108,7 +108,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
 >() {}
 
 export type ApplyMutation = (
-  mutationEventEncoded: MutationEvent.Any,
+  mutationEventEncoded: MutationEvent.AnyEncoded,
   options: {
     syncStatus: SyncStatus
     shouldBroadcast: boolean
@@ -186,6 +186,7 @@ export const makeApplyMutation = (
             columns: mutationLogMetaTable.sqliteDef.columns,
             values: {
               id: mutationEventEncoded.id,
+              parentId: mutationEventEncoded.parentId,
               mutation: mutationEventEncoded.mutation,
               argsJson: mutationEventEncoded.args ?? {},
               schemaHash: mutationDefSchemaHash,

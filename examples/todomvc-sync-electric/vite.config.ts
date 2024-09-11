@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-module */
 // @ts-check
 import path from 'node:path'
 

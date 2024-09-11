@@ -14,6 +14,10 @@
       "react-native": "./dist/cuid/cuid.browser.js",
       "browser": "./dist/cuid/cuid.browser.js"
     },
+    "./nanoid": {
+      "types": "./dist/nanoid/index.d.ts",
+      "default": "./dist/nanoid/index.js"
+    },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
       "default": "./dist/effect/index.js"
@@ -26,6 +30,9 @@
       "./cuid": [
         "./dist/cuid/cuid.node.d.ts"
       ],
+      "./nanoid": [
+        "./dist/nanoid/index.d.ts"
+      ],
       "effect": [
         "./dist/effect"
       ]
@@ -35,6 +42,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "nanoid": "^5.0.7",
     "effect-db-schema": "workspace:*",
     "msgpackr": "^1.11.0",
     "pretty-bytes": "^6.1.1"

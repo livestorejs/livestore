@@ -1,6 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 import { type SqliteAst as __SqliteAst, SqliteDsl } from 'effect-db-schema'
 
+import { mutationEventRootIdSchema } from './mutations.js'
 import type { FromTable } from './table-def.js'
 import { table } from './table-def.js'
 
@@ -48,13 +49,13 @@ export const MUTATION_LOG_META_TABLE = 'mutation_log'
 export const mutationLogMetaTable = table(
   MUTATION_LOG_META_TABLE,
   {
-    // TODO add parent ids (see https://vlcn.io/blog/crdt-substrate)
     id: SqliteDsl.text({ primaryKey: true }),
-    mutation: SqliteDsl.text({ nullable: false }),
-    argsJson: SqliteDsl.text({ nullable: false, schema: Schema.parseJson(Schema.Any) }),
-    schemaHash: SqliteDsl.integer({ nullable: false }),
+    parentId: SqliteDsl.text({ schema: Schema.Union(Schema.String, mutationEventRootIdSchema) }),
+    mutation: SqliteDsl.text({}),
+    argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
+    schemaHash: SqliteDsl.integer({}),
     /** ISO date format */
-    createdAt: SqliteDsl.text({ nullable: false }),
+    createdAt: SqliteDsl.text({}),
     syncStatus: SqliteDsl.text({ schema: SyncStatus }),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },

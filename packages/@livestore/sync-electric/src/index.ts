@@ -146,6 +146,7 @@ export const makeSyncBackend = ({
               mutation: item.value!.mutation,
               args: JSON.parse(item.value!.args),
               id: item.value!.id,
+              parentId: item.value!.parentId,
             },
             persisted: true,
           }))
