@@ -41,7 +41,9 @@ export const bootDevtools = ({
       Effect.forkScoped,
     )
 
-    yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
+    if (typeof window !== 'undefined') {
+      yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
+    }
   })
 
 const listenToWebBridge = ({
@@ -62,11 +64,14 @@ const listenToWebBridge = ({
 
     const runtime = yield* Effect.runtime()
 
-    window.addEventListener('beforeunload', () =>
-      webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
-        .pipe(Runtime.runFork(runtime)),
-    )
+    // TODO handle shutdown case for worker
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () =>
+        webBridgeBroadcastChannel
+          .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
+          .pipe(Runtime.runFork(runtime)),
+      )
+    }
 
     yield* Effect.addFinalizer(() =>
       webBridgeBroadcastChannel

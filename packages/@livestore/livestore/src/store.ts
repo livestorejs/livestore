@@ -649,7 +649,7 @@ export const createStorePromise = async <
   }).pipe(
     Effect.withSpan('createStore'),
     Effect.tapCauseLogPretty,
-    Effect.annotateLogs({ thread: 'window' }),
+    Effect.annotateLogs({ thread: self.name }),
     Effect.provide(Logger.pretty),
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runPromise,

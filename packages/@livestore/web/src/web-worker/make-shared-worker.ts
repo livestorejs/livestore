@@ -153,8 +153,8 @@ const makeWorkerRunner = Effect.gen(function* () {
             const diff = Schema.debugDiff(messageSchema)(previousInitialMessage.initialMessage, initialMessage)
 
             yield* new UnexpectedError({
-              cause: {
-                message: 'Initial message already sent and was different now',
+              cause: 'Initial message already sent and was different now',
+              payload: {
                 diff,
                 previousInitialMessage,
                 newInitialMessage: initialMessage,

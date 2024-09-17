@@ -61,6 +61,7 @@ export type WebAdapterOptions = {
   sharedWorker:
     | ((options: { name: string }) => globalThis.SharedWorker)
     | (new (options: { name: string }) => globalThis.SharedWorker)
+    | MessagePort
   /**
    * Specifies where to persist data for this adapter
    */
@@ -115,6 +116,7 @@ export const makeAdapter =
       })
 
       const appHostId = getAppHostId(schema.key)
+      console.log('appHost', appHostId)
 
       const shutdownChannel = yield* makeShutdownChannel(schema.key)
 
@@ -128,7 +130,10 @@ export const makeAdapter =
         Effect.forkScoped,
       )
 
-      const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${schemaKey}` })
+      const sharedWorker =
+        options.sharedWorker instanceof MessagePort
+          ? options.sharedWorker
+          : tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${schemaKey}` })
 
       const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
@@ -229,16 +234,20 @@ export const makeAdapter =
           `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (appHostId: ${appHostId})`,
         )
 
-        // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
-        yield* WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
-          Effect.andThen(() => {
-            gotLocky = true
-            return runLocked
-          }),
-          Effect.interruptible,
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped,
-        )
+        if (sharedWorker instanceof MessagePort) {
+          console.log('sharedWorker is a MessagePort. not waiting for lock')
+        } else {
+          // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
+          yield* WebLock.waitForDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK).pipe(
+            Effect.andThen(() => {
+              gotLocky = true
+              return runLocked
+            }),
+            Effect.interruptible,
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
+          )
+        }
       } else {
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
@@ -293,7 +302,7 @@ export const makeAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause(shutdown),
+        Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -505,7 +514,7 @@ const ensureBrowserRequirements = Effect.gen(function* () {
     validate(typeof navigator === 'undefined', 'navigator'),
     validate(navigator.locks === undefined, 'navigator.locks'),
     validate(navigator.storage === undefined, 'navigator.storage'),
-    validate(typeof window === 'undefined', 'window'),
-    validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
+    // validate(typeof window === 'undefined', 'window'),
+    // validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
   ])
 })

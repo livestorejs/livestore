@@ -1,0 +1,35 @@
+{
+  "name": "todomvc-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:analyze": "VITE_ANALYZE=1 run build",
+    "dev": "vite --force",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@effect/schema": "0.72.2",
+    "@livestore/devtools-react": "0.0.57",
+    "@livestore/livestore": "0.0.57",
+    "@livestore/wa-sqlite": "1.0.1-dev.29",
+    "@livestore/web": "0.0.57",
+    "@schickling/fps-meter": "^0.1.2",
+    "effect": "3.7.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "todomvc-app-css": "^2.4.3",
+    "uuid": "^10.0.0",
+    "workbox-window": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "rollup-plugin-visualizer": "^5.12.0",
+    "typescript": "5.5.4",
+    "vite": "^5.4.3",
+    "vite-plugin-pwa": "^0.20.1"
+  }
+}
