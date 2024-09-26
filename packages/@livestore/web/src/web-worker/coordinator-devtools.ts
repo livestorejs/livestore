@@ -1,31 +1,31 @@
 import type { Coordinator, UnexpectedError } from '@livestore/common'
 import { Devtools } from '@livestore/common'
-import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Either, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from './shutdown-channel.js'
 
 export const bootDevtools = ({
   coordinator,
+  storeId,
   waitForDevtoolsWebBridgePort,
   connectToDevtools,
-  key,
 }: {
   coordinator: Coordinator
+  storeId: string
   waitForDevtoolsWebBridgePort: (_: { webBridgeId: string }) => Effect.Effect<MessagePort, UnexpectedError>
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
-  key: string
 }) =>
   Effect.gen(function* () {
     const webBridgeFiberHandle = yield* FiberHandle.make()
 
     // NOTE we're not using the existing coordinator `shutdownChannel` as we won't be able to listen to messages emitted by the same coordinator
-    const shutdownChannel = yield* makeShutdownChannel(key)
+    const shutdownChannel = yield* makeShutdownChannel(storeId)
 
     const runWebBridge = FiberHandle.run(
       webBridgeFiberHandle,
-      listenToWebBridge({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools }),
+      listenToWebBridge({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId }),
     )
 
     yield* runWebBridge
@@ -42,14 +42,22 @@ export const bootDevtools = ({
     )
 
     yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
+
+    if (import.meta.env.DEV) {
+      yield* Effect.log(
+        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}`,
+      )
+    }
   })
 
 const listenToWebBridge = ({
   coordinator,
+  storeId,
   waitForDevtoolsWebBridgePort,
   connectToDevtools,
 }: {
   coordinator: Coordinator
+  storeId: string
   waitForDevtoolsWebBridgePort: (_: { webBridgeId: string }) => Effect.Effect<MessagePort, UnexpectedError>
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
@@ -79,7 +87,7 @@ const listenToWebBridge = ({
       Stream.filter(Schema.is(Devtools.WebBridge.DevtoolsReady)),
       Stream.tap(({ devtoolsId }) =>
         Effect.gen(function* () {
-          const webBridgeId = cuid()
+          const webBridgeId = nanoid()
           yield* waitForDevtoolsWebBridgePort({ webBridgeId }).pipe(
             Effect.andThen(connectToDevtools),
             Effect.tapCauseLogPretty,
@@ -88,7 +96,7 @@ const listenToWebBridge = ({
 
           const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
           yield* webBridgeBroadcastChannel.send(
-            Devtools.WebBridge.ConnectToDevtools.make({ appHostId, isLeader, devtoolsId, webBridgeId }),
+            Devtools.WebBridge.ConnectToDevtools.make({ appHostId, isLeader, devtoolsId, webBridgeId, storeId }),
           )
         }),
       ),

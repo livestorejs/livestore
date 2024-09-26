@@ -1,7 +1,6 @@
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
 import {
   Deferred,
   Effect,
@@ -14,6 +13,7 @@ import {
   SubscriptionRef,
   WebChannel,
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
@@ -40,7 +40,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
     storeMessagePortDeferred,
     storeId,
     appHostId,
-    isLeaderTab,
+    isLeader,
     persistenceInfo,
   }) =>
     Effect.gen(function* () {
@@ -95,9 +95,9 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.forkScoped,
       )
 
-      yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), { force: true })
+      yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), { force: true })
 
-      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: cuid() }), {
+      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: nanoid() }), {
         force: true,
       })
 
@@ -108,7 +108,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         disconnect,
         storeId,
         appHostId,
-        isLeaderTab,
+        isLeader,
         persistenceInfo,
       })
     }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { appHostId } }))
@@ -130,7 +130,7 @@ const listenToDevtools = ({
   disconnect,
   appHostId,
   storeId,
-  isLeaderTab,
+  isLeader,
   persistenceInfo,
 }: {
   incomingMessages: Stream.Stream<Devtools.MessageToAppHostCoordinator>
@@ -139,14 +139,18 @@ const listenToDevtools = ({
   disconnect: Effect.Effect<void>
   appHostId: string
   storeId: string
-  isLeaderTab: boolean
+  isLeader: boolean
   persistenceInfo: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* InnerWorkerCtx
     const { syncBackend, sqlite3, db, dbLog, schema, shutdownStateSubRef } = innerWorkerCtx
 
-    const applyMutation = makeApplyMutation(innerWorkerCtx, () => new Date().toISOString(), db.dbRef.current.pointer)
+    const applyMutation = yield* makeApplyMutation(
+      innerWorkerCtx,
+      () => new Date().toISOString(),
+      db.dbRef.current.pointer,
+    )
 
     const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -160,7 +164,7 @@ const listenToDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), {
+              yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
                 force: true,
               })
             }
@@ -185,7 +189,7 @@ const listenToDevtools = ({
             yield* disconnect
 
             // TODO is there a better place for this?
-            yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }), {
+            yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
               force: true,
             })
 
@@ -300,11 +304,18 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              const { mutationEventEncoded, persisted } = decodedEvent
+              const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
 
               const mutationDef =
-                schema.mutations.get(mutationEventEncoded.mutation) ??
-                shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
+                schema.mutations.get(mutationEventEncoded_.mutation) ??
+                shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
+
+              // TODO bring back devtools-based mutation execution
+              const mutationEventEncoded = {
+                ...mutationEventEncoded_,
+                id: 'TODO',
+                parentId: 'TODO',
+              }
 
               yield* applyMutation(mutationEventEncoded, {
                 syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
@@ -315,6 +326,32 @@ const listenToDevtools = ({
               })
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
+
+              return
+            }
+            case 'LSD.SyncHistorySubscribe': {
+              const { requestId } = decodedEvent
+
+              if (syncBackend !== undefined) {
+                yield* syncBackend.pull(Option.none(), { listenForNew: true }).pipe(
+                  Stream.tap(({ mutationEventEncoded, metadata }) =>
+                    sendMessage(Devtools.SyncHistoryRes.make({ mutationEventEncoded, metadata, ...reqPayload })),
+                  ),
+                  Stream.runDrain,
+                  Effect.acquireRelease(() => Effect.log('syncHistorySubscribe done')),
+                  Effect.interruptible,
+                  Effect.tapCauseLogPretty,
+                  FiberMap.run(subscriptionFiberMap, requestId),
+                )
+              }
+
+              return
+            }
+            case 'LSD.SyncHistoryUnsubscribe': {
+              const { requestId } = decodedEvent
+              console.log('LSD.SyncHistoryUnsubscribe', requestId)
+
+              yield* FiberMap.remove(subscriptionFiberMap, requestId)
 
               return
             }

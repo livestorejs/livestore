@@ -1,6 +1,8 @@
 import type { Coordinator, LockStatus, StoreAdapterFactory } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
+import { MUTATION_EVENT_ROOT_ID } from '@livestore/common/schema'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
@@ -37,12 +39,21 @@ export const makeInMemoryAdapter =
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
       const syncMutations = Stream.never
 
+      const currentMutationEventIdRef = { current: MUTATION_EVENT_ROOT_ID as MUTATION_EVENT_ROOT_ID | string }
+
       const coordinator = {
         devtools: { appHostId: 'in-memory', enabled: false },
         lockStatus,
         syncMutations,
         execute: () => Effect.void,
         mutate: () => Effect.void,
+        getNextMutationEventId: () =>
+          Effect.sync(() => {
+            const id = nanoid()
+            currentMutationEventIdRef.current = id
+            return id
+          }),
+        getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         export: Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.succeed(new Uint8Array()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),

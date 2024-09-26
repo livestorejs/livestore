@@ -1,7 +1,7 @@
 {
   "name": "@livestore/utils",
   "version": "0.0.58-dev.6",
-  "sideEffects": false,
+  "sideEffects": ["./dist/global.js"],
   "type": "module",
   "exports": {
     ".": {

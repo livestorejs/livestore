@@ -155,7 +155,7 @@ export const migrateTable = ({
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
   const uniqueStr = index.unique ? 'UNIQUE' : ''
-  return sql`create ${uniqueStr} index ${index.name} on ${tableName} (${index.columns.join(', ')})`
+  return sql`create ${uniqueStr} index if not exists ${index.name} on ${tableName} (${index.columns.join(', ')})`
 }
 
 export const makeColumnSpec = (tableAst: SqliteAst.Table) => {

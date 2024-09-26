@@ -1,5 +1,5 @@
 import { BootStatus, UnexpectedError } from '@livestore/common'
-import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import { mutationEventRootIdSchema, mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
@@ -80,6 +80,7 @@ export namespace DedicatedWorkerInner {
       syncOptions: Schema.optional(SyncBackendOptions),
       devtoolsEnabled: Schema.Boolean,
       storeId: Schema.String,
+      originId: Schema.String,
     },
     success: Schema.Void,
     failure: UnexpectedError,
@@ -117,6 +118,15 @@ export namespace DedicatedWorkerInner {
     failure: UnexpectedError,
   }) {}
 
+  export class GetCurrentMutationEventId extends Schema.TaggedRequest<GetCurrentMutationEventId>()(
+    'GetCurrentMutationEventId',
+    {
+      payload: {},
+      success: Schema.Union(mutationEventRootIdSchema, Schema.String),
+      failure: UnexpectedError,
+    },
+  ) {}
+
   export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
     payload: {},
     success: Schema.Struct({
@@ -140,7 +150,7 @@ export namespace DedicatedWorkerInner {
     payload: {
       port: Transferable.MessagePort,
       appHostId: Schema.String,
-      isLeaderTab: Schema.Boolean,
+      isLeader: Schema.Boolean,
     },
     success: Schema.Struct({
       storeMessagePort: Transferable.MessagePort,
@@ -155,6 +165,7 @@ export namespace DedicatedWorkerInner {
     Export,
     GetRecreateSnapshot,
     ExportMutationlog,
+    GetCurrentMutationEventId,
     NetworkStatusStream,
     Shutdown,
     ConnectDevtoolsStream,
@@ -220,6 +231,7 @@ export namespace SharedWorker {
     DedicatedWorkerInner.Export,
     DedicatedWorkerInner.GetRecreateSnapshot,
     DedicatedWorkerInner.ExportMutationlog,
+    DedicatedWorkerInner.GetCurrentMutationEventId,
     DedicatedWorkerInner.NetworkStatusStream,
     DedicatedWorkerInner.Shutdown,
     DedicatedWorkerInner.ConnectDevtoolsStream,

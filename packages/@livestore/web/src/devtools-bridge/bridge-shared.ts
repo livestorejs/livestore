@@ -12,7 +12,7 @@ export const makeShared = ({
   responsePubSub: PubSub.PubSub<Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore>
 }) =>
   Effect.gen(function* () {
-    const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeaderTab: boolean }>()
+    const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 
     const appHostStoreChannelDeferred =
       yield* Deferred.make<
@@ -33,8 +33,8 @@ export const makeShared = ({
       Stream.tap((msg) =>
         Effect.gen(function* () {
           if (msg._tag === 'LSD.AppHostReady') {
-            const { appHostId, isLeaderTab } = msg
-            yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeaderTab })
+            const { appHostId, isLeader } = msg
+            yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
           } else if (msg._tag === 'LSD.MessagePortForStoreReq') {
             // Here we're "duplicating" the message port since we need one for the coordinator
             // and one for the store
@@ -91,7 +91,7 @@ export const makeShared = ({
 
     yield* sendToAppHost(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
-    const { appHostId, isLeaderTab } = yield* Deferred.await(appHostInfoDeferred)
+    const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 
-    return { sendToAppHost, appHostId, isLeaderTab }
+    return { sendToAppHost, appHostId, isLeader }
   })

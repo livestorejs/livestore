@@ -9,7 +9,7 @@ import type {
   StoreDevtoolsChannel,
 } from '@livestore/common'
 import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { LiveStoreSchema, MUTATION_EVENT_ROOT_ID, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import {
@@ -76,6 +76,7 @@ export type StoreOptions<
   batchUpdates: (runUpdates: () => void) => void
   // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
   __processedMutationIds: Set<string>
+  currentMutationEventIdRef: { current: string | MUTATION_EVENT_ROOT_ID }
 }
 
 export type RefreshReason =
@@ -109,9 +110,6 @@ export type StoreOtel = {
   queriesSpanContext: otel.Context
 }
 
-let storeCount = 0
-const uniqueStoreId = () => `store-${++storeCount}`
-
 export type StoreMutateOptions = {
   label?: string
   skipRefresh?: boolean
@@ -133,7 +131,7 @@ export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > extends Inspectable.Class {
-  id = uniqueStoreId()
+  readonly storeId: string
   reactivityGraph: ReactivityGraph
   syncDbWrapper: SynchronousDatabaseWrapper
   adapter: StoreAdapter
@@ -157,7 +155,11 @@ export class Store<
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
+  // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
+
+  /** Pointer to the current mutation event id (which is synced i.e. non-localOny) */
+  private currentMutationEventIdRef
 
   // #region constructor
   private constructor({
@@ -169,10 +171,16 @@ export class Store<
     disableDevtools,
     batchUpdates,
     __processedMutationIds,
+    currentMutationEventIdRef,
+    storeId,
     fiberSet,
     runtime,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     super()
+
+    this.storeId = storeId
+
+    this.currentMutationEventIdRef = currentMutationEventIdRef
 
     this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: adapter.syncDb })
     this.adapter = adapter
@@ -241,9 +249,11 @@ export class Store<
 
     Effect.gen(this, function* () {
       yield* this.adapter.coordinator.syncMutations.pipe(
-        Stream.tapSync((mutationEventDecoded) => {
-          this.mutate({ wasSyncMessage: true }, mutationEventDecoded)
-        }),
+        Stream.tapChunk((mutationsEventsDecodedChunk) =>
+          Effect.sync(() => {
+            this.mutate({ wasSyncMessage: true }, ...mutationsEventsDecodedChunk)
+          }),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.withSpan('LiveStore:syncMutations'),
@@ -327,17 +337,21 @@ export class Store<
 
   // #region mutate
   mutate: {
-    <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg): void
+    <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(...list: TMutationArg): void
     (
-      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
+      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
+        ...list: TMutationArg
+      ) => void,
     ): void
-    <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(
+    <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
       options: StoreMutateOptions,
       ...list: TMutationArg
     ): void
     (
       options: StoreMutateOptions,
-      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.ForSchema<TSchema>>>(...list: TMutationArg) => void,
+      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
+        ...list: TMutationArg
+      ) => void,
     ): void
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
     let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
@@ -361,14 +375,16 @@ export class Store<
       mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
     }
 
-    mutationsEvents = mutationsEvents.filter((_) => !this.__processedMutationIds.has(_.id))
+    mutationsEvents = mutationsEvents.filter((_) => _.id === undefined || !this.__processedMutationIds.has(_.id))
 
     if (mutationsEvents.length === 0) {
       return
     }
 
     for (const mutationEvent of mutationsEvents) {
-      this.__processedMutationIds.add(mutationEvent.id)
+      if (mutationEvent.id !== undefined) {
+        this.__processedMutationIds.add(mutationEvent.id)
+      }
     }
 
     const label = options?.label ?? 'mutate'
@@ -492,18 +508,30 @@ export class Store<
    * the caller must refresh queries after calling this method.
    */
   mutateWithoutRefresh = (
-    mutationEventDecoded: MutationEvent.ForSchema<TSchema>,
+    mutationEventDecoded_: MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>,
     options: {
       otelContext: otel.Context
       coordinatorMode: 'default' | 'skip-coordinator' | 'skip-persist'
     },
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
+    const mutationDef =
+      this.schema.mutations.get(mutationEventDecoded_.mutation) ??
+      shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
+
+    const mutationEventDecoded: MutationEvent.ForSchema<TSchema> = mutationEventDecoded_.hasOwnProperty('id')
+      ? (mutationEventDecoded_ as MutationEvent.ForSchema<TSchema>)
+      : {
+          ...mutationEventDecoded_,
+          ...this.getNextMutationEventId({ localOnly: mutationDef.options.localOnly }),
+        }
+
     // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
     // e.g. the row-query functionality
     if (this.__processedMutationWithoutRefreshIds.has(mutationEventDecoded.id)) {
       // NOTE this data should never be used
       return { writeTables: new Set(), durationMs: 0 }
     } else {
+      this.__processedMutationIds.add(mutationEventDecoded.id)
       this.__processedMutationWithoutRefreshIds.add(mutationEventDecoded.id)
     }
 
@@ -523,10 +551,6 @@ export class Store<
 
         const allWriteTables = new Set<string>()
         let durationMsTotal = 0
-
-        const mutationDef =
-          this.schema.mutations.get(mutationEventDecoded.mutation) ??
-          shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
 
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
@@ -581,6 +605,20 @@ export class Store<
 
   __select = (query: string, params: ParamsObject = {}) => {
     return this.syncDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
+  }
+
+  private getNextMutationEventId = ({
+    localOnly,
+  }: {
+    localOnly: boolean
+  }): { id: string; parentId: string | MUTATION_EVENT_ROOT_ID } => {
+    const id = this.adapter.coordinator.getNextMutationEventId({ localOnly }).pipe(Effect.runSync)
+    const parentId = this.currentMutationEventIdRef.current
+    if (localOnly === false) {
+      this.currentMutationEventIdRef.current = id
+    }
+
+    return { id, parentId }
   }
 
   private makeTableRef = (tableName: string) =>
@@ -747,6 +785,8 @@ export const createStore = <
 
     const __processedMutationIds = new Set<string>()
 
+    const currentMutationEventId = yield* adapter.coordinator.getCurrentMutationEventId
+
     // TODO consider moving booting into the storage backend
     if (boot !== undefined) {
       let isInTxn = false
@@ -765,10 +805,18 @@ export const createStore = <
           }
         },
         mutate: (...list) => {
-          for (const mutationEventDecoded of list) {
+          for (const mutationEventDecoded_ of list) {
             const mutationDef =
-              schema.mutations.get(mutationEventDecoded.mutation) ??
-              shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
+              schema.mutations.get(mutationEventDecoded_.mutation) ??
+              shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
+
+            const mutationEventDecoded = {
+              ...mutationEventDecoded_,
+              id: adapter.coordinator
+                .getNextMutationEventId({ localOnly: mutationDef.options.localOnly })
+                .pipe(Effect.runSync),
+              parentId: 'todo-parent-id',
+            }
 
             __processedMutationIds.add(mutationEventDecoded.id)
 
@@ -829,6 +877,7 @@ export const createStore = <
         reactivityGraph,
         disableDevtools,
         __processedMutationIds,
+        currentMutationEventIdRef: { current: currentMutationEventId },
         fiberSet,
         runtime,
         batchUpdates: batchUpdates ?? ((run) => run()),

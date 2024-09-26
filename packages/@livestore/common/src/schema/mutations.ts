@@ -1,5 +1,4 @@
 import { memoizeByRef } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
 import { Schema } from '@livestore/utils/effect'
 
 import type { BindValues } from '../sql-queries/sql-queries.js'
@@ -44,7 +43,11 @@ export type MutationDef<TName extends string, TFrom, TTo> = {
   }
 
   /** Helper function to construct a partial mutation event */
-  (args: TTo): { mutation: TName; args: TTo; id: string; parentId: string | MUTATION_EVENT_ROOT_ID }
+  (args: TTo): {
+    mutation: TName
+    args: TTo
+    // id: string; parentId: string | MUTATION_EVENT_ROOT_ID
+  }
 }
 
 export namespace MutationDef {
@@ -63,19 +66,14 @@ export const defineMutation = <TName extends string, TFrom, TTo>(
     localOnly?: boolean
   },
 ): MutationDef<TName, TFrom, TTo> => {
-  const makeEvent = (args: TTo) => ({
-    mutation: name,
-    args,
-    id: cuid(),
-    parentId: 'TODO-implement-parent-id',
-  })
+  const makePartialEvent = (args: TTo) => ({ mutation: name, args })
 
-  Object.defineProperty(makeEvent, 'name', { value: name })
-  Object.defineProperty(makeEvent, 'schema', { value: schema })
-  Object.defineProperty(makeEvent, 'sql', { value: sql })
-  Object.defineProperty(makeEvent, 'options', { value: { localOnly: options?.localOnly ?? false } })
+  Object.defineProperty(makePartialEvent, 'name', { value: name })
+  Object.defineProperty(makePartialEvent, 'schema', { value: schema })
+  Object.defineProperty(makePartialEvent, 'sql', { value: sql })
+  Object.defineProperty(makePartialEvent, 'options', { value: { localOnly: options?.localOnly ?? false } })
 
-  return makeEvent as MutationDef<TName, TFrom, TTo>
+  return makePartialEvent as MutationDef<TName, TFrom, TTo>
 }
 
 export const makeMutationDefRecord = <TInputRecord extends Record<string, MutationDef.Any>>(
@@ -116,9 +114,19 @@ export const mutationEventRootIdSchema = Schema.transform(
   {
     strict: false,
     decode: () => MUTATION_EVENT_ROOT_ID,
-    encode: String,
+    encode: () => 'livestore.MutationEventRootId',
   },
 ).annotations({ title: 'livestore.MutationEventRootId' })
+
+export type MutationEventPartial<TMutationsDef extends MutationDef.Any> = {
+  mutation: TMutationsDef['name']
+  args: Schema.Schema.Type<TMutationsDef['schema']>
+}
+
+export type MutationEventPartialEncoded<TMutationsDef extends MutationDef.Any> = {
+  mutation: TMutationsDef['name']
+  args: Schema.Schema.Encoded<TMutationsDef['schema']>
+}
 
 export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
@@ -137,6 +145,13 @@ export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
 export namespace MutationEvent {
   export type Any = MutationEvent<MutationDef.Any>
   export type AnyEncoded = MutationEventEncoded<MutationDef.Any>
+
+  export type PartialAny = MutationEventPartial<MutationDef.Any>
+  export type PartialAnyEncoded = MutationEventPartialEncoded<MutationDef.Any>
+
+  export type PartialForSchema<TSchema extends LiveStoreSchema> = {
+    [K in keyof TSchema['_MutationDefMapType']]: MutationEventPartial<TSchema['_MutationDefMapType'][K]>
+  }[keyof TSchema['_MutationDefMapType']]
 
   export type ForSchema<TSchema extends LiveStoreSchema> = {
     [K in keyof TSchema['_MutationDefMapType']]: MutationEvent<TSchema['_MutationDefMapType'][K]>
@@ -162,6 +177,21 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
   }[keyof TMutationsDefRecord]
 >
 
+export type MutationEventPartialSchema<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
+  {
+    [K in keyof TMutationsDefRecord]: {
+      mutation: K
+      args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
+    }
+  }[keyof TMutationsDefRecord],
+  {
+    [K in keyof TMutationsDefRecord]: {
+      mutation: K
+      args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
+    }
+  }[keyof TMutationsDefRecord]
+>
+
 export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): MutationEventSchema<TSchema['_MutationDefMapType']> =>
@@ -175,6 +205,18 @@ export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
       }),
     ),
   ).annotations({ title: 'MutationEventSchema' }) as any
+
+export const makeMutationEventPartialSchema = <TSchema extends LiveStoreSchema>(
+  schema: TSchema,
+): MutationEventPartialSchema<TSchema['_MutationDefMapType']> =>
+  Schema.Union(
+    ...[...schema.mutations.values()].map((def) =>
+      Schema.Struct({
+        mutation: Schema.Literal(def.name),
+        args: def.schema,
+      }),
+    ),
+  ).annotations({ title: 'MutationEventSchemaPartial' }) as any
 
 export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 

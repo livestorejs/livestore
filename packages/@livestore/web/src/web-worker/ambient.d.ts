@@ -24,3 +24,12 @@ interface FileSystemFileHandle {
 //   }
 //   export default sharedWorkerConstructor
 // }
+
+interface ImportMeta {
+  env: {
+    DEV: boolean | undefined
+  }
+}
+
+// eslint-disable-next-line no-var
+declare var __opfsUtils: typeof OpfsUtils

@@ -106,7 +106,7 @@ export const recreateDb = (workerCtx: typeof InnerWorkerCtx.Service) =>
 
     const snapshotFromTmpDb = WaSqlite.exportDb(sqlite3, tmpDb)
 
-    sqlite3.close(tmpDb)
+    tmpSyncDb.close()
 
     return { snapshot: snapshotFromTmpDb, syncInfo }
   }).pipe(
@@ -127,7 +127,7 @@ export const fetchAndApplyRemoteMutations = (
     const { syncBackend } = workerCtx
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db)
+    const applyMutation = yield* makeApplyMutation(workerCtx, createdAtMemo, db)
 
     let processedMutations = 0
 
