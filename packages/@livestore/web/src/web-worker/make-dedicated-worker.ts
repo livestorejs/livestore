@@ -1,6 +1,11 @@
 import type { BootStatus, NetworkStatus, SyncBackend } from '@livestore/common'
-import { migrateTable, UnexpectedError } from '@livestore/common'
-import { type LiveStoreSchema, makeMutationEventSchema, mutationLogMetaTable } from '@livestore/common/schema'
+import { migrateTable, sql, UnexpectedError } from '@livestore/common'
+import {
+  type LiveStoreSchema,
+  makeMutationEventSchema,
+  MUTATION_EVENT_ROOT_ID,
+  mutationLogMetaTable,
+} from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -39,9 +44,7 @@ export type WorkerOptions = {
   makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
 }
 
-// @ts-expect-error TODO fix types
 if (import.meta.env.DEV) {
-  // @ts-expect-error TODO fix types
   globalThis.__opfsUtils = OpfsUtils
 }
 
@@ -72,6 +75,7 @@ export const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) =>
           Effect.provide(Logger.pretty),
           Logger.withMinimumLogLevel(LogLevel.Debug),
           Effect.withScheduler(Scheduler.messageChannel()),
+          // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
           Effect.withMaxOpsBeforeYield(4096),
           Effect.forkScoped,
         )
@@ -91,7 +95,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
     )
 
     return WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerInner.Request, {
-      InitialMessage: ({ storageOptions, storeId, needsRecreate, syncOptions, devtoolsEnabled }) =>
+      InitialMessage: ({ storageOptions, storeId, originId, needsRecreate, syncOptions, devtoolsEnabled }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.promise(() => WaSqlite.loadSqlite3Wasm())
 
@@ -159,6 +163,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             storageOptions,
             schema,
             storeId,
+            originId,
             mutationSemaphore,
             shutdownStateSubRef,
             sqlite3,
@@ -217,7 +222,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
           yield* Effect.gen(function* () {
             const { syncInfo } = yield* Deferred.await(initialSetupDeferred)
 
-            const applyMutation = makeApplyMutation(
+            const applyMutation = yield* makeApplyMutation(
               innerWorkerCtx,
               () => new Date().toISOString(),
               db.dbRef.current.pointer,
@@ -226,6 +231,8 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             if (syncBackend !== undefined) {
               // TODO try to do this in a batched-way if possible
               yield* syncBackend.pull(syncInfo, { listenForNew: true }).pipe(
+                // Filter out "own" mutations
+                Stream.filter((_) => _.mutationEventEncoded.id.startsWith(originId) === false),
                 Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
                   applyMutation(mutationEventEncoded, {
                     syncStatus: 'synced',
@@ -303,6 +310,17 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
         ),
       BootStatusStream: () =>
         Effect.andThen(InnerWorkerCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      GetCurrentMutationEventId: () =>
+        Effect.gen(function* () {
+          const workerCtx = yield* InnerWorkerCtx
+          const result = workerCtx.dbLog.dbRef.current.syncDb.select<{ id: string }>(
+            sql`SELECT id FROM mutation_log ORDER BY orderKey DESC LIMIT 1`,
+          )
+          return result[0]?.id ?? MUTATION_EVENT_ROOT_ID
+        }).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:worker:GetCurrentMutationEventId'),
+        ),
       NetworkStatusStream: () =>
         Effect.gen(function* (_) {
           const ctx = yield* InnerWorkerCtx
@@ -317,19 +335,19 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
         }).pipe(Stream.unwrap),
       Shutdown: () =>
         Effect.gen(function* () {
-          const { db, dbLog, devtools, sqlite3 } = yield* InnerWorkerCtx
+          const { db, dbLog, devtools } = yield* InnerWorkerCtx
           yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
 
           if (devtools.enabled) {
             yield* FiberSet.clear(devtools.connections)
           }
 
-          sqlite3.close(db.dbRef.current.pointer)
-          sqlite3.close(dbLog.dbRef.current.pointer)
+          db.dbRef.current.syncDb.close()
+          dbLog.dbRef.current.syncDb.close()
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       // NOTE We're using a stream here to express a scoped effect over the worker boundary
       // so the code below can cause an interrupt on the worker client side
-      ConnectDevtoolsStream: ({ port, appHostId, isLeaderTab }) =>
+      ConnectDevtoolsStream: ({ port, appHostId, isLeader }) =>
         Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, InnerWorkerCtx>((emit) =>
           Effect.gen(function* () {
             const workerCtx = yield* InnerWorkerCtx
@@ -347,7 +365,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
                 disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
                 storeId: workerCtx.storeId,
                 appHostId,
-                isLeaderTab,
+                isLeader,
                 persistenceInfo: { db: workerCtx.db.persistenceInfo, mutationLog: workerCtx.dbLog.persistenceInfo },
               })
               .pipe(
@@ -376,7 +394,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
     }
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = makeApplyMutation(workerCtx, createdAtMemo, db.dbRef.current.pointer)
+    const applyMutation = yield* makeApplyMutation(workerCtx, createdAtMemo, db.dbRef.current.pointer)
 
     let offset = 0
 

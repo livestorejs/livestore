@@ -51,6 +51,8 @@ const makeWorkerRunner = Effect.gen(function* () {
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
       Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, never>),
+      // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
+      // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
       Effect.logWarnIfTakesLongerThan({
         label: `@livestore/web:shared-worker:forwardRequest:${req._tag}`,
         duration: 500,
@@ -224,6 +226,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     GetRecreateSnapshot: forwardRequest,
     ExportMutationlog: forwardRequest,
     Setup: forwardRequest,
+    GetCurrentMutationEventId: forwardRequest,
     NetworkStatusStream: forwardRequestStream,
     Shutdown: forwardRequest,
     ConnectDevtoolsStream: forwardRequestStream,

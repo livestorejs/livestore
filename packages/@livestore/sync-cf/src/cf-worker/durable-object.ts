@@ -1,6 +1,7 @@
 import { makeColumnSpec } from '@livestore/common'
 import {
   DbSchema,
+  MUTATION_EVENT_ROOT_ID,
   type MutationEvent,
   mutationEventRootIdSchema,
   mutationEventSchemaAny,
@@ -19,8 +20,9 @@ export interface Env {
 
 type WebSocketClient = WebSocket
 
-const encodeMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Message))
-const decodeMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.Message))
+const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.BackendToClientMessage))
+const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.ClientToBackendMessage))
+const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
 export const mutationLogTable = DbSchema.table('__unused', {
   id: DbSchema.text({ primaryKey: true }),
@@ -48,8 +50,8 @@ export class WebSocketServer extends DurableObject<Env> {
 
       this.ctx.setWebSocketAutoResponse(
         new WebSocketRequestResponsePair(
-          encodeMessage(WSMessage.Ping.make({ requestId: 'ping' })),
-          encodeMessage(WSMessage.Pong.make({ requestId: 'ping' })),
+          encodeIncomingMessage(WSMessage.Ping.make({ requestId: 'ping' })),
+          encodeOutgoingMessage(WSMessage.Pong.make({ requestId: 'ping' })),
         ),
       )
 
@@ -63,7 +65,7 @@ export class WebSocketServer extends DurableObject<Env> {
     }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
 
   webSocketMessage = async (ws: WebSocketClient, message: ArrayBuffer | string) => {
-    const decodedMessageRes = decodeMessage(message)
+    const decodedMessageRes = decodeIncomingMessage(message)
 
     if (decodedMessageRes._tag === 'Left') {
       console.error('Invalid message received', decodedMessageRes.left)
@@ -73,92 +75,116 @@ export class WebSocketServer extends DurableObject<Env> {
     const decodedMessage = decodedMessageRes.right
     const requestId = decodedMessage.requestId
 
-    switch (decodedMessage._tag) {
-      case 'WSMessage.PullReq': {
-        const cursor = decodedMessage.cursor
-        const CHUNK_SIZE = 100
+    try {
+      switch (decodedMessage._tag) {
+        case 'WSMessage.PullReq': {
+          const cursor = decodedMessage.cursor
+          const CHUNK_SIZE = 100
 
-        // TODO use streaming
-        const remainingEvents = [...(await this.storage.getEvents(cursor))]
+          // TODO use streaming
+          const remainingEvents = [...(await this.storage.getEvents(cursor))]
 
-        // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
-        while (true) {
-          const events = remainingEvents.splice(0, CHUNK_SIZE)
-          const encodedEvents = Schema.encodeSync(Schema.Array(mutationEventSchemaAny))(events)
-          const hasMore = remainingEvents.length > 0
+          // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
+          while (true) {
+            const events = remainingEvents.splice(0, CHUNK_SIZE)
+            const encodedEvents = Schema.encodeSync(Schema.Array(mutationEventSchemaAny))(events)
+            const hasMore = remainingEvents.length > 0
 
-          ws.send(encodeMessage(WSMessage.PullRes.make({ events: encodedEvents, hasMore, requestId })))
+            ws.send(encodeOutgoingMessage(WSMessage.PullRes.make({ events: encodedEvents, hasMore, requestId })))
 
-          if (hasMore === false) {
-            break
-          }
-        }
-
-        break
-      }
-      case 'WSMessage.PushReq': {
-        // NOTE we're currently not blocking on this to allow broadcasting right away
-        // however we should do some mutation validation first (e.g. checking parent event id)
-        const storePromise = decodedMessage.persisted
-          ? this.storage.appendEvent(decodedMessage.mutationEventEncoded)
-          : Promise.resolve()
-
-        ws.send(
-          encodeMessage(WSMessage.PushAck.make({ mutationId: decodedMessage.mutationEventEncoded.id, requestId })),
-        )
-
-        // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
-
-        const connectedClients = this.ctx.getWebSockets()
-
-        if (connectedClients.length > 0) {
-          const broadcastMessage = encodeMessage(
-            WSMessage.PushBroadcast.make({
-              mutationEventEncoded: decodedMessage.mutationEventEncoded,
-              requestId,
-              persisted: decodedMessage.persisted,
-            }),
-          )
-
-          for (const conn of connectedClients) {
-            console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
-            if (conn !== ws) {
-              conn.send(broadcastMessage)
+            if (hasMore === false) {
+              break
             }
           }
+
+          break
         }
+        case 'WSMessage.PushReq': {
+          // TODO check whether we could use the Durable Object storage for this to speed up the lookup
+          const latestEvent = await this.storage.getLatestEvent()
+          const expectedParentId = latestEvent?.id ?? Symbol.keyFor(MUTATION_EVENT_ROOT_ID)!
 
-        await storePromise
+          if (decodedMessage.mutationEventEncoded.parentId !== expectedParentId) {
+            ws.send(
+              encodeOutgoingMessage(
+                WSMessage.Error.make({
+                  message: `Invalid parent id. Received ${decodedMessage.mutationEventEncoded.parentId} but expected ${expectedParentId}`,
+                  requestId,
+                }),
+              ),
+            )
+            return
+          }
 
-        break
-      }
-      case 'WSMessage.AdminResetRoomReq': {
-        if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-          ws.send(encodeMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
-          return
+          // TODO handle clientId unique conflict
+
+          // NOTE we're currently not blocking on this to allow broadcasting right away
+          const storePromise = decodedMessage.persisted
+            ? this.storage.appendEvent(decodedMessage.mutationEventEncoded)
+            : Promise.resolve()
+
+          ws.send(
+            encodeOutgoingMessage(
+              WSMessage.PushAck.make({ mutationId: decodedMessage.mutationEventEncoded.id, requestId }),
+            ),
+          )
+
+          // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
+
+          const connectedClients = this.ctx.getWebSockets()
+
+          if (connectedClients.length > 0) {
+            const broadcastMessage = encodeOutgoingMessage(
+              WSMessage.PushBroadcast.make({
+                mutationEventEncoded: decodedMessage.mutationEventEncoded,
+                persisted: decodedMessage.persisted,
+              }),
+            )
+
+            for (const conn of connectedClients) {
+              console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
+              // if (conn !== ws) {
+              conn.send(broadcastMessage)
+              // }
+            }
+          }
+
+          await storePromise
+
+          break
         }
+        case 'WSMessage.AdminResetRoomReq': {
+          if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
+            ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+            return
+          }
 
-        await this.storage.resetRoom()
-        ws.send(encodeMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
+          await this.storage.resetRoom()
+          ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
 
-        break
-      }
-      case 'WSMessage.AdminInfoReq': {
-        if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-          ws.send(encodeMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
-          return
+          break
         }
+        case 'WSMessage.AdminInfoReq': {
+          if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
+            ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+            return
+          }
 
-        ws.send(
-          encodeMessage(WSMessage.AdminInfoRes.make({ requestId, info: { durableObjectId: this.ctx.id.toString() } })),
-        )
+          ws.send(
+            encodeOutgoingMessage(
+              WSMessage.AdminInfoRes.make({ requestId, info: { durableObjectId: this.ctx.id.toString() } }),
+            ),
+          )
 
-        break
+          break
+        }
+        default: {
+          console.error('unsupported message', decodedMessage)
+          return shouldNeverHappen()
+        }
       }
-      default: {
-        console.error('unsupported message', decodedMessage)
-        return shouldNeverHappen()
-      }
+    } catch (error: any) {
+      ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: error.message, requestId })))
     }
   }
 
@@ -169,6 +195,15 @@ export class WebSocketServer extends DurableObject<Env> {
 }
 
 const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
+  const getLatestEvent = async (): Promise<MutationEvent.Any | undefined> => {
+    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY id DESC LIMIT 1`).all()
+    if (rawEvents.error) {
+      throw new Error(rawEvents.error)
+    }
+    const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results)
+    return events[0]
+  }
+
   const getEvents = async (cursor: string | undefined): Promise<ReadonlyArray<MutationEvent.Any>> => {
     const whereClause = cursor ? `WHERE id > '${cursor}'` : ''
     // TODO handle case where `cursor` was not found
@@ -181,13 +216,13 @@ const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
   }
 
   const appendEvent = async (event: MutationEvent.Any) => {
-    const sql = `INSERT INTO ${dbName} (id, args, mutation) VALUES (?, ?, ?)`
-    await env.DB.prepare(sql).bind(event.id, JSON.stringify(event.args), event.mutation).run()
+    const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation) VALUES (?, ?, ?, ?)`
+    await env.DB.prepare(sql).bind(event.id, event.parentId, JSON.stringify(event.args), event.mutation).run()
   }
 
   const resetRoom = async () => {
     await ctx.storage.deleteAll()
   }
 
-  return { getEvents, appendEvent, resetRoom }
+  return { getLatestEvent, getEvents, appendEvent, resetRoom }
 }

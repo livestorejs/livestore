@@ -36,7 +36,7 @@ export const bootDevtools = ({
 }) =>
   Effect.gen(function* () {
     const appHostId = 'expo'
-    const isLeaderTab = true
+    const isLeader = true
 
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
       sendSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
@@ -70,7 +70,7 @@ export const bootDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }))
+              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
             }
 
             return
@@ -97,7 +97,7 @@ export const bootDevtools = ({
             // yield* disconnect
 
             // TODO is there a better place for this?
-            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }))
+            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
 
             return
           }
@@ -219,7 +219,13 @@ export const bootDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              const { mutationEventEncoded, persisted } = decodedEvent
+              const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
+
+              const mutationEventEncoded = {
+                ...mutationEventEncoded_,
+                id: 'TODO',
+                parentId: 'TODO',
+              }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
               yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
@@ -251,7 +257,7 @@ export const bootDevtools = ({
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeaderTab, liveStoreVersion }))
+    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeader, liveStoreVersion }))
 
     const onMutation = ({
       mutationEventEncoded,

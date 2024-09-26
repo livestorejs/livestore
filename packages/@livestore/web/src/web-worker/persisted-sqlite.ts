@@ -158,7 +158,7 @@ export const makePersistedSqliteOpfs = ({
 
     const destroy = Effect.gen(function* () {
       try {
-        sqlite3.close(dbRef.current.pointer)
+        dbRef.current.syncDb.close()
       } catch (error) {
         console.error('Error closing database', error)
       }

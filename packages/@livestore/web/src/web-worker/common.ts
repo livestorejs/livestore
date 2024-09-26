@@ -1,6 +1,7 @@
 import type {
   BootStatus,
   PreparedBindValues,
+  PreparedStatement,
   SyncBackend,
   SynchronousDatabase,
   UnexpectedError,
@@ -57,7 +58,7 @@ export type DevtoolsContextEnabled = {
     disconnect: Effect.Effect<void>
     storeId: string
     appHostId: string
-    isLeaderTab: boolean
+    isLeader: boolean
     persistenceInfo: PersistenceInfoPair
   }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
   connections: FiberSet.FiberSet
@@ -90,6 +91,7 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
   {
     schema: LiveStoreSchema
     storeId: string
+    originId: string
     storageOptions: StorageType
     mutationSemaphore: Effect.Semaphore
     db: PersistedSqlite
@@ -122,131 +124,146 @@ export const makeApplyMutation = (
   workerCtx: typeof InnerWorkerCtx.Service,
   createdAtMemo: () => string,
   db: number,
-): ApplyMutation => {
-  const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
+): Effect.Effect<ApplyMutation, never, Scope.Scope> =>
+  Effect.gen(function* () {
+    const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
 
-  return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
-    Effect.gen(function* () {
-      const {
-        dbLog,
-        mutationEventSchema,
-        mutationDefSchemaHashMap,
-        broadcastChannel,
-        devtools,
-        syncBackend,
-        schema,
-        mutationSemaphore,
-        sqlite3,
-      } = workerCtx
-      const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+    const { dbLog } = workerCtx
 
-      const mutationName = mutationEventDecoded.mutation
-      const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+    const syncDbLog = dbLog.dbRef.current.syncDb
+    const selectMaxOrderKeyStmt = yield* Effect.acquireRelease(
+      Effect.sync(() => syncDbLog.prepare(sql`SELECT MAX(orderKey) as max FROM mutation_log`)),
+      (stmt) => Effect.sync(() => stmt.finalize()),
+    )
 
-      const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+    return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
+      Effect.gen(function* () {
+        const {
+          mutationEventSchema,
+          mutationDefSchemaHashMap,
+          broadcastChannel,
+          devtools,
+          syncBackend,
+          schema,
+          mutationSemaphore,
+          sqlite3,
+        } = workerCtx
+        const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
-      const syncDb = makeSynchronousDatabase(sqlite3, db)
-      const syncDbLog = dbLog.dbRef.current.syncDb
+        const mutationName = mutationEventDecoded.mutation
+        const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
-      // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
+        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-      const transaction = Effect.gen(function* () {
-        const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
-        if (hasDbTransaction) {
-          yield* execSql(syncDb, 'BEGIN TRANSACTION', {})
-        }
+        const syncDb = makeSynchronousDatabase(sqlite3, db)
 
-        for (const { statementSql, bindValues } of execArgsArr) {
-          // console.debug(mutationName, statementSql, bindValues)
-          // TODO use cached prepared statements instead of exec
-          yield* execSqlPrepared(syncDb, statementSql, bindValues).pipe(
-            Effect.tapError(() => (hasDbTransaction ? execSql(syncDb, 'ROLLBACK', {}) : Effect.void)),
+        // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
+
+        const transaction = Effect.gen(function* () {
+          const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
+          if (hasDbTransaction) {
+            yield* execSql(syncDb, 'BEGIN TRANSACTION', {})
+          }
+
+          for (const { statementSql, bindValues } of execArgsArr) {
+            // console.debug(mutationName, statementSql, bindValues)
+            // TODO use cached prepared statements instead of exec
+            yield* execSqlPrepared(syncDb, statementSql, bindValues).pipe(
+              Effect.tapError(() => (hasDbTransaction ? execSql(syncDb, 'ROLLBACK', {}) : Effect.void)),
+            )
+          }
+
+          if (hasDbTransaction) {
+            yield* execSql(syncDb, 'COMMIT', {})
+          }
+        })
+
+        yield* mutationSemaphore.withPermits(1)(transaction)
+
+        // console.groupEnd()
+
+        // write to mutation_log
+        const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
+        if (persisted && excludeFromMutationLogAndSyncing === false) {
+          const mutationDefSchemaHash =
+            mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+
+          const orderKey = yield* selectSqlPrepared<{ max: number }>(selectMaxOrderKeyStmt, {}).pipe(
+            Effect.map((res) => res[0]!.max + 1),
           )
-        }
-
-        if (hasDbTransaction) {
-          yield* execSql(syncDb, 'COMMIT', {})
-        }
-      })
-
-      yield* mutationSemaphore.withPermits(1)(transaction)
-
-      // console.groupEnd()
-
-      // write to mutation_log
-      const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
-      if (persisted && excludeFromMutationLogAndSyncing === false) {
-        const mutationDefSchemaHash =
-          mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-
-        yield* execSql(
-          syncDbLog,
-          ...insertRow({
-            tableName: MUTATION_LOG_META_TABLE,
-            columns: mutationLogMetaTable.sqliteDef.columns,
-            values: {
-              id: mutationEventEncoded.id,
-              parentId: mutationEventEncoded.parentId,
-              mutation: mutationEventEncoded.mutation,
-              argsJson: mutationEventEncoded.args ?? {},
-              schemaHash: mutationDefSchemaHash,
-              createdAt: createdAtMemo(),
-              syncStatus,
-              syncMetadataJson,
-            },
-          }),
-        )
-      } else {
-        //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-      }
-
-      if (shouldBroadcast) {
-        yield* broadcastChannel
-          .send(BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }))
-          .pipe(Effect.orDie)
-
-        if (devtools.enabled) {
-          yield* devtools.broadcast(
-            Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }),
-          )
-        }
-      }
-
-      // TODO do this via a batched queue
-      if (
-        excludeFromMutationLogAndSyncing === false &&
-        mutationDef.options.localOnly === false &&
-        syncBackend !== undefined &&
-        syncStatus === 'pending'
-      ) {
-        yield* Effect.gen(function* () {
-          if ((yield* SubscriptionRef.get(syncBackend.isConnected)) === false) return
-
-          const { metadata } = yield* syncBackend.push(mutationEventEncoded, persisted)
 
           yield* execSql(
             syncDbLog,
-            ...updateRows({
+            ...insertRow({
               tableName: MUTATION_LOG_META_TABLE,
               columns: mutationLogMetaTable.sqliteDef.columns,
-              where: { id: mutationEventEncoded.id },
-              updateValues: { syncStatus: 'synced', syncMetadataJson: metadata },
+              values: {
+                id: mutationEventEncoded.id,
+                parentId: mutationEventEncoded.parentId,
+                mutation: mutationEventEncoded.mutation,
+                argsJson: mutationEventEncoded.args ?? {},
+                schemaHash: mutationDefSchemaHash,
+                // TODO inline the sqlite select above into the insert statement
+                // will probably require some kind of "sql string interpolation" for the current sql client
+                // additionally to the currently supported bind values
+                orderKey,
+                createdAt: createdAtMemo(),
+                syncStatus,
+                syncMetadataJson,
+              },
             }),
           )
-        }).pipe(Effect.tapCauseLogPretty, Effect.fork)
-      }
-    }).pipe(
-      Effect.withSpan(`@livestore/web:worker:applyMutation`, {
-        attributes: {
-          mutationName: mutationEventEncoded.mutation,
-          mutationId: mutationEventEncoded.id,
-          syncStatus,
-          shouldBroadcast,
-          persisted,
-        },
-      }),
-    )
-}
+        } else {
+          //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
+        }
+
+        if (shouldBroadcast) {
+          yield* broadcastChannel
+            .send(BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }))
+            .pipe(Effect.orDie)
+
+          if (devtools.enabled) {
+            yield* devtools.broadcast(
+              Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }),
+            )
+          }
+        }
+
+        // TODO do this via a batched queue
+        if (
+          excludeFromMutationLogAndSyncing === false &&
+          mutationDef.options.localOnly === false &&
+          syncBackend !== undefined &&
+          syncStatus === 'pending'
+        ) {
+          yield* Effect.gen(function* () {
+            if ((yield* SubscriptionRef.get(syncBackend.isConnected)) === false) return
+
+            const { metadata } = yield* syncBackend.push(mutationEventEncoded, persisted)
+
+            yield* execSql(
+              syncDbLog,
+              ...updateRows({
+                tableName: MUTATION_LOG_META_TABLE,
+                columns: mutationLogMetaTable.sqliteDef.columns,
+                where: { id: mutationEventEncoded.id },
+                updateValues: { syncStatus: 'synced', syncMetadataJson: metadata },
+              }),
+            )
+          }).pipe(Effect.tapCauseLogPretty, Effect.fork)
+        }
+      }).pipe(
+        Effect.withSpan(`@livestore/web:worker:applyMutation`, {
+          attributes: {
+            mutationName: mutationEventEncoded.mutation,
+            mutationId: mutationEventEncoded.id,
+            syncStatus,
+            shouldBroadcast,
+            persisted,
+          },
+        }),
+      )
+  })
 
 const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
@@ -257,6 +274,16 @@ const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => 
   }).pipe(Effect.asVoid)
 }
 
+const selectSqlPrepared = <T>(stmt: PreparedStatement, bind: BindValues) => {
+  const bindValues = prepareBindValues(bind, stmt.sql)
+  return Effect.try({
+    try: () => stmt.select<T>(bindValues),
+    catch: (cause) =>
+      new SqliteError({ cause, query: { bindValues, sql: stmt.sql }, code: (cause as WaSqlite.SQLiteError).code }),
+  })
+}
+
+// TODO actually use prepared statements
 const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindValues: PreparedBindValues) => {
   return Effect.try({
     try: () => syncDb.execute(sql, bindValues),

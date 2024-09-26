@@ -16,7 +16,7 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
       Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
     >()
 
-    const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeaderTab: boolean }>()
+    const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 
     yield* expoDevtoolsChannel.listen.pipe(
       Stream.flatten(),
@@ -24,8 +24,8 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
       Stream.tap((msg) =>
         Effect.gen(function* () {
           if (msg._tag === 'LSD.AppHostReady') {
-            const { appHostId, isLeaderTab } = msg
-            yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeaderTab })
+            const { appHostId, isLeader } = msg
+            yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
           } else {
             yield* PubSub.publish(responsePubSub, msg)
           }
@@ -39,7 +39,7 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
 
     yield* expoDevtoolsChannel.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
-    const { appHostId, isLeaderTab } = yield* Deferred.await(appHostInfoDeferred)
+    const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 
     yield* Deferred.await(expoDevtoolsChannel.closedDeferred).pipe(
       Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
@@ -60,7 +60,7 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
       sendToAppHost,
       appHostId,
       copyToClipboard,
-      isLeaderTab,
+      isLeader,
     } satisfies Devtools.PrepareDevtoolsBridge
   },
 ).pipe(Effect.orDie)

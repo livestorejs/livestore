@@ -8,9 +8,15 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
+import {
+  makeMutationEventSchema,
+  MUTATION_EVENT_ROOT_ID,
+  MUTATION_LOG_META_TABLE,
+  mutationLogMetaTable,
+} from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import * as SQLite from 'expo-sqlite/next'
 
 import { makeSynchronousDatabase } from './common.js'
@@ -115,10 +121,21 @@ export const makeAdapter =
         Effect.acquireRelease(Queue.shutdown),
       )
 
+      // TODO actually get the current mutation event id from the db
+      const currentMutationEventIdRef = { current: MUTATION_EVENT_ROOT_ID as MUTATION_EVENT_ROOT_ID | string }
+
       const coordinator = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
+        // TODO implement proper event id generation using persistent cliendId
+        getNextMutationEventId: ({}) =>
+          Effect.sync(() => {
+            const id = nanoid()
+            currentMutationEventIdRef.current = id
+            return id
+          }),
+        getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         // NOTE not doing anything since syncDb is already persisted
         execute: () => Effect.void,
         mutate: (mutationEventEncoded, { persisted }): Effect.Effect<void, UnexpectedError> =>

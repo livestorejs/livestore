@@ -2,9 +2,9 @@
 
 import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Option, PubSub, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import { WSMessage } from '../common/index.js'
 
@@ -34,25 +34,34 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
       isConnected,
       pull: (args, { listenForNew }) =>
         listenForNew
-          ? Stream.fromPubSub(incomingMessages).pipe(
-              Stream.tap((_) =>
-                _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
-              ),
-              Stream.filter(Schema.is(WSMessage.PushBroadcast)),
-              Stream.map((_) => ({
-                mutationEventEncoded: _.mutationEventEncoded,
-                persisted: _.persisted,
-                metadata,
-              })),
-            )
-          : Effect.gen(function* () {
-              const requestId = cuid()
+          ? Effect.gen(function* () {
+              const requestId = nanoid()
               const cursor = Option.getOrUndefined(args)?.cursor
 
               yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
               return Stream.fromPubSub(incomingMessages).pipe(
-                Stream.filter((_) => _.requestId === requestId),
+                Stream.filter((_) => (_._tag === 'WSMessage.PullRes' ? _.requestId === requestId : true)),
+                Stream.tap((_) =>
+                  _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
+                ),
+                Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
+                Stream.map((msg) =>
+                  msg._tag === 'WSMessage.PushBroadcast'
+                    ? [{ mutationEventEncoded: msg.mutationEventEncoded, persisted: msg.persisted, metadata }]
+                    : msg.events.map((_) => ({ mutationEventEncoded: _, metadata, persisted: true })),
+                ),
+                Stream.flattenIterables,
+              )
+            }).pipe(Stream.unwrap)
+          : Effect.gen(function* () {
+              const requestId = nanoid()
+              const cursor = Option.getOrUndefined(args)?.cursor
+
+              yield* send(WSMessage.PullReq.make({ cursor, requestId }))
+
+              return Stream.fromPubSub(incomingMessages).pipe(
+                Stream.filter((_) => _._tag !== 'WSMessage.PushBroadcast' && _.requestId === requestId),
                 Stream.tap((_) =>
                   _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
                 ),
@@ -70,10 +79,10 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
       push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
           const ready = yield* Deferred.make<void, InvalidPushError>()
-          const requestId = cuid()
+          const requestId = nanoid()
 
           yield* Stream.fromPubSub(incomingMessages).pipe(
-            Stream.filter((_) => _.requestId === requestId),
+            Stream.filter((_) => _._tag !== 'WSMessage.PushBroadcast' && _.requestId === requestId),
             Stream.tap((_) =>
               _._tag === 'WSMessage.Error'
                 ? Deferred.fail(ready, new InvalidPushError({ message: _.message }))
@@ -104,7 +113,7 @@ const connect = (wsUrl: string) =>
     const isConnected = yield* SubscriptionRef.make(false)
     const wsRef: { current: WebSocket | undefined } = { current: undefined }
 
-    const incomingMessages = yield* PubSub.unbounded<Exclude<WSMessage.IncomingMessage, WSMessage.Pong>>()
+    const incomingMessages = yield* PubSub.unbounded<Exclude<WSMessage.BackendToClientMessage, WSMessage.Pong>>()
 
     const waitUntilOnline = isConnected.changes.pipe(Stream.filter(Boolean), Stream.take(1), Stream.runDrain)
 
@@ -132,7 +141,9 @@ const connect = (wsUrl: string) =>
       const pongMessages = yield* Queue.unbounded<WSMessage.Pong>()
 
       const messageHandler = (event: MessageEvent<any>): void => {
-        const decodedEventRes = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.IncomingMessage))(event.data)
+        const decodedEventRes = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.BackendToClientMessage))(
+          event.data,
+        )
 
         if (decodedEventRes._tag === 'Left') {
           console.error('Sync: Invalid message received', decodedEventRes.left)

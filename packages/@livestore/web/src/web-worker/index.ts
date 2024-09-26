@@ -7,8 +7,8 @@ import type {
 } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchema } from '@livestore/common/schema'
-import { tryAsFunctionAndNew } from '@livestore/utils'
+import { makeMutationEventSchema, MUTATION_EVENT_ROOT_ID } from '@livestore/common/schema'
+import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
@@ -18,6 +18,7 @@ import {
   Effect,
   Exit,
   Fiber,
+  Option,
   Queue,
   Schema,
   Stream,
@@ -42,9 +43,7 @@ import * as WorkerSchema from './worker-schema.js'
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = WaSqlite.loadSqlite3Wasm()
 
-// @ts-expect-error TODO fix types
 if (import.meta.env.DEV) {
-  // @ts-expect-error TODO fix types
   globalThis.__opfsUtils = OpfsUtils
 }
 
@@ -120,7 +119,12 @@ export const makeAdapter =
         schemaHashSuffix,
       })
 
-      const appHostId = getAppHostId(storeId)
+      const originId = getPersistedId(`originId:${storeId}`, 'local')
+      const contextId = getPersistedId(`contextId:${storeId}`, 'session')
+      const clientId = `${originId}${contextId}`
+
+      const seqState = makeSessionState(`seq:${storeId}`, Schema.NumberFromString)
+      const seqLocalOnlyState = makeSessionState(`seq-local-only:${storeId}`, Schema.NumberFromString)
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -146,6 +150,7 @@ export const makeAdapter =
               initialMessage: new WorkerSchema.DedicatedWorkerInner.InitialMessage({
                 storageOptions,
                 storeId,
+                originId,
                 needsRecreate: dataFromFile === undefined,
                 syncOptions: options.syncBackend as SyncBackendOptionsBase | undefined,
                 devtoolsEnabled,
@@ -171,7 +176,7 @@ export const makeAdapter =
 
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (appHostId: ${appHostId})`,
+          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (contextId: ${contextId})`,
         )
 
         yield* Effect.addFinalizer(() =>
@@ -232,7 +237,7 @@ export const makeAdapter =
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (appHostId: ${appHostId})`,
+          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (contextId: ${contextId})`,
         )
 
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
@@ -386,7 +391,7 @@ export const makeAdapter =
       )
 
       const coordinator = {
-        devtools: { enabled: devtoolsEnabled, appHostId },
+        devtools: { enabled: devtoolsEnabled, appHostId: clientId },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
 
@@ -425,6 +430,31 @@ export const makeAdapter =
             }
           }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:mutate')),
 
+        // TODO use a persisted integer seq instead of nanoid
+        getNextMutationEventId: (opts) =>
+          Effect.gen(function* () {
+            const state = opts.localOnly ? seqLocalOnlyState : seqState
+            const seq = yield* state.get.pipe(Effect.map(Option.getOrElse(() => 0)))
+            const nextSeq = seq + 1
+            yield* state.set(nextSeq)
+            // NOTE we're using a base36 encoded number to make the string encoding more compact
+            return `${clientId}${opts.localOnly ? '@' : ''}${nextSeq.toString(36)}`
+          }),
+
+        // TODO this needs to be specific to the current context
+        // getCurrentMutationEventId: runInWorker(new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId()).pipe(
+        //   Effect.timeout(10_000),
+        //   UnexpectedError.mapToUnexpectedError,
+        //   Effect.withSpan('@livestore/web:coordinator:getCurrentMutationEventId'),
+        // ),
+
+        getCurrentMutationEventId: Effect.gen(function* () {
+          const state = seqState
+          const seq = yield* state.get
+          if (seq._tag === 'None') return MUTATION_EVENT_ROOT_ID
+          return `${clientId}${seq.value.toString(36)}`
+        }),
+
         getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
@@ -450,8 +480,8 @@ export const makeAdapter =
         runInWorkerStream(
           WorkerSchema.DedicatedWorkerInner.ConnectDevtoolsStream.make({
             port: coordinatorMessagePort,
-            appHostId,
-            isLeaderTab: gotLocky,
+            appHostId: clientId,
+            isLeader: gotLocky,
           }),
         ).pipe(
           Stream.tap(({ storeMessagePort }) =>
@@ -472,28 +502,38 @@ export const makeAdapter =
         )
 
       if (devtoolsEnabled) {
-        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, key: storeId })
+        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
       }
 
       return { coordinator, syncDb }
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
-const getAppHostId = (key: string) => {
-  const makeId = () => nanoid(6)
+// NOTE for `local` storage we could also use the mutationlog db to store the data
+const getPersistedId = (key: string, storageType: 'session' | 'local') => {
+  const makeId = () => nanoid(5)
+
+  const storage =
+    typeof window === 'undefined'
+      ? undefined
+      : storageType === 'session'
+        ? sessionStorage
+        : storageType === 'local'
+          ? localStorage
+          : shouldNeverHappen(`[@livestore/web] Invalid storage type: ${storageType}`)
 
   // in case of a worker, we need the appHostId of the parent window, to keep the app host id consistent
   // we also need to handle the case where there are multiple workers being spawned by the same window
-  if (typeof window === 'undefined' || window.sessionStorage === undefined) {
+  if (storage === undefined) {
     return makeId()
   }
 
-  const fullKey = `livestore:devtools:appHostId:${key}`
-  const storedKey = sessionStorage.getItem(fullKey)
+  const fullKey = `livestore:${key}`
+  const storedKey = storage.getItem(fullKey)
 
   if (storedKey) return storedKey
 
   const newKey = makeId()
-  sessionStorage.setItem(fullKey, newKey)
+  storage.setItem(fullKey, newKey)
 
   return newKey
 }
@@ -516,3 +556,42 @@ const ensureBrowserRequirements = Effect.gen(function* () {
     validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
   ])
 })
+
+const makeSessionState = <T>(key: string, schema: Schema.Schema<T, string>) => {
+  const storage = sessionStorage
+
+  const fullKey = `livestore:${key}`
+
+  let storeTimeoutHandle: number | undefined = undefined
+
+  let currentValue: T | undefined = undefined
+
+  const get: Effect.Effect<Option.Option<T>, UnexpectedError> = Effect.gen(function* () {
+    if (currentValue !== undefined) {
+      return Option.some(currentValue)
+    }
+
+    const stored = storage.getItem(fullKey)
+    if (stored === null) return Option.none()
+    const decoded = yield* Schema.decode(schema)(stored)
+    currentValue = decoded
+    return Option.some(decoded)
+  }).pipe(UnexpectedError.mapToUnexpectedError)
+
+  const set = (value: T): Effect.Effect<void, UnexpectedError> =>
+    Effect.gen(function* () {
+      currentValue = value
+
+      if (storeTimeoutHandle !== undefined) {
+        clearTimeout(storeTimeoutHandle)
+      }
+
+      // TODO handle unlikely case that the session ends while the timeout is still pending
+      storeTimeoutHandle = setTimeout(() => {
+        const encoded = Schema.encodeSync(schema)(value)
+        storage.setItem(fullKey, encoded)
+      }, 10)
+    }).pipe(UnexpectedError.mapToUnexpectedError)
+
+  return { get, set }
+}

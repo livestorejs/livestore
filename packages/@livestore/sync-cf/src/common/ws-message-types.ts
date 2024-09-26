@@ -20,7 +20,6 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
 export type PullRes = typeof PullRes.Type
 
 export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
-  requestId: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
 })
@@ -105,5 +104,16 @@ export const Message = Schema.Union(
 export type Message = typeof Message.Type
 export type MessageEncoded = typeof Message.Encoded
 
-export const IncomingMessage = Schema.Union(PullRes, PushBroadcast, PushAck, Error, Pong)
-export type IncomingMessage = typeof IncomingMessage.Type
+export const BackendToClientMessage = Schema.Union(
+  PullRes,
+  PushBroadcast,
+  PushAck,
+  AdminResetRoomRes,
+  AdminInfoRes,
+  Error,
+  Pong,
+)
+export type BackendToClientMessage = typeof BackendToClientMessage.Type
+
+export const ClientToBackendMessage = Schema.Union(PullReq, PushReq, AdminResetRoomReq, AdminInfoReq, Ping)
+export type ClientToBackendMessage = typeof ClientToBackendMessage.Type

@@ -2,13 +2,14 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
-import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
+import type { LiveStoreSchema, MUTATION_EVENT_ROOT_ID, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
   select<T>(bindValues: PreparedBindValues | undefined): ReadonlyArray<T>
   finalize(): void
+  sql: string
 }
 
 export type StoreAdapter = {
@@ -28,6 +29,7 @@ export type SynchronousDatabase = {
   ): void
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
+  close(): void
 }
 
 export type ResetMode = 'all-data' | 'only-app-db'
@@ -70,6 +72,10 @@ export type Coordinator = {
     mutationEventEncoded: MutationEvent.AnyEncoded,
     options: { persisted: boolean },
   ): Effect.Effect<void, UnexpectedError>
+  /** Can be called synchronously */
+  getNextMutationEventId: (opts: { localOnly: boolean }) => Effect.Effect<string, UnexpectedError>
+  /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
+  getCurrentMutationEventId: Effect.Effect<string | MUTATION_EVENT_ROOT_ID, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
@@ -80,7 +86,7 @@ export type LockStatus = 'has-lock' | 'no-lock'
 export type BootDb = {
   _tag: 'BootDb'
   execute(queryStr: string, bindValues?: PreparedBindValues): void
-  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
+  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialAny>>(...list: TMutationArg) => void
   select<T>(queryStr: string, bindValues?: PreparedBindValues): ReadonlyArray<T>
   txn(callback: () => void): void
 }

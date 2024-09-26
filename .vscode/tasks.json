@@ -112,7 +112,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/todomvc"
+        "cwd": "${workspaceFolder}/examples-monorepo/todomvc"
       },
       "presentation": {
         "focus": false,
@@ -133,7 +133,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/todomvc-drizzle"
+        "cwd": "${workspaceFolder}/examples-monorepo/todomvc-drizzle"
       },
       "presentation": {
         "focus": false,
@@ -154,7 +154,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/todomvc-custom-elements"
+        "cwd": "${workspaceFolder}/examples-monorepo/todomvc-custom-elements"
       },
       "presentation": {
         "focus": false,
@@ -175,7 +175,7 @@
       "isBackground": true,
       "problemMatcher": [],
       "options": {
-        "cwd": "${workspaceFolder}/examples/linearlite"
+        "cwd": "${workspaceFolder}/examples-monorepo/linearlite"
       },
       "presentation": {
         "focus": false,
