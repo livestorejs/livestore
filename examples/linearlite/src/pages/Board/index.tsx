@@ -22,7 +22,7 @@ function Board() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <TopFilter title="Board" issues={issues} hideSort={true} />
+      <TopFilter title="Board" filteredIssuesCount={issues.length} hideSort={true} />
       <IssueBoard issues={issues} />
     </div>
   )

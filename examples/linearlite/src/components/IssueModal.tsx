@@ -150,10 +150,7 @@ function IssueModal({ isOpen, onDismiss }: Props) {
               <span>{PriorityDisplay[priority]}</span>
             </button>
           }
-          onSelect={(val) => {
-            console.log(val)
-            setPriority(val)
-          }}
+          onSelect={(val) => setPriority(val)}
         />
       </div>
       {/* Footer */}

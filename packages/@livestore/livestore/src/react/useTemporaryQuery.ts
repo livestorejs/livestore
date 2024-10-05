@@ -12,12 +12,16 @@ import { useQueryRef } from './useQuery.js'
 // Please definitely open an issue if you see or run into any problems with this approach!
 const cache = new Map<
   string,
-  {
-    rc: number
-    query$: LiveQuery<any, any>
-    span: otel.Span
-    otelContext: otel.Context
-  }
+  | {
+      _tag: 'active'
+      rc: number
+      query$: LiveQuery<any, any>
+      span: otel.Span
+      otelContext: otel.Context
+    }
+  | {
+      _tag: 'destroyed'
+    }
 >()
 
 export type DepKey = string | number | ReadonlyArray<string | number>
@@ -60,22 +64,24 @@ export const useMakeTemporaryQuery = <TResult, TQueryInfo extends QueryInfo>(
 
   const { query$, otelContext } = React.useMemo(() => {
     if (fullKeyRef.current !== undefined && fullKeyRef.current !== fullKey) {
-      // console.debug('fullKey changed, destroying previous', fullKeyRef.current.split('-')[0]!, fullKey.split('-')[0]!)
+      // console.debug('fullKey changed', 'prev', fullKeyRef.current.split('-')[0]!, '-> new', fullKey.split('-')[0]!)
 
       const cachedItem = cache.get(fullKeyRef.current)
-      if (cachedItem !== undefined) {
+      if (cachedItem !== undefined && cachedItem._tag === 'active') {
         cachedItem.rc--
 
         if (cachedItem.rc === 0) {
+          // console.debug('rc=0-changed', cachedItem.query$.id, cachedItem.query$.label)
           cachedItem.query$.destroy()
           cachedItem.span.end()
-          cache.delete(fullKeyRef.current)
+          cache.set(fullKeyRef.current, { _tag: 'destroyed' })
         }
       }
     }
 
     const cachedItem = cache.get(fullKey)
-    if (cachedItem !== undefined) {
+    if (cachedItem !== undefined && cachedItem._tag === 'active') {
+      // console.debug('rc++', cachedItem.query$.id, cachedItem.query$.label)
       cachedItem.rc++
 
       return cachedItem
@@ -93,7 +99,7 @@ export const useMakeTemporaryQuery = <TResult, TQueryInfo extends QueryInfo>(
 
     const query$ = makeQuery(otelContext)
 
-    cache.set(fullKey, { rc: 1, query$, span, otelContext })
+    cache.set(fullKey, { _tag: 'active', rc: 1, query$, span, otelContext })
 
     return { query$, otelContext }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,19 +109,23 @@ export const useMakeTemporaryQuery = <TResult, TQueryInfo extends QueryInfo>(
 
   React.useEffect(() => {
     return () => {
+      const fullKey = fullKeyRef.current!
       const cachedItem = cache.get(fullKey)
       // NOTE in case the fullKey changed then the query was already destroyed in the useMemo above
-      if (cachedItem === undefined) return
+      if (cachedItem === undefined || cachedItem._tag === 'destroyed') return
+
+      // console.debug('rc--', cachedItem.query$.id, cachedItem.query$.label)
 
       cachedItem.rc--
 
       if (cachedItem.rc === 0) {
+        // console.debug('rc=0', cachedItem.query$.id, cachedItem.query$.label)
         cachedItem.query$.destroy()
         cachedItem.span.end()
         cache.delete(fullKey)
       }
     }
-  }, [fullKey])
+  }, [])
 
   return { query$, otelContext }
 }

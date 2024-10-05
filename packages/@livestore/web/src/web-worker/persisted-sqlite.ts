@@ -300,7 +300,7 @@ const opfsDeleteAbs = (absPath: string) =>
       }
 
       // Delete the file
-      await currentDir.removeEntry(pathParts.at(-1)!)
+      await currentDir.removeEntry(pathParts.at(-1)!, { recursive: true })
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotFoundError') {
         // Can ignore as it's already been deleted or not there in the first place

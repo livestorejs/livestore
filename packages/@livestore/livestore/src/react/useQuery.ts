@@ -31,6 +31,7 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
   const { store } = useStore()
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
+  // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10

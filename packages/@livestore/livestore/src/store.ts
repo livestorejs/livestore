@@ -296,7 +296,7 @@ export class Store<
       { attributes: { label: options?.label, queryLabel: query$.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
-        // console.log('store sub', query$.label)
+        // console.debug('store sub', query$.id, query$.label)
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         const label = `subscribe:${options?.label}`
@@ -310,7 +310,7 @@ export class Store<
         }
 
         const unsubscribe = () => {
-          // console.log('store unsub', query$.label)
+          // console.debug('store unsub', query$.id, query$.label)
           try {
             this.reactivityGraph.destroyNode(effect)
             this.activeQueries.remove(query$ as LiveQuery<TResult>)
@@ -379,7 +379,7 @@ export class Store<
     mutationsSpan.addEvent('mutate')
 
     // console.group('LiveStore.mutate', { skipRefresh, wasSyncMessage, label })
-    // mutationsEvents.forEach((_) => console.log(_.mutation, _.id, _.args))
+    // mutationsEvents.forEach((_) => console.debug(_.mutation, _.id, _.args))
     // console.groupEnd()
 
     let durationMs: number

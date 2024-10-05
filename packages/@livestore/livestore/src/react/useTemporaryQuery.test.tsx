@@ -1,9 +1,12 @@
 import { Effect, Schema } from '@livestore/utils/effect'
-import { renderHook } from '@testing-library/react'
+import { render, renderHook } from '@testing-library/react'
+import React from 'react'
+// @ts-expect-error no types
+import * as ReactWindow from 'react-window'
 import { describe, expect, it } from 'vitest'
 
 import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
-import type * as LiveStore from '../index.js'
+import * as LiveStore from '../index.js'
 import { querySQL } from '../reactiveQueries/sql.js'
 import * as LiveStoreReact from './index.js'
 
@@ -52,5 +55,44 @@ describe('useTemporaryQuery', () => {
       unmount()
 
       expect(queryMap.get('t2')!.runs).toBe(1)
+    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
+
+  // NOTE this test covers some special react lifecyle paths which I couldn't easily reproduce without react-window
+  // it basically causes a "query swap" in the `useMemo` and both a `useEffect` cleanup call.
+  // To handle this properly we introduced the `_tag: 'destroyed'` state in the `spanAlreadyStartedCache`.
+  it('should work for a list with react-window', () =>
+    Effect.gen(function* () {
+      const { wrapper } = yield* makeTodoMvc()
+
+      const ListWrapper: React.FC<{ numItems: number }> = ({ numItems }) => {
+        return (
+          <ReactWindow.FixedSizeList
+            height={100}
+            width={100}
+            itemSize={10}
+            itemCount={numItems}
+            itemData={Array.from({ length: numItems }, (_, i) => i).reverse()}
+          >
+            {ListItem}
+          </ReactWindow.FixedSizeList>
+        )
+      }
+
+      const ListItem: React.FC<{ data: ReadonlyArray<number>; index: number }> = ({ data: ids, index }) => {
+        const id = ids[index]!
+        const res = LiveStoreReact.useTemporaryQuery(
+          () => LiveStore.computed(() => id, { label: `ListItem.${id}` }),
+          id,
+        )
+        return <div role="listitem">{res}</div>
+      }
+
+      const renderResult = render(<ListWrapper numItems={1} />, { wrapper })
+
+      expect(renderResult.container.textContent).toBe('0')
+
+      renderResult.rerender(<ListWrapper numItems={2} />)
+
+      expect(renderResult.container.textContent).toBe('10')
     }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
 })

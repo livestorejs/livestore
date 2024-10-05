@@ -5,33 +5,23 @@ import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
 import { ViewOptionMenu } from './ViewOptionMenu'
 import FilterMenu from './contextmenu/FilterMenu'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
-import { Issue } from '../types'
-import { querySQL, sql } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
-import { useFilterState } from '../domain/queries'
-import { Schema } from '@effect/schema'
+import { issueCount$, useFilterState } from '../domain/queries'
 import { MenuContext } from './LeftMenu'
 
 interface Props {
-  issues: readonly Issue[]
+  filteredIssuesCount: number
   hideSort?: boolean
   showSearch?: boolean
   title?: string
 }
 
-const issueCount$ = querySQL(sql`SELECT COUNT(id) AS c FROM issue`, {
-  schema: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
-  label: 'TopFilter.issueCount',
-})
-
-export default function TopFilter({ issues, hideSort, showSearch, title = 'All issues' }: Props) {
+export default function TopFilter({ filteredIssuesCount, hideSort, showSearch, title = 'All issues' }: Props) {
   const [showViewOption, setShowViewOption] = useState(false)
   const { showMenu, setShowMenu } = useContext(MenuContext)!
   const [searchQuery, setSearchQuery] = useState('')
   const totalIssuesCount = useQuery(issueCount$)
   const [filterState, setFilterState] = useFilterState()
-
-  const filteredIssuesCount = issues.length
 
   const handleSearchInner = (query: string) => setFilterState((_) => ({ ..._, query }))
 

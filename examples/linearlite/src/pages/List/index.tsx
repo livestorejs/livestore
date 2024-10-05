@@ -1,31 +1,62 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
-import IssueList from './IssueList'
+import * as ReactWindow from 'react-window'
 import { querySQL, rowQuery, sql } from '@livestore/livestore'
 import { tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
-import { getLocalId, useQuery } from '@livestore/livestore/react'
+import { getLocalId, useQuery, useRow } from '@livestore/livestore/react'
 import { Schema } from '@effect/schema'
+import { memo, type CSSProperties } from 'react'
+import AutoSizer from 'react-virtualized-auto-sizer'
+import IssueRow from './IssueRow'
 
 const filterAndOrderClause$ = rowQuery(tables.filterState, getLocalId(), {
   map: (_) => `${filterStateToWhere(_)} ${filterStateToOrder(_)}`,
   label: 'List.filterAndOrderClause',
 })
 
-const visibleIssues$ = querySQL((get) => sql`select * from issue ${get(filterAndOrderClause$)}`, {
-  schema: Schema.Array(tables.issue.schema),
-  label: 'List.visibleIssues',
-})
+const ITEM_HEIGHT = 36
 
-const List: React.FC<{ showSearch?: boolean }> = ({ showSearch = false }) => {
-  const issues = useQuery(visibleIssues$)
+export const List: React.FC<{ showSearch?: boolean }> = ({ showSearch = false }) => {
+  const filteredIssueIds = useQuery(filteredIssueIds$)
 
   return (
     <div className="flex flex-col flex-grow">
-      <TopFilter issues={issues} showSearch={showSearch} />
-      <IssueList issues={issues} />
+      <TopFilter filteredIssuesCount={filteredIssueIds.length} showSearch={showSearch} />
+      <IssueList issueIds={filteredIssueIds} />
     </div>
   )
 }
 
-export default List
+const filteredIssueIds$ = querySQL((get) => sql`select id from issue ${get(filterAndOrderClause$)}`, {
+  schema: Schema.Array(Schema.Struct({ id: Schema.String }).pipe(Schema.pluck('id'))),
+  label: 'List.visibleIssueIds',
+})
+
+const IssueList: React.FC<{ issueIds: readonly string[] }> = ({ issueIds }) => (
+  <div className="grow">
+    <AutoSizer>
+      {({ height, width }: { width: number; height: number }) => (
+        <ReactWindow.FixedSizeList
+          height={height}
+          itemCount={issueIds.length}
+          itemSize={ITEM_HEIGHT}
+          itemData={issueIds}
+          overscanCount={10}
+          width={width}
+        >
+          {VirtualIssueRow}
+        </ReactWindow.FixedSizeList>
+      )}
+    </AutoSizer>
+  </div>
+)
+
+const VirtualIssueRow = memo(
+  ({ data, index, style }: { data: readonly string[]; index: number; style: CSSProperties }) => {
+    const [issue] = useRow(tables.issue, data[index]!)
+
+    return <IssueRow key={`issue-${issue.id}`} issue={issue} style={style} />
+  },
+  ReactWindow.areEqual,
+)

@@ -19,11 +19,21 @@ const syncing =
       }
     : undefined
 
+const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+
+if (resetPersistence) {
+  const searchParams = new URLSearchParams(window.location.search)
+  searchParams.delete('reset')
+  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
+}
+
 const adapter = makeAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   storage: { type: 'opfs' },
   syncing,
+  // NOTE this should only be used for convenience when developing (i.e. via `?reset` in the URL) and is disabled in production
+  resetPersistence,
 })
 
 export const Root = () => (

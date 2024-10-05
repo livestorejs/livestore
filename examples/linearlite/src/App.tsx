@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { Route, Routes, BrowserRouter } from 'react-router-dom'
 import { cssTransition, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import List from './pages/List'
+import { List } from './pages/List'
 import Issue from './pages/Issue'
 import LeftMenu, { MenuContext } from './components/LeftMenu'
 
