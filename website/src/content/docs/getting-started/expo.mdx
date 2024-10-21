@@ -14,9 +14,14 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 2. Install dependencies
 
-	It's strongly recommended to use `pnpm` for the simplest and most reliable dependency setup.
+	It's strongly recommended to use `bun` for the simplest and most reliable dependency setup.
  
 	<Tabs syncKey="package-manager">
+		<TabItem label="bun">
+			`bun install`
+
+			You can ignore the peer-dependency warnings.
+		</TabItem>
 		<TabItem label="pnpm">
 			`pnpm install --node-linker=hoisted`
 		
@@ -59,6 +64,9 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 4. Run dev environment
 
 	<Tabs syncKey="package-manager">
+		<TabItem label="bun">
+			`bun ios` or `bun android`
+		</TabItem>
 		<TabItem label="pnpm">
 			`pnpm ios` or `pnpm android`
 		</TabItem>
@@ -76,7 +84,7 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Custom builds
 
-If you need a custom build, you could run `pnpm expo run:ios` or `pnpm expo run:android` to build the app locally.
+If you need a custom build, you could run `bun expo run:ios` or `bun expo run:android` to build the app locally.
 
 ## Database location
 
