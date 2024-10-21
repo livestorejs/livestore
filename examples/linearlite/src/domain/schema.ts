@@ -50,7 +50,6 @@ const comment = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     body: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
-    // TODO: issueId is a foreign key to issue
     issueId: DbSchema.text(),
     created: DbSchema.integer(),
     deleted: DbSchema.integer({ nullable: true }),
