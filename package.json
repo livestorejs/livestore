@@ -4,6 +4,7 @@
     "build": "pnpm run build:ts",
     "build:clean": "bash -c \"find {examples,packages,examples-monorepo} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
+    "setup-monorepo-examples": "bun scripts/sync-examples.ts --single-run",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",
