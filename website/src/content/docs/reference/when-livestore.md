@@ -13,3 +13,8 @@ description: Considerations when deciding to use LiveStore.
 ## Other considerations
 
 - How data flows / what's the source of truth?
+
+## Syncing
+
+- LiveStore's syncing system is designed for small/medium-level concurrency scenarios (e.g. 10s / low 100s of users collaborating on the same thing for a given eventlog).
+	- Collaboration on multiple different eventlogs concurrently is supported and should be used to "scale horizontally".
