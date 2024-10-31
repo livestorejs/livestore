@@ -17,13 +17,7 @@ import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
 import { useFilterState } from '../domain/queries'
 import React from 'react'
-
-interface MenuContextInterface {
-  showMenu: boolean
-  setShowMenu: (show: boolean) => void
-}
-
-export const MenuContext = React.createContext(null as MenuContextInterface | null)
+import { MenuContext } from '../context/MenuContext'
 
 // eslint-disable-next-line react-refresh/only-export-components
 function LeftMenu() {

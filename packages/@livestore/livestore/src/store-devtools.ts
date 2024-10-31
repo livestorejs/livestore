@@ -56,7 +56,7 @@ export const connectDevtoolsToStore = ({
 
       const requestId = decodedMessage.requestId
 
-      const requestIdleCallback = window.requestIdleCallback ?? ((cb: Function) => cb())
+      const requestIdleCallback = globalThis.requestIdleCallback ?? ((cb: () => void) => cb())
 
       switch (decodedMessage._tag) {
         case 'LSD.ReactivityGraphSubscribe': {

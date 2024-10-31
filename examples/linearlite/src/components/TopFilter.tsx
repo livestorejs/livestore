@@ -7,7 +7,7 @@ import FilterMenu from './contextmenu/FilterMenu'
 import { PriorityDisplay, StatusDisplay } from '../types/issue'
 import { useQuery } from '@livestore/livestore/react'
 import { issueCount$, useFilterState } from '../domain/queries'
-import { MenuContext } from './LeftMenu'
+import { MenuContext } from '../context/MenuContext'
 
 interface Props {
   filteredIssuesCount: number

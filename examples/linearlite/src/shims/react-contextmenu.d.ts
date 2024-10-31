@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Copied here from the unreleased master branch of github.com/firefox-devtools/react-contextmenu
-/* eslint @typescript-eslint/ban-types: 0 */
 
 declare module '@firefox-devtools/react-contextmenu' {
   import * as React from 'react'
@@ -12,11 +11,9 @@ declare module '@firefox-devtools/react-contextmenu' {
     hideOnLeave?: boolean
     rtl?: boolean
     onHide?: { (event: any): void }
-    onMouseLeave?:
-      | {
-          (event: React.MouseEvent<HTMLElement>, data: Object, target: HTMLElement): void
-        }
-      | Function
+    onMouseLeave?: {
+      (event: React.MouseEvent<HTMLElement>, data: object, target: HTMLElement): void
+    }
     onShow?: { (event: any): void }
     preventHideOnContextMenu?: boolean
     preventHideOnResize?: boolean
@@ -41,19 +38,17 @@ declare module '@firefox-devtools/react-contextmenu' {
   export interface MenuItemProps {
     attributes?: React.HTMLAttributes<HTMLDivElement>
     className?: string
-    data?: Object
+    data?: object
     disabled?: boolean
     divider?: boolean
     preventClose?: boolean
-    onClick?:
-      | {
-          (
-            event: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
-            data: Object,
-            target: HTMLElement,
-          ): void
-        }
-      | Function
+    onClick?: {
+      (
+        event: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
+        data: object,
+        target: HTMLElement,
+      ): void
+    }
     children?: React.ReactNode
   }
 
@@ -64,15 +59,13 @@ declare module '@firefox-devtools/react-contextmenu' {
     hoverDelay?: number
     rtl?: boolean
     preventCloseOnClick?: boolean
-    onClick?:
-      | {
-          (
-            event: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
-            data: Object,
-            target: HTMLElement,
-          ): void
-        }
-      | Function
+    onClick?: {
+      (
+        event: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
+        data: object,
+        target: HTMLElement,
+      ): void
+    }
     children?: React.ReactNode
   }
 

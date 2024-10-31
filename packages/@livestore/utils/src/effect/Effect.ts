@@ -47,7 +47,8 @@ const getThreadName = () => {
   const globalName = globalThis.name
   return isNonEmptyString(globalName)
     ? globalName
-    : typeof window === 'object'
+    : // eslint-disable-next-line unicorn/prefer-global-this
+      typeof window === 'object'
       ? 'Browser Main Thread'
       : 'unknown-thread'
 }

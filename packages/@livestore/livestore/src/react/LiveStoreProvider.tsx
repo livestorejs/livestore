@@ -105,8 +105,8 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
     return renderLoading(storeCtx)
   }
 
-  window.__debugLiveStore ??= {}
-  window.__debugLiveStore[storeId] = storeCtx.store
+  globalThis.__debugLiveStore ??= {}
+  globalThis.__debugLiveStore[storeId] = storeCtx.store
 
   return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
 }

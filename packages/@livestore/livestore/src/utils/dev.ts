@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-global-this */
 export const downloadBlob = (
   data: Uint8Array | Blob | string,
   fileName: string,

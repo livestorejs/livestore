@@ -137,6 +137,8 @@ export const bootDevtools = ({
                   Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }),
                 )
 
+                console.error(e)
+
                 return
               }
 

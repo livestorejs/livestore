@@ -29,6 +29,7 @@ module.exports = {
     'unicorn/no-abusive-eslint-disable': 'off',
     'unicorn/prefer-query-selector': 'off',
     'unicorn/relative-url-style': ['warn', 'always'],
+    'unicorn/prefer-global-this': 'off',
     'prefer-arrow-callback': 'warn',
     'prefer-arrow/prefer-arrow-functions': [
       'warn',

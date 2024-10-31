@@ -7,7 +7,8 @@ import { cssTransition, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { List } from './pages/List'
 import Issue from './pages/Issue'
-import LeftMenu, { MenuContext } from './components/LeftMenu'
+import LeftMenu from './components/LeftMenu'
+import { MenuContext } from './context/MenuContext'
 
 const slideUp = cssTransition({
   enter: 'animate__animated animate__slideInUp',

@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-global-this */
 import { cuid } from '@livestore/utils/cuid'
 import React from 'react'
 

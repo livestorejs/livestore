@@ -19,7 +19,7 @@
     "@playwright/test": ">=1.46.1"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.8.5"
   },
   "publishConfig": {
     "access": "public"

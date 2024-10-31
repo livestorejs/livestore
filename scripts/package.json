@@ -3,7 +3,7 @@
 	"type": "module",
 	"private": true,
 	"devDependencies": {
-		"@types/node": "^22.5.2",
-		"bun-types": "^1.1.26"
+		"@types/node": "^22.8.5",
+		"bun-types": "^1.1.33"
 	}
 }

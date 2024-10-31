@@ -130,7 +130,9 @@ export type StoreMutateOptions = {
   persisted?: boolean
 }
 
-if (typeof window !== 'undefined') {
+// eslint-disable-next-line unicorn/prefer-global-this
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  // eslint-disable-next-line unicorn/prefer-global-this
   window.__debugDownloadBlob = downloadBlob
 }
 

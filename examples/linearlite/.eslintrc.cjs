@@ -15,6 +15,7 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': 'allow-with-description' }],
     'no-constant-condition': ['error', { checkLoops: false }],
+    'unicorn/prefer-global-this': 'off',
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
   },
   ignorePatterns: ['**/*/mock.ts', 'dist', '.eslintrc.cjs'],

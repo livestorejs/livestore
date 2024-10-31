@@ -98,7 +98,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         batchUpdates,
       })
 
-      window.__debugLiveStore ??= {}
+      globalThis.__debugLiveStore ??= {}
       // window.__debugLiveStore[schema.key] = store
 
       return { stage: 'running', store } satisfies LiveStoreContextRunning
