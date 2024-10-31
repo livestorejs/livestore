@@ -1,19 +1,20 @@
 --- package.json
 +++ package.json
-@@ -10,12 +10,12 @@
+@@ -9,12 +9,12 @@
+     "preview": "remix vite:preview"
    },
    "dependencies": {
-     "@effect/schema": "0.72.2",
--    "@livestore/common": "0.0.58-dev.6",
+-    "@livestore/common": "0.0.58-dev.7",
 +    "@livestore/common": "workspace:*",
-     "@livestore/devtools-react": "0.0.58-dev.6",
--    "@livestore/sync-electric": "0.0.58-dev.6",
--    "@livestore/livestore": "0.0.58-dev.6",
+     "@livestore/devtools-react": "0.0.58-dev.7",
+-    "@livestore/livestore": "0.0.58-dev.7",
+-    "@livestore/sync-electric": "0.0.58-dev.7",
+-    "@livestore/wa-sqlite": "1.0.3-dev.2",
+-    "@livestore/web": "0.0.58-dev.7",
 +    "@livestore/livestore": "workspace:*",
 +    "@livestore/sync-electric": "workspace:*",
-     "@livestore/wa-sqlite": "1.0.3-dev.2",
--    "@livestore/web": "0.0.58-dev.6",
++    "@livestore/wa-sqlite": "1.0.1-dev.29",
 +    "@livestore/web": "workspace:*",
-     "react-error-boundary": "^4.0.13",
      "@remix-run/node": "^2.11.2",
      "@remix-run/react": "^2.11.2",
+     "@schickling/fps-meter": "^0.1.2",

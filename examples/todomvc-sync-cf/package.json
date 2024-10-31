@@ -9,11 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@livestore/devtools-react": "workspace:*",
-    "@livestore/livestore": "0.0.58-dev.6",
+    "@livestore/devtools-react": "0.0.58-dev.7",
+    "@livestore/livestore": "0.0.58-dev.7",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "0.0.58-dev.6",
+    "@livestore/web": "0.0.58-dev.7",
     "@schickling/fps-meter": "^0.1.2",
     "effect": "3.10.7",
     "react": "^18.3.1",

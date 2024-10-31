@@ -1,6 +1,5 @@
-import { graphologyDag } from '@overtone/utils'
-
 import { replacesFacts } from './facts.js'
+import { graphologyDag } from './graphology_.js'
 import type { HistoryDag } from './history-dag.js'
 import { emptyHistoryDag, eventIdToString } from './history-dag.js'
 

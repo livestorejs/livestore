@@ -8,11 +8,11 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@livestore/devtools-react": "workspace:*",
-    "@livestore/livestore": "0.0.58-dev.6",
-    "@livestore/utils": "0.0.58-dev.6",
+    "@livestore/devtools-react": "0.0.58-dev.7",
+    "@livestore/livestore": "0.0.58-dev.7",
+    "@livestore/utils": "0.0.58-dev.7",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "0.0.58-dev.6",
+    "@livestore/web": "0.0.58-dev.7",
     "effect": "3.10.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

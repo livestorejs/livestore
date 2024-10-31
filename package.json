@@ -14,7 +14,7 @@
     "test": "CI=1 pnpm --parallel run test"
   },
   "resolutions": {
-    "@livestore/devtools-react": "0.0.58-dev.6"
+    "@livestore/devtools-react": "0.0.58-dev.7"
   },
   "devDependencies": {
     "@effect/language-service": "^0.1.0",
