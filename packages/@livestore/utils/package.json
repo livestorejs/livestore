@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.58-dev.7",
+  "version": "0.0.58-dev.8",
   "sideEffects": [
     "./dist/global.js"
   ],
@@ -50,12 +50,12 @@
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.24.4",
-    "@effect/opentelemetry": "^0.36.2",
-    "@effect/platform": "^0.63.3",
-    "@effect/platform-browser": "^0.42.3",
+    "@effect/experimental": "^0.30.13",
+    "@effect/opentelemetry": "^0.39.7",
+    "@effect/platform": "^0.69.12",
+    "@effect/platform-browser": "^0.48.12",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.10.0"
+    "effect": "^3.10.7"
   },
   "devDependencies": {
     "@effect/experimental": "0.30.13",
