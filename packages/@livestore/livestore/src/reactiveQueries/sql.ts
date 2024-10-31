@@ -1,6 +1,6 @@
 import { type Bindable, prepareBindValues, type QueryInfo, type QueryInfoNone } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaEquivalence, TreeFormatter } from '@livestore/utils/effect'
+import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { globalReactivityGraph } from '../global-state.js'
@@ -124,7 +124,7 @@ export class LiveStoreSQLQuery<
 
     const queriedTablesRef = { current: queriedTables }
 
-    const schemaEqual = SchemaEquivalence.make(schema)
+    const schemaEqual = Schema.equivalence(schema)
     // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
     // This would mean dropping the `map` option
     const equal =

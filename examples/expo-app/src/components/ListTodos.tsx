@@ -1,6 +1,6 @@
-import { Schema } from '@effect/schema'
 import { querySQL, sql } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
+import { Schema } from 'effect'
 import React from 'react'
 import { FlatList } from 'react-native'
 

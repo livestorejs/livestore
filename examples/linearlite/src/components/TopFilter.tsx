@@ -9,7 +9,7 @@ import { Issue } from '../types'
 import { querySQL, sql } from '@livestore/livestore'
 import { useQuery } from '@livestore/livestore/react'
 import { useFilterState } from '../domain/queries'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 import { MenuContext } from './LeftMenu'
 
 interface Props {

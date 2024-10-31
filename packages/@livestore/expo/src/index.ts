@@ -1,4 +1,4 @@
-import type { Coordinator, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
+import type { Coordinator, EventId, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
@@ -8,15 +8,9 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
-import {
-  makeMutationEventSchema,
-  MUTATION_EVENT_ROOT_ID,
-  MUTATION_LOG_META_TABLE,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
+import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 import * as SQLite from 'expo-sqlite/next'
 
 import { makeSynchronousDatabase } from './common.js'
@@ -122,18 +116,28 @@ export const makeAdapter =
       )
 
       // TODO actually get the current mutation event id from the db
-      const currentMutationEventIdRef = { current: MUTATION_EVENT_ROOT_ID as MUTATION_EVENT_ROOT_ID | string }
+      const currentMutationEventIdRef = { current: { global: 0, local: 0 } as EventId }
 
       const coordinator = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         // TODO implement proper event id generation using persistent cliendId
-        getNextMutationEventId: ({}) =>
+        getNextMutationEventId: (opts) =>
           Effect.sync(() => {
-            const id = nanoid()
-            currentMutationEventIdRef.current = id
-            return id
+            if (opts.localOnly) {
+              currentMutationEventIdRef.current = {
+                global: currentMutationEventIdRef.current.global,
+                local: currentMutationEventIdRef.current.local + 1,
+              }
+            } else {
+              currentMutationEventIdRef.current = {
+                global: currentMutationEventIdRef.current.global + 1,
+                local: 0,
+              }
+            }
+
+            return currentMutationEventIdRef.current
           }),
         getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         // NOTE not doing anything since syncDb is already persisted

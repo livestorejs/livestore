@@ -10,7 +10,7 @@ import { querySQL, sql } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../../domain/schema'
 import React from 'react'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 export interface CommentsProps {
   issue: Issue

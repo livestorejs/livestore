@@ -39,6 +39,7 @@
   "packageManager": "pnpm@9.9.0",
   "pnpm": {
     "patchedDependencies": {
+      "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch",
       "playwright@1.46.1": "patches/playwright@1.46.1.patch"
     }
   }

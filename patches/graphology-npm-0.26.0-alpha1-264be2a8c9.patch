@@ -1,0 +1,36 @@
+diff --git a/dist/graphology.esm.js b/dist/graphology.esm.js
+index aa67724e820dc5c46106feb6c6bc8c2df898eb35..eee290e70cd00807765548acc3055fac2d859c05 100644
+--- a/dist/graphology.esm.js
++++ b/dist/graphology.esm.js
+@@ -1,7 +1,10 @@
+ import { EventEmitter } from 'events';
+-import Iterator from 'obliterator/iterator';
+-import take from 'obliterator/take';
+-import chain from 'obliterator/chain';
++// import Iterator from 'obliterator/iterator';
++// import take from 'obliterator/take';
++// import chain from 'obliterator/chain';
++import obliterator from 'obliterator';
++
++const { Iterator, take, chain } = obliterator;
+ 
+ /**
+  * Graphology Utilities
+diff --git a/dist/graphology.mjs b/dist/graphology.mjs
+index 102a7d592aac14f1895ab65bdeaf8c80fbcaeaa2..aff9e1db758df991d2520fb74c15f498c2498a1b 100644
+--- a/dist/graphology.mjs
++++ b/dist/graphology.mjs
+@@ -1,7 +1,10 @@
+ import { EventEmitter } from 'events';
+-import Iterator from 'obliterator/iterator';
+-import take from 'obliterator/take';
+-import chain from 'obliterator/chain';
++// import Iterator from 'obliterator/iterator';
++// import take from 'obliterator/take';
++// import chain from 'obliterator/chain';
++import obliterator from 'obliterator';
++
++const { Iterator, take, chain } = obliterator;
+ 
+ /**
+  * Graphology Utilities

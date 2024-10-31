@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import * as F from './field-defs.js'

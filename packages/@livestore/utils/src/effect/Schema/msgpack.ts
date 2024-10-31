@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 import * as msgpack from 'msgpackr'
 
 export const MsgPack = <A, I>(schema: Schema.Schema<A, I>) =>

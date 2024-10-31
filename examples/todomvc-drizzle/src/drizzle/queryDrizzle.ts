@@ -1,11 +1,11 @@
 // NOTE This file should eventually be turned into a separate package, for now it's part of the app code
 
-import type { Schema } from '@effect/schema'
 import type { GetAtomResult, LiveQuery } from '@livestore/livestore'
 import { querySQL } from '@livestore/livestore'
 import type { NullableFieldsToOptional } from '@livestore/utils'
 import type { TypedQueryBuilder } from 'drizzle-orm/query-builders/query-builder'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
+import type { Schema } from 'effect'
 
 export * as drizzle from 'drizzle-orm'
 

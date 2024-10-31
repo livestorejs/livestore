@@ -2,11 +2,11 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { Schema } from '@effect/schema'
 import { createStorePromise, querySQL, rowQuery } from '@livestore/livestore'
 import { cuid } from '@livestore/utils/cuid'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
+import { Schema } from 'effect'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'

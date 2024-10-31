@@ -1,4 +1,4 @@
-import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
+import type { EventId, SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
@@ -99,10 +99,10 @@ export const makeSyncBackend = ({
 
     const isConnected = yield* SubscriptionRef.make(true)
 
-    const initRoom = HttpClientRequest.schemaBody(ApiInitRoomPayload)(
+    const initRoom = HttpClientRequest.schemaBodyJson(ApiInitRoomPayload)(
       HttpClientRequest.post(pushEventEndpoint),
       ApiInitRoomPayload.make({ roomId }),
-    ).pipe(Effect.andThen(HttpClient.fetchOk))
+    ).pipe(Effect.andThen(HttpClient.execute))
 
     const pendingPushDeferredMap = new Map<string, Deferred.Deferred<SyncMetadata>>()
 
@@ -114,8 +114,7 @@ export const makeSyncBackend = ({
             ? `${endpointUrl}?offset=-1`
             : `${endpointUrl}?offset=${args.value.offset}&shape_id=${args.value.shapeId}${liveParam}`
 
-        const resp = yield* HttpClientRequest.get(url).pipe(
-          HttpClient.fetchOk,
+        const resp = yield* HttpClient.get(url).pipe(
           Effect.tapErrorTag('ResponseError', (error) =>
             // TODO handle 409 error when the shapeId you request no longer exists for whatever reason.
             // The correct behavior here is to refetch the shape from scratch and to reset the local state.
@@ -156,11 +155,11 @@ export const makeSyncBackend = ({
         }
 
         const [newItems, pendingPushItems] = Chunk.fromIterable(items).pipe(
-          Chunk.partition((item) => pendingPushDeferredMap.has(item.mutationEventEncoded.id)),
+          Chunk.partition((item) => pendingPushDeferredMap.has(eventIdToString(item.mutationEventEncoded.id))),
         )
 
         for (const item of pendingPushItems) {
-          const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)!
+          const deferred = pendingPushDeferredMap.get(eventIdToString(item.mutationEventEncoded.id))!
           yield* Deferred.succeed(deferred, Option.getOrThrow(item.metadata))
         }
 
@@ -183,13 +182,13 @@ export const makeSyncBackend = ({
       push: (mutationEventEncoded, persisted) =>
         Effect.gen(function* () {
           const deferred = yield* Deferred.make<SyncMetadata>()
-          pendingPushDeferredMap.set(mutationEventEncoded.id, deferred)
+          pendingPushDeferredMap.set(eventIdToString(mutationEventEncoded.id), deferred)
 
-          const resp = yield* HttpClientRequest.schemaBody(ApiPushEventPayload)(
+          const resp = yield* HttpClientRequest.schemaBodyJson(ApiPushEventPayload)(
             HttpClientRequest.post(pushEventEndpoint),
             ApiPushEventPayload.make({ roomId, mutationEventEncoded, persisted }),
           ).pipe(
-            Effect.andThen(HttpClient.fetchOk),
+            Effect.andThen(HttpClient.execute),
             Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
             Effect.scoped,
             Effect.mapError((cause) => InvalidPushError.make({ message: cause.toString() })),
@@ -201,10 +200,12 @@ export const makeSyncBackend = ({
 
           const metadata = yield* Deferred.await(deferred)
 
-          pendingPushDeferredMap.delete(mutationEventEncoded.id)
+          pendingPushDeferredMap.delete(eventIdToString(mutationEventEncoded.id))
 
           return { metadata: Option.some(metadata) }
         }),
       isConnected,
     } satisfies SyncBackend<SyncMetadata>
   })
+
+const eventIdToString = (eventId: EventId) => `${eventId.global}_${eventId.local}`

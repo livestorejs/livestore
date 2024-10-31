@@ -1,6 +1,6 @@
-import { Schema } from '@effect/schema'
 import { querySQL, sql } from '@livestore/livestore'
 import { useLocalId, useQuery, useRow, useStore } from '@livestore/livestore/react'
+import { Schema } from 'effect'
 import React from 'react'
 
 import { mutations, tables } from '../schema/index.js'

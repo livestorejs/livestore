@@ -21,7 +21,8 @@ test(
         Exit.succeed({
           bootStatusUpdates: [
             { stage: 'loading' },
-            { stage: 'migrating', progress: { done: 1, total: 1 } },
+            { stage: 'migrating', progress: { done: 1, total: 2 } },
+            { stage: 'migrating', progress: { done: 2, total: 2 } },
             { stage: 'done' },
           ],
         }),

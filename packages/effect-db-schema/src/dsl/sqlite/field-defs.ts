@@ -1,5 +1,4 @@
-import * as Schema from '@effect/schema/Schema'
-import { absurd, Option } from 'effect'
+import { absurd, Option, Schema } from 'effect'
 
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType

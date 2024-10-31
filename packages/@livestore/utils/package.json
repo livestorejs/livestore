@@ -1,7 +1,9 @@
 {
   "name": "@livestore/utils",
   "version": "0.0.58-dev.6",
-  "sideEffects": ["./dist/global.js"],
+  "sideEffects": [
+    "./dist/global.js"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -42,9 +44,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "nanoid": "^5.0.7",
     "effect-db-schema": "workspace:*",
     "msgpackr": "^1.11.0",
+    "nanoid": "^5.0.7",
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
@@ -52,21 +54,19 @@
     "@effect/opentelemetry": "^0.36.2",
     "@effect/platform": "^0.63.3",
     "@effect/platform-browser": "^0.42.3",
-    "@effect/schema": "^0.72.2",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.7.2"
+    "effect": "^3.10.0"
   },
   "devDependencies": {
-    "@effect/experimental": "0.24.4",
-    "@effect/opentelemetry": "0.36.2",
-    "@effect/platform": "0.63.3",
-    "@effect/platform-browser": "0.42.3",
-    "@effect/schema": "0.72.2",
+    "@effect/experimental": "0.30.13",
+    "@effect/opentelemetry": "0.39.7",
+    "@effect/platform": "0.69.12",
+    "@effect/platform-browser": "0.48.12",
     "@opentelemetry/api": "^1.9.0",
     "@types/node": "^22.0.0",
     "@types/web": "^0.0.153",
-    "effect": "3.7.2",
-    "vitest": "^2.0.4"
+    "effect": "3.10.7",
+    "vitest": "^2.1.4"
   },
   "publishConfig": {
     "access": "public"

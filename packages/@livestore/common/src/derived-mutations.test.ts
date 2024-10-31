@@ -95,7 +95,7 @@ describe('derived mutations', () => {
 })
 
 const patchId = (muationEvent: MutationEvent.PartialAny) => {
-  // TODO
-  const id = `00000000-0000-0000-0000-00000000000x`
+  // TODO use new id paradigm
+  const id = `00000000-0000-0000-0000-000000000000`
   return { ...muationEvent, id }
 }

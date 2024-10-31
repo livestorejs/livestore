@@ -5,7 +5,7 @@ import { querySQL, rowQuery, sql } from '@livestore/livestore'
 import { tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
 import { getLocalId, useQuery } from '@livestore/livestore/react'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 const filterAndOrderClause$ = rowQuery(tables.filterState, getLocalId(), {
   map: (_) => `${filterStateToWhere(_)} ${filterStateToOrder(_)}`,

@@ -1,6 +1,7 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
+import { EventId } from '../adapter-types.js'
 import type { BindValues } from '../sql-queries/sql-queries.js'
 import type { LiveStoreSchema } from './index.js'
 
@@ -34,44 +35,129 @@ export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
 export type MutationDef<TName extends string, TFrom, TTo> = {
   name: TName
   schema: Schema.Schema<TTo, TFrom>
-  sql: MutationDefSqlResult<TTo>
+  sql: MutationDefSqlResult<NoInfer<TTo>>
   options: {
+    /** Warning: This feature is not fully implemented yet */
+    historyId: string
     /**
      * When set to true, the mutation won't be synced over the network
      */
     localOnly: boolean
+    /** Warning: This feature is not fully implemented yet */
+    facts: FactsCallback<TTo> | undefined
   }
 
   /** Helper function to construct a partial mutation event */
-  (args: TTo): {
+  (
+    args: TTo,
+    options?: {
+      id?: number
+    },
+  ): {
     mutation: TName
     args: TTo
-    // id: string; parentId: string | MUTATION_EVENT_ROOT_ID
+    // TODO remove/clean up after sync-next is fully implemented
+    id?: EventId
   }
+}
+
+export type FactsCallback<TTo> = (
+  args: TTo,
+  currentFacts: MutationEventFacts,
+) => {
+  modify: {
+    set: Iterable<MutationEventFactInput>
+    unset: Iterable<MutationEventFactInput>
+  }
+  require: Iterable<MutationEventFactInput>
 }
 
 export namespace MutationDef {
   export type Any = MutationDef<string, any, any>
 }
 
+export type MutationEventKey = string
+export type MutationEventFact = string
+export type MutationEventFacts = ReadonlyMap<string, any>
+
+export type MutationEventFactsGroup = {
+  modifySet: MutationEventFacts
+  modifyUnset: MutationEventFacts
+
+  /**
+   * Events on independent "dependency" branches are commutative which can facilitate more prioritized syncing
+   */
+  depRequire: MutationEventFacts
+  depRead: MutationEventFacts
+}
+
+export type MutationEventFactsSnapshot = Map<string, any>
+
+export type MutationEventFactInput = string | readonly [string, any]
+
+export const defineFacts = <
+  TRecord extends Record<string, MutationEventFactInput | ((...args: any[]) => MutationEventFactInput)>,
+>(
+  record: TRecord,
+): TRecord => record
+
+export type DefineMutationOptions<TTo> = {
+  historyId?: string
+  /** Warning: This feature is not fully implemented yet */
+  facts?: (
+    args: TTo,
+    currentFacts: MutationEventFacts,
+  ) => {
+    modify?: {
+      set?: Iterable<MutationEventFactInput>
+      unset?: Iterable<MutationEventFactInput>
+    }
+    /**
+     * Two purposes: constrain history and constrain compaction
+     */
+    require?: Iterable<MutationEventFactInput>
+  }
+  /**
+   * When set to true, the mutation won't be synced over the network
+   */
+  localOnly?: boolean
+}
+
 // TODO possibly also allow for mutation event subsumption behaviour
 export const defineMutation = <TName extends string, TFrom, TTo>(
   name: TName,
   schema: Schema.Schema<TTo, TFrom>,
-  sql: MutationDefSqlResult<TTo>,
-  options?: {
-    /**
-     * When set to true, the mutation won't be synced over the network
-     */
-    localOnly?: boolean
-  },
+  sql: MutationDefSqlResult<NoInfer<TTo>>,
+  options?: DefineMutationOptions<TTo>,
 ): MutationDef<TName, TFrom, TTo> => {
-  const makePartialEvent = (args: TTo) => ({ mutation: name, args })
+  const makePartialEvent = (
+    args: TTo,
+    options?: {
+      id?: EventId
+    },
+  ) => ({ mutation: name, args, ...options })
 
   Object.defineProperty(makePartialEvent, 'name', { value: name })
   Object.defineProperty(makePartialEvent, 'schema', { value: schema })
   Object.defineProperty(makePartialEvent, 'sql', { value: sql })
-  Object.defineProperty(makePartialEvent, 'options', { value: { localOnly: options?.localOnly ?? false } })
+  Object.defineProperty(makePartialEvent, 'options', {
+    value: {
+      historyId: options?.historyId ?? 'main',
+      localOnly: options?.localOnly ?? false,
+      facts: options?.facts
+        ? (args, currentFacts) => {
+            const res = options.facts!(args, currentFacts)
+            return {
+              modify: {
+                set: res.modify?.set ? new Set(res.modify.set) : new Set(),
+                unset: res.modify?.unset ? new Set(res.modify.unset) : new Set(),
+              },
+              require: res.require ? new Set(res.require) : new Set(),
+            }
+          }
+        : undefined,
+    } satisfies MutationDef.Any['options'],
+  })
 
   return makePartialEvent as MutationDef<TName, TFrom, TTo>
 }
@@ -105,19 +191,6 @@ export const rawSqlMutation = defineMutation(
 export type RawSqlMutation = typeof rawSqlMutation
 export type RawSqlMutationEvent = ReturnType<typeof rawSqlMutation>
 
-export const MUTATION_EVENT_ROOT_ID = Symbol.for('livestore.MutationEventRootId')
-export type MUTATION_EVENT_ROOT_ID = typeof MUTATION_EVENT_ROOT_ID
-
-export const mutationEventRootIdSchema = Schema.transform(
-  Schema.Literal('livestore.MutationEventRootId'),
-  Schema.UniqueSymbolFromSelf(MUTATION_EVENT_ROOT_ID),
-  {
-    strict: false,
-    decode: () => MUTATION_EVENT_ROOT_ID,
-    encode: () => 'livestore.MutationEventRootId',
-  },
-).annotations({ title: 'livestore.MutationEventRootId' })
-
 export type MutationEventPartial<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
   args: Schema.Schema.Type<TMutationsDef['schema']>
@@ -131,15 +204,15 @@ export type MutationEventPartialEncoded<TMutationsDef extends MutationDef.Any> =
 export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
   args: Schema.Schema.Type<TMutationsDef['schema']>
-  id: string
-  parentId: string | MUTATION_EVENT_ROOT_ID
+  id: EventId
+  parentId: EventId
 }
 
 export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
   args: Schema.Schema.Encoded<TMutationsDef['schema']>
-  id: string
-  parentId: string
+  id: EventId
+  parentId: EventId
 }
 
 export namespace MutationEvent {
@@ -163,16 +236,16 @@ export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> =
     [K in keyof TMutationsDefRecord]: {
       mutation: K
       args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
-      id: string
-      parentId: string | MUTATION_EVENT_ROOT_ID
+      id: EventId
+      parentId: EventId
     }
   }[keyof TMutationsDefRecord],
   {
     [K in keyof TMutationsDefRecord]: {
       mutation: K
       args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
-      id: string
-      parentId: string
+      id: EventId
+      parentId: EventId
     }
   }[keyof TMutationsDefRecord]
 >
@@ -200,8 +273,8 @@ export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
       Schema.Struct({
         mutation: Schema.Literal(def.name),
         args: def.schema,
-        id: Schema.String,
-        parentId: Schema.Union(Schema.String, mutationEventRootIdSchema),
+        id: EventId,
+        parentId: EventId,
       }),
     ),
   ).annotations({ title: 'MutationEventSchema' }) as any
@@ -223,8 +296,8 @@ export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 export const mutationEventSchemaAny = Schema.Struct({
   mutation: Schema.String,
   args: Schema.Any,
-  id: Schema.String,
-  parentId: Schema.Union(Schema.String, mutationEventRootIdSchema),
+  id: EventId,
+  parentId: EventId,
 }).annotations({ title: 'MutationEventSchema.Any' })
 
 export const mutationEventSchemaDecodedAny = Schema.typeSchema(mutationEventSchemaAny).annotations({

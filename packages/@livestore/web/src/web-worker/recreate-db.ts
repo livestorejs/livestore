@@ -170,13 +170,14 @@ const getCursorInfo = (workerCtx: typeof InnerWorkerCtx.Service): Effect.Effect<
     const { dbLog } = workerCtx
 
     const MutationlogQuerySchema = Schema.Struct({
-      id: Schema.String,
+      idGlobal: Schema.Number,
+      idLocal: Schema.Number,
       syncMetadataJson: Schema.parseJson(Schema.Option(Schema.JsonValue)),
     }).pipe(Schema.Array, Schema.headOrElse())
 
     const syncPullInfo = yield* Effect.try(() =>
-      dbLog.dbRef.current.syncDb.select<{ id: string; syncMetadataJson: string }>(
-        sql`SELECT id, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY id DESC LIMIT 1`,
+      dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
+        sql`SELECT idGlobal, idLocal, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY idGlobal DESC LIMIT 1`,
       ),
     ).pipe(
       Effect.andThen(Schema.decode(MutationlogQuerySchema)),
@@ -187,7 +188,7 @@ const getCursorInfo = (workerCtx: typeof InnerWorkerCtx.Service): Effect.Effect<
     if (syncPullInfo === undefined) return Option.none()
 
     return Option.some({
-      cursor: syncPullInfo.id,
+      cursor: { global: syncPullInfo.idGlobal, local: syncPullInfo.idLocal },
       metadata: syncPullInfo.syncMetadataJson,
     }) satisfies InitialSyncInfo
   })

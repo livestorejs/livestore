@@ -1,5 +1,5 @@
-import * as Schema from '@effect/schema/Schema'
 import type { Option } from 'effect'
+import { Schema } from 'effect'
 
 import type * as SqliteAst from '../../ast/sqlite.js'
 import type { Nullable, PrettifyFlat } from '../../utils.js'
@@ -59,7 +59,9 @@ export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Sch
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,
 ): StructSchemaForColumns<TTableDefinition['columns']> =>
-  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))) as any
+  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotations({
+    title: tableDef.name,
+  }) as any
 
 const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
   return Object.entries(columns).map(([name, column]) => {

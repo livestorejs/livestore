@@ -1,11 +1,10 @@
-import type { Schema } from '@effect/schema'
-import { AST, Equivalence } from '@effect/schema'
+import { Schema, SchemaAST } from 'effect'
 
 export type DiffItem = {
   path: string
   a: any
   b: any
-  ast: AST.AST
+  ast: SchemaAST.AST
 }
 
 /**
@@ -19,12 +18,12 @@ export const debugDiff =
     return bag
   }
 
-const debugDiffImpl = (ast: AST.AST, a: any, b: any, path: string, bag: DiffItem[]) => {
-  const eq = Equivalence.make({ ast } as any)
+const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: DiffItem[]) => {
+  const eq = Schema.equivalence({ ast } as any)
   if (eq(a, b) === false) {
     // bag.push({ path, a, b, ast })
 
-    if (AST.isUnion(ast)) {
+    if (SchemaAST.isUnion(ast)) {
       if (isTaggedUnion(ast)) {
         bag.push({ path, a, b, ast })
         return
@@ -36,8 +35,8 @@ const debugDiffImpl = (ast: AST.AST, a: any, b: any, path: string, bag: DiffItem
           } catch {}
         }
       }
-    } else if (AST.isTypeLiteral(ast)) {
-      const props = AST.getPropertySignatures(ast)
+    } else if (SchemaAST.isTypeLiteral(ast)) {
+      const props = SchemaAST.getPropertySignatures(ast)
       for (const prop of props) {
         debugDiffImpl(prop.type, a[prop.name], b[prop.name], `${path}.${prop.name.toString()}`, bag)
       }
@@ -48,11 +47,11 @@ const debugDiffImpl = (ast: AST.AST, a: any, b: any, path: string, bag: DiffItem
   }
 }
 
-const isTaggedUnion = (ast: AST.AST) => {
-  if (AST.isUnion(ast)) {
+const isTaggedUnion = (ast: SchemaAST.AST) => {
+  if (SchemaAST.isUnion(ast)) {
     return ast.types.every((type) => {
-      if (AST.isTypeLiteral(type) === false) return false
-      const props = AST.getPropertySignatures(type)
+      if (SchemaAST.isTypeLiteral(type) === false) return false
+      const props = SchemaAST.getPropertySignatures(type)
       return props.some((prop) => prop.name.toString() === '_tag')
     })
   }

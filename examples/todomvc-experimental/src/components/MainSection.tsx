@@ -1,7 +1,7 @@
-import { Schema } from '@effect/schema'
 import type { Store } from '@livestore/livestore'
 import { querySQL, rowQuery, sql } from '@livestore/livestore'
 import { getLocalId, LiveList, useStore } from '@livestore/livestore/react'
+import { Schema } from 'effect'
 import React from 'react'
 
 import { mutations, tables, type Todo } from '../schema/index.js'

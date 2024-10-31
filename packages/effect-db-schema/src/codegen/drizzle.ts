@@ -1,5 +1,4 @@
-import * as SchemaAST from '@effect/schema/AST'
-import { Option } from 'effect'
+import { Option, SchemaAST } from 'effect'
 
 import type * as SqliteAst from '../ast/sqlite.js'
 import type * as sqlite from '../dsl/sqlite/index.js'

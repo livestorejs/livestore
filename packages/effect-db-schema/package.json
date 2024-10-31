@@ -28,15 +28,13 @@
     "dprint-node": "^1.0.8"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.72.2",
-    "effect": "^3.7.2"
+    "effect": "^3.10.0"
   },
   "devDependencies": {
-    "@effect/schema": "0.72.2",
     "drizzle-orm": "^0.32.1",
-    "effect": "3.7.2",
-    "vite": "^5.4.3",
-    "vitest": "^2.0.4"
+    "effect": "3.10.7",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
   },
   "publishConfig": {
     "access": "public"

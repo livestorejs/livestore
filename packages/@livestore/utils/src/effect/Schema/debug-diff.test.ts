@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import type { DiffItem } from './debug-diff.js'

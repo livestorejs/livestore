@@ -2,8 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import * as Schema from '@effect/schema/Schema'
-import { Option } from 'effect'
+import { Option, Schema } from 'effect'
 import { describe, test } from 'vitest'
 
 import * as AstSqlite from '../ast/sqlite.js'
