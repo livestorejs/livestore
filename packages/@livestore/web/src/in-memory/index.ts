@@ -1,8 +1,6 @@
 import type { Coordinator, LockStatus, StoreAdapterFactory } from '@livestore/common'
-import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
-import { MUTATION_EVENT_ROOT_ID } from '@livestore/common/schema'
+import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
@@ -39,7 +37,7 @@ export const makeInMemoryAdapter =
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
       const syncMutations = Stream.never
 
-      const currentMutationEventIdRef = { current: MUTATION_EVENT_ROOT_ID as MUTATION_EVENT_ROOT_ID | string }
+      const currentMutationEventIdRef = { current: ROOT_ID }
 
       const coordinator = {
         devtools: { appHostId: 'in-memory', enabled: false },
@@ -47,11 +45,21 @@ export const makeInMemoryAdapter =
         syncMutations,
         execute: () => Effect.void,
         mutate: () => Effect.void,
-        getNextMutationEventId: () =>
+        getNextMutationEventId: (opts) =>
           Effect.sync(() => {
-            const id = nanoid()
-            currentMutationEventIdRef.current = id
-            return id
+            if (opts.localOnly) {
+              currentMutationEventIdRef.current = {
+                global: currentMutationEventIdRef.current.global,
+                local: currentMutationEventIdRef.current.local + 1,
+              }
+            } else {
+              currentMutationEventIdRef.current = {
+                global: currentMutationEventIdRef.current.global + 1,
+                local: 0,
+              }
+            }
+
+            return currentMutationEventIdRef.current
           }),
         getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         export: Effect.dieMessage('Not implemented'),

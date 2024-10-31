@@ -1,6 +1,7 @@
 import type {
   BootDb,
   BootStatus,
+  EventId,
   IntentionalShutdownCause,
   ParamsObject,
   PreparedBindValues,
@@ -9,11 +10,17 @@ import type {
   StoreDevtoolsChannel,
 } from '@livestore/common'
 import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema, MUTATION_EVENT_ROOT_ID, MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchemaMemo, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
+import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import {
+  makeMutationEventSchemaMemo,
+  SCHEMA_META_TABLE,
+  SCHEMA_MUTATIONS_META_TABLE,
+  SESSION_CHANGESET_META_TABLE,
+} from '@livestore/common/schema'
 import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
 import {
   Cause,
+  Data,
   Deferred,
   Duration,
   Effect,
@@ -23,6 +30,7 @@ import {
   Layer,
   Logger,
   LogLevel,
+  MutableHashMap,
   OtelTracer,
   Queue,
   Runtime,
@@ -74,9 +82,8 @@ export type StoreOptions<
   fiberSet: FiberSet.FiberSet
   runtime: Runtime.Runtime<Scope.Scope>
   batchUpdates: (runUpdates: () => void) => void
-  // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
-  __processedMutationIds: Set<string>
-  currentMutationEventIdRef: { current: string | MUTATION_EVENT_ROOT_ID }
+  currentMutationEventIdRef: { current: EventId }
+  unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId, MutationEvent.ForSchema<TSchema>>
 }
 
 export type RefreshReason =
@@ -148,18 +155,14 @@ export class Store<
   private fiberSet: FiberSet.FiberSet
   private runtime: Runtime.Runtime<Scope.Scope>
 
-  // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
-  private __processedMutationIds
-  private __processedMutationWithoutRefreshIds = new Set<string>()
-
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
   // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
 
-  /** Pointer to the current mutation event id (which is synced i.e. non-localOny) */
   private currentMutationEventIdRef
+  private unsyncedMutationEvents
 
   // #region constructor
   private constructor({
@@ -170,8 +173,8 @@ export class Store<
     otelOptions,
     disableDevtools,
     batchUpdates,
-    __processedMutationIds,
     currentMutationEventIdRef,
+    unsyncedMutationEvents,
     storeId,
     fiberSet,
     runtime,
@@ -181,6 +184,7 @@ export class Store<
     this.storeId = storeId
 
     this.currentMutationEventIdRef = currentMutationEventIdRef
+    this.unsyncedMutationEvents = unsyncedMutationEvents
 
     this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: adapter.syncDb })
     this.adapter = adapter
@@ -191,9 +195,6 @@ export class Store<
 
     // TODO refactor
     this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
-
-    // TODO remove this temporary solution and find a better way to avoid re-processing the same mutation
-    this.__processedMutationIds = __processedMutationIds
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -230,7 +231,7 @@ export class Store<
       isRunningInDevtools
         ? this.schema.tables.keys()
         : Array.from(this.schema.tables.keys()).filter(
-            (_) => _ !== SCHEMA_META_TABLE && _ !== SCHEMA_MUTATIONS_META_TABLE,
+            (_) => _ !== SCHEMA_META_TABLE && _ !== SCHEMA_MUTATIONS_META_TABLE && _ !== SESSION_CHANGESET_META_TABLE,
           ),
     )
     const existingTableRefs = new Map(
@@ -375,16 +376,12 @@ export class Store<
       mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
     }
 
-    mutationsEvents = mutationsEvents.filter((_) => _.id === undefined || !this.__processedMutationIds.has(_.id))
+    mutationsEvents = mutationsEvents.filter(
+      (_) => _.id === undefined || !MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(_.id)),
+    )
 
     if (mutationsEvents.length === 0) {
       return
-    }
-
-    for (const mutationEvent of mutationsEvents) {
-      if (mutationEvent.id !== undefined) {
-        this.__processedMutationIds.add(mutationEvent.id)
-      }
     }
 
     const label = options?.label ?? 'mutate'
@@ -401,7 +398,7 @@ export class Store<
 
     let durationMs: number
 
-    return this.otel.tracer.startActiveSpan(
+    const res = this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
       { attributes: { 'livestore.mutateLabel': label } },
       this.otel.mutationsSpanContext,
@@ -481,6 +478,16 @@ export class Store<
         return { durationMs }
       },
     )
+
+    // NOTE we need to add the mutation events to the unsynced mutation events map only after running the code above
+    // so the short-circuiting in `mutateWithoutRefresh` doesn't kick in for those events
+    for (const mutationEvent of mutationsEvents) {
+      if (mutationEvent.id !== undefined) {
+        MutableHashMap.set(this.unsyncedMutationEvents, Data.struct(mutationEvent.id), mutationEvent)
+      }
+    }
+
+    return res
   }
 
   /**
@@ -527,12 +534,11 @@ export class Store<
 
     // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
     // e.g. the row-query functionality
-    if (this.__processedMutationWithoutRefreshIds.has(mutationEventDecoded.id)) {
+    if (MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id))) {
       // NOTE this data should never be used
       return { writeTables: new Set(), durationMs: 0 }
     } else {
-      this.__processedMutationIds.add(mutationEventDecoded.id)
-      this.__processedMutationWithoutRefreshIds.add(mutationEventDecoded.id)
+      MutableHashMap.set(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
     }
 
     const { otelContext, coordinatorMode = 'default' } = options
@@ -607,16 +613,13 @@ export class Store<
     return this.syncDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
   }
 
-  private getNextMutationEventId = ({
-    localOnly,
-  }: {
-    localOnly: boolean
-  }): { id: string; parentId: string | MUTATION_EVENT_ROOT_ID } => {
+  private getNextMutationEventId = ({ localOnly }: { localOnly: boolean }): { id: EventId; parentId: EventId } => {
     const id = this.adapter.coordinator.getNextMutationEventId({ localOnly }).pipe(Effect.runSync)
-    const parentId = this.currentMutationEventIdRef.current
-    if (localOnly === false) {
-      this.currentMutationEventIdRef.current = id
-    }
+    const parentId = localOnly
+      ? this.currentMutationEventIdRef.current
+      : { global: this.currentMutationEventIdRef.current.global, local: 0 }
+
+    this.currentMutationEventIdRef.current = id
 
     return { id, parentId }
   }
@@ -783,9 +786,13 @@ export const createStore = <
 
     const mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
-    const __processedMutationIds = new Set<string>()
+    // TODO get rid of this
+    // const __processedMutationIds = new Set<number>()
 
-    const currentMutationEventId = yield* adapter.coordinator.getCurrentMutationEventId
+    const currentMutationEventIdRef = { current: yield* adapter.coordinator.getCurrentMutationEventId }
+
+    // TODO fill up with unsynced mutation events from the coordinator
+    const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
 
     // TODO consider moving booting into the storage backend
     if (boot !== undefined) {
@@ -810,15 +817,19 @@ export const createStore = <
               schema.mutations.get(mutationEventDecoded_.mutation) ??
               shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
 
-            const mutationEventDecoded = {
-              ...mutationEventDecoded_,
-              id: adapter.coordinator
-                .getNextMutationEventId({ localOnly: mutationDef.options.localOnly })
-                .pipe(Effect.runSync),
-              parentId: 'todo-parent-id',
-            }
+            const parentId = mutationDef.options.localOnly
+              ? currentMutationEventIdRef.current
+              : { global: currentMutationEventIdRef.current.global, local: 0 }
 
-            __processedMutationIds.add(mutationEventDecoded.id)
+            currentMutationEventIdRef.current = adapter.coordinator
+              .getNextMutationEventId({ localOnly: mutationDef.options.localOnly })
+              .pipe(Effect.runSync)
+
+            const mutationEventDecoded = { ...mutationEventDecoded_, id: currentMutationEventIdRef.current, parentId }
+
+            MutableHashMap.set(unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
+
+            // __processedMutationIds.add(mutationEventDecoded.id.global)
 
             const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
             // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
@@ -876,8 +887,8 @@ export const createStore = <
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
         reactivityGraph,
         disableDevtools,
-        __processedMutationIds,
-        currentMutationEventIdRef: { current: currentMutationEventId },
+        currentMutationEventIdRef,
+        unsyncedMutationEvents,
         fiberSet,
         runtime,
         batchUpdates: batchUpdates ?? ((run) => run()),

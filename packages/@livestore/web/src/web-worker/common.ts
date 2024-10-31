@@ -1,5 +1,6 @@
 import type {
   BootStatus,
+  EventId,
   PreparedBindValues,
   PreparedStatement,
   SyncBackend,
@@ -14,6 +15,8 @@ import {
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
   prepareBindValues,
+  SESSION_CHANGESET_META_TABLE,
+  sessionChangesetMetaTable,
   sql,
   SqliteError,
 } from '@livestore/common'
@@ -21,7 +24,17 @@ import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } 
 import type { BindValues } from '@livestore/common/sql-queries'
 import { insertRow, updateRows } from '@livestore/common/sql-queries'
 import { shouldNeverHappen } from '@livestore/utils'
-import type { Deferred, Fiber, FiberSet, Option, Queue, Ref, Scope, WebChannel } from '@livestore/utils/effect'
+import type {
+  Deferred,
+  Fiber,
+  FiberSet,
+  HttpClient,
+  Option,
+  Queue,
+  Ref,
+  Scope,
+  WebChannel,
+} from '@livestore/utils/effect'
 import { Context, Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { BCMessage } from '../common/index.js'
@@ -60,7 +73,7 @@ export type DevtoolsContextEnabled = {
     appHostId: string
     isLeader: boolean
     persistenceInfo: PersistenceInfoPair
-  }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope>
+  }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope | HttpClient.HttpClient>
   connections: FiberSet.FiberSet
   broadcast: (
     message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
@@ -78,7 +91,7 @@ export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
 >() {}
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: string
+  cursor: EventId
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -118,7 +131,7 @@ export type ApplyMutation = (
     inTransaction: boolean
     syncMetadataJson: Option.Option<Schema.JsonValue>
   },
-) => Effect.Effect<void, SqliteError>
+) => Effect.Effect<void, SqliteError, HttpClient.HttpClient>
 
 export const makeApplyMutation = (
   workerCtx: typeof InnerWorkerCtx.Service,
@@ -160,6 +173,9 @@ export const makeApplyMutation = (
         // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
         const transaction = Effect.gen(function* () {
+          const session = sqlite3.session_create(db, 'main')
+          sqlite3.session_attach(session, null)
+
           const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
           if (hasDbTransaction) {
             yield* execSql(syncDb, 'BEGIN TRANSACTION', {})
@@ -175,6 +191,22 @@ export const makeApplyMutation = (
 
           if (hasDbTransaction) {
             yield* execSql(syncDb, 'COMMIT', {})
+          }
+
+          const { changeset } = sqlite3.session_changeset(session)
+          sqlite3.session_delete(session)
+
+          // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
+          // TODO possibly write a null value instead of omitting the row
+          if (changeset.length > 0) {
+            yield* execSql(
+              syncDb,
+              ...insertRow({
+                tableName: SESSION_CHANGESET_META_TABLE,
+                columns: sessionChangesetMetaTable.sqliteDef.columns,
+                values: { idGlobal: mutationEventEncoded.id.global, idLocal: mutationEventEncoded.id.local, changeset },
+              }),
+            )
           }
         })
 
@@ -198,8 +230,10 @@ export const makeApplyMutation = (
               tableName: MUTATION_LOG_META_TABLE,
               columns: mutationLogMetaTable.sqliteDef.columns,
               values: {
-                id: mutationEventEncoded.id,
-                parentId: mutationEventEncoded.parentId,
+                idGlobal: mutationEventEncoded.id.global,
+                idLocal: mutationEventEncoded.id.local,
+                parentIdGlobal: mutationEventEncoded.parentId.global,
+                parentIdLocal: mutationEventEncoded.parentId.local,
                 mutation: mutationEventEncoded.mutation,
                 argsJson: mutationEventEncoded.args ?? {},
                 schemaHash: mutationDefSchemaHash,
@@ -246,7 +280,7 @@ export const makeApplyMutation = (
               ...updateRows({
                 tableName: MUTATION_LOG_META_TABLE,
                 columns: mutationLogMetaTable.sqliteDef.columns,
-                where: { id: mutationEventEncoded.id },
+                where: { idGlobal: mutationEventEncoded.id.global, idLocal: mutationEventEncoded.id.local },
                 updateValues: { syncStatus: 'synced', syncMetadataJson: metadata },
               }),
             )

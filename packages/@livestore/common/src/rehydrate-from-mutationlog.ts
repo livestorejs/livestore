@@ -54,8 +54,8 @@ This likely means the schema has changed in an incompatible way.
         )
 
         const mutationEventDecoded = {
-          id: row.id,
-          parentId: row.parentId,
+          id: { global: row.idGlobal, local: row.idLocal },
+          parentId: { global: row.parentIdGlobal, local: row.parentIdLocal },
           mutation: row.mutation,
           args: argsDecoded,
         } satisfies MutationEvent.Any
@@ -85,8 +85,8 @@ This likely means the schema has changed in an incompatible way.
 
     const stmt = logDb.prepare(sql`\
 SELECT * FROM ${MUTATION_LOG_META_TABLE} 
-WHERE id > COALESCE($id, '') 
-ORDER BY id ASC
+WHERE idGlobal > COALESCE($idGlobal, '') AND idLocal > COALESCE($idLocal, '')
+ORDER BY idGlobal ASC, idLocal ASC
 LIMIT ${CHUNK_SIZE}
 `)
 
@@ -98,9 +98,17 @@ LIMIT ${CHUNK_SIZE}
         // End stream if no more rows
         if (Chunk.isChunk(item) && item.length === 0) return Option.none()
 
-        const lastId = Chunk.isChunk(item) ? Chunk.last(item).pipe(Option.getOrUndefined)?.id : undefined
+        const lastId = Chunk.isChunk(item)
+          ? Chunk.last(item).pipe(
+              Option.map((_) => ({ global: _.idGlobal, local: _.idLocal })),
+              Option.getOrUndefined,
+            )
+          : undefined
         const nextItem = Chunk.fromIterable(
-          stmt.select<MutationLogMetaRow>({ $id: lastId } as any as PreparedBindValues),
+          stmt.select<MutationLogMetaRow>({
+            $idGlobal: lastId?.global,
+            $idLocal: lastId?.local,
+          } as any as PreparedBindValues),
         )
         const prevItem = Chunk.isChunk(item) ? item : Chunk.empty()
         return Option.some([prevItem, nextItem])

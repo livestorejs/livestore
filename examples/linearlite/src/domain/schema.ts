@@ -1,6 +1,6 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
 import { Priority, PriorityType, Status, StatusType } from '../types/issue'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 import * as mutations from './mutations'
 
 export { mutations }

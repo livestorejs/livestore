@@ -11,7 +11,7 @@ import LowPriorityIcon from '../assets/icons/signal-weak.svg?react'
 import MediumPriorityIcon from '../assets/icons/signal-medium.svg?react'
 import NoPriorityIcon from '../assets/icons/dots.svg?react'
 import UrgentPriorityIcon from '../assets/icons/rounded-claim.svg?react'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 export const Priority = {
   NONE: 'none',

@@ -5,7 +5,7 @@ import { querySQL, rowQuery, sql } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
 import { getLocalId, useQuery } from '@livestore/livestore/react'
 import { tables } from '../../domain/schema'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 const filterClause$ = rowQuery(tables.filterState, getLocalId(), {
   map: filterStateToWhere,

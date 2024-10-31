@@ -1,5 +1,4 @@
-import * as Schema from '@effect/schema/Schema'
-import { type Option } from 'effect'
+import { type Option, Schema } from 'effect'
 
 import { hashCode } from '../hash.js'
 

@@ -1,5 +1,5 @@
-import { BootStatus, UnexpectedError } from '@livestore/common'
-import { mutationEventRootIdSchema, mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import { BootStatus, EventId, UnexpectedError } from '@livestore/common'
+import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
@@ -122,7 +122,7 @@ export namespace DedicatedWorkerInner {
     'GetCurrentMutationEventId',
     {
       payload: {},
-      success: Schema.Union(mutationEventRootIdSchema, Schema.String),
+      success: EventId,
       failure: UnexpectedError,
     },
   ) {}

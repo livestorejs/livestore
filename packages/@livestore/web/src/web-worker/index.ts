@@ -7,9 +7,8 @@ import type {
 } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchema, MUTATION_EVENT_ROOT_ID } from '@livestore/common/schema'
+import { makeMutationEventSchema } from '@livestore/common/schema'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
-import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
   Cause,
@@ -18,7 +17,6 @@ import {
   Effect,
   Exit,
   Fiber,
-  Option,
   Queue,
   Schema,
   Stream,
@@ -122,9 +120,6 @@ export const makeAdapter =
       const originId = getPersistedId(`originId:${storeId}`, 'local')
       const contextId = getPersistedId(`contextId:${storeId}`, 'session')
       const clientId = `${originId}${contextId}`
-
-      const seqState = makeSessionState(`seq:${storeId}`, Schema.NumberFromString)
-      const seqLocalOnlyState = makeSessionState(`seq-local-only:${storeId}`, Schema.NumberFromString)
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -256,7 +251,7 @@ export const makeAdapter =
 
       const runInWorker = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
         req: TReq,
-      ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
+      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
         ? Effect.Effect<A, UnexpectedError, R>
         : never =>
         Fiber.join(sharedWorkerFiber).pipe(
@@ -274,7 +269,7 @@ export const makeAdapter =
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
         req: TReq,
-      ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
+      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
         ? Stream.Stream<A, UnexpectedError, R>
         : never =>
         Effect.gen(function* () {
@@ -318,6 +313,15 @@ export const makeAdapter =
 
       const initialSnapshot =
         dataFromFile ?? (yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.GetRecreateSnapshot()))
+
+      // TODO merge with snapshot req
+      const initialMutationEventId = yield* runInWorker(
+        new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId(),
+      )
+
+      const currentMutationEventIdRef = {
+        current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
+      }
 
       const dbPointer = WaSqlite.makeInMemoryDb(sqlite3)
       const syncDb = WaSqlite.makeSynchronousDatabase(sqlite3, dbPointer)
@@ -433,12 +437,19 @@ export const makeAdapter =
         // TODO use a persisted integer seq instead of nanoid
         getNextMutationEventId: (opts) =>
           Effect.gen(function* () {
-            const state = opts.localOnly ? seqLocalOnlyState : seqState
-            const seq = yield* state.get.pipe(Effect.map(Option.getOrElse(() => 0)))
-            const nextSeq = seq + 1
-            yield* state.set(nextSeq)
-            // NOTE we're using a base36 encoded number to make the string encoding more compact
-            return `${clientId}${opts.localOnly ? '@' : ''}${nextSeq.toString(36)}`
+            if (opts.localOnly) {
+              currentMutationEventIdRef.current = {
+                global: currentMutationEventIdRef.current.global,
+                local: currentMutationEventIdRef.current.local + 1,
+              }
+            } else {
+              currentMutationEventIdRef.current = {
+                global: currentMutationEventIdRef.current.global + 1,
+                local: 0,
+              }
+            }
+
+            return currentMutationEventIdRef.current
           }),
 
         // TODO this needs to be specific to the current context
@@ -449,10 +460,10 @@ export const makeAdapter =
         // ),
 
         getCurrentMutationEventId: Effect.gen(function* () {
-          const state = seqState
-          const seq = yield* state.get
-          if (seq._tag === 'None') return MUTATION_EVENT_ROOT_ID
-          return `${clientId}${seq.value.toString(36)}`
+          // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
+          // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
+          // return { global, local }
+          return currentMutationEventIdRef.current
         }),
 
         getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
@@ -556,42 +567,3 @@ const ensureBrowserRequirements = Effect.gen(function* () {
     validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
   ])
 })
-
-const makeSessionState = <T>(key: string, schema: Schema.Schema<T, string>) => {
-  const storage = sessionStorage
-
-  const fullKey = `livestore:${key}`
-
-  let storeTimeoutHandle: number | undefined = undefined
-
-  let currentValue: T | undefined = undefined
-
-  const get: Effect.Effect<Option.Option<T>, UnexpectedError> = Effect.gen(function* () {
-    if (currentValue !== undefined) {
-      return Option.some(currentValue)
-    }
-
-    const stored = storage.getItem(fullKey)
-    if (stored === null) return Option.none()
-    const decoded = yield* Schema.decode(schema)(stored)
-    currentValue = decoded
-    return Option.some(decoded)
-  }).pipe(UnexpectedError.mapToUnexpectedError)
-
-  const set = (value: T): Effect.Effect<void, UnexpectedError> =>
-    Effect.gen(function* () {
-      currentValue = value
-
-      if (storeTimeoutHandle !== undefined) {
-        clearTimeout(storeTimeoutHandle)
-      }
-
-      // TODO handle unlikely case that the session ends while the timeout is still pending
-      storeTimeoutHandle = setTimeout(() => {
-        const encoded = Schema.encodeSync(schema)(value)
-        storage.setItem(fullKey, encoded)
-      }, 10)
-    }).pipe(UnexpectedError.mapToUnexpectedError)
-
-  return { get, set }
-}

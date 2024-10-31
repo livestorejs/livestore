@@ -1,7 +1,7 @@
-import { Schema } from '@effect/schema'
 import { ApiPayload } from '@livestore/sync-electric'
 import type { ActionFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
+import { Schema } from 'effect'
 
 import { makeDb } from '@/server/db.js'
 

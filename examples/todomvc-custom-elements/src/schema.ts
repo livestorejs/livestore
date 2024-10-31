@@ -1,5 +1,5 @@
-import { Schema } from '@effect/schema'
 import { DbSchema, defineMutation, makeSchema, sql } from '@livestore/livestore'
+import { Schema } from 'effect'
 
 const todos = DbSchema.table('todos', {
   id: DbSchema.text({ primaryKey: true }),

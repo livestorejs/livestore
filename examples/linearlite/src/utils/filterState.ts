@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { FilterState } from '../domain/schema'
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 export function useFilterState(): [FilterState, (state: Partial<FilterState>) => void] {
   const [searchParams, setSearchParams] = useSearchParams()

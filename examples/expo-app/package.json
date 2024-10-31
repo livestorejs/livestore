@@ -9,13 +9,13 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@effect/schema": "0.72.2",
     "@expo/vector-icons": "14.0.2",
     "@livestore/devtools-expo": "0.0.58-dev.6",
     "@livestore/expo": "0.0.58-dev.6",
     "@livestore/livestore": "0.0.58-dev.6",
     "@livestore/utils": "0.0.58-dev.6",
     "babel-preset-expo": "11.0.12",
+    "effect": "3.10.7",
     "expo": "51.0.32",
     "expo-asset": "10.0.10",
     "expo-crypto": "13.0.2",

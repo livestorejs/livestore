@@ -1,6 +1,5 @@
 import { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import { isNotUndefined } from '@livestore/utils'
-import type { Serializable } from '@livestore/utils/effect'
 import {
   BrowserWorker,
   BrowserWorkerRunner,
@@ -8,13 +7,13 @@ import {
   Duration,
   Effect,
   Exit,
+  FetchHttpClient,
   Layer,
   Logger,
   LogLevel,
   Queue,
   Ref,
   Schema,
-  SchemaEquivalence,
   Scope,
   Stream,
   SubscriptionRef,
@@ -45,7 +44,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
   const forwardRequest = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
     req: TReq,
-  ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
+  ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Effect.Effect<A, UnexpectedError, never>
     : never =>
     waitForWorker.pipe(
@@ -81,7 +80,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   // It seems the in-progress streams are not being closed properly if the worker is closed (e.g. by closing the leader tab)
   const forwardRequestStream = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
     req: TReq,
-  ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
+  ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Stream.Stream<A, UnexpectedError, never>
     : never =>
     Effect.gen(function* () {
@@ -152,7 +151,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(
             Schema.omit('needsRecreate', 'devtoolsEnabled'),
           )
-          const isEqual = SchemaEquivalence.make(messageSchema)
+          const isEqual = Schema.equivalence(messageSchema)
           if (isEqual(initialMessage, previousInitialMessage.initialMessage) === false) {
             const diff = Schema.debugDiff(messageSchema)(previousInitialMessage.initialMessage, initialMessage)
 
@@ -243,6 +242,7 @@ export const makeWorker = () => {
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(Logger.pretty),
+    Effect.provide(FetchHttpClient.layer),
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runFork,
   )

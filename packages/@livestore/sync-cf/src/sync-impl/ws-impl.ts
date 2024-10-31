@@ -36,7 +36,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
         listenForNew
           ? Effect.gen(function* () {
               const requestId = nanoid()
-              const cursor = Option.getOrUndefined(args)?.cursor
+              const cursor = Option.getOrUndefined(args)?.cursor.global
 
               yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
@@ -56,7 +56,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
             }).pipe(Stream.unwrap)
           : Effect.gen(function* () {
               const requestId = nanoid()
-              const cursor = Option.getOrUndefined(args)?.cursor
+              const cursor = Option.getOrUndefined(args)?.cursor.global
 
               yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
@@ -89,7 +89,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
                 : Effect.void,
             ),
             Stream.filter(Schema.is(WSMessage.PushAck)),
-            Stream.filter((_) => _.mutationId === mutationEventEncoded.id),
+            Stream.filter((_) => _.mutationId === mutationEventEncoded.id.global),
             Stream.take(1),
             Stream.tap(() => Deferred.succeed(ready, void 0)),
             Stream.runDrain,

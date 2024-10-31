@@ -223,8 +223,9 @@ export const bootDevtools = ({
 
               const mutationEventEncoded = {
                 ...mutationEventEncoded_,
-                id: 'TODO',
-                parentId: 'TODO',
+                // TODO
+                id: { global: 0, local: 0 },
+                parentId: { global: 0, local: 0 },
               }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)

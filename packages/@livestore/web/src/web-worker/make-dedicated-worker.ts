@@ -1,17 +1,13 @@
 import type { BootStatus, NetworkStatus, SyncBackend } from '@livestore/common'
-import { migrateTable, sql, UnexpectedError } from '@livestore/common'
-import {
-  type LiveStoreSchema,
-  makeMutationEventSchema,
-  MUTATION_EVENT_ROOT_ID,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
+import { migrateTable, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { type LiveStoreSchema, makeMutationEventSchema, mutationLogMetaTable } from '@livestore/common/schema'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
   Deferred,
   Effect,
+  FetchHttpClient,
   Fiber,
   FiberSet,
   Layer,
@@ -56,6 +52,7 @@ export const makeWorker = (options: WorkerOptions) => {
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(Logger.pretty),
+    Effect.provide(FetchHttpClient.layer),
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runFork,
   )
@@ -232,8 +229,10 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
               // TODO try to do this in a batched-way if possible
               yield* syncBackend.pull(syncInfo, { listenForNew: true }).pipe(
                 // Filter out "own" mutations
-                Stream.filter((_) => _.mutationEventEncoded.id.startsWith(originId) === false),
+                // Stream.filter((_) => _.mutationEventEncoded.id.startsWith(originId) === false),
                 Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
+                  // TODO handle rebasing
+                  // if incoming mutation parent id !== current mutation event id, we need to rebase
                   applyMutation(mutationEventEncoded, {
                     syncStatus: 'synced',
                     shouldBroadcast: true,
@@ -313,10 +312,11 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
       GetCurrentMutationEventId: () =>
         Effect.gen(function* () {
           const workerCtx = yield* InnerWorkerCtx
-          const result = workerCtx.dbLog.dbRef.current.syncDb.select<{ id: string }>(
-            sql`SELECT id FROM mutation_log ORDER BY orderKey DESC LIMIT 1`,
-          )
-          return result[0]?.id ?? MUTATION_EVENT_ROOT_ID
+          const result = workerCtx.dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number }>(
+            sql`SELECT idGlobal, idLocal FROM mutation_log ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
+          )[0]
+
+          return result ? { global: result.idGlobal, local: result.idLocal } : ROOT_ID
         }).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:GetCurrentMutationEventId'),
@@ -348,36 +348,37 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
       // NOTE We're using a stream here to express a scoped effect over the worker boundary
       // so the code below can cause an interrupt on the worker client side
       ConnectDevtoolsStream: ({ port, appHostId, isLeader }) =>
-        Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, InnerWorkerCtx>((emit) =>
-          Effect.gen(function* () {
-            const workerCtx = yield* InnerWorkerCtx
+        Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, InnerWorkerCtx | HttpClient.HttpClient>(
+          (emit) =>
+            Effect.gen(function* () {
+              const workerCtx = yield* InnerWorkerCtx
 
-            if (workerCtx.devtools.enabled === false) {
-              return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
-            }
+              if (workerCtx.devtools.enabled === false) {
+                return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
+              }
 
-            const storeMessagePortDeferred = yield* Deferred.make<MessagePort, UnexpectedError>()
+              const storeMessagePortDeferred = yield* Deferred.make<MessagePort, UnexpectedError>()
 
-            const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* workerCtx.devtools
-              .connect({
-                coordinatorMessagePort: port,
-                storeMessagePortDeferred,
-                disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
-                storeId: workerCtx.storeId,
-                appHostId,
-                isLeader,
-                persistenceInfo: { db: workerCtx.db.persistenceInfo, mutationLog: workerCtx.dbLog.persistenceInfo },
-              })
-              .pipe(
-                Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
-                Effect.onInterrupt(() => Effect.promise(() => emit.end())),
-                FiberSet.run(workerCtx.devtools.connections),
-              )
+              const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* workerCtx.devtools
+                .connect({
+                  coordinatorMessagePort: port,
+                  storeMessagePortDeferred,
+                  disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
+                  storeId: workerCtx.storeId,
+                  appHostId,
+                  isLeader,
+                  persistenceInfo: { db: workerCtx.db.persistenceInfo, mutationLog: workerCtx.dbLog.persistenceInfo },
+                })
+                .pipe(
+                  Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
+                  Effect.onInterrupt(() => Effect.promise(() => emit.end())),
+                  FiberSet.run(workerCtx.devtools.connections),
+                )
 
-            const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
+              const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
 
-            emit.single({ storeMessagePort })
-          }),
+              emit.single({ storeMessagePort })
+            }),
         ).pipe(Stream.withSpan('@livestore/web:worker:ConnectDevtools')),
     })
   }).pipe(Layer.unwrapScoped)

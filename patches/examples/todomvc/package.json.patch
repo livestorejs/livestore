@@ -13,7 +13,7 @@
      "@livestore/devtools-react": "0.0.58-dev.6",
 -    "@livestore/livestore": "0.0.58-dev.6",
 +    "@livestore/livestore": "workspace:*",
-     "@livestore/wa-sqlite": "1.0.1-dev.29",
+     "@livestore/wa-sqlite": "1.0.3-dev.2",
 -    "@livestore/web": "0.0.58-dev.6",
 +    "@livestore/web": "workspace:*",
      "@schickling/fps-meter": "^0.1.2",

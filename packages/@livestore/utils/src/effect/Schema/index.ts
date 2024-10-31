@@ -1,10 +1,9 @@
 import { Transferable } from '@effect/platform'
-import { ParseResult, Schema } from '@effect/schema'
-import type { ParseOptions } from '@effect/schema/AST'
-import type { ParseError } from '@effect/schema/ParseResult'
-import { Effect, Hash } from 'effect'
+import { Effect, Hash, ParseResult, Schema } from 'effect'
+import type { ParseError } from 'effect/ParseResult'
+import type { ParseOptions } from 'effect/SchemaAST'
 
-export * from '@effect/schema/Schema'
+export * from 'effect/Schema'
 export * from './debug-diff.js'
 export * from './msgpack.js'
 

@@ -2,7 +2,7 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
-import type { LiveStoreSchema, MUTATION_EVENT_ROOT_ID, MutationEvent } from './schema/index.js'
+import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
@@ -73,15 +73,30 @@ export type Coordinator = {
     options: { persisted: boolean },
   ): Effect.Effect<void, UnexpectedError>
   /** Can be called synchronously */
-  getNextMutationEventId: (opts: { localOnly: boolean }) => Effect.Effect<string, UnexpectedError>
+  getNextMutationEventId: (opts: { localOnly: boolean }) => Effect.Effect<EventId, UnexpectedError>
   /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
-  getCurrentMutationEventId: Effect.Effect<string | MUTATION_EVENT_ROOT_ID, UnexpectedError>
+  getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
 export type LockStatus = 'has-lock' | 'no-lock'
+
+/**
+ * LiveStore event id value consisting of a globally unique event sequence number
+ * and a local sequence number.
+ *
+ * The local sequence number is only used for localOnly mutations and starts from 0 for each global sequence number.
+ */
+export type EventId = { global: number; local: number }
+
+export const EventId = Schema.Struct({
+  global: Schema.Number,
+  local: Schema.Number,
+}).annotations({ title: 'LiveStore.EventId' })
+
+export const ROOT_ID = { global: -1, local: 0 } satisfies EventId
 
 export type BootDb = {
   _tag: 'BootDb'

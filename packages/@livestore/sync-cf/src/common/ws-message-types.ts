@@ -4,7 +4,7 @@ import { Schema } from '@livestore/utils/effect'
 export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
   requestId: Schema.String,
   /** Omitting the cursor will start from the beginning */
-  cursor: Schema.optional(Schema.String),
+  cursor: Schema.optional(Schema.Number),
 })
 
 export type PullReq = typeof PullReq.Type
@@ -36,7 +36,7 @@ export type PushReq = typeof PushReq.Type
 
 export const PushAck = Schema.TaggedStruct('WSMessage.PushAck', {
   requestId: Schema.String,
-  mutationId: Schema.String,
+  mutationId: Schema.Number,
 })
 
 export type PushAck = typeof PushAck.Type

@@ -1,5 +1,5 @@
-import { Schema } from '@effect/schema'
 import { useQuery, useStore } from '@livestore/livestore/react'
+import { Schema } from 'effect'
 import React from 'react'
 
 import { drizzle, queryDrizzle } from '../drizzle/queryDrizzle.js'

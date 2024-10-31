@@ -313,8 +313,10 @@ const listenToDevtools = ({
               // TODO bring back devtools-based mutation execution
               const mutationEventEncoded = {
                 ...mutationEventEncoded_,
-                id: 'TODO',
-                parentId: 'TODO',
+                // TODO
+                id: { global: 0, local: 0 },
+                // TODO
+                parentId: { global: 0, local: 0 },
               }
 
               yield* applyMutation(mutationEventEncoded, {
