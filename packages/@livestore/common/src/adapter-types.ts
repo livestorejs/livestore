@@ -12,8 +12,7 @@ export interface PreparedStatement {
   sql: string
 }
 
-// TODO possibly rename to `ClientSession`
-export type StoreAdapter = {
+export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
   /** The coordinator is responsible for persisting the database, syncing etc */
@@ -207,11 +206,11 @@ export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: StoreDevtoolsChannel,
 ) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
-export type StoreAdapterFactory = (opts: {
+export type Adapter = (opts: {
   schema: LiveStoreSchema
   storeId: string
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
-}) => Effect.Effect<StoreAdapter, UnexpectedError, Scope.Scope>
+}) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>

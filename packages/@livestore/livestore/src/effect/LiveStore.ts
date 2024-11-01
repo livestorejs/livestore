@@ -1,4 +1,4 @@
-import type { BootDb, BootStatus, StoreAdapterFactory, UnexpectedError } from '@livestore/common'
+import type { Adapter, BootDb, BootStatus, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Cause, Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe } from '@livestore/utils/effect'
@@ -36,7 +36,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
     makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
   }
   boot?: (db: BootDb) => Effect.Effect<void, unknown, otel.Tracer>
-  adapter: StoreAdapterFactory
+  adapter: Adapter
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
   batchUpdates: (run: () => void) => void

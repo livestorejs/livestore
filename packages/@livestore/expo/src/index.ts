@@ -1,4 +1,4 @@
-import type { Coordinator, EventId, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
+import type { Adapter, ClientSession, Coordinator, EventId, LockStatus } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
@@ -23,7 +23,7 @@ export type MakeDbOptions = {
 }
 
 export const makeAdapter =
-  (options?: MakeDbOptions): StoreAdapterFactory =>
+  (options?: MakeDbOptions): Adapter =>
   ({ schema, connectDevtoolsToStore, shutdown }) =>
     Effect.gen(function* () {
       const { fileNamePrefix, subDirectory } = options ?? {}
@@ -204,7 +204,7 @@ export const makeAdapter =
         incomingSyncMutationsQueue,
       })
 
-      return { syncDb: dbRef.current.syncDb, coordinator } satisfies StoreAdapter
+      return { syncDb: dbRef.current.syncDb, coordinator } satisfies ClientSession
     }).pipe(
       Effect.mapError((cause) => (cause._tag === 'LiveStore.UnexpectedError' ? cause : new UnexpectedError({ cause }))),
       Effect.tapCauseLogPretty,

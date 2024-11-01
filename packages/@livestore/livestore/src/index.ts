@@ -49,4 +49,4 @@ export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 export { deepEqual } from '@livestore/utils'
 
-export type { StoreAdapter, StoreAdapterFactory, PreparedStatement } from '@livestore/common'
+export type { ClientSession, Adapter, PreparedStatement } from '@livestore/common'

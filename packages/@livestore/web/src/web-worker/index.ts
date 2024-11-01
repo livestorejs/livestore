@@ -1,10 +1,4 @@
-import type {
-  Coordinator,
-  LockStatus,
-  NetworkStatus,
-  StoreAdapterFactory,
-  SyncBackendOptionsBase,
-} from '@livestore/common'
+import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
@@ -81,7 +75,7 @@ export type WebAdapterOptions = {
 }
 
 export const makeAdapter =
-  (options: WebAdapterOptions): StoreAdapterFactory =>
+  (options: WebAdapterOptions): Adapter =>
   ({ schema, storeId, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       yield* ensureBrowserRequirements

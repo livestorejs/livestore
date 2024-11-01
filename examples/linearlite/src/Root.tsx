@@ -34,7 +34,7 @@ export const Root = () => (
     boot={seed}
     batchUpdates={batchUpdates}
   >
-    <FPSMeter className="absolute left-1/2 z-50 top-0 bg-black/30" height={40} />
+    <FPSMeter className="absolute right-1 z-50 bottom-1 bg-black/30" height={40} />
     <App />
   </LiveStoreProvider>
 )

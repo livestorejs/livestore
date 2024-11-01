@@ -1,12 +1,12 @@
 import type {
+  Adapter,
   BootDb,
   BootStatus,
+  ClientSession,
   EventId,
   IntentionalShutdownCause,
   ParamsObject,
   PreparedBindValues,
-  StoreAdapter,
-  StoreAdapterFactory,
   StoreDevtoolsChannel,
 } from '@livestore/common'
 import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
@@ -72,7 +72,7 @@ export type StoreOptions<
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 > = {
-  adapter: StoreAdapter
+  clientSession: ClientSession
   schema: TSchema
   storeId: string
   // TODO remove graphql-related stuff from store and move to GraphQL query directly
@@ -144,7 +144,7 @@ export class Store<
   readonly storeId: string
   reactivityGraph: ReactivityGraph
   syncDbWrapper: SynchronousDatabaseWrapper
-  adapter: StoreAdapter
+  clientSession: ClientSession
   schema: LiveStoreSchema
   graphQLSchema?: GraphQLSchema
   graphQLContext?: TGraphQLContext
@@ -169,7 +169,7 @@ export class Store<
 
   // #region constructor
   private constructor({
-    adapter,
+    clientSession,
     schema,
     graphQLOptions,
     reactivityGraph,
@@ -189,8 +189,8 @@ export class Store<
     this.currentMutationEventIdRef = currentMutationEventIdRef
     this.unsyncedMutationEvents = unsyncedMutationEvents
 
-    this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: adapter.syncDb })
-    this.adapter = adapter
+    this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: clientSession.syncDb })
+    this.clientSession = clientSession
     this.schema = schema
 
     this.fiberSet = fiberSet
@@ -251,12 +251,12 @@ export class Store<
       this.graphQLContext = graphQLOptions.makeContext(
         this.syncDbWrapper,
         this.otel.tracer,
-        adapter.coordinator.sessionId,
+        clientSession.coordinator.sessionId,
       )
     }
 
     Effect.gen(this, function* () {
-      yield* this.adapter.coordinator.syncMutations.pipe(
+      yield* this.clientSession.coordinator.syncMutations.pipe(
         Stream.tapChunk((mutationsEventsDecodedChunk) =>
           Effect.sync(() => {
             this.mutate({ wasSyncMessage: true }, ...mutationsEventsDecodedChunk)
@@ -301,7 +301,7 @@ export class Store<
   }
 
   get sessionId(): string {
-    return this.adapter.coordinator.sessionId
+    return this.clientSession.coordinator.sessionId
   }
 
   /**
@@ -539,7 +539,7 @@ export class Store<
 
     // Needs to happen only for partial mutation events (thus a function)
     const nextMutationEventId = () => {
-      const { id, parentId } = this.adapter.coordinator
+      const { id, parentId } = this.clientSession.coordinator
         .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
         .pipe(Effect.runSync)
 
@@ -597,7 +597,7 @@ export class Store<
 
         if (coordinatorMode !== 'skip-coordinator') {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          this.adapter.coordinator
+          this.clientSession.coordinator
             .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
             .pipe(this.runEffectFork)
         }
@@ -626,7 +626,7 @@ export class Store<
   ) => {
     this.syncDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
-    this.adapter.coordinator.execute(query, prepareBindValues(params, query)).pipe(this.runEffectFork)
+    this.clientSession.coordinator.execute(query, prepareBindValues(params, query)).pipe(this.runEffectFork)
   }
 
   __select = (query: string, params: ParamsObject = {}) => {
@@ -647,7 +647,7 @@ export class Store<
 
   __devDownloadMutationLogDb = () =>
     Effect.gen(this, function* () {
-      const data = yield* this.adapter.coordinator.getMutationLogData
+      const data = yield* this.clientSession.coordinator.getMutationLogData
       downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
 
@@ -665,7 +665,7 @@ export class Store<
 
 export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
   schema: TSchema
-  adapter: StoreAdapterFactory
+  adapter: Adapter
   storeId: string
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
@@ -713,7 +713,7 @@ export const createStore = <
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >({
   schema,
-  adapter: adapterFactory,
+  adapter,
   storeId,
   graphQLOptions,
   otelOptions,
@@ -784,7 +784,7 @@ export const createStore = <
         )
       }).pipe(Effect.withSpan('livestore:shutdown'))
 
-    const adapter: StoreAdapter = yield* adapterFactory({
+    const clientSession: ClientSession = yield* adapter({
       schema,
       storeId,
       devtoolsEnabled: disableDevtools !== true,
@@ -798,7 +798,7 @@ export const createStore = <
     // TODO get rid of this
     // const __processedMutationIds = new Set<number>()
 
-    const currentMutationEventIdRef = { current: yield* adapter.coordinator.getCurrentMutationEventId }
+    const currentMutationEventIdRef = { current: yield* clientSession.coordinator.getCurrentMutationEventId }
 
     // TODO fill up with unsynced mutation events from the coordinator
     const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
@@ -811,13 +811,13 @@ export const createStore = <
       const bootDbImpl: BootDb = {
         _tag: 'BootDb',
         execute: (queryStr, bindValues) => {
-          const stmt = adapter.syncDb.prepare(queryStr)
+          const stmt = clientSession.syncDb.prepare(queryStr)
           stmt.execute(bindValues)
 
           if (isInTxn === true) {
             txnExecuteStmnts.push([queryStr, bindValues])
           } else {
-            adapter.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
+            clientSession.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
           }
         },
         mutate: (...list) => {
@@ -826,7 +826,7 @@ export const createStore = <
               schema.mutations.get(mutationEventDecoded_.mutation) ??
               shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
 
-            const { id, parentId } = adapter.coordinator
+            const { id, parentId } = clientSession.coordinator
               .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
               .pipe(Effect.runSync)
 
@@ -842,36 +842,36 @@ export const createStore = <
             // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
             for (const { statementSql, bindValues } of execArgsArr) {
-              adapter.syncDb.execute(statementSql, bindValues)
+              clientSession.syncDb.execute(statementSql, bindValues)
             }
 
             const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
 
-            adapter.coordinator
+            clientSession.coordinator
               .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: true })
               .pipe(runEffectFork)
           }
         },
         select: (queryStr, bindValues) => {
-          const stmt = adapter.syncDb.prepare(queryStr)
+          const stmt = clientSession.syncDb.prepare(queryStr)
           return stmt.select(bindValues)
         },
         txn: (callback) => {
           try {
             isInTxn = true
-            // adapter.syncDb.execute('BEGIN TRANSACTION', undefined)
+            // clientSession.syncDb.execute('BEGIN TRANSACTION', undefined)
 
             callback()
 
-            // adapter.syncDb.execute('COMMIT', undefined)
+            // clientSession.syncDb.execute('COMMIT', undefined)
 
-            // adapter.coordinator.execute('BEGIN', undefined, undefined)
+            // clientSession.coordinator.execute('BEGIN', undefined, undefined)
             for (const [queryStr, bindValues] of txnExecuteStmnts) {
-              adapter.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
+              clientSession.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
             }
-            // adapter.coordinator.execute('COMMIT', undefined, undefined)
+            // clientSession.coordinator.execute('COMMIT', undefined, undefined)
           } catch (e: any) {
-            // adapter.syncDb.execute('ROLLBACK', undefined)
+            // clientSession.syncDb.execute('ROLLBACK', undefined)
             throw e
           } finally {
             isInTxn = false
@@ -888,7 +888,7 @@ export const createStore = <
 
     const store = Store.createStore<TGraphQLContext, TSchema>(
       {
-        adapter,
+        clientSession,
         schema,
         graphQLOptions,
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },

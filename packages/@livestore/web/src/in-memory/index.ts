@@ -1,4 +1,4 @@
-import type { Coordinator, LockStatus, StoreAdapterFactory } from '@livestore/common'
+import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -12,7 +12,7 @@ const sqlite3Promise = WaSqlite.loadSqlite3Wasm()
 
 /** NOTE: This coordinator is currently only used for testing */
 export const makeInMemoryAdapter =
-  (initialData?: Uint8Array): StoreAdapterFactory =>
+  (initialData?: Uint8Array): Adapter =>
   ({
     schema,
     // devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore

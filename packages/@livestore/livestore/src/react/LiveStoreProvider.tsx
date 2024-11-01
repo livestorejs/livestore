@@ -1,4 +1,4 @@
-import type { BootDb, BootStatus, IntentionalShutdownCause, StoreAdapterFactory } from '@livestore/common'
+import type { Adapter, BootDb, BootStatus, IntentionalShutdownCause } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { errorToString } from '@livestore/utils'
@@ -32,7 +32,7 @@ interface LiveStoreProviderProps<GraphQLContext> {
   renderLoading: (status: BootStatus) => ReactElement
   renderError?: (error: UnexpectedError | unknown) => ReactElement
   renderShutdown?: (cause: IntentionalShutdownCause | StoreAbort) => ReactElement
-  adapter: StoreAdapterFactory
+  adapter: Adapter
   /**
    * In order for LiveStore to apply multiple mutations in a single render,
    * you need to pass the `batchUpdates` function from either `react-dom` or `react-native`.

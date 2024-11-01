@@ -1,4 +1,4 @@
-import type { DebugInfo, StoreAdapter } from '@livestore/common'
+import type { ClientSession, DebugInfo } from '@livestore/common'
 import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
@@ -11,7 +11,7 @@ import { emptyDebugInfo as makeEmptyDebugInfo } from './SynchronousDatabaseWrapp
 import type { ReferenceCountedSet } from './utils/data-structures.js'
 
 type IStore = {
-  adapter: StoreAdapter
+  clientSession: ClientSession
   reactivityGraph: ReactivityGraph
   syncDbWrapper: SynchronousDatabaseWrapper
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
@@ -29,7 +29,7 @@ export const connectDevtoolsToStore = ({
   store: IStore
 }) =>
   Effect.gen(function* () {
-    const appHostId = store.adapter.coordinator.devtools.appHostId
+    const appHostId = store.clientSession.coordinator.devtools.appHostId
 
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
@@ -49,7 +49,7 @@ export const connectDevtoolsToStore = ({
     const onMessage = (decodedMessage: typeof Devtools.MessageToAppHostStore.Type) => {
       // console.log('storeMessagePort message', decodedMessage)
 
-      if (decodedMessage.appHostId !== store.adapter.coordinator.devtools.appHostId) {
+      if (decodedMessage.appHostId !== store.clientSession.coordinator.devtools.appHostId) {
         // console.log(`Unknown message`, event)
         return
       }
