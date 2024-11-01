@@ -1,7 +1,7 @@
 import React from 'react'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
 import { useMemo, useState, useEffect } from 'react'
-import { Status, StatusDisplay, StatusType } from '../../types/issue'
+import { StatusOptions, StatusType } from '../../types/issue'
 import IssueCol from './IssueCol'
 import { Issue } from '../../types'
 import { useStore } from '@livestore/livestore/react'
@@ -178,23 +178,11 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex flex-1 pt-6 pl-8 overflow-scroll bg-gray-100">
-        <IssueCol
-          title={StatusDisplay[Status.BACKLOG]}
-          status={Status.BACKLOG}
-          issues={issuesByStatus[Status.BACKLOG]}
-        />
-        <IssueCol title={StatusDisplay[Status.TODO]} status={Status.TODO} issues={issuesByStatus[Status.TODO]} />
-        <IssueCol
-          title={StatusDisplay[Status.IN_PROGRESS]}
-          status={Status.IN_PROGRESS}
-          issues={issuesByStatus[Status.IN_PROGRESS]}
-        />
-        <IssueCol title={StatusDisplay[Status.DONE]} status={Status.DONE} issues={issuesByStatus[Status.DONE]} />
-        <IssueCol
-          title={StatusDisplay[Status.CANCELED]}
-          status={Status.CANCELED}
-          issues={issuesByStatus[Status.CANCELED]}
-        />
+        {(Object.entries(StatusOptions) as [StatusType, (typeof StatusOptions)[StatusType]][]).map(
+          ([status, option]) => (
+            <IssueCol key={status} title={option.display} status={status} issues={issuesByStatus[status]} />
+          ),
+        )}
       </div>
     </DragDropContext>
   )

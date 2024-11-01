@@ -14,7 +14,7 @@ import StatusIcon from './StatusIcon'
 import PriorityMenu from './contextmenu/PriorityMenu'
 import StatusMenu from './contextmenu/StatusMenu'
 
-import { Priority, Status, PriorityDisplay, StatusType, PriorityType } from '../types/issue'
+import { PriorityOptions, StatusType, PriorityType } from '../types/issue'
 import { showInfo, showWarning } from '../utils/notification'
 import { useStore } from '@livestore/livestore/react'
 import { nanoid } from 'nanoid'
@@ -32,8 +32,8 @@ function IssueModal({ isOpen, onDismiss }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState<string>('')
-  const [priority, setPriority] = useState<PriorityType>(Priority.NONE)
-  const [status, setStatus] = useState<StatusType>(Status.BACKLOG)
+  const [priority, setPriority] = useState<PriorityType>('none')
+  const [status, setStatus] = useState<StatusType>('backlog')
   const { store } = useStore()
 
   const handleSubmit = async () => {
@@ -81,8 +81,8 @@ function IssueModal({ isOpen, onDismiss }: Props) {
     setTimeout(() => {
       setTitle('')
       setDescription('')
-      setPriority(Priority.NONE)
-      setStatus(Status.BACKLOG)
+      setPriority('none')
+      setStatus('backlog')
     }, 250)
   }
 
@@ -156,7 +156,7 @@ function IssueModal({ isOpen, onDismiss }: Props) {
           button={
             <button className="inline-flex items-center h-6 px-2 text-gray-500 bg-gray-200 border-none rounded hover:bg-gray-100 hover:text-gray-700">
               <PriorityIcon priority={priority} className="mr-1" />
-              <span>{PriorityDisplay[priority]}</span>
+              <span>{PriorityOptions[priority].display}</span>
             </button>
           }
           onSelect={(val) => setPriority(val)}

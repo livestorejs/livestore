@@ -3,7 +3,7 @@ import MenuIcon from '../assets/icons/menu.svg?react'
 // import LiveStoreIcon from '../assets/images/logo.svg?react'
 import BacklogIcon from '../assets/icons/circle-dot.svg?react'
 import classnames from 'classnames'
-import { memo, RefObject, useRef, useState, useContext } from 'react'
+import { RefObject, useRef, useState, useContext } from 'react'
 import { BsPencilSquare as AddIcon } from 'react-icons/bs'
 import { BsSearch as SearchIcon } from 'react-icons/bs'
 import { BsFillGrid3X3GapFill as BoardIcon } from 'react-icons/bs'
@@ -19,8 +19,7 @@ import { useFilterState } from '../domain/queries'
 import React from 'react'
 import { MenuContext } from '../context/MenuContext'
 
-// eslint-disable-next-line react-refresh/only-export-components
-function LeftMenu() {
+export const LeftMenu = () => {
   const ref = useRef<HTMLDivElement>() as RefObject<HTMLDivElement>
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showAboutModal, setShowAboutModal] = useState(false)
@@ -154,6 +153,3 @@ function LeftMenu() {
     </>
   )
 }
-
-// eslint-disable-next-line react-refresh/only-export-components
-export default memo(LeftMenu)

@@ -6,8 +6,8 @@ import { Route, Routes, BrowserRouter } from 'react-router-dom'
 import { cssTransition, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { List } from './pages/List'
-import Issue from './pages/Issue'
-import LeftMenu from './components/LeftMenu'
+import { IssuePage } from './pages/Issue'
+import { LeftMenu } from './components/LeftMenu'
 import { MenuContext } from './context/MenuContext'
 
 const slideUp = cssTransition({
@@ -27,7 +27,7 @@ const slideUp = cssTransition({
 //   window.location.reload()
 // }
 
-const App = () => {
+export const App = () => {
   const [showMenu, setShowMenu] = useState(false)
 
   const router = (
@@ -35,7 +35,7 @@ const App = () => {
       <Route path="/" element={<List />} />
       <Route path="/search" element={<List showSearch={true} />} />
       <Route path="/board" element={<Board />} />
-      <Route path="/issue/:id" element={<Issue />} />
+      <Route path="/issue/:id" element={<IssuePage />} />
     </Routes>
   )
 
@@ -62,5 +62,3 @@ const App = () => {
     </MenuContext.Provider>
   )
 }
-
-export default App

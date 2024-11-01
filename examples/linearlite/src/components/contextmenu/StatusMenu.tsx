@@ -17,17 +17,21 @@ export default function StatusMenu({ id, button, className, onSelect }: Props) {
     if (onSelect) onSelect(status)
   }
 
-  let statuses = StatusOptions
+  let statuses = Object.entries(StatusOptions).map(([status, { Icon, display }]) => ({
+    Icon,
+    status: status as StatusType,
+    display,
+  }))
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
-    statuses = statuses.filter(([_icon, _id, l]) => l.toLowerCase().indexOf(normalizedKeyword) !== -1)
+    statuses = statuses.filter(({ display }) => display.toLowerCase().indexOf(normalizedKeyword) !== -1)
   }
 
-  const options = statuses.map(([Icon, id, label]) => {
+  const options = statuses.map(({ Icon, status, display }) => {
     return (
-      <Menu.Item key={`status-${id}`} onClick={() => handleSelect(id)}>
+      <Menu.Item key={`status-${status}`} onClick={() => handleSelect(status)}>
         <Icon className="mr-3" />
-        <div className="flex-1 overflow-hidden">{label}</div>
+        <div className="flex-1 overflow-hidden">{display}</div>
       </Menu.Item>
     )
   })

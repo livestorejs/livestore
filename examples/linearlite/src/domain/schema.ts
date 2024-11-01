@@ -1,5 +1,5 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
-import { Priority, PriorityType, Status, StatusType } from '../types/issue'
+import { PriorityType, StatusType } from '../types/issue'
 import { Schema } from 'effect'
 import * as mutations from './mutations'
 
@@ -11,8 +11,8 @@ const issue = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     title: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
-    priority: DbSchema.text({ schema: PriorityType, default: Priority.NONE }),
-    status: DbSchema.text({ schema: StatusType, default: Status.TODO }),
+    priority: DbSchema.text({ schema: PriorityType, default: 'none' }),
+    status: DbSchema.text({ schema: StatusType, default: 'todo' }),
     created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
     deleted: DbSchema.integer({ nullable: true }),
     modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
@@ -66,8 +66,6 @@ export const FilterState = Schema.Struct({
   priority: Schema.optional(Schema.Array(PriorityType)),
   query: Schema.optional(Schema.String),
 })
-
-export const parseFilterStateString = Schema.decodeSync(Schema.parseJson(FilterState))
 
 export type FilterState = typeof FilterState.Type
 

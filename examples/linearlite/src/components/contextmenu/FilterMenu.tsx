@@ -13,39 +13,44 @@ interface Props {
   className?: string
 }
 
-function FilterMenu({ id, button, className }: Props) {
+export const FilterMenu: React.FC<Props> = ({ id, button, className }) => {
   const [keyword, setKeyword] = useState('')
   const [filterState, setFilterState] = useFilterState()
 
-  let priorities = PriorityOptions
+  const priorities = Object.entries(PriorityOptions).map(([priority, { Icon, display }]) => ({
+    Icon,
+    priority: priority as PriorityType,
+    display,
+  }))
+
+  const normalizedKeyword = keyword.toLowerCase().trim()
+  const filteredPriorities = priorities.filter(({ display }) => display.toLowerCase().indexOf(normalizedKeyword) !== -1)
+
+  let statuses = Object.entries(StatusOptions).map(([status, { Icon, display }]) => ({
+    Icon,
+    status: status as StatusType,
+    display,
+  }))
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
-    priorities = priorities.filter(
-      ([_icon, _priority, label]) => (label as string).toLowerCase().indexOf(normalizedKeyword) !== -1,
-    )
+    statuses = statuses.filter(({ display }) => display.toLowerCase().indexOf(normalizedKeyword) !== -1)
   }
 
-  let statuses = StatusOptions
-  if (keyword !== '') {
-    const normalizedKeyword = keyword.toLowerCase().trim()
-    statuses = statuses.filter(([_icon, _status, label]) => label.toLowerCase().indexOf(normalizedKeyword) !== -1)
-  }
-
-  const priorityOptions = priorities.map(([Icon, priority, label], idx) => {
+  const priorityOptions = filteredPriorities.map(({ Icon, priority, display }, idx) => {
     return (
       <Menu.Item key={`priority-${idx}`} onClick={() => handlePrioritySelect(priority)}>
         <Icon className="mr-3" />
-        <span>{label}</span>
+        <span>{display}</span>
         {filterState.priority?.includes(priority) && <BsCheck2 className="ml-auto" />}
       </Menu.Item>
     )
   })
 
-  const statusOptions = statuses.map(([Icon, status, label], idx) => {
+  const statusOptions = statuses.map(({ Icon, status, display }, idx) => {
     return (
       <Menu.Item key={`status-${idx}`} onClick={() => handleStatusSelect(status)}>
         <Icon className="mr-3" />
-        <span>{label}</span>
+        <span>{display}</span>
         {filterState.status?.includes(status) && <BsCheck2 className="ml-auto" />}
       </Menu.Item>
     )
@@ -98,5 +103,3 @@ function FilterMenu({ id, button, className }: Props) {
     </>
   )
 }
-
-export default FilterMenu

@@ -3,8 +3,8 @@ import MenuIcon from '../assets/icons/menu.svg?react'
 import { useState, useContext } from 'react'
 import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
 import { ViewOptionMenu } from './ViewOptionMenu'
-import FilterMenu from './contextmenu/FilterMenu'
-import { PriorityDisplay, StatusDisplay } from '../types/issue'
+import { FilterMenu } from './contextmenu/FilterMenu'
+import { PriorityOptions, StatusOptions } from '../types/issue'
 import { useQuery } from '@livestore/livestore/react'
 import { issueCount$, useFilterState } from '../domain/queries'
 import { MenuContext } from '../context/MenuContext'
@@ -83,7 +83,7 @@ export default function TopFilter({ filteredIssuesCount, hideSort, showSearch, t
             <div className="flex pr-4 space-x-[1px]">
               <span className="px-1 bg-gray-300 rounded-l">Priority is</span>
               <span className="px-1 bg-gray-300 ">
-                {filterState.priority?.map((priority) => PriorityDisplay[priority]).join(', ')}
+                {filterState.priority?.map((priority) => PriorityOptions[priority].display).join(', ')}
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
@@ -97,7 +97,7 @@ export default function TopFilter({ filteredIssuesCount, hideSort, showSearch, t
             <div className="flex pr-4 space-x-[1px]">
               <span className="px-1 bg-gray-300 rounded-l">Status is</span>
               <span className="px-1 bg-gray-300 ">
-                {filterState.status?.map((status) => StatusDisplay[status]).join(', ')}
+                {filterState.status?.map((status) => StatusOptions[status].display).join(', ')}
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"

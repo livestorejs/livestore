@@ -13,80 +13,28 @@ import NoPriorityIcon from '../assets/icons/dots.svg?react'
 import UrgentPriorityIcon from '../assets/icons/rounded-claim.svg?react'
 import { Schema } from 'effect'
 
-export const Priority = {
-  NONE: 'none',
-  URGENT: 'urgent',
-  HIGH: 'high',
-  LOW: 'low',
-  MEDIUM: 'medium',
-} as const
-
-export const PriorityType = Schema.Literal(Priority.NONE, Priority.URGENT, Priority.HIGH, Priority.LOW, Priority.MEDIUM)
+export const PriorityType = Schema.Literal('none', 'urgent', 'high', 'low', 'medium').annotations({
+  title: 'PriorityType',
+})
 export type PriorityType = typeof PriorityType.Type
 
-export const PriorityDisplay = {
-  [Priority.NONE]: 'None',
-  [Priority.URGENT]: 'Urgent',
-  [Priority.HIGH]: 'High',
-  [Priority.LOW]: 'Low',
-  [Priority.MEDIUM]: 'Medium',
-}
+export const PriorityOptions = {
+  none: { Icon: NoPriorityIcon, display: 'None' },
+  urgent: { Icon: UrgentPriorityIcon, display: 'Urgent' },
+  high: { Icon: HighPriorityIcon, display: 'High' },
+  low: { Icon: LowPriorityIcon, display: 'Low' },
+  medium: { Icon: MediumPriorityIcon, display: 'Medium' },
+} satisfies Record<PriorityType, { Icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>; display: string }>
 
-export const PriorityIcons = {
-  [Priority.NONE]: NoPriorityIcon,
-  [Priority.URGENT]: UrgentPriorityIcon,
-  [Priority.HIGH]: HighPriorityIcon,
-  [Priority.MEDIUM]: MediumPriorityIcon,
-  [Priority.LOW]: LowPriorityIcon,
-}
-
-export const PriorityOptions: [
-  React.FunctionComponent<React.SVGProps<SVGSVGElement>>,
-  (typeof Priority)[keyof typeof Priority],
-  string,
-][] = [
-  [PriorityIcons[Priority.NONE], Priority.NONE, 'None'],
-  [PriorityIcons[Priority.URGENT], Priority.URGENT, 'Urgent'],
-  [PriorityIcons[Priority.HIGH], Priority.HIGH, 'High'],
-  [PriorityIcons[Priority.MEDIUM], Priority.MEDIUM, 'Medium'],
-  [PriorityIcons[Priority.LOW], Priority.LOW, 'Low'],
-]
-
-export const Status = {
-  BACKLOG: 'backlog',
-  TODO: 'todo',
-  IN_PROGRESS: 'in_progress',
-  DONE: 'done',
-  CANCELED: 'canceled',
-} as const
-
-export const StatusType = Schema.Literal(Status.BACKLOG, Status.TODO, Status.IN_PROGRESS, Status.DONE, Status.CANCELED)
+export const StatusType = Schema.Literal('backlog', 'todo', 'in_progress', 'done', 'canceled').annotations({
+  title: 'StatusType',
+})
 export type StatusType = typeof StatusType.Type
 
-export const StatusDisplay = {
-  [Status.BACKLOG]: 'Backlog',
-  [Status.TODO]: 'To Do',
-  [Status.IN_PROGRESS]: 'In Progress',
-  [Status.DONE]: 'Done',
-  [Status.CANCELED]: 'Canceled',
-}
-
-export const StatusIcons = {
-  [Status.BACKLOG]: BacklogIcon,
-  [Status.TODO]: TodoIcon,
-  [Status.IN_PROGRESS]: InProgressIcon,
-  [Status.DONE]: DoneIcon,
-  [Status.CANCELED]: CancelIcon,
-}
-
-export const StatusOptions: [
-  React.FunctionComponent<React.SVGProps<SVGSVGElement>>,
-  (typeof Status)[keyof typeof Status],
-  string,
-][] = [
-  [StatusIcons[Status.BACKLOG], Status.BACKLOG, StatusDisplay[Status.BACKLOG]],
-  [StatusIcons[Status.TODO], Status.TODO, StatusDisplay[Status.TODO]],
-  [StatusIcons[Status.IN_PROGRESS], Status.IN_PROGRESS, StatusDisplay[Status.IN_PROGRESS]],
-  [StatusIcons[Status.DONE], Status.DONE, StatusDisplay[Status.DONE]],
-  [StatusIcons[Status.CANCELED], Status.CANCELED, StatusDisplay[Status.CANCELED]],
-]
+export const StatusOptions = {
+  backlog: { Icon: BacklogIcon, display: 'Backlog' },
+  todo: { Icon: TodoIcon, display: 'To Do' },
+  in_progress: { Icon: InProgressIcon, display: 'In Progress' },
+  done: { Icon: DoneIcon, display: 'Done' },
+  canceled: { Icon: CancelIcon, display: 'Canceled' },
+} satisfies Record<StatusType, { Icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>; display: string }>

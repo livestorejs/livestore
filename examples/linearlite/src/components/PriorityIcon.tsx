@@ -1,6 +1,6 @@
 import React from 'react'
 import classNames from 'classnames'
-import { PriorityIcons, PriorityType } from '../types/issue'
+import { PriorityOptions, PriorityType } from '../types/issue'
 
 interface Props {
   priority: PriorityType
@@ -9,6 +9,6 @@ interface Props {
 
 export default function PriorityIcon({ priority, className }: Props) {
   const classes = classNames('w-4 h-4', className)
-  const Icon = PriorityIcons[priority]
+  const Icon = PriorityOptions[priority].Icon
   return <Icon className={classes} />
 }

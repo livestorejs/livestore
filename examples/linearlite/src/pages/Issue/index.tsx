@@ -7,14 +7,14 @@ import StatusMenu from '../../components/contextmenu/StatusMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
 import Avatar from '../../components/Avatar'
-import { PriorityDisplay, PriorityType, StatusDisplay, StatusType } from '../../types/issue'
+import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
 import Editor from '../../components/editor/Editor'
 import DeleteModal from './DeleteModal'
 import Comments from './Comments'
 import { useRow, useStore } from '@livestore/livestore/react'
 import { mutations, tables } from '../../domain/schema'
 
-function IssuePage() {
+export const IssuePage = () => {
   const navigate = useNavigate()
   const id = useParams().id ?? ''
 
@@ -110,7 +110,7 @@ function IssuePage() {
                     button={
                       <button className="inline-flex items-center h-6 px-2 text-gray-500border-none rounded hover:bg-gray-100">
                         <StatusIcon status={issue.status} className="mr-1" />
-                        <span>{StatusDisplay[issue.status]}</span>
+                        <span>{StatusOptions[issue.status].display}</span>
                       </button>
                     }
                     onSelect={handleStatusChange}
@@ -125,7 +125,7 @@ function IssuePage() {
                     button={
                       <button className="inline-flex items-center h-6 px-2 text-gray-500 border-none rounded hover:bg-gray-100 hover:text-gray-700">
                         <PriorityIcon priority={issue.priority} className="mr-1" />
-                        <span>{PriorityDisplay[issue.priority]}</span>
+                        <span>{PriorityOptions[issue.priority].display}</span>
                       </button>
                     }
                     onSelect={handlePriorityChange}
@@ -166,5 +166,3 @@ function IssuePage() {
     </>
   )
 }
-
-export default IssuePage

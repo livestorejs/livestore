@@ -20,18 +20,20 @@ function PriorityMenu({ id, button, filterKeyword = false, className, onSelect }
     setKeyword('')
     if (onSelect) onSelect(priority)
   }
-  let statusOpts = PriorityOptions
+  let statusOpts = Object.entries(PriorityOptions).map(([priority, { Icon, display }]) => ({
+    Icon,
+    priority: priority as PriorityType,
+    display,
+  }))
   if (keyword !== '') {
     const normalizedKeyword = keyword.toLowerCase().trim()
-    statusOpts = statusOpts.filter(
-      ([_Icon, _priority, label]) => (label as string).toLowerCase().indexOf(normalizedKeyword) !== -1,
-    )
+    statusOpts = statusOpts.filter(({ display }) => display.toLowerCase().indexOf(normalizedKeyword) !== -1)
   }
 
-  const options = statusOpts.map(([Icon, priority, label], idx) => {
+  const options = statusOpts.map(({ Icon, priority, display }, idx) => {
     return (
       <Menu.Item key={`priority-${idx}`} onClick={() => handleSelect(priority)}>
-        <Icon className="mr-3" /> <span>{label}</span>
+        <Icon className="mr-3" /> <span>{display}</span>
       </Menu.Item>
     )
   })

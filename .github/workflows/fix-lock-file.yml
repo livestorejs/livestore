@@ -52,7 +52,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git commit -m 'fix: update pnpm lockfile with pnpm install --fix-lockfile'
+          git commit -m "fix: update pnpm lockfile with pnpm install --fix-lockfile [skip ci]"
           git push --force --set-upstream origin $BRANCH_NAME
 
       - name: Create PR
