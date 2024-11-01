@@ -16,13 +16,13 @@ LiveStore is based on years of research (see [Riffle](https://riffle.systems/ess
 While LiveStore is in alpha there can be two kinds of breaking changes:
 
 - Breaking API change
-- Storage format changes
+- Storage format changes (whenever `liveStoreStorageCompatibilityVersion` is updated)
 
 We try our best to minimize breaking changes and to provide a migration path whenever possible.
 
 ## Roadmap
 
-See [GitHub issues](https://github.com/livestorejs/livestore/issues) for more details.
+See [GitHub issues](https://github.com/livestorejs/livestore/issues) for more details. Get in touch if you have any questions or feedback.
 
 ### Short-term
 
@@ -34,3 +34,8 @@ See [GitHub issues](https://github.com/livestorejs/livestore/issues) for more de
 - Support syncing in Expo adapter [#119](https://github.com/livestorejs/livestore/issues/119)
 - Performance improvements
 
+### Long-term
+
+- Support more syncing backends
+- Support more framework integrations
+- Support more platforms (e.g. Electron, Tauri)
