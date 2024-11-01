@@ -16,7 +16,7 @@ LiveStore is based on years of research (see [Riffle](https://riffle.systems/ess
 While LiveStore is in alpha there can be two kinds of breaking changes:
 
 - Breaking API change
-- Storage format changes (whenever `liveStoreStorageCompatibilityVersion` is updated)
+- Storage format changes (whenever `liveStoreStorageFormatVersion` is updated)
 
 We try our best to minimize breaking changes and to provide a migration path whenever possible.
 
