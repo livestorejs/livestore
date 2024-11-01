@@ -13,7 +13,16 @@
     "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
     "test": "CI=1 pnpm --parallel run test"
   },
+  "#resolutions": {
+    "esbuild": "Needed for CF Wrangler",
+    "@livestore/*": "Needed to force PNPM to install local packages"
+  },
   "resolutions": {
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/web": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
     "@livestore/devtools-react": "0.0.58-dev.9"
   },
   "devDependencies": {
