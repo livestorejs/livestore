@@ -1,12 +1,19 @@
 --- tsconfig.json
 +++ tsconfig.json
-@@ -1,4 +1,5 @@
+@@ -1,10 +1,12 @@
  {
 +  "extends": "../../tsconfig.base.json",
    "compilerOptions": {
      "target": "ES2022",
      "useDefineForClassFields": true,
-@@ -22,5 +23,9 @@
+     "lib": ["ES2020", "DOM", "DOM.Iterable"],
+     "module": "ESNext",
+     "skipLibCheck": true,
++    "composite": false,
+ 
+     /* Bundler mode */
+     "moduleResolution": "bundler",
+@@ -22,5 +24,9 @@
      // "noUnusedParameters": true,
      "noFallthroughCasesInSwitch": true
    },
