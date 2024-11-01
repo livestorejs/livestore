@@ -16,7 +16,7 @@ export class BoundMap<K, V> {
     this.#map.set(key, value)
     // console.log(this.#map.size, this.#sizeLimit);
     if (this.#map.size > this.#sizeLimit) {
-      const firstKey = this.#map.keys().next().value
+      const firstKey = this.#map.keys().next().value as K
       const deletedValue = this.#map.get(firstKey)!
       this.#map.delete(firstKey)
       if (this.onEvict) {

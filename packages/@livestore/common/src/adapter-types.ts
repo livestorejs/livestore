@@ -63,6 +63,7 @@ export type BootStatus = typeof BootStatus.Type
 export type Coordinator = {
   devtools: {
     enabled: boolean
+    // TODO incorporate sessionId and rethink appHostId
     appHostId: string
   }
   sessionId: string
