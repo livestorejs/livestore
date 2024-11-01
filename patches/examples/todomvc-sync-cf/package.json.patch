@@ -11,6 +11,6 @@
 -    "@livestore/web": "0.0.58-dev.9",
 +    "@livestore/wa-sqlite": "1.0.1-dev.29",
 +    "@livestore/web": "workspace:*",
-     "@schickling/fps-meter": "^0.1.2",
+     "@overengineering/fps-meter": "^0.1.2",
      "effect": "3.10.7",
      "react": "^18.3.1",

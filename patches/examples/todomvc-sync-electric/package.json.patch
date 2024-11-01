@@ -17,4 +17,4 @@
 +    "@livestore/web": "workspace:*",
      "@remix-run/node": "^2.11.2",
      "@remix-run/react": "^2.11.2",
-     "@schickling/fps-meter": "^0.1.2",
+     "@overengineering/fps-meter": "^0.1.2",
