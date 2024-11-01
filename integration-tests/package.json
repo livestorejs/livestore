@@ -17,7 +17,7 @@
     "@livestore/web": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.46.1",
+    "@playwright/test": "1.48.2",
     "@types/node": "^22.8.5",
     "vite": "5.4.10"
   }

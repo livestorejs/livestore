@@ -24,9 +24,11 @@
 
         packages = {
           find-free-port = pkgsUnstable.callPackage ./nix/find-free-port.nix { };
+          playwright-driver2 = pkgsUnstable.callPackage ./nix/playwright.nix { };
         };
 
         devShell = with pkgsUnstable; pkgsUnstable.mkShell {
+
           buildInputs = [
             nodejs_22
             corepack
@@ -43,7 +45,8 @@
           ];
 
           # See version https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/web/playwright/driver.nix#L33
-          PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
+          PLAYWRIGHT_BROWSERS_PATH = self.packages.${system}.playwright-driver2.browsers;
+          # PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
         };
 
       });

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.58-dev.8",
+  "version": "0.0.58-dev.9",
   "type": "module",
   "exports": {
     ".": {
@@ -8,8 +8,8 @@
       "default": "./dist/index.js"
     },
     "./worker": {
-      "types": "./dist/web-worker/make-dedicated-worker.d.ts",
-      "default": "./dist/web-worker/make-dedicated-worker.js"
+      "types": "./dist/web-worker/make-leader-worker.d.ts",
+      "default": "./dist/web-worker/make-leader-worker.js"
     },
     "./worker-vite-dev-polyfill": {
       "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
@@ -36,7 +36,7 @@
   "typesVersions": {
     "*": {
       "worker": [
-        "./dist/web-worker/make-dedicated-worker.d.ts"
+        "./dist/web-worker/make-leader-worker.d.ts"
       ],
       "worker-vite-dev-polyfill": [
         "./dist/web-worker/vite-dev-polyfill.d.ts"

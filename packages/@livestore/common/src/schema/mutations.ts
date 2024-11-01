@@ -231,6 +231,10 @@ export namespace MutationEvent {
   }[keyof TSchema['_MutationDefMapType']]
 }
 
+export const isPartialMutationEvent = (
+  mutationEvent: MutationEvent.Any | MutationEvent.PartialAny,
+): mutationEvent is MutationEvent.PartialAny => 'id' in mutationEvent === false && 'parentId' in mutationEvent === false
+
 export type MutationEventSchema<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
   {
     [K in keyof TMutationsDefRecord]: {

@@ -121,24 +121,23 @@ export const makeAdapter =
       const coordinator = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
+        // Expo doesn't support multiple client sessions, so we just use a fixed session id
+        sessionId: 'expo',
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         // TODO implement proper event id generation using persistent cliendId
-        getNextMutationEventId: (opts) =>
-          Effect.sync(() => {
-            if (opts.localOnly) {
-              currentMutationEventIdRef.current = {
-                global: currentMutationEventIdRef.current.global,
-                local: currentMutationEventIdRef.current.local + 1,
-              }
-            } else {
-              currentMutationEventIdRef.current = {
-                global: currentMutationEventIdRef.current.global + 1,
-                local: 0,
-              }
-            }
+        nextMutationEventIdPair: (opts) =>
+          Effect.gen(function* () {
+            const parentId = { ...currentMutationEventIdRef.current }
 
-            return currentMutationEventIdRef.current
+            const id = opts.localOnly
+              ? { global: parentId.global, local: parentId.local + 1 }
+              : { global: parentId.global + 1, local: 0 }
+
+            currentMutationEventIdRef.current = id
+
+            return { id, parentId }
           }),
+
         getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         // NOTE not doing anything since syncDb is already persisted
         execute: () => Effect.void,

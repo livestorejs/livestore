@@ -28,6 +28,7 @@ interface FileSystemFileHandle {
 interface ImportMeta {
   env: {
     DEV: boolean | undefined
+    VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
   }
 }
 

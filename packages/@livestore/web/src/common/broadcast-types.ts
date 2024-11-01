@@ -3,7 +3,7 @@ import { Schema } from '@livestore/utils/effect'
 
 // TODO introduce req/ack
 export const Broadcast = Schema.TaggedStruct('BC.Broadcast', {
-  sender: Schema.Literal('leader-worker', 'ui-thread'),
+  sender: Schema.Literal('leader-worker', 'follower-thread'),
   ref: Schema.String,
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,

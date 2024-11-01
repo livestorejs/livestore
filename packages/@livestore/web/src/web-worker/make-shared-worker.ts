@@ -26,9 +26,9 @@ import { makeShutdownChannel } from './shutdown-channel.js'
 import * as WorkerSchema from './worker-schema.js'
 
 const makeWorkerRunner = Effect.gen(function* () {
-  const dedicatedWorkerContextSubRef = yield* SubscriptionRef.make<
+  const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
-        worker: Worker.SerializedWorkerPool<WorkerSchema.DedicatedWorkerInner.Request>
+        worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInner.Request>
         scope: Scope.CloseableScope
       }
     | undefined
@@ -38,11 +38,11 @@ const makeWorkerRunner = Effect.gen(function* () {
     typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromCoordinator.Type
   >().pipe(Effect.andThen(Ref.make))
 
-  const waitForWorker = SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined).pipe(
+  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
     Effect.map((_) => _.worker),
   )
 
-  const forwardRequest = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
+  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
     req: TReq,
   ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Effect.Effect<A, UnexpectedError, never>
@@ -78,13 +78,13 @@ const makeWorkerRunner = Effect.gen(function* () {
 
   // TODO bring back the `forwardRequestStream` impl above. Needs debugging with Tim Smart
   // It seems the in-progress streams are not being closed properly if the worker is closed (e.g. by closing the leader tab)
-  const forwardRequestStream = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
+  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
     req: TReq,
   ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Stream.Stream<A, UnexpectedError, never>
     : never =>
     Effect.gen(function* () {
-      const { worker, scope } = yield* SubscriptionRef.waitUntil(dedicatedWorkerContextSubRef, isNotUndefined)
+      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
       const queue = yield* Queue.unbounded()
 
       yield* Scope.addFinalizer(scope, Queue.shutdown(queue))
@@ -107,10 +107,10 @@ const makeWorkerRunner = Effect.gen(function* () {
     ) as any
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
-    const prevWorker = yield* SubscriptionRef.get(dedicatedWorkerContextSubRef)
+    const prevWorker = yield* SubscriptionRef.get(leaderWorkerContextSubRef)
     if (prevWorker !== undefined) {
       // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
-      yield* SubscriptionRef.set(dedicatedWorkerContextSubRef, undefined)
+      yield* SubscriptionRef.set(leaderWorkerContextSubRef, undefined)
 
       yield* Scope.close(prevWorker.scope, Exit.void).pipe(
         Effect.timeout(Duration.seconds(1)),
@@ -148,7 +148,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
-          const messageSchema = WorkerSchema.DedicatedWorkerInner.InitialMessage.pipe(
+          const messageSchema = WorkerSchema.LeaderWorkerInner.InitialMessage.pipe(
             Schema.omit('needsRecreate', 'devtoolsEnabled'),
           )
           const isEqual = Schema.equivalence(messageSchema)
@@ -177,11 +177,11 @@ const makeWorkerRunner = Effect.gen(function* () {
         const scope = yield* Scope.make()
 
         const workerDeferred = yield* Deferred.make<
-          Worker.SerializedWorkerPool<WorkerSchema.DedicatedWorkerInner.Request>,
+          Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInner.Request>,
           UnexpectedError
         >()
         // TODO we could also keep the pool instance around to re-use it by removing the previous worker and adding a new one
-        yield* Worker.makePoolSerialized<WorkerSchema.DedicatedWorkerInner.Request>({
+        yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInner.Request>({
           size: 1,
           concurrency: 100,
           initialMessage: () => initialMessagePayload.initialMessage,
@@ -211,7 +211,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         const worker = yield* Deferred.await(workerDeferred)
 
-        yield* SubscriptionRef.set(dedicatedWorkerContextSubRef, { worker, scope })
+        yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
       }).pipe(
         Effect.withSpan('@livestore/web:shared-worker:updateMessagePort'),
         UnexpectedError.mapToUnexpectedError,

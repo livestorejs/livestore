@@ -62,7 +62,7 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
-export namespace DedicatedWorkerOuter {
+export namespace LeaderWorkerOuter {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: { port: Transferable.MessagePort },
     success: Schema.Void,
@@ -72,7 +72,7 @@ export namespace DedicatedWorkerOuter {
   export class Request extends Schema.Union(InitialMessage) {}
 }
 
-export namespace DedicatedWorkerInner {
+export namespace LeaderWorkerInner {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
       storageOptions: StorageType,
@@ -175,7 +175,7 @@ export namespace DedicatedWorkerInner {
 
 export namespace SharedWorker {
   export class InitialMessagePayloadFromCoordinator extends Schema.TaggedStruct('FromCoordinator', {
-    initialMessage: DedicatedWorkerInner.InitialMessage,
+    initialMessage: LeaderWorkerInner.InitialMessage,
   }) {}
 
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
@@ -226,14 +226,14 @@ export namespace SharedWorker {
     DevtoolsWebBridgeOfferPort,
 
     // Proxied requests
-    DedicatedWorkerInner.BootStatusStream,
-    DedicatedWorkerInner.ExecuteBulk,
-    DedicatedWorkerInner.Export,
-    DedicatedWorkerInner.GetRecreateSnapshot,
-    DedicatedWorkerInner.ExportMutationlog,
-    DedicatedWorkerInner.GetCurrentMutationEventId,
-    DedicatedWorkerInner.NetworkStatusStream,
-    DedicatedWorkerInner.Shutdown,
-    DedicatedWorkerInner.ConnectDevtoolsStream,
+    LeaderWorkerInner.BootStatusStream,
+    LeaderWorkerInner.ExecuteBulk,
+    LeaderWorkerInner.Export,
+    LeaderWorkerInner.GetRecreateSnapshot,
+    LeaderWorkerInner.ExportMutationlog,
+    LeaderWorkerInner.GetCurrentMutationEventId,
+    LeaderWorkerInner.NetworkStatusStream,
+    LeaderWorkerInner.Shutdown,
+    LeaderWorkerInner.ConnectDevtoolsStream,
   ) {}
 }

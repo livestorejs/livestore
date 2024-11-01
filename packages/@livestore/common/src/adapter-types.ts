@@ -12,6 +12,7 @@ export interface PreparedStatement {
   sql: string
 }
 
+// TODO possibly rename to `ClientSession`
 export type StoreAdapter = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
@@ -64,6 +65,7 @@ export type Coordinator = {
     enabled: boolean
     appHostId: string
   }
+  sessionId: string
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   syncMutations: Stream.Stream<MutationEvent.Any, UnexpectedError>
@@ -73,7 +75,7 @@ export type Coordinator = {
     options: { persisted: boolean },
   ): Effect.Effect<void, UnexpectedError>
   /** Can be called synchronously */
-  getNextMutationEventId: (opts: { localOnly: boolean }) => Effect.Effect<EventId, UnexpectedError>
+  nextMutationEventIdPair: (opts: { localOnly: boolean }) => Effect.Effect<EventIdPair, UnexpectedError>
   /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
   getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
@@ -95,6 +97,8 @@ export const EventId = Schema.Struct({
   global: Schema.Number,
   local: Schema.Number,
 }).annotations({ title: 'LiveStore.EventId' })
+
+export type EventIdPair = { id: EventId; parentId: EventId }
 
 export const ROOT_ID = { global: -1, local: 0 } satisfies EventId
 

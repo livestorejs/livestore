@@ -59,7 +59,7 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) =>
-  WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerOuter.InitialMessage, {
+  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuter.InitialMessage, {
     InitialMessage: ({ port: incomingRequestsPort }) =>
       Effect.gen(function* () {
         const innerFiber = yield* makeWorkerRunner(workerOptions).pipe(
@@ -91,7 +91,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
       [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
-    return WorkerRunner.layerSerialized(WorkerSchema.DedicatedWorkerInner.Request, {
+    return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
       InitialMessage: ({ storageOptions, storeId, originId, needsRecreate, syncOptions, devtoolsEnabled }) =>
         Effect.gen(function* () {
           const sqlite3 = yield* Effect.promise(() => WaSqlite.loadSqlite3Wasm())
@@ -250,7 +250,7 @@ const makeWorkerRunner = ({ schema, makeSyncBackend }: WorkerOptions) =>
 
             yield* broadcastChannel.listen.pipe(
               Stream.flatten(),
-              Stream.filter(({ sender }) => sender === 'ui-thread'),
+              Stream.filter(({ sender }) => sender === 'follower-thread'),
               Stream.tap(({ mutationEventEncoded, persisted }) =>
                 Effect.gen(function* () {
                   const mutationDef =

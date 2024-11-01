@@ -62,3 +62,6 @@ export const useStackInfo = (): StackInfo =>
     Error.stackTraceLimit = originalStackLimit
     return extractStackInfoFromStackTrace(stack)
   }, [])
+
+export const stackInfoToString = (stackInfo: StackInfo): string =>
+  stackInfo.frames.map((f) => `${f.name} (${f.filePath})`).join('\n')

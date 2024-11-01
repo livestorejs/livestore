@@ -12,6 +12,7 @@ import type {
 import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
+  isPartialMutationEvent,
   makeMutationEventSchemaMemo,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
@@ -520,6 +521,7 @@ export class Store<
     mutationEventDecoded_: MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>,
     options: {
       otelContext: otel.Context
+      // TODO adjust `skip-persist` with new rebase sync strategy
       coordinatorMode: 'default' | 'skip-coordinator' | 'skip-persist'
     },
   ): { writeTables: ReadonlySet<string>; durationMs: number } => {
@@ -527,12 +529,20 @@ export class Store<
       this.schema.mutations.get(mutationEventDecoded_.mutation) ??
       shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
 
-    const mutationEventDecoded: MutationEvent.ForSchema<TSchema> = mutationEventDecoded_.hasOwnProperty('id')
-      ? (mutationEventDecoded_ as MutationEvent.ForSchema<TSchema>)
-      : {
-          ...mutationEventDecoded_,
-          ...this.getNextMutationEventId({ localOnly: mutationDef.options.localOnly }),
-        }
+    // Needs to happen only for partial mutation events (thus a function)
+    const nextMutationEventId = () => {
+      const { id, parentId } = this.adapter.coordinator
+        .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
+        .pipe(Effect.runSync)
+
+      this.currentMutationEventIdRef.current = id
+
+      return { id, parentId }
+    }
+
+    const mutationEventDecoded: MutationEvent.ForSchema<TSchema> = isPartialMutationEvent(mutationEventDecoded_)
+      ? { ...mutationEventDecoded_, ...nextMutationEventId() }
+      : mutationEventDecoded_
 
     // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
     // e.g. the row-query functionality
@@ -613,17 +623,6 @@ export class Store<
 
   __select = (query: string, params: ParamsObject = {}) => {
     return this.syncDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
-  }
-
-  private getNextMutationEventId = ({ localOnly }: { localOnly: boolean }): { id: EventId; parentId: EventId } => {
-    const id = this.adapter.coordinator.getNextMutationEventId({ localOnly }).pipe(Effect.runSync)
-    const parentId = localOnly
-      ? this.currentMutationEventIdRef.current
-      : { global: this.currentMutationEventIdRef.current.global, local: 0 }
-
-    this.currentMutationEventIdRef.current = id
-
-    return { id, parentId }
   }
 
   private makeTableRef = (tableName: string) =>
@@ -819,15 +818,13 @@ export const createStore = <
               schema.mutations.get(mutationEventDecoded_.mutation) ??
               shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
 
-            const parentId = mutationDef.options.localOnly
-              ? currentMutationEventIdRef.current
-              : { global: currentMutationEventIdRef.current.global, local: 0 }
-
-            currentMutationEventIdRef.current = adapter.coordinator
-              .getNextMutationEventId({ localOnly: mutationDef.options.localOnly })
+            const { id, parentId } = adapter.coordinator
+              .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
               .pipe(Effect.runSync)
 
-            const mutationEventDecoded = { ...mutationEventDecoded_, id: currentMutationEventIdRef.current, parentId }
+            currentMutationEventIdRef.current = id
+
+            const mutationEventDecoded = { ...mutationEventDecoded_, id, parentId }
 
             MutableHashMap.set(unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
 

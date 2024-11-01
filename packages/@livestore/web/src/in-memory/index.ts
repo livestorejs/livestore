@@ -1,6 +1,7 @@
 import type { Coordinator, LockStatus, StoreAdapterFactory } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
@@ -41,25 +42,22 @@ export const makeInMemoryAdapter =
 
       const coordinator = {
         devtools: { appHostId: 'in-memory', enabled: false },
+        sessionId: `in-memory-${nanoid(6)}`,
         lockStatus,
         syncMutations,
         execute: () => Effect.void,
         mutate: () => Effect.void,
-        getNextMutationEventId: (opts) =>
-          Effect.sync(() => {
-            if (opts.localOnly) {
-              currentMutationEventIdRef.current = {
-                global: currentMutationEventIdRef.current.global,
-                local: currentMutationEventIdRef.current.local + 1,
-              }
-            } else {
-              currentMutationEventIdRef.current = {
-                global: currentMutationEventIdRef.current.global + 1,
-                local: 0,
-              }
-            }
+        nextMutationEventIdPair: (opts) =>
+          Effect.gen(function* () {
+            const parentId = { ...currentMutationEventIdRef.current }
 
-            return currentMutationEventIdRef.current
+            const id = opts.localOnly
+              ? { global: parentId.global, local: parentId.local + 1 }
+              : { global: parentId.global + 1, local: 0 }
+
+            currentMutationEventIdRef.current = id
+
+            return { id, parentId }
           }),
         getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         export: Effect.dieMessage('Not implemented'),

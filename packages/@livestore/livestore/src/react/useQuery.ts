@@ -1,10 +1,10 @@
-import { deepEqual } from '@livestore/utils'
+import { deepEqual, indent } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
 import type { GetResult, LiveQueryAny } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
-import { extractStackInfoFromStackTrace, originalStackLimit } from './utils/stack-info.js'
+import { extractStackInfoFromStackTrace, originalStackLimit, stackInfoToString } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 /**
@@ -59,16 +59,31 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
     return { span, otelContext }
   }, [parentOtelContext, query$, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
 
-  const initialResult = React.useMemo(
-    () =>
-      query$.run(otelContext, {
+  const initialResult = React.useMemo(() => {
+    try {
+      return query$.run(otelContext, {
         _tag: 'react',
         api: 'useQuery',
         label: query$.label,
         stackInfo,
-      }),
-    [otelContext, query$, stackInfo],
-  )
+      })
+    } catch (cause: any) {
+      throw new Error(
+        `\
+[@livestore/react:useQuery] Error running query: ${cause.name}
+
+Query: ${query$.label}
+
+React trace:
+
+${indent(stackInfoToString(stackInfo), 4)}
+
+Stack trace:
+`,
+        { cause },
+      )
+    }
+  }, [otelContext, query$, stackInfo])
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
   const [valueRef, setValue] = useStateRefWithReactiveInput<GetResult<TQuery>>(initialResult)

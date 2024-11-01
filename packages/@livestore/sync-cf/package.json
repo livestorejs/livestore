@@ -1,6 +1,6 @@
 {
   "name": "@livestore/sync-cf",
-  "version": "0.0.58-dev.8",
+  "version": "0.0.58-dev.9",
   "type": "module",
   "exports": {
     ".": {

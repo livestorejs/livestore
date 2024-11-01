@@ -27,10 +27,10 @@ const issue = DbSchema.table(
   },
 )
 
-const OrderDirection = Schema.Literal('asc', 'desc')
+const OrderDirection = Schema.Literal('asc', 'desc').annotations({ title: 'OrderDirection' })
 export type OrderDirection = typeof OrderDirection.Type
 
-const OrderBy = Schema.Literal('priority', 'status', 'created', 'modified')
+const OrderBy = Schema.Literal('priority', 'status', 'created', 'modified').annotations({ title: 'OrderBy' })
 export type OrderBy = typeof OrderBy.Type
 
 const description = DbSchema.table(

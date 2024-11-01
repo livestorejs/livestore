@@ -142,7 +142,7 @@ export const makeAdapter =
           new WorkerSchema.SharedWorker.InitialMessage({
             payload: {
               _tag: 'FromCoordinator',
-              initialMessage: new WorkerSchema.DedicatedWorkerInner.InitialMessage({
+              initialMessage: new WorkerSchema.LeaderWorkerInner.InitialMessage({
                 storageOptions,
                 storeId,
                 originId,
@@ -184,8 +184,8 @@ export const makeAdapter =
 
         const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}` })
 
-        yield* Worker.makeSerialized<WorkerSchema.DedicatedWorkerOuter.Request>({
-          initialMessage: () => new WorkerSchema.DedicatedWorkerOuter.InitialMessage({ port: mc.port1 }),
+        yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuter.Request>({
+          initialMessage: () => new WorkerSchema.LeaderWorkerOuter.InitialMessage({ port: mc.port1 }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
@@ -204,12 +204,12 @@ export const makeAdapter =
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
-            // console.log('[@livestore/web:coordinator] Shutting down dedicated worker')
+            // console.log('[@livestore/web:coordinator] Shutting down leader worker')
 
-            // We first try to gracefully shutdown the dedicated worker and then forcefully terminate it
+            // We first try to gracefully shutdown the leader worker and then forcefully terminate it
             yield* Effect.raceFirst(
               sharedWorker
-                .executeEffect(new WorkerSchema.DedicatedWorkerInner.Shutdown({}))
+                .executeEffect(new WorkerSchema.LeaderWorkerInner.Shutdown({}))
                 .pipe(Effect.andThen(() => worker.terminate())),
 
               Effect.sync(() => {
@@ -285,7 +285,7 @@ export const makeAdapter =
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
 
       if (options.syncBackend !== undefined) {
-        yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.NetworkStatusStream()).pipe(
+        yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.NetworkStatusStream()).pipe(
           Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
           Stream.runDrain,
           Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
@@ -296,7 +296,7 @@ export const makeAdapter =
         )
       }
 
-      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.DedicatedWorkerInner.BootStatusStream()).pipe(
+      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
@@ -312,12 +312,10 @@ export const makeAdapter =
       )
 
       const initialSnapshot =
-        dataFromFile ?? (yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.GetRecreateSnapshot()))
+        dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()))
 
       // TODO merge with snapshot req
-      const initialMutationEventId = yield* runInWorker(
-        new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId(),
-      )
+      const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
       const currentMutationEventIdRef = {
         current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
@@ -341,7 +339,7 @@ export const makeAdapter =
       yield* Effect.gen(function* () {
         const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(Effect.map(Chunk.toReadonlyArray))
 
-        yield* runInWorker(new WorkerSchema.DedicatedWorkerInner.ExecuteBulk({ items })).pipe(
+        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.ExecuteBulk({ items })).pipe(
           Effect.timeout(10_000),
           Effect.tapErrorCause((cause) =>
             Effect.logDebug('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
@@ -366,6 +364,9 @@ export const makeAdapter =
 
       const mutationEventSchema = makeMutationEventSchema(schema)
 
+      // Forwarding all mutations from the leader worker to the incoming sync mutations queue .
+      // As all writes are going through the leader worker and each client session has seen their own writes already,
+      // we can ignore all mutations that are not coming from the leader worker.
       yield* broadcastChannel.listen.pipe(
         Stream.flatten(),
         Stream.filter(({ sender }) => sender === 'leader-worker'),
@@ -397,9 +398,10 @@ export const makeAdapter =
       const coordinator = {
         devtools: { enabled: devtoolsEnabled, appHostId: clientId },
         lockStatus,
+        sessionId: contextId,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
 
-        export: runInWorker(new WorkerSchema.DedicatedWorkerInner.Export()).pipe(
+        export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:coordinator:export'),
@@ -429,27 +431,23 @@ export const makeAdapter =
             } else {
               // In case we don't have the lock, we're broadcasting the mutation to the leader worker
               yield* broadcastChannel.send(
-                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'ui-thread', persisted }),
+                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'follower-thread', persisted }),
               )
             }
           }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:mutate')),
 
-        // TODO use a persisted integer seq instead of nanoid
-        getNextMutationEventId: (opts) =>
+        // TODO synchronize event ids across threads
+        nextMutationEventIdPair: (opts) =>
           Effect.gen(function* () {
-            if (opts.localOnly) {
-              currentMutationEventIdRef.current = {
-                global: currentMutationEventIdRef.current.global,
-                local: currentMutationEventIdRef.current.local + 1,
-              }
-            } else {
-              currentMutationEventIdRef.current = {
-                global: currentMutationEventIdRef.current.global + 1,
-                local: 0,
-              }
-            }
+            const parentId = { ...currentMutationEventIdRef.current }
 
-            return currentMutationEventIdRef.current
+            const id = opts.localOnly
+              ? { global: parentId.global, local: parentId.local + 1 }
+              : { global: parentId.global + 1, local: 0 }
+
+            currentMutationEventIdRef.current = id
+
+            return { id, parentId }
           }),
 
         // TODO this needs to be specific to the current context
@@ -466,7 +464,7 @@ export const makeAdapter =
           return currentMutationEventIdRef.current
         }),
 
-        getMutationLogData: runInWorker(new WorkerSchema.DedicatedWorkerInner.ExportMutationlog()).pipe(
+        getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:coordinator:getMutationLogData'),
@@ -489,7 +487,7 @@ export const makeAdapter =
 
       const connectToDevtools = (coordinatorMessagePort: MessagePort) =>
         runInWorkerStream(
-          WorkerSchema.DedicatedWorkerInner.ConnectDevtoolsStream.make({
+          WorkerSchema.LeaderWorkerInner.ConnectDevtoolsStream.make({
             port: coordinatorMessagePort,
             appHostId: clientId,
             isLeader: gotLocky,

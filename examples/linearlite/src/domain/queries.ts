@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 import { querySQL, sql } from '@livestore/livestore'
 import { filterStateTable } from './schema'
 import { useLocalId, useRow } from '@livestore/livestore/react'

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.58-dev.8",
+  "version": "0.0.58-dev.9",
   "sideEffects": [
     "./dist/global.js"
   ],

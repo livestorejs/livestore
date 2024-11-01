@@ -173,8 +173,11 @@ export const makeApplyMutation = (
         // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
         const transaction = Effect.gen(function* () {
-          const session = sqlite3.session_create(db, 'main')
-          sqlite3.session_attach(session, null)
+          const sessionEnabled = import.meta.env.VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT
+          const session = sessionEnabled ? sqlite3.session_create(db, 'main') : -1
+          if (sessionEnabled) {
+            sqlite3.session_attach(session, null)
+          }
 
           const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
           if (hasDbTransaction) {
@@ -193,20 +196,26 @@ export const makeApplyMutation = (
             yield* execSql(syncDb, 'COMMIT', {})
           }
 
-          const { changeset } = sqlite3.session_changeset(session)
-          sqlite3.session_delete(session)
+          if (sessionEnabled) {
+            const { changeset } = sqlite3.session_changeset(session)
+            sqlite3.session_delete(session)
 
-          // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
-          // TODO possibly write a null value instead of omitting the row
-          if (changeset.length > 0) {
-            yield* execSql(
-              syncDb,
-              ...insertRow({
-                tableName: SESSION_CHANGESET_META_TABLE,
-                columns: sessionChangesetMetaTable.sqliteDef.columns,
-                values: { idGlobal: mutationEventEncoded.id.global, idLocal: mutationEventEncoded.id.local, changeset },
-              }),
-            )
+            // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
+            // TODO possibly write a null value instead of omitting the row
+            if (changeset.length > 0) {
+              yield* execSql(
+                syncDb,
+                ...insertRow({
+                  tableName: SESSION_CHANGESET_META_TABLE,
+                  columns: sessionChangesetMetaTable.sqliteDef.columns,
+                  values: {
+                    idGlobal: mutationEventEncoded.id.global,
+                    idLocal: mutationEventEncoded.id.local,
+                    changeset,
+                  },
+                }),
+              )
+            }
           }
         })
 

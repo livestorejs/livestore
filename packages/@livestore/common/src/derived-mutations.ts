@@ -38,9 +38,9 @@ export const deriveCreateMutationDef = <
     (col) => col.nullable === false && col.default._tag === 'None',
   )
 
-  const insertSchema = Schema.Struct(ReadonlyRecord.map(requiredColumns, (col) => col.schema)).pipe(
-    Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))),
-  )
+  const insertSchema = Schema.Struct(ReadonlyRecord.map(requiredColumns, (col) => col.schema))
+    .pipe(Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))))
+    .annotations({ title: `${tableName}:Insert` })
 
   return defineMutation(
     `_Derived_Create_${tableName}`,
@@ -76,7 +76,7 @@ export const deriveUpdateMutationDef = <
     Schema.Struct({
       where: Schema.partial(table.schema),
       values: Schema.partial(table.schema),
-    }),
+    }).annotations({ title: `${tableName}:Update` }),
     ({ where, values }) => {
       const [sql, bindValues] = updateRows({
         tableName: table.sqliteDef.name,

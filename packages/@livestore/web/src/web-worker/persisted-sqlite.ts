@@ -1,4 +1,4 @@
-import type { SqliteError, SynchronousDatabase } from '@livestore/common'
+import { liveStoreStorageFormatVersion, type SqliteError, type SynchronousDatabase } from '@livestore/common'
 import { ref } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema } from '@livestore/utils/effect'
@@ -313,7 +313,8 @@ const opfsDeleteAbs = (absPath: string) =>
 
 const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
   // Root dir should be `''` not `/`
-  if (directory === undefined || directory === '' || directory === '/') return `livestore-${storeId}`
+  if (directory === undefined || directory === '' || directory === '/')
+    return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
 
   if (directory.includes('/')) {
     throw new Error(`@livestore/web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`)
@@ -321,7 +322,7 @@ const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
 
   // if (directory.endsWith('/')) return directory
 
-  return `${directory}`
+  return `${directory}@${liveStoreStorageFormatVersion}`
 }
 
 const getAppDbFileName = (suffix: string) => `app${suffix}.db`

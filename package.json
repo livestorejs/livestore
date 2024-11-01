@@ -14,7 +14,7 @@
     "test": "CI=1 pnpm --parallel run test"
   },
   "resolutions": {
-    "@livestore/devtools-react": "0.0.58-dev.8"
+    "@livestore/devtools-react": "0.0.58-dev.9"
   },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",
@@ -32,7 +32,7 @@
     "eslint-plugin-unicorn": "56.0.0",
     "madge": "^6.1.0",
     "netlify-cli": "^17.37.2",
-    "playwright": "1.46.1",
+    "playwright": "1.48.2",
     "prettier": "3.3.3",
     "prettier-plugin-packagejson": "2.5.3",
     "typescript": "5.6.3"
@@ -40,8 +40,7 @@
   "packageManager": "pnpm@9.9.0",
   "pnpm": {
     "patchedDependencies": {
-      "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch",
-      "playwright@1.46.1": "patches/playwright@1.46.1.patch"
+      "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
     }
   }
 }
