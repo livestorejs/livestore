@@ -1,4 +1,4 @@
-import { graphologyDag, notYetImplemented } from '@overtone/utils'
+import { notYetImplemented } from '@livestore/utils'
 
 import type { EventId } from '../../adapter-types.js'
 import type {
@@ -8,6 +8,7 @@ import type {
   MutationEventFactsGroup,
   MutationEventFactsSnapshot,
 } from '../../schema/mutations.js'
+import { graphologyDag } from './graphology_.js'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag.js'
 
 export const factsSnapshotForEvents = (events: HistoryDagNode[], endEventId: EventId): MutationEventFactsSnapshot => {
