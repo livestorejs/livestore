@@ -35,14 +35,14 @@ export const clearCompleted = defineMutation(
 
 export const updateNewTodoText = defineMutation(
   'updateNewTodoText',
-  Schema.Struct({ text: Schema.String, localId: Schema.String }),
-  sql`UPDATE app SET newTodoText = $text WHERE id = $localId`,
+  Schema.Struct({ text: Schema.String, sessionId: Schema.String }),
+  sql`UPDATE app SET newTodoText = $text WHERE id = $sessionId`,
   { localOnly: true },
 )
 
 export const setFilter = defineMutation(
   'setFilter',
-  Schema.Struct({ filter: Filter, localId: Schema.String }),
-  sql`UPDATE app SET filter = $filter WHERE id = $localId`,
+  Schema.Struct({ filter: Filter, sessionId: Schema.String }),
+  sql`UPDATE app SET filter = $filter WHERE id = $sessionId`,
   { localOnly: true },
 )

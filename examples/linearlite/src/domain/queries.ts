@@ -1,11 +1,11 @@
 import { Schema } from 'effect'
 import { querySQL, sql } from '@livestore/livestore'
 import { filterStateTable } from './schema'
-import { useLocalId, useRow } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/livestore/react'
 
 export const useFilterState = () => {
-  const localId = useLocalId()
-  return useRow(filterStateTable, localId)
+  const { store } = useStore()
+  return useRow(filterStateTable, store.sessionId)
 }
 
 export const issueCount$ = querySQL(sql`SELECT COUNT(id) AS c FROM issue`, {

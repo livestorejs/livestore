@@ -41,8 +41,6 @@ makeWorker({ schema })
 
 ## Storage
 
-There are currently 3 storage types:
+LiveStore currently only support OPFS to locally persist its data. In the future we might add support for other storage types (e.g. IndexedDB).
 
-- `opfs` (recommended)
-- `opfs-sahpool-experimental`
-- `indexeddb` (not recommended, currently implemented with a very inefficient persistence mechanism)
+LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads. 

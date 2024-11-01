@@ -1,13 +1,13 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import IssueBoard from './IssueBoard'
-import { querySQL, rowQuery, sql } from '@livestore/livestore'
+import { querySQL, rowQuery, sql, SessionIdSymbol } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
-import { getLocalId, useQuery } from '@livestore/livestore/react'
+import { useQuery } from '@livestore/livestore/react'
 import { tables } from '../../domain/schema'
 import { Schema } from 'effect'
 
-const filterClause$ = rowQuery(tables.filterState, getLocalId(), {
+const filterClause$ = rowQuery(tables.filterState, SessionIdSymbol, {
   map: filterStateToWhere,
   label: 'Board.filterClause',
 })

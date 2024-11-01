@@ -6,8 +6,9 @@
 
 - Prepared the foundations for the upcoming [rebase sync protocol](https://github.com/livestorejs/livestore/issues/195)
   - New event id strategy (uses a global event id integer sequence number)
-- Breaking: Changed `schema.key` to `storeId`
 - Breaking: Updated storage format version to 2
+- Breaking: Changed `schema.key` to `storeId`
+- Breaking: Removed `useLocalId` / `getLocalId` in favour of `store.sessionId` / `SessionIdSymbol`
 - Upgraded dependencies
   - If you're using `effect` in your project, make sure to install version `3.10.x`
 		- Note the new version of `effect` now includes `Schema` directly, so `@effect/schema` is no longer needed as a separate dependency. (See [Effect blog post](https://effect.website/blog/releases/effect/310/#effectschema-moved-to-effectschema).)
@@ -15,8 +16,21 @@
 ### Web adapter
 
 - Devtools address is now automatically logged during development making connecting easier.
+	![](https://i.imgur.com/nmkS9yR.png)
+- Breaking: Changed syncing adapter interface:
 
-![](https://i.imgur.com/nmkS9yR.png)
+	```ts
+	const adapter = makeAdapter({
+		storage: { type: 'opfs' },
+		worker: LiveStoreWorker,
+		sharedWorker: LiveStoreSharedWorker,
+		syncBackend: {
+			type: 'cf',
+			url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
+			roomId: `todomvc_${appId}`,
+		},
+	})
+	```
 
 ### Devtools
 

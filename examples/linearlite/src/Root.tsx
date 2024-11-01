@@ -10,15 +10,6 @@ import LiveStoreWorker from './livestore.worker?worker'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { BootStatus } from '@livestore/livestore'
 
-const syncing =
-  import.meta.env.VITE_LIVESTORE_SYNC_URL && import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID
-    ? {
-        type: 'websocket' as const,
-        url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
-        roomId: import.meta.env.VITE_LIVESTORE_SYNC_ROOM_ID,
-      }
-    : undefined
-
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
 if (resetPersistence) {
@@ -31,7 +22,6 @@ const adapter = makeAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   storage: { type: 'opfs' },
-  syncing,
   // NOTE this should only be used for convenience when developing (i.e. via `?reset` in the URL) and is disabled in production
   resetPersistence,
 })

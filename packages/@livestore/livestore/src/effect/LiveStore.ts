@@ -33,7 +33,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   storeId?: string
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
-    makeContext: (db: SynchronousDatabaseWrapper) => GraphQLContext
+    makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
   }
   boot?: (db: BootDb) => Effect.Effect<void, unknown, otel.Tracer>
   adapter: StoreAdapterFactory

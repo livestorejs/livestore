@@ -83,6 +83,18 @@ export type Coordinator = {
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
+/**
+ * Can be used in queries to refer to the current session id.
+ * Will be replaced with the actual session id at runtime
+ *
+ * Example:
+ * ```ts
+ * const query$ = rowQuery(tables.app, SessionIdSymbol)
+ * ```
+ */
+export const SessionIdSymbol = Symbol.for('@livestore/session-id')
+export type SessionIdSymbol = typeof SessionIdSymbol
+
 export type LockStatus = 'has-lock' | 'no-lock'
 
 /**

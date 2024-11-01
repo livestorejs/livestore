@@ -1,5 +1,5 @@
 import { querySQL, sql } from '@livestore/livestore'
-import { useLocalId, useQuery, useRow, useStore } from '@livestore/livestore/react'
+import { useQuery, useRow, useStore } from '@livestore/livestore/react'
 import { Schema } from 'effect'
 import React from 'react'
 
@@ -13,11 +13,11 @@ const incompleteCount$ = querySQL(sql`select count(*) as c from todos where comp
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
-  const localId = useLocalId()
-  const [{ filter }] = useRow(tables.app, localId)
+  const sessionId = store.sessionId
+  const [{ filter }] = useRow(tables.app, sessionId)
   const incompleteCount = useQuery(incompleteCount$)
 
-  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter, localId }))
+  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter, sessionId }))
 
   return (
     <footer className="footer">

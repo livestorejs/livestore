@@ -25,6 +25,7 @@ const appId = getAppId()
 const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
   syncBackend: import.meta.env.VITE_LIVESTORE_SYNC_URL
     ? {
         type: 'cf',
@@ -32,7 +33,6 @@ const adapter = makeAdapter({
         roomId: `todomvc_${appId}`,
       }
     : undefined,
-  sharedWorker: LiveStoreSharedWorker,
 })
 
 export const App: React.FC = () => (

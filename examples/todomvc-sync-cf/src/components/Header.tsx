@@ -1,4 +1,4 @@
-import { useLocalId, useRow, useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/livestore/react'
 import React from 'react'
 import { v4 as uuid } from 'uuid'
 
@@ -6,14 +6,14 @@ import { mutations, tables } from '../schema/index.js'
 
 export const Header: React.FC = () => {
   const { store } = useStore()
-  const localId = useLocalId()
-  const [{ newTodoText }] = useRow(tables.app, localId)
+  const sessionId = store.sessionId
+  const [{ newTodoText }] = useRow(tables.app, sessionId)
 
-  const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text, localId }))
+  const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text, sessionId }))
   const addTodo = () =>
     store.mutate(
       mutations.addTodo({ id: uuid(), text: newTodoText }),
-      mutations.updateNewTodoText({ text: '', localId }),
+      mutations.updateNewTodoText({ text: '', sessionId }),
     )
 
   return (

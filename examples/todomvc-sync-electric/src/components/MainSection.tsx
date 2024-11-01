@@ -1,5 +1,5 @@
-import { querySQL, rowQuery, sql } from '@livestore/livestore'
-import { getLocalId, useQuery, useStore } from '@livestore/livestore/react'
+import { querySQL, rowQuery, SessionIdSymbol, sql } from '@livestore/livestore'
+import { useQuery, useStore } from '@livestore/livestore/react'
 import { Schema } from 'effect'
 import React from 'react'
 
@@ -10,7 +10,7 @@ import { mutations, tables, type Todo } from '../schema/index.js'
 // First, we create a reactive query which defines the filter clause for the SQL query.
 // It gets all the rows from the app table, and pipes them into a transform function.
 // The result is a reactive query whose value is a string containing the filter clause.
-const filterClause$ = rowQuery(tables.app, getLocalId(), {
+const filterClause$ = rowQuery(tables.app, SessionIdSymbol, {
   map: ({ filter }) => `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`,
   label: 'filterClause',
 })

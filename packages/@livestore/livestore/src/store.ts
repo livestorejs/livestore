@@ -60,7 +60,7 @@ export type BaseGraphQLContext = {
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
-  makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer) => TContext
+  makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => TContext
 }
 
 export type OtelOptions = {
@@ -248,7 +248,11 @@ export class Store<
 
     if (graphQLOptions) {
       this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(this.syncDbWrapper, this.otel.tracer)
+      this.graphQLContext = graphQLOptions.makeContext(
+        this.syncDbWrapper,
+        this.otel.tracer,
+        adapter.coordinator.sessionId,
+      )
     }
 
     Effect.gen(this, function* () {
@@ -294,6 +298,10 @@ export class Store<
         span.end()
       }
     })
+  }
+
+  get sessionId(): string {
+    return this.adapter.coordinator.sessionId
   }
 
   /**

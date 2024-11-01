@@ -34,6 +34,7 @@ export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from 
 export * from '@livestore/common/schema'
 export {
   sql,
+  SessionIdSymbol,
   type BootDb,
   type BootStatus,
   type SynchronousDatabase,

@@ -1,4 +1,5 @@
 import type { QueryInfo } from '@livestore/common'
+import { SessionIdSymbol } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyRecord } from '@livestore/utils/effect'
@@ -55,7 +56,7 @@ export const useRow: {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: string,
+    id: string | SessionIdSymbol,
     options?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
   ): UseRowResult<TTableDef>
 } = <
@@ -66,13 +67,13 @@ export const useRow: {
   >,
 >(
   table: TTableDef,
-  idOrOptions?: string | UseRowOptionsBase,
+  idOrOptions?: string | SessionIdSymbol | UseRowOptionsBase,
   options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.sqliteDef
-  const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
+  const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
   const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
-    typeof idOrOptions === 'string' ? options_ : idOrOptions
+    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
   const { defaultValues, reactivityGraph } = options ?? {}
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
@@ -94,6 +95,8 @@ export const useRow: {
 
   // console.debug('useRow', tableName, id)
 
+  const idStr = id === SessionIdSymbol ? 'session' : id
+
   const { query$, otelContext } = useMakeTemporaryQuery(
     (otelContext) =>
       DbSchema.tableIsSingleton(table)
@@ -103,11 +106,11 @@ export const useRow: {
             defaultValues: defaultValues!,
             reactivityGraph,
           }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
-    [id!, tableName],
+    [idStr!, tableName],
     {
       otel: {
-        spanName: `LiveStore:useRow:${tableName}${id === undefined ? '' : `:${id}`}`,
-        attributes: { id },
+        spanName: `LiveStore:useRow:${tableName}${idStr === undefined ? '' : `:${idStr}`}`,
+        attributes: { id: idStr },
       },
     },
   )

@@ -1,16 +1,16 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import * as ReactWindow from 'react-window'
-import { querySQL, rowQuery, sql } from '@livestore/livestore'
+import { querySQL, rowQuery, sql, SessionIdSymbol } from '@livestore/livestore'
 import { tables } from '../../domain/schema'
 import { filterStateToOrder, filterStateToWhere } from '../../utils/filterState'
-import { getLocalId, useQuery, useRow } from '@livestore/livestore/react'
+import { useQuery, useRow } from '@livestore/livestore/react'
 import { Schema } from 'effect'
 import { memo, type CSSProperties } from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import IssueRow from './IssueRow'
 
-const filterAndOrderClause$ = rowQuery(tables.filterState, getLocalId(), {
+const filterAndOrderClause$ = rowQuery(tables.filterState, SessionIdSymbol, {
   map: (_) => `${filterStateToWhere(_)} ${filterStateToOrder(_)}`,
   label: 'List.filterAndOrderClause',
 })

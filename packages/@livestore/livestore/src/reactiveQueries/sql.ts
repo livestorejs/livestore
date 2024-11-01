@@ -79,7 +79,7 @@ export class LiveStoreSQLQuery<
     queryInfo,
   }: {
     label?: string
-    genQueryString: string | ((get: GetAtomResult) => string)
+    genQueryString: string | ((get: GetAtomResult, ctx: QueryContext) => string)
     queriedTables?: Set<string>
     bindValues?: Bindable
     reactivityGraph?: ReactivityGraph
@@ -101,9 +101,9 @@ export class LiveStoreSQLQuery<
     let queryString$OrQueryString: string | Thunk<string, QueryContext, RefreshReason>
     if (typeof genQueryString === 'function') {
       queryString$OrQueryString = this.reactivityGraph.makeThunk(
-        (get, setDebugInfo, { rootOtelContext }, otelContext) => {
+        (get, setDebugInfo, ctx, otelContext) => {
           const startMs = performance.now()
-          const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? rootOtelContext))
+          const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? ctx.rootOtelContext), ctx)
           const durationMs = performance.now() - startMs
           setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
           return queryString
