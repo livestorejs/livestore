@@ -73,14 +73,12 @@ export const mutationLogMetaTable = table(
     mutation: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     schemaHash: SqliteDsl.integer({}),
-    /** Local only, used for ordered queries to avoid recursive id traversal */
-    orderKey: SqliteDsl.integer({}),
     /** ISO date format */
     createdAt: SqliteDsl.text({}),
     syncStatus: SqliteDsl.text({ schema: SyncStatus }),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
-  { disableAutomaticIdColumn: true, indexes: [{ columns: ['orderKey'], name: 'mutation_log_order_key_idx' }] },
+  { disableAutomaticIdColumn: true, indexes: [] },
 )
 
 export type MutationLogMetaRow = FromTable.RowDecoded<typeof mutationLogMetaTable>

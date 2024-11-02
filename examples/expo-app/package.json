@@ -23,7 +23,7 @@
     "expo-sqlite": "14.0.6",
     "expo-status-bar": "1.12.1",
     "fast-text-encoding": "^1.0.6",
-    "react": "18.2.0",
+    "react": "18.3.1",
     "react-native": "0.74.3"
   },
   "devDependencies": {

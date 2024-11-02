@@ -2,7 +2,6 @@ import type {
   BootStatus,
   EventId,
   PreparedBindValues,
-  PreparedStatement,
   SyncBackend,
   SynchronousDatabase,
   UnexpectedError,
@@ -144,10 +143,6 @@ export const makeApplyMutation = (
     const { dbLog } = workerCtx
 
     const syncDbLog = dbLog.dbRef.current.syncDb
-    const selectMaxOrderKeyStmt = yield* Effect.acquireRelease(
-      Effect.sync(() => syncDbLog.prepare(sql`SELECT MAX(orderKey) as max FROM mutation_log`)),
-      (stmt) => Effect.sync(() => stmt.finalize()),
-    )
 
     return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
       Effect.gen(function* () {
@@ -229,10 +224,6 @@ export const makeApplyMutation = (
           const mutationDefSchemaHash =
             mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
-          const orderKey = yield* selectSqlPrepared<{ max: number }>(selectMaxOrderKeyStmt, {}).pipe(
-            Effect.map((res) => res[0]!.max + 1),
-          )
-
           yield* execSql(
             syncDbLog,
             ...insertRow({
@@ -246,10 +237,6 @@ export const makeApplyMutation = (
                 mutation: mutationEventEncoded.mutation,
                 argsJson: mutationEventEncoded.args ?? {},
                 schemaHash: mutationDefSchemaHash,
-                // TODO inline the sqlite select above into the insert statement
-                // will probably require some kind of "sql string interpolation" for the current sql client
-                // additionally to the currently supported bind values
-                orderKey,
                 createdAt: createdAtMemo(),
                 syncStatus,
                 syncMetadataJson,
@@ -317,14 +304,14 @@ const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => 
   }).pipe(Effect.asVoid)
 }
 
-const selectSqlPrepared = <T>(stmt: PreparedStatement, bind: BindValues) => {
-  const bindValues = prepareBindValues(bind, stmt.sql)
-  return Effect.try({
-    try: () => stmt.select<T>(bindValues),
-    catch: (cause) =>
-      new SqliteError({ cause, query: { bindValues, sql: stmt.sql }, code: (cause as WaSqlite.SQLiteError).code }),
-  })
-}
+// const selectSqlPrepared = <T>(stmt: PreparedStatement, bind: BindValues) => {
+//   const bindValues = prepareBindValues(bind, stmt.sql)
+//   return Effect.try({
+//     try: () => stmt.select<T>(bindValues),
+//     catch: (cause) =>
+//       new SqliteError({ cause, query: { bindValues, sql: stmt.sql }, code: (cause as WaSqlite.SQLiteError).code }),
+//   })
+// }
 
 // TODO actually use prepared statements
 const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindValues: PreparedBindValues) => {
