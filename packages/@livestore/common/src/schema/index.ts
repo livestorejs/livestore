@@ -46,6 +46,7 @@ export type InputSchema = {
   /**
    * Can be used to isolate multiple LiveStore apps running in the same origin
    */
+  // TODO remove this in favour of storeId
   readonly key?: string
 }
 
@@ -116,7 +117,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   } satisfies LiveStoreSchema
 }
 
-namespace FromInputSchema {
+export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
     DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
     MutationDefRecordFromInputSchemaMutations<TInputSchema['mutations']>

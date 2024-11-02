@@ -1,5 +1,5 @@
 import { querySQL, rowQuery, SessionIdSymbol, sql } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import React from 'react'
 

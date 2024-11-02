@@ -1,5 +1,6 @@
 import type { BootDb } from '@livestore/common'
 import { sql } from '@livestore/common'
+import { querySQL } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
@@ -7,10 +8,9 @@ import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { describe, expect, it } from 'vitest'
 
-import { schema, tables } from '../__tests__/react/fixture.js'
-import { querySQL } from '../reactiveQueries/sql.js'
-import * as LiveStoreReact from './index.js'
+import { schema, tables } from './__tests__/fixture.js'
 import { LiveStoreProvider } from './LiveStoreProvider.js'
+import * as LiveStoreReact from './mod.js'
 
 describe('LiveStoreProvider', () => {
   it('simple', async () => {

@@ -1,7 +1,6 @@
+import type { Store } from '@livestore/livestore'
+import type { LiveStoreContextRunning as LiveStoreContext_ } from '@livestore/livestore/effect'
 import React, { useContext } from 'react'
-
-import type { LiveStoreContextRunning as LiveStoreContext_ } from '../effect/LiveStore.js'
-import type { Store } from '../store.js'
 
 export const LiveStoreContext = React.createContext<LiveStoreContext_ | undefined>(undefined)
 

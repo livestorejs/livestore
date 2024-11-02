@@ -1,6 +1,6 @@
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { LiveStoreProvider } from '@livestore/livestore/react'
+import { LiveStoreProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
 import { makeAdapter } from '@livestore/web'
 import { schema } from './domain/schema'

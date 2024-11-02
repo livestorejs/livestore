@@ -48,6 +48,7 @@ export {
   Channel,
   pipe,
   identity,
+  GlobalValue,
   Match,
 } from 'effect'
 

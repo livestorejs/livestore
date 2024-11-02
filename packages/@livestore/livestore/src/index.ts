@@ -1,7 +1,15 @@
 export { Store, createStorePromise, createStore } from './store.js'
-export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason } from './store.js'
+export type {
+  BaseGraphQLContext,
+  QueryDebugInfo,
+  RefreshReason,
+  CreateStoreOptions,
+  GraphQLOptions,
+  OtelOptions,
+} from './store.js'
 
-export type { LiveStoreContextRunning as LiveStoreContext } from './effect/LiveStore.js'
+export type { LiveStoreContextRunning } from './effect/LiveStore.js'
+export { StoreAbort, StoreInterrupted, type LiveStoreContext } from './store-context.js'
 
 export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 
@@ -25,6 +33,8 @@ export {
   type ReactivityGraph,
   makeReactivityGraph,
   type LiveQuery,
+  type GetResult,
+  type LiveQueryAny,
 } from './reactiveQueries/base-class.js'
 
 export { globalReactivityGraph } from './global-state.js'
@@ -48,5 +58,7 @@ export {
 export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 export { deepEqual } from '@livestore/utils'
+
+export * from './utils/stack-info.js'
 
 export type { ClientSession, Adapter, PreparedStatement } from '@livestore/common'

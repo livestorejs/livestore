@@ -15,6 +15,7 @@
     "@headlessui/react": "^2.2.0",
     "@livestore/devtools-react": "0.0.58-dev.9",
     "@livestore/livestore": "0.0.58-dev.9",
+    "@livestore/react": "0.0.58-dev.9",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
     "@livestore/web": "0.0.58-dev.9",
     "@overengineering/fps-meter": "^0.1.2",

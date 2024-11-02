@@ -1,8 +1,8 @@
 import { type QueryInfoCol, type QueryInfoRow } from '@livestore/common'
 import type { DbSchema } from '@livestore/common/schema'
+import type { LiveQuery } from '@livestore/livestore'
 import React from 'react'
 
-import type { LiveQuery } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 import type { Dispatch, SetStateAction } from './useRow.js'

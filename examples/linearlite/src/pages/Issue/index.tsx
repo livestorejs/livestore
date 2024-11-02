@@ -11,7 +11,7 @@ import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../
 import Editor from '../../components/editor/Editor'
 import DeleteModal from './DeleteModal'
 import Comments from './Comments'
-import { useRow, useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/react'
 import { mutations, tables } from '../../domain/schema'
 
 export const IssuePage = () => {

@@ -1,16 +1,18 @@
 --- package.json
 +++ package.json
-@@ -10,10 +10,10 @@
+@@ -10,11 +10,11 @@
    },
    "dependencies": {
      "@expo/vector-icons": "14.0.2",
 -    "@livestore/devtools-expo": "0.0.58-dev.9",
 -    "@livestore/expo": "0.0.58-dev.9",
 -    "@livestore/livestore": "0.0.58-dev.9",
+-    "@livestore/react": "0.0.58-dev.9",
 -    "@livestore/utils": "0.0.58-dev.9",
 +    "@livestore/devtools-expo": "workspace:*",
 +    "@livestore/expo": "workspace:*",
 +    "@livestore/livestore": "workspace:*",
++    "@livestore/react": "workspace:*",
 +    "@livestore/utils": "workspace:*",
      "babel-preset-expo": "11.0.12",
      "effect": "3.10.7",

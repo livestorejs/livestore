@@ -15,7 +15,7 @@
  
      /* Bundler mode */
      "moduleResolution": "bundler",
-@@ -22,5 +26,9 @@
+@@ -22,5 +26,10 @@
      // "noUnusedParameters": true,
      "noFallthroughCasesInSwitch": true
    },
@@ -23,6 +23,7 @@
 +  "include": ["src"],
 +  "references": [
 +    { "path": "../../packages/@livestore/livestore" },
++    { "path": "../../packages/@livestore/react" },
 +    { "path": "../../packages/@livestore/web" }
 +  ]
  }

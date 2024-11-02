@@ -16,7 +16,7 @@ import StatusMenu from './contextmenu/StatusMenu'
 
 import { PriorityOptions, StatusType, PriorityType } from '../types/issue'
 import { showInfo, showWarning } from '../utils/notification'
-import { useStore } from '@livestore/livestore/react'
+import { useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../domain/schema'
 import { Schema } from 'effect'

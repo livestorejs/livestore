@@ -1,12 +1,13 @@
-import { Effect, FiberSet, Schema as __Schema } from '@livestore/utils/effect'
+import { sql } from '@livestore/common'
+import { DbSchema, makeSchema } from '@livestore/common/schema'
+import type { LiveStoreContextRunning } from '@livestore/livestore'
+import { createStore, globalReactivityGraph, makeReactivityGraph } from '@livestore/livestore'
+import { Effect, FiberSet } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { globalReactivityGraph } from '../../global-state.js'
-import type { LiveStoreContext } from '../../index.js'
-import { createStore, DbSchema, makeReactivityGraph, makeSchema, sql } from '../../index.js'
-import * as LiveStoreReact from '../../react/index.js'
+import * as LiveStoreReact from '../mod.js'
 
 export type Todo = {
   id: string
@@ -37,7 +38,7 @@ export const app = DbSchema.table('app', {
   filter: DbSchema.text({ default: 'all', nullable: false }),
 })
 
-const userInfo = DbSchema.table(
+export const AppComponentSchema = DbSchema.table(
   'UserInfo',
   {
     username: DbSchema.text({ default: '' }),
@@ -46,7 +47,7 @@ const userInfo = DbSchema.table(
   { deriveMutations: true },
 )
 
-const AppRouterSchema = DbSchema.table(
+export const AppRouterSchema = DbSchema.table(
   'AppRouter',
   {
     currentTaskId: DbSchema.text({ default: null, nullable: true }),
@@ -54,10 +55,10 @@ const AppRouterSchema = DbSchema.table(
   { isSingleton: true, deriveMutations: true },
 )
 
-export const tables = { todos, app, userInfo, AppRouterSchema }
+export const tables = { todos, app, AppComponentSchema, AppRouterSchema }
 export const schema = makeSchema({ tables })
 
-export const makeTodoMvc = ({
+export const makeTodoMvcReact = ({
   otelTracer,
   otelContext,
   useGlobalReactivityGraph = true,
@@ -69,8 +70,6 @@ export const makeTodoMvc = ({
   strictMode?: boolean
 } = {}) =>
   Effect.gen(function* () {
-    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
-
     const makeRenderCount = () => {
       let val = 0
 
@@ -85,6 +84,8 @@ export const makeTodoMvc = ({
         inc,
       }
     }
+
+    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
 
     const fiberSet = yield* FiberSet.make()
 
@@ -102,7 +103,7 @@ export const makeTodoMvc = ({
     })
 
     // TODO improve typing of `LiveStoreContext`
-    const storeContext = { stage: 'running', store } as any as LiveStoreContext
+    const storeContext = { stage: 'running', store } as any as LiveStoreContextRunning
 
     const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
@@ -114,13 +115,5 @@ export const makeTodoMvc = ({
       </MaybeStrictMode>
     )
 
-    return {
-      wrapper,
-      AppComponentSchema: userInfo,
-      AppRouterSchema,
-      store,
-      reactivityGraph,
-      makeRenderCount,
-      strictMode,
-    }
+    return { wrapper, store, reactivityGraph, makeRenderCount, strictMode }
   })

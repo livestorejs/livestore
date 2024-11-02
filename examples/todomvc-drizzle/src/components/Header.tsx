@@ -1,4 +1,4 @@
-import { useRow, useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/react'
 import React from 'react'
 import { v4 as uuid } from 'uuid'
 

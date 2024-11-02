@@ -7,9 +7,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./react": {
-      "types": "./dist/react/index.d.ts",
-      "default": "./dist/react/index.js"
+    "./internal/testing-utils": {
+      "types": "./dist/utils/tests/mod.d.ts",
+      "default": "./dist/utils/tests/mod.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
@@ -19,8 +19,8 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "react": [
-        "./dist/react/index.d.ts"
+      "testing-utils": [
+        "./dist/utils/tests/mod.d.ts"
       ],
       "effect": [
         "./dist/effect/index.d.ts"
@@ -29,7 +29,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest && REACT_STRICT_MODE=1 vitest"
+    "test": "vitest"
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
@@ -41,21 +41,13 @@
   "devDependencies": {
     "@livestore/web": "workspace:*",
     "@opentelemetry/sdk-trace-base": "1.27.0",
-    "@tauri-apps/api": "^1.6.0",
-    "@testing-library/react": "^16.0.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
     "jsdom": "^25.0.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-window": "^1.8.10",
     "typescript": "5.6.3",
     "vite": "5.4.10",
     "vitest": "^2.1.4"
   },
   "peerDependencies": {
-    "graphql": "16.x",
-    "react": "^18"
+    "graphql": "16.x"
   },
   "peerDependenciesMeta": {
     "graphql": {

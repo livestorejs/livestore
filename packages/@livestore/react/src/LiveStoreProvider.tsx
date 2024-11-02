@@ -1,16 +1,20 @@
 import type { Adapter, BootDb, BootStatus, IntentionalShutdownCause } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import type {
+  BaseGraphQLContext,
+  CreateStoreOptions,
+  GraphQLOptions,
+  LiveStoreContext as StoreContext_,
+  OtelOptions,
+} from '@livestore/livestore'
+import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
 import { errorToString } from '@livestore/utils'
 import { Effect, FiberSet, Logger, LogLevel, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
 
-import type { BaseGraphQLContext, CreateStoreOptions, GraphQLOptions, OtelOptions } from '../store.js'
-import { createStore } from '../store.js'
-import type { LiveStoreContext as StoreContext_ } from '../store-context.js'
-import { StoreAbort, StoreInterrupted } from '../store-context.js'
 import { LiveStoreContext } from './LiveStoreContext.js'
 
 interface LiveStoreProviderProps<GraphQLContext> {

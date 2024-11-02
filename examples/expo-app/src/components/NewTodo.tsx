@@ -1,4 +1,4 @@
-import { useRow, useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/react'
 import { cuid } from '@livestore/utils/cuid'
 import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'

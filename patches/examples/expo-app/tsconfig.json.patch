@@ -6,7 +6,7 @@
    "$schema": "https://json.schemastore.org/tsconfig",
    "display": "Expo",
  
-@@ -20,5 +21,11 @@
+@@ -20,5 +21,12 @@
      "strict": true
    },
  
@@ -16,6 +16,7 @@
 +    { "path": "../../packages/@livestore/expo" },
 +    { "path": "../../packages/@livestore/devtools-expo" },
 +    { "path": "../../packages/@livestore/livestore" },
++    { "path": "../../packages/@livestore/react" },
 +    { "path": "../../packages/@livestore/utils" },
 +  ]
  }

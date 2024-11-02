@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../../utils/date'
 import { Issue } from '../../types'
 import { PriorityType, StatusType } from '../../types/issue'
-import { useStore } from '@livestore/livestore/react'
+import { useStore } from '@livestore/react'
 import { mutations } from '../../domain/schema'
 
 interface Props {

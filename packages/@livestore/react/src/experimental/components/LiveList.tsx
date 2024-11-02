@@ -1,9 +1,9 @@
+import type { LiveQuery } from '@livestore/livestore'
+import { computed } from '@livestore/livestore'
 import React from 'react'
 
-import type { LiveQuery } from '../../reactiveQueries/base-class.js'
-import { computed } from '../../reactiveQueries/js.js'
-import { useQuery } from '../useQuery.js'
-import { useTemporaryQuery } from '../useTemporaryQuery.js'
+import { useQuery } from '../../useQuery.js'
+import { useTemporaryQuery } from '../../useTemporaryQuery.js'
 
 /*
 TODO:

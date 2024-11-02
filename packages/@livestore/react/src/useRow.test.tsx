@@ -1,3 +1,5 @@
+import * as LiveStore from '@livestore/livestore'
+import { getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
@@ -5,17 +7,14 @@ import { render, renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
-import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
-import * as LiveStore from '../index.js'
-import * as LiveStoreReact from './index.js'
-import type { StackInfo } from './utils/stack-info.js'
+import { AppComponentSchema, AppRouterSchema, makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
+import * as LiveStoreReact from './mod.js'
 
 // NOTE running tests concurrently doesn't work with the default global db graph
 describe('useRow', () => {
   it('should update the data based on component key', () =>
     Effect.gen(function* () {
-      const { wrapper, AppComponentSchema, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvc({
+      const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
         useGlobalReactivityGraph: false,
       })
 
@@ -54,7 +53,7 @@ describe('useRow', () => {
 
   it('should update the data reactively - via setState', () =>
     Effect.gen(function* () {
-      const { wrapper, AppComponentSchema, reactivityGraph, makeRenderCount } = yield* makeTodoMvc({
+      const { wrapper, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
         useGlobalReactivityGraph: false,
       })
 
@@ -83,7 +82,7 @@ describe('useRow', () => {
 
   it('should update the data reactively - via raw store mutation', () =>
     Effect.gen(function* () {
-      const { wrapper, AppComponentSchema, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvc({
+      const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
         useGlobalReactivityGraph: false,
       })
 
@@ -118,7 +117,7 @@ describe('useRow', () => {
 
   it('should work for a larger app', () =>
     Effect.gen(function* () {
-      const { wrapper, store, reactivityGraph, makeRenderCount, AppRouterSchema } = yield* makeTodoMvc({
+      const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
         useGlobalReactivityGraph: false,
       })
 
@@ -207,7 +206,7 @@ describe('useRow', () => {
 
   it('should work for a useRow query chained with a useTemporary query', () =>
     Effect.gen(function* () {
-      const { store, wrapper, AppComponentSchema, reactivityGraph, makeRenderCount } = yield* makeTodoMvc({
+      const { store, wrapper, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
         useGlobalReactivityGraph: false,
       })
       const renderCount = makeRenderCount()
@@ -277,9 +276,11 @@ describe('useRow', () => {
 
     it('should update the data based on component key', async () => {
       const { strictMode } = await Effect.gen(function* () {
-        const { wrapper, AppComponentSchema, store, reactivityGraph, makeRenderCount, strictMode } = yield* makeTodoMvc(
-          { useGlobalReactivityGraph: false, otelContext, otelTracer },
-        )
+        const { wrapper, store, reactivityGraph, makeRenderCount, strictMode } = yield* makeTodoMvcReact({
+          useGlobalReactivityGraph: false,
+          otelContext,
+          otelTracer,
+        })
 
         const renderCount = makeRenderCount()
 
@@ -320,7 +321,7 @@ describe('useRow', () => {
       const mapAttributes = (attributes: otel.Attributes) => {
         return ReadonlyRecord.map(attributes, (val, key) => {
           if (key === 'stackInfo') {
-            const stackInfo = JSON.parse(val as string) as StackInfo
+            const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
             stackInfo.frames.forEach((_) => {
               if (_.name.includes('renderHook.wrapper')) {

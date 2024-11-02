@@ -8,7 +8,7 @@ import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import { Issue } from '../../types'
 import { PriorityType } from '../../types/issue'
-import { useStore } from '@livestore/livestore/react'
+import { useStore } from '@livestore/react'
 import { mutations } from '../../domain/schema'
 
 interface IssueProps {

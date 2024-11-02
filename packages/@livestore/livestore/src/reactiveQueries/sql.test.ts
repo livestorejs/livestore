@@ -3,9 +3,9 @@ import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, tables } from '../__tests__/react/fixture.js'
-import { getSimplifiedRootSpan } from '../__tests__/react/utils/otel.js'
 import { computed, querySQL, rawSqlMutation, sql } from '../index.js'
+import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
+import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
 
 /*
 TODO write tests for:

@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { StatusOptions, StatusType } from '../../types/issue'
 import IssueCol from './IssueCol'
 import { Issue } from '../../types'
-import { useStore } from '@livestore/livestore/react'
+import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import { mutations } from '../../domain/schema'
 

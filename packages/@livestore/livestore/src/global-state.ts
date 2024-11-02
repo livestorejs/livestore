@@ -11,6 +11,10 @@
  *
  */
 
+import { GlobalValue } from '@livestore/utils/effect'
+
 import { makeReactivityGraph } from './reactiveQueries/base-class.js'
 
-export const globalReactivityGraph = makeReactivityGraph()
+export const globalReactivityGraph = GlobalValue.globalValue('livestore-global-reactivityGraph', () =>
+  makeReactivityGraph(),
+)

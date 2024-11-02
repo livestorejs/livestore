@@ -3,7 +3,7 @@ import TopFilter from '../../components/TopFilter'
 import IssueBoard from './IssueBoard'
 import { querySQL, rowQuery, sql, SessionIdSymbol } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
-import { useQuery } from '@livestore/livestore/react'
+import { useQuery } from '@livestore/react'
 import { tables } from '../../domain/schema'
 import { Schema } from 'effect'
 

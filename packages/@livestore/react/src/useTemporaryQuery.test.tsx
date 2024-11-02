@@ -1,3 +1,5 @@
+import * as LiveStore from '@livestore/livestore'
+import { querySQL } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { render, renderHook } from '@testing-library/react'
 import React from 'react'
@@ -5,15 +7,13 @@ import React from 'react'
 import * as ReactWindow from 'react-window'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
-import * as LiveStore from '../index.js'
-import { querySQL } from '../reactiveQueries/sql.js'
-import * as LiveStoreReact from './index.js'
+import { makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
+import * as LiveStoreReact from './mod.js'
 
 describe('useTemporaryQuery', () => {
   it('simple', () =>
     Effect.gen(function* () {
-      const { wrapper, store, makeRenderCount } = yield* makeTodoMvc()
+      const { wrapper, store, makeRenderCount } = yield* makeTodoMvcReact()
 
       const renderCount = makeRenderCount()
 
@@ -62,7 +62,7 @@ describe('useTemporaryQuery', () => {
   // To handle this properly we introduced the `_tag: 'destroyed'` state in the `spanAlreadyStartedCache`.
   it('should work for a list with react-window', () =>
     Effect.gen(function* () {
-      const { wrapper } = yield* makeTodoMvc()
+      const { wrapper } = yield* makeTodoMvcReact()
 
       const ListWrapper: React.FC<{ numItems: number }> = ({ numItems }) => {
         return (

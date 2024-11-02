@@ -1,4 +1,4 @@
-import { useQuery, useRow, useStore } from '@livestore/livestore/react'
+import { useQuery, useRow, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import React from 'react'
 

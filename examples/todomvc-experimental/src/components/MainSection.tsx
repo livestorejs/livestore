@@ -1,6 +1,7 @@
 import type { Store } from '@livestore/livestore'
 import { querySQL, rowQuery, SessionIdSymbol, sql } from '@livestore/livestore'
-import { LiveList, useStore } from '@livestore/livestore/react'
+import { useStore } from '@livestore/react'
+import { LiveList } from '@livestore/react/experimental'
 import { Schema } from 'effect'
 import React from 'react'
 

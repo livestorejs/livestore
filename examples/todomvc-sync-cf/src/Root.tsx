@@ -1,4 +1,4 @@
-import { LiveStoreProvider } from '@livestore/livestore/react'
+import { LiveStoreProvider } from '@livestore/react'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { FPSMeter } from '@overengineering/fps-meter'

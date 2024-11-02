@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { querySQL, sql } from '@livestore/livestore'
 import { filterStateTable } from './schema'
-import { useRow, useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/react'
 
 export const useFilterState = () => {
   const { store } = useStore()

@@ -1,7 +1,3 @@
-import React from 'react'
-
-export const originalStackLimit = Error.stackTraceLimit
-
 export type StackInfo = {
   frames: StackFrame[]
 }
@@ -53,15 +49,6 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo =>
 
   return { frames }
 }
-
-export const useStackInfo = (): StackInfo =>
-  React.useMemo(() => {
-    Error.stackTraceLimit = 10
-    // eslint-disable-next-line unicorn/error-message
-    const stack = new Error().stack!
-    Error.stackTraceLimit = originalStackLimit
-    return extractStackInfoFromStackTrace(stack)
-  }, [])
 
 export const stackInfoToString = (stackInfo: StackInfo): string =>
   stackInfo.frames.map((f) => `${f.name} (${f.filePath})`).join('\n')

@@ -1,4 +1,4 @@
-import { useRow, useStore } from '@livestore/livestore/react'
+import { useRow, useStore } from '@livestore/react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { mutations, tables } from '../schema/index.ts'

@@ -1,16 +1,16 @@
+import { querySQL } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { renderHook } from '@testing-library/react'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 
-import { makeTodoMvc, tables, todos } from '../__tests__/react/fixture.js'
-import { querySQL } from '../reactiveQueries/sql.js'
-import * as LiveStoreReact from './index.js'
+import { makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
+import * as LiveStoreReact from './mod.js'
 
 describe('useQuery', () => {
   it('simple', () =>
     Effect.gen(function* () {
-      const { wrapper, store, makeRenderCount } = yield* makeTodoMvc()
+      const { wrapper, store, makeRenderCount } = yield* makeTodoMvcReact()
 
       const renderCount = makeRenderCount()
 
@@ -37,7 +37,7 @@ describe('useQuery', () => {
 
   it('same `useQuery` hook invoked with different queries', () =>
     Effect.gen(function* () {
-      const { wrapper, store, makeRenderCount } = yield* makeTodoMvc()
+      const { wrapper, store, makeRenderCount } = yield* makeTodoMvcReact()
 
       const renderCount = makeRenderCount()
 

@@ -1,6 +1,6 @@
 --- tsconfig.json
 +++ tsconfig.json
-@@ -1,27 +1,17 @@
+@@ -1,27 +1,18 @@
  {
 +  "extends": "../../tsconfig.base.json",
    "compilerOptions": {
@@ -37,6 +37,7 @@
 +  "include": ["src"],
 +  "references": [
 +    { "path": "../../packages/@livestore/livestore" },
++    { "path": "../../packages/@livestore/react" },
 +    { "path": "../../packages/@livestore/web" }
 +  ]
  }

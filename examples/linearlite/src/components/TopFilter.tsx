@@ -5,7 +5,7 @@ import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
 import { ViewOptionMenu } from './ViewOptionMenu'
 import { FilterMenu } from './contextmenu/FilterMenu'
 import { PriorityOptions, StatusOptions } from '../types/issue'
-import { useQuery } from '@livestore/livestore/react'
+import { useQuery } from '@livestore/react'
 import { issueCount$, useFilterState } from '../domain/queries'
 import { MenuContext } from '../context/MenuContext'
 

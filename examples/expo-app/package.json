@@ -13,6 +13,7 @@
     "@livestore/devtools-expo": "0.0.58-dev.9",
     "@livestore/expo": "0.0.58-dev.9",
     "@livestore/livestore": "0.0.58-dev.9",
+    "@livestore/react": "0.0.58-dev.9",
     "@livestore/utils": "0.0.58-dev.9",
     "babel-preset-expo": "11.0.12",
     "effect": "3.10.7",

@@ -11,6 +11,7 @@
   "dependencies": {
     "@livestore/devtools-react": "0.0.58-dev.9",
     "@livestore/livestore": "0.0.58-dev.9",
+    "@livestore/react": "0.0.58-dev.9",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
     "@livestore/web": "0.0.58-dev.9",

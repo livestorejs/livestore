@@ -43,7 +43,6 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import { globalReactivityGraph } from './global-state.js'
-import type { StackInfo } from './react/utils/stack-info.js'
 import type { DebugRefreshReasonBase, Ref } from './reactive.js'
 import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
 import { connectDevtoolsToStore } from './store-devtools.js'
@@ -51,6 +50,7 @@ import { SynchronousDatabaseWrapper } from './SynchronousDatabaseWrapper.js'
 import { ReferenceCountedSet } from './utils/data-structures.js'
 import { downloadBlob } from './utils/dev.js'
 import { getDurationMsFromSpan } from './utils/otel.js'
+import type { StackInfo } from './utils/stack-info.js'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
@@ -98,6 +98,7 @@ export type RefreshReason =
       writeTables: ReadonlyArray<string>
     }
   | {
+      // TODO rename to a more appropriate name which is framework-agnostic
       _tag: 'react'
       api: string
       label?: string

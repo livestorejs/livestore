@@ -1,10 +1,11 @@
+import type { GetResult, LiveQueryAny } from '@livestore/livestore'
+import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import { deepEqual, indent } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import type { GetResult, LiveQueryAny } from '../reactiveQueries/base-class.js'
 import { useStore } from './LiveStoreContext.js'
-import { extractStackInfoFromStackTrace, originalStackLimit, stackInfoToString } from './utils/stack-info.js'
+import { originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 /**

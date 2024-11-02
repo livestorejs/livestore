@@ -1,6 +1,6 @@
 import { makeAdapter } from '@livestore/expo'
 import { sql } from '@livestore/livestore'
-import { LiveStoreProvider } from '@livestore/livestore/react'
+import { LiveStoreProvider } from '@livestore/react'
 import { cuid } from '@livestore/utils/cuid'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
