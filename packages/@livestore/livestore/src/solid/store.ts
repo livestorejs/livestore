@@ -1,12 +1,5 @@
 import type { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
-import type {
-  BaseGraphQLContext,
-  BootStatus,
-  DbSchema,
-  LiveQuery,
-  LiveStoreSchema,
-  RowResult,
-} from '@livestore/livestore'
+import type { BaseGraphQLContext, BootStatus, DbSchema, LiveStoreSchema, RowResult } from '@livestore/livestore'
 import { createStore, rowQuery } from '@livestore/livestore'
 import { Effect, FiberSet, Logger, LogLevel } from '@livestore/utils/effect'
 import type { Accessor } from 'solid-js'
@@ -47,7 +40,7 @@ const storeValue: {
   counter: 0,
 }
 
-const [internalStore, setInternalStore] = createSignal<{
+const [, setInternalStore] = createSignal<{
   value: StoreContext_ | BootStatus
   fiberSet: FiberSet.FiberSet | undefined
   counter: number
