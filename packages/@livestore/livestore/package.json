@@ -11,6 +11,10 @@
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
     },
+    "./solid": {
+      "types": "./dist/solid/index.d.ts",
+      "default": "./dist/solid/index.js"
+    },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
       "default": "./dist/effect/index.js"
@@ -21,6 +25,9 @@
     "*": {
       "react": [
         "./dist/react/index.d.ts"
+      ],
+      "solid": [
+        "./dist/solid/index.d.ts"
       ],
       "effect": [
         "./dist/effect/index.d.ts"
@@ -55,7 +62,8 @@
   },
   "peerDependencies": {
     "graphql": "16.x",
-    "react": "^18"
+    "react": "^18",
+    "solid-js": "^1.8.11"
   },
   "peerDependenciesMeta": {
     "graphql": {

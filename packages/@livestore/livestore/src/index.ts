@@ -49,3 +49,5 @@ export { SqliteAst, SqliteDsl } from 'effect-db-schema'
 export { deepEqual } from '@livestore/utils'
 
 export type { StoreAdapter, StoreAdapterFactory, PreparedStatement } from '@livestore/common'
+
+export { connectDevtoolsToStore } from './store-devtools.js'
