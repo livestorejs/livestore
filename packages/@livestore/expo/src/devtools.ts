@@ -222,15 +222,20 @@ export const bootDevtools = ({
             }
             case 'LSD.RunMutationReq': {
               const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
+              const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
+              const nextMutationEventIdPair = yield* coordinator.nextMutationEventIdPair({
+                localOnly: mutationDef.options.localOnly,
+              })
 
-              const mutationEventEncoded = {
-                ...mutationEventEncoded_,
-                // TODO
-                id: { global: 0, local: 0 },
-                parentId: { global: 0, local: 0 },
-              }
+              const mutationEventEncoded = { ...mutationEventEncoded_, ...nextMutationEventIdPair }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
+              console.log(
+                'nextMutationEventIdPair',
+                mutationEventEncoded_.mutation,
+                nextMutationEventIdPair,
+                mutationEventDecoded,
+              )
               yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
 
               // const mutationDef =
