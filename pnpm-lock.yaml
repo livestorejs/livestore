@@ -9,6 +9,7 @@ overrides:
   '@livestore/livestore': workspace:*
   '@livestore/utils': workspace:*
   '@livestore/web': workspace:*
+  '@livestore/react': workspace:*
   '@livestore/sync-cf': workspace:*
   '@livestore/devtools-react': 0.0.58-dev.9
 
@@ -93,6 +94,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
@@ -121,11 +125,11 @@ importers:
         specifier: ^1.0.6
         version: 1.0.6
       react:
-        specifier: 18.2.0
-        version: 18.2.0
+        specifier: 18.3.1
+        version: 18.3.1
       react-native:
         specifier: 0.74.3
-        version: 0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.2.0)
+        version: 0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.3.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.26.0
@@ -163,13 +167,16 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       '@tailwindcss/forms':
@@ -344,13 +351,16 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
@@ -475,6 +485,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
@@ -487,7 +500,7 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
@@ -548,13 +561,16 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
         specifier: 1.0.1-dev.29
         version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
@@ -609,6 +625,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../packages/@livestore/sync-cf
@@ -618,7 +637,7 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
@@ -676,6 +695,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/sync-electric':
         specifier: workspace:*
         version: link:../../packages/@livestore/sync-electric
@@ -685,15 +707,15 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
+      '@overengineering/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
       '@remix-run/node':
         specifier: ^2.11.2
         version: 2.13.1(typescript@5.6.3)
       '@remix-run/react':
         specifier: ^2.11.2
         version: 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
-      '@schickling/fps-meter':
-        specifier: ^0.1.2
-        version: 0.1.2(react@18.3.1)
       effect:
         specifier: 3.10.7
         version: 3.10.7
@@ -760,13 +782,16 @@ importers:
         version: 14.0.2
       '@livestore/devtools-expo':
         specifier: 0.0.58-dev.9
-        version: 0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(effect@3.10.7)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.2.0)(terser@5.36.0)
+        version: 0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(effect@3.10.7)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)
       '@livestore/expo':
         specifier: 0.0.58-dev.9
         version: 0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
@@ -795,11 +820,11 @@ importers:
         specifier: ^1.0.6
         version: 1.0.6
       react:
-        specifier: 18.2.0
-        version: 18.2.0
+        specifier: 18.3.1
+        version: 18.3.1
       react-native:
         specifier: 0.74.3
-        version: 0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.2.0)
+        version: 0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.3.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.26.0
@@ -837,13 +862,16 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       '@tailwindcss/forms':
@@ -1018,13 +1046,16 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
@@ -1149,6 +1180,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
@@ -1161,7 +1195,7 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       drizzle-orm:
@@ -1222,13 +1256,16 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
@@ -1283,6 +1320,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../packages/@livestore/sync-cf
@@ -1292,7 +1332,7 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
-      '@schickling/fps-meter':
+      '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
@@ -1350,6 +1390,9 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
       '@livestore/sync-electric':
         specifier: 0.0.58-dev.9
         version: 0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(@opentelemetry/api@1.9.0)(effect@3.10.7)
@@ -1359,15 +1402,15 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../packages/@livestore/web
+      '@overengineering/fps-meter':
+        specifier: ^0.1.2
+        version: 0.1.2(react@18.3.1)
       '@remix-run/node':
         specifier: ^2.11.2
         version: 2.13.1(typescript@5.6.3)
       '@remix-run/react':
         specifier: ^2.11.2
         version: 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
-      '@schickling/fps-meter':
-        specifier: ^0.1.2
-        version: 0.1.2(react@18.3.1)
       effect:
         specifier: 3.10.7
         version: 3.10.7
@@ -1586,9 +1629,43 @@ importers:
       '@opentelemetry/sdk-trace-base':
         specifier: 1.27.0
         version: 1.27.0(@opentelemetry/api@1.9.0)
-      '@tauri-apps/api':
-        specifier: ^1.6.0
-        version: 1.6.0
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
+      typescript:
+        specifier: 5.6.3
+        version: 5.6.3
+      vite:
+        specifier: 5.4.10
+        version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.4(@types/node@22.8.5)(jsdom@25.0.1)(terser@5.36.0)
+
+  packages/@livestore/react:
+    dependencies:
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../livestore
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+      effect-db-schema:
+        specifier: workspace:*
+        version: link:../../effect-db-schema
+    devDependencies:
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../web
+      '@opentelemetry/sdk-trace-base':
+        specifier: 1.27.0
+        version: 1.27.0(@opentelemetry/api@1.9.0)
       '@testing-library/react':
         specifier: ^16.0.1
         version: 16.0.1(@testing-library/dom@10.4.0)(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1644,22 +1721,6 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-
-  packages/@livestore/tauri:
-    dependencies:
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../common
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.0
-    devDependencies:
-      '@tauri-apps/api':
-        specifier: ^1.6.0
-        version: 1.6.0
 
   packages/@livestore/utils:
     dependencies:
@@ -4290,6 +4351,11 @@ packages:
   '@oslojs/encoding@1.1.0':
     resolution: {integrity: sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ==}
 
+  '@overengineering/fps-meter@0.1.2':
+    resolution: {integrity: sha512-5CGNkn91qNbr7ZE++7iILDauQJAhxDxybePuiojTsg6nGLwReupIkeX5Q+06exl9IpZr97DaBH241vHdxzaK/A==}
+    peerDependencies:
+      react: '*'
+
   '@pagefind/darwin-arm64@1.1.1':
     resolution: {integrity: sha512-tZ9tysUmQpFs2EqWG2+E1gc+opDAhSyZSsgKmFzhnWfkK02YHZhvL5XJXEZDqYy3s1FAKhwjTg8XDxneuBlDZQ==}
     cpu: [arm64]
@@ -4813,11 +4879,6 @@ packages:
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
 
-  '@schickling/fps-meter@0.1.2':
-    resolution: {integrity: sha512-aNZbZTBj7EuHYrSg8Yainb0wlF35Oi53pacj/UIY5IV9TBp/KA0Od7uYtqwWYVifSQ6BMBhck8LI3xIsAkR53Q==}
-    peerDependencies:
-      react: '*'
-
   '@segment/ajv-human-errors@2.14.0':
     resolution: {integrity: sha512-vaURfRwGRWXz4wimWHX2Gy7Qs5toJzICQ3ecphlQJK1UDVe11zWOz+0UyJ3fmYLV8+z4Skwcu1vZPXoMBFXWhQ==}
     peerDependencies:
@@ -4973,10 +5034,6 @@ packages:
 
   '@tanstack/virtual-core@3.10.8':
     resolution: {integrity: sha512-PBu00mtt95jbKFi6Llk9aik8bnR3tR/oQP1o3TSi+iG//+Q2RTIzCEgKkHG8BB86kxMNW6O8wku+Lmi+QFR6jA==}
-
-  '@tauri-apps/api@1.6.0':
-    resolution: {integrity: sha512-rqI++FWClU5I2UBp4HXFvl+sBWkdigBkxnpJDQUWttNyG7IZP4FwQGhTNL5EOw0vI8i6eSAJ5frLqO7n7jbJdg==}
-    engines: {node: '>= 14.6.0', npm: '>= 6.6.0', yarn: '>= 1.19.1'}
 
   '@testing-library/dom@10.4.0':
     resolution: {integrity: sha512-pemlzrSESWbdAloYml3bAJMEfNh1Z7EduzqPKprCH5S341frlpYnUEW0H72dLxa6IsYr+mPno20GiSm+h9dEdQ==}
@@ -11603,10 +11660,6 @@ packages:
       react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
       react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
 
-  react@18.2.0:
-    resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}
-    engines: {node: '>=0.10.0'}
-
   react@18.3.1:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
     engines: {node: '>=0.10.0'}
@@ -14118,7 +14171,7 @@ snapshots:
   '@astrojs/telemetry@3.1.0':
     dependencies:
       ci-info: 4.0.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       dlv: 1.1.3
       dset: 3.1.4
       is-docker: 3.0.0
@@ -14161,7 +14214,7 @@ snapshots:
       '@babel/traverse': 7.25.9
       '@babel/types': 7.26.0
       convert-source-map: 2.0.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -14228,7 +14281,7 @@ snapshots:
       '@babel/core': 7.26.0
       '@babel/helper-compilation-targets': 7.25.9
       '@babel/helper-plugin-utils': 7.25.9
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -15052,7 +15105,7 @@ snapshots:
       '@babel/parser': 7.26.2
       '@babel/template': 7.25.9
       '@babel/types': 7.26.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -15575,7 +15628,7 @@ snapshots:
   '@eslint/eslintrc@2.1.4':
     dependencies:
       ajv: 6.12.6
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       espree: 9.6.1
       globals: 13.24.0
       ignore: 5.3.2
@@ -15624,7 +15677,7 @@ snapshots:
       chalk: 4.1.2
       ci-info: 3.9.0
       connect: 3.7.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       env-editor: 0.4.2
       fast-glob: 3.3.2
       find-yarn-workspace-root: 2.0.0
@@ -15635,7 +15688,7 @@ snapshots:
       glob: 7.2.3
       graphql: 15.8.0
       graphql-tag: 2.12.6(graphql@15.8.0)
-      https-proxy-agent: 5.0.1
+      https-proxy-agent: 5.0.1(supports-color@9.4.0)
       internal-ip: 4.3.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
@@ -15694,7 +15747,7 @@ snapshots:
       '@expo/sdk-runtime-versions': 1.0.0
       '@react-native/normalize-color': 2.1.0
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       find-up: 5.0.0
       getenv: 1.0.0
       glob: 7.1.6
@@ -15714,7 +15767,7 @@ snapshots:
       '@expo/plist': 0.1.3
       '@expo/sdk-runtime-versions': 1.0.0
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       find-up: 5.0.0
       getenv: 1.0.0
       glob: 7.1.6
@@ -15734,7 +15787,7 @@ snapshots:
       '@expo/plist': 0.1.3
       '@expo/sdk-runtime-versions': 1.0.0
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       find-up: 5.0.0
       getenv: 1.0.0
       glob: 7.1.6
@@ -15840,7 +15893,7 @@ snapshots:
   '@expo/env@0.3.0':
     dependencies:
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       dotenv: 16.4.5
       dotenv-expand: 11.0.6
       getenv: 1.0.0
@@ -15851,7 +15904,7 @@ snapshots:
     dependencies:
       '@expo/spawn-async': 1.7.0
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       find-up: 5.0.0
       minimatch: 3.1.2
       p-limit: 3.1.0
@@ -15917,7 +15970,7 @@ snapshots:
       '@expo/json-file': 8.3.3
       '@expo/spawn-async': 1.7.2
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       find-yarn-workspace-root: 2.0.0
       fs-extra: 9.1.0
       getenv: 1.0.0
@@ -16003,7 +16056,7 @@ snapshots:
     dependencies:
       '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.6.3)
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       ejs: 3.1.10
       fs-extra: 10.1.0
       http-call: 5.3.0
@@ -16023,7 +16076,7 @@ snapshots:
       '@expo/config-types': 50.0.0
       '@expo/image-utils': 0.4.2
       '@expo/json-file': 8.2.37
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       expo-modules-autolinking: 1.11.2
       fs-extra: 9.1.0
       resolve-from: 5.0.0
@@ -16041,7 +16094,7 @@ snapshots:
       '@expo/image-utils': 0.5.1
       '@expo/json-file': 8.3.3
       '@react-native/normalize-colors': 0.74.85
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       expo-modules-autolinking: 1.11.2
       fs-extra: 9.1.0
       resolve-from: 5.0.0
@@ -16236,7 +16289,7 @@ snapshots:
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -16449,9 +16502,9 @@ snapshots:
       - '@opentelemetry/api'
       - effect
 
-  '@livestore/devtools-expo@0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(effect@3.10.7)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.2.0)(terser@5.36.0)':
+  '@livestore/devtools-expo@0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(effect@3.10.7)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)':
     dependencies:
-      '@livestore/devtools-react': 0.0.58-dev.9(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)
+      '@livestore/devtools-react': 0.0.58-dev.9(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/wa-sqlite': 1.0.3-dev.2
       '@livestore/web': 0.0.58-dev.9(@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0))(@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7))(@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7))(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)
       expo: 51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -16475,11 +16528,6 @@ snapshots:
       - sugarss
       - terser
       - utf-8-validate
-
-  '@livestore/devtools-react@0.0.58-dev.9(@livestore/livestore@packages+@livestore+livestore)(react@18.2.0)':
-    dependencies:
-      '@livestore/livestore': link:packages/@livestore/livestore
-      react: 18.2.0
 
   '@livestore/devtools-react@0.0.58-dev.9(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
@@ -16545,21 +16593,6 @@ snapshots:
       - effect
 
   '@lukeed/ms@2.0.2': {}
-
-  '@mapbox/node-pre-gyp@1.0.11':
-    dependencies:
-      detect-libc: 2.0.3
-      https-proxy-agent: 5.0.1
-      make-dir: 3.1.0
-      node-fetch: 2.7.0
-      nopt: 5.0.0
-      npmlog: 5.0.1
-      rimraf: 3.0.2
-      semver: 7.6.3
-      tar: 6.2.1
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
 
   '@mapbox/node-pre-gyp@1.0.11(supports-color@9.4.0)':
     dependencies:
@@ -16770,35 +16803,6 @@ snapshots:
       validate-npm-package-name: 4.0.0
       yargs: 17.7.2
 
-  '@netlify/edge-bundler@12.2.3':
-    dependencies:
-      '@import-maps/resolve': 1.0.1
-      '@vercel/nft': 0.27.5
-      ajv: 8.17.1
-      ajv-errors: 3.0.0(ajv@8.17.1)
-      better-ajv-errors: 1.2.0(ajv@8.17.1)
-      common-path-prefix: 3.0.0
-      env-paths: 3.0.0
-      esbuild: 0.21.2
-      execa: 6.1.0
-      find-up: 6.3.0
-      get-package-name: 2.2.0
-      get-port: 6.1.2
-      is-path-inside: 4.0.0
-      jsonc-parser: 3.3.1
-      node-fetch: 3.3.2
-      node-stream-zip: 1.15.0
-      p-retry: 5.1.2
-      p-wait-for: 4.1.0
-      path-key: 4.0.0
-      semver: 7.6.3
-      tmp-promise: 3.0.3
-      urlpattern-polyfill: 8.0.2
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-
   '@netlify/edge-bundler@12.2.3(supports-color@9.4.0)':
     dependencies:
       '@import-maps/resolve': 1.0.1
@@ -16929,46 +16933,6 @@ snapshots:
     dependencies:
       '@netlify/node-cookies': 0.1.0
       urlpattern-polyfill: 8.0.2
-
-  '@netlify/zip-it-and-ship-it@9.41.1':
-    dependencies:
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.25.6
-      '@netlify/binary-info': 1.0.0
-      '@netlify/serverless-functions-api': 1.31.0
-      '@vercel/nft': 0.27.5
-      archiver: 7.0.1
-      common-path-prefix: 3.0.0
-      cp-file: 10.0.0
-      es-module-lexer: 1.5.4
-      esbuild: 0.19.11
-      execa: 6.1.0
-      fast-glob: 3.3.2
-      filter-obj: 5.1.0
-      find-up: 6.3.0
-      glob: 8.1.0
-      is-builtin-module: 3.2.1
-      is-path-inside: 4.0.0
-      junk: 4.0.1
-      locate-path: 7.2.0
-      merge-options: 3.0.4
-      minimatch: 9.0.5
-      normalize-path: 3.0.0
-      p-map: 5.5.0
-      path-exists: 5.0.0
-      precinct: 11.0.5
-      require-package-name: 2.0.1
-      resolve: 2.0.0-next.5
-      semver: 7.6.3
-      tmp-promise: 3.0.3
-      toml: 3.0.0
-      unixify: 1.0.0
-      urlpattern-polyfill: 8.0.2
-      yargs: 17.7.2
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
 
   '@netlify/zip-it-and-ship-it@9.41.1(supports-color@9.4.0)':
     dependencies:
@@ -17128,7 +17092,7 @@ snapshots:
     dependencies:
       '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.6.3)
       chalk: 4.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -17226,6 +17190,10 @@ snapshots:
   '@opentelemetry/semantic-conventions@1.27.0': {}
 
   '@oslojs/encoding@1.1.0': {}
+
+  '@overengineering/fps-meter@0.1.2(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
 
   '@pagefind/darwin-arm64@1.1.1':
     optional: true
@@ -17709,12 +17677,12 @@ snapshots:
 
   '@react-native/normalize-colors@0.74.85': {}
 
-  '@react-native/virtualized-lists@0.74.85(@types/react@18.3.12)(react-native@0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.2.0))(react@18.2.0)':
+  '@react-native/virtualized-lists@0.74.85(@types/react@18.3.12)(react-native@0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)':
     dependencies:
       invariant: 2.2.4
       nullthrows: 1.1.1
-      react: 18.2.0
-      react-native: 0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.2.0)
+      react: 18.3.1
+      react-native: 0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.12
 
@@ -18023,10 +17991,6 @@ snapshots:
 
   '@rtsao/scc@1.1.0': {}
 
-  '@schickling/fps-meter@0.1.2(react@18.3.1)':
-    dependencies:
-      react: 18.3.1
-
   '@segment/ajv-human-errors@2.14.0(ajv@8.11.0)':
     dependencies:
       ajv: 8.11.0
@@ -18206,8 +18170,6 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@tanstack/virtual-core@3.10.8': {}
-
-  '@tauri-apps/api@1.6.0': {}
 
   '@testing-library/dom@10.4.0':
     dependencies:
@@ -18677,7 +18639,7 @@ snapshots:
       '@typescript-eslint/types': 8.12.2
       '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
       '@typescript-eslint/visitor-keys': 8.12.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       eslint: 8.57.0
     optionalDependencies:
       typescript: 5.6.3
@@ -18693,7 +18655,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
       '@typescript-eslint/utils': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       ts-api-utils: 1.4.0(typescript@5.6.3)
     optionalDependencies:
       typescript: 5.6.3
@@ -18711,7 +18673,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 4.33.0
       '@typescript-eslint/visitor-keys': 4.33.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.3
@@ -18739,7 +18701,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 5.62.0
       '@typescript-eslint/visitor-keys': 5.62.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.3
@@ -18749,25 +18711,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@5.62.0(typescript@5.6.3)':
-    dependencies:
-      '@typescript-eslint/types': 5.62.0
-      '@typescript-eslint/visitor-keys': 5.62.0
-      debug: 4.3.7
-      globby: 11.1.0
-      is-glob: 4.0.3
-      semver: 7.6.3
-      tsutils: 3.21.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/typescript-estree@8.12.2(typescript@5.6.3)':
     dependencies:
       '@typescript-eslint/types': 8.12.2
       '@typescript-eslint/visitor-keys': 8.12.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       fast-glob: 3.3.2
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -18883,24 +18831,6 @@ snapshots:
       - terser
 
   '@vanilla-extract/private@1.0.6': {}
-
-  '@vercel/nft@0.27.5':
-    dependencies:
-      '@mapbox/node-pre-gyp': 1.0.11
-      '@rollup/pluginutils': 4.2.1
-      acorn: 8.14.0
-      acorn-import-attributes: 1.9.5(acorn@8.14.0)
-      async-sema: 3.1.1
-      bindings: 1.5.0
-      estree-walker: 2.0.2
-      glob: 7.2.3
-      graceful-fs: 4.2.11
-      micromatch: 4.0.8
-      node-gyp-build: 4.8.2
-      resolve-from: 5.0.0
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
 
   '@vercel/nft@0.27.5(supports-color@9.4.0)':
     dependencies:
@@ -19116,12 +19046,6 @@ snapshots:
 
   acorn@8.14.0: {}
 
-  agent-base@6.0.2:
-    dependencies:
-      debug: 4.3.7
-    transitivePeerDependencies:
-      - supports-color
-
   agent-base@6.0.2(supports-color@9.4.0):
     dependencies:
       debug: 4.3.7(supports-color@9.4.0)
@@ -19130,7 +19054,7 @@ snapshots:
 
   agent-base@7.1.1:
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -19440,7 +19364,7 @@ snapshots:
       common-ancestor-path: 1.0.1
       cookie: 0.7.2
       cssesc: 3.0.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       deterministic-object-hash: 2.0.2
       devalue: 5.1.1
       diff: 5.2.0
@@ -19940,7 +19864,7 @@ snapshots:
 
   capnp-ts@0.7.0:
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       tslib: 2.8.0
     transitivePeerDependencies:
       - supports-color
@@ -20479,10 +20403,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  debug@4.3.7:
-    dependencies:
-      ms: 2.1.3
-
   debug@4.3.7(supports-color@8.1.1):
     dependencies:
       ms: 2.1.3
@@ -20574,7 +20494,7 @@ snapshots:
   dependency-tree@9.0.0:
     dependencies:
       commander: 2.20.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       filing-cabinet: 3.3.1
       precinct: 9.2.1
       typescript: 4.9.5
@@ -20647,7 +20567,7 @@ snapshots:
 
   detective-less@1.0.2:
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       gonzales-pe: 4.3.0
       node-source-walk: 4.3.0
     transitivePeerDependencies:
@@ -20655,7 +20575,7 @@ snapshots:
 
   detective-postcss@4.0.0:
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       is-url: 1.2.4
       postcss: 8.4.47
       postcss-values-parser: 2.0.1
@@ -20705,15 +20625,6 @@ snapshots:
   detective-stylus@3.0.0: {}
 
   detective-stylus@4.0.0: {}
-
-  detective-typescript@11.2.0:
-    dependencies:
-      '@typescript-eslint/typescript-estree': 5.62.0(typescript@5.6.3)
-      ast-module-types: 5.0.0
-      node-source-walk: 6.0.2
-      typescript: 5.6.3
-    transitivePeerDependencies:
-      - supports-color
 
   detective-typescript@11.2.0(supports-color@9.4.0):
     dependencies:
@@ -20900,7 +20811,7 @@ snapshots:
       gradle-to-js: 2.0.1
       graphql: 16.8.1
       graphql-tag: 2.12.6(graphql@16.8.1)
-      https-proxy-agent: 5.0.1
+      https-proxy-agent: 5.0.1(supports-color@9.4.0)
       ignore: 5.3.0
       indent-string: 4.0.0
       jks-js: 1.1.0
@@ -21439,7 +21350,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       doctrine: 3.0.0
       escape-string-regexp: 4.0.0
       eslint-scope: 7.2.2
@@ -21779,7 +21690,7 @@ snapshots:
 
   extract-zip@2.0.1:
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       get-stream: 5.2.0
       yauzl: 2.10.0
     optionalDependencies:
@@ -21971,7 +21882,7 @@ snapshots:
     dependencies:
       app-module-path: 2.2.0
       commander: 2.20.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       enhanced-resolve: 5.17.1
       is-relative-path: 1.0.2
       module-definition: 3.4.0
@@ -22096,7 +22007,7 @@ snapshots:
 
   follow-redirects@1.15.9(debug@4.3.7):
     optionalDependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
 
   fontfaceobserver@2.3.0: {}
 
@@ -22824,7 +22735,7 @@ snapshots:
   http-call@5.3.0:
     dependencies:
       content-type: 1.0.5
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       is-retry-allowed: 1.2.0
       is-stream: 2.0.1
       parse-json: 4.0.0
@@ -22851,7 +22762,7 @@ snapshots:
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.1
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -22880,13 +22791,6 @@ snapshots:
       quick-lru: 5.1.1
       resolve-alpn: 1.2.1
 
-  https-proxy-agent@5.0.1:
-    dependencies:
-      agent-base: 6.0.2
-      debug: 4.3.7
-    transitivePeerDependencies:
-      - supports-color
-
   https-proxy-agent@5.0.1(supports-color@9.4.0):
     dependencies:
       agent-base: 6.0.2(supports-color@9.4.0)
@@ -22897,7 +22801,7 @@ snapshots:
   https-proxy-agent@7.0.5:
     dependencies:
       agent-base: 7.1.1
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -23895,7 +23799,7 @@ snapshots:
       chalk: 4.1.2
       commander: 7.2.0
       commondir: 1.0.1
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       dependency-tree: 9.0.0
       detective-amd: 4.2.0
       detective-cjs: 4.1.0
@@ -24953,7 +24857,7 @@ snapshots:
   micromark@3.2.0:
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       decode-named-character-reference: 1.0.2
       micromark-core-commonmark: 1.1.0
       micromark-factory-space: 1.1.0
@@ -24975,7 +24879,7 @@ snapshots:
   micromark@4.0.0:
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       decode-named-character-reference: 1.0.2
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.1
@@ -25134,7 +25038,7 @@ snapshots:
   module-lookup-amd@7.0.1:
     dependencies:
       commander: 2.20.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       glob: 7.2.3
       requirejs: 2.3.7
       requirejs-config-file: 4.0.0
@@ -25254,10 +25158,10 @@ snapshots:
       '@netlify/build': 29.56.0(@opentelemetry/api@1.8.0)(@types/node@22.8.5)(picomatch@4.0.2)
       '@netlify/build-info': 7.15.2
       '@netlify/config': 20.19.0
-      '@netlify/edge-bundler': 12.2.3
+      '@netlify/edge-bundler': 12.2.3(supports-color@9.4.0)
       '@netlify/edge-functions': 2.9.0
       '@netlify/local-functions-proxy': 1.1.1
-      '@netlify/zip-it-and-ship-it': 9.41.1
+      '@netlify/zip-it-and-ship-it': 9.41.1(supports-color@9.4.0)
       '@octokit/rest': 20.1.1
       '@opentelemetry/api': 1.8.0
       ansi-escapes: 7.0.0
@@ -25278,7 +25182,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cron-parser: 4.9.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       decache: 4.6.2
       dot-prop: 9.0.0
       dotenv: 16.4.5
@@ -26215,23 +26119,6 @@ snapshots:
       tar-fs: 2.1.1
       tunnel-agent: 0.6.0
 
-  precinct@11.0.5:
-    dependencies:
-      '@dependents/detective-less': 4.1.0
-      commander: 10.0.1
-      detective-amd: 5.0.2
-      detective-cjs: 5.0.1
-      detective-es6: 4.0.1
-      detective-postcss: 6.1.3
-      detective-sass: 5.0.3
-      detective-scss: 4.0.3
-      detective-stylus: 4.0.0
-      detective-typescript: 11.2.0
-      module-definition: 5.0.1
-      node-source-walk: 6.0.2
-    transitivePeerDependencies:
-      - supports-color
-
   precinct@11.0.5(supports-color@9.4.0):
     dependencies:
       '@dependents/detective-less': 4.1.0
@@ -26252,7 +26139,7 @@ snapshots:
   precinct@8.3.1:
     dependencies:
       commander: 2.20.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       detective-amd: 3.1.2
       detective-cjs: 3.1.3
       detective-es6: 2.2.2
@@ -26662,7 +26549,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-native@0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.2.0):
+  react-native@0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.3.1):
     dependencies:
       '@jest/create-cache-key-function': 29.7.0
       '@react-native-community/cli': 13.6.9
@@ -26674,7 +26561,7 @@ snapshots:
       '@react-native/gradle-plugin': 0.74.85
       '@react-native/js-polyfills': 0.74.85
       '@react-native/normalize-colors': 0.74.85
-      '@react-native/virtualized-lists': 0.74.85(@types/react@18.3.12)(react-native@0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.2.0))(react@18.2.0)
+      '@react-native/virtualized-lists': 0.74.85(@types/react@18.3.12)(react-native@0.74.3(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       abort-controller: 3.0.0
       anser: 1.4.10
       ansi-regex: 5.0.1
@@ -26692,10 +26579,10 @@ snapshots:
       nullthrows: 1.1.1
       pretty-format: 26.6.2
       promise: 8.3.0
-      react: 18.2.0
+      react: 18.3.1
       react-devtools-core: 5.3.2
       react-refresh: 0.14.2
-      react-shallow-renderer: 16.15.0(react@18.2.0)
+      react-shallow-renderer: 16.15.0(react@18.3.1)
       regenerator-runtime: 0.13.11
       scheduler: 0.24.0-canary-efb381bbf-20230505
       stacktrace-parser: 0.1.10
@@ -26738,10 +26625,10 @@ snapshots:
       '@remix-run/router': 1.20.0
       react: 18.3.1
 
-  react-shallow-renderer@16.15.0(react@18.2.0):
+  react-shallow-renderer@16.15.0(react@18.3.1):
     dependencies:
       object-assign: 4.1.1
-      react: 18.2.0
+      react: 18.3.1
       react-is: 18.3.1
 
   react-toastify@9.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
@@ -26761,10 +26648,6 @@ snapshots:
       memoize-one: 5.2.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-
-  react@18.2.0:
-    dependencies:
-      loose-envify: 1.4.0
 
   react@18.3.1:
     dependencies:
@@ -27879,7 +27762,7 @@ snapshots:
   stylus-lookup@3.0.2:
     dependencies:
       commander: 2.20.3
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -27955,7 +27838,7 @@ snapshots:
 
   tabtab@3.0.2:
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       es6-promisify: 6.1.1
       inquirer: 6.5.2
       minimist: 1.2.8
@@ -28739,7 +28622,7 @@ snapshots:
   vite-node@1.6.0(@types/node@22.8.5)(terser@5.36.0):
     dependencies:
       cac: 6.7.14
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       pathe: 1.1.2
       picocolors: 1.1.1
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -28757,7 +28640,7 @@ snapshots:
   vite-node@2.1.4(@types/node@22.8.5)(terser@5.36.0):
     dependencies:
       cac: 6.7.14
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       pathe: 1.1.2
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
     transitivePeerDependencies:
@@ -28773,7 +28656,7 @@ snapshots:
 
   vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0):
     dependencies:
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       pretty-bytes: 6.1.1
       tinyglobby: 0.2.10
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -28828,7 +28711,7 @@ snapshots:
       '@vitest/spy': 2.1.4
       '@vitest/utils': 2.1.4
       chai: 5.1.2
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
       expect-type: 1.1.0
       magic-string: 0.30.12
       pathe: 1.1.2
@@ -28978,7 +28861,7 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       commander: 9.5.0
-      debug: 4.3.7
+      debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
