@@ -59,6 +59,29 @@ jobs:
           # TODO surface deploy url in github UI via environments
         run: |
           nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
+
+  publish-snapshot-version:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build nix env
+        run: nix develop --command true
+      - name: Install pnpm
+        run: nix develop --command pnpm install
+      - name: Derive monorepo examples
+        run: nix develop --command pnpm setup:monorepo-examples --single-run
+        env:
+          WORKSPACE_ROOT: ${{ github.workspace }}
+      - run: nix develop --command pnpm install
+      - run: nix develop --command pnpm build:ts
+      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
+      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
   
   # TODO test cloning examples standalone 
 
@@ -87,6 +110,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
       - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
@@ -100,9 +124,15 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
       - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      - name: Add snapshot resolution to package.json
+        run: |
+          for pkg in livestore web react common utils; do
+            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' example/package.json > example/package.json.tmp && mv example/package.json.tmp example/package.json
+          done
       - run: bun install
         working-directory: example
       - run: bun build
@@ -113,9 +143,16 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
       - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      - name: Add snapshot resolution to package.json
+        run: |
+          for pkg in livestore expo react common utils; do
+            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' example/package.json > example/package.json.tmp && mv example/package.json.tmp example/package.json
+          done
+        working-directory: example
       - run: bun install
         working-directory: example
       # TODO EAS build
