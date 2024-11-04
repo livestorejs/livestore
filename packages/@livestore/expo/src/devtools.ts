@@ -11,11 +11,22 @@ import {
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
+import type { ParseResult, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite/next'
 
 import type { DbPairRef } from './common.js'
 import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
+
+export type BootedDevtools = {
+  onMutation: ({
+    mutationEventEncoded,
+    persisted,
+  }: {
+    mutationEventEncoded: MutationEvent.AnyEncoded
+    persisted: boolean
+  }) => Effect.Effect<void, UnexpectedError, never>
+}
 
 export const bootDevtools = ({
   connectDevtoolsToStore,
@@ -33,7 +44,7 @@ export const bootDevtools = ({
   dbLogRef: DbPairRef
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
   incomingSyncMutationsQueue: Queue.Queue<MutationEvent.Any>
-}) =>
+}): Effect.Effect<BootedDevtools, UnexpectedError | ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {
     const appHostId = 'expo'
     const isLeader = true

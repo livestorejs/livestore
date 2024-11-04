@@ -17,6 +17,7 @@ import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livesto
 import * as SQLite from 'expo-sqlite/next'
 
 import { makeSynchronousDatabase } from './common.js'
+import type { BootedDevtools } from './devtools.js'
 import { bootDevtools } from './devtools.js'
 
 export type MakeDbOptions = {
@@ -27,7 +28,7 @@ export type MakeDbOptions = {
 
 export const makeAdapter =
   (options?: MakeDbOptions): Adapter =>
-  ({ schema, connectDevtoolsToStore, shutdown }) =>
+  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled }) =>
     Effect.gen(function* () {
       const { fileNamePrefix, subDirectory } = options ?? {}
       const migrationOptions = schema.migrationOptions
@@ -139,6 +140,8 @@ export const makeAdapter =
         },
       } as { current: EventId }
 
+      let devtools: BootedDevtools | undefined
+
       const coordinator = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
@@ -212,22 +215,24 @@ export const makeAdapter =
               //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
             }
 
-            yield* devtools.onMutation({ mutationEventEncoded, persisted })
+            yield* devtools?.onMutation({ mutationEventEncoded, persisted }) ?? Effect.void
           }),
         export: Effect.sync(() => dbRef.current.syncDb.export()),
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator
 
-      const devtools = yield* bootDevtools({
-        connectDevtoolsToStore,
-        coordinator,
-        schema,
-        dbRef,
-        dbLogRef,
-        shutdown,
-        incomingSyncMutationsQueue,
-      })
+      if (devtoolsEnabled) {
+        devtools = yield* bootDevtools({
+          connectDevtoolsToStore,
+          coordinator,
+          schema,
+          dbRef,
+          dbLogRef,
+          shutdown,
+          incomingSyncMutationsQueue,
+        })
+      }
 
       return { syncDb: dbRef.current.syncDb, coordinator } satisfies ClientSession
     }).pipe(

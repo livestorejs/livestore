@@ -8,6 +8,11 @@ import type { Middleware, Options } from '../types.js'
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
  */
 const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, options: Options) => {
+  // NOTE in CI we want to skip this
+  if (process.env.CI || !process.stdout.isTTY) {
+    return
+  }
+
   const viteMiddleware = makeLiveStoreDevtoolsMiddleware(options)
 
   const previousEnhanceMiddleware = config.server.enhanceMiddleware as (
