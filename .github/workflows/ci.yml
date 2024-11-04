@@ -120,7 +120,7 @@ jobs:
     steps:
       # TODO remove once repo is public
       - name: Configure git credentials
-        run: 'git config --local http.extraheader "Authorization: Bearer ${{ github.token }}"'
+        run: 'git config --global http.extraheader "Authorization: Bearer ${{ github.token }}"'
       - uses: oven-sh/setup-bun@v2
       - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
       - run: bun install
@@ -136,7 +136,7 @@ jobs:
     needs: [publish-snapshot-version]
     steps:
       - name: Configure git credentials
-        run: 'git config --local http.extraheader "Authorization: Bearer ${{ github.token }}"'
+        run: 'git config --global http.extraheader "Authorization: Bearer ${{ github.token }}"'
       - uses: oven-sh/setup-bun@v2
       - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
         env:
@@ -159,7 +159,7 @@ jobs:
     needs: [publish-snapshot-version]
     steps:
       - name: Configure git credentials
-        run: 'git config --local http.extraheader "Authorization: Bearer ${{ github.token }}"'
+        run: 'git config --global http.extraheader "Authorization: Bearer ${{ github.token }}"'
       - uses: oven-sh/setup-bun@v2
       - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
         env:
