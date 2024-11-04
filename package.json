@@ -1,4 +1,5 @@
 {
+  "name": "@local/root",
   "private": true,
   "scripts": {
     "build": "pnpm run build:ts",

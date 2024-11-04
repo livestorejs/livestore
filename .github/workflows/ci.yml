@@ -59,7 +59,7 @@ jobs:
       #     NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       #     # TODO surface deploy url in github UI via environments
       #   run: |
-      #     nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
+      #     nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @local/integration-tests
 
   publish-snapshot-version:
     strategy:

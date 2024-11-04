@@ -1,5 +1,5 @@
 {
-  "name": "@livestore/integration-tests",
+  "name": "@local/integration-tests",
   "version": "0.0.54-dev.23",
   "type": "module",
   "private": true,
