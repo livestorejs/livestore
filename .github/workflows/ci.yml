@@ -113,7 +113,9 @@ jobs:
     needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+      - run: bunx tiged --mode=git https://${GITHUB_TOKEN}@github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: bun install
         working-directory: example
       - run: bun build
@@ -127,7 +129,9 @@ jobs:
     needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      - run: bunx tiged --mode=git https://oauth:${GITHUB_TOKEN}@github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore web react common utils; do
@@ -146,7 +150,9 @@ jobs:
     needs: [publish-snapshot-version]
     steps:
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      - run: bunx tiged --mode=git https://${GITHUB_TOKEN}@github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore expo react common utils; do
