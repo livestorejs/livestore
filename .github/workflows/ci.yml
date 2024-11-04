@@ -46,19 +46,20 @@ jobs:
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm test
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: integration-tests/playwright-report/
-          retention-days: 30
-      - name: "Upload trace"
-        if: ${{ !cancelled() }}
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          # TODO surface deploy url in github UI via environments
-        run: |
-          nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
+      # TODO re-enable when playwright bug is fixed
+      # - uses: actions/upload-artifact@v4
+      #   if: ${{ !cancelled() }}
+      #   with:
+      #     name: playwright-report
+      #     path: integration-tests/playwright-report/
+      #     retention-days: 30
+      # - name: "Upload trace"
+      #   if: ${{ !cancelled() }}
+      #   env:
+      #     NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      #     # TODO surface deploy url in github UI via environments
+      #   run: |
+      #     nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @livestore/integration-tests
 
   publish-snapshot-version:
     strategy:
