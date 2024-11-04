@@ -28,6 +28,9 @@ export default defineConfig({
   preview: {
     headers: credentiallessHeaders,
   },
+  build: {
+    target: ['es2022'], // Needed for top-level await to work
+  },
   esbuild: {
     target: 'esnext',
   },

@@ -1,5 +1,12 @@
 --- package.json
 +++ package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "livestore-example-todomvc-sync-cf",
++  "name": "livestore-example-monorepo-todomvc-sync-cf",
+   "private": true,
+   "type": "module",
+   "scripts": {
 @@ -10,11 +10,11 @@
    },
    "dependencies": {

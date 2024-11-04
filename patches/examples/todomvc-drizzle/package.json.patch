@@ -1,5 +1,12 @@
 --- package.json
 +++ package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "livestore-example-todomvc-drizzle",
++  "name": "livestore-example-monorepo-todomvc-drizzle",
+   "private": true,
+   "type": "module",
+   "scripts": {
 @@ -10,16 +10,16 @@
    },
    "dependencies": {

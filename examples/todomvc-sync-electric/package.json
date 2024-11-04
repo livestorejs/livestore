@@ -1,9 +1,10 @@
 {
-  "name": "todomvc-sync-electric",
+  "name": "livestore-example-todomvc-sync-electric",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "remix vite:build",
+    "build": "echo 'No builds supported for this example yet'",
+    "build_": "remix vite:build",
     "build:analyze": "VITE_ANALYZE=1 run build",
     "dev": "remix vite:dev --force",
     "preview": "remix vite:preview"

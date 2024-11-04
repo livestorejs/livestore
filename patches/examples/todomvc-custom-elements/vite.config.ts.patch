@@ -1,6 +1,6 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -24,10 +24,18 @@
+@@ -24,11 +24,17 @@
    server: {
      port: 60_002,
      headers: credentiallessHeaders,
@@ -13,9 +13,8 @@
    preview: {
      headers: credentiallessHeaders,
    },
-+  build: {
+   build: {
 +    sourcemap: true,
-+  },
-   esbuild: {
-     target: 'esnext',
+     target: ['es2022'], // Needed for top-level await to work
    },
+   esbuild: {

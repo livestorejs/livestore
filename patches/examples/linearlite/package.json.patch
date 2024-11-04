@@ -1,5 +1,12 @@
 --- package.json
 +++ package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "livestore-example-linearlite",
++  "name": "livestore-example-monorepo-linearlite",
+   "version": "0.0.1",
+   "license": "Apache-2.0",
+   "type": "module",
 @@ -14,10 +14,10 @@
      "@firefox-devtools/react-contextmenu": "^5.1.1",
      "@headlessui/react": "^2.2.0",

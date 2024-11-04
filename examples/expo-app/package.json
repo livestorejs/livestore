@@ -1,5 +1,5 @@
 {
-  "name": "expo-app",
+  "name": "livestore-example-expo",
   "version": "1.0.0",
   "main": "./src/AppEntry.ts",
   "scripts": {

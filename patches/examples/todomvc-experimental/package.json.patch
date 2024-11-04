@@ -1,5 +1,12 @@
 --- package.json
 +++ package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "livestore-example-todomvc-experimental",
++  "name": "livestore-example-monorepo-todomvc-experimental",
+   "private": true,
+   "type": "module",
+   "scripts": {
 @@ -10,10 +10,10 @@
    },
    "dependencies": {

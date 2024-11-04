@@ -1,5 +1,12 @@
 --- package.json
 +++ package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "livestore-example-expo",
++  "name": "livestore-example-monorepo-expo",
+   "version": "1.0.0",
+   "main": "./src/AppEntry.ts",
+   "scripts": {
 @@ -10,11 +10,11 @@
    },
    "dependencies": {

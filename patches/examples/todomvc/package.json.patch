@@ -2,8 +2,8 @@
 +++ package.json
 @@ -1,5 +1,5 @@
  {
--  "name": "todomvc",
-+  "name": "todomvc-monorepo",
+-  "name": "livestore-example-todomvc",
++  "name": "livestore-example-monorepo-todomvc",
    "private": true,
    "type": "module",
    "scripts": {
