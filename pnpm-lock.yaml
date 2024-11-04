@@ -7,11 +7,12 @@ settings:
 overrides:
   '@livestore/common': workspace:*
   '@livestore/db-schema': workspace:*
+  '@livestore/expo': workspace:*
   '@livestore/livestore': workspace:*
-  '@livestore/utils': workspace:*
-  '@livestore/web': workspace:*
   '@livestore/react': workspace:*
   '@livestore/sync-cf': workspace:*
+  '@livestore/utils': workspace:*
+  '@livestore/web': workspace:*
   '@livestore/devtools-react': 0.0.58-dev.10
 
 patchedDependencies:
@@ -785,8 +786,8 @@ importers:
         specifier: 0.0.58-dev.10
         version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)
       '@livestore/expo':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))
+        specifier: workspace:*
+        version: link:../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -3963,11 +3964,6 @@ packages:
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
 
-  '@livestore/devtools-expo-common@0.0.58-dev.10':
-    resolution: {integrity: sha512-DIIJvqxgsIMB6KwTF7/3YS3kMUe+t10cwb5cY0RVH9U63PO5OeSctBNufo4EflQjgaUkQ5/La4hnDSiGaIppJQ==}
-    peerDependencies:
-      expo: 51.0.32
-
   '@livestore/devtools-expo@0.0.58-dev.10':
     resolution: {integrity: sha512-ab9m0AzpFzX0NmvsCRwMCHkDAAh3Zdof/v6l1/0x0S155mIO0wI25PswSlb2xatcQy+RjkUZK/5VRFMTp/yjXg==}
     peerDependencies:
@@ -3978,12 +3974,6 @@ packages:
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
-
-  '@livestore/expo@0.0.58-dev.10':
-    resolution: {integrity: sha512-P8IL0qg4FidsMyXe32RvQoKc9eUYIQP1PjDIkiRPt3mtr60XAL4F/d+/Lrib+24Q9GaM8teTDmJ5GVCOlRIPjg==}
-    peerDependencies:
-      expo-file-system: '*'
-      expo-sqlite: '*'
 
   '@livestore/sync-electric@0.0.58-dev.10':
     resolution: {integrity: sha512-fW+z2RsErRPHLY9E4O+EXXokj1Khspw5D1P2OkZ135UR0uXcdOVyih1SCyGHMhobNU3ny0BktxeOu+M2PblxSA==}
@@ -16438,12 +16428,6 @@ snapshots:
 
   '@jspm/core@2.1.0': {}
 
-  '@livestore/devtools-expo-common@0.0.58-dev.10(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))':
-    dependencies:
-      '@livestore/common': link:packages/@livestore/common
-      '@livestore/utils': link:packages/@livestore/utils
-      expo: 51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
-
   '@livestore/devtools-expo@0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)':
     dependencies:
       '@livestore/devtools-react': 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
@@ -16470,17 +16454,6 @@ snapshots:
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
-
-  '@livestore/expo@0.0.58-dev.10(expo-file-system@17.0.1(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))':
-    dependencies:
-      '@livestore/common': link:packages/@livestore/common
-      '@livestore/devtools-expo-common': 0.0.58-dev.10(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))
-      '@livestore/utils': link:packages/@livestore/utils
-      '@opentelemetry/api': 1.9.0
-      expo-file-system: 17.0.1(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))
-      expo-sqlite: 14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))
-    transitivePeerDependencies:
-      - expo
 
   '@livestore/sync-electric@0.0.58-dev.10':
     dependencies:
