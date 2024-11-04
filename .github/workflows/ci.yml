@@ -118,11 +118,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     steps:
-      # TODO remove once repo is public
-      - name: Configure git credentials
-        run: 'git config --global http.extraheader "Authorization: Bearer ${{ github.token }}"'
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+      # TODO bring back once repo is public
+      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+      - name: Clone and checkout example
+        run: |
+          git clone https://github.com/livestorejs/livestore example-repo
+          mkdir example
+          cd example-repo
+          git checkout ${{ github.sha }}
+          cp -r examples/todomvc/* ../example
       - run: bun install
         working-directory: example
       - run: bun build
@@ -135,12 +140,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     steps:
-      - name: Configure git credentials
-        run: 'git config --global http.extraheader "Authorization: Bearer ${{ github.token }}"'
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # TODO bring back once repo is public
+      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      - name: Clone and checkout example
+        run: |
+          git clone https://github.com/livestorejs/livestore example-repo
+          mkdir example
+          cd example-repo
+          git checkout ${{ github.sha }}
+          cp -r examples/linearlite/* ../example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore web react common utils db-schema; do
@@ -158,12 +167,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     steps:
-      - name: Configure git credentials
-        run: 'git config --global http.extraheader "Authorization: Bearer ${{ github.token }}"'
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # TODO bring back once repo is public
+      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      - name: Clone and checkout example
+        run: |
+          git clone https://github.com/livestorejs/livestore example-repo
+          mkdir example
+          cd example-repo
+          git checkout ${{ github.sha }}
+          cp -r examples/expo-app/* ../example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore expo react common utils db-schema; do
