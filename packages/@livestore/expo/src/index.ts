@@ -231,7 +231,10 @@ export const makeAdapter =
           dbLogRef,
           shutdown,
           incomingSyncMutationsQueue,
-        })
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          Effect.catchAll(() => Effect.succeed(undefined)),
+        )
       }
 
       return { syncDb: dbRef.current.syncDb, coordinator } satisfies ClientSession

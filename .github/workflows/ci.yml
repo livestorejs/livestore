@@ -118,10 +118,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     steps:
+      # TODO remove once repo is public
+      - name: Configure git credentials
+        run: git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://oauth2:${GITHUB_TOKEN}@github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
       - run: bun install
         working-directory: example
       - run: bun build
@@ -134,8 +135,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     steps:
+      - name: Configure git credentials
+        run: git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://oauth:${oauth2:GITHUB_TOKEN}@github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Add snapshot resolution to package.json
@@ -155,8 +158,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [publish-snapshot-version]
     steps:
+      - name: Configure git credentials
+        run: git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
       - uses: oven-sh/setup-bun@v2
-      - run: bunx tiged --mode=git https://oauth2:${GITHUB_TOKEN}@github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Add snapshot resolution to package.json
