@@ -18,7 +18,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -40,7 +40,7 @@ jobs:
       - name: Install pnpm
         run: nix develop --command pnpm install
       - name: Derive monorepo examples
-        run: nix develop --command bun scripts/sync-examples.ts --single-run
+        run: nix develop --command pnpm setup:monorepo-examples --single-run
         env:
           WORKSPACE_ROOT: ${{ github.workspace }}
       - run: nix develop --command pnpm install
@@ -62,7 +62,7 @@ jobs:
   
   # TODO test cloning examples standalone 
 
-  build-example-todomvc:
+  build-monorepo-examples:
     strategy:
       matrix:
         node-version: [22]
@@ -75,46 +75,52 @@ jobs:
       - name: Build nix env
         run: nix develop --command true
       - name: Derive monorepo examples
-        run: nix develop --command bun scripts/sync-examples.ts --single-run
+        run: nix develop --command pnpm setup:monorepo-examples --single-run
         env:
           WORKSPACE_ROOT: ${{ github.workspace }}
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
-      - run: nix develop --command pnpm build
-        working-directory: examples/todomvc
-  
-  build-example-expo-standalone:
+      - run: nix develop --command pnpm build:monorepo-examples
+
+  build-example-tiged-todomvc:
     strategy:
       matrix:
-        node-version: [22]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            examples/expo-app
-          sparse-checkout-cone-mode: false
-      - name: Adjust workspace
-        run: |
-          mv examples/expo-app/* .
-          mv examples/expo-app/.* . 2>/dev/null || true
-          rm -rf examples
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-      # - name: Bootstrap example
-      #   run: npx tiged --mode=git livestorejs/livestore/examples/expo-app#${{ github.sha }}
-      - name: Install dependencies
-        run: pnpm install
-      - name: Run TypeScript compiler
-        run: pnpm tsc
+      - uses: oven-sh/setup-bun@v2
+      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
+      - run: bun install
+        working-directory: example
+      - run: bun build
+        working-directory: example
+
+  build-example-tiged-linearlite:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: oven-sh/setup-bun@v2
+      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
+      - run: bun install
+        working-directory: example
+      - run: bun build
+        working-directory: example
+
+  build-example-tiged-expo-app:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: oven-sh/setup-bun@v2
+      - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      - run: bun install
+        working-directory: example
       # TODO EAS build
+      # - run: bun build
+      #   working-directory: example
 
   build-website:
     strategy:
