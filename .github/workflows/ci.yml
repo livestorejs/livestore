@@ -83,6 +83,8 @@ jobs:
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
       - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   
   # TODO test cloning examples standalone 
 
