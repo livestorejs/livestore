@@ -125,6 +125,12 @@ jobs:
         with:
           path: example-repo
       - run: cp -r example-repo/examples/todomvc example
+      - name: Add snapshot resolution to package.json
+        run: |
+          for pkg in livestore web react common utils db-schema; do
+            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
+          done
+        working-directory: example
       - run: bun install
         working-directory: example
       - run: bun run build
@@ -144,12 +150,12 @@ jobs:
         with:
           path: example-repo
       - run: cp -r example-repo/examples/linearlite example
-          cp -r example-repo/examples/linearlite/* example/
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore web react common utils db-schema; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' example/package.json > example/package.json.tmp && mv example/package.json.tmp example/package.json
+            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done
+        working-directory: example
       - run: bun install
         working-directory: example
       - run: bun run build
@@ -172,7 +178,7 @@ jobs:
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore expo react common utils db-schema; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' example/package.json > example/package.json.tmp && mv example/package.json.tmp example/package.json
+            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done
         working-directory: example
       - run: bun install
