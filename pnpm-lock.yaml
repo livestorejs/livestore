@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@livestore/common': workspace:*
+  '@livestore/db-schema': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/utils': workspace:*
   '@livestore/web': workspace:*
@@ -479,6 +480,9 @@ importers:
 
   examples-monorepo/todomvc-drizzle:
     dependencies:
+      '@livestore/db-schema':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/db-schema
       '@livestore/devtools-react':
         specifier: 0.0.58-dev.9
         version: 0.0.58-dev.9(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
@@ -509,9 +513,6 @@ importers:
       effect:
         specifier: 3.10.7
         version: 3.10.7
-      effect-db-schema:
-        specifier: workspace:*
-        version: link:../../packages/effect-db-schema
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1174,6 +1175,9 @@ importers:
 
   examples/todomvc-drizzle:
     dependencies:
+      '@livestore/db-schema':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/db-schema
       '@livestore/devtools-react':
         specifier: 0.0.58-dev.9
         version: 0.0.58-dev.9(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
@@ -1204,9 +1208,6 @@ importers:
       effect:
         specifier: 3.10.7
         version: 3.10.7
-      effect-db-schema:
-        specifier: 0.0.57-dev.0
-        version: 0.0.57-dev.0(@effect/schema@0.71.4(effect@3.10.7))(effect@3.10.7)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1503,15 +1504,15 @@ importers:
 
   packages/@livestore/common:
     dependencies:
+      '@livestore/db-schema':
+        specifier: workspace:*
+        version: link:../db-schema
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
-      effect-db-schema:
-        specifier: workspace:*
-        version: link:../../effect-db-schema
       graphology:
         specifier: 0.26.0-alpha1
         version: 0.26.0-alpha1(patch_hash=weq4vgytvkzjfqyjvmo2n6utw4)(graphology-types@0.24.7)
@@ -1522,6 +1523,25 @@ importers:
         specifier: 0.24.7
         version: 0.24.7
     devDependencies:
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.4(@types/node@22.8.5)(jsdom@25.0.1)(terser@5.36.0)
+
+  packages/@livestore/db-schema:
+    dependencies:
+      dprint-node:
+        specifier: ^1.0.8
+        version: 1.0.8
+    devDependencies:
+      drizzle-orm:
+        specifier: ^0.32.1
+        version: 0.32.2(@cloudflare/workers-types@4.20241022.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.12)(bun-types@1.1.33)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(postgres@3.4.5)(react@18.3.1)
+      effect:
+        specifier: 3.10.7
+        version: 3.10.7
+      vite:
+        specifier: ^5.4.10
+        version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
       vitest:
         specifier: ^2.1.4
         version: 2.1.4(@types/node@22.8.5)(jsdom@25.0.1)(terser@5.36.0)
@@ -1610,15 +1630,15 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/db-schema':
+        specifier: workspace:*
+        version: link:../db-schema
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
-      effect-db-schema:
-        specifier: workspace:*
-        version: link:../../effect-db-schema
       graphql:
         specifier: 16.x
         version: 16.9.0
@@ -1647,6 +1667,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/db-schema':
+        specifier: workspace:*
+        version: link:../db-schema
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../livestore
@@ -1656,9 +1679,6 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
-      effect-db-schema:
-        specifier: workspace:*
-        version: link:../../effect-db-schema
     devDependencies:
       '@livestore/web':
         specifier: workspace:*
@@ -1724,9 +1744,9 @@ importers:
 
   packages/@livestore/utils:
     dependencies:
-      effect-db-schema:
+      '@livestore/db-schema':
         specifier: workspace:*
-        version: link:../../effect-db-schema
+        version: link:../db-schema
       msgpackr:
         specifier: ^1.11.2
         version: 1.11.2
@@ -1786,25 +1806,6 @@ importers:
       '@types/wicg-file-system-access':
         specifier: ^2023.10.5
         version: 2023.10.5
-
-  packages/effect-db-schema:
-    dependencies:
-      dprint-node:
-        specifier: ^1.0.8
-        version: 1.0.8
-    devDependencies:
-      drizzle-orm:
-        specifier: ^0.32.1
-        version: 0.32.2(@cloudflare/workers-types@4.20241022.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.12)(bun-types@1.1.33)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(postgres@3.4.5)(react@18.3.1)
-      effect:
-        specifier: 3.10.7
-        version: 3.10.7
-      vite:
-        specifier: ^5.4.10
-        version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
-      vitest:
-        specifier: ^2.1.4
-        version: 2.1.4(@types/node@22.8.5)(jsdom@25.0.1)(terser@5.36.0)
 
   scripts:
     devDependencies:
@@ -2793,11 +2794,6 @@ packages:
     resolution: {integrity: sha512-2DA3GCviE/9gqEq48RPGbKTr8Zt2XvqvGhl14XyMnuPztfSAgpg4b+TzWeRNFMNNTDeZOcK7hZVNLAPK1CfZbg==}
     peerDependencies:
       effect: ^3.10.7
-
-  '@effect/schema@0.71.4':
-    resolution: {integrity: sha512-iAAEusrhHQ2xVVTHbnZhSgiSuL81s8befP1Bl+AI7PEJg++HfHQSOEnU+narX/f7udJZ1EY/Ir0G+ATXSK8TZg==}
-    peerDependencies:
-      effect: ^3.6.8
 
   '@emmetio/abbreviation@2.3.3':
     resolution: {integrity: sha512-mgv58UrU3rh4YgbE/TzgLQwJ3pFsHHhCLqY20aJq+9comytTXUDNGG/SMtSeMJdkpxgXSXunBGLD8Boka3JyVA==}
@@ -7318,12 +7314,6 @@ packages:
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
-
-  effect-db-schema@0.0.57-dev.0:
-    resolution: {integrity: sha512-8iBlhu2KtOpfxe1xANKOajIQ+JvpBPxvP8Wqa0Z9T1gutvaJILcYIXqJMnhbsdGOWb4LanmjDISzHIqfUMZI5w==}
-    peerDependencies:
-      '@effect/schema': ^0.71.3
-      effect: ^3.7.0
 
   effect-db-schema@0.0.58-dev.9:
     resolution: {integrity: sha512-7Fo+gyWpzE1YdTKo06c0B4MKhB6vcGunkty0/yXGlgVPt+/fDwHRGYw0wwvjigv4UgoHbmyAuaMzkptPDgsfxQ==}
@@ -15234,11 +15224,6 @@ snapshots:
       find-my-way-ts: 0.1.5
       multipasta: 0.2.5
 
-  '@effect/schema@0.71.4(effect@3.10.7)':
-    dependencies:
-      effect: 3.10.7
-      fast-check: 3.22.0
-
   '@emmetio/abbreviation@2.3.3':
     dependencies:
       '@emmetio/scanner': 1.0.4
@@ -20858,12 +20843,6 @@ snapshots:
       safe-buffer: 5.2.1
 
   ee-first@1.1.1: {}
-
-  effect-db-schema@0.0.57-dev.0(@effect/schema@0.71.4(effect@3.10.7))(effect@3.10.7):
-    dependencies:
-      '@effect/schema': 0.71.4(effect@3.10.7)
-      dprint-node: 1.0.8
-      effect: 3.10.7
 
   effect-db-schema@0.0.58-dev.9(effect@3.10.7):
     dependencies:
