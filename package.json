@@ -10,8 +10,8 @@
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
-    "release:patch": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish --no-git-checks",
-    "release:dev": "pnpm run build && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' --filter 'effect-db-schema' exec -- pnpm publish  --tag dev --no-git-checks",
+    "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish --no-git-checks",
+    "release:dev": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish  --tag dev --no-git-checks",
     "test": "CI=1 pnpm --parallel run test"
   },
   "#resolutions": {
@@ -20,6 +20,7 @@
   },
   "resolutions": {
     "@livestore/common": "workspace:*",
+    "@livestore/db-schema": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",

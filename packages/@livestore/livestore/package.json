@@ -36,7 +36,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "effect-db-schema": "workspace:*"
+    "@livestore/db-schema": "workspace:*"
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",

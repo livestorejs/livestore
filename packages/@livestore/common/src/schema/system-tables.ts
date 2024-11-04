@@ -1,5 +1,5 @@
+import { type SqliteAst as __SqliteAst, SqliteDsl } from '@livestore/db-schema'
 import { Schema } from '@livestore/utils/effect'
-import { type SqliteAst as __SqliteAst, SqliteDsl } from 'effect-db-schema'
 
 import type { FromTable } from './table-def.js'
 import { table } from './table-def.js'

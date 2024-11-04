@@ -1,11 +1,11 @@
 import type { QueryInfo } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
+import type { SqliteDsl } from '@livestore/db-schema'
 import type { LiveQuery, ReactivityGraph, RowResult } from '@livestore/livestore'
 import { rowQuery } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyRecord } from '@livestore/utils/effect'
-import type { SqliteDsl } from 'effect-db-schema'
 import React from 'react'
 
 import { useStore } from './LiveStoreContext.js'

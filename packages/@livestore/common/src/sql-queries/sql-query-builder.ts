@@ -1,4 +1,4 @@
-import type { SqliteDsl } from 'effect-db-schema'
+import type { SqliteDsl } from '@livestore/db-schema'
 
 import type { BindValues } from './sql-queries.js'
 import * as SqlQueries from './sql-queries.js'

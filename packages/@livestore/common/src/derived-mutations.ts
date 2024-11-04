@@ -1,6 +1,6 @@
+import type { SqliteDsl } from '@livestore/db-schema'
 import type { GetValForKey } from '@livestore/utils'
 import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import type { SqliteDsl } from 'effect-db-schema'
 
 import type { MutationEvent } from './schema/mutations.js'
 import { defineMutation } from './schema/mutations.js'

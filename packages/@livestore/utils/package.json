@@ -44,7 +44,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "effect-db-schema": "workspace:*",
+    "@livestore/db-schema": "workspace:*",
     "msgpackr": "^1.11.2",
     "nanoid": "^5.0.7",
     "pretty-bytes": "^6.1.1"

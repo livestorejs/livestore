@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 
-import { printSqliteDrizzleTables } from 'effect-db-schema/codegen'
+import { printSqliteDrizzleTables } from '@livestore/db-schema/codegen'
 
 import { schema } from '../schema/index.js'
 

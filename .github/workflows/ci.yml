@@ -81,11 +81,14 @@ jobs:
           WORKSPACE_ROOT: ${{ github.workspace }}
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
-      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
-      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
+      - name: Configure NPM authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-  
+      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
+      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
+
   # TODO test cloning examples standalone 
 
   build-monorepo-examples:
@@ -137,7 +140,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Add snapshot resolution to package.json
         run: |
-          for pkg in livestore web react common utils; do
+          for pkg in livestore web react common utils db-schema; do
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' example/package.json > example/package.json.tmp && mv example/package.json.tmp example/package.json
           done
       - run: bun install
@@ -158,7 +161,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Add snapshot resolution to package.json
         run: |
-          for pkg in livestore expo react common utils; do
+          for pkg in livestore expo react common utils db-schema; do
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' example/package.json > example/package.json.tmp && mv example/package.json.tmp example/package.json
           done
         working-directory: example

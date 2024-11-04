@@ -10,7 +10,7 @@
   },
   "include": ["./src"],
   "references": [
-    { "path": "../../effect-db-schema" },
+    { "path": "../db-schema" },
     { "path": "../common" },
     { "path": "../web" },
     { "path": "../utils" }

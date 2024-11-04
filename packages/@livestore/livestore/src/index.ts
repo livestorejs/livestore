@@ -55,7 +55,7 @@ export {
   type PreparedBindValues,
 } from '@livestore/common'
 
-export { SqliteAst, SqliteDsl } from 'effect-db-schema'
+export { SqliteAst, SqliteDsl } from '@livestore/db-schema'
 
 export { deepEqual } from '@livestore/utils'
 

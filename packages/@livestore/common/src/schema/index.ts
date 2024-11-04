@@ -1,6 +1,6 @@
+import type { SqliteDsl } from '@livestore/db-schema'
+import { SqliteAst } from '@livestore/db-schema'
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
-import type { SqliteDsl } from 'effect-db-schema'
-import { SqliteAst } from 'effect-db-schema'
 
 import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'

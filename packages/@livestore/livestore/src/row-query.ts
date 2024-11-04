@@ -1,11 +1,11 @@
 import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
 import { SessionIdSymbol, sql } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
+import type { SqliteDsl } from '@livestore/db-schema'
 import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import type { SqliteDsl } from 'effect-db-schema'
 
 import type {
   GetAtomResult,
