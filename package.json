@@ -27,7 +27,7 @@
     "@livestore/web": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
-    "@livestore/devtools-react": "0.0.58-dev.9"
+    "@livestore/devtools-react": "0.0.58-dev.10"
   },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",
