@@ -110,7 +110,10 @@ jobs:
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm build:monorepo-examples
-      - run: nix develop --command pnpm deploy:monorepo-examples ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
+      - run: |
+          nix develop --command pnpm deploy:monorepo-examples \
+            --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
+            --alias=snapshot-${{ github.sha }}
 
   build-example-tiged-todomvc:
     strategy:
@@ -196,6 +199,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - name: Install pnpm
         uses: pnpm/action-setup@v2
       - name: Use Node.js ${{ matrix.node-version }}

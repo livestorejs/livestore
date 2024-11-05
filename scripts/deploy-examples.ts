@@ -19,12 +19,24 @@ const netlifyDeployResultSchema = Schema.Struct({
   logs: Schema.String,
 })
 
-const buildAndDeployExample = ({ example, prod }: { example: string; prod: boolean }) =>
+const buildAndDeployExample = ({
+  example,
+  prod,
+  alias,
+}: {
+  example: string
+  prod: boolean
+  alias: Option.Option<string>
+}) =>
   Effect.gen(function* () {
-    $.cwd(EXAMPLES_MONOREPO_DIR)
+    $.cwd(`${EXAMPLES_MONOREPO_DIR}/${example}`)
     yield* Effect.promise(() => $`pnpm build`)
-    const resultJson = yield* Effect.promise(() =>
-      $`bunx netlify deploy --dir=${EXAMPLES_MONOREPO_DIR}/${example}/dist --site=example-${example} --json ${prod ? '--prod' : ''}`.json(),
+    const prodFlag = prod ? '--prod' : ''
+    const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
+    const deployCommand = `bunx netlify deploy --dir=${EXAMPLES_MONOREPO_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
+    const resultJson = yield* Effect.promise(() => $`${{ raw: deployCommand }} --json`.json()).pipe(
+      Effect.catchAllCause(() => Effect.promise(() => $`${{ raw: deployCommand }} --json`.text())),
+      Effect.catchAllCause(() => Effect.promise(() => $`${{ raw: deployCommand }}`)),
     )
 
     const result = yield* Schema.decode(netlifyDeployResultSchema)(resultJson).pipe(
@@ -33,9 +45,17 @@ const buildAndDeployExample = ({ example, prod }: { example: string; prod: boole
     )
 
     console.log(`Deployed ${example} to ${result.deploy_url}`)
-  })
+  }).pipe(Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)))
 
-const deploy = ({ exampleFilter, prod }: { exampleFilter: Option.Option<string>; prod: boolean }) =>
+const deploy = ({
+  exampleFilter,
+  prod,
+  alias,
+}: {
+  exampleFilter: Option.Option<string>
+  prod: boolean
+  alias: Option.Option<string>
+}) =>
   Effect.gen(function* () {
     const examplesToDeploy = fs
       .readdirSync(EXAMPLES_MONOREPO_DIR, { withFileTypes: true })
@@ -52,21 +72,22 @@ const deploy = ({ exampleFilter, prod }: { exampleFilter: Option.Option<string>;
       )
       return
     } else {
-      console.log(`Deploying${prod ? '  (to prod)' : ''}: ${filteredExamplesToDeploy.join(', ')}`)
+      console.log(`Deploying${prod ? ' (to prod)' : ''}: ${filteredExamplesToDeploy.join(', ')}`)
     }
 
-    yield* Effect.forEach(filteredExamplesToDeploy, (example) => buildAndDeployExample({ example, prod }), {
+    yield* Effect.forEach(filteredExamplesToDeploy, (example) => buildAndDeployExample({ example, prod, alias }), {
       concurrency: 4,
     })
   })
 
 const exampleFilterOption = Options.text('example-filter').pipe(Options.withAlias('e'), Options.optional)
 const prodOption = Options.boolean('prod').pipe(Options.withDefault(false))
+const aliasOption = Options.text('alias').pipe(Options.optional)
 
 const command = Command.make(
   'deploy',
-  { exampleFilter: exampleFilterOption, prod: prodOption },
-  ({ exampleFilter, prod }) => deploy({ exampleFilter, prod }),
+  { exampleFilter: exampleFilterOption, prod: prodOption, alias: aliasOption },
+  ({ exampleFilter, prod, alias }) => deploy({ exampleFilter, prod, alias }),
 )
 
 const cli = Command.run(command, {
