@@ -1,5 +1,4 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
-import type { NullableFieldsToOptional } from '@livestore/utils'
 
 import { Filter } from '../types.js'
 import * as mutations from './mutations.js'
@@ -21,7 +20,6 @@ const app = DbSchema.table(
 )
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
-export type TodoInput = NullableFieldsToOptional<Todo>
 export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }

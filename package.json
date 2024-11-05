@@ -7,6 +7,7 @@
     "build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.all.json",
     "build:monorepo-examples": "pnpm --filter 'livestore-example-monorepo-*' run build",
     "setup:monorepo-examples": "bun scripts/sync-examples.ts --single-run",
+    "deploy:monorepo-examples": "bun scripts/deploy-examples.ts",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",

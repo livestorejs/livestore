@@ -91,7 +91,7 @@ jobs:
 
   # TODO test cloning examples standalone 
 
-  build-monorepo-examples:
+  build-deploy-monorepo-examples:
     strategy:
       matrix:
         node-version: [22]
@@ -110,6 +110,7 @@ jobs:
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm build:monorepo-examples
+      - run: nix develop --command pnpm deploy:monorepo-examples ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
 
   build-example-tiged-todomvc:
     strategy:
@@ -187,7 +188,7 @@ jobs:
       # - run: bun run build
       #   working-directory: example
 
-  build-website:
+  build-deploy-website:
     strategy:
       matrix:
         node-version: [22]
@@ -205,3 +206,4 @@ jobs:
       - run: pnpm install
       - run: pnpm build
         working-directory: website
+      - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}

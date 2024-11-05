@@ -1,4 +1,4 @@
-import { makeColumnSpec } from '@livestore/common'
+import { makeColumnSpec, ROOT_ID } from '@livestore/common'
 import { DbSchema, type MutationEvent, mutationEventSchemaAny } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
@@ -19,8 +19,8 @@ const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Clien
 const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
 export const mutationLogTable = DbSchema.table('__unused', {
-  id: DbSchema.integer({ primaryKey: true }),
-  parentId: DbSchema.integer({}),
+  idGlobal: DbSchema.integer({ primaryKey: true }),
+  parentIdGlobal: DbSchema.integer({}),
   mutation: DbSchema.text({}),
   args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
 })
@@ -96,13 +96,13 @@ export class WebSocketServer extends DurableObject<Env> {
         case 'WSMessage.PushReq': {
           // TODO check whether we could use the Durable Object storage for this to speed up the lookup
           const latestEvent = await this.storage.getLatestEvent()
-          const expectedParentId = latestEvent?.id ?? { global: 0, local: 0 }
+          const expectedParentId = latestEvent?.id ?? ROOT_ID
 
-          if (decodedMessage.mutationEventEncoded.parentId !== expectedParentId) {
+          if (decodedMessage.mutationEventEncoded.parentId.global !== expectedParentId.global) {
             ws.send(
               encodeOutgoingMessage(
                 WSMessage.Error.make({
-                  message: `Invalid parent id. Received ${decodedMessage.mutationEventEncoded.parentId} but expected ${expectedParentId}`,
+                  message: `Invalid parent id. Received ${decodedMessage.mutationEventEncoded.parentId.global} but expected ${expectedParentId.global}`,
                   requestId,
                 }),
               ),
@@ -190,14 +190,14 @@ export class WebSocketServer extends DurableObject<Env> {
 
 const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
   const getLatestEvent = async (): Promise<MutationEvent.Any | undefined> => {
-    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY id DESC LIMIT 1`).all()
+    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY idGlobal DESC LIMIT 1`).all()
     if (rawEvents.error) {
       throw new Error(rawEvents.error)
     }
     const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results).map((e) => ({
       ...e,
-      id: { global: e.id, local: 0 },
-      parentId: { global: e.parentId, local: 0 },
+      id: { global: e.idGlobal, local: 0 },
+      parentId: { global: e.parentIdGlobal, local: 0 },
     }))
     return events[0]
   }
@@ -205,21 +205,23 @@ const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
   const getEvents = async (cursor: number | undefined): Promise<ReadonlyArray<MutationEvent.Any>> => {
     const whereClause = cursor ? `WHERE id > ${cursor}` : ''
     // TODO handle case where `cursor` was not found
-    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`).all()
+    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ${whereClause} ORDER BY idGlobal ASC`).all()
     if (rawEvents.error) {
       throw new Error(rawEvents.error)
     }
     const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results).map((e) => ({
       ...e,
-      id: { global: e.id, local: 0 },
-      parentId: { global: e.parentId, local: 0 },
+      id: { global: e.idGlobal, local: 0 },
+      parentId: { global: e.parentIdGlobal, local: 0 },
     }))
     return events
   }
 
   const appendEvent = async (event: MutationEvent.Any) => {
-    const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation) VALUES (?, ?, ?, ?)`
-    await env.DB.prepare(sql).bind(event.id, event.parentId, JSON.stringify(event.args), event.mutation).run()
+    const sql = `INSERT INTO ${dbName} (idGlobal, parentIdGlobal, args, mutation) VALUES (?, ?, ?, ?)`
+    await env.DB.prepare(sql)
+      .bind(event.id.global, event.parentId.global, JSON.stringify(event.args), event.mutation)
+      .run()
   }
 
   const resetRoom = async () => {

@@ -3,6 +3,9 @@
 	"type": "module",
 	"private": true,
 	"devDependencies": {
+		"effect": "3.10.7",
+		"@effect/cli": "^0.48.16",
+		"@effect/platform-bun": "0.49.18",
 		"@types/node": "^22.8.5",
 		"bun-types": "^1.1.33"
 	}

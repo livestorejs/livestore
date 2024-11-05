@@ -2,29 +2,31 @@
 
 import type { GetAtomResult, LiveQuery } from '@livestore/livestore'
 import { querySQL } from '@livestore/livestore'
-import type { NullableFieldsToOptional } from '@livestore/utils'
+// import type { NullableFieldsToOptional } from '@livestore/utils'
 import type { TypedQueryBuilder } from 'drizzle-orm/query-builders/query-builder'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
 import type { Schema } from 'effect'
 
 export * as drizzle from 'drizzle-orm'
 
-type GetQueryRes<TQueryBuilder extends TypedQueryBuilder<any, any>> =
-  TQueryBuilder extends TypedQueryBuilder<infer _A, infer B>
-    ? B extends (infer B2)[]
-      ? NullableFieldsToOptional<B2>
-      : NullableFieldsToOptional<B>
-    : never
+// type GetQueryRes<TQueryBuilder extends TypedQueryBuilder<any, any>> =
+//   TQueryBuilder extends TypedQueryBuilder<infer _A, infer B>
+//     ? B extends (infer B2)[]
+//       ? NullableFieldsToOptional<B2>
+//       : NullableFieldsToOptional<B>
+//     : never
 
 const queryBuilder = new QueryBuilder()
 
 export const queryDrizzle: {
-  <TQueryBuilder extends TypedQueryBuilder<any, any>>(
+  <TQueryBuilder extends TypedQueryBuilder<any, any>, TResultSchema>(
     fn: (qb: QueryBuilder, get: GetAtomResult) => TQueryBuilder,
-    options?: {
+    options: {
       queriedTables?: Set<string>
+      schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
+      map?: never
     },
-  ): LiveQuery<ReadonlyArray<GetQueryRes<TQueryBuilder>>>
+  ): LiveQuery<TResultSchema>
   <TQueryBuilder extends TypedQueryBuilder<any, any>, TResultSchema>(
     fn: (qb: QueryBuilder, get: GetAtomResult) => TQueryBuilder,
     options: {

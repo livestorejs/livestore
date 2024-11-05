@@ -24,5 +24,6 @@ dist
 
 .wrangler
 .vercel
+.netlify
 
 examples-monorepo
