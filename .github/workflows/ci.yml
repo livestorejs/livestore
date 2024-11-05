@@ -114,6 +114,8 @@ jobs:
           nix develop --command pnpm deploy:monorepo-examples \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
             --alias=snapshot-${{ github.sha }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 
   build-example-tiged-todomvc:
     strategy:
@@ -211,3 +213,5 @@ jobs:
       - run: pnpm build
         working-directory: website
       - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --filter=website
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
