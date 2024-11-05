@@ -210,4 +210,4 @@ jobs:
       - run: pnpm install
       - run: pnpm build
         working-directory: website
-      - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
+      - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --filter=website
