@@ -1,4 +1,4 @@
-import { BootDb, sql } from '@livestore/livestore'
+import { sql, type Store } from '@livestore/livestore'
 
 import { nanoid } from 'nanoid'
 import { Issue, mutations } from './schema'
@@ -10,7 +10,7 @@ export const labels = ['frontend', 'backend', 'ux', 'research', 'design', 'bug',
 export const priorities = ['none', 'low', 'medium', 'high', 'urgent'] satisfies PriorityType[]
 export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled'] satisfies StatusType[]
 
-export function seed(db: BootDb) {
+export function seed(store: Store) {
   try {
     const urlParams = new URLSearchParams(window.location.search)
     const seedParam = urlParams.get('seed')
@@ -18,7 +18,7 @@ export function seed(db: BootDb) {
       return
     }
     let howMany = parseInt(seedParam)
-    const rows = db.select<{ c: number }>(sql`SELECT count(*) as c FROM issue`)
+    const rows: readonly { c: number }[] = store.__select(sql`SELECT count(*) as c FROM issue`)
     if (rows[0]!.c >= howMany) {
       return
     }
@@ -27,11 +27,7 @@ export function seed(db: BootDb) {
 
     console.log('SEEDING WITH ', howMany, ' ADDITIONAL ROWS')
 
-    db.txn(() => {
-      for (const issueWithDescription of createIssues(howMany)) {
-        db.mutate(mutations.createIssueWithDescription(issueWithDescription))
-      }
-    })
+    store.mutate(...Array.from(createIssues(howMany)).map((_) => mutations.createIssueWithDescription(_)))
   } finally {
     // remove `?seed=` from the URL using the URLSearchParams API
     const url = new URL(window.location.href)

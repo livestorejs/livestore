@@ -31,9 +31,9 @@ export const App = () => {
             </View>
           )
         }}
-        boot={(db) => {
-          if (db.select<{ count: number }>(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
-            db.mutate(mutations.addTodo({ id: cuid(), text: 'Make coffee' }))
+        boot={(store) => {
+          if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
+            store.mutate(mutations.addTodo({ id: cuid(), text: 'Make coffee' }))
           }
         }}
         adapter={adapter}

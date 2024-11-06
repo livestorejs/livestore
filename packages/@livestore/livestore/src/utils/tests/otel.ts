@@ -7,7 +7,7 @@ type SimplifiedNestedSpan = { _name: string; attributes: any; children: Simplifi
 export const getSimplifiedRootSpan = (
   exporter: InMemorySpanExporter,
   mapAttributes?: (attributes: Attributes) => Attributes,
-) => {
+): SimplifiedNestedSpan => {
   const spans = exporter.getFinishedSpans()
   const spansMap = new Map<string, NestedSpan>(spans.map((span) => [span.spanContext().spanId, { span, children: [] }]))
 
@@ -23,14 +23,14 @@ export const getSimplifiedRootSpan = (
   type NestedSpan = { span: ReadableSpan; children: NestedSpan[] }
   const rootSpan = spansMap.get(spans.find((_) => _.name === 'test')!.spanContext().spanId)!
 
-  const simplifySpan = (span: NestedSpan): SimplifiedNestedSpan =>
+  const simplifySpanRec = (span: NestedSpan): SimplifiedNestedSpan =>
     omitEmpty({
       _name: span.span.name,
       attributes: mapAttributesfn(span.span.attributes),
       children: span.children
         .filter((_) => _.span.name !== 'createStore')
         // .sort((a, b) => compareHrTime(a.span.startTime, b.span.startTime))
-        .map(simplifySpan),
+        .map(simplifySpanRec),
     })
 
   // console.dir(
@@ -38,7 +38,7 @@ export const getSimplifiedRootSpan = (
   //   { depth: 10 },
   // )
 
-  return simplifySpan(rootSpan)
+  return simplifySpanRec(rootSpan)
 }
 
 // const compareHrTime = (a: [number, number], b: [number, number]) => {

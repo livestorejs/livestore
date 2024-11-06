@@ -1,4 +1,3 @@
-import { sql } from '@livestore/common'
 import { DbSchema, makeSchema } from '@livestore/common/schema'
 import type { LiveStoreContextRunning } from '@livestore/livestore'
 import { createStore, globalReactivityGraph, makeReactivityGraph } from '@livestore/livestore'
@@ -32,11 +31,15 @@ export const todos = DbSchema.table(
   { deriveMutations: true, isSingleton: false },
 )
 
-export const app = DbSchema.table('app', {
-  id: DbSchema.text({ primaryKey: true }),
-  newTodoText: DbSchema.text({ default: '', nullable: true }),
-  filter: DbSchema.text({ default: 'all', nullable: false }),
-})
+export const app = DbSchema.table(
+  'app',
+  {
+    id: DbSchema.text({ primaryKey: true, default: 'static' }),
+    newTodoText: DbSchema.text({ default: '', nullable: true }),
+    filter: DbSchema.text({ default: 'all', nullable: false }),
+  },
+  { isSingleton: true },
+)
 
 export const AppComponentSchema = DbSchema.table(
   'UserInfo',
@@ -92,7 +95,6 @@ export const makeTodoMvcReact = ({
     const store = yield* createStore({
       schema,
       storeId: 'default',
-      boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
       adapter: makeInMemoryAdapter(),
       reactivityGraph,
       otelOptions: {

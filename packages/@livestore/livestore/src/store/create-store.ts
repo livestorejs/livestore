@@ -1,20 +1,16 @@
 import type {
   Adapter,
-  BootDb,
   BootStatus,
   ClientSession,
   EventId,
   IntentionalShutdownCause,
-  PreparedBindValues,
   StoreDevtoolsChannel,
 } from '@livestore/common'
-import { getExecArgsFromMutation, replaceSessionIdSymbol, UnexpectedError } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchemaMemo } from '@livestore/common/schema'
-import { makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
+import { makeNoopTracer } from '@livestore/utils'
 import {
   Cause,
-  Data,
   Deferred,
   Duration,
   Effect,
@@ -27,7 +23,6 @@ import {
   OtelTracer,
   Queue,
   Runtime,
-  Schema,
   Scope,
 } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -45,7 +40,10 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions?: Partial<OtelOptions>
-  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
+  boot?: (
+    store: Store<TGraphQLContext, TSchema>,
+    parentSpan: otel.Span,
+  ) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -82,7 +80,6 @@ export const createStorePromise = async <
     Effect.runPromise,
   )
 
-// #region createStore
 export const createStore = <
   TGraphQLContext extends BaseGraphQLContext,
   TSchema extends LiveStoreSchema = LiveStoreSchema,
@@ -133,10 +130,7 @@ export const createStore = <
 
     const runtime = yield* Effect.runtime<Scope.Scope>()
 
-    const runEffectFork = (effect: Effect.Effect<any, any, never>) =>
-      effect.pipe(Effect.tapCauseLogPretty, FiberSet.run(fiberSet), Runtime.runFork(runtime))
-
-    // TODO close parent scope? (Needs refactor with Mike A)
+    // TODO close parent scope? (Needs refactor with Mike Arnaldi)
     const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
       Effect.gen(function* () {
         // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
@@ -168,100 +162,10 @@ export const createStore = <
       connectDevtoolsToStore: connectDevtoolsToStore_,
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
-    const mutationEventSchema = makeMutationEventSchemaMemo(schema)
-
-    // TODO get rid of this
-    // const __processedMutationIds = new Set<number>()
-
     const currentMutationEventIdRef = { current: yield* clientSession.coordinator.getCurrentMutationEventId }
 
-    // TODO fill up with unsynced mutation events from the coordinator
+    // TODO fill up with unsynced mutation events from the client session
     const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
-
-    // TODO consider moving booting into the clientSession
-    if (boot !== undefined) {
-      let isInTxn = false
-      let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
-
-      const bootDbImpl: BootDb = {
-        _tag: 'BootDb',
-        execute: (queryStr, bindValues) => {
-          const stmt = clientSession.syncDb.prepare(queryStr)
-          stmt.execute(bindValues)
-
-          if (isInTxn === true) {
-            txnExecuteStmnts.push([queryStr, bindValues])
-          } else {
-            clientSession.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
-          }
-        },
-        mutate: (...list) => {
-          for (const mutationEventDecoded_ of list) {
-            const mutationDef =
-              schema.mutations.get(mutationEventDecoded_.mutation) ??
-              shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
-
-            const { id, parentId } = clientSession.coordinator
-              .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
-              .pipe(Effect.runSync)
-
-            currentMutationEventIdRef.current = id
-
-            const mutationEventDecoded = { ...mutationEventDecoded_, id, parentId }
-
-            replaceSessionIdSymbol(mutationEventDecoded.args, clientSession.coordinator.sessionId)
-
-            MutableHashMap.set(unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
-
-            // __processedMutationIds.add(mutationEventDecoded.id.global)
-
-            const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-            // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-            for (const { statementSql, bindValues } of execArgsArr) {
-              clientSession.syncDb.execute(statementSql, bindValues)
-            }
-
-            const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
-
-            clientSession.coordinator
-              .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: true })
-              .pipe(runEffectFork)
-          }
-        },
-        select: (queryStr, bindValues) => {
-          const stmt = clientSession.syncDb.prepare(queryStr)
-          return stmt.select(bindValues)
-        },
-        txn: (callback) => {
-          try {
-            isInTxn = true
-            // clientSession.syncDb.execute('BEGIN TRANSACTION', undefined)
-
-            callback()
-
-            // clientSession.syncDb.execute('COMMIT', undefined)
-
-            // clientSession.coordinator.execute('BEGIN', undefined, undefined)
-            for (const [queryStr, bindValues] of txnExecuteStmnts) {
-              clientSession.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
-            }
-            // clientSession.coordinator.execute('COMMIT', undefined, undefined)
-          } catch (e: any) {
-            // clientSession.syncDb.execute('ROLLBACK', undefined)
-            throw e
-          } finally {
-            isInTxn = false
-            txnExecuteStmnts = []
-          }
-        },
-      }
-
-      yield* Effect.tryAll(() => boot(bootDbImpl, span)).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('createStore:boot'),
-      )
-    }
 
     const store = Store.createStore<TGraphQLContext, TSchema>(
       {
@@ -275,11 +179,29 @@ export const createStore = <
         unsyncedMutationEvents,
         fiberSet,
         runtime,
-        batchUpdates: batchUpdates ?? ((run) => run()),
+        // NOTE during boot we're not yet executing mutations in a batched context
+        // but only set the provided `batchUpdates` function after boot
+        batchUpdates: (run) => run(),
         storeId,
       },
       span,
     )
+
+    if (boot !== undefined) {
+      // TODO also incorporate `boot` function progress into `bootStatusQueue`
+      yield* Effect.tryAll(() => boot(store, span)).pipe(
+        UnexpectedError.mapToUnexpectedError,
+        Effect.withSpan('createStore:boot'),
+      )
+    }
+
+    // NOTE it's important to yield here to allow the forked Effect in the store constructor to run
+    yield* Effect.yieldNow()
+
+    if (batchUpdates !== undefined) {
+      // Replacing the default batchUpdates function with the provided one after boot
+      store.reactivityGraph.context!.effectsWrapper = batchUpdates
+    }
 
     yield* Deferred.succeed(storeDeferred, store as any as Store)
 
@@ -293,4 +215,3 @@ export const createStore = <
     Effect.provide(TracingLive),
   )
 }
-// #endregion createStore

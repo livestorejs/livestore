@@ -1,13 +1,6 @@
 import type { FromInputSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
-import {
-  createStore,
-  DbSchema,
-  globalReactivityGraph,
-  makeReactivityGraph,
-  makeSchema,
-  sql,
-} from '@livestore/livestore'
+import { createStore, DbSchema, globalReactivityGraph, makeReactivityGraph, makeSchema } from '@livestore/livestore'
 import { Effect, FiberSet } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
@@ -35,11 +28,15 @@ export const todos = DbSchema.table(
   { deriveMutations: true, isSingleton: false },
 )
 
-export const app = DbSchema.table('app', {
-  id: DbSchema.text({ primaryKey: true }),
-  newTodoText: DbSchema.text({ default: '', nullable: true }),
-  filter: DbSchema.text({ default: 'all', nullable: false }),
-})
+export const app = DbSchema.table(
+  'app',
+  {
+    id: DbSchema.text({ primaryKey: true, default: 'static' }),
+    newTodoText: DbSchema.text({ default: '', nullable: true }),
+    filter: DbSchema.text({ default: 'all', nullable: false }),
+  },
+  { isSingleton: true },
+)
 
 export const tables = { todos, app }
 export const schema = makeSchema({ tables })
@@ -63,7 +60,6 @@ export const makeTodoMvc = ({
     const store: Store<any, FixtureSchema> = yield* createStore({
       schema,
       storeId: 'default',
-      boot: (db) => db.execute(sql`INSERT OR IGNORE INTO app (id, newTodoText, filter) VALUES ('static', '', 'all');`),
       adapter: makeInMemoryAdapter(),
       reactivityGraph,
       otelOptions: {

@@ -1,4 +1,4 @@
-import type { Adapter, BootDb, BootStatus, UnexpectedError } from '@livestore/common'
+import type { Adapter, BootStatus, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Cause, Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe } from '@livestore/utils/effect'
@@ -6,6 +6,7 @@ import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import { createStore } from '../store/create-store.js'
+import type { Store } from '../store/store.js'
 import type { BaseGraphQLContext, LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store/store-types.js'
 import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 
@@ -34,7 +35,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
     schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
     makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
   }
-  boot?: (db: BootDb) => Effect.Effect<void, unknown, otel.Tracer>
+  boot?: (store: Store<GraphQLContext, LiveStoreSchema>) => Effect.Effect<void, unknown, otel.Tracer>
   adapter: Adapter
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void

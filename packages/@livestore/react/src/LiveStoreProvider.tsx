@@ -1,4 +1,4 @@
-import type { Adapter, BootDb, BootStatus, IntentionalShutdownCause } from '@livestore/common'
+import type { Adapter, BootStatus, IntentionalShutdownCause } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
@@ -7,6 +7,7 @@ import type {
   GraphQLOptions,
   LiveStoreContext as StoreContext_,
   OtelOptions,
+  Store,
 } from '@livestore/livestore'
 import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
 import { errorToString } from '@livestore/utils'
@@ -17,7 +18,7 @@ import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.js'
 
-interface LiveStoreProviderProps<GraphQLContext> {
+interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
   schema: LiveStoreSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
@@ -30,7 +31,10 @@ interface LiveStoreProviderProps<GraphQLContext> {
    * @default 'default'
    */
   storeId?: string
-  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
+  boot?: (
+    store: Store<GraphQLContext, LiveStoreSchema>,
+    parentSpan: otel.Span,
+  ) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
   renderLoading: (status: BootStatus) => ReactElement

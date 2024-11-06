@@ -159,18 +159,20 @@ export class Store<
 
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
+          // Remove all table refs from the reactivity graph
           for (const tableRef of Object.values(this.tableRefs)) {
             for (const superComp of tableRef.super) {
               this.reactivityGraph.removeEdge(superComp, tableRef)
             }
           }
 
+          // End the otel spans
           otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
           otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
         }),
       )
 
-      yield* Effect.never
+      yield* Effect.never // to keep the scope alive and bind to the parent scope
     }).pipe(Effect.scoped, Effect.withSpan('LiveStore:constructor'), this.runEffectFork)
   }
   // #endregion constructor

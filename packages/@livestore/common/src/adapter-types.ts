@@ -114,14 +114,6 @@ export type EventIdPair = { id: EventId; parentId: EventId }
 
 export const ROOT_ID = { global: -1, local: 0 } satisfies EventId
 
-export type BootDb = {
-  _tag: 'BootDb'
-  execute(queryStr: string, bindValues?: PreparedBindValues): void
-  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialAny>>(...list: TMutationArg) => void
-  select<T>(queryStr: string, bindValues?: PreparedBindValues): ReadonlyArray<T>
-  txn(callback: () => void): void
-}
-
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
