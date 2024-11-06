@@ -104,11 +104,7 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
     }),
     schema: rowSchema.pipe(Schema.Array, Schema.headOrElse()),
     map: options?.map,
-    queryInfo: {
-      _tag: 'Row',
-      table,
-      id: id === SessionIdSymbol ? 'sessionId' : (id ?? 'singleton'),
-    },
+    queryInfo: { _tag: 'Row', table, id: id ?? 'singleton' },
   })
 }
 

@@ -24,15 +24,16 @@ if (import.meta.env.DEV && window.location.pathname.includes('_devtools.html')) 
         <p>Adjust the storeId in the URL to see the devtools</p>
       </div>
     `
-  } else {
-    import('@livestore/devtools-react/index.css')
-    const { mountDevtools } = await import('@livestore/devtools-react')
-    mountDevtools({
-      schema,
-      rootEl: document.getElementById('root')!,
-      sharedWorker: LiveStoreSharedWorker,
-      storeId,
-    })
+    // TODO bring back if devtools dont work in Remix out of the box
+    // } else {
+    //   import('@livestore/devtools-react/index.css')
+    //   const { mountDevtools } = await import('@livestore/devtools-react')
+    //   mountDevtools({
+    //     schema,
+    //     rootEl: document.getElementById('root')!,
+    //     sharedWorker: LiveStoreSharedWorker,
+    //     storeId,
+    //   })
   }
 } else {
   const appId = getAppId()
