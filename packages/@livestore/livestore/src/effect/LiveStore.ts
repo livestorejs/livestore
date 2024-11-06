@@ -5,9 +5,8 @@ import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe 
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import type { BaseGraphQLContext } from '../store.js'
-import { createStore } from '../store.js'
-import type { LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store-context.js'
+import { createStore } from '../store/create-store.js'
+import type { BaseGraphQLContext, LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store/store-types.js'
 import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 
 export type LiveStoreContextRunning = LiveStoreContextRunning_

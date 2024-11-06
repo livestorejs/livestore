@@ -14,9 +14,9 @@ import type {
   QueryContext,
   ReactivityGraph,
 } from './reactiveQueries/base-class.js'
-import { computed } from './reactiveQueries/js.js'
+import { computed } from './reactiveQueries/computed.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { Store } from './store.js'
+import type { Store } from './store/store.js'
 
 export type RowQueryOptions<TTableDef extends DbSchema.TableDef, TResult = RowResult<TTableDef>> = {
   otelContext?: otel.Context

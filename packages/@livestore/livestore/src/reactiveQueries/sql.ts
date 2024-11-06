@@ -6,7 +6,7 @@ import * as otel from '@opentelemetry/api'
 import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import { NOT_REFRESHED_YET } from '../reactive.js'
-import type { RefreshReason } from '../store.js'
+import type { RefreshReason } from '../store/store-types.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
@@ -105,7 +105,7 @@ export class LiveStoreSQLQuery<
           const startMs = performance.now()
           const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? ctx.rootOtelContext), ctx)
           const durationMs = performance.now() - startMs
-          setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
+          setDebugInfo({ _tag: 'computed', label: `${label}:queryString`, query: queryString, durationMs })
           return queryString
         },
         {

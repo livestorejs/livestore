@@ -4,11 +4,11 @@ import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 
-import { NOT_REFRESHED_YET } from './reactive.js'
-import type { LiveQuery, ReactivityGraph } from './reactiveQueries/base-class.js'
-import type { SynchronousDatabaseWrapper } from './SynchronousDatabaseWrapper.js'
-import { emptyDebugInfo as makeEmptyDebugInfo } from './SynchronousDatabaseWrapper.js'
-import type { ReferenceCountedSet } from './utils/data-structures.js'
+import { NOT_REFRESHED_YET } from '../reactive.js'
+import type { LiveQuery, ReactivityGraph } from '../reactiveQueries/base-class.js'
+import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
+import { emptyDebugInfo as makeEmptyDebugInfo } from '../SynchronousDatabaseWrapper.js'
+import type { ReferenceCountedSet } from '../utils/data-structures.js'
 
 type IStore = {
   clientSession: ClientSession

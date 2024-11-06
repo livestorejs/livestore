@@ -1,15 +1,15 @@
-export { Store, createStorePromise, createStore } from './store.js'
+export { Store } from './store/store.js'
+export { createStore, createStorePromise, type CreateStoreOptions } from './store/create-store.js'
 export type {
   BaseGraphQLContext,
   QueryDebugInfo,
   RefreshReason,
-  CreateStoreOptions,
   GraphQLOptions,
   OtelOptions,
-} from './store.js'
+} from './store/store-types.js'
 
 export type { LiveStoreContextRunning } from './effect/LiveStore.js'
-export { StoreAbort, StoreInterrupted, type LiveStoreContext } from './store-context.js'
+export { StoreAbort, StoreInterrupted, type LiveStoreContext } from './store/store-types.js'
 
 export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 
@@ -25,7 +25,7 @@ export type {
   Ref,
   Effect,
 } from './reactive.js'
-export { LiveStoreJSQuery, computed } from './reactiveQueries/js.js'
+export { LiveStoreJSQuery, computed } from './reactiveQueries/computed.js'
 export { LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 export {

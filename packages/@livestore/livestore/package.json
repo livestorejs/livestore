@@ -2,6 +2,7 @@
   "name": "@livestore/livestore",
   "version": "0.0.58-dev.13",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -1,15 +1,5 @@
-import type {
-  Adapter,
-  BootDb,
-  BootStatus,
-  ClientSession,
-  EventId,
-  IntentionalShutdownCause,
-  ParamsObject,
-  PreparedBindValues,
-  StoreDevtoolsChannel,
-} from '@livestore/common'
-import { getExecArgsFromMutation, prepareBindValues, replaceSessionIdSymbol, UnexpectedError } from '@livestore/common'
+import type { ClientSession, ParamsObject } from '@livestore/common'
+import { getExecArgsFromMutation, prepareBindValues, replaceSessionIdSymbol } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
   isPartialMutationEvent,
@@ -18,124 +8,22 @@ import {
   SCHEMA_MUTATIONS_META_TABLE,
   SESSION_CHANGESET_META_TABLE,
 } from '@livestore/common/schema'
-import { assertNever, makeNoopTracer, shouldNeverHappen } from '@livestore/utils'
-import {
-  Cause,
-  Data,
-  Deferred,
-  Duration,
-  Effect,
-  Exit,
-  FiberSet,
-  Inspectable,
-  Layer,
-  Logger,
-  LogLevel,
-  MutableHashMap,
-  OtelTracer,
-  Queue,
-  Runtime,
-  Schema,
-  Scope,
-  Stream,
-} from '@livestore/utils/effect'
+import { assertNever, shouldNeverHappen } from '@livestore/utils'
+import type { Scope } from '@livestore/utils/effect'
+import { Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import { globalReactivityGraph } from './global-state.js'
-import type { DebugRefreshReasonBase, Ref } from './reactive.js'
-import type { LiveQuery, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
-import { connectDevtoolsToStore } from './store-devtools.js'
-import { SynchronousDatabaseWrapper } from './SynchronousDatabaseWrapper.js'
-import { ReferenceCountedSet } from './utils/data-structures.js'
-import { downloadBlob } from './utils/dev.js'
-import { getDurationMsFromSpan } from './utils/otel.js'
-import type { StackInfo } from './utils/stack-info.js'
+import type { Ref } from '../reactive.js'
+import type { LiveQuery, QueryContext, ReactivityGraph } from '../reactiveQueries/base-class.js'
+import { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
+import { ReferenceCountedSet } from '../utils/data-structures.js'
+import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
+import { getDurationMsFromSpan } from '../utils/otel.js'
+import type { BaseGraphQLContext, RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel } from './store-types.js'
 
-export type BaseGraphQLContext = {
-  queriedTables: Set<string>
-  /** Needed by Pothos Otel plugin for resolver tracing to work */
-  otelContext?: otel.Context
-}
-
-export type GraphQLOptions<TContext> = {
-  schema: GraphQLSchema
-  makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => TContext
-}
-
-export type OtelOptions = {
-  tracer: otel.Tracer
-  rootSpanContext: otel.Context
-}
-
-export type StoreOptions<
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
-> = {
-  clientSession: ClientSession
-  schema: TSchema
-  storeId: string
-  // TODO remove graphql-related stuff from store and move to GraphQL query directly
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
-  otelOptions: OtelOptions
-  reactivityGraph: ReactivityGraph
-  disableDevtools?: boolean
-  fiberSet: FiberSet.FiberSet
-  runtime: Runtime.Runtime<Scope.Scope>
-  batchUpdates: (runUpdates: () => void) => void
-  currentMutationEventIdRef: { current: EventId }
-  unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId, MutationEvent.ForSchema<TSchema>>
-}
-
-export type RefreshReason =
-  | DebugRefreshReasonBase
-  | {
-      _tag: 'mutate'
-      /** The mutations that were applied */
-      mutations: ReadonlyArray<MutationEvent.Any>
-
-      /** The tables that were written to by the event */
-      writeTables: ReadonlyArray<string>
-    }
-  | {
-      // TODO rename to a more appropriate name which is framework-agnostic
-      _tag: 'react'
-      api: string
-      label?: string
-      stackInfo?: StackInfo
-    }
-  | { _tag: 'manual'; label?: string }
-
-export type QueryDebugInfo = {
-  _tag: 'graphql' | 'sql' | 'js' | 'unknown'
-  label: string
-  query: string
-  durationMs: number
-}
-
-export type StoreOtel = {
-  tracer: otel.Tracer
-  mutationsSpanContext: otel.Context
-  queriesSpanContext: otel.Context
-}
-
-export type StoreMutateOptions = {
-  label?: string
-  skipRefresh?: boolean
-  wasSyncMessage?: boolean
-  /**
-   * When set to `false` the mutation won't be persisted in the mutation log and sync server (but still synced).
-   * This can be useful e.g. for fine-granular update events (e.g. position updates during drag & drop)
-   *
-   * @default true
-   */
-  persisted?: boolean
-}
-
-// eslint-disable-next-line unicorn/prefer-global-this
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  // eslint-disable-next-line unicorn/prefer-global-this
-  window.__debugDownloadBlob = downloadBlob
+if (import.meta.env.DEV) {
+  exposeDebugUtils()
 }
 
 export class Store<
@@ -501,6 +389,7 @@ export class Store<
 
     return res
   }
+  // #endregion mutate
 
   /**
    * This can be used in combination with `skipRefresh` when applying mutations.
@@ -520,6 +409,7 @@ export class Store<
     )
   }
 
+  // #region mutateWithoutRefresh
   /**
    * Apply a mutation to the store.
    * Returns the tables that were affected by the event.
@@ -614,7 +504,7 @@ export class Store<
       },
     )
   }
-  // #endregion mutate
+  // #endregion mutateWithoutRefresh
 
   /**
    * Directly execute a SQL query on the Store.
@@ -657,7 +547,7 @@ export class Store<
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
   toJSON = () => {
     return {
-      _tag: 'Store',
+      _tag: 'livestore.Store',
       reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults: true }),
     }
   }
@@ -665,260 +555,3 @@ export class Store<
   private runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
     effect.pipe(Effect.tapCauseLogPretty, FiberSet.run(this.fiberSet), Runtime.runFork(this.runtime))
 }
-
-export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
-  schema: TSchema
-  adapter: Adapter
-  storeId: string
-  reactivityGraph?: ReactivityGraph
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
-  otelOptions?: Partial<OtelOptions>
-  boot?: (db: BootDb, parentSpan: otel.Span) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
-  batchUpdates?: (run: () => void) => void
-  disableDevtools?: boolean
-  onBootStatus?: (status: BootStatus) => void
-}
-
-/** Create a new LiveStore Store */
-export const createStorePromise = async <
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
->({
-  signal,
-  ...options
-}: CreateStoreOptions<TGraphQLContext, TSchema> & { signal?: AbortSignal }): Promise<Store<TGraphQLContext, TSchema>> =>
-  Effect.gen(function* () {
-    const scope = yield* Scope.make()
-    const runtime = yield* Effect.runtime()
-
-    if (signal !== undefined) {
-      signal.addEventListener('abort', () => {
-        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
-      })
-    }
-
-    return yield* FiberSet.make().pipe(
-      Effect.andThen((fiberSet) => createStore({ ...options, fiberSet })),
-      Scope.extend(scope),
-    )
-  }).pipe(
-    Effect.withSpan('createStore'),
-    Effect.tapCauseLogPretty,
-    Effect.annotateLogs({ thread: 'window' }),
-    Effect.provide(Logger.pretty),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.runPromise,
-  )
-
-// #region createStore
-export const createStore = <
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
->({
-  schema,
-  adapter,
-  storeId,
-  graphQLOptions,
-  otelOptions,
-  boot,
-  reactivityGraph = globalReactivityGraph,
-  batchUpdates,
-  disableDevtools,
-  onBootStatus,
-  fiberSet,
-}: CreateStoreOptions<TGraphQLContext, TSchema> & { fiberSet: FiberSet.FiberSet }): Effect.Effect<
-  Store<TGraphQLContext, TSchema>,
-  UnexpectedError,
-  Scope.Scope
-> => {
-  const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
-  const otelRootSpanContext = otelOptions?.rootSpanContext ?? otel.context.active()
-
-  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
-    Layer.provide(Layer.sync(OtelTracer.Tracer, () => otelTracer)),
-  )
-
-  return Effect.gen(function* () {
-    const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
-
-    yield* Queue.take(bootStatusQueue).pipe(
-      Effect.tapSync((status) => onBootStatus?.(status)),
-      Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
-      Effect.forever,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
-
-    const storeDeferred = yield* Deferred.make<Store>()
-
-    const connectDevtoolsToStore_ = (storeDevtoolsChannel: StoreDevtoolsChannel) =>
-      Effect.gen(function* () {
-        const store = yield* Deferred.await(storeDeferred)
-        yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
-      })
-
-    const runtime = yield* Effect.runtime<Scope.Scope>()
-
-    const runEffectFork = (effect: Effect.Effect<any, any, never>) =>
-      effect.pipe(Effect.tapCauseLogPretty, FiberSet.run(fiberSet), Runtime.runFork(runtime))
-
-    // TODO close parent scope? (Needs refactor with Mike A)
-    const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
-      Effect.gen(function* () {
-        // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
-        const logCause =
-          Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
-            ? cause.toString()
-            : cause
-        yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
-
-        FiberSet.clear(fiberSet).pipe(
-          Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
-          Effect.timeout(Duration.seconds(1)),
-          Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
-          Effect.catchTag('TimeoutException', (err) =>
-            Effect.logError('Store shutdown timed out. Forcing shutdown.', err).pipe(
-              Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
-            ),
-          ),
-          Runtime.runFork(runtime), // NOTE we need to fork this separately otherwise it will also be interrupted
-        )
-      }).pipe(Effect.withSpan('livestore:shutdown'))
-
-    const clientSession: ClientSession = yield* adapter({
-      schema,
-      storeId,
-      devtoolsEnabled: disableDevtools !== true,
-      bootStatusQueue,
-      shutdown,
-      connectDevtoolsToStore: connectDevtoolsToStore_,
-    }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
-
-    const mutationEventSchema = makeMutationEventSchemaMemo(schema)
-
-    // TODO get rid of this
-    // const __processedMutationIds = new Set<number>()
-
-    const currentMutationEventIdRef = { current: yield* clientSession.coordinator.getCurrentMutationEventId }
-
-    // TODO fill up with unsynced mutation events from the coordinator
-    const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
-
-    // TODO consider moving booting into the storage backend
-    if (boot !== undefined) {
-      let isInTxn = false
-      let txnExecuteStmnts: [string, PreparedBindValues | undefined][] = []
-
-      const bootDbImpl: BootDb = {
-        _tag: 'BootDb',
-        execute: (queryStr, bindValues) => {
-          const stmt = clientSession.syncDb.prepare(queryStr)
-          stmt.execute(bindValues)
-
-          if (isInTxn === true) {
-            txnExecuteStmnts.push([queryStr, bindValues])
-          } else {
-            clientSession.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
-          }
-        },
-        mutate: (...list) => {
-          for (const mutationEventDecoded_ of list) {
-            const mutationDef =
-              schema.mutations.get(mutationEventDecoded_.mutation) ??
-              shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
-
-            const { id, parentId } = clientSession.coordinator
-              .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
-              .pipe(Effect.runSync)
-
-            currentMutationEventIdRef.current = id
-
-            const mutationEventDecoded = { ...mutationEventDecoded_, id, parentId }
-
-            replaceSessionIdSymbol(mutationEventDecoded.args, clientSession.coordinator.sessionId)
-
-            MutableHashMap.set(unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
-
-            // __processedMutationIds.add(mutationEventDecoded.id.global)
-
-            const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-            // const { bindValues, statementSql } = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-            for (const { statementSql, bindValues } of execArgsArr) {
-              clientSession.syncDb.execute(statementSql, bindValues)
-            }
-
-            const mutationEventEncoded = Schema.encodeUnknownSync(mutationEventSchema)(mutationEventDecoded)
-
-            clientSession.coordinator
-              .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: true })
-              .pipe(runEffectFork)
-          }
-        },
-        select: (queryStr, bindValues) => {
-          const stmt = clientSession.syncDb.prepare(queryStr)
-          return stmt.select(bindValues)
-        },
-        txn: (callback) => {
-          try {
-            isInTxn = true
-            // clientSession.syncDb.execute('BEGIN TRANSACTION', undefined)
-
-            callback()
-
-            // clientSession.syncDb.execute('COMMIT', undefined)
-
-            // clientSession.coordinator.execute('BEGIN', undefined, undefined)
-            for (const [queryStr, bindValues] of txnExecuteStmnts) {
-              clientSession.coordinator.execute(queryStr, bindValues).pipe(runEffectFork)
-            }
-            // clientSession.coordinator.execute('COMMIT', undefined, undefined)
-          } catch (e: any) {
-            // clientSession.syncDb.execute('ROLLBACK', undefined)
-            throw e
-          } finally {
-            isInTxn = false
-            txnExecuteStmnts = []
-          }
-        },
-      }
-
-      yield* Effect.tryAll(() => boot(bootDbImpl, span)).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('createStore:boot'),
-      )
-    }
-
-    const store = Store.createStore<TGraphQLContext, TSchema>(
-      {
-        clientSession,
-        schema,
-        graphQLOptions,
-        otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-        reactivityGraph,
-        disableDevtools,
-        currentMutationEventIdRef,
-        unsyncedMutationEvents,
-        fiberSet,
-        runtime,
-        batchUpdates: batchUpdates ?? ((run) => run()),
-        storeId,
-      },
-      span,
-    )
-
-    yield* Deferred.succeed(storeDeferred, store as any as Store)
-
-    return store
-  }).pipe(
-    Effect.withSpan('createStore', {
-      parent: otelOptions?.rootSpanContext
-        ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
-        : undefined,
-    }),
-    Effect.provide(TracingLive),
-  )
-}
-// #endregion createStore

@@ -1,9 +1,11 @@
+/* eslint-disable no-var */
+
 interface Window {
   [key: `__debug${string}`]: any
 }
 
-// eslint-disable-next-line no-var
 var __debugLiveStore: any
+var __debugDownloadBlob: any
 
 interface ImportMeta {
   readonly env: ImportMetaEnv

@@ -3,7 +3,7 @@ import * as otel from '@opentelemetry/api'
 
 import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
-import type { RefreshReason } from '../store.js'
+import type { RefreshReason } from '../store/store-types.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
@@ -27,7 +27,7 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
   TResult,
   TQueryInfo
 > {
-  _tag: 'js' = 'js'
+  _tag: 'computed' = 'computed'
 
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, QueryContext, RefreshReason>
@@ -82,7 +82,7 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
 
           this.executionTimes.push(durationMs)
 
-          setDebugInfo({ _tag: 'js', label, query: fn.toString(), durationMs })
+          setDebugInfo({ _tag: 'computed', label, query: fn.toString(), durationMs })
 
           return res
         }),

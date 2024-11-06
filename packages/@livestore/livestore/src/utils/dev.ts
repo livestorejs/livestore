@@ -22,3 +22,9 @@ export const downloadURL = (data: string, fileName: string) => {
   a.click()
   a.remove()
 }
+
+export const exposeDebugUtils = () => {
+  if (import.meta.env.DEV) {
+    globalThis.__debugDownloadBlob = downloadBlob
+  }
+}
