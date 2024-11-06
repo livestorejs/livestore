@@ -10,11 +10,11 @@
 @@ -9,10 +9,10 @@
    },
    "dependencies": {
-     "@livestore/devtools-vite": "0.0.58-dev.10",
--    "@livestore/livestore": "0.0.58-dev.10",
--    "@livestore/utils": "0.0.58-dev.10",
+     "@livestore/devtools-vite": "0.0.58-dev.13",
+-    "@livestore/livestore": "0.0.58-dev.13",
+-    "@livestore/utils": "0.0.58-dev.13",
 -    "@livestore/wa-sqlite": "1.0.3-dev.2",
--    "@livestore/web": "0.0.58-dev.10",
+-    "@livestore/web": "0.0.58-dev.13",
 +    "@livestore/livestore": "workspace:*",
 +    "@livestore/utils": "workspace:*",
 +    "@livestore/wa-sqlite": "1.0.1-dev.29",
