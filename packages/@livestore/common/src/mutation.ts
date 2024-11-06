@@ -1,6 +1,7 @@
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
+import { SessionIdSymbol } from './adapter-types.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import type { MutationDef, MutationEvent } from './schema/mutations.js'
 import type { PreparedBindValues } from './util.js'
@@ -67,3 +68,11 @@ export const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreS
     return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
   }
 })
+
+export const replaceSessionIdSymbol = (bindValues: Record<string, unknown>, sessionId: string) => {
+  for (const key in bindValues) {
+    if (bindValues[key] === SessionIdSymbol) {
+      bindValues[key] = sessionId
+    }
+  }
+}

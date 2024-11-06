@@ -9,7 +9,7 @@ import type {
   PreparedBindValues,
   StoreDevtoolsChannel,
 } from '@livestore/common'
-import { getExecArgsFromMutation, prepareBindValues, UnexpectedError } from '@livestore/common'
+import { getExecArgsFromMutation, prepareBindValues, replaceSessionIdSymbol, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
   isPartialMutationEvent,
@@ -579,6 +579,8 @@ export class Store<
         const allWriteTables = new Set<string>()
         let durationMsTotal = 0
 
+        replaceSessionIdSymbol(mutationEventDecoded.args, this.clientSession.coordinator.sessionId)
+
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
         for (const {
@@ -834,6 +836,8 @@ export const createStore = <
             currentMutationEventIdRef.current = id
 
             const mutationEventDecoded = { ...mutationEventDecoded_, id, parentId }
+
+            replaceSessionIdSymbol(mutationEventDecoded.args, clientSession.coordinator.sessionId)
 
             MutableHashMap.set(unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
 
