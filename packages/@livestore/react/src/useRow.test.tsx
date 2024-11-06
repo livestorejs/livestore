@@ -221,7 +221,7 @@ describe('useRow', () => {
           renderCount.inc()
 
           const [_row, _setRow, rowState$] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
-          const todos = LiveStoreReact.useTemporaryQuery(
+          const todos = LiveStoreReact.useScopedQuery(
             () =>
               LiveStore.querySQL(
                 (get) => LiveStore.sql`select * from todos where text like '%${get(rowState$).text}%'`,

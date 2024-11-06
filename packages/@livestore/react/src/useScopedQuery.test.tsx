@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
 import * as LiveStoreReact from './mod.js'
 
-describe('useTemporaryQuery', () => {
+describe('useScopedQuery', () => {
   it('simple', () =>
     Effect.gen(function* () {
       const { wrapper, store, makeRenderCount } = yield* makeTodoMvcReact()
@@ -28,7 +28,7 @@ describe('useTemporaryQuery', () => {
         (id: string) => {
           renderCount.inc()
 
-          return LiveStoreReact.useTemporaryQuery(() => {
+          return LiveStoreReact.useScopedQuery(() => {
             const query$ = querySQL(`select * from todos where id = '${id}'`, {
               schema: Schema.Array(tables.todos.schema),
             })
@@ -80,10 +80,7 @@ describe('useTemporaryQuery', () => {
 
       const ListItem: React.FC<{ data: ReadonlyArray<number>; index: number }> = ({ data: ids, index }) => {
         const id = ids[index]!
-        const res = LiveStoreReact.useTemporaryQuery(
-          () => LiveStore.computed(() => id, { label: `ListItem.${id}` }),
-          id,
-        )
+        const res = LiveStoreReact.useScopedQuery(() => LiveStore.computed(() => id, { label: `ListItem.${id}` }), id)
         return <div role="listitem">{res}</div>
       }
 

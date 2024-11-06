@@ -10,7 +10,7 @@ import React from 'react'
 
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
-import { useMakeTemporaryQuery } from './useTemporaryQuery.js'
+import { useMakeScopedQuery } from './useScopedQuery.js'
 
 export type UseRowResult<TTableDef extends DbSchema.TableDef> = [
   row: RowResult<TTableDef>,
@@ -96,7 +96,7 @@ export const useRow: {
 
   const idStr = id === SessionIdSymbol ? 'session' : id
 
-  const { query$, otelContext } = useMakeTemporaryQuery(
+  const { query$, otelContext } = useMakeScopedQuery(
     (otelContext) =>
       DbSchema.tableIsSingleton(table)
         ? (rowQuery(table, { otelContext, reactivityGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)

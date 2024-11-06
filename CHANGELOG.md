@@ -30,6 +30,7 @@
 ### React integration
 
 - Breaking: The React integration has been moved into a new separate package: `@livestore/react` (before: `@livestore/livestore/react`)
+- Breaking: Renamed `useTemporaryQuery` to `useScopedQuery`
 
 ### Web adapter
 
