@@ -13,7 +13,8 @@ overrides:
   '@livestore/sync-cf': workspace:*
   '@livestore/utils': workspace:*
   '@livestore/web': workspace:*
-  '@livestore/devtools-react': 0.0.58-dev.10
+  '@livestore/devtools-react': 0.0.58-dev.13
+  '@livestore/devtools-vite': 0.0.58-dev.13
 
 patchedDependencies:
   graphology@0.26.0-alpha1:
@@ -163,9 +164,9 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -347,9 +348,9 @@ importers:
 
   examples-monorepo/todomvc:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -411,9 +412,9 @@ importers:
 
   examples-monorepo/todomvc-custom-elements:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -484,9 +485,9 @@ importers:
       '@livestore/db-schema':
         specifier: workspace:*
         version: link:../../packages/@livestore/db-schema
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -557,9 +558,9 @@ importers:
 
   examples-monorepo/todomvc-experimental:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -621,9 +622,9 @@ importers:
 
   examples-monorepo/todomvc-sync-cf:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -691,9 +692,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -783,8 +784,8 @@ importers:
         specifier: 14.0.2
         version: 14.0.2
       '@livestore/devtools-expo':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)
       '@livestore/expo':
         specifier: workspace:*
         version: link:../../packages/@livestore/expo
@@ -858,9 +859,9 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1042,9 +1043,9 @@ importers:
 
   examples/todomvc:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1106,9 +1107,9 @@ importers:
 
   examples/todomvc-custom-elements:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1179,9 +1180,9 @@ importers:
       '@livestore/db-schema':
         specifier: workspace:*
         version: link:../../packages/@livestore/db-schema
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1252,9 +1253,9 @@ importers:
 
   examples/todomvc-experimental:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1316,9 +1317,9 @@ importers:
 
   examples/todomvc-sync-cf:
     dependencies:
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1386,9 +1387,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common
-      '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-vite':
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1396,8 +1397,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/react
       '@livestore/sync-electric':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
@@ -1550,8 +1551,8 @@ importers:
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/devtools-react':
-        specifier: 0.0.58-dev.10
-        version: 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
@@ -4010,19 +4011,22 @@ packages:
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
 
-  '@livestore/devtools-expo@0.0.58-dev.10':
-    resolution: {integrity: sha512-ab9m0AzpFzX0NmvsCRwMCHkDAAh3Zdof/v6l1/0x0S155mIO0wI25PswSlb2xatcQy+RjkUZK/5VRFMTp/yjXg==}
+  '@livestore/devtools-expo@0.0.58-dev.13':
+    resolution: {integrity: sha512-FaQd+W8qyytufMiUBfKMz0qfKVjveVrgdfy9qnJlO7xwDkYcmDTkVT8B0TRWmUuucs7vpQqA85BsNNweNRfIqw==}
     peerDependencies:
       expo: 51.0.32
 
-  '@livestore/devtools-react@0.0.58-dev.10':
-    resolution: {integrity: sha512-esbm/OZZ/Jo5GeD/AT3oGso0FpfhgK/+TsNA6VqJSdHK93t7Zzdlp5IPKrQi+4rhLEm4ctu7DS1DrkiPaaCA2A==}
+  '@livestore/devtools-react@0.0.58-dev.13':
+    resolution: {integrity: sha512-APpBD1po64NZiN5zYoGbcm5Qj0vR3fUkdNLRqPfEffkc3FIo0hOXJsVIxCtckcmF/NcgMl/QAZ8d+2iudoYN9w==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
 
-  '@livestore/sync-electric@0.0.58-dev.10':
-    resolution: {integrity: sha512-fW+z2RsErRPHLY9E4O+EXXokj1Khspw5D1P2OkZ135UR0uXcdOVyih1SCyGHMhobNU3ny0BktxeOu+M2PblxSA==}
+  '@livestore/devtools-vite@0.0.58-dev.13':
+    resolution: {integrity: sha512-uw2A3zMbC4VA5Mqkh8gmFgMTziIqSSv6umn0ZfIPJbS6SIe/n0WhLhiDL1bB3MZw/bEn7hT89pnPycCbNV3+0g==}
+
+  '@livestore/sync-electric@0.0.58-dev.13':
+    resolution: {integrity: sha512-Ng8Q2aSWHUvlK2NE6VF5Jz8fG8sDFNXz7Lw93D78phmlHXXu8Nm61o9cxp+Xfb6nNGNQ/EavxLgUl3cMErhmdw==}
 
   '@livestore/wa-sqlite@1.0.1-dev.29':
     resolution: {integrity: sha512-9hDwwNrLFQIy4eBZttZmSdYGqGAZb/1UF1CB0a4GXVr6H4i1EGTZ/HKprHOV41pqPBZgJBujvxGHwk12BKglxA==}
@@ -16516,9 +16520,9 @@ snapshots:
 
   '@jspm/core@2.1.0': {}
 
-  '@livestore/devtools-expo@0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)':
+  '@livestore/devtools-expo@0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0)))(react@18.3.1)(terser@5.36.0)':
     dependencies:
-      '@livestore/devtools-react': 0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-react': 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/wa-sqlite': 1.0.3-dev.2
       '@livestore/web': link:packages/@livestore/web
       expo: 51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -16538,12 +16542,20 @@ snapshots:
       - terser
       - utf-8-validate
 
-  '@livestore/devtools-react@0.0.58-dev.10(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-react@0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
 
-  '@livestore/sync-electric@0.0.58-dev.10':
+  '@livestore/devtools-vite@0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+    dependencies:
+      '@livestore/devtools-react': 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/web': link:packages/@livestore/web
+    transitivePeerDependencies:
+      - '@livestore/livestore'
+      - react
+
+  '@livestore/sync-electric@0.0.58-dev.13':
     dependencies:
       '@livestore/common': link:packages/@livestore/common
       '@livestore/utils': link:packages/@livestore/utils
