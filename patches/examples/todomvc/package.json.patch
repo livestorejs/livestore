@@ -10,7 +10,7 @@
 @@ -10,10 +10,10 @@
    },
    "dependencies": {
-     "@livestore/devtools-react": "0.0.58-dev.10",
+     "@livestore/devtools-vite": "0.0.58-dev.10",
 -    "@livestore/livestore": "0.0.58-dev.10",
 -    "@livestore/react": "0.0.58-dev.10",
 -    "@livestore/wa-sqlite": "1.0.3-dev.2",

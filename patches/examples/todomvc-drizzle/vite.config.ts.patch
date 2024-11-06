@@ -1,6 +1,6 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -24,10 +24,18 @@
+@@ -25,10 +25,18 @@
    server: {
      port: 60_003,
      headers: credentiallessHeaders,

@@ -43,11 +43,11 @@ export const bootDevtools = ({
 
     yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
 
-    if (import.meta.env.DEV) {
-      yield* Effect.log(
-        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}`,
-      )
-    }
+    // if (import.meta.env.DEV) {
+    yield* Effect.log(
+      `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}`,
+    )
+    // }
   })
 
 const listenToWebBridge = ({

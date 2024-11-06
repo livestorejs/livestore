@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import { VitePWA } from 'vite-plugin-pwa'
 import process from 'node:process'
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -20,6 +21,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    livestoreDevtoolsPlugin({ schemaPath: './src/domain/schema.ts' }),
     VitePWA({
       registerType: 'prompt',
       workbox: {

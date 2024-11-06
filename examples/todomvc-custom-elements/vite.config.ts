@@ -1,6 +1,7 @@
 // @ts-check
 import path from 'node:path'
 
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
@@ -41,6 +42,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    livestoreDevtoolsPlugin({ schemaPath: './src/schema/index.ts' }),
     VitePWA({
       registerType: 'prompt',
       workbox: {

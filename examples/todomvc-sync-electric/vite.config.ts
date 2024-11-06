@@ -2,6 +2,7 @@
 // @ts-check
 import path from 'node:path'
 
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { vitePlugin as remix } from '@remix-run/dev'
 import { RemixVitePWA } from '@vite-pwa/remix'
 import { visualizer } from 'rollup-plugin-visualizer'
@@ -49,6 +50,7 @@ export default defineConfig({
       // ssr: false,
       presets: [RemixPWAPreset()],
     }),
+    livestoreDevtoolsPlugin({ schemaPath: './src/schema/index.ts' }),
     RemixVitePWAPlugin({
       registerType: 'autoUpdate',
       workbox: {

@@ -1,14 +1,14 @@
 --- vite.config.js
 +++ vite.config.js
-@@ -5,6 +5,7 @@
- import svgr from 'vite-plugin-svgr'
+@@ -6,6 +6,7 @@
  import { VitePWA } from 'vite-plugin-pwa'
  import process from 'node:process'
+ import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 +// import path from 'path'
  
  const isProdBuild = process.env.NODE_ENV === 'production'
  
-@@ -12,12 +13,24 @@
+@@ -13,12 +14,24 @@
  export default defineConfig({
    server: {
      port: 60000,
@@ -32,4 +32,4 @@
 +  // },
    plugins: [
      react(),
-     VitePWA({
+     livestoreDevtoolsPlugin({ schemaPath: './src/domain/schema.ts' }),

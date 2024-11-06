@@ -22,6 +22,7 @@
 
 - Devtools address is now automatically logged during development making connecting easier.
 	![](https://i.imgur.com/nmkS9yR.png)
+
 - Breaking: Changed syncing adapter interface:
 
 	```ts
@@ -40,3 +41,22 @@
 ### Devtools
 
 - New SQLite query playground
+  ![](https://i.imgur.com/99zq6vk.png)
+
+- Breaking (in combination with web adapter): Removed `_devtools.html` in favour of `@livestore/devtools-vite`.
+  - Replace `@livestore/devtools-react` with `@livestore/devtools-vite` in your `package.json`
+	- Delete `_devtools.html` if it exists
+	- Add the following to your `vite.config.ts`:
+
+		```ts
+		import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+
+		export default defineConfig({
+			// ...
+			plugins: [
+				// ...
+				livestoreDevtoolsPlugin({ schemaPath: './src/db/schema/index.ts' }),
+				// ...
+			],
+		})
+		```

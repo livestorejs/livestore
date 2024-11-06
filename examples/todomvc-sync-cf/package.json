@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@livestore/devtools-react": "0.0.58-dev.10",
+    "@livestore/devtools-vite": "0.0.58-dev.10",
     "@livestore/livestore": "0.0.58-dev.10",
     "@livestore/react": "0.0.58-dev.10",
     "@livestore/sync-cf": "workspace:*",
