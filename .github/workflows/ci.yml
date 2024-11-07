@@ -140,6 +140,7 @@ jobs:
       - uses: nick-fields/retry@v3
         with:
           retry_wait_seconds: 10
+          timeout_minutes: 5
           max_attempts: 2
           command: cd example && bun install
       - run: bun run build
@@ -168,6 +169,7 @@ jobs:
       - uses: nick-fields/retry@v3
         with:
           retry_wait_seconds: 10
+          timeout_minutes: 5
           max_attempts: 2
           command: cd example && bun install
       - run: bun run build
@@ -196,6 +198,7 @@ jobs:
       - uses: nick-fields/retry@v3
         with:
           retry_wait_seconds: 10
+          timeout_minutes: 5
           max_attempts: 2
           command: cd example && bun install
       # TODO EAS build
