@@ -203,7 +203,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
   }
 
   const getEvents = async (cursor: number | undefined): Promise<ReadonlyArray<MutationEvent.Any>> => {
-    const whereClause = cursor ? `WHERE id > ${cursor}` : ''
+    const whereClause = cursor ? `WHERE idGlobal > ${cursor}` : ''
     // TODO handle case where `cursor` was not found
     const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ${whereClause} ORDER BY idGlobal ASC`).all()
     if (rawEvents.error) {

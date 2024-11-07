@@ -401,6 +401,19 @@ const bootLeaderWorker = Effect.gen(function* () {
   const needsRecreate =
     db.dbRef.current.syncDb.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
+  const initializeCurrentMutationEventId = Effect.gen(function* () {
+    const initialMutationEventId = dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number }>(
+      sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
+    )[0]
+
+    if (initialMutationEventId !== undefined) {
+      currentMutationEventIdRef.current = {
+        global: initialMutationEventId.idGlobal,
+        local: initialMutationEventId.idLocal,
+      }
+    }
+  })
+
   if (needsRecreate) {
     yield* recreateDb.pipe(
       Effect.tap(({ snapshot, syncInfo }) =>
@@ -415,7 +428,11 @@ const bootLeaderWorker = Effect.gen(function* () {
       Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
       Effect.forkScoped,
     )
+
+    yield* initializeCurrentMutationEventId
   } else {
+    yield* initializeCurrentMutationEventId
+
     yield* fetchAndApplyRemoteMutations(leaderWorkerCtx, db.dbRef.current.pointer, true, ({ done, total }) =>
       Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
     ).pipe(
@@ -434,17 +451,6 @@ const bootLeaderWorker = Effect.gen(function* () {
 
   const { syncInfo } = yield* Deferred.await(initialSetupDeferred)
 
-  const initialMutationEventId = dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number }>(
-    sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
-  )[0]
-
-  if (initialMutationEventId !== undefined) {
-    currentMutationEventIdRef.current = {
-      global: initialMutationEventId.idGlobal,
-      local: initialMutationEventId.idLocal,
-    }
-  }
-
   const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.dbRef.current.pointer)
 
   if (syncBackend !== undefined) {
@@ -453,14 +459,21 @@ const bootLeaderWorker = Effect.gen(function* () {
       // Filter out "own" mutations
       // Stream.filter((_) => _.mutationEventEncoded.id.startsWith(originId) === false),
       Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
-        // TODO handle rebasing
-        // if incoming mutation parent id !== current mutation event id, we need to rebase
-        applyMutation(mutationEventEncoded, {
-          syncStatus: 'synced',
-          shouldBroadcast: true,
-          persisted,
-          inTransaction: false,
-          syncMetadataJson: metadata,
+        Effect.gen(function* () {
+          // NOTE this is a temporary workaround until rebase-syncing is implemented
+          if (mutationEventEncoded.id.global <= currentMutationEventIdRef.current.global) {
+            return
+          }
+
+          // TODO handle rebasing
+          // if incoming mutation parent id !== current mutation event id, we need to rebase
+          yield* applyMutation(mutationEventEncoded, {
+            syncStatus: 'synced',
+            shouldBroadcast: true,
+            persisted,
+            inTransaction: false,
+            syncMetadataJson: metadata,
+          })
         }),
       ),
       Stream.runDrain,

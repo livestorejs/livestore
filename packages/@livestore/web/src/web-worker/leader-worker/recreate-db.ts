@@ -126,7 +126,7 @@ export const fetchAndApplyRemoteMutations = (
 ) =>
   Effect.gen(function* () {
     if (leaderWorkerCtx.syncBackend === undefined) return Option.none() as InitialSyncInfo
-    const { syncBackend } = leaderWorkerCtx
+    const { syncBackend, currentMutationEventIdRef } = leaderWorkerCtx
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
     const applyMutation = yield* makeApplyMutation(createdAtMemo, db)
@@ -139,19 +139,28 @@ export const fetchAndApplyRemoteMutations = (
     // probably using the SQLite session extension
     const lastSyncEvent = yield* syncBackend.pull(cursorInfo, { listenForNew: false }).pipe(
       Stream.tap(({ mutationEventEncoded, metadata }) =>
-        applyMutation(mutationEventEncoded, {
-          syncStatus: 'synced',
-          shouldBroadcast,
-          persisted: true,
-          inTransaction: false,
-          syncMetadataJson: metadata,
-        }).pipe(
-          Effect.andThen(() => {
-            processedMutations += 1
-            // TODO fix total
-            return onProgress({ done: processedMutations, total: processedMutations })
-          }),
-        ),
+        Effect.gen(function* () {
+          // NOTE this is a temporary workaround until rebase-syncing is implemented
+          if (mutationEventEncoded.id.global <= currentMutationEventIdRef.current.global) {
+            return
+          }
+
+          // TODO handle rebasing
+          // if incoming mutation parent id !== current mutation event id, we need to rebase
+          yield* applyMutation(mutationEventEncoded, {
+            syncStatus: 'synced',
+            shouldBroadcast,
+            persisted: true,
+            inTransaction: false,
+            syncMetadataJson: metadata,
+          }).pipe(
+            Effect.andThen(() => {
+              processedMutations += 1
+              // TODO fix total
+              return onProgress({ done: processedMutations, total: processedMutations })
+            }),
+          )
+        }),
       ),
       Stream.runLast,
     )
