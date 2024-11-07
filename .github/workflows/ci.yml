@@ -137,8 +137,11 @@ jobs:
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done
         working-directory: example
-      - run: bun install
-        working-directory: example
+      - uses: nick-fields/retry@v3
+        with:
+          retry_wait_seconds: 10
+          max_attempts: 2
+          command: cd example && bun install
       - run: bun run build
         working-directory: example
 
@@ -162,8 +165,11 @@ jobs:
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done
         working-directory: example
-      - run: bun install
-        working-directory: example
+      - uses: nick-fields/retry@v3
+        with:
+          retry_wait_seconds: 10
+          max_attempts: 2
+          command: cd example && bun install
       - run: bun run build
         working-directory: example
 
@@ -187,8 +193,11 @@ jobs:
             jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
           done
         working-directory: example
-      - run: bun install
-        working-directory: example
+      - uses: nick-fields/retry@v3
+        with:
+          retry_wait_seconds: 10
+          max_attempts: 2
+          command: cd example && bun install
       # TODO EAS build
       # - run: bun run build
       #   working-directory: example
