@@ -29,16 +29,18 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 
-import { BCMessage } from '../common/index.js'
-import * as OpfsUtils from '../opfs-utils.js'
-import { WaSqlite } from '../sqlite/index.js'
-import type { DevtoolsContext, InitialSetup, ShutdownState } from './common.js'
-import { configureConnection, LeaderWorkerCtx, makeApplyMutation, OuterWorkerCtx } from './common.js'
+import { configureConnection } from '../../common/connection.js'
+import { BCMessage } from '../../common/index.js'
+import * as OpfsUtils from '../../opfs-utils.js'
+import { WaSqlite } from '../../sqlite/index.js'
+import { makePersistedSqlite, prepareVfs } from '../common/persisted-sqlite.js'
+import type { ExecutionBacklogItem } from '../common/worker-schema.js'
+import * as WorkerSchema from '../common/worker-schema.js'
+import { makeApplyMutation } from './apply-mutation.js'
 import { makeDevtoolsContext } from './leader-worker-devtools.js'
-import { makePersistedSqlite, prepareVfs } from './persisted-sqlite.js'
 import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
-import type { ExecutionBacklogItem } from './worker-schema.js'
-import * as WorkerSchema from './worker-schema.js'
+import type { DevtoolsContext, InitialSetup, ShutdownState } from './types.js'
+import { LeaderWorkerCtx, OuterWorkerCtx } from './types.js'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema

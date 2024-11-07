@@ -4,7 +4,7 @@ import type { Scope } from '@livestore/utils/effect'
 import { Effect, Either, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from './shutdown-channel.js'
+import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from '../common/shutdown-channel.js'
 
 export const bootDevtools = ({
   coordinator,

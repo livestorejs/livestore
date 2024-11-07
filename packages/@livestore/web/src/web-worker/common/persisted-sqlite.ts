@@ -3,11 +3,16 @@ import { ref } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema } from '@livestore/utils/effect'
 
-import * as OpfsUtils from '../opfs-utils.js'
-import { WaSqlite } from '../sqlite/index.js'
-import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '../sqlite/opfs-sah-pool.js'
-import type { PersistenceInfo } from './common.js'
+import * as OpfsUtils from '../../opfs-utils.js'
+import { WaSqlite } from '../../sqlite/index.js'
+import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '../../sqlite/opfs-sah-pool.js'
 import type * as WorkerSchema from './worker-schema.js'
+
+export type PersistenceInfo = {
+  fileName: string
+} & Record<string, any>
+
+export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
 
 export interface PersistedSqlite {
   /** NOTE the db instance is wrapped in a ref since it can be re-created */

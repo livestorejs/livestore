@@ -9,9 +9,9 @@ import {
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
+import { configureConnection } from '../common/connection.js'
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
-import { configureConnection } from '../web-worker/common.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = WaSqlite.loadSqlite3Wasm()

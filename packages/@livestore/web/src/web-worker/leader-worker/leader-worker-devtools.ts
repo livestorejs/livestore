@@ -15,11 +15,13 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { WaSqlite } from '../sqlite/index.js'
-import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
-import type { DevtoolsContextEnabled, PersistenceInfoPair } from './common.js'
-import { LeaderWorkerCtx, makeApplyMutation } from './common.js'
-import { makeShutdownChannel } from './shutdown-channel.js'
+import { WaSqlite } from '../../sqlite/index.js'
+import { makeSynchronousDatabase } from '../../sqlite/make-sync-db.js'
+import type { PersistenceInfoPair } from '../common/persisted-sqlite.js'
+import { makeShutdownChannel } from '../common/shutdown-channel.js'
+import { makeApplyMutation } from './apply-mutation.js'
+import type { DevtoolsContextEnabled } from './types.js'
+import { LeaderWorkerCtx } from './types.js'
 
 type SendMessage = (
   message: Devtools.MessageFromAppHostCoordinator,

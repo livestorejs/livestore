@@ -2,7 +2,7 @@ import { UnexpectedError } from '@livestore/common'
 import type { WorkerRunner } from '@livestore/utils/effect'
 import { Deferred, Effect } from '@livestore/utils/effect'
 
-import type * as WorkerSchema from './worker-schema.js'
+import type * as WorkerSchema from '../common/worker-schema.js'
 
 export const makeDevtoolsWebBridge = Effect.gen(function* () {
   type WebBridgeId = string

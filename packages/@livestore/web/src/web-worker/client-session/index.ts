@@ -24,14 +24,14 @@ import { nanoid } from '@livestore/utils/nanoid'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
-import { BCMessage } from '../common/index.js'
-import * as OpfsUtils from '../opfs-utils.js'
-import { WaSqlite } from '../sqlite/index.js'
-import { validateAndUpdateMutationEventId } from './common.js'
+import { BCMessage } from '../../common/index.js'
+import * as OpfsUtils from '../../opfs-utils.js'
+import { WaSqlite } from '../../sqlite/index.js'
+import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
+import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from '../common/shutdown-channel.js'
+import { validateAndUpdateMutationEventId } from '../common/validateAndUpdateMutationEventId.js'
+import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './coordinator-devtools.js'
-import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from './persisted-sqlite.js'
-import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from './shutdown-channel.js'
-import * as WorkerSchema from './worker-schema.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = WaSqlite.loadSqlite3Wasm()
@@ -372,6 +372,7 @@ export const makeAdapter =
             yield* validateAndUpdateMutationEventId({
               currentMutationEventIdRef,
               mutationEventId: mutationEventDecoded.id,
+              debugContext: { label: `client-session:broadcastChannel`, mutationEventEncoded },
             })
 
             yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)

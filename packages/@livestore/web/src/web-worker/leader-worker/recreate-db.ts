@@ -10,10 +10,12 @@ import {
 import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 
-import { WaSqlite } from '../sqlite/index.js'
-import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
-import type { InitialSyncInfo } from './common.js'
-import { configureConnection, LeaderWorkerCtx, makeApplyMutation } from './common.js'
+import { configureConnection } from '../../common/connection.js'
+import { WaSqlite } from '../../sqlite/index.js'
+import { makeSynchronousDatabase } from '../../sqlite/make-sync-db.js'
+import { makeApplyMutation } from './apply-mutation.js'
+import type { InitialSyncInfo } from './types.js'
+import { LeaderWorkerCtx } from './types.js'
 
 export const recreateDb = Effect.gen(function* () {
   const leaderWorkerCtx = yield* LeaderWorkerCtx
