@@ -18,7 +18,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import { WaSqlite } from '../sqlite/index.js'
 import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
 import type { DevtoolsContextEnabled, PersistenceInfoPair } from './common.js'
-import { InnerWorkerCtx, makeApplyMutation } from './common.js'
+import { LeaderWorkerCtx, makeApplyMutation } from './common.js'
 import { makeShutdownChannel } from './shutdown-channel.js'
 
 type SendMessage = (
@@ -143,14 +143,10 @@ const listenToDevtools = ({
   persistenceInfo: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
-    const innerWorkerCtx = yield* InnerWorkerCtx
-    const { syncBackend, sqlite3, db, dbLog, schema, shutdownStateSubRef } = innerWorkerCtx
+    const innerWorkerCtx = yield* LeaderWorkerCtx
+    const { syncBackend, sqlite3, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair } = innerWorkerCtx
 
-    const applyMutation = yield* makeApplyMutation(
-      innerWorkerCtx,
-      () => new Date().toISOString(),
-      db.dbRef.current.pointer,
-    )
+    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.dbRef.current.pointer)
 
     const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -310,13 +306,9 @@ const listenToDevtools = ({
                 schema.mutations.get(mutationEventEncoded_.mutation) ??
                 shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
 
-              // TODO bring back devtools-based mutation execution
               const mutationEventEncoded = {
                 ...mutationEventEncoded_,
-                // TODO
-                id: { global: 0, local: 0 },
-                // TODO
-                parentId: { global: 0, local: 0 },
+                ...(yield* nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })),
               }
 
               yield* applyMutation(mutationEventEncoded, {

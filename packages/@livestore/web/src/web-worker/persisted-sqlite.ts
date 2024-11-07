@@ -247,6 +247,7 @@ export const readPersistedAppDbFromCoordinator = ({
 
         if (dbFileRes !== undefined) {
           const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
+          // console.debug('readPersistedAppDbFromCoordinator', data.byteLength, data)
 
           // Given the SAH pool always eagerly creates files with empty non-header data,
           // we want to return undefined if the file exists but is empty

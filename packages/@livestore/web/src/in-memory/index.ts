@@ -1,5 +1,11 @@
 import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
-import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
+import {
+  initializeSingletonTables,
+  makeNextMutationEventIdPair,
+  migrateDb,
+  ROOT_ID,
+  UnexpectedError,
+} from '@livestore/common'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
@@ -47,18 +53,7 @@ export const makeInMemoryAdapter =
         syncMutations,
         execute: () => Effect.void,
         mutate: () => Effect.void,
-        nextMutationEventIdPair: (opts) =>
-          Effect.gen(function* () {
-            const parentId = { ...currentMutationEventIdRef.current }
-
-            const id = opts.localOnly
-              ? { global: parentId.global, local: parentId.local + 1 }
-              : { global: parentId.global + 1, local: 0 }
-
-            currentMutationEventIdRef.current = id
-
-            return { id, parentId }
-          }),
+        nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
         getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         export: Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.succeed(new Uint8Array()),

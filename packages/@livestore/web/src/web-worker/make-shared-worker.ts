@@ -148,9 +148,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
-          const messageSchema = WorkerSchema.LeaderWorkerInner.InitialMessage.pipe(
-            Schema.omit('needsRecreate', 'devtoolsEnabled'),
-          )
+          const messageSchema = WorkerSchema.LeaderWorkerInner.InitialMessage.pipe(Schema.omit('devtoolsEnabled'))
           const isEqual = Schema.equivalence(messageSchema)
           if (isEqual(initialMessage, previousInitialMessage.initialMessage) === false) {
             const diff = Schema.debugDiff(messageSchema)(previousInitialMessage.initialMessage, initialMessage)

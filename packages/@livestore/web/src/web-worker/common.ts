@@ -1,10 +1,10 @@
 import type {
   BootStatus,
   EventId,
+  EventIdPair,
   PreparedBindValues,
   SyncBackend,
   SynchronousDatabase,
-  UnexpectedError,
 } from '@livestore/common'
 import {
   Devtools,
@@ -18,6 +18,7 @@ import {
   sessionChangesetMetaTable,
   sql,
   SqliteError,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema, SyncStatus } from '@livestore/common/schema'
 import type { BindValues } from '@livestore/common/sql-queries'
@@ -72,7 +73,7 @@ export type DevtoolsContextEnabled = {
     appHostId: string
     isLeader: boolean
     persistenceInfo: PersistenceInfoPair
-  }) => Effect.Effect<void, UnexpectedError, InnerWorkerCtx | Scope.Scope | HttpClient.HttpClient>
+  }) => Effect.Effect<void, UnexpectedError, LeaderWorkerCtx | Scope.Scope | HttpClient.HttpClient>
   connections: FiberSet.FiberSet
   broadcast: (
     message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
@@ -98,8 +99,8 @@ export type InitialSetup =
   | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
-export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
-  InnerWorkerCtx,
+export class LeaderWorkerCtx extends Context.Tag('LeaderWorkerCtx')<
+  LeaderWorkerCtx,
   {
     schema: LiveStoreSchema
     storeId: string
@@ -115,6 +116,8 @@ export class InnerWorkerCtx extends Context.Tag('InnerWorkerCtx')<
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEventSchema<any>
     mutationDefSchemaHashMap: Map<string, number>
+    currentMutationEventIdRef: { current: EventId }
+    nextMutationEventIdPair: (opts: { localOnly: boolean }) => Effect.Effect<EventIdPair>
     broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
@@ -133,14 +136,14 @@ export type ApplyMutation = (
 ) => Effect.Effect<void, SqliteError, HttpClient.HttpClient>
 
 export const makeApplyMutation = (
-  workerCtx: typeof InnerWorkerCtx.Service,
   createdAtMemo: () => string,
   db: number,
-): Effect.Effect<ApplyMutation, never, Scope.Scope> =>
+): Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderWorkerCtx> =>
   Effect.gen(function* () {
-    const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(workerCtx.schema)
+    const leaderWorkerCtx = yield* LeaderWorkerCtx
+    const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(leaderWorkerCtx.schema)
 
-    const { dbLog } = workerCtx
+    const { dbLog } = leaderWorkerCtx
 
     const syncDbLog = dbLog.dbRef.current.syncDb
 
@@ -155,7 +158,8 @@ export const makeApplyMutation = (
           schema,
           mutationSemaphore,
           sqlite3,
-        } = workerCtx
+          currentMutationEventIdRef,
+        } = leaderWorkerCtx
         const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
         const mutationName = mutationEventDecoded.mutation
@@ -164,6 +168,11 @@ export const makeApplyMutation = (
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
         const syncDb = makeSynchronousDatabase(sqlite3, db)
+
+        yield* validateAndUpdateMutationEventId({
+          currentMutationEventIdRef,
+          mutationEventId: mutationEventDecoded.id,
+        }).pipe(Effect.orDie)
 
         // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
@@ -321,3 +330,29 @@ const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindValues: P
       new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(Effect.asVoid)
 }
+
+export const validateAndUpdateMutationEventId = ({
+  currentMutationEventIdRef,
+  mutationEventId,
+}: {
+  currentMutationEventIdRef: { current: EventId }
+  mutationEventId: EventId
+}) =>
+  Effect.gen(function* () {
+    // TODO replace this with a proper rebase sync strategy
+    if (
+      mutationEventId.global > currentMutationEventIdRef.current.global ||
+      (mutationEventId.global === currentMutationEventIdRef.current.global &&
+        mutationEventId.local > currentMutationEventIdRef.current.local)
+    ) {
+      currentMutationEventIdRef.current = { ...mutationEventId }
+    } else if (mutationEventId.global < currentMutationEventIdRef.current.global) {
+      yield* UnexpectedError.make({
+        cause: `LiveStore doesn't support concurrent writes yet. Mutation event id is behind current mutation event id`,
+        payload: {
+          mutationEventId,
+          currentMutationEventId: currentMutationEventIdRef.current,
+        },
+      })
+    }
+  })

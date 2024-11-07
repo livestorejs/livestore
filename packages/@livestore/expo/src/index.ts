@@ -3,6 +3,7 @@ import {
   getExecArgsFromMutation,
   initializeSingletonTables,
   liveStoreStorageFormatVersion,
+  makeNextMutationEventIdPair,
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
@@ -149,19 +150,7 @@ export const makeAdapter =
         sessionId: 'expo',
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
         // TODO implement proper event id generation using persistent cliendId
-        nextMutationEventIdPair: (opts) =>
-          Effect.gen(function* () {
-            const parentId = { ...currentMutationEventIdRef.current }
-
-            const id = opts.localOnly
-              ? { global: parentId.global, local: parentId.local + 1 }
-              : { global: parentId.global + 1, local: 0 }
-
-            currentMutationEventIdRef.current = id
-
-            return { id, parentId }
-          }),
-
+        nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
         getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         // NOTE not doing anything since syncDb is already persisted
         execute: () => Effect.void,

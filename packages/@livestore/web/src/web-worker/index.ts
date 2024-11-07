@@ -1,5 +1,5 @@
 import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
-import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
+import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -27,6 +27,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import { BCMessage } from '../common/index.js'
 import * as OpfsUtils from '../opfs-utils.js'
 import { WaSqlite } from '../sqlite/index.js'
+import { validateAndUpdateMutationEventId } from './common.js'
 import { bootDevtools } from './coordinator-devtools.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from './persisted-sqlite.js'
 import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from './shutdown-channel.js'
@@ -112,8 +113,8 @@ export const makeAdapter =
       })
 
       const originId = getPersistedId(`originId:${storeId}`, 'local')
-      const contextId = getPersistedId(`contextId:${storeId}`, 'session')
-      const clientId = `${originId}${contextId}`
+      const sessionId = getPersistedId(`sessionId:${storeId}`, 'session')
+      const clientId = `${originId}${sessionId}`
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -140,7 +141,6 @@ export const makeAdapter =
                 storageOptions,
                 storeId,
                 originId,
-                needsRecreate: dataFromFile === undefined,
                 syncOptions: options.syncBackend as SyncBackendOptionsBase | undefined,
                 devtoolsEnabled,
               }),
@@ -165,7 +165,7 @@ export const makeAdapter =
 
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (contextId: ${contextId})`,
+          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
         )
 
         yield* Effect.addFinalizer(() =>
@@ -226,7 +226,7 @@ export const makeAdapter =
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (contextId: ${contextId})`,
+          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
         )
 
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
@@ -367,6 +367,13 @@ export const makeAdapter =
         Stream.tap(({ mutationEventEncoded }) =>
           Effect.gen(function* () {
             const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
+
+            // TODO replace this with a proper rebase sync strategy
+            yield* validateAndUpdateMutationEventId({
+              currentMutationEventIdRef,
+              mutationEventId: mutationEventDecoded.id,
+            })
+
             yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
           }),
         ),
@@ -392,7 +399,7 @@ export const makeAdapter =
       const coordinator = {
         devtools: { enabled: devtoolsEnabled, appHostId: clientId },
         lockStatus,
-        sessionId: contextId,
+        sessionId,
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
 
         export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
@@ -431,18 +438,7 @@ export const makeAdapter =
           }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:mutate')),
 
         // TODO synchronize event ids across threads
-        nextMutationEventIdPair: (opts) =>
-          Effect.gen(function* () {
-            const parentId = { ...currentMutationEventIdRef.current }
-
-            const id = opts.localOnly
-              ? { global: parentId.global, local: parentId.local + 1 }
-              : { global: parentId.global + 1, local: 0 }
-
-            currentMutationEventIdRef.current = id
-
-            return { id, parentId }
-          }),
+        nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
 
         // TODO this needs to be specific to the current context
         // getCurrentMutationEventId: runInWorker(new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId()).pipe(

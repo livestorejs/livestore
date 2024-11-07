@@ -162,8 +162,6 @@ export const createStore = <
       connectDevtoolsToStore: connectDevtoolsToStore_,
     }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
-    const currentMutationEventIdRef = { current: yield* clientSession.coordinator.getCurrentMutationEventId }
-
     // TODO fill up with unsynced mutation events from the client session
     const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
 
@@ -175,7 +173,6 @@ export const createStore = <
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
         reactivityGraph,
         disableDevtools,
-        currentMutationEventIdRef,
         unsyncedMutationEvents,
         fiberSet,
         runtime,

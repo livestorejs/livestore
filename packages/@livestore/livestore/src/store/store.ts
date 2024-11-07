@@ -52,8 +52,6 @@ export class Store<
 
   // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
-
-  private currentMutationEventIdRef
   private unsyncedMutationEvents
 
   // #region constructor
@@ -65,7 +63,6 @@ export class Store<
     otelOptions,
     disableDevtools,
     batchUpdates,
-    currentMutationEventIdRef,
     unsyncedMutationEvents,
     storeId,
     fiberSet,
@@ -75,7 +72,6 @@ export class Store<
 
     this.storeId = storeId
 
-    this.currentMutationEventIdRef = currentMutationEventIdRef
     this.unsyncedMutationEvents = unsyncedMutationEvents
 
     this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: clientSession.syncDb })
@@ -436,8 +432,6 @@ export class Store<
         .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
         .pipe(Effect.runSync)
 
-      this.currentMutationEventIdRef.current = id
-
       return { id, parentId }
     }
 
@@ -545,6 +539,8 @@ export class Store<
       const data = yield* this.clientSession.coordinator.getMutationLogData
       downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
+
+  __devCurrentMutationEventId = () => this.clientSession.coordinator.getCurrentMutationEventId.pipe(Effect.runSync)
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
   toJSON = () => {

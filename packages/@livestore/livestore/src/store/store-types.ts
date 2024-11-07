@@ -61,7 +61,6 @@ export type StoreOptions<
   fiberSet: FiberSet.FiberSet
   runtime: Runtime.Runtime<Scope.Scope>
   batchUpdates: (runUpdates: () => void) => void
-  currentMutationEventIdRef: { current: EventId }
   unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId, MutationEvent.ForSchema<TSchema>>
 }
 
