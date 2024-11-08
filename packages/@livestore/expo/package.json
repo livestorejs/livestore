@@ -14,17 +14,17 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
     "@livestore/devtools-expo-common": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
-    "expo-sqlite": "^14.0.3",
-    "expo-file-system": "^17.0.1"
+    "expo-file-system": "^17.0.1",
+    "expo-sqlite": "15.0.2"
   },
   "peerDependencies": {
-    "expo-sqlite": "*",
-    "expo-file-system": "*"
+    "expo-file-system": "*",
+    "expo-sqlite": "*"
   },
   "publishConfig": {
     "access": "public"
