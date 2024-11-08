@@ -1,38 +1,38 @@
 {
   "name": "expo-app",
   "version": "1.0.0",
+  "private": true,
   "main": "./src/AppEntry.ts",
   "scripts": {
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "start": "expo start",
-    "android": "expo start --clear --android",
-    "ios": "expo start --clear --ios",
     "web": "expo start --web"
   },
   "dependencies": {
     "@effect/schema": "0.72.2",
-    "@expo/vector-icons": "14.0.2",
-    "@livestore/devtools-expo": "0.0.57",
-    "@livestore/expo": "0.0.57",
-    "@livestore/livestore": "0.0.57",
-    "@livestore/utils": "0.0.57",
-    "babel-preset-expo": "11.0.12",
-    "expo": "51.0.32",
-    "expo-asset": "10.0.10",
-    "expo-crypto": "13.0.2",
-    "expo-sqlite": "14.0.6",
-    "expo-status-bar": "1.12.1",
+    "@expo/vector-icons": "14.0.4",
+    "@livestore/devtools-expo": "workspace:*",
+    "@livestore/expo": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "babel-preset-expo": "12.0.0-preview.6",
+    "expo": "52.0.0-preview.23",
+    "expo-asset": "11.0.0",
+    "expo-crypto": "14.0.1",
+    "expo-sqlite": "15.0.2",
+    "expo-status-bar": "2.0.0",
     "fast-text-encoding": "^1.0.6",
-    "react": "18.2.0",
-    "react-native": "0.74.3"
+    "react": "18.3.1",
+    "react-native": "0.76.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.5",
+    "@babel/core": "^7.25.2",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
     "@babel/runtime": "^7.25.6",
-    "@types/react": "~18.2.0",
+    "@types/react": "~18.3.12",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "10.2.2",
-    "typescript": "5.5.4"
-  },
-  "private": true
+    "typescript": "5.3.3"
+  }
 }
