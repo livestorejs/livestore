@@ -14,7 +14,7 @@ overrides:
   '@livestore/utils': workspace:*
   '@livestore/web': workspace:*
   '@livestore/devtools-react': 0.0.58-dev.13
-  '@livestore/devtools-vite': 0.0.58-dev.13
+  '@livestore/devtools-vite': 0.1.0-dev.3
 
 patchedDependencies:
   graphology@0.26.0-alpha1:
@@ -30,10 +30,10 @@ importers:
         version: 0.2.0
       '@typescript-eslint/eslint-plugin':
         specifier: 8.12.2
-        version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint@8.57.0)(typescript@5.6.3)
+        version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)(typescript@5.5.4)
       '@typescript-eslint/parser':
         specifier: 8.12.2
-        version: 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+        version: 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       eslint:
         specifier: 8.57.0
         version: 8.57.0
@@ -42,7 +42,7 @@ importers:
         version: 9.1.0(eslint@8.57.0)
       eslint-plugin-import:
         specifier: 2.31.0
-        version: 2.31.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint@8.57.0)
+        version: 2.31.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)
       eslint-plugin-only-warn:
         specifier: 1.1.0
         version: 1.1.0
@@ -66,7 +66,7 @@ importers:
         version: 56.0.0(eslint@8.57.0)
       madge:
         specifier: ^6.1.0
-        version: 6.1.0(typescript@5.6.3)
+        version: 6.1.0(typescript@5.5.4)
       netlify-cli:
         specifier: ^17.37.2
         version: 17.37.2(@types/node@22.8.5)(picomatch@4.0.2)
@@ -80,8 +80,8 @@ importers:
         specifier: 2.5.3
         version: 2.5.3(prettier@3.3.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
 
   examples-monorepo/expo-app:
     dependencies:
@@ -107,8 +107,8 @@ importers:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       expo:
         specifier: 51.0.32
         version: 51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -151,10 +151,10 @@ importers:
         version: 1.0.3
       eas-cli:
         specifier: 10.2.2
-        version: 10.2.2(@types/node@22.8.5)(expo-modules-autolinking@1.11.2)(typescript@5.6.3)
+        version: 10.2.2(@types/node@22.8.5)(expo-modules-autolinking@1.11.2)(typescript@5.5.4)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
 
   examples-monorepo/linearlite:
     dependencies:
@@ -165,8 +165,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -184,7 +184,7 @@ importers:
         version: 0.1.2(react@18.3.1)
       '@tailwindcss/forms':
         specifier: ^0.5.7
-        version: 0.5.9(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))
+        version: 0.5.9(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))
       '@tiptap/core':
         specifier: 2.1.13
         version: 2.1.13(@tiptap/pm@2.1.13)
@@ -222,8 +222,8 @@ importers:
         specifier: ^1.11.12
         version: 1.11.13
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       fractional-indexing:
         specifier: ^3.2.0
         version: 3.2.0
@@ -272,13 +272,13 @@ importers:
     devDependencies:
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
-        version: 8.1.0(@svgr/core@8.1.0(typescript@5.6.3))
+        version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
       '@svgr/plugin-svgo':
         specifier: ^8.1.0
-        version: 8.1.0(@svgr/core@8.1.0(typescript@5.6.3))(typescript@5.6.3)
+        version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))(typescript@5.5.4)
       '@tailwindcss/typography':
         specifier: ^0.5.15
-        version: 0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))
+        version: 0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))
       '@types/node':
         specifier: ^22.8.5
         version: 22.8.5
@@ -302,10 +302,10 @@ importers:
         version: 10.0.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.12.2
-        version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint@8.57.0)(typescript@5.6.3)
+        version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)(typescript@5.5.4)
       '@typescript-eslint/parser':
         specifier: ^8.12.2
-        version: 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+        version: 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       '@vitejs/plugin-react':
         specifier: ^4.3.3
         version: 4.3.3(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))
@@ -332,10 +332,10 @@ importers:
         version: 1.3.0
       tailwindcss:
         specifier: ^3.4.14
-        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -344,13 +344,13 @@ importers:
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.2.0(rollup@2.79.2)(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))
+        version: 4.2.0(rollup@2.79.2)(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))
 
   examples-monorepo/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -367,8 +367,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -401,8 +401,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -413,8 +413,8 @@ importers:
   examples-monorepo/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -428,8 +428,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/web
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -469,10 +469,10 @@ importers:
         version: 5.12.0(rollup@4.24.3)
       tailwindcss:
         specifier: ^3.4.14
-        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -486,8 +486,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/db-schema
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -513,8 +513,8 @@ importers:
         specifier: ^0.32.1
         version: 0.32.2(@cloudflare/workers-types@4.20241022.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.12)(bun-types@1.1.33)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(postgres@3.4.5)(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -547,8 +547,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -559,8 +559,8 @@ importers:
   examples-monorepo/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -577,8 +577,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -611,8 +611,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -623,8 +623,8 @@ importers:
   examples-monorepo/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -644,8 +644,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -678,8 +678,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -693,8 +693,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -715,13 +715,13 @@ importers:
         version: 0.1.2(react@18.3.1)
       '@remix-run/node':
         specifier: ^2.11.2
-        version: 2.13.1(typescript@5.6.3)
+        version: 2.13.1(typescript@5.5.4)
       '@remix-run/react':
         specifier: ^2.11.2
-        version: 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
+        version: 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       isbot:
         specifier: ^5.1.17
         version: 5.1.17
@@ -746,10 +746,10 @@ importers:
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.13.1
-        version: 2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))
+        version: 2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))
       '@remix-run/serve':
         specifier: ^2.13.1
-        version: 2.13.1(typescript@5.6.3)
+        version: 2.13.1(typescript@5.5.4)
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.12
@@ -761,7 +761,7 @@ importers:
         version: 10.0.0
       '@vite-pwa/remix':
         specifier: ^0.1.3
-        version: 0.1.3(@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0)))(vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0))
+        version: 0.1.3(@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0)))(vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0))
       postgres:
         specifier: ^3.4.5
         version: 3.4.5
@@ -769,8 +769,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -802,8 +802,8 @@ importers:
         specifier: 11.0.12
         version: 11.0.12(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       expo:
         specifier: 51.0.32
         version: 51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -846,10 +846,10 @@ importers:
         version: 1.0.3
       eas-cli:
         specifier: 10.2.2
-        version: 10.2.2(@types/node@22.8.5)(expo-modules-autolinking@1.11.2)(typescript@5.6.3)
+        version: 10.2.2(@types/node@22.8.5)(expo-modules-autolinking@1.11.2)(typescript@5.5.4)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
 
   examples/linearlite:
     dependencies:
@@ -860,8 +860,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -879,7 +879,7 @@ importers:
         version: 0.1.2(react@18.3.1)
       '@tailwindcss/forms':
         specifier: ^0.5.7
-        version: 0.5.9(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))
+        version: 0.5.9(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))
       '@tiptap/core':
         specifier: 2.1.13
         version: 2.1.13(@tiptap/pm@2.1.13)
@@ -917,8 +917,8 @@ importers:
         specifier: ^1.11.12
         version: 1.11.13
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       fractional-indexing:
         specifier: ^3.2.0
         version: 3.2.0
@@ -967,13 +967,13 @@ importers:
     devDependencies:
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
-        version: 8.1.0(@svgr/core@8.1.0(typescript@5.6.3))
+        version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
       '@svgr/plugin-svgo':
         specifier: ^8.1.0
-        version: 8.1.0(@svgr/core@8.1.0(typescript@5.6.3))(typescript@5.6.3)
+        version: 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))(typescript@5.5.4)
       '@tailwindcss/typography':
         specifier: ^0.5.15
-        version: 0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))
+        version: 0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))
       '@types/node':
         specifier: ^22.8.5
         version: 22.8.5
@@ -997,10 +997,10 @@ importers:
         version: 10.0.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.12.2
-        version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint@8.57.0)(typescript@5.6.3)
+        version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)(typescript@5.5.4)
       '@typescript-eslint/parser':
         specifier: ^8.12.2
-        version: 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+        version: 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       '@vitejs/plugin-react':
         specifier: ^4.3.3
         version: 4.3.3(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))
@@ -1027,10 +1027,10 @@ importers:
         version: 1.3.0
       tailwindcss:
         specifier: ^3.4.14
-        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1039,13 +1039,13 @@ importers:
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.2.0(rollup@4.24.3)(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))
+        version: 4.2.0(rollup@4.24.3)(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))
 
   examples/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1062,8 +1062,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1096,8 +1096,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1108,8 +1108,8 @@ importers:
   examples/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1123,8 +1123,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/web
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1164,10 +1164,10 @@ importers:
         version: 5.12.0(rollup@4.24.3)
       tailwindcss:
         specifier: ^3.4.14
-        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1181,8 +1181,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/db-schema
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1208,8 +1208,8 @@ importers:
         specifier: ^0.32.1
         version: 0.32.2(@cloudflare/workers-types@4.20241022.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.12)(bun-types@1.1.33)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(postgres@3.4.5)(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1242,8 +1242,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1254,8 +1254,8 @@ importers:
   examples/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1272,8 +1272,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1306,8 +1306,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1318,8 +1318,8 @@ importers:
   examples/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1339,8 +1339,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1373,8 +1373,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1388,8 +1388,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.1.0-dev.3
+        version: 0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../packages/@livestore/livestore
@@ -1410,13 +1410,13 @@ importers:
         version: 0.1.2(react@18.3.1)
       '@remix-run/node':
         specifier: ^2.11.2
-        version: 2.13.1(typescript@5.6.3)
+        version: 2.13.1(typescript@5.5.4)
       '@remix-run/react':
         specifier: ^2.11.2
-        version: 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
+        version: 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       isbot:
         specifier: ^5.1.17
         version: 5.1.17
@@ -1441,10 +1441,10 @@ importers:
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.13.1
-        version: 2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))
+        version: 2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))
       '@remix-run/serve':
         specifier: ^2.13.1
-        version: 2.13.1(typescript@5.6.3)
+        version: 2.13.1(typescript@5.5.4)
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.12
@@ -1456,7 +1456,7 @@ importers:
         version: 10.0.0
       '@vite-pwa/remix':
         specifier: ^0.1.3
-        version: 0.1.3(@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0)))(vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0))
+        version: 0.1.3(@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0)))(vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0))
       postgres:
         specifier: ^3.4.5
         version: 3.4.5
@@ -1464,8 +1464,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(rollup@4.24.3)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1539,8 +1539,8 @@ importers:
         specifier: ^0.32.1
         version: 0.32.2(@cloudflare/workers-types@4.20241022.0)(@opentelemetry/api@1.9.0)(@types/react@18.3.12)(bun-types@1.1.33)(expo-sqlite@14.0.6(expo@51.0.32(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))))(postgres@3.4.5)(react@18.3.1)
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1655,8 +1655,8 @@ importers:
         specifier: ^25.0.1
         version: 25.0.1
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: 5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1710,8 +1710,8 @@ importers:
         specifier: ^1.8.10
         version: 1.8.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
       vite:
         specifier: 5.4.10
         version: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -1760,17 +1760,17 @@ importers:
         version: 6.1.1
     devDependencies:
       '@effect/experimental':
-        specifier: 0.30.13
-        version: 0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0)
+        specifier: 0.32.3
+        version: 0.32.3(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)(ws@8.18.0)
       '@effect/opentelemetry':
-        specifier: 0.39.7
-        version: 0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7)
+        specifier: 0.39.12
+        version: 0.39.12(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.12)
       '@effect/platform':
-        specifier: 0.69.12
-        version: 0.69.12(effect@3.10.7)
+        specifier: 0.69.19
+        version: 0.69.19(effect@3.10.12)
       '@effect/platform-browser':
-        specifier: 0.48.12
-        version: 0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)
+        specifier: 0.48.19
+        version: 0.48.19(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1781,8 +1781,8 @@ importers:
         specifier: ^0.0.175
         version: 0.0.175
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
       vitest:
         specifier: ^2.1.4
         version: 2.1.4(@types/node@22.8.5)(jsdom@25.0.1)(terser@5.36.0)
@@ -1812,11 +1812,11 @@ importers:
   scripts:
     devDependencies:
       '@effect/cli':
-        specifier: ^0.48.16
-        version: 0.48.16(@effect/platform@0.69.12(effect@3.10.7))(@effect/printer-ansi@0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7))(@effect/printer@0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7))(effect@3.10.7)
+        specifier: ^0.48.19
+        version: 0.48.19(@effect/platform@0.69.19(effect@3.10.12))(@effect/printer-ansi@0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12))(@effect/printer@0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12))(effect@3.10.12)
       '@effect/platform-bun':
-        specifier: 0.49.18
-        version: 0.49.18(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)
+        specifier: 0.49.21
+        version: 0.49.21(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)
       '@types/node':
         specifier: ^22.8.5
         version: 22.8.5
@@ -1824,35 +1824,35 @@ importers:
         specifier: ^1.1.33
         version: 1.1.33
       effect:
-        specifier: 3.10.7
-        version: 3.10.7
+        specifier: 3.10.12
+        version: 3.10.12
 
   website:
     dependencies:
       '@astrojs/check':
         specifier: ^0.9.3
-        version: 0.9.4(prettier@3.3.3)(typescript@5.6.3)
+        version: 0.9.4(prettier@3.3.3)(typescript@5.5.4)
       '@astrojs/starlight':
         specifier: ^0.26.3
-        version: 0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))
+        version: 0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))
       '@astrojs/starlight-tailwind':
         specifier: ^2.0.3
-        version: 2.0.3(@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)))(@astrojs/tailwind@5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))
+        version: 2.0.3(@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)))(@astrojs/tailwind@5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))
       '@astrojs/tailwind':
         specifier: ^5.1.0
-        version: 5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+        version: 5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       astro:
         specifier: ^4.16.8
-        version: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)
+        version: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)
       sharp:
         specifier: ^0.33.5
         version: 0.33.5
       tailwindcss:
         specifier: ^3.4.14
-        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+        version: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 5.5.4
+        version: 5.5.4
 
 packages:
 
@@ -2752,20 +2752,20 @@ packages:
     resolution: {integrity: sha512-KrkT6qO5NxqNfy68sBl6CTSoJ4SNDIS5iQArkibhlbGU4LaDukZ3q2HIkh8aUKDio6o4itU4xDR7t82Y2eP1Bg==}
     engines: {node: '>=14'}
 
-  '@effect/cli@0.48.16':
-    resolution: {integrity: sha512-NE5OOrgkXm5v0qu4ZlXDZosoKLV/PiWZLgpN+NVM7Q+9M5AaULQSFIpTr1QGYdSvX+7O0v+xRMnKBfPlB3lSmw==}
+  '@effect/cli@0.48.19':
+    resolution: {integrity: sha512-rGFVqCmG61c4B6iJxClh+HfTq14pwREKgftSdlBotUfMfEgKZz1CQlot3wruSBYsIp9Z69ws6HxiKkJNee/izQ==}
     peerDependencies:
-      '@effect/platform': ^0.69.16
-      '@effect/printer': ^0.38.10
-      '@effect/printer-ansi': ^0.38.10
-      effect: ^3.10.10
+      '@effect/platform': ^0.69.19
+      '@effect/printer': ^0.38.12
+      '@effect/printer-ansi': ^0.38.12
+      effect: ^3.10.12
 
-  '@effect/experimental@0.30.13':
-    resolution: {integrity: sha512-raSAJGSTqZKObLEFXRN++Ixrhvj78pi5X6jDCR+h8WmavMAkgG64am7cjEtUBtJpDMAitbTeF39wqOdu+DcOGw==}
+  '@effect/experimental@0.32.3':
+    resolution: {integrity: sha512-qF9scOliGSq3cLYpUXKgf5JydQiBb4Y6oiavAR8HANPs1rEFcCcQzJI4hfiLoXFq/v7v+MlJrWYpq5wrJAWaKw==}
     peerDependencies:
-      '@effect/platform': ^0.69.12
-      '@effect/platform-node': ^0.64.13
-      effect: ^3.10.7
+      '@effect/platform': ^0.69.19
+      '@effect/platform-node': ^0.64.21
+      effect: ^3.10.12
       ioredis: ^5
       lmdb: ^3
       ws: ^8
@@ -2782,8 +2782,8 @@ packages:
   '@effect/language-service@0.2.0':
     resolution: {integrity: sha512-DoK41yKGyQv79o0ca8gxEogMlt+IphXkdCXwgenbQjH1BXKD7tJAr0+VsDhblycQcvQ39f1l9NZN9CBqjM9ALA==}
 
-  '@effect/opentelemetry@0.39.7':
-    resolution: {integrity: sha512-GiPIzQXZKblkQXm9IENrSeT/L3rao10i73ztLIaVVwvYzlcfNK03ERixL6c/YVQsvoBZpkPLq1NSRgFTkxXWpQ==}
+  '@effect/opentelemetry@0.39.12':
+    resolution: {integrity: sha512-3WIgknu7fuePLfZ6qEQMwlecMu8io5z9tjqgk45TM1KKiSRJOfe5qcRMbDc6KO14lu0Fq/5PCNz1s9ZHBJAyww==}
     peerDependencies:
       '@opentelemetry/api': ^1.6
       '@opentelemetry/resources': ^1.22
@@ -2792,7 +2792,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^1.22
       '@opentelemetry/sdk-trace-web': ^1.22
       '@opentelemetry/semantic-conventions': ^1.24.1
-      effect: ^3.10.7
+      effect: ^3.10.12
     peerDependenciesMeta:
       '@opentelemetry/sdk-metrics':
         optional: true
@@ -2803,28 +2803,28 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@0.48.12':
-    resolution: {integrity: sha512-ujTwHWCGOFvLhhedTyBzN82YSqLzWh7ioLt5zot7x5iadJZn4os/1iN40CyWvaIzX2CJebcEtmV+gYeX76RyrQ==}
+  '@effect/platform-browser@0.48.19':
+    resolution: {integrity: sha512-j9/0yFVjrsNKF+lvPlvcJteNJKyjNYb3UcsdPicBai8czMngCN8G27MbWUZrSVWcXd3sACpbgfwdyaheEjv0Bw==}
     peerDependencies:
-      '@effect/platform': ^0.69.12
-      effect: ^3.10.7
+      '@effect/platform': ^0.69.19
+      effect: ^3.10.12
 
-  '@effect/platform-bun@0.49.18':
-    resolution: {integrity: sha512-sK4i+BeA+TJveYAb9hCV0/DeMrGxo3IThlDZ+kub2RljfKfCeX0crjQPQSdaiA4weRUsFf1031cGPK3M2goDiA==}
+  '@effect/platform-bun@0.49.21':
+    resolution: {integrity: sha512-efvW5JZGYGWHjkcpy+SamFMq8lMj9lYDjT1ieR2fTk2fJPAr47embxG6dNV0G3PplBvUaHMUHiMBKAv4+m25UQ==}
     peerDependencies:
-      '@effect/platform': ^0.69.16
-      effect: ^3.10.10
+      '@effect/platform': ^0.69.19
+      effect: ^3.10.12
 
-  '@effect/platform-node-shared@0.19.17':
-    resolution: {integrity: sha512-GY8mOin/UK79Lm+bJbJVc5SfLViCSIKdyZSvXWZgo8WGu2/rjBejS19AouIaMBguMoH0W5J7YHjPc7rvXE3KpQ==}
+  '@effect/platform-node-shared@0.19.20':
+    resolution: {integrity: sha512-Jxonn+rj1DmguomuYZEPVwKT/HLnxxSrpjx4qbNsIEecqEU+gfdwzsWc+G/SIgxYOKTPya1CRZv/TutBmTakmA==}
     peerDependencies:
-      '@effect/platform': ^0.69.16
-      effect: ^3.10.10
+      '@effect/platform': ^0.69.19
+      effect: ^3.10.12
 
-  '@effect/platform@0.69.12':
-    resolution: {integrity: sha512-2DA3GCviE/9gqEq48RPGbKTr8Zt2XvqvGhl14XyMnuPztfSAgpg4b+TzWeRNFMNNTDeZOcK7hZVNLAPK1CfZbg==}
+  '@effect/platform@0.69.19':
+    resolution: {integrity: sha512-kA5ce4kjcNRVDH13TuRnEdZkxkNuRyXqa0DmP/qjoFZa0UD2O6V8RIudXR7oYRJ6tZsl05HYsLO+OGZ/Cm4T5A==}
     peerDependencies:
-      effect: ^3.10.7
+      effect: ^3.10.12
 
   '@effect/printer-ansi@0.38.10':
     resolution: {integrity: sha512-GZ1Jb8lI3kDsDUzOPeqQBQG6gfbyoJrPAKA4ZV0NGegG+8nGBEsR8B5eueXot2RPV+7SK1xiA1yuaUgyPZUkSw==}
@@ -4022,8 +4022,8 @@ packages:
       '@livestore/livestore': workspace:*
       react: ^18
 
-  '@livestore/devtools-vite@0.0.58-dev.13':
-    resolution: {integrity: sha512-uw2A3zMbC4VA5Mqkh8gmFgMTziIqSSv6umn0ZfIPJbS6SIe/n0WhLhiDL1bB3MZw/bEn7hT89pnPycCbNV3+0g==}
+  '@livestore/devtools-vite@0.1.0-dev.3':
+    resolution: {integrity: sha512-vj7IXF5bSJ+eJjmoNJ17TT1R9P3c4s1GB9BJ8hiJmAl5qZdiK5mpG6979b3I8LztZ5BcOllDuk/X0WUk4Wa92Q==}
 
   '@livestore/sync-electric@0.0.58-dev.13':
     resolution: {integrity: sha512-Ng8Q2aSWHUvlK2NE6VF5Jz8fG8sDFNXz7Lw93D78phmlHXXu8Nm61o9cxp+Xfb6nNGNQ/EavxLgUl3cMErhmdw==}
@@ -7339,8 +7339,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.10.7:
-    resolution: {integrity: sha512-jbiEIJZjYzou+AqeVhWFASshaIiU3g2atbZFEcqAtx56YcChzptTBOEjSLGDWXeWMfz1ra3u52EpxklKU/kTAg==}
+  effect@3.10.12:
+    resolution: {integrity: sha512-+IqqTQS5+jM13qZHzfAX+RpCGOl0oBWIR7nec/zq76HyN/hdGQYnfr/LLLOVxUt8uIbckBea8rkwBKrQ0Hb/aA==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -13054,8 +13054,8 @@ packages:
     engines: {node: '>=4.2.0'}
     hasBin: true
 
-  typescript@5.6.3:
-    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
+  typescript@5.5.4:
+    resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -14045,12 +14045,12 @@ snapshots:
       jsonpointer: 5.0.1
       leven: 3.1.0
 
-  '@astrojs/check@0.9.4(prettier@3.3.3)(typescript@5.6.3)':
+  '@astrojs/check@0.9.4(prettier@3.3.3)(typescript@5.5.4)':
     dependencies:
-      '@astrojs/language-server': 2.15.4(prettier@3.3.3)(typescript@5.6.3)
+      '@astrojs/language-server': 2.15.4(prettier@3.3.3)(typescript@5.5.4)
       chokidar: 4.0.1
       kleur: 4.1.5
-      typescript: 5.6.3
+      typescript: 5.5.4
       yargs: 17.7.2
     transitivePeerDependencies:
       - prettier
@@ -14060,12 +14060,12 @@ snapshots:
 
   '@astrojs/internal-helpers@0.4.1': {}
 
-  '@astrojs/language-server@2.15.4(prettier@3.3.3)(typescript@5.6.3)':
+  '@astrojs/language-server@2.15.4(prettier@3.3.3)(typescript@5.5.4)':
     dependencies:
       '@astrojs/compiler': 2.10.3
       '@astrojs/yaml2ts': 0.2.2
       '@jridgewell/sourcemap-codec': 1.5.0
-      '@volar/kit': 2.4.8(typescript@5.6.3)
+      '@volar/kit': 2.4.8(typescript@5.5.4)
       '@volar/language-core': 2.4.8
       '@volar/language-server': 2.4.8
       '@volar/language-service': 2.4.8
@@ -14108,12 +14108,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/mdx@3.1.9(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))':
+  '@astrojs/mdx@3.1.9(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))':
     dependencies:
       '@astrojs/markdown-remark': 5.3.0
       '@mdx-js/mdx': 3.1.0(acorn@8.14.0)
       acorn: 8.14.0
-      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)
+      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)
       es-module-lexer: 1.5.4
       estree-util-visit: 2.0.0
       gray-matter: 4.0.3
@@ -14138,21 +14138,21 @@ snapshots:
       stream-replace-string: 2.0.0
       zod: 3.23.8
 
-  '@astrojs/starlight-tailwind@2.0.3(@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)))(@astrojs/tailwind@5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))':
+  '@astrojs/starlight-tailwind@2.0.3(@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)))(@astrojs/tailwind@5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))':
     dependencies:
-      '@astrojs/starlight': 0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))
-      '@astrojs/tailwind': 5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
-      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+      '@astrojs/starlight': 0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))
+      '@astrojs/tailwind': 5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
+      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
 
-  '@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))':
+  '@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))':
     dependencies:
-      '@astrojs/mdx': 3.1.9(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))
+      '@astrojs/mdx': 3.1.9(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))
       '@astrojs/sitemap': 3.2.1
       '@pagefind/default-ui': 1.1.1
       '@types/hast': 3.0.4
       '@types/mdast': 4.0.4
-      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)
-      astro-expressive-code: 0.35.6(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))
+      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)
+      astro-expressive-code: 0.35.6(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))
       bcp-47: 2.1.0
       hast-util-from-html: 2.0.3
       hast-util-select: 6.0.3
@@ -14171,13 +14171,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/tailwind@5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))':
+  '@astrojs/tailwind@5.1.2(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4))(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))':
     dependencies:
-      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)
+      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)
       autoprefixer: 10.4.20(postcss@8.4.47)
       postcss: 8.4.47
-      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
-      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
+      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
     transitivePeerDependencies:
       - ts-node
 
@@ -15216,74 +15216,74 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 6.0.2
 
-  '@effect/cli@0.48.16(@effect/platform@0.69.12(effect@3.10.7))(@effect/printer-ansi@0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7))(@effect/printer@0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7))(effect@3.10.7)':
+  '@effect/cli@0.48.19(@effect/platform@0.69.19(effect@3.10.12))(@effect/printer-ansi@0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12))(@effect/printer@0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12))(effect@3.10.12)':
     dependencies:
-      '@effect/platform': 0.69.12(effect@3.10.7)
-      '@effect/printer': 0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7)
-      '@effect/printer-ansi': 0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7)
-      effect: 3.10.7
+      '@effect/platform': 0.69.19(effect@3.10.12)
+      '@effect/printer': 0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12)
+      '@effect/printer-ansi': 0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12)
+      effect: 3.10.12
       ini: 4.1.3
       toml: 3.0.0
       yaml: 2.6.0
 
-  '@effect/experimental@0.30.13(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)(ws@8.18.0)':
+  '@effect/experimental@0.32.3(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)(ws@8.18.0)':
     dependencies:
-      '@effect/platform': 0.69.12(effect@3.10.7)
-      effect: 3.10.7
+      '@effect/platform': 0.69.19(effect@3.10.12)
+      effect: 3.10.12
       msgpackr: 1.11.2
     optionalDependencies:
       ws: 8.18.0
 
   '@effect/language-service@0.2.0': {}
 
-  '@effect/opentelemetry@0.39.7(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.7)':
+  '@effect/opentelemetry@0.39.12(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.27.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.27.0)(effect@3.10.12)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 1.27.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.27.0
-      effect: 3.10.7
+      effect: 3.10.12
     optionalDependencies:
       '@opentelemetry/sdk-trace-base': 1.27.0(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@0.48.12(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)':
+  '@effect/platform-browser@0.48.19(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)':
     dependencies:
-      '@effect/platform': 0.69.12(effect@3.10.7)
-      effect: 3.10.7
+      '@effect/platform': 0.69.19(effect@3.10.12)
+      effect: 3.10.12
       multipasta: 0.2.5
 
-  '@effect/platform-bun@0.49.18(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)':
+  '@effect/platform-bun@0.49.21(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)':
     dependencies:
-      '@effect/platform': 0.69.12(effect@3.10.7)
-      '@effect/platform-node-shared': 0.19.17(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)
-      effect: 3.10.7
+      '@effect/platform': 0.69.19(effect@3.10.12)
+      '@effect/platform-node-shared': 0.19.20(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)
+      effect: 3.10.12
 
-  '@effect/platform-node-shared@0.19.17(@effect/platform@0.69.12(effect@3.10.7))(effect@3.10.7)':
+  '@effect/platform-node-shared@0.19.20(@effect/platform@0.69.19(effect@3.10.12))(effect@3.10.12)':
     dependencies:
-      '@effect/platform': 0.69.12(effect@3.10.7)
+      '@effect/platform': 0.69.19(effect@3.10.12)
       '@parcel/watcher': 2.4.1
-      effect: 3.10.7
+      effect: 3.10.12
       multipasta: 0.2.5
 
-  '@effect/platform@0.69.12(effect@3.10.7)':
+  '@effect/platform@0.69.19(effect@3.10.12)':
     dependencies:
-      effect: 3.10.7
+      effect: 3.10.12
       find-my-way-ts: 0.1.5
       multipasta: 0.2.5
 
-  '@effect/printer-ansi@0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7)':
+  '@effect/printer-ansi@0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12)':
     dependencies:
-      '@effect/printer': 0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7)
-      '@effect/typeclass': 0.29.10(effect@3.10.7)
-      effect: 3.10.7
+      '@effect/printer': 0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12)
+      '@effect/typeclass': 0.29.10(effect@3.10.12)
+      effect: 3.10.12
 
-  '@effect/printer@0.38.10(@effect/typeclass@0.29.10(effect@3.10.7))(effect@3.10.7)':
+  '@effect/printer@0.38.10(@effect/typeclass@0.29.10(effect@3.10.12))(effect@3.10.12)':
     dependencies:
-      '@effect/typeclass': 0.29.10(effect@3.10.7)
-      effect: 3.10.7
+      '@effect/typeclass': 0.29.10(effect@3.10.12)
+      effect: 3.10.12
 
-  '@effect/typeclass@0.29.10(effect@3.10.7)':
+  '@effect/typeclass@0.29.10(effect@3.10.12)':
     dependencies:
-      effect: 3.10.7
+      effect: 3.10.12
 
   '@emmetio/abbreviation@2.3.3':
     dependencies:
@@ -16089,18 +16089,18 @@ snapshots:
       base64-js: 1.5.1
       xmlbuilder: 14.0.0
 
-  '@expo/plugin-help@5.1.23(@types/node@22.8.5)(typescript@5.6.3)':
+  '@expo/plugin-help@5.1.23(@types/node@22.8.5)(typescript@5.5.4)':
     dependencies:
-      '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.6.3)
+      '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.5.4)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
       - '@types/node'
       - typescript
 
-  '@expo/plugin-warn-if-update-available@2.5.1(@types/node@22.8.5)(typescript@5.6.3)':
+  '@expo/plugin-warn-if-update-available@2.5.1(@types/node@22.8.5)(typescript@5.5.4)':
     dependencies:
-      '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.6.3)
+      '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.5.4)
       chalk: 4.1.2
       debug: 4.3.7(supports-color@9.4.0)
       ejs: 3.1.10
@@ -16547,7 +16547,7 @@ snapshots:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
 
-  '@livestore/devtools-vite@0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-vite@0.1.0-dev.3(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
       '@livestore/devtools-react': 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/web': link:packages/@livestore/web
@@ -16726,8 +16726,8 @@ snapshots:
       strip-ansi: 7.1.0
       supports-color: 9.4.0
       terminal-link: 3.0.0
-      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.6.3)
-      typescript: 5.6.3
+      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.5.4)
+      typescript: 5.5.4
       uuid: 9.0.1
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -17022,7 +17022,7 @@ snapshots:
       widest-line: 3.1.0
       wrap-ansi: 7.0.0
 
-  '@oclif/core@2.16.0(@types/node@22.8.5)(typescript@5.6.3)':
+  '@oclif/core@2.16.0(@types/node@22.8.5)(typescript@5.5.4)':
     dependencies:
       '@types/cli-progress': 3.11.6
       ansi-escapes: 4.3.2
@@ -17047,7 +17047,7 @@ snapshots:
       strip-ansi: 6.0.1
       supports-color: 8.1.1
       supports-hyperlinks: 2.3.0
-      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.6.3)
+      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.5.4)
       tslib: 2.8.0
       widest-line: 3.1.0
       wordwrap: 1.0.0
@@ -17060,9 +17060,9 @@ snapshots:
 
   '@oclif/linewrap@1.0.0': {}
 
-  '@oclif/plugin-autocomplete@2.3.10(@types/node@22.8.5)(typescript@5.6.3)':
+  '@oclif/plugin-autocomplete@2.3.10(@types/node@22.8.5)(typescript@5.5.4)':
     dependencies:
-      '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.6.3)
+      '@oclif/core': 2.16.0(@types/node@22.8.5)(typescript@5.5.4)
       chalk: 4.1.2
       debug: 4.3.7(supports-color@9.4.0)
     transitivePeerDependencies:
@@ -17669,7 +17669,7 @@ snapshots:
 
   '@remirror/core-constants@2.0.2': {}
 
-  '@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))':
+  '@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))':
     dependencies:
       '@babel/core': 7.26.0
       '@babel/generator': 7.26.2
@@ -17681,10 +17681,10 @@ snapshots:
       '@babel/types': 7.26.0
       '@mdx-js/mdx': 2.3.0
       '@npmcli/package-json': 4.0.1
-      '@remix-run/node': 2.13.1(typescript@5.6.3)
-      '@remix-run/react': 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
+      '@remix-run/node': 2.13.1(typescript@5.5.4)
+      '@remix-run/react': 2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4)
       '@remix-run/router': 1.20.0
-      '@remix-run/server-runtime': 2.13.1(typescript@5.6.3)
+      '@remix-run/server-runtime': 2.13.1(typescript@5.5.4)
       '@types/mdx': 2.0.13
       '@vanilla-extract/integration': 6.5.0(@types/node@22.8.5)(terser@5.36.0)
       arg: 5.0.2
@@ -17713,7 +17713,7 @@ snapshots:
       pidtree: 0.6.0
       postcss: 8.4.47
       postcss-discard-duplicates: 5.1.0(postcss@8.4.47)
-      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       postcss-modules: 6.0.0(postcss@8.4.47)
       prettier: 2.8.8
       pretty-ms: 7.0.1
@@ -17726,8 +17726,8 @@ snapshots:
       tsconfig-paths: 4.2.0
       ws: 7.5.10
     optionalDependencies:
-      '@remix-run/serve': 2.13.1(typescript@5.6.3)
-      typescript: 5.6.3
+      '@remix-run/serve': 2.13.1(typescript@5.5.4)
+      typescript: 5.5.4
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
       wrangler: 3.84.0(@cloudflare/workers-types@4.20241022.0)
     transitivePeerDependencies:
@@ -17746,16 +17746,16 @@ snapshots:
       - ts-node
       - utf-8-validate
 
-  '@remix-run/express@2.13.1(express@4.21.1)(typescript@5.6.3)':
+  '@remix-run/express@2.13.1(express@4.21.1)(typescript@5.5.4)':
     dependencies:
-      '@remix-run/node': 2.13.1(typescript@5.6.3)
+      '@remix-run/node': 2.13.1(typescript@5.5.4)
       express: 4.21.1
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
-  '@remix-run/node@2.13.1(typescript@5.6.3)':
+  '@remix-run/node@2.13.1(typescript@5.5.4)':
     dependencies:
-      '@remix-run/server-runtime': 2.13.1(typescript@5.6.3)
+      '@remix-run/server-runtime': 2.13.1(typescript@5.5.4)
       '@remix-run/web-fetch': 4.4.2
       '@web3-storage/multipart-parser': 1.0.0
       cookie-signature: 1.2.2
@@ -17763,26 +17763,26 @@ snapshots:
       stream-slice: 0.1.2
       undici: 6.20.1
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
-  '@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)':
+  '@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4)':
     dependencies:
       '@remix-run/router': 1.20.0
-      '@remix-run/server-runtime': 2.13.1(typescript@5.6.3)
+      '@remix-run/server-runtime': 2.13.1(typescript@5.5.4)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-router: 6.27.0(react@18.3.1)
       react-router-dom: 6.27.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       turbo-stream: 2.4.0
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
   '@remix-run/router@1.20.0': {}
 
-  '@remix-run/serve@2.13.1(typescript@5.6.3)':
+  '@remix-run/serve@2.13.1(typescript@5.5.4)':
     dependencies:
-      '@remix-run/express': 2.13.1(express@4.21.1)(typescript@5.6.3)
-      '@remix-run/node': 2.13.1(typescript@5.6.3)
+      '@remix-run/express': 2.13.1(express@4.21.1)(typescript@5.5.4)
+      '@remix-run/node': 2.13.1(typescript@5.5.4)
       chokidar: 3.6.0
       compression: 1.7.4
       express: 4.21.1
@@ -17793,7 +17793,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@remix-run/server-runtime@2.13.1(typescript@5.6.3)':
+  '@remix-run/server-runtime@2.13.1(typescript@5.5.4)':
     dependencies:
       '@remix-run/router': 1.20.0
       '@types/cookie': 0.6.0
@@ -17803,7 +17803,7 @@ snapshots:
       source-map: 0.7.4
       turbo-stream: 2.4.0
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
   '@remix-run/web-blob@3.1.0':
     dependencies:
@@ -18079,12 +18079,12 @@ snapshots:
       '@svgr/babel-plugin-transform-react-native-svg': 8.1.0(@babel/core@7.26.0)
       '@svgr/babel-plugin-transform-svg-component': 8.0.0(@babel/core@7.26.0)
 
-  '@svgr/core@8.1.0(typescript@5.6.3)':
+  '@svgr/core@8.1.0(typescript@5.5.4)':
     dependencies:
       '@babel/core': 7.26.0
       '@svgr/babel-preset': 8.1.0(@babel/core@7.26.0)
       camelcase: 6.3.0
-      cosmiconfig: 8.3.6(typescript@5.6.3)
+      cosmiconfig: 8.3.6(typescript@5.5.4)
       snake-case: 3.0.4
     transitivePeerDependencies:
       - supports-color
@@ -18095,20 +18095,20 @@ snapshots:
       '@babel/types': 7.26.0
       entities: 4.5.0
 
-  '@svgr/plugin-jsx@8.1.0(@svgr/core@8.1.0(typescript@5.6.3))':
+  '@svgr/plugin-jsx@8.1.0(@svgr/core@8.1.0(typescript@5.5.4))':
     dependencies:
       '@babel/core': 7.26.0
       '@svgr/babel-preset': 8.1.0(@babel/core@7.26.0)
-      '@svgr/core': 8.1.0(typescript@5.6.3)
+      '@svgr/core': 8.1.0(typescript@5.5.4)
       '@svgr/hast-util-to-babel-ast': 8.0.0
       svg-parser: 2.0.4
     transitivePeerDependencies:
       - supports-color
 
-  '@svgr/plugin-svgo@8.1.0(@svgr/core@8.1.0(typescript@5.6.3))(typescript@5.6.3)':
+  '@svgr/plugin-svgo@8.1.0(@svgr/core@8.1.0(typescript@5.5.4))(typescript@5.5.4)':
     dependencies:
-      '@svgr/core': 8.1.0(typescript@5.6.3)
-      cosmiconfig: 8.3.6(typescript@5.6.3)
+      '@svgr/core': 8.1.0(typescript@5.5.4)
+      cosmiconfig: 8.3.6(typescript@5.5.4)
       deepmerge: 4.3.1
       svgo: 3.3.2
     transitivePeerDependencies:
@@ -18122,18 +18122,18 @@ snapshots:
     dependencies:
       defer-to-connect: 2.0.1
 
-  '@tailwindcss/forms@0.5.9(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))':
+  '@tailwindcss/forms@0.5.9(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))':
     dependencies:
       mini-svg-data-uri: 1.4.4
-      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
 
-  '@tailwindcss/typography@0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)))':
+  '@tailwindcss/typography@0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)))':
     dependencies:
       lodash.castarray: 4.4.0
       lodash.isplainobject: 4.0.6
       lodash.merge: 4.6.2
       postcss-selector-parser: 6.0.10
-      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
 
   '@tanstack/react-virtual@3.10.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -18587,34 +18587,34 @@ snapshots:
       '@types/node': 22.8.5
     optional: true
 
-  '@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint@8.57.0)(typescript@5.6.3)':
+  '@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0)(typescript@5.5.4)':
     dependencies:
       '@eslint-community/regexpp': 4.12.1
-      '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       '@typescript-eslint/scope-manager': 8.12.2
-      '@typescript-eslint/type-utils': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
-      '@typescript-eslint/utils': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/type-utils': 8.12.2(eslint@8.57.0)(typescript@5.5.4)
+      '@typescript-eslint/utils': 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       '@typescript-eslint/visitor-keys': 8.12.2
       eslint: 8.57.0
       graphemer: 1.4.0
       ignore: 5.3.2
       natural-compare: 1.4.0
-      ts-api-utils: 1.4.0(typescript@5.6.3)
+      ts-api-utils: 1.4.0(typescript@5.5.4)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3)':
+  '@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.12.2
       '@typescript-eslint/types': 8.12.2
-      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.5.4)
       '@typescript-eslint/visitor-keys': 8.12.2
       debug: 4.3.7(supports-color@9.4.0)
       eslint: 8.57.0
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - supports-color
 
@@ -18623,14 +18623,14 @@ snapshots:
       '@typescript-eslint/types': 8.12.2
       '@typescript-eslint/visitor-keys': 8.12.2
 
-  '@typescript-eslint/type-utils@8.12.2(eslint@8.57.0)(typescript@5.6.3)':
+  '@typescript-eslint/type-utils@8.12.2(eslint@8.57.0)(typescript@5.5.4)':
     dependencies:
-      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
-      '@typescript-eslint/utils': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.5.4)
+      '@typescript-eslint/utils': 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       debug: 4.3.7(supports-color@9.4.0)
-      ts-api-utils: 1.4.0(typescript@5.6.3)
+      ts-api-utils: 1.4.0(typescript@5.5.4)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - eslint
       - supports-color
@@ -18655,7 +18655,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@5.62.0(supports-color@9.4.0)(typescript@5.6.3)':
+  '@typescript-eslint/typescript-estree@5.62.0(supports-color@9.4.0)(typescript@5.5.4)':
     dependencies:
       '@typescript-eslint/types': 5.62.0
       '@typescript-eslint/visitor-keys': 5.62.0
@@ -18663,9 +18663,9 @@ snapshots:
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.3
-      tsutils: 3.21.0(typescript@5.6.3)
+      tsutils: 3.21.0(typescript@5.5.4)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - supports-color
 
@@ -18683,7 +18683,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.12.2(typescript@5.6.3)':
+  '@typescript-eslint/typescript-estree@8.12.2(typescript@5.5.4)':
     dependencies:
       '@typescript-eslint/types': 8.12.2
       '@typescript-eslint/visitor-keys': 8.12.2
@@ -18692,18 +18692,18 @@ snapshots:
       is-glob: 4.0.3
       minimatch: 9.0.5
       semver: 7.6.3
-      ts-api-utils: 1.4.0(typescript@5.6.3)
+      ts-api-utils: 1.4.0(typescript@5.5.4)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.12.2(eslint@8.57.0)(typescript@5.6.3)':
+  '@typescript-eslint/utils@8.12.2(eslint@8.57.0)(typescript@5.5.4)':
     dependencies:
       '@eslint-community/eslint-utils': 4.4.1(eslint@8.57.0)
       '@typescript-eslint/scope-manager': 8.12.2
       '@typescript-eslint/types': 8.12.2
-      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.5.4)
       eslint: 8.57.0
     transitivePeerDependencies:
       - supports-color
@@ -18822,11 +18822,11 @@ snapshots:
       - encoding
       - supports-color
 
-  '@vite-pwa/remix@0.1.3(@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0)))(vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0))':
+  '@vite-pwa/remix@0.1.3(@remix-run/dev@2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0)))(vite-plugin-pwa@0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0))':
     dependencies:
       vite-plugin-pwa: 0.20.5(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
     optionalDependencies:
-      '@remix-run/dev': 2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/serve@2.13.1(typescript@5.6.3))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))
+      '@remix-run/dev': 2.13.1(@remix-run/react@2.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@remix-run/serve@2.13.1(typescript@5.5.4))(@types/node@22.8.5)(terser@5.36.0)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))(wrangler@3.84.0(@cloudflare/workers-types@4.20241022.0))
 
   '@vitejs/plugin-react@4.3.3(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0))':
     dependencies:
@@ -18879,12 +18879,12 @@ snapshots:
       loupe: 3.1.2
       tinyrainbow: 1.2.0
 
-  '@volar/kit@2.4.8(typescript@5.6.3)':
+  '@volar/kit@2.4.8(typescript@5.5.4)':
     dependencies:
       '@volar/language-service': 2.4.8
       '@volar/typescript': 2.4.8
       typesafe-path: 0.2.2
-      typescript: 5.6.3
+      typescript: 5.5.4
       vscode-languageserver-textdocument: 1.0.12
       vscode-uri: 3.0.8
 
@@ -19309,12 +19309,12 @@ snapshots:
 
   astring@1.9.0: {}
 
-  astro-expressive-code@0.35.6(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)):
+  astro-expressive-code@0.35.6(astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)):
     dependencies:
-      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3)
+      astro: 4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4)
       rehype-expressive-code: 0.35.6
 
-  astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.6.3):
+  astro@4.16.8(@types/node@22.8.5)(rollup@4.24.3)(terser@5.36.0)(typescript@5.5.4):
     dependencies:
       '@astrojs/compiler': 2.10.3
       '@astrojs/internal-helpers': 0.4.1
@@ -19367,7 +19367,7 @@ snapshots:
       semver: 7.6.3
       shiki: 1.22.2
       tinyexec: 0.3.1
-      tsconfck: 3.1.4(typescript@5.6.3)
+      tsconfck: 3.1.4(typescript@5.5.4)
       unist-util-visit: 5.0.0
       vfile: 6.0.3
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
@@ -19377,7 +19377,7 @@ snapshots:
       yargs-parser: 21.1.1
       zod: 3.23.8
       zod-to-json-schema: 3.23.5(zod@3.23.8)
-      zod-to-ts: 1.2.0(typescript@5.6.3)(zod@3.23.8)
+      zod-to-ts: 1.2.0(typescript@5.5.4)(zod@3.23.8)
     optionalDependencies:
       sharp: 0.33.5
     transitivePeerDependencies:
@@ -20200,14 +20200,14 @@ snapshots:
       js-yaml: 3.14.1
       parse-json: 4.0.0
 
-  cosmiconfig@8.3.6(typescript@5.6.3):
+  cosmiconfig@8.3.6(typescript@5.5.4):
     dependencies:
       import-fresh: 3.3.0
       js-yaml: 4.1.0
       parse-json: 5.2.0
       path-type: 4.0.0
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
   cp-file@10.0.0:
     dependencies:
@@ -20600,10 +20600,10 @@ snapshots:
 
   detective-typescript@11.2.0(supports-color@9.4.0):
     dependencies:
-      '@typescript-eslint/typescript-estree': 5.62.0(supports-color@9.4.0)(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 5.62.0(supports-color@9.4.0)(typescript@5.5.4)
       ast-module-types: 5.0.0
       node-source-walk: 6.0.2
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - supports-color
 
@@ -20736,7 +20736,7 @@ snapshots:
       readable-stream: 2.3.8
       stream-shift: 1.0.3
 
-  eas-cli@10.2.2(@types/node@22.8.5)(expo-modules-autolinking@1.11.2)(typescript@5.6.3):
+  eas-cli@10.2.2(@types/node@22.8.5)(expo-modules-autolinking@1.11.2)(typescript@5.5.4):
     dependencies:
       '@expo/apple-utils': 1.7.1
       '@expo/code-signing-certificates': 0.0.5
@@ -20752,8 +20752,8 @@ snapshots:
       '@expo/package-manager': 1.1.2
       '@expo/pkcs12': 0.0.8
       '@expo/plist': 0.0.20
-      '@expo/plugin-help': 5.1.23(@types/node@22.8.5)(typescript@5.6.3)
-      '@expo/plugin-warn-if-update-available': 2.5.1(@types/node@22.8.5)(typescript@5.6.3)
+      '@expo/plugin-help': 5.1.23(@types/node@22.8.5)(typescript@5.5.4)
+      '@expo/plugin-warn-if-update-available': 2.5.1(@types/node@22.8.5)(typescript@5.5.4)
       '@expo/prebuild-config': 6.7.3(expo-modules-autolinking@1.11.2)
       '@expo/results': 1.0.0
       '@expo/rudder-sdk-node': 1.1.1
@@ -20761,7 +20761,7 @@ snapshots:
       '@expo/steps': 1.0.129
       '@expo/timeago.js': 1.0.0
       '@oclif/core': 1.26.2
-      '@oclif/plugin-autocomplete': 2.3.10(@types/node@22.8.5)(typescript@5.6.3)
+      '@oclif/plugin-autocomplete': 2.3.10(@types/node@22.8.5)(typescript@5.5.4)
       '@segment/ajv-human-errors': 2.14.0(ajv@8.11.0)
       '@urql/core': 4.0.11(graphql@16.8.1)
       '@urql/exchange-retry': 1.2.0(graphql@16.8.1)
@@ -20831,7 +20831,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.10.7:
+  effect@3.10.12:
     dependencies:
       fast-check: 3.22.0
 
@@ -21181,17 +21181,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint-import-resolver-node@0.3.9)(eslint@8.57.0):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint-import-resolver-node@0.3.9)(eslint@8.57.0):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
-      '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.5.4)
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint@8.57.0):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint@8.57.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -21202,7 +21202,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.6.3))(eslint-import-resolver-node@0.3.9)(eslint@8.57.0)
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.5.4))(eslint-import-resolver-node@0.3.9)(eslint@8.57.0)
       hasown: 2.0.2
       is-core-module: 2.15.1
       is-glob: 4.0.3
@@ -21214,7 +21214,7 @@ snapshots:
       string.prototype.trimend: 1.0.8
       tsconfig-paths: 3.15.0
     optionalDependencies:
-      '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.6.3)
+      '@typescript-eslint/parser': 8.12.2(eslint@8.57.0)(typescript@5.5.4)
     transitivePeerDependencies:
       - eslint-import-resolver-typescript
       - eslint-import-resolver-webpack
@@ -23757,7 +23757,7 @@ snapshots:
 
   macos-release@3.3.0: {}
 
-  madge@6.1.0(typescript@5.6.3):
+  madge@6.1.0(typescript@5.5.4):
     dependencies:
       chalk: 4.1.2
       commander: 7.2.0
@@ -23782,7 +23782,7 @@ snapshots:
       ts-graphviz: 1.8.2
       walkdir: 0.4.1
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
     transitivePeerDependencies:
       - supports-color
 
@@ -25986,13 +25986,13 @@ snapshots:
       camelcase-css: 2.0.1
       postcss: 8.4.47
 
-  postcss-load-config@4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)):
+  postcss-load-config@4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)):
     dependencies:
       lilconfig: 3.1.2
       yaml: 2.6.0
     optionalDependencies:
       postcss: 8.4.47
-      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.6.3)
+      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.5.4)
 
   postcss-modules-extract-imports@3.1.0(postcss@8.4.47):
     dependencies:
@@ -27810,7 +27810,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3)):
+  tailwindcss@3.4.14(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -27829,7 +27829,7 @@ snapshots:
       postcss: 8.4.47
       postcss-import: 15.1.0(postcss@8.4.47)
       postcss-js: 4.0.1(postcss@8.4.47)
-      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3))
+      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4))
       postcss-nested: 6.2.0(postcss@8.4.47)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
@@ -28077,15 +28077,15 @@ snapshots:
 
   trough@2.2.0: {}
 
-  ts-api-utils@1.4.0(typescript@5.6.3):
+  ts-api-utils@1.4.0(typescript@5.5.4):
     dependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
   ts-graphviz@1.8.2: {}
 
   ts-interface-checker@0.1.13: {}
 
-  ts-node@10.9.2(@types/node@22.8.5)(typescript@5.6.3):
+  ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       '@tsconfig/node10': 1.0.11
@@ -28099,13 +28099,13 @@ snapshots:
       create-require: 1.1.1
       diff: 4.0.2
       make-error: 1.3.6
-      typescript: 5.6.3
+      typescript: 5.5.4
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
 
-  tsconfck@3.1.4(typescript@5.6.3):
+  tsconfck@3.1.4(typescript@5.5.4):
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
 
   tsconfig-paths@3.15.0:
     dependencies:
@@ -28138,10 +28138,10 @@ snapshots:
       tslib: 1.14.1
       typescript: 4.9.5
 
-  tsutils@3.21.0(typescript@5.6.3):
+  tsutils@3.21.0(typescript@5.5.4):
     dependencies:
       tslib: 1.14.1
-      typescript: 5.6.3
+      typescript: 5.5.4
 
   tunnel-agent@0.6.0:
     dependencies:
@@ -28239,7 +28239,7 @@ snapshots:
 
   typescript@4.9.5: {}
 
-  typescript@5.6.3: {}
+  typescript@5.5.4: {}
 
   ua-parser-js@1.0.39: {}
 
@@ -28628,22 +28628,22 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-svgr@4.2.0(rollup@2.79.2)(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0)):
+  vite-plugin-svgr@4.2.0(rollup@2.79.2)(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0)):
     dependencies:
       '@rollup/pluginutils': 5.1.3(rollup@2.79.2)
-      '@svgr/core': 8.1.0(typescript@5.6.3)
-      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.6.3))
+      '@svgr/core': 8.1.0(typescript@5.5.4)
+      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
     transitivePeerDependencies:
       - rollup
       - supports-color
       - typescript
 
-  vite-plugin-svgr@4.2.0(rollup@4.24.3)(typescript@5.6.3)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0)):
+  vite-plugin-svgr@4.2.0(rollup@4.24.3)(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(terser@5.36.0)):
     dependencies:
       '@rollup/pluginutils': 5.1.3(rollup@4.24.3)
-      '@svgr/core': 8.1.0(typescript@5.6.3)
-      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.6.3))
+      '@svgr/core': 8.1.0(typescript@5.5.4)
+      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.5.4))
       vite: 5.4.10(@types/node@22.8.5)(terser@5.36.0)
     transitivePeerDependencies:
       - rollup
@@ -29333,9 +29333,9 @@ snapshots:
     dependencies:
       zod: 3.23.8
 
-  zod-to-ts@1.2.0(typescript@5.6.3)(zod@3.23.8):
+  zod-to-ts@1.2.0(typescript@5.5.4)(zod@3.23.8):
     dependencies:
-      typescript: 5.6.3
+      typescript: 5.5.4
       zod: 3.23.8
 
   zod-validation-error@2.1.0(zod@3.23.8):
