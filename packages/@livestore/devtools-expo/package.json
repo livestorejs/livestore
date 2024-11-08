@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.0.58-dev.13",
+  "version": "0.1.0-dev.0",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.cts",
   "scripts": {

@@ -13,7 +13,7 @@
    "dependencies": {
 -    "@livestore/db-schema": "0.0.57-dev.0",
 +    "@livestore/db-schema": "workspace:*",
-     "@livestore/devtools-vite": "0.0.58-dev.13",
+     "@livestore/devtools-vite": "0.1.0-dev.0",
 -    "@livestore/livestore": "0.0.58-dev.13",
 -    "@livestore/react": "0.0.58-dev.13",
 -    "@livestore/utils": "0.0.58-dev.13",
