@@ -7,12 +7,18 @@
    "private": true,
    "type": "module",
    "scripts": {
-@@ -12,7 +12,7 @@
-     "@livestore/devtools-vite": "0.1.0-dev.3",
-     "@livestore/livestore": "workspace:*",
-     "@livestore/react": "workspace:*",
+@@ -10,10 +10,10 @@
+   },
+   "dependencies": {
+     "@livestore/devtools-vite": "0.1.0-dev.7",
+-    "@livestore/livestore": "0.1.0-dev.7",
+-    "@livestore/react": "0.1.0-dev.7",
 -    "@livestore/wa-sqlite": "1.0.3-dev.2",
+-    "@livestore/web": "0.1.0-dev.7",
++    "@livestore/livestore": "workspace:*",
++    "@livestore/react": "workspace:*",
 +    "@livestore/wa-sqlite": "1.0.1-dev.29",
-     "@livestore/web": "workspace:*",
++    "@livestore/web": "workspace:*",
      "@overengineering/fps-meter": "^0.1.2",
      "effect": "3.10.12",
+     "react": "^18.3.1",

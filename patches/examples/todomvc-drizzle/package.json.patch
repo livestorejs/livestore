@@ -7,12 +7,23 @@
    "private": true,
    "type": "module",
    "scripts": {
-@@ -14,7 +14,7 @@
-     "@livestore/livestore": "workspace:*",
-     "@livestore/react": "workspace:*",
-     "@livestore/utils": "workspace:*",
+@@ -9,13 +9,13 @@
+     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
+   },
+   "dependencies": {
+-    "@livestore/db-schema": "0.1.0-dev.7",
++    "@livestore/db-schema": "workspace:*",
+     "@livestore/devtools-vite": "0.1.0-dev.7",
+-    "@livestore/livestore": "0.1.0-dev.7",
+-    "@livestore/react": "0.1.0-dev.7",
+-    "@livestore/utils": "0.1.0-dev.7",
 -    "@livestore/wa-sqlite": "1.0.3-dev.2",
+-    "@livestore/web": "0.1.0-dev.7",
++    "@livestore/livestore": "workspace:*",
++    "@livestore/react": "workspace:*",
++    "@livestore/utils": "workspace:*",
 +    "@livestore/wa-sqlite": "1.0.1-dev.29",
-     "@livestore/web": "workspace:*",
++    "@livestore/web": "workspace:*",
      "@opentelemetry/api": "^1.9.0",
      "@overengineering/fps-meter": "^0.1.2",
+     "drizzle-orm": "^0.32.1",

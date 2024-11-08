@@ -10,13 +10,13 @@
     "preview": "remix vite:preview"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.1.0-dev.3",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/react": "workspace:*",
+    "@livestore/common": "0.1.0-dev.7",
+    "@livestore/devtools-vite": "0.1.0-dev.7",
+    "@livestore/livestore": "0.1.0-dev.7",
+    "@livestore/react": "0.1.0-dev.7",
     "@livestore/sync-electric": "0.0.58-dev.13",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "workspace:*",
+    "@livestore/web": "0.1.0-dev.7",
     "@overengineering/fps-meter": "^0.1.2",
     "@remix-run/node": "^2.11.2",
     "@remix-run/react": "^2.11.2",

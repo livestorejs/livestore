@@ -7,12 +7,18 @@
    "private": true,
    "type": "module",
    "scripts": {
-@@ -11,7 +11,7 @@
-     "@livestore/devtools-vite": "0.1.0-dev.3",
-     "@livestore/livestore": "workspace:*",
-     "@livestore/utils": "workspace:*",
+@@ -9,10 +9,10 @@
+   },
+   "dependencies": {
+     "@livestore/devtools-vite": "0.1.0-dev.7",
+-    "@livestore/livestore": "0.1.0-dev.7",
+-    "@livestore/utils": "0.1.0-dev.7",
 -    "@livestore/wa-sqlite": "1.0.3-dev.2",
+-    "@livestore/web": "0.1.0-dev.7",
++    "@livestore/livestore": "workspace:*",
++    "@livestore/utils": "workspace:*",
 +    "@livestore/wa-sqlite": "1.0.1-dev.29",
-     "@livestore/web": "workspace:*",
++    "@livestore/web": "workspace:*",
      "effect": "3.10.12",
      "react": "^18.3.1",
+     "react-dom": "^18.3.1",
