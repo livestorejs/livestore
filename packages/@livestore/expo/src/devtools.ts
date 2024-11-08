@@ -13,7 +13,7 @@ import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
 import type { ParseResult, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite/next'
+import * as SQLite from 'expo-sqlite'
 
 import type { DbPairRef } from './common.js'
 import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
@@ -69,6 +69,9 @@ export const bootDevtools = ({
     )
 
     const mutationEventSchema = makeMutationEventSchema(schema)
+
+    const getDatabaseName = (db: DbPairRef) =>
+      db.current!.db.databasePath.slice(db.current!.db.databasePath.lastIndexOf('/') + 1)
 
     yield* expoDevtoolsChannel.listen.pipe(
       Stream.flatten(),
@@ -158,12 +161,12 @@ export const bootDevtools = ({
 
                 dbLogRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(dbLogRef.current!.db.databaseName, data)
+                yield* overwriteDbFile(getDatabaseName(dbLogRef), data)
 
                 dbLogRef.current = undefined
 
                 dbRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(dbRef.current!.db.databaseName)
+                SQLite.deleteDatabaseSync(getDatabaseName(dbRef))
               } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
                 // yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
@@ -171,7 +174,7 @@ export const bootDevtools = ({
 
                 dbRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(dbRef.current!.db.databaseName, data)
+                yield* overwriteDbFile(getDatabaseName(dbRef), data)
               } else {
                 yield* expoDevtoolsChannel.send(
                   Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }),
@@ -189,11 +192,11 @@ export const bootDevtools = ({
               const { mode } = decodedEvent
 
               dbRef.current!.db.closeSync()
-              SQLite.deleteDatabaseSync(dbRef.current!.db.databaseName)
+              SQLite.deleteDatabaseSync(getDatabaseName(dbRef))
 
               if (mode === 'all-data') {
                 dbLogRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(dbLogRef.current!.db.databaseName)
+                SQLite.deleteDatabaseSync(getDatabaseName(dbLogRef))
               }
 
               yield* expoDevtoolsChannel.send(Devtools.ResetAllDataRes.make({ ...reqPayload }))
@@ -241,12 +244,6 @@ export const bootDevtools = ({
               const mutationEventEncoded = { ...mutationEventEncoded_, ...nextMutationEventIdPair }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
-              console.log(
-                'nextMutationEventIdPair',
-                mutationEventEncoded_.mutation,
-                nextMutationEventIdPair,
-                mutationEventDecoded,
-              )
               yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
 
               // const mutationDef =

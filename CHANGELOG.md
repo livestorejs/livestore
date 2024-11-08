@@ -72,6 +72,8 @@
 
 ### Expo adapter
 
+- Updated to Expo SDK 52 (`52.0.0-preview.23`)
+
 - Fix: Crash in release builds [#206](https://github.com/livestorejs/livestore/issues/206)
 
 - Fix: Disable devtools in release builds [#205](https://github.com/livestorejs/livestore/issues/205)
