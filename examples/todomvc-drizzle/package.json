@@ -9,17 +9,17 @@
     "gen:drizzle-schema": "bun src/drizzle/gen-drizzle.ts"
   },
   "dependencies": {
-    "@livestore/db-schema": "0.0.57-dev.0",
-    "@livestore/devtools-vite": "0.1.0-dev.0",
-    "@livestore/livestore": "0.0.58-dev.13",
-    "@livestore/react": "0.0.58-dev.13",
-    "@livestore/utils": "0.0.58-dev.13",
+    "@livestore/db-schema": "workspace:*",
+    "@livestore/devtools-vite": "0.1.0-dev.3",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "0.0.58-dev.13",
+    "@livestore/web": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@overengineering/fps-meter": "^0.1.2",
     "drizzle-orm": "^0.32.1",
-    "effect": "3.10.7",
+    "effect": "3.10.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "todomvc-app-css": "^2.4.3",
@@ -32,7 +32,7 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.3",
     "rollup-plugin-visualizer": "^5.12.0",
-    "typescript": "5.6.3",
+    "typescript": "5.5.4",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5"
   }

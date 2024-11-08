@@ -7,20 +7,12 @@
    "version": "1.0.0",
    "main": "./src/AppEntry.ts",
    "scripts": {
-@@ -10,11 +10,11 @@
+@@ -10,7 +10,7 @@
    },
    "dependencies": {
      "@expo/vector-icons": "14.0.2",
 -    "@livestore/devtools-expo": "0.0.58-dev.13",
--    "@livestore/expo": "0.0.58-dev.13",
--    "@livestore/livestore": "0.0.58-dev.13",
--    "@livestore/react": "0.0.58-dev.13",
--    "@livestore/utils": "0.0.58-dev.13",
 +    "@livestore/devtools-expo": "workspace:*",
-+    "@livestore/expo": "workspace:*",
-+    "@livestore/livestore": "workspace:*",
-+    "@livestore/react": "workspace:*",
-+    "@livestore/utils": "workspace:*",
-     "babel-preset-expo": "11.0.12",
-     "effect": "3.10.7",
-     "expo": "51.0.32",
+     "@livestore/expo": "workspace:*",
+     "@livestore/livestore": "workspace:*",
+     "@livestore/react": "workspace:*",

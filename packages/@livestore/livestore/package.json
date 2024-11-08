@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.1.0-dev.0",
+  "version": "0.1.0-dev.3",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -35,15 +35,15 @@
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
     "@livestore/common": "workspace:*",
+    "@livestore/db-schema": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
-    "@livestore/db-schema": "workspace:*"
+    "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
     "@opentelemetry/sdk-trace-base": "1.27.0",
     "jsdom": "^25.0.1",
-    "typescript": "5.6.3",
+    "typescript": "5.5.4",
     "vite": "5.4.10",
     "vitest": "^2.1.4"
   },

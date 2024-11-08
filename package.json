@@ -30,7 +30,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
     "@livestore/devtools-react": "0.0.58-dev.13",
-    "@livestore/devtools-vite": "0.1.0-dev.0"
+    "@livestore/devtools-vite": "0.1.0-dev.3"
   },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",
@@ -51,7 +51,7 @@
     "playwright": "1.48.2",
     "prettier": "3.3.3",
     "prettier-plugin-packagejson": "2.5.3",
-    "typescript": "5.6.3"
+    "typescript": "5.5.4"
   },
   "packageManager": "pnpm@9.9.0",
   "pnpm": {

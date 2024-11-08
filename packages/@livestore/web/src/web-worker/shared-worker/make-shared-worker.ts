@@ -194,18 +194,16 @@ const makeWorkerRunner = Effect.gen(function* () {
           Effect.forkIn(scope),
         )
 
-        const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
+        Effect.gen(function* () {
+          const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
 
-        yield* shutdownChannel.listen.pipe(
-          Stream.flatten(),
-          Stream.filter(Schema.is(IntentionalShutdownCause)),
-          Stream.tap(() => reset),
-          Stream.runDrain,
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped,
-          Scope.extend(scope),
-          Effect.forkIn(scope),
-        )
+          yield* shutdownChannel.listen.pipe(
+            Stream.flatten(),
+            Stream.filter(Schema.is(IntentionalShutdownCause)),
+            Stream.tap(() => reset),
+            Stream.runDrain,
+          )
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped, Scope.extend(scope), Effect.forkIn(scope))
 
         const worker = yield* Deferred.await(workerDeferred)
 

@@ -3,10 +3,10 @@
 	"type": "module",
 	"private": true,
 	"devDependencies": {
-		"effect": "3.10.7",
-		"@effect/cli": "^0.48.16",
-		"@effect/platform-bun": "0.49.18",
+		"@effect/cli": "^0.48.19",
+		"@effect/platform-bun": "0.49.21",
 		"@types/node": "^22.8.5",
-		"bun-types": "^1.1.33"
+		"bun-types": "^1.1.33",
+		"effect": "3.10.12"
 	}
 }

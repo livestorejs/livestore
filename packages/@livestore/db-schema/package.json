@@ -1,6 +1,6 @@
 {
   "name": "@livestore/db-schema",
-  "version": "0.1.0-dev.0",
+  "version": "0.1.0-dev.3",
   "sideEffects": false,
   "type": "module",
   "exports": {
@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "drizzle-orm": "^0.32.1",
-    "effect": "3.10.7",
+    "effect": "3.10.12",
     "vite": "^5.4.10",
     "vitest": "^2.1.4"
   },
