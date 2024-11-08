@@ -12,7 +12,7 @@ import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite/next'
+import * as SQLite from 'expo-sqlite'
 
 import type { DbPairRef } from './common.js'
 import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
@@ -145,12 +145,12 @@ export const bootDevtools = ({
 
                 dbLogRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(dbLogRef.current!.db.databaseName, data)
+                yield* overwriteDbFile(dbLogRef.current!.db.databasePath, data)
 
                 dbLogRef.current = undefined
 
                 dbRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(dbRef.current!.db.databaseName)
+                SQLite.deleteDatabaseSync(dbRef.current!.db.databasePath)
               } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
                 // yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
@@ -158,7 +158,7 @@ export const bootDevtools = ({
 
                 dbRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(dbRef.current!.db.databaseName, data)
+                yield* overwriteDbFile(dbRef.current!.db.databasePath, data)
               } else {
                 yield* expoDevtoolsChannel.send(
                   Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }),
@@ -176,11 +176,11 @@ export const bootDevtools = ({
               const { mode } = decodedEvent
 
               dbRef.current!.db.closeSync()
-              SQLite.deleteDatabaseSync(dbRef.current!.db.databaseName)
+              SQLite.deleteDatabaseSync(dbRef.current!.db.databasePath)
 
               if (mode === 'all-data') {
                 dbLogRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(dbLogRef.current!.db.databaseName)
+                SQLite.deleteDatabaseSync(dbLogRef.current!.db.databasePath)
               }
 
               yield* expoDevtoolsChannel.send(Devtools.ResetAllDataRes.make({ ...reqPayload }))

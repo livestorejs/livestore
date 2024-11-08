@@ -2,7 +2,7 @@ import type { SynchronousDatabase } from '@livestore/common'
 import { base64, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import * as ExpoFS from 'expo-file-system'
-import type * as SQLite from 'expo-sqlite/next'
+import type * as SQLite from 'expo-sqlite'
 
 export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousDatabase => {
   const syncDb: SynchronousDatabase = {

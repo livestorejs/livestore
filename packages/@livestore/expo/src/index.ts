@@ -11,7 +11,7 @@ import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite/next'
+import * as SQLite from 'expo-sqlite'
 
 import { makeSynchronousDatabase } from './common.js'
 import { bootDevtools } from './devtools.js'
