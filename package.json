@@ -9,6 +9,7 @@
     "build:examples:dist": "pnpm --filter 'livestore-example-dist-*' run build",
     "generate:examples:dist": "bun scripts/generate-examples.ts sync --direction src-to-dist",
     "deploy:examples:src": "bun scripts/deploy-examples.ts",
+    "update-lockfile": "CI=1 pnpm install --lockfile-only",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",
