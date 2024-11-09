@@ -19,7 +19,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
-      - run: direnv allow
       - run: pnpm install
       - run: pnpm lint:check
 
@@ -35,7 +34,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
-      - run: direnv allow
       - run: pnpm install
       - run: pnpm build:ts
       - run: pnpm test
@@ -66,7 +64,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
-      - run: direnv allow
       - run: pnpm install
       - run: pnpm build:ts
       - name: Configure NPM authentication
@@ -89,7 +86,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
-      - run: direnv allow
       - run: pnpm install
       - run: pnpm generate:examples:dist
 
@@ -105,7 +101,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
-      - run: direnv allow
       - run: pnpm install
       - run: pnpm build:ts
       - run: pnpm build:examples:src
@@ -128,7 +123,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
-      - run: direnv allow
       - run: pnpm install
       - run: pnpm build
         working-directory: website
