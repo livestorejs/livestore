@@ -31,8 +31,8 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
-    "@livestore/devtools-react": "0.1.0-dev.9",
-    "@livestore/devtools-vite": "0.1.0-dev.9"
+    "@livestore/devtools-react": "0.1.0",
+    "@livestore/devtools-vite": "0.1.0"
   },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",

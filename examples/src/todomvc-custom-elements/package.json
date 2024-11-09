@@ -8,7 +8,7 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@livestore/devtools-vite": "0.1.0-dev.9",
+    "@livestore/devtools-vite": "0.1.0",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.1-dev.29",

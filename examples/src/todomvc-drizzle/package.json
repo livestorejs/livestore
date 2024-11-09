@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@livestore/db-schema": "workspace:*",
-    "@livestore/devtools-vite": "0.1.0-dev.9",
+    "@livestore/devtools-vite": "0.1.0",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/utils": "workspace:*",
