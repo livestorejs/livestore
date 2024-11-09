@@ -1,6 +1,6 @@
 ---
 title: Contributing
-description: Notes for developers interested in contributing to the LiveStore monorepo.
+description: Notes for developers interested in contributing to LiveStore.
 ---
 
 ## Before contributing
@@ -8,13 +8,35 @@ description: Notes for developers interested in contributing to the LiveStore mo
 - Please note that LiveStore is still in active development and APIs are subject to change.
 - Before you start contributing, please check with the maintainers if the changes you'd like to make are likely to be accepted. Discord is the best way to get in touch.
 
+## Areas for contribution
+
+### In scope and encouraged
+
+- Documentation improvements
+- Improving examples
+- Test cases
+- Bug fixes
+- Benchmarking
+
+### Potentially in scope
+
+- New features
+- Larger architectural changes in the core library
+- Adding new examples
+- Adding new integrations (e.g. for technologies such as Svelte, Vue, ...)
+- Monorepo setup changes
+
+### Out of scope (for now)
+
+- Changes to the website
+- Changes to the devtools
+- Rewriting the core library in a different language
+
 ## Requirements
 
-### Recommended: Nix + direnv
+### Recommended: Use Nix + direnv for a consistent development setup
 
-To make development as easy and consistent across systems and platforms, this project uses [Nix](https://nix.dev/) to manage "system dependencies" such as Node.js, Bun etc.
-
-You can either manually use the Nix env via e.g. `nix develop --command pnpm 
+To make development as easy and consistent across systems and platforms, this project uses [Nix](https://zero-to-nix.com/) to manage "system dependencies" such as Node.js, Bun etc. You can either use [Direnv](https://direnv.net) setup (recommended) to automatically load the Nix env or manually use the Nix env (e.g. via `nix develop --command pnpm install`).
 
 ### Manual setup
 
@@ -30,7 +52,6 @@ You'll need to have a recent version the following tools installed:
 git clone git@github.com:livestorejs/livestore.git
 cd livestore
 direnv allow
-pnpm generate:examples:dist
 pnpm install
 pnpm build
 ```
