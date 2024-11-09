@@ -43,9 +43,16 @@ pnpm build
 ### Examples
 
 - Once you've set up the monorepo locally, you'll notice both the `src` and `dist` directories in `/examples`.
-- The `/examples/dist` directory is meant as source for app developers using LiveStore
+- The `/examples/dist` directory is meant as source for app developers using LiveStore. To improve maintainability, the `dist` directory is a git-submodule pointing to the [`livestorejs/examples` repo](https://github.com/livestorejs/examples).
 - The `/examples/src` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples/dist` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
 - Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/dist` version via `pnpm generate:examples:dist`.
+
+#### Making changes to examples
+
+1. Make your desired changes in `/examples/src`. (You might also need to update some of the patches in `/examples/patches`.)
+2. Run `pnpm generate:examples:dist` to generate the `/examples/dist` version
+3. Check whether the changes in `/examples/dist` are what you expected.
+4. Commit your changes in the examples submodule and update the submodule reference in your git commit.
 
 ## Devtools
 

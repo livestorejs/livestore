@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/no-process-exit */
 import fs from 'node:fs'
 import process from 'node:process'
 
@@ -11,7 +12,13 @@ import { BunShell, Cli } from './lib.js'
  * It assumes existing Netlify sites with names `example-<example-name>`.
  */
 
-const EXAMPLES_SRC_DIR = `${process.env.WORKSPACE_ROOT}/examples/src`
+const workspaceRoot = process.env.WORKSPACE_ROOT
+if (!workspaceRoot) {
+  console.error('WORKSPACE_ROOT environment variable is not set')
+  process.exit(1)
+}
+
+const EXAMPLES_SRC_DIR = `${workspaceRoot}/examples/src`
 
 const netlifyDeployResultSchema = Schema.Struct({
   site_id: Schema.String,

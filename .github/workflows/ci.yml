@@ -20,6 +20,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
+      - run: direnv allow
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm lint:check
 
@@ -36,6 +37,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
+      - run: direnv allow
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm test
@@ -67,6 +69,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
+      - run: direnv allow
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - name: Configure NPM authentication
@@ -90,6 +93,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
+      - run: direnv allow
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm generate:examples:dist
 
@@ -106,6 +110,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
+      - run: direnv allow
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm build:examples:src
@@ -217,6 +222,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
+      - run: direnv allow
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build
         working-directory: website
