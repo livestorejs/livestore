@@ -83,26 +83,26 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-  examples-monorepo/expo-app:
+  examples/dist/expo-app:
     dependencies:
       '@expo/vector-icons':
         specifier: 14.0.4
         version: 14.0.4
       '@livestore/devtools-expo':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/devtools-expo
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@52.0.0-preview.23(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(graphql@16.8.1)(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(lightningcss@1.27.0)(react@18.3.1)(terser@5.36.0)
       '@livestore/expo':
         specifier: workspace:*
-        version: link:../../packages/@livestore/expo
+        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 12.0.0-preview.6
         version: 12.0.0-preview.6(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -153,7 +153,7 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-  examples-monorepo/linearlite:
+  examples/dist/linearlite:
     dependencies:
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
@@ -166,16 +166,16 @@ importers:
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -343,23 +343,23 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(rollup@2.79.2)(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))
 
-  examples-monorepo/todomvc:
+  examples/dist/todomvc:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -407,23 +407,23 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples-monorepo/todomvc-custom-elements:
+  examples/dist/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       effect:
         specifier: 3.10.12
         version: 3.10.12
@@ -477,29 +477,29 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples-monorepo/todomvc-drizzle:
+  examples/dist/todomvc-drizzle:
     dependencies:
       '@livestore/db-schema':
         specifier: workspace:*
-        version: link:../../packages/@livestore/db-schema
+        version: link:../../../packages/@livestore/db-schema
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -553,23 +553,23 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples-monorepo/todomvc-experimental:
+  examples/dist/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -617,26 +617,26 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples-monorepo/todomvc-sync-cf:
+  examples/dist/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/sync-cf':
         specifier: workspace:*
-        version: link:../../packages/@livestore/sync-cf
+        version: link:../../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -684,29 +684,29 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples-monorepo/todomvc-sync-electric:
+  examples/dist/todomvc-sync-electric:
     dependencies:
       '@livestore/common':
         specifier: workspace:*
-        version: link:../../packages/@livestore/common
+        version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/sync-electric':
-        specifier: workspace:*
-        version: link:../../packages/@livestore/sync-electric
+        specifier: 0.0.58-dev.13
+        version: 0.0.58-dev.13
       '@livestore/wa-sqlite':
-        specifier: 1.0.1-dev.29
-        version: 1.0.1-dev.29
+        specifier: 1.0.3-dev.2
+        version: 1.0.3-dev.2
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -775,26 +775,26 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples/expo-app:
+  examples/src/expo-app:
     dependencies:
       '@expo/vector-icons':
         specifier: 14.0.4
         version: 14.0.4
       '@livestore/devtools-expo':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@52.0.0-preview.23(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(graphql@16.9.0)(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(lightningcss@1.27.0)(react@18.3.1)(terser@5.36.0)
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/devtools-expo
       '@livestore/expo':
         specifier: workspace:*
-        version: link:../../packages/@livestore/expo
+        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 12.0.0-preview.6
         version: 12.0.0-preview.6(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -845,7 +845,7 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-  examples/linearlite:
+  examples/src/linearlite:
     dependencies:
       '@firefox-devtools/react-contextmenu':
         specifier: ^5.1.1
@@ -858,16 +858,16 @@ importers:
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -1035,23 +1035,23 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(rollup@4.24.3)(typescript@5.5.4)(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))
 
-  examples/todomvc:
+  examples/src/todomvc:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -1099,23 +1099,23 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples/todomvc-custom-elements:
+  examples/src/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       effect:
         specifier: 3.10.12
         version: 3.10.12
@@ -1169,29 +1169,29 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples/todomvc-drizzle:
+  examples/src/todomvc-drizzle:
     dependencies:
       '@livestore/db-schema':
         specifier: workspace:*
-        version: link:../../packages/@livestore/db-schema
+        version: link:../../../packages/@livestore/db-schema
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../../packages/@livestore/utils
+        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1245,23 +1245,23 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples/todomvc-experimental:
+  examples/src/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -1309,26 +1309,26 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples/todomvc-sync-cf:
+  examples/src/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/sync-cf':
         specifier: workspace:*
-        version: link:../../packages/@livestore/sync-cf
+        version: link:../../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -1376,29 +1376,29 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  examples/todomvc-sync-electric:
+  examples/src/todomvc-sync-electric:
     dependencies:
       '@livestore/common':
         specifier: workspace:*
-        version: link:../../packages/@livestore/common
+        version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
         specifier: 0.1.0-dev.7
         version: 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
-        version: link:../../packages/@livestore/livestore
+        version: link:../../../packages/@livestore/livestore
       '@livestore/react':
         specifier: workspace:*
-        version: link:../../packages/@livestore/react
+        version: link:../../../packages/@livestore/react
       '@livestore/sync-electric':
-        specifier: 0.0.58-dev.13
-        version: 0.0.58-dev.13
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
       '@livestore/web':
         specifier: workspace:*
-        version: link:../../packages/@livestore/web
+        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -2106,6 +2106,7 @@ packages:
   '@babel/plugin-proposal-class-properties@7.18.6':
     resolution: {integrity: sha512-cumfXOF0+nzZrrN8Rf0t7M+tF6sZc7vhQwYQck9q1/5w2OExlD+b4v4RpMJFaV1Z7WcDRgO6FqvxqxGlwo+RHQ==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -2130,6 +2131,7 @@ packages:
   '@babel/plugin-proposal-nullish-coalescing-operator@7.18.6':
     resolution: {integrity: sha512-wQxQzxYeJqHcfppzBDnm1yAY0jSRkUXR2z8RePZYrKwMKgMlE8+Z6LUno+bd6LvbGh8Gltvy74+9pIYkr+XkKA==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -2154,6 +2156,7 @@ packages:
   '@babel/plugin-proposal-optional-chaining@7.21.0':
     resolution: {integrity: sha512-p4zeefM72gpmEe2fkUr/OnOXpWEf8nAgk7ZYVqqfFiyIG7oFfVZcCrU64hWn5xp4tQ9LkV4bTIa5rD0KANpKNA==}
     engines: {node: '>=6.9.0'}
+    deprecated: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
@@ -3614,7 +3617,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@0.18.29':
     resolution: {integrity: sha512-X810C48Ss+67RdZU39YEO1khNYo1RmjouRV+vVe0QhMoTe8R6OA3t+XYEdwaNbJ5p/DJN7szfHfNmX2glpC7xg==}
@@ -4363,6 +4366,7 @@ packages:
   '@oclif/screen@3.0.8':
     resolution: {integrity: sha512-yx6KAqlt3TAHBduS2fMQtJDL2ufIHnDRArrJEOoTTuizxqmjLT+psGYOHpmMl3gvQpFJ11Hs76guUUktzAF9Bg==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@octokit/auth-token@4.0.0':
     resolution: {integrity: sha512-tY/msAuJo6ARbK6SPIxZrPBms3xPbfwBrulZe0Wtr/DIY9lje2HeV1uoebShn6mx7SjCHif6EjMvoREj+gZ+SA==}
@@ -5769,6 +5773,7 @@ packages:
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version is no longer supported, please update to at least 0.8.*
 
   '@xmldom/xmldom@0.8.10':
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
@@ -8516,16 +8521,20 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   global-cache-dir@4.4.0:
     resolution: {integrity: sha512-bk0gI6IbbphRjAaCJJn5H+T/CcEck5B3a5KBO2BXSDzjFSV+API17w8GA7YPJ6IXJiasW8M0VsEIig1PCHdfOQ==}
@@ -8940,6 +8949,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -11794,6 +11804,7 @@ packages:
 
   react-beautiful-dnd@13.1.1:
     resolution: {integrity: sha512-0Lvs4tq2VcrEjEgDXHjT98r+63drkKEgqyxdA7qD3mvKwga6a5SscbdLPO2IExotU1jW8L0Ksdl0Cj2AF67nPQ==}
+    deprecated: 'react-beautiful-dnd is now deprecated. Context and options: https://github.com/atlassian/react-beautiful-dnd/issues/2672'
     peerDependencies:
       react: ^16.8.5 || ^17.0.0 || ^18.0.0
       react-dom: ^16.8.5 || ^17.0.0 || ^18.0.0
@@ -12229,14 +12240,17 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@2.6.3:
     resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rollup-plugin-inject@3.0.2:
@@ -17070,12 +17084,12 @@ snapshots:
 
   '@jspm/core@2.1.0': {}
 
-  '@livestore/devtools-expo@0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@52.0.0-preview.23(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(graphql@16.9.0)(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(lightningcss@1.27.0)(react@18.3.1)(terser@5.36.0)':
+  '@livestore/devtools-expo@0.0.58-dev.13(@livestore/livestore@packages+@livestore+livestore)(@types/node@22.8.5)(expo@52.0.0-preview.23(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(graphql@16.8.1)(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(lightningcss@1.27.0)(react@18.3.1)(terser@5.36.0)':
     dependencies:
       '@livestore/devtools-react': 0.1.0-dev.7(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/wa-sqlite': 1.0.3-dev.2
       '@livestore/web': link:packages/@livestore/web
-      expo: 52.0.0-preview.23(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(graphql@16.9.0)(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+      expo: 52.0.0-preview.23(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(graphql@16.8.1)(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       vite: 5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0)
       ws: 8.18.0
     transitivePeerDependencies:
@@ -19207,16 +19221,16 @@ snapshots:
       graphql: 15.8.0
       wonka: 4.0.15
 
-  '@urql/core@4.0.11(graphql@15.8.0)':
+  '@urql/core@4.0.11(graphql@16.8.1)':
     dependencies:
-      '@0no-co/graphql.web': 1.0.10(graphql@15.8.0)
+      '@0no-co/graphql.web': 1.0.10(graphql@16.8.1)
       wonka: 6.3.4
     transitivePeerDependencies:
       - graphql
 
-  '@urql/core@4.0.11(graphql@16.8.1)':
+  '@urql/core@5.0.8(graphql@15.8.0)':
     dependencies:
-      '@0no-co/graphql.web': 1.0.10(graphql@16.8.1)
+      '@0no-co/graphql.web': 1.0.10(graphql@15.8.0)
       wonka: 6.3.4
     transitivePeerDependencies:
       - graphql
@@ -19237,13 +19251,13 @@ snapshots:
 
   '@urql/exchange-retry@0.3.0(graphql@15.8.0)':
     dependencies:
-      '@urql/core': 4.0.11(graphql@15.8.0)
+      '@urql/core': 5.0.8(graphql@15.8.0)
       graphql: 15.8.0
       wonka: 4.0.15
 
   '@urql/exchange-retry@1.2.0(graphql@16.8.1)':
     dependencies:
-      '@urql/core': 4.0.11(graphql@16.8.1)
+      '@urql/core': 5.0.8(graphql@16.8.1)
       wonka: 6.3.4
     transitivePeerDependencies:
       - graphql
