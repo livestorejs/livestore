@@ -23,10 +23,8 @@ const SRC_DIR = `${workspaceRoot}/examples/src`
 $.cwd(workspaceRoot)
 
 const checkDirs = Effect.gen(function* () {
-  yield* BunShell.cmd(`bun scripts/checkout-examples-dist.ts`, workspaceRoot)
-
   // Fails if dirs don't exist
-  if (!fs.existsSync(PATCHES_DIR) || !fs.existsSync(SRC_DIR)) {
+  if (!fs.existsSync(PATCHES_DIR) || !fs.existsSync(SRC_DIR) || !fs.existsSync(DIST_DIR)) {
     console.error('Directories do not exist')
     process.exit(1)
   }

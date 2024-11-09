@@ -1,0 +1,3 @@
+[submodule "examples/dist"]
+	path = examples/dist
+	url = git@github.com:livestorejs/examples.git

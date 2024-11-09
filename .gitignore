@@ -26,4 +26,4 @@ dist
 .vercel
 .netlify
 
-examples/dist
+!examples/dist
