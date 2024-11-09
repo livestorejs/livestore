@@ -18,12 +18,10 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build nix env
-        run: nix develop --command true
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: direnv allow
-      - run: nix develop --command pnpm install
-      - run: nix develop --command pnpm lint:check
+      - run: pnpm install
+      - run: pnpm lint:check
 
   test:
     strategy:
@@ -36,13 +34,11 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build nix env
-        run: nix develop --command true
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: direnv allow
-      - run: nix develop --command pnpm install
-      - run: nix develop --command pnpm build:ts
-      - run: nix develop --command pnpm test
+      - run: pnpm install
+      - run: pnpm build:ts
+      - run: pnpm test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -55,7 +51,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           # TODO surface deploy url in github UI via environments
         run: |
-          nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @local/integration-tests
+          pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @local/integration-tests
 
   publish-snapshot-version:
     strategy:
@@ -69,19 +65,17 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build nix env
-        run: nix develop --command true
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: direnv allow
-      - run: nix develop --command pnpm install
-      - run: nix develop --command pnpm build:ts
+      - run: pnpm install
+      - run: pnpm build:ts
       - name: Configure NPM authentication
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
-      - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
+      - run: pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
+      - run: pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
 
   generate-examples-dist:
     strategy:
@@ -94,12 +88,10 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build nix env
-        run: nix develop --command true
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: direnv allow
-      - run: nix develop --command pnpm install
-      - run: nix develop --command pnpm generate:examples:dist
+      - run: pnpm install
+      - run: pnpm generate:examples:dist
 
   build-and-deploy-examples-src:
     strategy:
@@ -112,15 +104,13 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build nix env
-        run: nix develop --command true
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: direnv allow
-      - run: nix develop --command pnpm install
-      - run: nix develop --command pnpm build:ts
-      - run: nix develop --command pnpm build:examples:src
+      - run: pnpm install
+      - run: pnpm build:ts
+      - run: pnpm build:examples:src
       - run: |
-          nix develop --command pnpm deploy:examples:src \
+          pnpm deploy:examples:src \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
             --alias=snapshot-${{ github.sha }}
         env:
@@ -225,13 +215,11 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Build nix env
-        run: nix develop --command true
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: direnv allow
-      - run: nix develop --command pnpm install
-      - run: nix develop --command pnpm build
+      - run: pnpm install
+      - run: pnpm build
         working-directory: website
-      - run: nix develop --command bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --filter=website
+      - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
