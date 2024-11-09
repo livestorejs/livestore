@@ -16,7 +16,7 @@ export default defineConfig({
     port: 60000,
     fs: {
       // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
-      allow: process.env.MONOREPO_ROOT ? [process.env.MONOREPO_ROOT] : [],
+      allow: process.env.MONOREPO_ROOT ? [process.env.MONOREPO_ROOT] : [process.env.WORKSPACE_ROOT!],
     },
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
