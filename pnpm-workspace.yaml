@@ -3,6 +3,6 @@ packages:
   - website
   - packages/*
   - packages/@livestore/*
-  - examples/*
-  - examples-monorepo/*
+  - examples/src/*
+  - examples/dist/*
   - integration-tests

@@ -1,15 +1,17 @@
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { Command, Options } from '@effect/cli'
 import { BunContext, BunRuntime } from '@effect/platform-bun'
-import { $ } from 'bun'
 import { Effect, Option, Schema } from 'effect'
 
-const cwd = process.cwd()
+import { BunShell, Cli } from './lib.js'
 
-// Directories
-const EXAMPLES_MONOREPO_DIR = `${cwd}/examples-monorepo`
+/**
+ * This script is used to deploy prod-builds of all examples to Netlify.
+ * It assumes existing Netlify sites with names `example-<example-name>`.
+ */
+
+const EXAMPLES_SRC_DIR = `${process.env.WORKSPACE_ROOT}/examples/src`
 
 const netlifyDeployResultSchema = Schema.Struct({
   site_id: Schema.String,
@@ -29,14 +31,15 @@ const buildAndDeployExample = ({
   alias: Option.Option<string>
 }) =>
   Effect.gen(function* () {
-    $.cwd(`${EXAMPLES_MONOREPO_DIR}/${example}`)
-    yield* Effect.promise(() => $`pnpm build`)
+    const cwd = `${EXAMPLES_SRC_DIR}/${example}`
+    yield* BunShell.cmd('pnpm build', cwd)
     const prodFlag = prod ? '--prod' : ''
     const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
-    const deployCommand = `bunx netlify deploy --dir=${EXAMPLES_MONOREPO_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
-    const resultJson = yield* Effect.promise(() => $`${{ raw: deployCommand }} --json`.json()).pipe(
-      Effect.catchAllCause(() => Effect.promise(() => $`${{ raw: deployCommand }} --json`.text())),
-      Effect.catchAllCause(() => Effect.promise(() => $`${{ raw: deployCommand }}`)),
+    const deployCommand = `bunx netlify deploy --dir=${EXAMPLES_SRC_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
+    // Gradually falling back for debugging purposes
+    const resultJson = yield* BunShell.cmdJson(`${deployCommand} --json`, cwd).pipe(
+      Effect.catchAllCause(() => BunShell.cmdText(`${deployCommand} --json`, cwd)),
+      Effect.catchAllCause(() => BunShell.cmd(`${deployCommand}`, cwd)),
     )
 
     const result = yield* Schema.decode(netlifyDeployResultSchema)(resultJson).pipe(
@@ -58,7 +61,7 @@ const deploy = ({
 }) =>
   Effect.gen(function* () {
     const examplesToDeploy = fs
-      .readdirSync(EXAMPLES_MONOREPO_DIR, { withFileTypes: true })
+      .readdirSync(EXAMPLES_SRC_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.includes('expo') === false)
       .map((entry) => entry.name)
 
@@ -80,17 +83,17 @@ const deploy = ({
     })
   })
 
-const exampleFilterOption = Options.text('example-filter').pipe(Options.withAlias('e'), Options.optional)
-const prodOption = Options.boolean('prod').pipe(Options.withDefault(false))
-const aliasOption = Options.text('alias').pipe(Options.optional)
+const exampleFilterOption = Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional)
+const prodOption = Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false))
+const aliasOption = Cli.Options.text('alias').pipe(Cli.Options.optional)
 
-const command = Command.make(
+const command = Cli.Command.make(
   'deploy',
   { exampleFilter: exampleFilterOption, prod: prodOption, alias: aliasOption },
   ({ exampleFilter, prod, alias }) => deploy({ exampleFilter, prod, alias }),
 )
 
-const cli = Command.run(command, {
+const cli = Cli.Command.run(command, {
   name: 'Prompt Examples',
   version: '0.0.1',
 })

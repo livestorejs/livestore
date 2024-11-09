@@ -3,6 +3,11 @@ title: Contributing
 description: Notes for developers interested in contributing to the LiveStore monorepo.
 ---
 
+## Before contributing
+
+- Please note that LiveStore is still in active development and APIs are subject to change.
+- Before you start contributing, please check with the maintainers if the changes you'd like to make are likely to be accepted. Discord is the best way to get in touch.
+
 ## Requirements
 
 ### Recommended: Nix + direnv
@@ -25,7 +30,7 @@ You'll need to have a recent version the following tools installed:
 git clone git@github.com:livestorejs/livestore.git
 cd livestore
 direnv allow
-pnpm setup:monorepo-examples
+pnpm generate:examples:dist
 pnpm install
 pnpm build
 ```
@@ -37,10 +42,10 @@ pnpm build
 
 ### Examples
 
-- Once you've set up the monorepo locally, you'll notice both the `/examples` and `/examples-monorepo` directories.
-- The `/examples` directory is meant as source for LiveStore users and is usually cloned via `tiged`
-- The `/examples-monorepo` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
-- Both directories are kept in sync via `/patches/examples` and `/scripts/sync-examples.ts`.
+- Once you've set up the monorepo locally, you'll notice both the `src` and `dist` directories in `/examples`.
+- The `/examples/dist` directory is meant as source for app developers using LiveStore
+- The `/examples/src` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples/dist` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
+- Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/dist` version via `pnpm generate:examples:dist`.
 
 ## Devtools
 

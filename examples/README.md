@@ -1,4 +1,3 @@
-# Examples source code
+# Examples
 
-Note this is the source code for the example projects. To use those examples, do not clone this mono repo but follow the README instructions of the individual example projects.
-
+See [examples repo](https://github.com/livestorejs/examples) for all examples. The contents of this directory is mostly for maintainers.

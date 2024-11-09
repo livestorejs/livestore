@@ -37,29 +37,22 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
-      - name: Install pnpm
-        run: nix develop --command pnpm install
-      - name: Derive monorepo examples
-        run: nix develop --command pnpm setup:monorepo-examples --single-run
-        env:
-          WORKSPACE_ROOT: ${{ github.workspace }}
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - run: nix develop --command pnpm test
-      # TODO re-enable when playwright bug is fixed
-      # - uses: actions/upload-artifact@v4
-      #   if: ${{ !cancelled() }}
-      #   with:
-      #     name: playwright-report
-      #     path: integration-tests/playwright-report/
-      #     retention-days: 30
-      # - name: "Upload trace"
-      #   if: ${{ !cancelled() }}
-      #   env:
-      #     NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      #     # TODO surface deploy url in github UI via environments
-      #   run: |
-      #     nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @local/integration-tests
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: integration-tests/playwright-report/
+          retention-days: 30
+      - name: "Upload trace"
+        if: ${{ !cancelled() }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          # TODO surface deploy url in github UI via environments
+        run: |
+          nix develop --command pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @local/integration-tests
 
   publish-snapshot-version:
     strategy:
@@ -73,12 +66,6 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
-      - name: Install pnpm
-        run: nix develop --command pnpm install
-      - name: Derive monorepo examples
-        run: nix develop --command pnpm setup:monorepo-examples --single-run
-        env:
-          WORKSPACE_ROOT: ${{ github.workspace }}
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
       - name: Configure NPM authentication
@@ -89,9 +76,7 @@ jobs:
       - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
       - run: nix develop --command pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
 
-  # TODO test cloning examples standalone 
-
-  build-deploy-monorepo-examples:
+  generate-examples-dist:
     strategy:
       matrix:
         node-version: [22]
@@ -103,15 +88,26 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build nix env
         run: nix develop --command true
-      - name: Derive monorepo examples
-        run: nix develop --command pnpm setup:monorepo-examples --single-run
-        env:
-          WORKSPACE_ROOT: ${{ github.workspace }}
+      - run: nix develop --command pnpm install
+      - run: nix develop --command pnpm generate:examples:dist
+
+  build-and-deploy-examples-src:
+    strategy:
+      matrix:
+        node-version: [22]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build nix env
+        run: nix develop --command true
       - run: nix develop --command pnpm install
       - run: nix develop --command pnpm build:ts
-      - run: nix develop --command pnpm build:monorepo-examples
+      - run: nix develop --command pnpm build:examples:src
       - run: |
-          nix develop --command pnpm deploy:monorepo-examples \
+          nix develop --command pnpm deploy:examples:src \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
             --alias=snapshot-${{ github.sha }}
         env:

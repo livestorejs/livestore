@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-monorepo-todomvc-drizzle",
+  "name": "livestore-example-src-todomvc-drizzle",
   "private": true,
   "type": "module",
   "scripts": {

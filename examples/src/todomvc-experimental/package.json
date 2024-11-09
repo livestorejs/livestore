@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-monorepo-todomvc-experimental",
+  "name": "livestore-example-src-todomvc-experimental",
   "private": true,
   "type": "module",
   "scripts": {

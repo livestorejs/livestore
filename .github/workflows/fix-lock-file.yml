@@ -18,11 +18,6 @@ jobs:
       - uses: cachix/install-nix-action@v25
       - uses: DeterminateSystems/magic-nix-cache-action@v2
 
-      - name: Derive monorepo examples
-        run: nix develop --command pnpm setup:monorepo-examples
-        env:
-          WORKSPACE_ROOT: ${{ github.workspace }}
-
       - name: Create new branch
         run: |
           git config --global user.name 'github-actions[bot]'

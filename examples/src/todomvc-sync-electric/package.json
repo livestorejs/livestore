@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-monorepo-todomvc-sync-electric",
+  "name": "livestore-example-src-todomvc-sync-electric",
   "private": true,
   "type": "module",
   "scripts": {

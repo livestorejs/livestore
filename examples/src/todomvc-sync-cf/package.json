@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-monorepo-todomvc-sync-cf",
+  "name": "livestore-example-src-todomvc-sync-cf",
   "private": true,
   "type": "module",
   "scripts": {

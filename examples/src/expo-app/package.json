@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-monorepo-expo",
+  "name": "livestore-example-src-expo",
   "version": "1.0.0",
   "main": "./src/AppEntry.ts",
   "scripts": {
