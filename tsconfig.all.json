@@ -4,11 +4,11 @@
   "include": [],
   "references": [
     { "path": "./tsconfig.dev.json" },
-    { "path": "./examples/expo-app" },
-    { "path": "./examples/linearlite" },
-    { "path": "./examples/todomvc" },
-    { "path": "./examples/todomvc-custom-elements" },
-    { "path": "./examples/todomvc-drizzle" },
-    { "path": "./examples/todomvc-experimental" },
+    { "path": "./examples/dist/expo-app" },
+    { "path": "./examples/dist/linearlite" },
+    { "path": "./examples/dist/todomvc" },
+    { "path": "./examples/dist/todomvc-custom-elements" },
+    { "path": "./examples/dist/todomvc-drizzle" },
+    { "path": "./examples/dist/todomvc-experimental" },
   ]
 }

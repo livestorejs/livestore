@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "target": "es2022",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["./src"],
+  "references": [{ "path": "../common" }, { "path": "../utils" }]
+}

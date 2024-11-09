@@ -11,11 +11,22 @@ import {
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
+import type { ParseResult, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite/next'
+import * as SQLite from 'expo-sqlite'
 
 import type { DbPairRef } from './common.js'
 import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
+
+export type BootedDevtools = {
+  onMutation: ({
+    mutationEventEncoded,
+    persisted,
+  }: {
+    mutationEventEncoded: MutationEvent.AnyEncoded
+    persisted: boolean
+  }) => Effect.Effect<void, UnexpectedError, never>
+}
 
 export const bootDevtools = ({
   connectDevtoolsToStore,
@@ -33,10 +44,10 @@ export const bootDevtools = ({
   dbLogRef: DbPairRef
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
   incomingSyncMutationsQueue: Queue.Queue<MutationEvent.Any>
-}) =>
+}): Effect.Effect<BootedDevtools, UnexpectedError | ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {
     const appHostId = 'expo'
-    const isLeaderTab = true
+    const isLeader = true
 
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
       sendSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
@@ -59,6 +70,9 @@ export const bootDevtools = ({
 
     const mutationEventSchema = makeMutationEventSchema(schema)
 
+    const getDatabaseName = (db: DbPairRef) =>
+      db.current!.db.databasePath.slice(db.current!.db.databasePath.lastIndexOf('/') + 1)
+
     yield* expoDevtoolsChannel.listen.pipe(
       Stream.flatten(),
       Stream.tap((decodedEvent) =>
@@ -70,7 +84,7 @@ export const bootDevtools = ({
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             if ((yield* isConnected.get) === false) {
-              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }))
+              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
             }
 
             return
@@ -97,7 +111,7 @@ export const bootDevtools = ({
             // yield* disconnect
 
             // TODO is there a better place for this?
-            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeaderTab }))
+            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
 
             return
           }
@@ -137,6 +151,8 @@ export const bootDevtools = ({
                   Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }),
                 )
 
+                console.error(e)
+
                 return
               }
 
@@ -145,12 +161,12 @@ export const bootDevtools = ({
 
                 dbLogRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(dbLogRef.current!.db.databaseName, data)
+                yield* overwriteDbFile(getDatabaseName(dbLogRef), data)
 
                 dbLogRef.current = undefined
 
                 dbRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(dbRef.current!.db.databaseName)
+                SQLite.deleteDatabaseSync(getDatabaseName(dbRef))
               } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
                 // yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
@@ -158,7 +174,7 @@ export const bootDevtools = ({
 
                 dbRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(dbRef.current!.db.databaseName, data)
+                yield* overwriteDbFile(getDatabaseName(dbRef), data)
               } else {
                 yield* expoDevtoolsChannel.send(
                   Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }),
@@ -176,11 +192,11 @@ export const bootDevtools = ({
               const { mode } = decodedEvent
 
               dbRef.current!.db.closeSync()
-              SQLite.deleteDatabaseSync(dbRef.current!.db.databaseName)
+              SQLite.deleteDatabaseSync(getDatabaseName(dbRef))
 
               if (mode === 'all-data') {
                 dbLogRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(dbLogRef.current!.db.databaseName)
+                SQLite.deleteDatabaseSync(getDatabaseName(dbLogRef))
               }
 
               yield* expoDevtoolsChannel.send(Devtools.ResetAllDataRes.make({ ...reqPayload }))
@@ -219,7 +235,13 @@ export const bootDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              const { mutationEventEncoded, persisted } = decodedEvent
+              const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
+              const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
+              const nextMutationEventIdPair = yield* coordinator.nextMutationEventIdPair({
+                localOnly: mutationDef.options.localOnly,
+              })
+
+              const mutationEventEncoded = { ...mutationEventEncoded_, ...nextMutationEventIdPair }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
               yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
@@ -251,13 +273,13 @@ export const bootDevtools = ({
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeaderTab, liveStoreVersion }))
+    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeader, liveStoreVersion }))
 
     const onMutation = ({
       mutationEventEncoded,
       persisted,
     }: {
-      mutationEventEncoded: MutationEvent.Any
+      mutationEventEncoded: MutationEvent.AnyEncoded
       persisted: boolean
     }) =>
       expoDevtoolsChannel

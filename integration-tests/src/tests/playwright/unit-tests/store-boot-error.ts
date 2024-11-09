@@ -10,7 +10,7 @@ export const test = () =>
     const fiberSet = yield* FiberSet.make()
     const boot = () => Effect.fail(new Error('Boom!'))
 
-    yield* createStore({ schema, adapter, fiberSet, boot })
+    yield* createStore({ schema, adapter, fiberSet, boot, storeId: 'default' })
   }).pipe(
     Effect.tapCauseLogPretty,
     Effect.exit,

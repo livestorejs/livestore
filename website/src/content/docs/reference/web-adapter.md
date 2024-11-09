@@ -35,14 +35,12 @@ makeWorker({ schema })
 - Shared worker:
   - Needed to allow tabs to communicate with each other using a binary message channel.
   - The shared worker mostly acts as a proxy to the dedicated web worker.
-- Dedicated web worker:
-  - Acts as the single writer for the storage.
+- Dedicated web worker (also called "leader worker"):
+  - Acts as the leader/single writer for the storage.
   - Currently needed for synchronous OPFS API. (Hopefully won't be needed in the future anymore.)
 
 ## Storage
 
-There are currently 3 storage types:
+LiveStore currently only support OPFS to locally persist its data. In the future we might add support for other storage types (e.g. IndexedDB).
 
-- `opfs` (recommended)
-- `opfs-sahpool-experimental`
-- `indexeddb` (not recommended, currently implemented with a very inefficient persistence mechanism)
+LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads. 

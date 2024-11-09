@@ -6,5 +6,5 @@
     "noEmit": true,
     "types": ["bun-types"]
   },
-  "include": ["./sync-examples.ts"]
+  "include": ["./*.ts"]
 }

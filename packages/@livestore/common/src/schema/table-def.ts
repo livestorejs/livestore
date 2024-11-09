@@ -1,14 +1,14 @@
+import type { Nullable, PrettifyFlat } from '@livestore/db-schema'
+import { SqliteDsl } from '@livestore/db-schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import type { Nullable, PrettifyFlat } from 'effect-db-schema'
-import { SqliteDsl } from 'effect-db-schema'
 
 import type { DerivedMutationHelperFns } from '../derived-mutations.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
-export { type SqliteDsl } from 'effect-db-schema'
+export { type SqliteDsl } from '@livestore/db-schema'
 
 export type StateType = 'singleton' | 'dynamic'
 

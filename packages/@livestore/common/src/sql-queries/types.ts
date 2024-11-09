@@ -1,5 +1,5 @@
+import type { Prettify, SqliteDsl } from '@livestore/db-schema'
 import type { Schema } from '@livestore/utils/effect'
-import type { Prettify, SqliteDsl } from 'effect-db-schema'
 
 export type DecodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = {
   [K in keyof GetColumns<TSchema, TTableName>]: Schema.Schema.Type<GetColumn<TSchema, TTableName, K>['schema']>
@@ -89,7 +89,7 @@ export type WhereValuesForColumns<TColumns extends SqliteDsl.Columns> = PartialO
 }>
 
 export type GetNullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {
-  [K in keyof TColumns as TColumns[K] extends SqliteDsl.ColumnDefinition<any, true> ? K : never]: {}
+  [K in keyof TColumns as TColumns[K] extends SqliteDsl.ColumnDefinition<any, true> ? K : never]: unknown
 }
 
 export type PartialOrNull<T> = { [P in keyof T]?: T[P] | null }

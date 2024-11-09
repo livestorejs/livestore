@@ -1,0 +1,20 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "jsx": "react",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    // "jsx": "preserve",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["./src"],
+  "references": [
+    { "path": "../db-schema" },
+    { "path": "../common" },
+    { "path": "../web" },
+    { "path": "../livestore" },
+    { "path": "../utils" }
+  ]
+}

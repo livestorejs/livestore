@@ -15,7 +15,6 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
       try: () =>
         ExpoDevtools.getDevToolsPluginClientAsync('livestore-devtools', {
           websocketBinaryType: 'arraybuffer',
-          useTransportationNext: true,
         }),
       catch: (cause) => UnexpectedError.make({ cause }),
     })

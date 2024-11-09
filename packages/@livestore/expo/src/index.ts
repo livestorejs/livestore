@@ -1,41 +1,49 @@
-import type { Coordinator, LockStatus, StoreAdapter, StoreAdapterFactory } from '@livestore/common'
+import type { Adapter, ClientSession, Coordinator, EventId, LockStatus, PreparedBindValues } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
+  liveStoreStorageFormatVersion,
+  makeNextMutationEventIdPair,
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
+  sql,
   UnexpectedError,
 } from '@livestore/common'
-import type { MutationEvent } from '@livestore/common/schema'
+import type { MutationEvent, MutationLogMetaRow } from '@livestore/common/schema'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
+import { insertRowPrepared, makeBindValues } from '@livestore/common/sql-queries'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite/next'
+import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import * as SQLite from 'expo-sqlite'
 
 import { makeSynchronousDatabase } from './common.js'
+import type { BootedDevtools } from './devtools.js'
 import { bootDevtools } from './devtools.js'
 
 export type MakeDbOptions = {
   fileNamePrefix?: string
   subDirectory?: string
+  // syncBackend?: TODO
 }
 
 export const makeAdapter =
-  (options?: MakeDbOptions): StoreAdapterFactory =>
-  ({ schema, connectDevtoolsToStore, shutdown }) =>
+  (options?: MakeDbOptions): Adapter =>
+  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled }) =>
     Effect.gen(function* () {
       const { fileNamePrefix, subDirectory } = options ?? {}
       const migrationOptions = schema.migrationOptions
       const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
-      const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}.db`
+      const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
       const db = SQLite.openDatabaseSync(fullDbFilePath)
 
       const dbRef = { current: { db, syncDb: makeSynchronousDatabase(db) } }
 
       const dbWasEmptyWhenOpened = dbRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
 
-      const dbLog = SQLite.openDatabaseSync(`${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog.db`)
+      const dbLog = SQLite.openDatabaseSync(
+        `${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`,
+      )
 
       const dbLogRef = { current: { db: dbLog, syncDb: makeSynchronousDatabase(dbLog) } }
 
@@ -105,7 +113,7 @@ export const makeAdapter =
       )
 
       const newMutationLogStmt = dbLogRef.current.syncDb.prepare(
-        `INSERT INTO ${MUTATION_LOG_META_TABLE} (id, mutation, argsJson, schemaHash, createdAt, syncStatus) VALUES (?, ?, ?, ?, ?, ?)`,
+        insertRowPrepared({ tableName: MUTATION_LOG_META_TABLE, columns: mutationLogMetaTable.sqliteDef.columns }),
       )
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
@@ -114,10 +122,36 @@ export const makeAdapter =
         Effect.acquireRelease(Queue.shutdown),
       )
 
+      const initialMutationEventIdSchema = mutationLogMetaTable.schema.pipe(
+        Schema.pick('idGlobal', 'idLocal'),
+        Schema.Array,
+        Schema.headOrElse(() => ({ idGlobal: 0, idLocal: 0 })),
+      )
+
+      const initialMutationEventIdData = yield* Schema.decode(initialMutationEventIdSchema)(
+        dbLogRef.current.syncDb.select(
+          sql`SELECT idGlobal, idLocal FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
+        ),
+      )
+
+      const currentMutationEventIdRef = {
+        current: {
+          global: initialMutationEventIdData.idGlobal,
+          local: initialMutationEventIdData.idLocal,
+        },
+      } as { current: EventId }
+
+      let devtools: BootedDevtools | undefined
+
       const coordinator = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
+        // Expo doesn't support multiple client sessions, so we just use a fixed session id
+        sessionId: 'expo',
         syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
+        // TODO implement proper event id generation using persistent cliendId
+        nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
+        getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         // NOTE not doing anything since syncDb is already persisted
         execute: () => Effect.void,
         mutate: (mutationEventEncoded, { persisted }): Effect.Effect<void, UnexpectedError> =>
@@ -140,25 +174,29 @@ export const makeAdapter =
                 mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
               const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
+              const mutationLogRowValues = {
+                idGlobal: mutationEventEncoded.id.global,
+                idLocal: mutationEventEncoded.id.local,
+                mutation: mutationEventEncoded.mutation,
+                argsJson,
+                schemaHash: mutationDefSchemaHash,
+                createdAt: new Date().toISOString(),
+                syncStatus: 'localOnly',
+                syncMetadataJson: Option.none(),
+                parentIdGlobal: mutationEventEncoded.parentId.global,
+                parentIdLocal: mutationEventEncoded.parentId.local,
+              } satisfies MutationLogMetaRow
 
               try {
-                newMutationLogStmt.execute([
-                  mutationEventEncoded.id,
-                  mutationEventEncoded.mutation,
-                  argsJson,
-                  mutationDefSchemaHash,
-                  new Date().toISOString(),
-                  'localOnly',
-                ] as any)
-              } catch (e) {
-                console.error(
-                  'Error writing to mutation_log',
-                  e,
-                  mutationEventEncoded.id,
-                  mutationEventEncoded.mutation,
-                  argsJson,
-                  mutationDefSchemaHash,
+                newMutationLogStmt.execute(
+                  makeBindValues({
+                    columns: mutationLogMetaTable.sqliteDef.columns,
+                    values: mutationLogRowValues,
+                    variablePrefix: '$',
+                  }) as PreparedBindValues,
                 )
+              } catch (e) {
+                console.error('Error writing to mutation_log', e, mutationLogRowValues)
                 debugger
                 throw e
               }
@@ -166,24 +204,29 @@ export const makeAdapter =
               //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
             }
 
-            yield* devtools.onMutation({ mutationEventEncoded, persisted })
+            yield* devtools?.onMutation({ mutationEventEncoded, persisted }) ?? Effect.void
           }),
         export: Effect.sync(() => dbRef.current.syncDb.export()),
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
       } satisfies Coordinator
 
-      const devtools = yield* bootDevtools({
-        connectDevtoolsToStore,
-        coordinator,
-        schema,
-        dbRef,
-        dbLogRef,
-        shutdown,
-        incomingSyncMutationsQueue,
-      })
+      if (devtoolsEnabled) {
+        devtools = yield* bootDevtools({
+          connectDevtoolsToStore,
+          coordinator,
+          schema,
+          dbRef,
+          dbLogRef,
+          shutdown,
+          incomingSyncMutationsQueue,
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          Effect.catchAll(() => Effect.succeed(undefined)),
+        )
+      }
 
-      return { syncDb: dbRef.current.syncDb, coordinator } satisfies StoreAdapter
+      return { syncDb: dbRef.current.syncDb, coordinator } satisfies ClientSession
     }).pipe(
       Effect.mapError((cause) => (cause._tag === 'LiveStore.UnexpectedError' ? cause : new UnexpectedError({ cause }))),
       Effect.tapCauseLogPretty,

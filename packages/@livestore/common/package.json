@@ -1,6 +1,6 @@
 {
   "name": "@livestore/common",
-  "version": "0.0.57",
+  "version": "0.1.0",
   "type": "module",
   "exports": {
     ".": {
@@ -14,6 +14,14 @@
     "./schema": {
       "types": "./dist/schema/index.d.ts",
       "default": "./dist/schema/index.js"
+    },
+    "./sync/next": {
+      "types": "./dist/sync/next/mod.d.ts",
+      "default": "./dist/sync/next/mod.js"
+    },
+    "./sync/next/test": {
+      "types": "./dist/sync/next/test/mod.d.ts",
+      "default": "./dist/sync/next/test/mod.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -24,6 +32,12 @@
       ],
       "sql-queries": [
         "./dist/sql-queries/index.d.ts"
+      ],
+      "sync/next": [
+        "./dist/sync/next/mod.d.ts"
+      ],
+      "sync/next/test": [
+        "./dist/sync/next/test/mod.d.ts"
       ]
     }
   },
@@ -33,10 +47,13 @@
   "dependencies": {
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "effect-db-schema": "workspace:*"
+    "@livestore/db-schema": "workspace:*",
+    "graphology": "0.26.0-alpha1",
+    "graphology-dag": "0.4.1",
+    "graphology-types": "0.24.7"
   },
   "devDependencies": {
-    "vitest": "^2.0.4"
+    "vitest": "^2.1.4"
   },
   "publishConfig": {
     "access": "public"

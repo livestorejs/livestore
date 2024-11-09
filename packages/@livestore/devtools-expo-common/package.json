@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo-common",
-  "version": "0.0.57",
+  "version": "0.1.0",
   "type": "module",
   "exports": {
     "./web-channel": {
@@ -23,7 +23,7 @@
     "expo": "51.0.32"
   },
   "peerDependencies": {
-    "expo": "^51"
+    "expo": "51.0.32"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,7 @@
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
+import { SessionIdSymbol } from './adapter-types.js'
 import type { LiveStoreSchema } from './schema/index.js'
 import type { MutationDef, MutationEvent } from './schema/mutations.js'
 import type { PreparedBindValues } from './util.js'
@@ -67,3 +68,25 @@ export const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreS
     return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
   }
 })
+
+// NOTE we should explore whether there is a more elegant solution
+// e.g. by leveraging the schema to replace the sessionIdSymbol
+export const replaceSessionIdSymbol = (bindValues: Record<string, unknown>, sessionId: string) => {
+  deepReplaceValue(bindValues, SessionIdSymbol, sessionId)
+}
+
+const deepReplaceValue = <S, R>(input: any, searchValue: S, replaceValue: R): void => {
+  if (Array.isArray(input)) {
+    for (const i in input) {
+      deepReplaceValue(input[i], searchValue, replaceValue)
+    }
+  } else if (typeof input === 'object' && input !== null) {
+    for (const key in input) {
+      if (input[key] === searchValue) {
+        input[key] = replaceValue
+      } else {
+        deepReplaceValue(input[key], searchValue, replaceValue)
+      }
+    }
+  }
+}

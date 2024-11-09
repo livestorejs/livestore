@@ -1,7 +1,6 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import { cuid } from '@livestore/utils/cuid'
 import type { Scope } from '@livestore/utils/effect'
 import {
   BrowserWorker,
@@ -17,6 +16,7 @@ import {
   SubscriptionRef,
   Worker,
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import type { WebAdapterOptions } from '@livestore/web'
 import { WorkerSchema } from '@livestore/web'
 
@@ -24,6 +24,7 @@ import { makeShared } from './bridge-shared.js'
 
 export class WebBridgeInfo extends Schema.Class<WebBridgeInfo>('WebBridgeChannelInfo')({
   appHostId: Schema.String,
+  storeId: Schema.String,
   webBridgeId: Schema.String,
   isLeader: Schema.Boolean,
 }) {
@@ -54,20 +55,7 @@ export const prepareWebDevtoolsBridge = (
       Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
     >()
 
-    const devtoolsId = cuid()
-
-    const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, {
-      name: `livestore-shared-worker-${options.appSchema.key}`,
-    })
-
-    const sharedWorkerDeferred = yield* Worker.makeSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
-      initialMessage: () => new WorkerSchema.SharedWorker.InitialMessage({ payload: { _tag: 'FromWebBridge' } }),
-    }).pipe(
-      Effect.provide(BrowserWorker.layer(() => sharedWorker)),
-      Effect.tapCauseLogPretty,
-      Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
-      Effect.toForkedDeferred,
-    )
+    const devtoolsId = nanoid()
 
     const portForDevtoolsDeferred = yield* Deferred.make<MessagePort>()
 
@@ -98,6 +86,7 @@ export const prepareWebDevtoolsBridge = (
             appHostId: msg.appHostId,
             webBridgeId: msg.webBridgeId,
             isLeader: msg.isLeader,
+            storeId: msg.storeId,
           })
 
           // Propagate disconnect event while connecting.
@@ -124,6 +113,19 @@ export const prepareWebDevtoolsBridge = (
 
     const selectedChannelInfo = yield* Deferred.await(options.selectedChannelInfoDeferred)
 
+    const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, {
+      name: `livestore-shared-worker-${selectedChannelInfo.storeId}`,
+    })
+
+    const sharedWorkerDeferred = yield* Worker.makeSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
+      initialMessage: () => new WorkerSchema.SharedWorker.InitialMessage({ payload: { _tag: 'FromWebBridge' } }),
+    }).pipe(
+      Effect.provide(BrowserWorker.layer(() => sharedWorker)),
+      Effect.tapCauseLogPretty,
+      Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
+      Effect.toForkedDeferred,
+    )
+
     yield* Effect.gen(function* () {
       const mc = new MessageChannel()
 
@@ -141,7 +143,7 @@ export const prepareWebDevtoolsBridge = (
       yield* FiberSet.clear(connectionFiberSet)
     }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const { sendToAppHost, appHostId, isLeaderTab } = yield* makeShared({ portForDevtoolsDeferred, responsePubSub })
+    const { sendToAppHost, appHostId, isLeader } = yield* makeShared({ portForDevtoolsDeferred, responsePubSub })
 
     // NOTE we need a second listener here since we depend on the `appHostId` to be set
     yield* webBridgeBroadcastChannel.listen.pipe(
@@ -175,6 +177,6 @@ export const prepareWebDevtoolsBridge = (
       appHostId,
       copyToClipboard,
       sendEscapeKey: Effect.void,
-      isLeaderTab,
+      isLeader,
     } satisfies Devtools.PrepareDevtoolsBridge
   }).pipe(Effect.orDie)

@@ -1,7 +1,15 @@
-export { Store, createStorePromise, createStore } from './store.js'
-export type { BaseGraphQLContext, QueryDebugInfo, RefreshReason } from './store.js'
+export { Store } from './store/store.js'
+export { createStore, createStorePromise, type CreateStoreOptions } from './store/create-store.js'
+export type {
+  BaseGraphQLContext,
+  QueryDebugInfo,
+  RefreshReason,
+  GraphQLOptions,
+  OtelOptions,
+} from './store/store-types.js'
 
-export type { LiveStoreContextRunning as LiveStoreContext } from './effect/LiveStore.js'
+export type { LiveStoreContextRunning } from './effect/LiveStore.js'
+export { StoreAbort, StoreInterrupted, type LiveStoreContext } from './store/store-types.js'
 
 export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 
@@ -17,7 +25,7 @@ export type {
   Ref,
   Effect,
 } from './reactive.js'
-export { LiveStoreJSQuery, computed } from './reactiveQueries/js.js'
+export { LiveStoreJSQuery, computed } from './reactiveQueries/computed.js'
 export { LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 export {
@@ -25,6 +33,8 @@ export {
   type ReactivityGraph,
   makeReactivityGraph,
   type LiveQuery,
+  type GetResult,
+  type LiveQueryAny,
 } from './reactiveQueries/base-class.js'
 
 export { globalReactivityGraph } from './global-state.js'
@@ -34,7 +44,7 @@ export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from 
 export * from '@livestore/common/schema'
 export {
   sql,
-  type BootDb,
+  SessionIdSymbol,
   type BootStatus,
   type SynchronousDatabase,
   type DebugInfo,
@@ -44,8 +54,10 @@ export {
   type PreparedBindValues,
 } from '@livestore/common'
 
-export { SqliteAst, SqliteDsl } from 'effect-db-schema'
+export { SqliteAst, SqliteDsl } from '@livestore/db-schema'
 
 export { deepEqual } from '@livestore/utils'
 
-export type { StoreAdapter, StoreAdapterFactory, PreparedStatement } from '@livestore/common'
+export * from './utils/stack-info.js'
+
+export type { ClientSession, Adapter, PreparedStatement } from '@livestore/common'

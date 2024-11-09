@@ -9,9 +9,10 @@ export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
   select<T>(bindValues: PreparedBindValues | undefined): ReadonlyArray<T>
   finalize(): void
+  sql: string
 }
 
-export type StoreAdapter = {
+export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
   /** The coordinator is responsible for persisting the database, syncing etc */
@@ -28,6 +29,7 @@ export type SynchronousDatabase = {
   ): void
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
+  close(): void
 }
 
 export type ResetMode = 'all-data' | 'only-app-db'
@@ -60,27 +62,57 @@ export type BootStatus = typeof BootStatus.Type
 export type Coordinator = {
   devtools: {
     enabled: boolean
+    // TODO incorporate sessionId and rethink appHostId
     appHostId: string
   }
+  sessionId: string
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  syncMutations: Stream.Stream<MutationEvent.AnyEncoded, UnexpectedError>
+  syncMutations: Stream.Stream<MutationEvent.Any, UnexpectedError>
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
-  mutate(mutationEventEncoded: MutationEvent.Any, options: { persisted: boolean }): Effect.Effect<void, UnexpectedError>
+  mutate(
+    mutationEventEncoded: MutationEvent.AnyEncoded,
+    options: { persisted: boolean },
+  ): Effect.Effect<void, UnexpectedError>
+  /** Can be called synchronously */
+  nextMutationEventIdPair: (opts: { localOnly: boolean }) => Effect.Effect<EventIdPair, UnexpectedError>
+  /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
+  getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
 
+/**
+ * Can be used in queries to refer to the current session id.
+ * Will be replaced with the actual session id at runtime
+ *
+ * Example:
+ * ```ts
+ * const query$ = rowQuery(tables.app, SessionIdSymbol)
+ * ```
+ */
+export const SessionIdSymbol = Symbol.for('@livestore/session-id')
+export type SessionIdSymbol = typeof SessionIdSymbol
+
 export type LockStatus = 'has-lock' | 'no-lock'
 
-export type BootDb = {
-  _tag: 'BootDb'
-  execute(queryStr: string, bindValues?: PreparedBindValues): void
-  mutate: <const TMutationArg extends ReadonlyArray<MutationEvent.Any>>(...list: TMutationArg) => void
-  select<T>(queryStr: string, bindValues?: PreparedBindValues): ReadonlyArray<T>
-  txn(callback: () => void): void
-}
+/**
+ * LiveStore event id value consisting of a globally unique event sequence number
+ * and a local sequence number.
+ *
+ * The local sequence number is only used for localOnly mutations and starts from 0 for each global sequence number.
+ */
+export type EventId = { global: number; local: number }
+
+export const EventId = Schema.Struct({
+  global: Schema.Number,
+  local: Schema.Number,
+}).annotations({ title: 'LiveStore.EventId' })
+
+export type EventIdPair = { id: EventId; parentId: EventId }
+
+export const ROOT_ID = { global: -1, local: 0 } satisfies EventId
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.Defect,
@@ -89,7 +121,6 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
 }) {
   static mapToUnexpectedError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
-      Effect.tapCauseLogPretty,
       Effect.mapError((cause) => (Schema.is(UnexpectedError)(cause) ? cause : new UnexpectedError({ cause }))),
       Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
     )
@@ -167,10 +198,11 @@ export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: StoreDevtoolsChannel,
 ) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
-export type StoreAdapterFactory = (opts: {
+export type Adapter = (opts: {
   schema: LiveStoreSchema
+  storeId: string
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
-}) => Effect.Effect<StoreAdapter, UnexpectedError, Scope.Scope>
+}) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>

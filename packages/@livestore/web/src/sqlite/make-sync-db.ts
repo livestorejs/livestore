@@ -1,16 +1,21 @@
-import { type PreparedBindValues, SqliteError, type SynchronousDatabase } from '@livestore/common'
+import type { PreparedBindValues, PreparedStatement, SynchronousDatabase } from '@livestore/common'
+import { SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { exportDb } from './sqlite-utils.js'
 
 export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): SynchronousDatabase => {
+  const preparedStmts: PreparedStatement[] = []
+
   const syncDb: SynchronousDatabase = {
     _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
         const stmts = sqlite3.statements(db, queryStr.trim(), { unscoped: true })
 
-        return {
+        let isFinalized = false
+
+        const preparedStmt = {
           execute: (bindValues, options) => {
             for (const stmt of stmts) {
               if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
@@ -50,6 +55,7 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
               let columns = undefined
               try {
                 columns = sqlite3.column_names(stmt)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
               } catch (_e) {}
 
               while (sqlite3.step(stmt) === SqliteConstants.SQLITE_ROW) {
@@ -75,11 +81,23 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
             return results
           },
           finalize: () => {
+            // Avoid double finalization which leads to a crash
+            if (isFinalized) {
+              return
+            }
+
+            isFinalized = true
+
             for (const stmt of stmts) {
               sqlite3.finalize(stmt)
             }
           },
-        }
+          sql: queryStr,
+        } satisfies PreparedStatement
+
+        preparedStmts.push(preparedStmt)
+
+        return preparedStmt
       } catch (e) {
         throw new SqliteError({
           query: { sql: queryStr, bindValues: {} },
@@ -99,6 +117,12 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
       const results = stmt.select(bindValues)
       stmt.finalize()
       return results as ReadonlyArray<any>
+    },
+    close: () => {
+      for (const stmt of preparedStmts) {
+        stmt.finalize()
+      }
+      return sqlite3.close(db)
     },
   } satisfies SynchronousDatabase
 

@@ -1,6 +1,6 @@
+import { SqliteDsl } from '@livestore/db-schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import { SqliteDsl } from 'effect-db-schema'
 
 import type { TableDef } from './table-def.js'
 

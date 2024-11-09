@@ -1,5 +1,6 @@
 import type { Schema } from '@livestore/utils/effect'
 
+import type { SessionIdSymbol } from './adapter-types.js'
 import type { DbSchema } from './schema/index.js'
 
 /**
@@ -21,7 +22,7 @@ export type QueryInfoNone = {
 export type QueryInfoRow<TTableDef extends DbSchema.TableDef> = {
   _tag: 'Row'
   table: TTableDef
-  id: string
+  id: string | SessionIdSymbol
 }
 
 export type QueryInfoCol<
@@ -30,14 +31,14 @@ export type QueryInfoCol<
 > = {
   _tag: 'Col'
   table: TTableDef
-  id: string
+  id: string | SessionIdSymbol
   column: TColName
 }
 
 export type QueryInfoColJsonValue<TTableDef extends DbSchema.TableDef, TColName extends GetJsonColumn<TTableDef>> = {
   _tag: 'ColJsonValue'
   table: TTableDef
-  id: string
+  id: string | SessionIdSymbol
   column: TColName
   /**
    * example: `$.tabs[3].items[2]` (`$` referring to the column value)

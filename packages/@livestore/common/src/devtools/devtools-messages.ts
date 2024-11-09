@@ -74,7 +74,7 @@ export class MutationBroadcast extends LSDMessage('LSD.MutationBroadcast', {
 }) {}
 
 export class RunMutationReq extends LSDReqResMessage('LSD.RunMutationReq', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  mutationEventEncoded: mutationEventSchemaEncodedAny.pipe(Schema.omit('id', 'parentId')),
   persisted: Schema.Boolean,
 }) {}
 
@@ -101,7 +101,7 @@ export class LiveQueriesSubscribe extends LSDReqResMessage('LSD.LiveQueriesSubsc
 export class LiveQueriesUnsubscribe extends LSDReqResMessage('LSD.LiveQueriesUnsubscribe', {}) {}
 
 export class SerializedLiveQuery extends Schema.Struct({
-  _tag: Schema.Literal('js', 'sql', 'graphql'),
+  _tag: Schema.Literal('computed', 'sql', 'graphql'),
   id: Schema.Number,
   label: Schema.String,
   runs: Schema.Number,
@@ -158,12 +158,19 @@ export class SyncingInfoRes extends LSDReqResMessage('LSD.SyncingInfoRes', {
   syncingInfo: SyncingInfo,
 }) {}
 
+export class SyncHistorySubscribe extends LSDReqResMessage('LSD.SyncHistorySubscribe', {}) {}
+export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.SyncHistoryUnsubscribe', {}) {}
+export class SyncHistoryRes extends LSDReqResMessage('LSD.SyncHistoryRes', {
+  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  metadata: Schema.Option(Schema.JsonValue),
+}) {}
+
 export class DevtoolsReady extends LSDMessage('LSD.DevtoolsReady', {}) {}
 
 export class DevtoolsConnected extends LSDChannelMessage('LSD.DevtoolsConnected', {}) {}
 
 export class AppHostReady extends LSDChannelMessage('LSD.AppHostReady', {
-  isLeaderTab: Schema.Boolean,
+  isLeader: Schema.Boolean,
 }) {}
 
 export class Disconnect extends LSDChannelMessage('LSD.Disconnect', {}) {}
@@ -186,6 +193,8 @@ export const MessageToAppHostCoordinator = Schema.Union(
   RunMutationReq,
   Ping,
   DatabaseFileInfoReq,
+  SyncHistorySubscribe,
+  SyncHistoryUnsubscribe,
   SyncingInfoReq,
 ).annotations({ identifier: 'LSD.MessageToAppHostCoordinator' })
 
@@ -219,6 +228,7 @@ export const MessageFromAppHostCoordinator = Schema.Union(
   RunMutationRes,
   Pong,
   DatabaseFileInfoRes,
+  SyncHistoryRes,
   SyncingInfoRes,
 ).annotations({ identifier: 'LSD.MessageFromAppHostCoordinator' })
 

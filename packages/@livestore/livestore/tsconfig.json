@@ -3,7 +3,6 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "react",
     "skipLibCheck": true,
     "resolveJsonModule": true,
     // "jsx": "preserve",
@@ -11,7 +10,7 @@
   },
   "include": ["./src"],
   "references": [
-    { "path": "../../effect-db-schema" },
+    { "path": "../db-schema" },
     { "path": "../common" },
     { "path": "../web" },
     { "path": "../utils" }

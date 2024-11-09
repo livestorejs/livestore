@@ -1,9 +1,10 @@
 import type { QueryInfo, QueryInfoNone } from '@livestore/common'
 import type * as otel from '@opentelemetry/api'
 
-import type { StackInfo } from '../react/utils/stack-info.js'
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
-import type { QueryDebugInfo, RefreshReason, Store } from '../store.js'
+import type { Store } from '../store/store.js'
+import type { QueryDebugInfo, RefreshReason } from '../store/store-types.js'
+import type { StackInfo } from '../utils/stack-info.js'
 
 export type ReactivityGraph = ReactiveGraph<RefreshReason, QueryDebugInfo, QueryContext>
 
@@ -28,7 +29,7 @@ export type LiveQueryAny = LiveQuery<any, QueryInfo>
 
 export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone> {
   id: number
-  _tag: 'js' | 'sql' | 'graphql'
+  _tag: 'computed' | 'sql' | 'graphql'
 
   /** This should only be used on a type-level and doesn't hold any value during runtime */
   '__result!': TResult
@@ -64,7 +65,7 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
 {
   '__result!'!: TResult
   id = queryIdCounter++
-  abstract _tag: 'js' | 'sql' | 'graphql'
+  abstract _tag: 'computed' | 'sql' | 'graphql'
 
   /** Human-readable label for the query for debugging */
   abstract label: string

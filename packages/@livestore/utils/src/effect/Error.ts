@@ -1,4 +1,4 @@
-import { Schema } from '@effect/schema'
+import { Schema } from 'effect'
 
 export class UnknownError extends Schema.TaggedError<'UnknownError'>()('UnknownError', {
   cause: Schema.Any,

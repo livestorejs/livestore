@@ -9,5 +9,5 @@ export type PrepareDevtoolsBridge = {
   appHostId: string
   copyToClipboard: (text: string) => Effect.Effect<void>
   sendEscapeKey?: Effect.Effect<void>
-  isLeaderTab: boolean
+  isLeader: boolean
 }

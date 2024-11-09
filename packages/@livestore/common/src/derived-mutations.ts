@@ -1,6 +1,6 @@
+import type { SqliteDsl } from '@livestore/db-schema'
 import type { GetValForKey } from '@livestore/utils'
 import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import type { SqliteDsl } from 'effect-db-schema'
 
 import type { MutationEvent } from './schema/mutations.js'
 import { defineMutation } from './schema/mutations.js'
@@ -38,9 +38,9 @@ export const deriveCreateMutationDef = <
     (col) => col.nullable === false && col.default._tag === 'None',
   )
 
-  const insertSchema = Schema.Struct(ReadonlyRecord.map(requiredColumns, (col) => col.schema)).pipe(
-    Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))),
-  )
+  const insertSchema = Schema.Struct(ReadonlyRecord.map(requiredColumns, (col) => col.schema))
+    .pipe(Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))))
+    .annotations({ title: `${tableName}:Insert` })
 
   return defineMutation(
     `_Derived_Create_${tableName}`,
@@ -76,7 +76,7 @@ export const deriveUpdateMutationDef = <
     Schema.Struct({
       where: Schema.partial(table.schema),
       values: Schema.partial(table.schema),
-    }),
+    }).annotations({ title: `${tableName}:Update` }),
     ({ where, values }) => {
       const [sql, bindValues] = updateRows({
         tableName: table.sqliteDef.name,
@@ -140,8 +140,8 @@ export namespace DerivedMutationHelperFns {
   > = SqliteDsl.AnyIfConstained<
     TColumns,
     UseShortcut<TOptions> extends true
-      ? (values?: GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TColumns>, 'value'>) => MutationEvent.Any
-      : (values: SqliteDsl.FromColumns.InsertRowDecoded<TColumns>) => MutationEvent.Any
+      ? (values?: GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TColumns>, 'value'>) => MutationEvent.PartialAny
+      : (values: SqliteDsl.FromColumns.InsertRowDecoded<TColumns>) => MutationEvent.PartialAny
   >
 
   export type UpdateMutationFn<
@@ -150,17 +150,17 @@ export namespace DerivedMutationHelperFns {
   > = SqliteDsl.AnyIfConstained<
     TColumns,
     UseShortcut<TOptions> extends true
-      ? (values: Partial<GetValForKey<SqliteDsl.FromColumns.RowDecoded<TColumns>, 'value'>>) => MutationEvent.Any
+      ? (values: Partial<GetValForKey<SqliteDsl.FromColumns.RowDecoded<TColumns>, 'value'>>) => MutationEvent.PartialAny
       : (args: {
           where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>>
           values: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>>
-        }) => MutationEvent.Any
+        }) => MutationEvent.PartialAny
   >
 
   export type DeleteMutationFn<
     TColumns extends SqliteDsl.ConstraintColumns,
     _TOptions extends DbSchema.TableOptions,
-  > = (args: { where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>> }) => MutationEvent.Any
+  > = (args: { where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>> }) => MutationEvent.PartialAny
 
   type UseShortcut<TOptions extends DbSchema.TableOptions> = TOptions['isSingleColumn'] extends true
     ? TOptions['isSingleton'] extends true

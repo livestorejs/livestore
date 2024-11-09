@@ -7,5 +7,5 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../../effect-db-schema" }, { "path": "../utils" }]
+  "references": [{ "path": "../db-schema" }, { "path": "../utils" }]
 }

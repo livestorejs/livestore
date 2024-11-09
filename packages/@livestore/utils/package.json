@@ -1,7 +1,9 @@
 {
   "name": "@livestore/utils",
-  "version": "0.0.57",
-  "sideEffects": false,
+  "version": "0.1.0",
+  "sideEffects": [
+    "./dist/global.js"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -13,6 +15,10 @@
       "node": "./dist/cuid/cuid.node.js",
       "react-native": "./dist/cuid/cuid.browser.js",
       "browser": "./dist/cuid/cuid.browser.js"
+    },
+    "./nanoid": {
+      "types": "./dist/nanoid/index.d.ts",
+      "default": "./dist/nanoid/index.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
@@ -26,6 +32,9 @@
       "./cuid": [
         "./dist/cuid/cuid.node.d.ts"
       ],
+      "./nanoid": [
+        "./dist/nanoid/index.d.ts"
+      ],
       "effect": [
         "./dist/effect"
       ]
@@ -35,32 +44,29 @@
     "test": "vitest"
   },
   "dependencies": {
-    "date-fns": "^3.6.0",
-    "effect-db-schema": "workspace:*",
-    "msgpackr": "^1.11.0",
-    "otel-websocket-exporter": "^0.0.29",
+    "@livestore/db-schema": "workspace:*",
+    "msgpackr": "^1.11.2",
+    "nanoid": "^5.0.7",
     "pretty-bytes": "^6.1.1"
   },
   "peerDependencies": {
-    "@effect/experimental": "^0.24.4",
-    "@effect/opentelemetry": "^0.36.2",
-    "@effect/platform": "^0.63.3",
-    "@effect/platform-browser": "^0.42.3",
-    "@effect/schema": "^0.72.2",
+    "@effect/experimental": "^0.30.13",
+    "@effect/opentelemetry": "^0.39.7",
+    "@effect/platform": "^0.69.12",
+    "@effect/platform-browser": "^0.48.12",
     "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.7.2"
+    "effect": "^3.10.7"
   },
   "devDependencies": {
-    "@effect/experimental": "0.24.4",
-    "@effect/opentelemetry": "0.36.2",
-    "@effect/platform": "0.63.3",
-    "@effect/platform-browser": "0.42.3",
-    "@effect/schema": "0.72.2",
+    "@effect/experimental": "0.32.3",
+    "@effect/opentelemetry": "0.39.12",
+    "@effect/platform": "0.69.19",
+    "@effect/platform-browser": "0.48.19",
     "@opentelemetry/api": "^1.9.0",
-    "@types/node": "^22.0.0",
-    "@types/web": "^0.0.153",
-    "effect": "3.7.2",
-    "vitest": "^2.0.4"
+    "@types/node": "^22.8.5",
+    "@types/web": "^0.0.175",
+    "effect": "3.10.12",
+    "vitest": "^2.1.4"
   },
   "publishConfig": {
     "access": "public"

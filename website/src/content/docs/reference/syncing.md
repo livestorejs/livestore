@@ -1,0 +1,20 @@
+---
+title: Syncing
+---
+
+## Design decisions / trade-offs
+
+- LiveStore is based on the idea of event-sourcing
+- It's similar to how Git works.
+- Each client needs to first pull the latest events from the server before it can push its own mutation events.
+- To sync across devices, there is assumed to be a central "server" that acts as the global authority.
+  - It determines the total order of events (causality)
+- Each client initialy chooses a random `clientId` as its globally unique ID
+  - LiveStore uses a 6-char nanoid
+	- In the unlikely event of a collision which is detected by the server the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
+
+## Requirements for sync server
+
+- Needs to provide an efficient way to query an ordered list of mutation events given a starting event ID (often referred to as cursor).
+- Ideally provides a "reactivity" mechanism to notify clients when new mutation events are available (e.g. via WebSocket, HTTP long-polling, etc).
+  - Alternatively, the client can periodically query for new events which is less efficient.

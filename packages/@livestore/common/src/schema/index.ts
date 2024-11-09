@@ -1,6 +1,6 @@
+import type { SqliteDsl } from '@livestore/db-schema'
+import { SqliteAst } from '@livestore/db-schema'
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
-import type { SqliteDsl } from 'effect-db-schema'
-import { SqliteAst } from 'effect-db-schema'
 
 import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
@@ -38,11 +38,6 @@ export type LiveStoreSchema<
   readonly hash: number
 
   migrationOptions: MigrationOptions
-
-  /**
-   * @default 'default'
-   */
-  key: string
 }
 
 export type InputSchema = {
@@ -51,6 +46,7 @@ export type InputSchema = {
   /**
    * Can be used to isolate multiple LiveStore apps running in the same origin
    */
+  // TODO remove this in favour of storeId
   readonly key?: string
 }
 
@@ -118,11 +114,10 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     mutations,
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
     hash,
-    key: inputSchema.key ?? 'default',
   } satisfies LiveStoreSchema
 }
 
-namespace FromInputSchema {
+export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
     DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
     MutationDefRecordFromInputSchemaMutations<TInputSchema['mutations']>

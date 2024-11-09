@@ -16,6 +16,7 @@ export const test = () =>
       sharedWorker: LiveStoreSharedWorker,
     })({
       schema,
+      storeId: 'default',
       devtoolsEnabled: false,
       bootStatusQueue,
       shutdown: () => Effect.void,

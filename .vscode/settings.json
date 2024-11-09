@@ -35,13 +35,12 @@
     "**/playwright-report": true,
     "**/.direnv": true,
     "**/.DS_Store": true,
-    "**/flake.lock": true,
-    "**/examples-monorepo/**": false
+    "**/flake.lock": true
   },
   "search.exclude": {
     "**/.expo": true,
     "**/build": true,
-    "**/examples-monorepo/**": false,
+    "**/examples/dist/**": false,
     "**/.vercel": true,
     "**/.direnv": true,
     "**/dist": true,

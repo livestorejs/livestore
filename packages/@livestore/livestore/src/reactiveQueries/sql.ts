@@ -1,12 +1,12 @@
 import { type Bindable, prepareBindValues, type QueryInfo, type QueryInfoNone } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaEquivalence, TreeFormatter } from '@livestore/utils/effect'
+import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import { NOT_REFRESHED_YET } from '../reactive.js'
-import type { RefreshReason } from '../store.js'
+import type { RefreshReason } from '../store/store-types.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
@@ -79,7 +79,7 @@ export class LiveStoreSQLQuery<
     queryInfo,
   }: {
     label?: string
-    genQueryString: string | ((get: GetAtomResult) => string)
+    genQueryString: string | ((get: GetAtomResult, ctx: QueryContext) => string)
     queriedTables?: Set<string>
     bindValues?: Bindable
     reactivityGraph?: ReactivityGraph
@@ -101,11 +101,11 @@ export class LiveStoreSQLQuery<
     let queryString$OrQueryString: string | Thunk<string, QueryContext, RefreshReason>
     if (typeof genQueryString === 'function') {
       queryString$OrQueryString = this.reactivityGraph.makeThunk(
-        (get, setDebugInfo, { rootOtelContext }, otelContext) => {
+        (get, setDebugInfo, ctx, otelContext) => {
           const startMs = performance.now()
-          const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? rootOtelContext))
+          const queryString = genQueryString(makeGetAtomResult(get, otelContext ?? ctx.rootOtelContext), ctx)
           const durationMs = performance.now() - startMs
-          setDebugInfo({ _tag: 'js', label: `${label}:queryString`, query: queryString, durationMs })
+          setDebugInfo({ _tag: 'computed', label: `${label}:queryString`, query: queryString, durationMs })
           return queryString
         },
         {
@@ -124,7 +124,7 @@ export class LiveStoreSQLQuery<
 
     const queriedTablesRef = { current: queriedTables }
 
-    const schemaEqual = SchemaEquivalence.make(schema)
+    const schemaEqual = Schema.equivalence(schema)
     // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
     // This would mean dropping the `map` option
     const equal =

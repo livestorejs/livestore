@@ -24,3 +24,13 @@ interface FileSystemFileHandle {
 //   }
 //   export default sharedWorkerConstructor
 // }
+
+interface ImportMeta {
+  env: {
+    DEV: boolean | undefined
+    VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT: boolean | undefined
+  }
+}
+
+// eslint-disable-next-line no-var
+declare var __opfsUtils: typeof OpfsUtils

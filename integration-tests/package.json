@@ -1,24 +1,24 @@
 {
-  "name": "@livestore/integration-tests",
+  "name": "@local/integration-tests",
   "version": "0.0.54-dev.23",
   "type": "module",
   "private": true,
   "scripts": {
     "test": "pnpm test:unit & pnpm test:todomvc",
     "test:unit": "PLAYWRIGHT_SUITE=unit DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='pnpm vite dev' playwright test src/tests/playwright/unit-tests.play.ts",
-    "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='PORT=$DEV_SERVER_PORT pnpm --filter todomvc-monorepo dev' playwright test src/tests/playwright/todomvc.play.ts"
+    "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='PORT=$DEV_SERVER_PORT pnpm --filter livestore-example-src-todomvc dev' playwright test src/tests/playwright/todomvc.play.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/effect-playwright": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.1-dev.29",
+    "@livestore/wa-sqlite": "1.0.3-dev.2",
     "@livestore/web": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.46.1",
-    "@types/node": "^22.0.0",
-    "vite": "5.4.3"
+    "@playwright/test": "1.48.2",
+    "@types/node": "^22.8.5",
+    "vite": "5.4.10"
   }
 }

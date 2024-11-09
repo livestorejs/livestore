@@ -16,10 +16,10 @@
     "@livestore/utils": "workspace:*"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.46.1"
+    "@playwright/test": ">=1.48.2"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.8.5"
   },
   "publishConfig": {
     "access": "public"

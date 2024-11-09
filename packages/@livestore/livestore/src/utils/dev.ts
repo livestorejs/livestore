@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-global-this */
 export const downloadBlob = (
   data: Uint8Array | Blob | string,
   fileName: string,
@@ -20,4 +21,10 @@ export const downloadURL = (data: string, fileName: string) => {
   a.style.display = 'none'
   a.click()
   a.remove()
+}
+
+export const exposeDebugUtils = () => {
+  if (import.meta.env.DEV) {
+    globalThis.__debugDownloadBlob = downloadBlob
+  }
 }

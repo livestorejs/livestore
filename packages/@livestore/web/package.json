@@ -1,6 +1,6 @@
 {
   "name": "@livestore/web",
-  "version": "0.0.57",
+  "version": "0.1.0",
   "type": "module",
   "exports": {
     ".": {
@@ -8,16 +8,16 @@
       "default": "./dist/index.js"
     },
     "./worker": {
-      "types": "./dist/web-worker/make-dedicated-worker.d.ts",
-      "default": "./dist/web-worker/make-dedicated-worker.js"
+      "types": "./dist/web-worker/leader-worker/make-leader-worker.d.ts",
+      "default": "./dist/web-worker/leader-worker/make-leader-worker.js"
     },
     "./worker-vite-dev-polyfill": {
       "types": "./dist/web-worker/vite-dev-polyfill.d.ts",
       "default": "./dist/web-worker/vite-dev-polyfill.js"
     },
     "./shared-worker": {
-      "types": "./dist/web-worker/make-shared-worker.d.ts",
-      "default": "./dist/web-worker/make-shared-worker.js"
+      "types": "./dist/web-worker/shared-worker/make-shared-worker.d.ts",
+      "default": "./dist/web-worker/shared-worker/make-shared-worker.js"
     },
     "./sqlite": {
       "types": "./dist/sqlite/index.d.ts",
@@ -36,13 +36,13 @@
   "typesVersions": {
     "*": {
       "worker": [
-        "./dist/web-worker/make-dedicated-worker.d.ts"
+        "./dist/web-worker/leader-worker/make-leader-worker.d.ts"
       ],
       "worker-vite-dev-polyfill": [
         "./dist/web-worker/vite-dev-polyfill.d.ts"
       ],
       "shared-worker": [
-        "./dist/web-worker/make-shared-worker.d.ts"
+        "./dist/web-worker/shared-worker/make-shared-worker.d.ts"
       ],
       "sqlite": [
         "./dist/sqlite/index.d.ts"
@@ -59,15 +59,14 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/cf-sync": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/utils": "workspace:*",
+    "@livestore/wa-sqlite": "1.0.3-dev.2",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
-    "@types/wicg-file-system-access": "^2023.10.5",
-    "@types/chrome": "^0.0.269"
+    "@types/chrome": "^0.0.279",
+    "@types/wicg-file-system-access": "^2023.10.5"
   },
   "publishConfig": {
     "access": "public"

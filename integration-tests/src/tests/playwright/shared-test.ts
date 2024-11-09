@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import process from 'node:process'
 
 import type { UnexpectedError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
@@ -67,7 +68,7 @@ export const runAndGetExit = <Tag extends string, A>({
       yield* Effect.promise(() =>
         page.evaluate(() => {
           window.addEventListener('message', (event) => {
-            ;(window as any).onMessageReceived(event.data)
+            ;(globalThis as any).onMessageReceived(event.data)
           })
         }),
       )

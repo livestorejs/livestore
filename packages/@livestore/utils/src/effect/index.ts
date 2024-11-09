@@ -38,6 +38,7 @@ export {
   HashMap,
   HashSet,
   MutableHashSet,
+  MutableHashMap,
   Option,
   LogLevel,
   Logger,
@@ -47,6 +48,7 @@ export {
   Channel,
   pipe,
   identity,
+  GlobalValue,
   Match,
 } from 'effect'
 
@@ -58,19 +60,27 @@ export * as SubscriptionRef from './SubscriptionRef.js'
 
 export * as WebChannel from './WebChannel.js'
 
-export {
-  TreeFormatter,
-  AST as SchemaAST,
-  Pretty as SchemaPretty,
-  Equivalence as SchemaEquivalence,
-  Serializable,
-  JSONSchema,
-  ParseResult,
-} from '@effect/schema'
+export * as SchemaAST from 'effect/SchemaAST'
+export { TreeFormatter } from 'effect/ParseResult'
+export { ParseResult, Pretty } from 'effect'
+export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as Schema from './Schema/index.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 
-export { Transferable, FileSystem, Worker, WorkerError, WorkerRunner, Terminal, HttpServer } from '@effect/platform'
+export {
+  Transferable,
+  FileSystem,
+  Worker,
+  WorkerError,
+  WorkerRunner,
+  Terminal,
+  HttpServer,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  FetchHttpClient,
+} from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 
 export * as Effect from './Effect.js'

@@ -1,10 +1,9 @@
 import { Transferable } from '@effect/platform'
-import { ParseResult, Schema } from '@effect/schema'
-import type { ParseOptions } from '@effect/schema/AST'
-import type { ParseError } from '@effect/schema/ParseResult'
-import { Effect, Hash } from 'effect'
+import { Effect, Hash, ParseResult, Schema } from 'effect'
+import type { ParseError } from 'effect/ParseResult'
+import type { ParseOptions } from 'effect/SchemaAST'
 
-export * from '@effect/schema/Schema'
+export * from 'effect/Schema'
 export * from './debug-diff.js'
 export * from './msgpack.js'
 
@@ -42,3 +41,18 @@ export const swap = <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<I, 
   })
 
 export const Base64FromUint8Array: Schema.Schema<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)
+
+export interface JsonArray extends ReadonlyArray<JsonValue> {}
+export interface JsonObject {
+  [key: string]: JsonValue
+}
+export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
+
+export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
+  Schema.String,
+  Schema.Number,
+  Schema.Boolean,
+  Schema.Null,
+  Schema.Array(Schema.suspend(() => JsonValue)),
+  Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
+)

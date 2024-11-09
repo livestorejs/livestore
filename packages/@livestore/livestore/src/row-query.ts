@@ -1,16 +1,22 @@
 import type { QueryInfoCol, QueryInfoNone, QueryInfoRow } from '@livestore/common'
-import { sql } from '@livestore/common'
+import { SessionIdSymbol, sql } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
+import type { SqliteDsl } from '@livestore/db-schema'
 import type { GetValForKey } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import type { SqliteDsl } from 'effect-db-schema'
 
-import type { LiveQuery, LiveQueryAny, QueryContext, ReactivityGraph } from './reactiveQueries/base-class.js'
-import { computed } from './reactiveQueries/js.js'
+import type {
+  GetAtomResult,
+  LiveQuery,
+  LiveQueryAny,
+  QueryContext,
+  ReactivityGraph,
+} from './reactiveQueries/base-class.js'
+import { computed } from './reactiveQueries/computed.js'
 import { LiveStoreSQLQuery } from './reactiveQueries/sql.js'
-import type { Store } from './store.js'
+import type { Store } from './store/store.js'
 
 export type RowQueryOptions<TTableDef extends DbSchema.TableDef, TResult = RowResult<TTableDef>> = {
   otelContext?: otel.Context
@@ -46,7 +52,7 @@ export type MakeRowQuery = {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: string,
+    id: string | SessionIdSymbol,
     options?: RowQueryOptions<TTableDef, TResult> & RowQueryOptionsDefaulValues<TTableDef>,
   ): LiveQuery<TResult, QueryInfoRow<TTableDef>>
 }
@@ -54,15 +60,15 @@ export type MakeRowQuery = {
 // TODO also allow other where clauses and multiple rows
 export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
   table: TTableDef,
-  idOrOptions?: string | RowQueryOptions<TTableDef, any>,
+  idOrOptions?: string | SessionIdSymbol | RowQueryOptions<TTableDef, any>,
   options_?: RowQueryOptions<TTableDef, any> & RowQueryOptionsDefaulValues<TTableDef>,
 ) => {
-  const id = typeof idOrOptions === 'string' ? idOrOptions : undefined
-  const options = typeof idOrOptions === 'string' ? options_ : idOrOptions
+  const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
+  const options = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
   const defaultValues: Partial<RowResult<TTableDef>> | undefined = (options as any)?.defaultValues ?? {}
 
   // Validate query args
-  if (table.options.isSingleton === true && id !== undefined) {
+  if (table.options.isSingleton === true && id !== undefined && id !== SessionIdSymbol) {
     shouldNeverHappen(`Cannot query state table ${table.sqliteDef.name} with id "${id}" as it is a singleton`)
   } else if (table.options.isSingleton !== true && id === undefined) {
     shouldNeverHappen(`Cannot query state table ${table.sqliteDef.name} without id`)
@@ -71,14 +77,21 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
   const tableSchema = table.sqliteDef
   const tableName = tableSchema.name
 
-  const whereClause = id === undefined ? '' : `where id = '${id}'`
-  const queryStr = sql`select * from ${tableName} ${whereClause} limit 1`
+  const makeQueryString = (id: string | undefined) =>
+    sql`select * from ${tableName} ${id === undefined ? '' : `where id = '${id}'`} limit 1`
+
+  const genQueryString =
+    id === SessionIdSymbol
+      ? (_: GetAtomResult, ctx: QueryContext) => makeQueryString(ctx.store.sessionId)
+      : makeQueryString(id)
 
   const rowSchema = table.isSingleColumn === true ? table.schema.pipe(Schema.pluck('value' as any)) : table.schema
 
   return new LiveStoreSQLQuery({
-    label: options?.label ?? `rowQuery:query:${tableSchema.name}${id === undefined ? '' : `:${id}`}`,
-    genQueryString: queryStr,
+    label:
+      options?.label ??
+      `rowQuery:query:${tableSchema.name}${id === undefined ? '' : id === SessionIdSymbol ? `:sessionId` : `:${id}`}`,
+    genQueryString,
     queriedTables: new Set([tableName]),
     reactivityGraph: options?.reactivityGraph,
     // While this code-path is not needed for singleton tables, it's still needed for `useRow` with non-existing rows for a given ID
@@ -130,7 +143,7 @@ const makeExecBeforeFirstRun =
     otelContext: otelContext_,
     table,
   }: {
-    id?: string
+    id?: string | SessionIdSymbol
     defaultValues?: any
     skipInsertDefaultRow?: boolean
     otelContext?: otel.Context
@@ -158,12 +171,15 @@ const insertRowWithDefaultValuesOrIgnore = ({
   explicitDefaultValues,
 }: {
   store: Store
-  id: string
+  id: string | SessionIdSymbol
   table: DbSchema.TableDef
   otelContext: otel.Context
   explicitDefaultValues: Partial<RowResult<DbSchema.TableDef>> | undefined
 }) => {
-  const rowExists = store.syncDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${id}'`).length === 1
+  const idStr = id === SessionIdSymbol ? store.sessionId : id
+  const rowExists =
+    store.syncDbWrapper.select(`select 1 from ${table.sqliteDef.name} where id = '${idStr}'`).length === 1
+
   if (rowExists) return
 
   // const mutationDef = deriveCreateMutationDef(table)

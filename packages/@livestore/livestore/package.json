@@ -1,15 +1,16 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.0.57",
+  "version": "0.1.0",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./react": {
-      "types": "./dist/react/index.d.ts",
-      "default": "./dist/react/index.js"
+    "./internal/testing-utils": {
+      "types": "./dist/utils/tests/mod.d.ts",
+      "default": "./dist/utils/tests/mod.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
@@ -19,8 +20,8 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "react": [
-        "./dist/react/index.d.ts"
+      "testing-utils": [
+        "./dist/utils/tests/mod.d.ts"
       ],
       "effect": [
         "./dist/effect/index.d.ts"
@@ -29,33 +30,25 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest && REACT_STRICT_MODE=1 vitest"
+    "test": "vitest"
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
     "@livestore/common": "workspace:*",
+    "@livestore/db-schema": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
-    "effect-db-schema": "workspace:*"
+    "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.26.0",
-    "@tauri-apps/api": "^1.6.0",
-    "@testing-library/react": "^16.0.0",
-    "@types/react": "^18.3.1",
-    "@types/react-dom": "^18.3.0",
-    "jsdom": "^24.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-window": "^1.8.10",
+    "@opentelemetry/sdk-trace-base": "1.27.0",
+    "jsdom": "^25.0.1",
     "typescript": "5.5.4",
-    "vite": "5.4.3",
-    "vitest": "^2.0.4"
+    "vite": "5.4.10",
+    "vitest": "^2.1.4"
   },
   "peerDependencies": {
-    "graphql": "16.x",
-    "react": "^18"
+    "graphql": "16.x"
   },
   "peerDependenciesMeta": {
     "graphql": {

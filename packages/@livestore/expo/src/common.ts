@@ -1,32 +1,37 @@
-import type { SynchronousDatabase } from '@livestore/common'
+import type { PreparedStatement, SynchronousDatabase } from '@livestore/common'
 import { base64, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import * as ExpoFS from 'expo-file-system'
-import type * as SQLite from 'expo-sqlite/next'
+import type * as SQLite from 'expo-sqlite'
 
 export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousDatabase => {
+  const stmts: PreparedStatement[] = []
+
   const syncDb: SynchronousDatabase = {
     _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
-        const stmt = db.prepareSync(queryStr)
-        return {
+        const dbStmt = db.prepareSync(queryStr)
+        const stmt = {
           execute: (bindValues) => {
             // console.log('execute', queryStr, bindValues)
-            const res = stmt.executeSync(bindValues ?? ([] as any))
+            const res = dbStmt.executeSync(bindValues ?? ([] as any))
             res.resetSync()
             return () => res.changes
           },
           select: (bindValues) => {
-            const res = stmt.executeSync(bindValues ?? ([] as any))
+            const res = dbStmt.executeSync(bindValues ?? ([] as any))
             try {
               return res.getAllSync() as any
             } finally {
               res.resetSync()
             }
           },
-          finalize: () => stmt.finalizeSync(),
-        }
+          finalize: () => dbStmt.finalizeSync(),
+          sql: queryStr,
+        } satisfies PreparedStatement
+        stmts.push(stmt)
+        return stmt
       } catch (e) {
         console.error(`Error preparing statement: ${queryStr}`, e)
         return shouldNeverHappen(`Error preparing statement: ${queryStr}`)
@@ -49,6 +54,12 @@ export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousD
       const res = stmt.select(bindValues)
       stmt.finalize()
       return res as any
+    },
+    close: () => {
+      for (const stmt of stmts) {
+        stmt.finalize()
+      }
+      return db.closeSync()
     },
   } satisfies SynchronousDatabase
 

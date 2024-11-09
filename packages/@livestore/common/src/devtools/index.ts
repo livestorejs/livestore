@@ -8,6 +8,7 @@ export * from './devtools-bridge.js'
 export namespace WebBridge {
   export class AppHostReady extends Schema.TaggedStruct('LSD.WebBridge.AppHostReady', {
     appHostId: Schema.String,
+    // storeId: Schema.String,
     isLeader: Schema.Boolean,
   }) {}
 
@@ -24,6 +25,7 @@ export namespace WebBridge {
      */
     webBridgeId: Schema.String,
     isLeader: Schema.Boolean,
+    storeId: Schema.String,
   }) {}
 
   export class AppHostWillDisconnect extends Schema.TaggedStruct('LSD.WebBridge.AppHostWillDisconnect', {

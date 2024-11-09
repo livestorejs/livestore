@@ -1,6 +1,6 @@
+import type { SqliteDsl } from '@livestore/db-schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
-import type { SqliteDsl } from 'effect-db-schema'
 
 import { sql } from '../util.js'
 import { objectEntries } from './misc.js'
@@ -58,15 +58,26 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
   values: ClientTypes.DecodedValuesForColumns<TColumns>
   options?: { orReplace: boolean }
 }): [string, BindValues] => {
-  const keysStr = Object.keys(values).join(', ')
-  const valuesStr = Object.keys(values)
-    .map((_) => `$${_}`)
+  const stmt = insertRowPrepared({ tableName, columns, options })
+
+  return [stmt, makeBindValues({ columns, values })]
+}
+
+export const insertRowPrepared = <TColumns extends SqliteDsl.Columns>({
+  tableName,
+  columns,
+  options = { orReplace: false },
+}: {
+  tableName: string
+  columns: TColumns
+  options?: { orReplace: boolean }
+}): string => {
+  const keysStr = Object.keys(columns).join(', ')
+  const valuesStr = Object.keys(columns)
+    .map((key) => `$${key}`)
     .join(', ')
 
-  return [
-    sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`,
-    makeBindValues({ columns, values }),
-  ]
+  return sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`
 }
 
 export const insertRows = <TColumns extends SqliteDsl.Columns>({
@@ -243,14 +254,14 @@ export const createTable = ({
   return sql`CREATE TABLE ${tableName} (${columnDefStrs.join(', ')});`
 }
 
-export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends string>({
+export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends keyof TColumns>({
   columns,
   values,
   variablePrefix = '',
   skipNil,
 }: {
   columns: TColumns
-  values: Record<TKeys, any>
+  values: Partial<Record<TKeys, any>>
   variablePrefix?: string
   /** So far only used to prepare `where` statements */
   skipNil?: boolean
