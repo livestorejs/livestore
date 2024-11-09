@@ -69,7 +69,7 @@ const syncDirectories = (direction: SyncDirection) =>
         // Exit with error if there are any unstaged changes
         const status = yield* BunShell.cmdText(`git status --porcelain`)
         if (status !== '') {
-          console.error('Unstaged changes detected')
+          console.error('Unstaged changes detected', status)
           process.exit(1)
         }
       }
