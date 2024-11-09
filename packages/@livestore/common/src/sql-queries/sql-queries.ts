@@ -58,7 +58,11 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
   values: ClientTypes.DecodedValuesForColumns<TColumns>
   options?: { orReplace: boolean }
 }): [string, BindValues] => {
-  const stmt = insertRowPrepared({ tableName, columns, options })
+  const stmt = insertRowPrepared({
+    tableName,
+    columns,
+    options: { orReplace: options?.orReplace, keys: Object.keys(values) },
+  })
 
   return [stmt, makeBindValues({ columns, values })]
 }
@@ -70,12 +74,11 @@ export const insertRowPrepared = <TColumns extends SqliteDsl.Columns>({
 }: {
   tableName: string
   columns: TColumns
-  options?: { orReplace: boolean }
+  options?: { orReplace: boolean; keys?: string[] }
 }): string => {
-  const keysStr = Object.keys(columns).join(', ')
-  const valuesStr = Object.keys(columns)
-    .map((key) => `$${key}`)
-    .join(', ')
+  const keys = options?.keys ?? Object.keys(columns)
+  const keysStr = keys.join(', ')
+  const valuesStr = keys.map((key) => `$${key}`).join(', ')
 
   return sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`
 }
