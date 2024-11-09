@@ -1,0 +1,15 @@
+node_modules
+.node_modules
+.idea/
+.DS_Store
+
+test-results
+playwright-report
+
+dist
+
+*.tsbuildinfo
+
+.wrangler
+.vercel
+.netlify
