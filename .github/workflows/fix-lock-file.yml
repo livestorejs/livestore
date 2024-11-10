@@ -1,7 +1,14 @@
+# Original (runs on every branch push): https://gist.github.com/schickling/1481d81ec95c3b61c74d79450ae6655e
 name: Fix Lock File and Create PR
 
 on:
   workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch to fix lockfile for'
+        required: true
+        type: string
+        default: 'main'
 
 permissions:
   contents: write
@@ -22,12 +29,12 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          # Extract branch name from the full reference path
-          REF_BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||')
-          echo "REF_BRANCH_NAME=${REF_BRANCH_NAME}" >> $GITHUB_ENV
-          BRANCH_NAME="fix-lockfile-${REF_BRANCH_NAME}"
+          # Use the input branch name
+          echo "REF_BRANCH_NAME=${{ inputs.branch_name }}" >> $GITHUB_ENV
+          BRANCH_NAME="fix-lockfile-${{ inputs.branch_name }}"
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
-          git checkout -b $BRANCH_NAME
+          git fetch origin ${{ inputs.branch_name }}
+          git checkout -b $BRANCH_NAME origin/${{ inputs.branch_name }}
 
       - run: nix develop --command pnpm install --fix-lockfile --no-frozen-lockfile
 
