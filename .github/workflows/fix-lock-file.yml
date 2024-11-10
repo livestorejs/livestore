@@ -1,0 +1,63 @@
+name: Fix Lock File and Create PR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix-lockfile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+
+      - name: Create new branch
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Extract branch name from the full reference path
+          REF_BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||')
+          echo "REF_BRANCH_NAME=${REF_BRANCH_NAME}" >> $GITHUB_ENV
+          BRANCH_NAME="fix-lockfile-${REF_BRANCH_NAME}"
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          git checkout -b $BRANCH_NAME
+
+      - run: nix develop --command pnpm install --fix-lockfile --no-frozen-lockfile
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git status
+          git add pnpm-lock.yaml
+          if [ -n "$(git diff --cached --name-only)" ]; then
+            echo 'HAS_CHANGES=true' >> $GITHUB_ENV
+          else
+            echo 'HAS_CHANGES=false' >> $GITHUB_ENV
+          fi
+
+      - name: Commit changes
+        if: ${{ env.HAS_CHANGES == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git commit -m "fix: update pnpm lockfile with pnpm install --fix-lockfile"
+          git push --force --set-upstream origin $BRANCH_NAME
+
+      - name: Create PR
+        if: ${{ env.HAS_CHANGES == 'true' }}
+        uses: devops-infra/action-pull-request@v0.5.5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          source_branch: ${{ env.BRANCH_NAME }}
+          target_branch: ${{ env.REF_BRANCH_NAME }}
+          title: "Fix: Update PNPM Lockfile"
+          body: "**Automated pull request**"
+          label: dependencies
+          draft: false
