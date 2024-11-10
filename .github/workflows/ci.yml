@@ -52,6 +52,7 @@ jobs:
           pnpm netlify deploy --dir=integration-tests/playwright-report --site livestore-ci --filter @local/integration-tests
 
   publish-snapshot-version:
+    if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -134,6 +135,7 @@ jobs:
   # to simulate a simple user-facing setup
 
   build-example-tiged-todomvc:
+    if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -164,6 +166,7 @@ jobs:
         working-directory: example
 
   build-example-tiged-linearlite:
+    if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -194,6 +197,7 @@ jobs:
         working-directory: example
 
   build-example-tiged-expo-app:
+    if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
         os: [ubuntu-latest]
