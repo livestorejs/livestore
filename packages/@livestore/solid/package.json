@@ -1,0 +1,37 @@
+{
+  "name": "@livestore/solid",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/mod.d.ts",
+      "default": "./dist/mod.js"
+    }
+  },
+  "types": "./dist/mod.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest && REACT_STRICT_MODE=1 vitest"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/db-schema": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/web": "workspace:*",
+    "@opentelemetry/sdk-trace-base": "1.27.0",
+    "jsdom": "^25.0.1",
+    "typescript": "5.5.4",
+    "vite": "5.4.10",
+    "vitest": "^2.1.4"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.8.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
