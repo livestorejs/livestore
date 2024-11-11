@@ -1,90 +1,265 @@
 ---
 title: Expo
-description: How to setup Expo for LiveStore.
+description: Learn how to use LiveStore with Expo.
 ---
 
-import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
+### Requirements
+
+- [LiveStore](/) is compatible with [Expo SDK 52](https://docs.expo.dev/versions/latest/) and above.
+- Your project must have the new architecture enabled, This is required for transactional statue updates. When you create a new project using Expo SDK 52 this is enabled by default. See [New Architecture](https://docs.expo.dev/guides/new-architecture/) for more information.
+- LiveStore has a peer dependency on [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/)
+
+### Quick start
+
+For a quick start we recommend using our template app following the steps below.
+
+For existing projects see [Getting started with an existing project](#getting-started-with-an-existing-project).
 
 <Steps>
 
-1.  Set up project via: `npx tiged https://github.com/livestorejs/examples/expo-app my-app`
+1.  Set up project via: `npx tiged --mode=git https://github.com/livestorejs/examples/expo-app my-livestore-app`
 
-	Replace `my-app` with the name of your app.
+    Replace `my-livestore-app` with the name of your app.
 
-2. Install dependencies
+2.  Install dependencies
 
-	It's strongly recommended to use `bun` for the simplest and most reliable dependency setup.
- 
-	<Tabs syncKey="package-manager">
-		<TabItem label="bun">
-			`bun install`
+            It's strongly recommended to use `bun` for the simplest and most reliable dependency setup.
 
-			You can ignore the peer-dependency warnings.
-		</TabItem>
-		<TabItem label="pnpm">
-			`pnpm install --node-linker=hoisted`
-		
-			Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
-			```
-			# .npmrc
-			nodeLinker=hoisted
-			```
+            <Tabs syncKey="package-manager">
 
-			Hopefully Expo will also support non-hoisted setups in the future.
-		</TabItem>
-		<TabItem label="npm">
-			Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
-			```
-			npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
-			```
+        <TabItem label="bun">
 
-			Going forward you can use `npm install` again to install the dependencies.
-		</TabItem>
-		<TabItem label="yarn">
-			When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
+    `bun install`
 
-			```
-			yarn set version stable
-			yarn config set nodeLinker node-modules
-			yarn install
-			```
+                	You can ignore the peer-dependency warnings.
+                </TabItem>
+                <TabItem label="pnpm">
+                	`pnpm install --node-linker=hoisted`
 
-			Additionally, given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
-			```
-			yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
-			```
-		</TabItem>
-	</Tabs>
+                	Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
+                	```
+                	# .npmrc
+                	nodeLinker=hoisted
+                	```
 
-3. Set `export RCT_NEW_ARCH_ENABLED=1` in your shell to enable the new React Native architecture (required for transactional state updates). 
+                	Hopefully Expo will also support non-hoisted setups in the future.
+                </TabItem>
+                <TabItem label="npm">
+                	Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
+                	```
+                	npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+                	```
 
-	Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+                	Going forward you can use `npm install` again to install the dependencies.
+                </TabItem>
+                <TabItem label="yarn">
+                	When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
 
-4. Run dev environment
+                	```
+                	yarn set version stable
+                	yarn config set nodeLinker node-modules
+                	yarn install
+                	```
 
-	<Tabs syncKey="package-manager">
-		<TabItem label="bun">
-			`bun ios` or `bun android`
-		</TabItem>
-		<TabItem label="pnpm">
-			`pnpm ios` or `pnpm android`
-		</TabItem>
-		<TabItem label="npm">
-			`npm run ios` or `npm run android`
-		</TabItem>
-		<TabItem label="yarn">
-			`yarn ios` or `yarn android`
-		</TabItem>
-	</Tabs>
+                	Additionally, given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
+                	```
+                	yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+                	```
+                </TabItem>
 
-5. You can also press `Shift+m` to open the LiveStore devtools
+            </Tabs>
+
+    Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+
+3.  Run the app
+
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">`bun ios` or `bun android`</TabItem>
+      <TabItem label="pnpm">`pnpm ios` or `pnpm android`</TabItem>
+      <TabItem label="npm">`npm run ios` or `npm run android`</TabItem>
+      <TabItem label="yarn">`yarn ios` or `yarn android`</TabItem>
+    </Tabs>
 
 </Steps>
 
-## Custom builds
+### Existing project setup
 
-If you need a custom build, you could run `bun expo run:ios` or `bun expo run:android` to build the app locally.
+<Steps>
+
+1.  Create a new Expo project
+
+    If you already have an Expo project with the new architecture enabled you can jump to step 2.
+
+    Create a new Expo project running `bun create expo-app --template default@next`
+
+    ```bash
+    bun create expo-app --template default@next
+    ```
+
+2.  Install dependencies
+
+    ```bash
+    npx expo install @livestore/devtools-expo @livestore/expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
+    ```
+
+3.  Add vite meta plugin to babel config file
+
+    LiveStore Devtools uses vite, this plugin emulates vite's `import.meta.env` functionality.
+
+    ```bash
+    bun install -D babel-plugin-transform-vite-meta-env
+    ```
+
+    In your `babel.config.js` file add the plugin as follows:
+
+    ```js
+    module.exports = function (api) {
+      api.cache(true)
+      return {
+        presets: ['babel-preset-expo'],
+        plugins: ['babel-plugin-transform-vite-meta-env', '@babel/plugin-syntax-import-attributes'],
+      }
+    }
+    ```
+
+4.  Update metro config
+
+    Update your `metro.config.js` file as follows:
+
+    ```js
+    // Learn more https://docs.expo.io/guides/customizing-metro
+    const { getDefaultConfig } = require('expo/metro-config')
+    const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo')
+
+    /** @type {import('expo/metro-config').MetroConfig} */
+    const config = getDefaultConfig(__dirname)
+
+    config.resolver.unstable_enableSymlinks = true
+    config.resolver.unstable_enablePackageExports = true
+    config.resolver.unstable_conditionNames = ['require', 'default']
+
+    if (!process.env.CI && process.stdout.isTTY) {
+      addLiveStoreDevtoolsMiddleware(config, { schemaPath: './schema/index.ts' })
+    }
+
+    module.exports = config
+    ```
+
+</Steps>
+
+## Define your schema
+
+- Create a a folder in your root directory called `schema`
+- Inside the `schema` folder create a file called `index.ts` (This file will contain the tables you want to use in your app)
+- Define a table
+
+  ```ts
+  import { DbSchema, makeSchema } from '@livestore/livestore'
+  import * as mutations from './mutations'
+
+  const todos = DbSchema.table(
+    'todos',
+    {
+      id: DbSchema.text({ primaryKey: true }),
+      text: DbSchema.text({ default: '' }),
+      completed: DbSchema.boolean({ default: false }),
+      deleted: DbSchema.integer({ nullable: true }),
+    },
+    { deriveMutations: true },
+  )
+
+  export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
+
+  export const tables = {
+    todos,
+  }
+
+  export const schema = makeSchema({
+    tables,
+    mutations: {
+      // Add more here
+      ...mutations,
+    },
+    migrations: { strategy: 'from-mutation-log' },
+  })
+  ```
+
+## Mutations
+
+- Create a `mutations.ts` inside the `schema` folder and add the following:
+
+  ```ts
+  import { Schema } from 'effect'
+  import { defineMutation, sql } from '@livestore/livestore'
+
+  export const addTodo = defineMutation(
+    'addTodo',
+    Schema.Struct({ id: Schema.String, text: Schema.String }),
+    sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
+  )
+
+  export const completeTodo = defineMutation(
+    'completeTodo',
+    Schema.Struct({ id: Schema.String }),
+    sql`UPDATE todos SET completed = true WHERE id = $id`,
+  )
+
+  export const deleteTodo = defineMutation(
+    'deleteTodo',
+    Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+    sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
+  )
+  ```
+
+## Queries
+
+- Write your first query
+
+  ```ts
+  import { useQuery } from '@livestore/react'
+  import { querySQL, sql } from '@livestore/livestore'
+  import { Schema } from 'effect'
+  import { tables } from '@/schema'
+
+  // Define a query
+  const todosQuery = querySQL(sql`SELECT * FROM todos`, {
+    schema: Schema.Array(tables.todos.schema),
+    label: 'todos',
+  })
+
+  // Use the query
+  const todos = useQuery(todosQuery)
+
+  console.log(todos)
+  // [{"id": "1", "completed": false, "deleted": null, "text": "Make coffee"}]
+  ```
+
+- Write your first mutation
+
+  ```ts
+  import { useStore } from '@livestore/react'
+  import { deleteTodo } from '@/schema/mutations'
+
+  export default function HomeScreen() {
+    const { store } = useStore()
+    return (
+      <Button
+        title="Delete my todo"
+        onPress={() => {
+          store.mutate(deleteTodo({ id: todos[0].id, deleted: Date.now() }))
+        }}
+      />
+    )
+  }
+  ```
+
+## Devtools
+
+To open the devtools, run the app and from your terminal press `Shift + M`, then select LiveStore Devtools.
+
+- That's it! You've learned the basics of LiveStore. Happy coding!
 
 ## Database location
 
@@ -92,7 +267,7 @@ If you need a custom build, you could run `bun expo run:ios` or `bun expo run:an
 
 Run `open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore-expo*" -print -quit)/SQLite` to open the database in Finder.
 
-### With custom builds
+### With development builds
 
 The app SQLite database is stored in the app's `Library` directory (e.g. `/Users/<USERNAME>/Library/Developer/CoreSimulator/Devices/<DEVICE_ID>/data/Containers/Data/Application/<APP_ID>/Documents/SQLite/app.db`)
 
