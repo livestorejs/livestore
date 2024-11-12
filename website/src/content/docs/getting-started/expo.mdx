@@ -7,25 +7,29 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 ### Requirements
 
-- [LiveStore](/) is compatible with [Expo SDK 52](https://docs.expo.dev/versions/latest/) and above.
-- Your project must have the new architecture enabled, This is required for transactional statue updates. When you create a new project using Expo SDK 52 this is enabled by default. See [New Architecture](https://docs.expo.dev/guides/new-architecture/) for more information.
-- LiveStore has a peer dependency on [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/)
+- [LiveStore](/) is compatible with [Expo SDK 52](https://docs.expo.dev/versions/latest/) and later.
+- Ensure your project has the [New Architecture](https://docs.expo.dev/guides/new-architecture/) enabled. This is required for transactional state updates. When you create a new project using Expo SDK 52, this setting is enabled by default.
+- LiveStore requires [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) as a peer dependency.
 
 ### Quick start
 
 For a quick start we recommend using our template app following the steps below.
 
-For existing projects see [Getting started with an existing project](#getting-started-with-an-existing-project).
+For existing projects see [Existing project setup](#existing-project-setup).
 
 <Steps>
 
-1.  Set up project via: `npx tiged --mode=git https://github.com/livestorejs/examples/expo-app my-livestore-app`
+1.  **Set up project from template**
 
-    Replace `my-livestore-app` with the name of your app.
+    ```bash
+    npx tiged --mode=git https://github.com/livestorejs/examples/expo-app my-livestore-app
+    ```
 
-2.  Install dependencies
+    Replace `my-livestore-app` with your desired app name.
 
-            It's strongly recommended to use `bun` for the simplest and most reliable dependency setup.
+2.  **Install dependencies**
+
+    It's strongly recommended to use `bun` for the simplest and most reliable dependency setup.
 
             <Tabs syncKey="package-manager">
 
@@ -73,7 +77,7 @@ For existing projects see [Getting started with an existing project](#getting-st
 
     Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
 
-3.  Run the app
+3.  **Run the app**
 
     <Tabs syncKey="package-manager">
       <TabItem label="bun">`bun ios` or `bun android`</TabItem>
@@ -88,31 +92,37 @@ For existing projects see [Getting started with an existing project](#getting-st
 
 <Steps>
 
-1.  Create a new Expo project
+1.  **Create a new Expo project**
 
-    If you already have an Expo project with the new architecture enabled you can jump to step 2.
+    If you already have an Expo project with the new architecture enabled, skip to step 2.
 
-    Create a new Expo project running `bun create expo-app --template default@next`
+    To create a new Expo project, run one of the following commands based on your package manager:
 
-    ```bash
-    bun create expo-app --template default@next
-    ```
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">`bun create expo-app --template default@latest`</TabItem>
+      <TabItem label="pnpm">`pnpm create expo-app --template default@latest`</TabItem>
+      <TabItem label="yarn">`yarn create expo-app --template default@latest`</TabItem>
+      <TabItem label="npm">`npx create-expo-app@latest`</TabItem>
+    </Tabs>
 
-2.  Install dependencies
+2.  **Install dependencies**
 
     ```bash
     npx expo install @livestore/devtools-expo @livestore/expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
     ```
 
-3.  Add vite meta plugin to babel config file
+3.  **Add Vite meta plugin to babel config file**
 
-    LiveStore Devtools uses vite, this plugin emulates vite's `import.meta.env` functionality.
+    LiveStore Devtools uses Vite. This plugin emulates Vite's `import.meta.env` functionality.
 
-    ```bash
-    bun install -D babel-plugin-transform-vite-meta-env
-    ```
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">`bun add -d babel-plugin-transform-vite-meta-env`</TabItem>
+      <TabItem label="pnpm">`pnpm add -D babel-plugin-transform-vite-meta-env`</TabItem>
+      <TabItem label="yarn">`yarn add -D babel-plugin-transform-vite-meta-env`</TabItem>
+      <TabItem label="npm">`npm install --save-dev babel-plugin-transform-vite-meta-env`</TabItem>
+    </Tabs>
 
-    In your `babel.config.js` file add the plugin as follows:
+    In your `babel.config.js` file, add the plugin as follows:
 
     ```js
     module.exports = function (api) {
@@ -124,12 +134,11 @@ For existing projects see [Getting started with an existing project](#getting-st
     }
     ```
 
-4.  Update metro config
+4.  **Update Metro config**
 
-    Update your `metro.config.js` file as follows:
+    Add the following code to your `metro.config.js` file:
 
     ```js
-    // Learn more https://docs.expo.io/guides/customizing-metro
     const { getDefaultConfig } = require('expo/metro-config')
     const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo')
 
@@ -140,12 +149,18 @@ For existing projects see [Getting started with an existing project](#getting-st
     config.resolver.unstable_enablePackageExports = true
     config.resolver.unstable_conditionNames = ['require', 'default']
 
+    // Add LiveStore Devtools middleware only in a local development environment
     if (!process.env.CI && process.stdout.isTTY) {
       addLiveStoreDevtoolsMiddleware(config, { schemaPath: './schema/index.ts' })
     }
 
     module.exports = config
     ```
+
+    **Explanation**
+
+    - `addLiveStoreDevtoolsMiddleware`: This function, imported from `@livestore/devtools-expo`, adds middleware that enables LiveStore Devtools.
+    - Conditional Check `if (!process.env.CI && process.stdout.isTTY)`: This condition ensures that LiveStore Devtools are only added in a local development environment and not in Continuous Integration (CI) environments like [EAS Build](https://docs.expo.dev/build/introduction/). This is crucial because enabling devtools in a CI environment could cause the build process to get stuck, especially when building for release mode. The `process.env.CI` variable indicates if the code is running in a CI environment, and `process.stdout.isTTY` checks if the terminal supports interactive output. Together, these conditions prevent devtools from being included in production builds.
 
 </Steps>
 
