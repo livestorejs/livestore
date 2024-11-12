@@ -358,24 +358,41 @@ export default function HomeScreen() {
 
 ## Devtools
 
-To open the devtools, run the app and from your terminal press `Shift + M`, then select LiveStore Devtools.
+To open the devtools, run the app and from your terminal press `shift + m`, then select LiveStore Devtools and press `Enter`.
 
-- That's it! You've learned the basics of LiveStore. Happy coding!
+![Expo Terminal Screenshot](../../../assets/devtools-terminal-expo.png)
+
+This will open the devtools in a new tab in your default browser.
+
+![Devtools Browser Screenshot](../../../assets/devtools-browser-view.png)
+
+Use the devtools to inspect the state of your LiveStore database, execute mutations, track performance, and more.
 
 ## Database location
 
 ### With Expo Go
 
-Run `open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore-expo*" -print -quit)/SQLite` to open the database in Finder.
+To open the database in Finder, run the following command in your terminal:
+
+```bash
+open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore-expo*" -print -quit)/SQLite
+```
 
 ### With development builds
 
-The app SQLite database is stored in the app's `Library` directory (e.g. `/Users/<USERNAME>/Library/Developer/CoreSimulator/Devices/<DEVICE_ID>/data/Containers/Data/Application/<APP_ID>/Documents/SQLite/app.db`)
+For development builds, the app SQLite database is stored in the app's Library directory.
 
-Run `open $(xcrun simctl get_app_container booted dev.livestore.livestore-expo data)/Documents/SQLite` to open the directory in Finder
+Example:
+`/Users/<USERNAME>/Library/Developer/CoreSimulator/Devices/<DEVICE_ID>/data/Containers/Data/Application/<APP_ID>/Documents/SQLite/app.db`
+
+To open the database in Finder, run the following command in your terminal:
+
+```bash
+open $(xcrun simctl get_app_container booted [APP_BUNDLE_ID] data)/Documents/SQLite
+```
+
+Replace `[APP_BUNDLE_ID]` with your app's bundle ID. e.g. `dev.livestore.livestore-expo`.
 
 ## Further notes
 
-- Until Expo properly supports PNPM we also need the following
-  - Some workarounds in `metro.config.js` + `@babel/runtime` in `package.json`
 - LiveStore doesn't yet support Expo Web (see [#130](https://github.com/livestorejs/livestore/issues/130))
