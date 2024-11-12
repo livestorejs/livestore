@@ -207,41 +207,51 @@ export const schema = makeSchema({
 
 ## Mutations
 
-- Create a `mutations.ts` inside the `schema` folder and add the following:
+Create a file called `mutations.ts` inside the `schema` folder. This file contains the mutations your app needs to interact with the database.
 
-  ```ts
-  import { Schema } from 'effect'
-  import { defineMutation, sql } from '@livestore/livestore'
+Use `Schema` from `effect`, along with `defineMutation` and `sql` from `@livestore/livestore`, to define fully typed, robust mutations. These functions allow you to create safe, consistent database operations.
 
-  export const addTodo = defineMutation(
-    'addTodo',
-    Schema.Struct({ id: Schema.String, text: Schema.String }),
-    sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
-  )
+Here's an example:
 
-  export const completeTodo = defineMutation(
-    'completeTodo',
-    Schema.Struct({ id: Schema.String }),
-    sql`UPDATE todos SET completed = true WHERE id = $id`,
-  )
+```ts
+import { Schema } from 'effect'
+import { defineMutation, sql } from '@livestore/livestore'
 
-  export const deleteTodo = defineMutation(
-    'deleteTodo',
-    Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
-    sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
-  )
-  ```
+export const addTodo = defineMutation(
+  'addTodo',
+  Schema.Struct({ id: Schema.String, text: Schema.String }),
+  sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
+)
+
+export const completeTodo = defineMutation(
+  'completeTodo',
+  Schema.Struct({ id: Schema.String }),
+  sql`UPDATE todos SET completed = true WHERE id = $id`,
+)
+
+export const deleteTodo = defineMutation(
+  'deleteTodo',
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
+)
+```
 
 ## Queries
 
-- Write your first query
+To retrieve data from the database, first define a query using `querySQL` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
 
-  ```ts
-  import { useQuery } from '@livestore/react'
-  import { querySQL, sql } from '@livestore/livestore'
-  import { Schema } from 'effect'
-  import { tables } from '@/schema'
+Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
+Here's an example:
+
+```ts
+import { View, Text } from 'react-native'
+import { useQuery } from '@livestore/react'
+import { querySQL, sql } from '@livestore/livestore'
+import { Schema } from 'effect'
+import { tables } from '@/schema'
+
+export default function HomeScreen() {
   // Define a query
   const todosQuery = querySQL(sql`SELECT * FROM todos`, {
     schema: Schema.Array(tables.todos.schema),
@@ -252,8 +262,23 @@ export const schema = makeSchema({
   const todos = useQuery(todosQuery)
 
   console.log(todos)
-  // [{"id": "1", "completed": false, "deleted": null, "text": "Make coffee"}]
-  ```
+  // Output:
+  // [
+  //   {
+  //     id: "1",
+  //     completed: false,
+  //     deleted: null,
+  //     text: "Make coffee"
+  //   }
+  // ]
+
+  return (
+    <View>
+      <Text>{todos[0].text}</Text>
+    </View>
+  )
+}
+```
 
 - Write your first mutation
 
