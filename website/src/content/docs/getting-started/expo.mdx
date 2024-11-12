@@ -289,6 +289,29 @@ const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
 }
 ```
 
+### Use a mutation
+
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute mutations.
+
+Here's an example:
+
+```ts
+import { useStore } from '@livestore/react'
+import { deleteTodo } from '@/schema/mutations'
+
+export default function HomeScreen() {
+  const { store } = useStore()
+  return (
+    <Button
+      title="Delete my todo"
+      onPress={() => {
+        store.mutate(deleteTodo({ id: '1', deleted: Date.now() }))
+      }}
+    />
+  )
+}
+```
+
 ## Queries
 
 To retrieve data from the database, first define a query using `querySQL` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
@@ -332,25 +355,6 @@ export default function HomeScreen() {
   )
 }
 ```
-
-- Write your first mutation
-
-  ```ts
-  import { useStore } from '@livestore/react'
-  import { deleteTodo } from '@/schema/mutations'
-
-  export default function HomeScreen() {
-    const { store } = useStore()
-    return (
-      <Button
-        title="Delete my todo"
-        onPress={() => {
-          store.mutate(deleteTodo({ id: todos[0].id, deleted: Date.now() }))
-        }}
-      />
-    )
-  }
-  ```
 
 ## Devtools
 
