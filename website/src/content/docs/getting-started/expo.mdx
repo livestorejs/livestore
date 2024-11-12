@@ -166,40 +166,44 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 ## Define your schema
 
-- Create a a folder in your root directory called `schema`
-- Inside the `schema` folder create a file called `index.ts` (This file will contain the tables you want to use in your app)
-- Define a table
+To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
 
-  ```ts
-  import { DbSchema, makeSchema } from '@livestore/livestore'
-  import * as mutations from './mutations'
+- In your project root, create a `schema` folder and inside it create a file named `index.ts`. This file defines the tables and data structures for your app.
 
-  const todos = DbSchema.table(
-    'todos',
-    {
-      id: DbSchema.text({ primaryKey: true }),
-      text: DbSchema.text({ default: '' }),
-      completed: DbSchema.boolean({ default: false }),
-      deleted: DbSchema.integer({ nullable: true }),
-    },
-    { deriveMutations: true },
-  )
+- In `index.ts`, define a table to represent a data model, such as a `todos`.
 
-  export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
+Here's an example:
 
-  export const tables = {
-    todos,
-  }
+```ts
+import { DbSchema, makeSchema } from '@livestore/livestore'
+import * as mutations from './mutations'
 
-  export const schema = makeSchema({
-    tables,
-    mutations: {
-      // Add more here
-      ...mutations,
-    },
-    migrations: { strategy: 'from-mutation-log' },
-  })
-  ```
+const todos = DbSchema.table(
+  'todos',
+  {
+    id: DbSchema.text({ primaryKey: true }), // Unique identifier for each todo item
+    text: DbSchema.text({ default: '' }), // Text content of the todo
+    completed: DbSchema.boolean({ default: false }), // Status of the todo item
+    deleted: DbSchema.integer({ nullable: true }), // Optional field to mark deletion
+  },
+  { deriveMutations: true }, // Automatically derive mutations for this table
+)
+
+export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
+
+export const tables = {
+  todos,
+}
+
+export const schema = makeSchema({
+  tables,
+  mutations: {
+    // Add more mutations
+    ...mutations,
+  },
+  migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
+})
+```
 
 ## Mutations
 
