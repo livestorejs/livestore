@@ -49,7 +49,7 @@ You'll need to have a recent version the following tools installed:
 ## Local setup
 
 ```bash
-git clone git@github.com:livestorejs/livestore.git
+git clone --recurse-submodules git@github.com:livestorejs/livestore.git
 cd livestore
 direnv allow
 pnpm install
@@ -74,6 +74,7 @@ pnpm build
 2. Run `pnpm generate:examples:dist` to generate the `/examples/dist` version
 3. Check whether the changes in `/examples/dist` are what you expected.
 4. Commit your changes in the examples submodule and update the submodule reference in your git commit.
+5. Create a PR both for the `livestorejs/livestore` repo and the `livestorejs/examples` repo.
 
 ## Devtools
 
