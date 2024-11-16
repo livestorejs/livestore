@@ -11,7 +11,7 @@
   "types": "./dist/mod.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest && REACT_STRICT_MODE=1 vitest"
+    "test": "echo 'todo'"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",

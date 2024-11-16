@@ -10,6 +10,7 @@
     { "path": "./examples/src/todomvc" },
     { "path": "./examples/src/todomvc-custom-elements" },
     { "path": "./examples/src/todomvc-experimental" },
+    { "path": "./examples/src/todomvc-solid" },
     { "path": "./examples/src/todomvc-sync-cf" },
     { "path": "./examples/src/todomvc-sync-electric" },
     { "path": "./integration-tests" },
