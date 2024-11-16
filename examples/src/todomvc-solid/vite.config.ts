@@ -45,7 +45,7 @@ export default defineConfig({
     headers: credentiallessHeaders,
   },
   build: {
-    // target: 'esnext',
+    target: 'esnext',
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
