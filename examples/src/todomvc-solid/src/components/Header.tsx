@@ -1,11 +1,10 @@
 import { row } from '@livestore/solid'
-import type { Accessor, Component } from 'solid-js'
+import type { Component } from 'solid-js'
 
-import type { Todo } from '../schema/index.js'
 import { mutations, tables } from '../schema/index.js'
 import { store } from '../store.js'
 
-const sessionId = store()?.sessionId ??'default'; 
+const sessionId = store()?.sessionId ?? 'default'
 
 export const Header: Component = () => {
   const newRow = row(tables.app, sessionId)

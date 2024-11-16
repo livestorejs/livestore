@@ -1,12 +1,12 @@
-import { Schema } from 'effect'
 import { querySQL, rowQuery, sql } from '@livestore/livestore'
 import { query } from '@livestore/solid'
+import { Schema } from 'effect'
 import { type Component, Index } from 'solid-js'
 
 import { mutations, tables, type Todo } from '../schema/index.js'
 import { store } from '../store.jsx'
 
-const sessionId = store?.()?.sessionId ??'default'; 
+const sessionId = store?.()?.sessionId ?? 'default'
 
 const filterClause$ = rowQuery(tables.app, sessionId, {
   map: ({ filter }) => `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`,
