@@ -1,0 +1,44 @@
+diff --git a/examples/src/todomvc-solid/tsconfig.json b/examples/dist/todomvc-solid/tsconfig.json
+index 63b0f8e..13779c7 100644
+--- a/examples/src/todomvc-solid/tsconfig.json
++++ b/examples/dist/todomvc-solid/tsconfig.json
+@@ -1,22 +1,28 @@
+ {
+   "extends": "../../../tsconfig.base.json",
+   "compilerOptions": {
+-    "strict": true,
+-    "target": "ESNext",
++    "target": "ES2022",
++    "useDefineForClassFields": true,
++    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+     "module": "ESNext",
+-    "moduleResolution": "node",
++    "skipLibCheck": true,
++
++    /* Bundler mode */
++    "moduleResolution": "bundler",
++    "allowImportingTsExtensions": true,
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "noEmit": true,
++    "strict": true,
++    "strictNullChecks": true,
++    "noUncheckedIndexedAccess": true,
++    "noFallthroughCasesInSwitch": true,
+     "allowSyntheticDefaultImports": true,
+     "esModuleInterop": true,
+     "jsx": "preserve",
+     "jsxImportSource": "solid-js",
+     "types": ["vite/client"],
+-    "noEmit": true,
+-    "isolatedModules": true
+   },
+-  "include": ["src"],
+-  "references": [
+-    { "path": "../../../packages/@livestore/livestore" },
+-    { "path": "../../../packages/@livestore/solid" },
+-    { "path": "../../../packages/@livestore/web" }
+-  ]
++  "include": ["./src"],
++   "exclude": ["node_modules"]
+ }

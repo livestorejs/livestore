@@ -1,0 +1,25 @@
+diff --git a/examples/src/todomvc-solid/package.json b/examples/dist/todomvc-solid/package.json
+index 9b0cc73..2dade19 100644
+--- a/examples/src/todomvc-solid/package.json
++++ b/examples/dist/todomvc-solid/package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "livestore-example-src-todomvc-solid",
++  "name": "livestore-example-dist-todomvc-solid",
+   "version": "0.0.0",
+   "description": "",
+   "license": "MIT",
+@@ -10,10 +10,10 @@
+     "start": "vite"
+   },
+   "dependencies": {
+-    "@livestore/livestore": "workspace:*",
+-    "@livestore/solid": "workspace:*",
++    "@livestore/livestore": "0.1.0",
+     "@livestore/wa-sqlite": "1.0.1-dev.29",
+-    "@livestore/web": "workspace:*",
++    "@livestore/web": "0.1.0",
++    "@livestore/solid": "0.1.0",
+     "@opentelemetry/api": "^1.9.0",
+     "effect": "3.10.12",
+     "solid-js": "^1.8.11",
