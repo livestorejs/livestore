@@ -1,21 +1,16 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import IssueBoard from './IssueBoard'
-import { querySQL, rowQuery, sql, SessionIdSymbol } from '@livestore/livestore'
+import { querySQL } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/react'
 import { tables } from '../../domain/schema'
-import { Schema } from 'effect'
+import { filterState$ } from '../../domain/queries'
 
-const filterClause$ = rowQuery(tables.filterState, SessionIdSymbol, {
-  map: filterStateToWhere,
-  label: 'Board.filterClause',
-})
-
-const issues$ = querySQL((get) => sql`SELECT * FROM issue ${get(filterClause$)} ORDER BY kanbanorder ASC`, {
-  schema: Schema.Array(tables.issue.schema),
-  label: 'Board.issues',
-})
+const issues$ = querySQL(
+  (get) => tables.issue.query.where(filterStateToWhere(get(filterState$))).orderBy('kanbanorder', 'asc'),
+  { label: 'Board.issues' },
+)
 
 function Board() {
   const issues = useQuery(issues$)

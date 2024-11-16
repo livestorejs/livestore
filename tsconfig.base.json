@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "noErrorTruncation": true,
+    "noErrorTruncation": false,
     "isolatedModules": true,
     "target": "ESNext",
     "module": "NodeNext",

@@ -52,6 +52,8 @@ export {
   prepareBindValues,
   type Bindable,
   type PreparedBindValues,
+  type QueryBuilderAst,
+  type QueryBuilder,
 } from '@livestore/common'
 
 export { SqliteAst, SqliteDsl } from '@livestore/db-schema'

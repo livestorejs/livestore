@@ -19,8 +19,6 @@ import { showInfo, showWarning } from '../utils/notification'
 import { useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../domain/schema'
-import { Schema } from 'effect'
-import { sql } from '@livestore/livestore'
 
 interface Props {
   isOpen: boolean
@@ -42,13 +40,12 @@ function IssueModal({ isOpen, onDismiss }: Props) {
       return
     }
 
-    const lastIssueKanbanorder = querySQL(sql`SELECT kanbanorder FROM issue ORDER BY kanbanorder DESC LIMIT 1`, {
-      schema: tables.issue.schema.pipe(
-        Schema.pluck('kanbanorder'),
-        Schema.Array,
-        Schema.headOrElse(() => 'a0'),
-      ),
-    }).runAndDestroy()
+    const lastIssueKanbanorder = querySQL(
+      tables.issue.query
+        .select('kanbanorder', { pluck: true })
+        .orderBy('kanbanorder', 'desc')
+        .first(() => 'a0'),
+    ).runAndDestroy()
     const kanbanorder = generateKeyBetween(lastIssueKanbanorder, null)
 
     const date = Date.now()

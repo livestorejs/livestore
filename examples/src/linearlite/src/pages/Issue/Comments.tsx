@@ -6,11 +6,10 @@ import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
 import { Issue } from '../../types'
 import { useStore, useScopedQuery } from '@livestore/react'
-import { querySQL, sql } from '@livestore/livestore'
+import { querySQL } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../../domain/schema'
 import React from 'react'
-import { Schema } from 'effect'
 
 export interface CommentsProps {
   issue: Issue
@@ -19,13 +18,12 @@ export interface CommentsProps {
 function Comments({ issue }: CommentsProps) {
   // TODO move this into LiveStore
   const [newCommentBody, setNewCommentBody] = useState<string>('')
+
   const comments = useScopedQuery(
-    () =>
-      querySQL(() => sql`SELECT * FROM comment WHERE issueId = '${issue.id}' ORDER BY created ASC`, {
-        schema: Schema.Array(tables.comment.schema),
-      }),
+    () => querySQL(tables.comment.query.where('issueId', issue.id).orderBy('created', 'asc')),
     [issue.id],
   )
+
   const { store } = useStore()
 
   const commentList = () => {

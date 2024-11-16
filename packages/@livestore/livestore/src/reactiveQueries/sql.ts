@@ -1,4 +1,5 @@
-import { type Bindable, prepareBindValues, type QueryInfo, type QueryInfoNone } from '@livestore/common'
+import type { Bindable, QueryBuilder, QueryInfo, QueryInfoNone } from '@livestore/common'
+import { prepareBindValues } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -14,29 +15,50 @@ import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 /**
  * NOTE `querySQL` is only supposed to read data. Don't use it to insert/update/delete data but use mutations instead.
  */
-export const querySQL = <TResultSchema, TResult = TResultSchema>(
-  query: string | ((get: GetAtomResult) => string),
-  options: {
-    schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
-    map?: (rows: TResultSchema) => TResult
-    /**
-     * Can be provided explicitly to slightly speed up initial query performance
-     *
-     * NOTE In the future we want to do this automatically at build time
-     */
-    queriedTables?: Set<string>
-    bindValues?: Bindable
-    label?: string
-    reactivityGraph?: ReactivityGraph
-  },
-): LiveQuery<TResult, QueryInfoNone> =>
-  new LiveStoreSQLQuery<TResultSchema, TResult, QueryInfoNone>({
+export const querySQL: {
+  <TResultSchema, TResult = TResultSchema>(
+    query:
+      | QueryBuilder<TResultSchema, any, QueryBuilder.ApiFeature>
+      | ((get: GetAtomResult) => QueryBuilder<TResultSchema, any, QueryBuilder.ApiFeature>),
+    options?: {
+      map?: (rows: TResultSchema) => TResult
+      /**
+       * Can be provided explicitly to slightly speed up initial query performance
+       *
+       * NOTE In the future we want to do this automatically at build time
+       */
+      queriedTables?: Set<string>
+      bindValues?: Bindable
+      label?: string
+      reactivityGraph?: ReactivityGraph
+    },
+  ): LiveQuery<TResult, QueryInfoNone>
+  <TResultSchema, TResult = TResultSchema>(
+    query: string | ((get: GetAtomResult) => string),
+    options: {
+      schema: Schema.Schema<TResultSchema, ReadonlyArray<any>>
+      map?: (rows: TResultSchema) => TResult
+      /**
+       * Can be provided explicitly to slightly speed up initial query performance
+       *
+       * NOTE In the future we want to do this automatically at build time
+       */
+      queriedTables?: Set<string>
+      bindValues?: Bindable
+      label?: string
+      reactivityGraph?: ReactivityGraph
+    },
+  ): LiveQuery<TResult, QueryInfoNone>
+} = (query, options) =>
+  new LiveStoreSQLQuery({
     label: options?.label,
+    // @ts-expect-error TODO properly implement this
     genQueryString: query,
     queriedTables: options?.queriedTables,
     bindValues: options?.bindValues,
     reactivityGraph: options?.reactivityGraph,
     map: options?.map,
+    // @ts-expect-error TODO properly implement this
     schema: options.schema,
     queryInfo: { _tag: 'None' },
   })

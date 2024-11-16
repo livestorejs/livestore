@@ -5,10 +5,12 @@ import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 
 import type { DerivedMutationHelperFns } from '../derived-mutations.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
+import type { QueryBuilder } from '../query-builder/mod.js'
+import { makeQueryBuilder } from '../query-builder/mod.js'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
 
-export { type SqliteDsl } from '@livestore/db-schema'
+export { SqliteDsl } from '@livestore/db-schema'
 
 export type StateType = 'singleton' | 'dynamic'
 
@@ -60,6 +62,7 @@ export type TableDef<
   isSingleColumn: TIsSingleColumn
   options: TOptions
   schema: TSchema
+  query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TSqliteDef>
 } & (TOptions['deriveMutations']['enabled'] extends true
   ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions>
   : {})
@@ -183,7 +186,8 @@ export const table = <
   const isSingleColumn = SqliteDsl.isColumnDefinition(columnOrColumns) === true
 
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
-  const tableDef = { sqliteDef, isSingleColumn, options: options_, schema } satisfies TableDef
+  const query = makeQueryBuilder<any, typeof sqliteDef>(sqliteDef)
+  const tableDef = { sqliteDef, isSingleColumn, options: options_, schema, query } satisfies TableDef
 
   if (tableHasDerivedMutations(tableDef)) {
     const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)

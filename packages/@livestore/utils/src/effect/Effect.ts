@@ -178,3 +178,31 @@ export const withPerformanceMeasure =
           performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
         }),
     )
+
+const getSpanTrace = () => {
+  const fiberOption = Fiber.getCurrentFiber()
+  if (fiberOption._tag === 'None' || fiberOption.value.currentSpan === undefined) {
+    return 'No current fiber'
+  }
+
+  const msg = Effect.runSync(
+    Effect.fail({ message: '' }).pipe(
+      Effect.withParentSpan(fiberOption.value.currentSpan),
+      Effect.catchAllCause((cause) => Effect.succeed(cause.toString())),
+    ),
+  )
+
+  // remove the first line
+  return msg
+    .split('\n')
+    .slice(1)
+    .map((_) => _.trim().replace('at ', ''))
+    .join('\n')
+}
+
+const logSpanTrace = () => console.log(getSpanTrace())
+
+// @ts-expect-error TODO fix types
+globalThis.getSpanTrace = getSpanTrace
+// @ts-expect-error TODO fix types
+globalThis.logSpanTrace = logSpanTrace

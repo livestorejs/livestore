@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
-import { FilterState } from '../domain/schema'
+import { FilterState, tables } from '../domain/schema'
 import { Schema } from 'effect'
+import { QueryBuilder } from '@livestore/livestore'
 
 export function useFilterState(): [FilterState, (state: Partial<FilterState>) => void] {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -59,36 +60,17 @@ export function useFilterState(): [FilterState, (state: Partial<FilterState>) =>
   return [state, setState]
 }
 
-export function filterStateToWhere(filterState: FilterState) {
+export const filterStateToWhere = (filterState: FilterState) => {
   const { status, priority, query } = filterState
-  let where = 'WHERE '
-  const orig = where
-  if (status && status.length > 0) {
-    where += `STATUS IN (${status.map((s) => "'" + s + "'").join(',')})`
-  }
-  if (priority && priority.length > 0) {
-    if (where !== orig) {
-      where += ' AND '
-    }
-    where += `PRIORITY IN (${priority.map((s) => "'" + s + "'").join(',')})`
-  }
-  if (query) {
-    // TODO: description search too?
-    if (where !== orig) {
-      where += ' OR '
-    }
-    where += `TITLE LIKE '%${query}%'`
-  }
-  if (where === orig) {
-    return ''
-  }
-  return where
+
+  return {
+    status: status ? { op: 'IN', value: status } : undefined,
+    priority: priority ? { op: 'IN', value: priority } : undefined,
+    // TODO treat query as `OR` in
+    title: query ? { op: 'LIKE', value: `%${query}%` } : undefined,
+  } satisfies QueryBuilder.WhereParams<typeof tables.issue.sqliteDef>
 }
 
-export function filterStateToOrder(filterState: FilterState) {
-  if (filterState.orderBy) {
-    return `ORDER BY ${filterState.orderBy} ${filterState.orderDirection || 'desc'}`
-  }
-
-  return ''
-}
+export const filterStateToOrderBy = (filterState: FilterState) => [
+  { col: filterState.orderBy, direction: filterState.orderDirection },
+]
