@@ -39,7 +39,6 @@ export const useRow: {
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
-      boolean,
       DbSchema.TableOptions & { isSingleton: true; deriveMutations: { enabled: true } }
     >,
   >(
@@ -49,7 +48,6 @@ export const useRow: {
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
-      boolean,
       DbSchema.TableOptions & { isSingleton: false; deriveMutations: { enabled: true } }
     >,
   >(
@@ -61,7 +59,6 @@ export const useRow: {
 } = <
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
@@ -117,7 +114,7 @@ export const useRow: {
   const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowResult<TTableDef>>
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {
-    if (table.isSingleColumn) {
+    if (table.options.isSingleColumn) {
       return (newValueOrFn: RowResult<TTableDef>) => {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
@@ -173,7 +170,7 @@ export const useRow: {
 export type Dispatch<A> = (action: A) => void
 export type SetStateAction<S> = S | ((previousValue: S) => S)
 
-export type StateSetters<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
+export type StateSetters<TTableDef extends DbSchema.TableDef> = TTableDef['options']['isSingleColumn'] extends true
   ? Dispatch<SetStateAction<RowResult<TTableDef>>>
   : {
       [K in keyof RowResult<TTableDef>]: Dispatch<SetStateAction<RowResult<TTableDef>[K]>>

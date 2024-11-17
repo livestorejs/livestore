@@ -8,6 +8,8 @@ import type { DbSchema } from './schema/index.js'
  * - a whole row
  * - a single column value
  * - a sub value in a JSON column
+ *
+ * This information is currently only used for derived mutations.
  */
 export type QueryInfo<TTableDef extends DbSchema.TableDef = DbSchema.TableDef> =
   | QueryInfoNone

@@ -42,7 +42,6 @@ export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string,
 
 export type TableDef<
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
-  TIsSingleColumn extends boolean = boolean,
   TOptions extends TableOptions = TableOptions,
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
   // as we don't want the alias type for users to show up
@@ -58,8 +57,6 @@ export type TableDef<
   >,
 > = {
   sqliteDef: TSqliteDef
-  // TODO move this into options (for now it's duplicated)
-  isSingleColumn: TIsSingleColumn
   options: TOptions
   schema: TSchema
   query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TSqliteDef>
@@ -124,16 +121,7 @@ export const table = <
   columnOrColumns: TColumns,
   options?: TOptionsInput,
 ): TableDef<
-  SqliteDsl.TableDefinition<
-    TName,
-    PrettifyFlat<
-      WithId<
-        TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns },
-        WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
-      >
-    >
-  >,
-  SqliteDsl.IsSingleColumn<TColumns>,
+  SqliteTableDefForInput<TName, TColumns, TOptionsInput>,
   WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
 > => {
   const tablePath = name
@@ -187,7 +175,7 @@ export const table = <
 
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
   const query = makeQueryBuilder<any, typeof sqliteDef>(sqliteDef)
-  const tableDef = { sqliteDef, isSingleColumn, options: options_, schema, query } satisfies TableDef
+  const tableDef = { sqliteDef, options: options_, schema, query } satisfies TableDef
 
   if (tableHasDerivedMutations(tableDef)) {
     const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
@@ -224,6 +212,20 @@ export const tableHasDerivedMutations = <TTableDef extends TableDef>(
 export const tableIsSingleton = <TTableDef extends TableDef>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
+
+type SqliteTableDefForInput<
+  TName extends string,
+  TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
+  TOptionsInput extends TableOptionsInput = TableOptionsInput,
+> = SqliteDsl.TableDefinition<
+  TName,
+  PrettifyFlat<
+    WithId<
+      TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns },
+      WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
+    >
+  >
+>
 
 type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> = TColumns &
   ('id' extends keyof TColumns

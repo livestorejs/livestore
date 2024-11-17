@@ -11,7 +11,6 @@ export const useAtom = <
   TQuery extends LiveQuery<any, QueryInfoRow<TTableDef> | QueryInfoCol<TTableDef, any>>,
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
@@ -27,7 +26,7 @@ export const useAtom = <
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
 
       if (query$.queryInfo._tag === 'Row') {
-        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.isSingleColumn) {
+        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.options.isSingleColumn) {
           store.mutate(query$.queryInfo.table.update(newValue))
         } else if (query$.queryInfo.table.options.isSingleColumn) {
           store.mutate(
@@ -37,7 +36,7 @@ export const useAtom = <
           store.mutate(query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
         }
       } else {
-        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.isSingleColumn) {
+        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.options.isSingleColumn) {
           store.mutate(query$.queryInfo.table.update({ [query$.queryInfo.column]: newValue }))
         } else {
           store.mutate(

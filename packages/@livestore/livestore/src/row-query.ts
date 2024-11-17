@@ -32,22 +32,14 @@ export type RowQueryOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
 
 export type MakeRowQuery = {
   <
-    TTableDef extends DbSchema.TableDef<
-      DbSchema.DefaultSqliteTableDef,
-      boolean,
-      DbSchema.TableOptions & { isSingleton: true }
-    >,
+    TTableDef extends DbSchema.TableDef<DbSchema.DefaultSqliteTableDef, DbSchema.TableOptions & { isSingleton: true }>,
     TResult = RowResult<TTableDef>,
   >(
     table: TTableDef,
     options?: RowQueryOptions<TTableDef, TResult>,
   ): LiveQuery<RowResult<TTableDef>, QueryInfoRow<TTableDef>>
   <
-    TTableDef extends DbSchema.TableDef<
-      DbSchema.DefaultSqliteTableDef,
-      boolean,
-      DbSchema.TableOptions & { isSingleton: false }
-    >,
+    TTableDef extends DbSchema.TableDef<DbSchema.DefaultSqliteTableDef, DbSchema.TableOptions & { isSingleton: false }>,
     TResult = RowResult<TTableDef>,
   >(
     table: TTableDef,
@@ -85,7 +77,8 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
       ? (_: GetAtomResult, ctx: QueryContext) => makeQueryString(ctx.store.sessionId)
       : makeQueryString(id)
 
-  const rowSchema = table.isSingleColumn === true ? table.schema.pipe(Schema.pluck('value' as any)) : table.schema
+  const rowSchema =
+    table.options.isSingleColumn === true ? table.schema.pipe(Schema.pluck('value' as any)) : table.schema
 
   return new LiveStoreSQLQuery({
     label:
@@ -108,11 +101,11 @@ export const rowQuery: MakeRowQuery = <TTableDef extends DbSchema.TableDef>(
   })
 }
 
-export type RowResult<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
+export type RowResult<TTableDef extends DbSchema.TableDef> = TTableDef['options']['isSingleColumn'] extends true
   ? GetValForKey<SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
   : SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
-export type RowResultEncoded<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
+export type RowResultEncoded<TTableDef extends DbSchema.TableDef> = TTableDef['options']['isSingleColumn'] extends true
   ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>, 'value'>
   : SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>
 
