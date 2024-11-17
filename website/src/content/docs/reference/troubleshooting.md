@@ -10,13 +10,13 @@ If you notice your app getting slower over time, leaking memory or even crashing
 A common scenario for this looks like the following:
 
 ```ts
-const query$ = useQuery(querySQL(`SELECT * FROM issues where id = '${issueId}'`))
+const query$ = useQuery(query(`SELECT * FROM issues where id = '${issueId}'`))
 ```
 
 This will create a new query every time the component using it is re-rendered but never disposes of the previous query. To fix this, it's recommended to use `useScopedQuery` instead:
 
 ```ts
-const query$ = useScopedQuery(() => querySQL(`SELECT * FROM issues where id = '${issueId}'`), [issueId])
+const query$ = useScopedQuery(() => query(`SELECT * FROM issues where id = '${issueId}'`), [issueId])
 ```
 
 ## `node_modules` related issues

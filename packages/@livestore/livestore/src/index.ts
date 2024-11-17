@@ -26,7 +26,7 @@ export type {
   Effect,
 } from './reactive.js'
 export { LiveStoreJSQuery, computed } from './reactiveQueries/computed.js'
-export { LiveStoreSQLQuery, querySQL } from './reactiveQueries/sql.js'
+export { LiveStoreSQLQuery, query } from './reactiveQueries/sql.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
 export {
   type GetAtomResult,

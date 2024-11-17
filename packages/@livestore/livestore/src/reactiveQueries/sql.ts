@@ -13,9 +13,9 @@ import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './
 import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
 
 /**
- * NOTE `querySQL` is only supposed to read data. Don't use it to insert/update/delete data but use mutations instead.
+ * NOTE `query` is only supposed to read data. Don't use it to insert/update/delete data but use mutations instead.
  */
-export const querySQL: {
+export const query: {
   <TResultSchema, TResult = TResultSchema>(
     query:
       | QueryBuilder<TResultSchema, any, QueryBuilder.ApiFeature>

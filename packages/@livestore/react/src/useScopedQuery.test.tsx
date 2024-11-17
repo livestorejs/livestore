@@ -1,5 +1,5 @@
 import * as LiveStore from '@livestore/livestore'
-import { querySQL } from '@livestore/livestore'
+import { query } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { render, renderHook } from '@testing-library/react'
 import React from 'react'
@@ -29,7 +29,7 @@ describe('useScopedQuery', () => {
           renderCount.inc()
 
           return LiveStoreReact.useScopedQuery(() => {
-            const query$ = querySQL(`select * from todos where id = '${id}'`, {
+            const query$ = query(`select * from todos where id = '${id}'`, {
               schema: Schema.Array(tables.todos.schema),
             })
             queryMap.set(id, query$)

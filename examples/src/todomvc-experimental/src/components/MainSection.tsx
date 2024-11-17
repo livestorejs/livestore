@@ -1,5 +1,5 @@
 import type { Store } from '@livestore/livestore'
-import { querySQL, rowQuery, SessionIdSymbol, sql } from '@livestore/livestore'
+import { query, rowQuery, SessionIdSymbol, sql } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { LiveList } from '@livestore/react/experimental'
 import { Schema } from 'effect'
@@ -22,7 +22,7 @@ const filterClause$ = rowQuery(tables.app, SessionIdSymbol, {
 // We create a new reactive SQL query which interpolates the filterClause.
 // Notice how we call filterClause() as a function--
 // that gets the latest value of that reactive query.
-const visibleTodos$ = querySQL((get) => sql`select * from todos ${get(filterClause$)}`, {
+const visibleTodos$ = query((get) => sql`select * from todos ${get(filterClause$)}`, {
   schema: Schema.Array(tables.todos.schema),
   label: 'visibleTodos',
 })

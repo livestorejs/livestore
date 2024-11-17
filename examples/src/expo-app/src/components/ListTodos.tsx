@@ -1,4 +1,4 @@
-import { querySQL } from '@livestore/livestore'
+import { query } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
 import { FlatList } from 'react-native'
@@ -6,9 +6,9 @@ import { FlatList } from 'react-native'
 import { tables } from '../schema/index.ts'
 import { Todo } from './Todo.tsx'
 
-const filterClause$ = querySQL(tables.app.query.select('filter').first(), { label: 'filterClause' })
+const filterClause$ = query(tables.app.query.select('filter').first(), { label: 'filterClause' })
 
-const visibleTodos$ = querySQL(
+const visibleTodos$ = query(
   (get) => {
     const { filter } = get(filterClause$)
     return tables.todos.query.where({

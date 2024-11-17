@@ -1,7 +1,7 @@
 // NOTE This file should eventually be turned into a separate package, for now it's part of the app code
 
 import type { GetAtomResult, LiveQuery } from '@livestore/livestore'
-import { querySQL } from '@livestore/livestore'
+import { query } from '@livestore/livestore'
 // import type { NullableFieldsToOptional } from '@livestore/utils'
 import type { TypedQueryBuilder } from 'drizzle-orm/query-builders/query-builder'
 import { QueryBuilder } from 'drizzle-orm/sqlite-core'
@@ -44,7 +44,7 @@ export const queryDrizzle: {
     },
   ): LiveQuery<TResult>
 } = (fn: any, options: any) => {
-  return querySQL((get) => {
+  return query((get) => {
     const query = fn(queryBuilder, get) as TypedQueryBuilder<any, any>
 
     // @ts-expect-error access protected member `dialect`

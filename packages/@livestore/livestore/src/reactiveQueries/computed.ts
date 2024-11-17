@@ -41,7 +41,7 @@ export class LiveStoreJSQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoN
   /**
    * Currently only used for "nested destruction" of piped queries
    *
-   * i.e. when doing something like `const q = querySQL(...).pipe(...)`
+   * i.e. when doing something like `const q = query(...).pipe(...)`
    * we need to also destory the SQL query when the JS query `q` is destroyed
    */
   private onDestroy: (() => void) | undefined

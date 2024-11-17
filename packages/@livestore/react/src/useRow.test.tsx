@@ -121,7 +121,7 @@ describe('useRow', () => {
         useGlobalReactivityGraph: false,
       })
 
-      const allTodos$ = LiveStore.querySQL(`select * from todos`, {
+      const allTodos$ = LiveStore.query(`select * from todos`, {
         label: 'allTodos',
         schema: Schema.Array(tables.todos.schema),
         reactivityGraph,
@@ -223,7 +223,7 @@ describe('useRow', () => {
           const [_row, _setRow, rowState$] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
           const todos = LiveStoreReact.useScopedQuery(
             () =>
-              LiveStore.querySQL(
+              LiveStore.query(
                 (get) => LiveStore.sql`select * from todos where text like '%${get(rowState$).text}%'`,
                 {
                   schema: Schema.Array(tables.todos.schema),

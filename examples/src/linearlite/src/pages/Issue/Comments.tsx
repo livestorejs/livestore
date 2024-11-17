@@ -6,7 +6,7 @@ import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
 import { Issue } from '../../types'
 import { useStore, useScopedQuery } from '@livestore/react'
-import { querySQL } from '@livestore/livestore'
+import { query } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../../domain/schema'
 import React from 'react'
@@ -20,7 +20,7 @@ function Comments({ issue }: CommentsProps) {
   const [newCommentBody, setNewCommentBody] = useState<string>('')
 
   const comments = useScopedQuery(
-    () => querySQL(tables.comment.query.where('issueId', issue.id).orderBy('created', 'asc')),
+    () => query(tables.comment.query.where('issueId', issue.id).orderBy('created', 'asc')),
     [issue.id],
   )
 

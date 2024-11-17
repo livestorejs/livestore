@@ -5,7 +5,7 @@ import { BsChevronRight as ChevronRight } from 'react-icons/bs'
 import CloseIcon from '../assets/icons/close.svg?react'
 import LivestoreIcon from '../assets/images/icon.inverse.svg?react'
 import { generateKeyBetween } from 'fractional-indexing'
-import { querySQL } from '@livestore/livestore'
+import { query } from '@livestore/livestore'
 
 import Modal from './Modal'
 import Editor from './editor/Editor'
@@ -40,7 +40,7 @@ function IssueModal({ isOpen, onDismiss }: Props) {
       return
     }
 
-    const lastIssueKanbanorder = querySQL(
+    const lastIssueKanbanorder = query(
       tables.issue.query
         .select('kanbanorder', { pluck: true })
         .orderBy('kanbanorder', 'desc')

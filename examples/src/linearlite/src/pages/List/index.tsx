@@ -1,7 +1,7 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import * as ReactWindow from 'react-window'
-import { querySQL } from '@livestore/livestore'
+import { query } from '@livestore/livestore'
 import { tables } from '../../domain/schema'
 import { filterStateToOrderBy, filterStateToWhere } from '../../utils/filterState'
 import { useQuery, useRow } from '@livestore/react'
@@ -23,7 +23,7 @@ export const List: React.FC<{ showSearch?: boolean }> = ({ showSearch = false })
   )
 }
 
-const filteredIssueIds$ = querySQL(
+const filteredIssueIds$ = query(
   (get) =>
     tables.issue.query
       .select('id', { pluck: true })

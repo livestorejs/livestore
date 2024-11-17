@@ -3,7 +3,7 @@ import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { describe, expect, it } from 'vitest'
 
-import { computed, querySQL, rawSqlMutation, sql } from '../index.js'
+import { computed, query, rawSqlMutation, sql } from '../index.js'
 import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
 import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
 
@@ -45,15 +45,15 @@ describe('otel', () => {
     const { exporter } = await Effect.gen(function* () {
       const { store, exporter, span } = yield* makeQuery
 
-      const query = querySQL(`select * from todos`, {
+      const query$ = query(`select * from todos`, {
         schema: Schema.Array(tables.todos.schema),
         queriedTables: new Set(['todos']),
       })
-      expect(query.run()).toMatchInlineSnapshot('[]')
+      expect(query$.run()).toMatchInlineSnapshot('[]')
 
       store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-      expect(query.run()).toMatchInlineSnapshot(`
+      expect(query$.run()).toMatchInlineSnapshot(`
       [
         {
           "completed": false,
@@ -63,7 +63,7 @@ describe('otel', () => {
       ]
     `)
 
-      query.destroy()
+      query$.destroy()
       span.end()
 
       return { exporter }
@@ -175,12 +175,12 @@ describe('otel', () => {
       const defaultTodo = { id: '', text: '', completed: false }
 
       const filter = computed(() => `where completed = 0`, { label: 'where-filter' })
-      const query = querySQL((get) => `select * from todos ${get(filter)}`, {
+      const query$ = query((get) => `select * from todos ${get(filter)}`, {
         label: 'all todos',
         schema: Schema.Array(tables.todos.schema).pipe(Schema.headOrElse(() => defaultTodo)),
       })
 
-      expect(query.run()).toMatchInlineSnapshot(`
+      expect(query$.run()).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "",
@@ -190,7 +190,7 @@ describe('otel', () => {
 
       store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-      expect(query.run()).toMatchInlineSnapshot(`
+      expect(query$.run()).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "t1",
@@ -198,7 +198,7 @@ describe('otel', () => {
       }
     `)
 
-      query.destroy()
+      query$.destroy()
       span.end()
 
       return { exporter }

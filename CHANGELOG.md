@@ -3,6 +3,13 @@
 > NOTE: LiveStore is still in alpha and releases can include breaking changes. See [state of the project](https://preview.livestore.dev/reference/state-of-the-project/) for more info.
 > LiveStore is following a semver-like release strategy where breaking changes are released in minor versions before the 1.0 release.
 
+## 0.1.1
+
+### Core
+
+- Added query builder API
+- Breaking: Renamed `querySQL` to `query`
+
 ## 0.1.0
 
 ### Core
