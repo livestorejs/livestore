@@ -74,21 +74,12 @@ const InboxScreen = () => {
       // Generate comments using users
       const numComments = Math.floor(Math.random() * COMMENTS_PER_ISSUE + 1)
       for (let j = 0; j < numComments; j++) {
-        const comment = createRandomComment(
-          issue.id,
-          // @ts-expect-error fix
-          randomValueFromArray(users).id,
-        )
+        const comment = createRandomComment(issue.id, randomValueFromArray(users).id)
         comments.push(comment)
 
         const numReactions = Math.floor(Math.random() * 2)
         for (let k = 0; k < numReactions; k++) {
-          const reaction = createRandomReaction(
-            issue.id,
-            // @ts-expect-error fix
-            randomValueFromArray(users).id,
-            comment.id,
-          )
+          const reaction = createRandomReaction(issue.id, randomValueFromArray(users).id, comment.id)
           reactions.push(reaction)
         }
       }

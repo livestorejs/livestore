@@ -1,5 +1,7 @@
+process.env.EXPO_ROUTER_APP_ROOT = './src/app'
+
 module.exports = function (api) {
-  api.cache(true);
+  api.cache(true)
   return {
     presets: [
       [
@@ -21,9 +23,6 @@ module.exports = function (api) {
       ],
       'nativewind/babel',
     ],
-    plugins: [
-      'babel-plugin-transform-vite-meta-env',
-      '@babel/plugin-syntax-import-attributes',
-    ],
-  };
-};
+    plugins: ['babel-plugin-transform-vite-meta-env', '@babel/plugin-syntax-import-attributes'],
+  }
+}

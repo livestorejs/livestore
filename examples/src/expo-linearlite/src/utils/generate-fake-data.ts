@@ -58,6 +58,10 @@ export const createRandomReaction = (issueId: string, userId: string, commentId:
   emoji: randomValueFromArray(emojies),
 })
 
-export const randomValueFromArray = <T>(array: T[]): T => array[Math.floor(Math.random() * array.length)]!
+export const randomValueFromArray = <T>(array: readonly T[]): T => {
+  if (array.length === 0) throw new Error('Array is empty')
+
+  return array[Math.floor(Math.random() * array.length)]!
+}
 
 const emojies = ['👍', '👎', '💯', '👀', '🤔', '✅', '🔥']

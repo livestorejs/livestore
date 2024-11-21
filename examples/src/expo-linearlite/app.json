@@ -4,12 +4,12 @@
     "slug": "expo-linearlite",
     "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./src/assets/images/icon.png",
     "scheme": "linearlite",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./src/assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,11 +17,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "dev.livestore.expo-linearlite",
       "splash": {
-        "image": "./assets/images/splash.png",
+        "image": "./src/assets/images/splash.png",
         "resizeMode": "cover",
         "backgroundColor": "#FAFAFA",
         "dark": {
-          "image": "./assets/images/splash-dark.png",
+          "image": "./src/assets/images/splash-dark.png",
           "resizeMode": "cover",
           "backgroundColor": "#18181B"
         }
@@ -29,16 +29,16 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "dev.livestore.expo-linearlite",
       "splash": {
-        "image": "./assets/images/splash.png",
+        "image": "./src/assets/images/splash.png",
         "resizeMode": "cover",
         "backgroundColor": "#FAFAFA",
         "dark": {
-          "image": "./assets/images/splash-dark.png",
+          "image": "./src/assets/images/splash-dark.png",
           "resizeMode": "cover",
           "backgroundColor": "#18181B"
         }
@@ -47,7 +47,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./src/assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",

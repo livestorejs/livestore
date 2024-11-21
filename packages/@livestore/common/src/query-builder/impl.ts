@@ -119,7 +119,8 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
       return makeQueryBuilder(tableDef, {
         ...ast,
         limit: Option.some(1),
-        pickFirst: options?.fallback ? { fallback: options.fallback } : false,
+        // TODO improve
+        pickFirst: options?.fallback ? { fallback: options.fallback } : { fallback: () => undefined },
       })
     },
     // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
