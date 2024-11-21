@@ -3,8 +3,8 @@ import { Transition } from '@headlessui/react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { useRef } from 'react'
 import Select from './Select'
-import { useFilterState } from '../domain/queries'
-import { OrderBy, OrderDirection } from '../domain/schema'
+import { useFilterState } from '../livestore/queries'
+import { OrderBy, OrderDirection } from '../livestore/schema'
 
 interface Props {
   isOpen: boolean

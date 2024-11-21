@@ -6,7 +6,7 @@ import { ViewOptionMenu } from './ViewOptionMenu'
 import { FilterMenu } from './contextmenu/FilterMenu'
 import { PriorityOptions, StatusOptions } from '../types/issue'
 import { useQuery } from '@livestore/react'
-import { issueCount$, useFilterState } from '../domain/queries'
+import { issueCount$, useFilterState } from '../livestore/queries'
 import { MenuContext } from '../context/MenuContext'
 
 interface Props {

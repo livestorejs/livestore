@@ -1,4 +1,4 @@
 import { makeWorker } from '@livestore/web/worker'
-import { schema } from './domain/schema'
+import { schema } from './livestore/schema'
 
 makeWorker({ schema })

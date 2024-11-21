@@ -12,7 +12,7 @@ import Editor from '../../components/editor/Editor'
 import DeleteModal from './DeleteModal'
 import Comments from './Comments'
 import { useRow, useStore } from '@livestore/react'
-import { mutations, tables } from '../../domain/schema'
+import { mutations, tables } from '../../livestore/schema'
 
 export const IssuePage = () => {
   const navigate = useNavigate()

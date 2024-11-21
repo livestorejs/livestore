@@ -8,7 +8,8 @@
     { "path": "./examples/dist/linearlite" },
     { "path": "./examples/dist/todomvc" },
     { "path": "./examples/dist/todomvc-custom-elements" },
-    { "path": "./examples/dist/todomvc-drizzle" },
     { "path": "./examples/dist/todomvc-experimental" },
+    { "path": "./examples/dist/todomvc-sync-cf" },
+    { "path": "./examples/dist/todomvc-sync-electric" },
   ]
 }

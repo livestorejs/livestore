@@ -25,9 +25,9 @@ export type {
   Ref,
   Effect,
 } from './reactive.js'
-export { LiveStoreJSQuery, computed } from './reactiveQueries/computed.js'
-export { LiveStoreSQLQuery, query } from './reactiveQueries/sql.js'
-export { LiveStoreGraphQLQuery, queryGraphQL } from './reactiveQueries/graphql.js'
+export { LiveStoreComputedQuery, computed } from './live-queries/computed.js'
+export { LiveStoreDbQuery, queryDb } from './live-queries/db.js'
+export { LiveStoreGraphQLQuery, queryGraphQL } from './live-queries/graphql.js'
 export {
   type GetAtomResult,
   type ReactivityGraph,
@@ -35,11 +35,11 @@ export {
   type LiveQuery,
   type GetResult,
   type LiveQueryAny,
-} from './reactiveQueries/base-class.js'
+} from './live-queries/base-class.js'
 
 export { globalReactivityGraph } from './global-state.js'
 
-export { type RowResult, type RowResultEncoded, rowQuery, deriveColQuery } from './row-query.js'
+export { deriveColQuery } from './row-query-utils.js'
 
 export * from '@livestore/common/schema'
 export {
@@ -54,6 +54,7 @@ export {
   type PreparedBindValues,
   type QueryBuilderAst,
   type QueryBuilder,
+  type RowQuery,
 } from '@livestore/common'
 
 export { SqliteAst, SqliteDsl } from '@livestore/db-schema'

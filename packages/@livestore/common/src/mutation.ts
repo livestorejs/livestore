@@ -71,14 +71,21 @@ export const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreS
 
 // NOTE we should explore whether there is a more elegant solution
 // e.g. by leveraging the schema to replace the sessionIdSymbol
-export const replaceSessionIdSymbol = (bindValues: Record<string, unknown>, sessionId: string) => {
+export const replaceSessionIdSymbol = (
+  bindValues: Record<string, unknown> | ReadonlyArray<unknown>,
+  sessionId: string,
+) => {
   deepReplaceValue(bindValues, SessionIdSymbol, sessionId)
 }
 
 const deepReplaceValue = <S, R>(input: any, searchValue: S, replaceValue: R): void => {
   if (Array.isArray(input)) {
     for (const i in input) {
-      deepReplaceValue(input[i], searchValue, replaceValue)
+      if (input[i] === searchValue) {
+        input[i] = replaceValue
+      } else {
+        deepReplaceValue(input[i], searchValue, replaceValue)
+      }
     }
   } else if (typeof input === 'object' && input !== null) {
     for (const key in input) {

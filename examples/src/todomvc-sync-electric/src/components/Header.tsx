@@ -1,13 +1,14 @@
-import { useRow, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
 import { v4 as uuid } from 'uuid'
 
-import { mutations, tables } from '../schema/index.js'
+import { app$ } from '../livestore/queries.js'
+import { mutations } from '../livestore/schema.js'
 
 export const Header: React.FC = () => {
   const { store } = useStore()
   const sessionId = store.sessionId
-  const [{ newTodoText }] = useRow(tables.app, sessionId)
+  const { newTodoText } = useQuery(app$)
 
   const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text, sessionId }))
   const addTodo = () =>

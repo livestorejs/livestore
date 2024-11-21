@@ -1,11 +1,11 @@
-import { query } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import * as React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
-import { tables } from '../schema/index.js'
+import { tables } from '../livestore/schema.ts'
 
-const incompleteCount$ = query(tables.todos.query.count().where({ deleted: null, completed: false }), {
+const incompleteCount$ = queryDb(tables.todos.query.count().where({ deleted: null, completed: false }), {
   label: 'incompleteCount',
 })
 

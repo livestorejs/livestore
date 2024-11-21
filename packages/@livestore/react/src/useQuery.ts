@@ -101,6 +101,10 @@ Stack trace:
   React.useEffect(() => {
     query$.activeSubscriptions.add(stackInfo)
 
+    // Dynamic queries only set their actual label after they've been run the first time,
+    // so we're also updating the span name here.
+    span.updateName(`LiveStore:useQuery:${query$.label}`)
+
     return store.subscribe(
       query$,
       (newValue) => {

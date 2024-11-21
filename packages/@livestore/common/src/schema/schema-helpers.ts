@@ -2,7 +2,7 @@ import { SqliteDsl } from '@livestore/db-schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 
-import type { TableDef } from './table-def.js'
+import type { TableDef, TableDefBase } from './table-def.js'
 
 export const getDefaultValuesEncoded = <TTableDef extends TableDef>(
   tableDef: TTableDef,
@@ -26,7 +26,7 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDef>(
     ),
   )
 
-export const getDefaultValuesDecoded = <TTableDef extends TableDef>(
+export const getDefaultValuesDecoded = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   fallbackValues?: Record<string, any>,
 ) =>

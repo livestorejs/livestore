@@ -1,5 +1,5 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import type { QueryInfoNone } from '@livestore/common'
+import type { QueryInfo } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -31,7 +31,7 @@ export const queryGraphQL = <
     reactivityGraph?: ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
   } = {},
-): LiveQuery<TResultMapped, QueryInfoNone> =>
+): LiveQuery<TResultMapped, QueryInfo.None> =>
   new LiveStoreGraphQLQuery({ document, genVariableValues, label, reactivityGraph, map })
 
 export class LiveStoreGraphQLQuery<
@@ -39,7 +39,7 @@ export class LiveStoreGraphQLQuery<
   TVariableValues extends Record<string, any>,
   TContext extends BaseGraphQLContext,
   TResultMapped extends Record<string, any> = TResult,
-> extends LiveStoreQueryBase<TResultMapped, QueryInfoNone> {
+> extends LiveStoreQueryBase<TResultMapped, QueryInfo.None> {
   _tag: 'graphql' = 'graphql'
 
   /** The abstract GraphQL query */
@@ -54,7 +54,7 @@ export class LiveStoreGraphQLQuery<
 
   protected reactivityGraph: ReactivityGraph
 
-  queryInfo: QueryInfoNone = { _tag: 'None' }
+  queryInfo: QueryInfo.None = { _tag: 'None' }
 
   private mapResult
 
@@ -105,7 +105,7 @@ export class LiveStoreGraphQLQuery<
         (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
           return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
         },
-        { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphqlVariableValues' } },
+        { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphql.variables' } },
       )
       this.variableValues$ = variableValues$OrvariableValues
     } else {
@@ -137,25 +137,10 @@ export class LiveStoreGraphQLQuery<
 
         return result
       },
-      { label: resultsLabel, meta: { liveStoreThunkType: 'graphqlResults' } },
+      { label: resultsLabel, meta: { liveStoreThunkType: 'graphql.results' } },
       // otelContext,
     )
   }
-
-  /**
-   * Returns a new reactive query that contains the result of
-   * running an arbitrary JS computation on the results of this SQL query.
-   */
-  // pipe = <U>(fn: (result: TResult, get: GetAtomResult) => U): LiveStoreJSQuery<U> =>
-  //   new LiveStoreJSQuery({
-  //     fn: (get) => {
-  //       const results = get(this.results$)
-  //       return fn(results, get)
-  //     },
-  //     label: `${this.label}:js`,
-  //     onDestroy: () => this.destroy(),
-  //     reactivityGraph: this.reactivityGraph,
-  //   })
 
   queryOnce = ({
     document,

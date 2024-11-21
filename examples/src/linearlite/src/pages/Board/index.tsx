@@ -1,13 +1,13 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import IssueBoard from './IssueBoard'
-import { query } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 import { filterStateToWhere } from '../../utils/filterState'
 import { useQuery } from '@livestore/react'
-import { tables } from '../../domain/schema'
-import { filterState$ } from '../../domain/queries'
+import { tables } from '../../livestore/schema'
+import { filterState$ } from '../../livestore/queries'
 
-const issues$ = query(
+const issues$ = queryDb(
   (get) => tables.issue.query.where(filterStateToWhere(get(filterState$))).orderBy('kanbanorder', 'asc'),
   { label: 'Board.issues' },
 )

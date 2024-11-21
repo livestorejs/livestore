@@ -9,7 +9,7 @@ import { Footer } from './components/Footer.js'
 import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
-import { schema } from './schema/index.js'
+import { schema } from './livestore/schema.js'
 import { getAppId } from './util/app-id.js'
 
 const AppBody: React.FC = () => (

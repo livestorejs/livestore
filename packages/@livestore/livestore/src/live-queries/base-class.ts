@@ -1,4 +1,4 @@
-import type { QueryInfo, QueryInfoNone } from '@livestore/common'
+import type { QueryInfo } from '@livestore/common'
 import type * as otel from '@opentelemetry/api'
 
 import { type Atom, type GetAtom, ReactiveGraph, throwContextNotSetError, type Thunk } from '../reactive.js'
@@ -27,9 +27,13 @@ let queryIdCounter = 0
 
 export type LiveQueryAny = LiveQuery<any, QueryInfo>
 
-export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfoNone> {
+export const TypeId = Symbol.for('LiveQuery')
+export type TypeId = typeof TypeId
+
+export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo.None> {
   id: number
-  _tag: 'computed' | 'sql' | 'graphql'
+  _tag: 'computed' | 'db' | 'graphql'
+  [TypeId]: TypeId
 
   /** This should only be used on a type-level and doesn't hold any value during runtime */
   '__result!': TResult
@@ -64,8 +68,9 @@ export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
   implements LiveQuery<TResult, TQueryInfo>
 {
   '__result!'!: TResult
-  id = queryIdCounter++
-  abstract _tag: 'computed' | 'sql' | 'graphql'
+  id = queryIdCounter++;
+  [TypeId]: TypeId = TypeId
+  abstract _tag: 'computed' | 'db' | 'graphql'
 
   /** Human-readable label for the query for debugging */
   abstract label: string

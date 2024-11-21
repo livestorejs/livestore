@@ -43,11 +43,11 @@ describe('query builder', () => {
       `)
     })
 
-    it('should handle WHERE clauses with boolean conditions', () => {
+    it('should handle WHERE clauses', () => {
       expect(db.todos.select('id', 'text').where('completed', true).asSql()).toMatchInlineSnapshot(`
         {
           "bindValues": [
-            true,
+            1,
           ],
           "query": "SELECT id, text FROM 'todos' WHERE completed = ?",
         }
@@ -55,7 +55,7 @@ describe('query builder', () => {
       expect(db.todos.select('id', 'text').where('completed', '!=', true).asSql()).toMatchInlineSnapshot(`
         {
           "bindValues": [
-            true,
+            1,
           ],
           "query": "SELECT id, text FROM 'todos' WHERE completed != ?",
         }
@@ -63,7 +63,7 @@ describe('query builder', () => {
       expect(db.todos.select('id', 'text').where({ completed: true }).asSql()).toMatchInlineSnapshot(`
         {
           "bindValues": [
-            true,
+            1,
           ],
           "query": "SELECT id, text FROM 'todos' WHERE completed = ?",
         }
@@ -74,35 +74,48 @@ describe('query builder', () => {
           "query": "SELECT id, text FROM 'todos'",
         }
       `)
+      expect(
+        db.todos
+          .select('id', 'text')
+          .where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "2024-01-01T00:00:00.000Z",
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE deletedAt <= ?",
+        }
+      `)
     })
 
     it('should handle OFFSET and LIMIT clauses', () => {
       expect(db.todos.select('id', 'text').where('completed', true).offset(10).limit(10).asSql())
         .toMatchInlineSnapshot(`
-        {
-          "bindValues": [
-            true,
-            10,
-            10,
-          ],
-          "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
-        }
-      `)
+          {
+            "bindValues": [
+              1,
+              10,
+              10,
+            ],
+            "query": "SELECT id, text FROM 'todos' WHERE completed = ? OFFSET ? LIMIT ?",
+          }
+        `)
     })
 
     it('should handle COUNT queries', () => {
       expect(db.todos.count().asSql()).toMatchInlineSnapshot(`
         {
           "bindValues": [],
-          "query": "COUNT(*) as count FROM 'todos'",
+          "query": "SELECT COUNT(*) as count FROM 'todos'",
         }
       `)
       expect(db.todos.count().where('completed', true).asSql()).toMatchInlineSnapshot(`
         {
           "bindValues": [
-            true,
+            1,
           ],
-          "query": "COUNT(*) as count FROM 'todos' WHERE completed = ?",
+          "query": "SELECT COUNT(*) as count FROM 'todos' WHERE completed = ?",
         }
       `)
     })
@@ -118,6 +131,42 @@ describe('query builder', () => {
         {
           "bindValues": [],
           "query": "SELECT id, text FROM 'todos' WHERE deletedAt IS NOT NULL",
+        }
+      `)
+    })
+
+    it('should handle orderBy', () => {
+      expect(db.todos.orderBy('completed', 'desc').asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [],
+          "query": "SELECT * FROM 'todos' ORDER BY completed desc",
+        }
+      `)
+
+      expect(db.todos.orderBy([{ col: 'completed', direction: 'desc' }]).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [],
+          "query": "SELECT * FROM 'todos' ORDER BY completed desc",
+        }
+      `)
+
+      expect(db.todos.orderBy([]).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [],
+          "query": "SELECT * FROM 'todos'",
+        }
+      `)
+    })
+  })
+
+  describe('row queries', () => {
+    it('should handle row queries', () => {
+      expect(db.todos.row('123', { insertValues: { status: 'completed' } }).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+          ],
+          "query": "SELECT * FROM 'todos' WHERE id = ?",
         }
       `)
     })

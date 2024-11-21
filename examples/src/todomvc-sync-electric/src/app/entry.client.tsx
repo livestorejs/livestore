@@ -8,7 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from 'react-error-boundary'
 import { registerSW } from 'virtual:pwa-register'
 
-import { schema } from '@/schema/index.js'
+import { schema } from '@/livestore/schema.js'
 import { getAppId } from '@/util/app-id.js'
 
 import LiveStoreWorker from '../livestore.worker?worker'

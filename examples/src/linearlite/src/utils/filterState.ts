@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
-import { FilterState, tables } from '../domain/schema'
+import { FilterState, tables } from '../livestore/schema'
 import { Schema } from 'effect'
 import { QueryBuilder } from '@livestore/livestore'
 
@@ -68,7 +68,7 @@ export const filterStateToWhere = (filterState: FilterState) => {
     priority: priority ? { op: 'IN', value: priority } : undefined,
     // TODO treat query as `OR` in
     title: query ? { op: 'LIKE', value: `%${query}%` } : undefined,
-  } satisfies QueryBuilder.WhereParams<typeof tables.issue.sqliteDef>
+  } satisfies QueryBuilder.WhereParams<typeof tables.issue>
 }
 
 export const filterStateToOrderBy = (filterState: FilterState) => [

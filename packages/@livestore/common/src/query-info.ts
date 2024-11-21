@@ -1,5 +1,3 @@
-import type { Schema } from '@livestore/utils/effect'
-
 import type { SessionIdSymbol } from './adapter-types.js'
 import type { DbSchema } from './schema/index.js'
 
@@ -11,97 +9,70 @@ import type { DbSchema } from './schema/index.js'
  *
  * This information is currently only used for derived mutations.
  */
-export type QueryInfo<TTableDef extends DbSchema.TableDef = DbSchema.TableDef> =
-  | QueryInfoNone
-  | QueryInfoRow<TTableDef>
-  | QueryInfoColJsonValue<TTableDef, GetJsonColumn<TTableDef>>
-  | QueryInfoCol<TTableDef, keyof TTableDef['sqliteDef']['columns']>
+export type QueryInfo = QueryInfo.None | QueryInfo.Row | QueryInfo.Col | QueryInfo.ColJsonValue
+// export type QueryInfo<TTableDef extends DbSchema.TableDefBase = DbSchema.TableDefBase> =
+// | QueryInfo.None
+// | QueryInfo.Row<TTableDef>
+// | QueryInfo.ColJsonValue<TTableDef, GetJsonColumn<TTableDef>>
+// | QueryInfo.Col<TTableDef, keyof TTableDef['sqliteDef']['columns']>
 
-export type QueryInfoNone = {
-  _tag: 'None'
+export namespace QueryInfo {
+  export type None = {
+    _tag: 'None'
+  }
+
+  export type Row = {
+    _tag: 'Row'
+    table: DbSchema.TableDefBase
+    id: string | SessionIdSymbol
+  }
+
+  export type Col = {
+    _tag: 'Col'
+    table: DbSchema.TableDefBase
+    id: string | SessionIdSymbol
+    column: string
+  }
+
+  export type ColJsonValue = {
+    _tag: 'ColJsonValue'
+    table: DbSchema.TableDefBase
+    id: string | SessionIdSymbol
+    column: string
+    /**
+     * example: `$.tabs[3].items[2]` (`$` referring to the column value)
+     */
+    jsonPath: string
+  }
+
+  // NOTE maybe we want to bring back type-params back like below
+  // export type Row<TTableDef extends DbSchema.TableDefBase> = {
+  //   _tag: 'Row'
+  //   table: TTableDef
+  //   id: string | SessionIdSymbol
+  // }
+
+  // export type Col<TTableDef extends DbSchema.TableDefBase, TColName extends keyof TTableDef['sqliteDef']['columns']> = {
+  //   _tag: 'Col'
+  //   table: TTableDef
+  //   id: string | SessionIdSymbol
+  //   column: TColName
+  // }
+
+  // export type ColJsonValue<TTableDef extends DbSchema.TableDefBase, TColName extends GetJsonColumn<TTableDef>> = {
+  //   _tag: 'ColJsonValue'
+  //   table: TTableDef
+  //   id: string | SessionIdSymbol
+  //   column: TColName
+  //   /**
+  //    * example: `$.tabs[3].items[2]` (`$` referring to the column value)
+  //    */
+  //   jsonPath: string
+  // }
 }
 
-export type QueryInfoRow<TTableDef extends DbSchema.TableDef> = {
-  _tag: 'Row'
-  table: TTableDef
-  id: string | SessionIdSymbol
-}
-
-export type QueryInfoCol<
-  TTableDef extends DbSchema.TableDef,
-  TColName extends keyof TTableDef['sqliteDef']['columns'],
-> = {
-  _tag: 'Col'
-  table: TTableDef
-  id: string | SessionIdSymbol
-  column: TColName
-}
-
-export type QueryInfoColJsonValue<TTableDef extends DbSchema.TableDef, TColName extends GetJsonColumn<TTableDef>> = {
-  _tag: 'ColJsonValue'
-  table: TTableDef
-  id: string | SessionIdSymbol
-  column: TColName
-  /**
-   * example: `$.tabs[3].items[2]` (`$` referring to the column value)
-   */
-  jsonPath: string
-}
-
-type GetJsonColumn<TTableDef extends DbSchema.TableDef> = keyof {
-  [ColName in keyof TTableDef['sqliteDef']['columns'] as TTableDef['sqliteDef']['columns'][ColName]['columnType'] extends 'text'
-    ? ColName
-    : never]: {}
-}
-
-export type UpdateValueForPath<TQueryInfo extends QueryInfo> = TQueryInfo extends { _tag: 'Row' }
-  ? Partial<DbSchema.FromTable.RowDecodedAll<TQueryInfo['table']>>
-  : TQueryInfo extends { _tag: 'Col' }
-    ? Schema.Schema.Type<TQueryInfo['table']['sqliteDef']['columns'][TQueryInfo['column']]['schema']>
-    : TQueryInfo extends { _tag: 'ColJsonValue' }
-      ? { TODO: true }
-      : never
-
-// export const mutationForQueryInfo = <const TQueryInfo extends QueryInfo>(
-//   queryInfo: TQueryInfo,
-//   value: UpdateValueForPath<TQueryInfo>,
-// ): RawSqlMutationEvent => {
-//   if (queryInfo._tag === 'ColJsonValue' || queryInfo._tag === 'None') {
-//     return notYetImplemented('TODO')
-//   }
-
-//   const sqliteTableDef = queryInfo.table.sqliteDef
-//   const id = queryInfo.id
-
-//   const { columnNames, bindValues } = (() => {
-//     if (queryInfo._tag === 'Row') {
-//       const columnNames = Object.keys(value)
-
-//       const partialStructSchema = queryInfo.table.schema.pipe(Schema.pick(...columnNames))
-
-//       // const columnNames = Object.keys(value)
-//       const encodedBindValues = Schema.encodeEither(partialStructSchema)(value)
-//       if (encodedBindValues._tag === 'Left') {
-//         return shouldNeverHappen(encodedBindValues.left.toString())
-//       } else {
-//         return { columnNames, bindValues: encodedBindValues.right }
-//       }
-//     } else if (queryInfo._tag === 'Col') {
-//       const columnName = queryInfo.column
-//       const columnSchema =
-//         sqliteTableDef.columns[columnName]?.schema ?? shouldNeverHappen(`Column ${columnName} not found`)
-//       const bindValues = { [columnName]: Schema.encodeSync(columnSchema)(value) }
-//       return { columnNames: [columnName], bindValues }
-//     } else {
-//       return shouldNeverHappen()
-//     }
-//   })()
-
-//   const updateClause = columnNames.map((columnName) => `${columnName} = $${columnName}`).join(', ')
-
-//   const whereClause = `where id = '${id}'`
-//   const sql = `UPDATE ${sqliteTableDef.name} SET ${updateClause} ${whereClause}`
-//   const writeTables = new Set<string>([queryInfo.table.sqliteDef.name])
-
-//   return rawSqlMutation({ sql, bindValues, writeTables })
+// type GetJsonColumn<TTableDef extends DbSchema.TableDefBase> = keyof {
+//   [ColName in keyof TTableDef['sqliteDef']['columns'] as TTableDef['sqliteDef']['columns'][ColName]['columnType'] extends 'text'
+//     ? ColName
+//     : never]: {}
 // }

@@ -1,13 +1,14 @@
-import { useRow, useStore } from '@livestore/react'
-import { cuid } from '@livestore/utils/cuid'
+import { useQuery, useStore } from '@livestore/react'
+import { nanoid } from '@livestore/utils/nanoid'
 import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 
-import { mutations, tables } from '../schema/index.ts'
+import { app$ } from '../livestore/queries.ts'
+import { mutations } from '../livestore/schema.ts'
 
 export const NewTodo: React.FC = () => {
   const { store } = useStore()
-  const [{ newTodoText }] = useRow(tables.app)
+  const { newTodoText } = useQuery(app$)
 
   const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
   const addTodo = () =>
@@ -16,7 +17,7 @@ export const NewTodo: React.FC = () => {
       mutations.updateNewTodoText({ text: '' }),
     )
   const addRandom50 = () => {
-    const todos = Array.from({ length: 50 }, (_, i) => ({ id: cuid(), text: `Todo ${i}` }))
+    const todos = Array.from({ length: 50 }, (_, i) => ({ id: nanoid(), text: `Todo ${i}` }))
     store.mutate(...todos.map((todo) => mutations.addTodo(todo)))
   }
   const reset = () => store.mutate(mutations.clearAll({ deleted: Date.now() }))

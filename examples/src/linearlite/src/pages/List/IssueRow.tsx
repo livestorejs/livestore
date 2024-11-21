@@ -11,7 +11,7 @@ import { formatDate } from '../../utils/date'
 import { Issue } from '../../types'
 import { PriorityType, StatusType } from '../../types/issue'
 import { useStore } from '@livestore/react'
-import { mutations } from '../../domain/schema'
+import { mutations } from '../../livestore/schema'
 
 interface Props {
   issue: Issue

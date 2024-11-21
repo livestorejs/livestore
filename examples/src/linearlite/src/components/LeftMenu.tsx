@@ -15,7 +15,7 @@ import AboutModal from './AboutModal'
 import IssueModal from './IssueModal'
 import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
-import { useFilterState } from '../domain/queries'
+import { useFilterState } from '../livestore/queries'
 import React from 'react'
 import { MenuContext } from '../context/MenuContext'
 

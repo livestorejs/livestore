@@ -1,4 +1,4 @@
-import { query } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { renderHook } from '@testing-library/react'
 import React from 'react'
@@ -14,7 +14,7 @@ describe('useQuery', () => {
 
       const renderCount = makeRenderCount()
 
-      const allTodos$ = query(`select * from todos`, { schema: Schema.Array(tables.todos.schema) })
+      const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.schema) })
 
       const { result } = renderHook(
         () => {
@@ -41,14 +41,14 @@ describe('useQuery', () => {
 
       const renderCount = makeRenderCount()
 
-      const todo1$ = query(`select * from todos where id = 't1'`, {
-        label: 'libraryTracksView1',
-        schema: Schema.Array(tables.todos.schema),
-      })
-      const todo2$ = query(`select * from todos where id = 't2'`, {
-        label: 'libraryTracksView2',
-        schema: Schema.Array(tables.todos.schema),
-      })
+      const todo1$ = queryDb(
+        { query: `select * from todos where id = 't1'`, schema: Schema.Array(tables.todos.schema) },
+        { label: 'libraryTracksView1' },
+      )
+      const todo2$ = queryDb(
+        { query: `select * from todos where id = 't2'`, schema: Schema.Array(tables.todos.schema) },
+        { label: 'libraryTracksView2' },
+      )
 
       store.mutate(
         todos.insert({ id: 't1', text: 'buy milk', completed: false }),

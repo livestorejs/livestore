@@ -1,14 +1,14 @@
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import * as ReactWindow from 'react-window'
-import { query } from '@livestore/livestore'
-import { tables } from '../../domain/schema'
+import { queryDb } from '@livestore/livestore'
+import { tables } from '../../livestore/schema'
 import { filterStateToOrderBy, filterStateToWhere } from '../../utils/filterState'
 import { useQuery, useRow } from '@livestore/react'
 import { memo, type CSSProperties } from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import IssueRow from './IssueRow'
-import { filterState$ } from '../../domain/queries'
+import { filterState$ } from '../../livestore/queries'
 
 const ITEM_HEIGHT = 36
 
@@ -23,7 +23,7 @@ export const List: React.FC<{ showSearch?: boolean }> = ({ showSearch = false })
   )
 }
 
-const filteredIssueIds$ = query(
+const filteredIssueIds$ = queryDb(
   (get) =>
     tables.issue.query
       .select('id', { pluck: true })
@@ -32,24 +32,28 @@ const filteredIssueIds$ = query(
   { label: 'List.visibleIssueIds' },
 )
 
-const IssueList: React.FC<{ issueIds: readonly string[] }> = ({ issueIds }) => (
-  <div className="grow">
-    <AutoSizer>
-      {({ height, width }: { width: number; height: number }) => (
-        <ReactWindow.FixedSizeList
-          height={height}
-          itemCount={issueIds.length}
-          itemSize={ITEM_HEIGHT}
-          itemData={issueIds}
-          overscanCount={10}
-          width={width}
-        >
-          {VirtualIssueRow}
-        </ReactWindow.FixedSizeList>
-      )}
-    </AutoSizer>
-  </div>
-)
+const IssueList: React.FC<{ issueIds: readonly string[] }> = (props) => {
+  const { issueIds } = props
+
+  return (
+    <div className="grow">
+      <AutoSizer>
+        {({ height, width }: { width: number; height: number }) => (
+          <ReactWindow.FixedSizeList
+            height={height}
+            itemCount={issueIds.length}
+            itemSize={ITEM_HEIGHT}
+            itemData={issueIds}
+            overscanCount={10}
+            width={width}
+          >
+            {VirtualIssueRow}
+          </ReactWindow.FixedSizeList>
+        )}
+      </AutoSizer>
+    </div>
+  )
+}
 
 const VirtualIssueRow = memo(
   ({ data, index, style }: { data: readonly string[]; index: number; style: CSSProperties }) => {

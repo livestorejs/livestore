@@ -9,7 +9,7 @@ import PriorityIcon from '../../components/PriorityIcon'
 import { Issue } from '../../types'
 import { PriorityType } from '../../types/issue'
 import { useStore } from '@livestore/react'
-import { mutations } from '../../domain/schema'
+import { mutations } from '../../livestore/schema'
 
 interface IssueProps {
   issue: Issue

@@ -25,7 +25,7 @@ config.resolver.nodeModulesPaths = [
 ]
 
 addLiveStoreDevtoolsMiddleware(config, {
-  schemaPath: './src/schema/index.ts',
+  schemaPath: './src/livestore/schema.ts',
   viteConfig: (viteConfig) => {
     viteConfig.server.fs ??= {}
     // Point to Overtone monorepo root

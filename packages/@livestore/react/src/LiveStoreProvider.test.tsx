@@ -1,5 +1,5 @@
 import { sql } from '@livestore/common'
-import { query, type Store } from '@livestore/livestore'
+import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
@@ -15,7 +15,7 @@ describe('LiveStoreProvider', () => {
   it('simple', async () => {
     let appRenderCount = 0
 
-    const allTodos$ = query(`select * from todos`, { schema: Schema.Array(tables.todos.schema) })
+    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.schema) })
 
     const App = () => {
       appRenderCount++

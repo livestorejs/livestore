@@ -1,5 +1,6 @@
-import { type QueryInfoCol, type QueryInfoRow } from '@livestore/common'
+import type { DerivedMutationHelperFns, QueryInfo } from '@livestore/common'
 import type { DbSchema } from '@livestore/common/schema'
+import type { SqliteDsl } from '@livestore/db-schema'
 import type { LiveQuery } from '@livestore/livestore'
 import React from 'react'
 
@@ -8,11 +9,8 @@ import { useQueryRef } from './useQuery.js'
 import type { Dispatch, SetStateAction } from './useRow.js'
 
 export const useAtom = <
-  TQuery extends LiveQuery<any, QueryInfoRow<TTableDef> | QueryInfoCol<TTableDef, any>>,
-  TTableDef extends DbSchema.TableDef<
-    DbSchema.DefaultSqliteTableDefConstrained,
-    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
-  >,
+  // TODO also support colJsonValue
+  TQuery extends LiveQuery<any, QueryInfo.Row | QueryInfo.Col>,
 >(
   query$: TQuery,
 ): [value: TQuery['__result!'], setValue: Dispatch<SetStateAction<Partial<TQuery['__result!']>>>] => {
@@ -24,23 +22,23 @@ export const useAtom = <
   const setValue = React.useMemo<Dispatch<SetStateAction<TQuery['__result!']>>>(() => {
     return (newValueOrFn: any) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
+      const table = query$.queryInfo.table as DbSchema.TableDef &
+        DerivedMutationHelperFns<SqliteDsl.Columns, DbSchema.TableOptions>
 
       if (query$.queryInfo._tag === 'Row') {
-        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.options.isSingleColumn) {
-          store.mutate(query$.queryInfo.table.update(newValue))
-        } else if (query$.queryInfo.table.options.isSingleColumn) {
-          store.mutate(
-            query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: { value: newValue } }),
-          )
+        if (table.options.isSingleton && table.options.isSingleColumn) {
+          store.mutate(table.update(newValue))
+        } else if (table.options.isSingleColumn) {
+          store.mutate(table.update({ where: { id: query$.queryInfo.id }, values: { value: newValue } }))
         } else {
-          store.mutate(query$.queryInfo.table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
+          store.mutate(table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
         }
       } else {
-        if (query$.queryInfo.table.options.isSingleton && query$.queryInfo.table.options.isSingleColumn) {
-          store.mutate(query$.queryInfo.table.update({ [query$.queryInfo.column]: newValue }))
+        if (table.options.isSingleton && table.options.isSingleColumn) {
+          store.mutate(table.update({ [query$.queryInfo.column]: newValue }))
         } else {
           store.mutate(
-            query$.queryInfo.table.update({
+            table.update({
               where: { id: query$.queryInfo.id },
               values: { [query$.queryInfo.column]: newValue },
             }),

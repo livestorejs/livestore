@@ -3,9 +3,9 @@ import { useStore } from '@livestore/react'
 import * as React from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
-import type { Todo as ITodo } from '../schema/index.js'
-import { mutations } from '../schema/index.js'
-import { Checkbox } from './Checkbox.js'
+import type { Todo as ITodo } from '../livestore/schema.ts'
+import { mutations } from '../livestore/schema.ts'
+import { Checkbox } from './Checkbox.tsx'
 
 export const Todo: React.FC<ITodo> = ({ id, text, completed }) => {
   const { store } = useStore()

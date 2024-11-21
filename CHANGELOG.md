@@ -3,12 +3,52 @@
 > NOTE: LiveStore is still in alpha and releases can include breaking changes. See [state of the project](https://preview.livestore.dev/reference/state-of-the-project/) for more info.
 > LiveStore is following a semver-like release strategy where breaking changes are released in minor versions before the 1.0 release.
 
-## 0.1.1
+## 0.2.0
 
 ### Core
 
 - Added query builder API
-- Breaking: Renamed `querySQL` to `query`
+  
+  ```ts
+  const table = DbSchema.table('myTable', {
+    id: DbSchema.text({ primaryKey: true }),
+    name: DbSchema.text(),
+  })
+
+  table.query.select('name')
+  table.query.where('name', '==', 'Alice')
+  table.query.where({ name: 'Alice' })
+  table.query.orderBy('name', 'desc').offset(10).limit(10)
+  table.query.count().where('name', 'like', '%Ali%')
+  table.query.row('123', { insertValues: { name: 'Bob' } })
+  ```
+
+- Breaking: Renamed `querySQL` to `queryDb` and adjusted the signature to allow both the new query builder API and raw SQL queries:
+  ```ts
+   // before
+   const query$ = querySQL(sql`select * from myTable where name = 'Alice'`, {
+    schema: Schema.Array(table.schema),
+  })
+
+  // after (raw SQL)
+   const query$ = queryDb({
+    query: sql`select * from myTable where name = 'Alice'`,
+    schema: Schema.Array(table.schema),
+  })
+
+  // or with the query builder API
+  const query$ = queryDb(table.query.select('name').where({ name: 'Alice' }))
+  ```
+
+- Breaking: Replaced `rowQuery()` with `table.query.row()` (as part of the new query builder API)
+
+### React integration
+
+- Fix: `useRow` now type-safe for non-nullable/non-default columns
+
+### Misc
+
+- Removed Drizzle example in favour of new query builder API
 
 ## 0.1.0
 
@@ -40,7 +80,7 @@
   ```tsx
   <LiveStoreProvider
     schema={schema}
-    boot={(store) => store.mutate(mutations.addTodo({ id: cuid(), text: 'Make coffee' }))}
+    boot={(store) => store.mutate(mutations.addTodo({ id: nanoid(), text: 'Make coffee' }))}
     adapter={adapter}
     batchUpdates={batchUpdates}
   >

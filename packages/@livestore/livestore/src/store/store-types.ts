@@ -5,8 +5,8 @@ import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
+import type { ReactivityGraph } from '../live-queries/base-class.js'
 import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { ReactivityGraph } from '../reactiveQueries/base-class.js'
 import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 import type { StackInfo } from '../utils/stack-info.js'
 import type { Store } from './store.js'
@@ -84,7 +84,7 @@ export type RefreshReason =
   | { _tag: 'manual'; label?: string }
 
 export type QueryDebugInfo = {
-  _tag: 'graphql' | 'sql' | 'computed' | 'unknown'
+  _tag: 'graphql' | 'db' | 'computed' | 'unknown'
   label: string
   query: string
   durationMs: number

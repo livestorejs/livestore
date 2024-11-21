@@ -1,5 +1,12 @@
-import type { ClientSession, ParamsObject } from '@livestore/common'
-import { getExecArgsFromMutation, prepareBindValues, replaceSessionIdSymbol } from '@livestore/common'
+import type { ClientSession, ParamsObject, PreparedBindValues, QueryBuilder } from '@livestore/common'
+import {
+  getExecArgsFromMutation,
+  getResultSchema,
+  isQueryBuilder,
+  prepareBindValues,
+  QueryBuilderAstSymbol,
+  replaceSessionIdSymbol,
+} from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
   isPartialMutationEvent,
@@ -14,8 +21,9 @@ import { Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema, S
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
+import type { LiveQuery, QueryContext, ReactivityGraph } from '../live-queries/base-class.js'
 import type { Ref } from '../reactive.js'
-import type { LiveQuery, QueryContext, ReactivityGraph } from '../reactiveQueries/base-class.js'
+import { makeExecBeforeFirstRun } from '../row-query-utils.js'
 import { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
@@ -233,6 +241,39 @@ export class Store<
         return unsubscribe
       },
     )
+
+  query = <TResult>(
+    query: QueryBuilder<TResult, any, any> | LiveQuery<TResult, any> | { query: string; bindValues: ParamsObject },
+    options?: { otelContext?: otel.Context },
+  ): TResult => {
+    if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
+      return this.syncDbWrapper.select(query.query, {
+        bindValues: prepareBindValues(query.bindValues, query.query),
+        otelContext: options?.otelContext,
+      }) as any
+    } else if (isQueryBuilder(query)) {
+      const ast = query[QueryBuilderAstSymbol]
+      if (ast._tag === 'RowQuery') {
+        makeExecBeforeFirstRun({
+          table: ast.tableDef,
+          id: ast.id,
+          insertValues: ast.insertValues,
+          otelContext: options?.otelContext,
+        })(this.reactivityGraph.context!)
+      }
+
+      const sqlRes = query.asSql()
+      const schema = getResultSchema(query)
+      const rawRes = this.syncDbWrapper.select(sqlRes.query, {
+        bindValues: sqlRes.bindValues as any as PreparedBindValues,
+        otelContext: options?.otelContext,
+        queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
+      })
+      return Schema.decodeSync(schema)(rawRes)
+    } else {
+      return query.run(options?.otelContext)
+    }
+  }
 
   // #region mutate
   mutate: {
@@ -516,10 +557,6 @@ export class Store<
     this.syncDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
 
     this.clientSession.coordinator.execute(query, prepareBindValues(params, query)).pipe(this.runEffectFork)
-  }
-
-  __select = (query: string, params: ParamsObject = {}) => {
-    return this.syncDbWrapper.select(query, { bindValues: prepareBindValues(params, query) })
   }
 
   private makeTableRef = (tableName: string) =>

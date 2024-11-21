@@ -17,64 +17,71 @@ export type StateType = 'singleton' | 'dynamic'
 export type DefaultSqliteTableDef = SqliteDsl.TableDefinition<string, SqliteDsl.Columns>
 export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string, SqliteDsl.ConstraintColumns>
 
-// export type TableDefConstraint<
-//   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
-//   TIsSingleColumn extends boolean = boolean,
-//   TOptions extends TableOptions = TableOptions,
-// > = TableDefBase<TSqliteDef, TIsSingleColumn, TOptions> & { schema: Schema.Schema<any> }
-
-// /**
-//  * NOTE in the past we used to have a single `TableDef` but there are some TS issues when indroducing
-//  * `schema: SqliteDsl.StructSchemaForColumns<TSqliteDef>` so we split it into two types
-//  * and only use `TableDefConstraint` in some places
-//  */
-// export type TableDefBase<
-//   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDef,
-//   TIsSingleColumn extends boolean = boolean,
-//   TOptions extends TableOptions = TableOptions,
-// > = {
-//   sqliteDef: TSqliteDef
-//   // schema: SqliteDsl.StructSchemaForColumns<TSqliteDef>
-//   // schema: any;
-//   isSingleColumn: TIsSingleColumn
-//   options: TOptions
-// }
+export type TableDefBase<
+  TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
+  TOptions extends TableOptions = TableOptions,
+  TSchema = SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>,
+> = {
+  sqliteDef: TSqliteDef
+  options: TOptions
+  // Derived from `sqliteDef`, so only exposed for convenience
+  schema: TSchema
+}
 
 export type TableDef<
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
-  // as we don't want the alias type for users to show up
+  // as we don't want the alias type for users to show up, so we're redefining it here
   TSchema = Schema.Schema<
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.Type<TSqliteDef['columns'][K]['schema']> }
+      { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Type'] }
     >,
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: Schema.Schema.Encoded<TSqliteDef['columns'][K]['schema']> }
+      { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Encoded'] }
     >
   >,
 > = {
   sqliteDef: TSqliteDef
   options: TOptions
+  // Derived from `sqliteDef`, so only exposed for convenience
   schema: TSchema
-  query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TSqliteDef>
+  query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDef<TSqliteDef & {}, TOptions>>
 } & (TOptions['deriveMutations']['enabled'] extends true
   ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions>
   : {})
 
-export type TableOptionsInput = Partial<
-  Omit<TableOptions, 'isSingleColumn' | 'deriveMutations'> & {
-    indexes: SqliteDsl.Index[]
-    deriveMutations:
-      | boolean
-      | {
-          enabled: true
-          localOnly?: boolean
-        }
-  }
->
+export type TableOptionsInput = Partial<{
+  indexes: SqliteDsl.Index[]
+  disableAutomaticIdColumn: boolean
+  isSingleton: boolean
+  deriveMutations:
+    | boolean
+    | {
+        enabled: true
+        localOnly?: boolean
+      }
+}>
+
+type ToColumns<TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>> =
+  TColumns extends SqliteDsl.Columns
+    ? TColumns
+    : TColumns extends SqliteDsl.ColumnDefinition<any, any>
+      ? { value: TColumns }
+      : never
+
+type ValidateTableOptionsInput<
+  TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
+  TOptionsInput extends TableOptionsInput,
+  TPassthroughIfValid,
+> =
+  SqliteDsl.FromColumns.RequiresInsertValues<ToColumns<TColumns>> extends true
+    ? TOptionsInput['isSingleton'] extends true
+      ? 'Error: To use `isSingleton: true` with this table, each column must have a default value or be nullable'
+      : TPassthroughIfValid
+    : TPassthroughIfValid
 
 export type TableOptions = {
   /**
@@ -85,8 +92,10 @@ export type TableOptions = {
    *
    * @default false
    */
-  isSingleton: boolean
-  disableAutomaticIdColumn: boolean
+  readonly isSingleton: boolean
+
+  readonly disableAutomaticIdColumn: boolean
+
   /**
    * Setting this to true will automatically derive insert, update and delete mutations for this table. Example:
    *
@@ -99,7 +108,7 @@ export type TableOptions = {
    *
    * Important: When using this option, make sure you're following the "Rules of mutations" for the table schema.
    */
-  deriveMutations:
+  readonly deriveMutations:
     | { enabled: false }
     | {
         enabled: true
@@ -108,21 +117,34 @@ export type TableOptions = {
          */
         localOnly: boolean
       }
+
   /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
-  isSingleColumn: boolean
+  readonly isSingleColumn: boolean
+
+  /**
+   * Derived based on whether the table definition has one or more columns (besides the `id` column) that require
+   * insert values (i.e. are not nullable and don't have a default value)
+   *
+   * `isSingleton` tables always imply `requiresInsertValues: false`
+   */
+  readonly requiredInsertColumnNames: string
 }
 
 export const table = <
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
-  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
+  TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   name: TName,
   columnOrColumns: TColumns,
   options?: TOptionsInput,
-): TableDef<
-  SqliteTableDefForInput<TName, TColumns, TOptionsInput>,
-  WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
+): ValidateTableOptionsInput<
+  TColumns,
+  TOptionsInput,
+  TableDef<
+    SqliteTableDefForInput<TName, TColumns, WithDefaults<TOptionsInput, TColumns>>,
+    WithDefaults<TOptionsInput, TColumns>
+  >
 > => {
   const tablePath = name
 
@@ -138,6 +160,7 @@ export const table = <
             ? { enabled: false as const }
             : { enabled: true as const, localOnly: options.deriveMutations.localOnly ?? false },
     isSingleColumn: SqliteDsl.isColumnDefinition(columnOrColumns) === true,
+    requiredInsertColumnNames: 'type-level-only',
   }
 
   const columns = (
@@ -174,8 +197,14 @@ export const table = <
   const isSingleColumn = SqliteDsl.isColumnDefinition(columnOrColumns) === true
 
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
-  const query = makeQueryBuilder<any, typeof sqliteDef>(sqliteDef)
-  const tableDef = { sqliteDef, options: options_, schema, query } satisfies TableDef
+  const tableDef = { sqliteDef, options: options_, schema } satisfies TableDefBase
+  const query = makeQueryBuilder(tableDef)
+  // const tableDef = { ...tableDefBase, query } satisfies TableDef
+
+  // NOTE we're currently patching the existing tableDef object
+  // as it's being used as part of the query builder API
+  // @ts-expect-error TODO properly implement this
+  tableDef.query = query
 
   if (tableHasDerivedMutations(tableDef)) {
     const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
@@ -202,30 +231,22 @@ export const table = <
   return tableDef as any
 }
 
-export const tableHasDerivedMutations = <TTableDef extends TableDef>(
+export const tableHasDerivedMutations = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & {
   options: { deriveMutations: { enabled: true; localOnly: boolean } }
 } & DerivedMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> =>
   tableDef.options.deriveMutations.enabled === true
 
-export const tableIsSingleton = <TTableDef extends TableDef>(
+export const tableIsSingleton = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
 
 type SqliteTableDefForInput<
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
-  TOptionsInput extends TableOptionsInput = TableOptionsInput,
-> = SqliteDsl.TableDefinition<
-  TName,
-  PrettifyFlat<
-    WithId<
-      TColumns extends SqliteDsl.Columns ? TColumns : { value: TColumns },
-      WithDefaults<TOptionsInput, SqliteDsl.IsSingleColumn<TColumns>>
-    >
-  >
->
+  TOptions extends TableOptions,
+> = SqliteDsl.TableDefinition<TName, PrettifyFlat<WithId<ToColumns<TColumns>, TOptions>>>
 
 type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> = TColumns &
   ('id' extends keyof TColumns
@@ -240,7 +261,10 @@ type WithId<TColumns extends SqliteDsl.Columns, TOptions extends TableOptions> =
             id: SqliteDsl.ColumnDefinition<string, string>
           })
 
-type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn extends boolean> = {
+type WithDefaults<
+  TOptionsInput extends TableOptionsInput,
+  TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
+> = {
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
   deriveMutations: TOptionsInput['deriveMutations'] extends true
@@ -253,36 +277,37 @@ type WithDefaults<TOptionsInput extends TableOptionsInput, TIsSingleColumn exten
             localOnly: TOptionsInput['deriveMutations']['localOnly'] extends true ? true : false
           }
         : never
-  isSingleColumn: TIsSingleColumn
+  isSingleColumn: SqliteDsl.IsSingleColumn<TColumns>
+  requiredInsertColumnNames: SqliteDsl.FromColumns.RequiredInsertColumnNames<ToColumns<TColumns>>
 }
 
 export namespace FromTable {
   // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TTableDef extends TableDef> = PrettifyFlat<
+  export type RowDecoded<TTableDef extends TableDefBase> = PrettifyFlat<
     Nullable<Pick<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>> &
       Omit<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>
   >
 
-  export type NullableColumnNames<TTableDef extends TableDef> = FromColumns.NullableColumnNames<
+  export type NullableColumnNames<TTableDef extends TableDefBase> = FromColumns.NullableColumnNames<
     TTableDef['sqliteDef']['columns']
   >
 
-  export type Columns<TTableDef extends TableDef> = {
+  export type Columns<TTableDef extends TableDefBase> = {
     [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['columnType']
   }
 
-  export type RowEncodeNonNullable<TTableDef extends TableDef> = {
+  export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
     [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Encoded<
       TTableDef['sqliteDef']['columns'][K]['schema']
     >
   }
 
-  export type RowEncoded<TTableDef extends TableDef> = PrettifyFlat<
+  export type RowEncoded<TTableDef extends TableDefBase> = PrettifyFlat<
     Nullable<Pick<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>> &
       Omit<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>
   >
 
-  export type RowDecodedAll<TTableDef extends TableDef> = {
+  export type RowDecodedAll<TTableDef extends TableDefBase> = {
     [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Type<TTableDef['sqliteDef']['columns'][K]['schema']>
   }
 }

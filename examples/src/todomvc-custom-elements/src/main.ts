@@ -2,11 +2,10 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { createStorePromise, query, rowQuery } from '@livestore/livestore'
-import { cuid } from '@livestore/utils/cuid'
+import { createStorePromise, queryDb } from '@livestore/livestore'
+import { nanoid } from '@livestore/utils/nanoid'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
-import { Schema } from 'effect'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'
@@ -23,13 +22,13 @@ const store = await createStorePromise({
   storeId: 'todomvc',
 })
 
-const appState$ = rowQuery(tables.app)
-const todos$ = query(`select * from todos where deleted is null`, { schema: Schema.Array(tables.todos.schema) })
+const appState$ = queryDb(tables.app.query.row())
+const todos$ = queryDb(tables.todos.query.where({ deleted: null }))
 
 const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
 
 const addTodo = (newTodoText: string) => {
-  store.mutate(mutations.addTodo({ id: cuid(), text: newTodoText }))
+  store.mutate(mutations.addTodo({ id: nanoid(), text: newTodoText }))
   store.mutate(mutations.updateNewTodoText({ text: '' }))
 }
 

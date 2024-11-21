@@ -6,7 +6,7 @@ import IssueCol from './IssueCol'
 import { Issue } from '../../types'
 import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
-import { mutations } from '../../domain/schema'
+import { mutations } from '../../livestore/schema'
 
 export interface IssueBoardProps {
   issues: readonly Issue[]

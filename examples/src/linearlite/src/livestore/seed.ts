@@ -1,7 +1,7 @@
-import { sql, type Store } from '@livestore/livestore'
+import { type Store } from '@livestore/livestore'
 
 import { nanoid } from 'nanoid'
-import { Issue, mutations } from './schema'
+import { Issue, mutations, tables } from './schema'
 import { PriorityType, StatusType } from '../types/issue'
 
 export const names = ['John', 'Jane', 'Sam', 'Anna', 'Michael', 'Sarah', 'Chris', 'Jessica']
@@ -10,7 +10,7 @@ export const labels = ['frontend', 'backend', 'ux', 'research', 'design', 'bug',
 export const priorities = ['none', 'low', 'medium', 'high', 'urgent'] satisfies PriorityType[]
 export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled'] satisfies StatusType[]
 
-export function seed(store: Store) {
+export const seed = (store: Store) => {
   try {
     const urlParams = new URLSearchParams(window.location.search)
     const seedParam = urlParams.get('seed')
@@ -18,12 +18,12 @@ export function seed(store: Store) {
       return
     }
     let howMany = parseInt(seedParam)
-    const rows: readonly { c: number }[] = store.__select(sql`SELECT count(*) as c FROM issue`)
-    if (rows[0]!.c >= howMany) {
+    const existingCount = store.query(tables.issue.query.count())
+    if (existingCount >= howMany) {
       return
     }
 
-    howMany -= rows[0]!.c
+    howMany -= existingCount
 
     console.log('SEEDING WITH ', howMany, ' ADDITIONAL ROWS')
 
@@ -36,7 +36,7 @@ export function seed(store: Store) {
   }
 }
 
-export function* createIssues(numTasks: number): Generator<Issue & { description: string }> {
+function* createIssues(numTasks: number): Generator<Issue & { description: string }> {
   const actionPhrases = [
     'Implement',
     'Develop',

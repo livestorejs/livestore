@@ -1,7 +1,6 @@
 import { makeAdapter } from '@livestore/expo'
-import { sql } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
-import { cuid } from '@livestore/utils/cuid'
+import { nanoid } from '@livestore/utils/nanoid'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import { Button, StyleSheet, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
@@ -10,7 +9,7 @@ import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
-import { mutations, schema } from './schema/index.ts'
+import { mutations, schema, tables } from './livestore/schema.ts'
 
 const adapter = makeAdapter()
 
@@ -32,8 +31,8 @@ export const App = () => {
           )
         }}
         boot={(store) => {
-          if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
-            store.mutate(mutations.addTodo({ id: cuid(), text: 'Make coffee' }))
+          if (store.query(tables.todos.query.count()) === 0) {
+            store.mutate(mutations.addTodo({ id: nanoid(), text: 'Make coffee' }))
           }
         }}
         adapter={adapter}

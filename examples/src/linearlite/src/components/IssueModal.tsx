@@ -5,7 +5,6 @@ import { BsChevronRight as ChevronRight } from 'react-icons/bs'
 import CloseIcon from '../assets/icons/close.svg?react'
 import LivestoreIcon from '../assets/images/icon.inverse.svg?react'
 import { generateKeyBetween } from 'fractional-indexing'
-import { query } from '@livestore/livestore'
 
 import Modal from './Modal'
 import Editor from './editor/Editor'
@@ -18,7 +17,7 @@ import { PriorityOptions, StatusType, PriorityType } from '../types/issue'
 import { showInfo, showWarning } from '../utils/notification'
 import { useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
-import { mutations, tables } from '../domain/schema'
+import { mutations, tables } from '../livestore/schema'
 
 interface Props {
   isOpen: boolean
@@ -40,12 +39,12 @@ function IssueModal({ isOpen, onDismiss }: Props) {
       return
     }
 
-    const lastIssueKanbanorder = query(
+    const lastIssueKanbanorder = store.query(
       tables.issue.query
         .select('kanbanorder', { pluck: true })
         .orderBy('kanbanorder', 'desc')
-        .first(() => 'a0'),
-    ).runAndDestroy()
+        .first({ fallback: () => 'a0' }),
+    )
     const kanbanorder = generateKeyBetween(lastIssueKanbanorder, null)
 
     const date = Date.now()

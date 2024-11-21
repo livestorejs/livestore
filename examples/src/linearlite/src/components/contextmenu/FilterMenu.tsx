@@ -5,7 +5,7 @@ import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
 import { BsCheck2 } from 'react-icons/bs'
 import { Menu } from './menu'
 import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
-import { useFilterState } from '../../domain/queries'
+import { useFilterState } from '../../livestore/queries'
 
 interface Props {
   id: string
