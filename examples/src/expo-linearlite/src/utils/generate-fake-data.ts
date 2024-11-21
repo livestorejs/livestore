@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker'
 import { cuid } from '@livestore/utils/cuid'
 
-import type { Comment, Issue, Reaction, User } from '@/livestore/schema'
-import { PRIORITIES, STATUSES } from '@/types'
+import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
+import { PRIORITIES, STATUSES } from '@/types.ts'
 
 export const createRandomUser = (): User => ({
   id: cuid(),

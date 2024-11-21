@@ -1,16 +1,13 @@
-import { Pressable } from 'react-native';
-import { ThemedText } from './ThemedText';
+import { Pressable } from 'react-native'
+
+import { ThemedText } from './ThemedText.tsx'
 
 interface RowPropertySwitchProps {
-  onPress: () => void;
-  label: string;
-  isSelected: boolean;
+  onPress: () => void
+  label: string
+  isSelected: boolean
 }
-export function RowPropertySwitch({
-  onPress,
-  label,
-  isSelected,
-}: RowPropertySwitchProps) {
+export const RowPropertySwitch = ({ onPress, label, isSelected }: RowPropertySwitchProps) => {
   return (
     <Pressable
       onPress={onPress}
@@ -21,5 +18,5 @@ export function RowPropertySwitch({
     >
       <ThemedText>{label}</ThemedText>
     </Pressable>
-  );
+  )
 }

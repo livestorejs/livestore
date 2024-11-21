@@ -3,14 +3,14 @@ import '../../polyfill.ts'
 
 import { Tabs, useRouter } from 'expo-router'
 import { HouseIcon, InboxIcon, SearchIcon, SettingsIcon, SlidersHorizontal, SquarePen } from 'lucide-react-native'
-import { Pressable, TouchableOpacity } from 'react-native'
+import { Pressable } from 'react-native'
 
 // export const unstable_settings = {
 //   // Ensure any route can link back to `/`
 //   initialRouteName: '/',
 // };
 
-export default function TabLayout() {
+const TabLayout = () => {
   const router = useRouter()
   return (
     <Tabs
@@ -68,3 +68,5 @@ export default function TabLayout() {
     </Tabs>
   )
 }
+
+export default TabLayout

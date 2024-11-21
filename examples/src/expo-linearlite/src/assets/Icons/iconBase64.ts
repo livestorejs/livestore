@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 
 // Auto-generated file
 export const iconBase64 = {

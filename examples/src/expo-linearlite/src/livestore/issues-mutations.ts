@@ -1,5 +1,5 @@
-import { Schema } from 'effect';
-import { defineMutation, sql } from '@livestore/livestore';
+import { defineMutation, sql } from '@livestore/livestore'
+import { Schema } from 'effect'
 
 export const createIssue = defineMutation(
   'createIssue',
@@ -15,7 +15,7 @@ export const createIssue = defineMutation(
     updatedAt: Schema.Union(Schema.Number, Schema.Null),
   }),
   sql`INSERT INTO issues (id, title, description, parentIssueId, assigneeId, status, priority, createdAt, updatedAt) VALUES ($id, $title, $description, $parentIssueId, $assigneeId, $status, $priority, $createdAt, $updatedAt)`,
-);
+)
 
 export const deleteIssue = defineMutation(
   'deleteIssue',
@@ -25,19 +25,19 @@ export const deleteIssue = defineMutation(
     SET deletedAt = unixepoch() 
     WHERE id = $id
   `,
-);
+)
 
 export const updateIssueTitle = defineMutation(
   'updateIssueTitle',
   Schema.Struct({ id: Schema.String, title: Schema.String }),
   sql`UPDATE issues SET title = $title, updatedAt = unixepoch() WHERE id = $id`,
-);
+)
 
 export const updateIssueDescription = defineMutation(
   'updateIssueDescription',
   Schema.Struct({ id: Schema.String, description: Schema.String }),
   sql`UPDATE issues SET description = $description, updatedAt = unixepoch() WHERE id = $id`,
-);
+)
 
 export const restoreIssue = defineMutation(
   'restoreIssue',
@@ -47,7 +47,7 @@ export const restoreIssue = defineMutation(
     SET deletedAt = NULL 
     WHERE id = $id
   `,
-);
+)
 
 export const createComment = defineMutation(
   'createComment',
@@ -60,7 +60,7 @@ export const createComment = defineMutation(
     updatedAt: Schema.Union(Schema.Number, Schema.Null),
   }),
   sql`INSERT INTO comments (id, issueId, userId, content, createdAt, updatedAt) VALUES ($id, $issueId, $userId, $content, $createdAt, $updatedAt)`,
-);
+)
 
 export const createReaction = defineMutation(
   'createReaction',
@@ -72,10 +72,10 @@ export const createReaction = defineMutation(
     emoji: Schema.String,
   }),
   sql`INSERT INTO reactions (id, issueId, commentId, userId, emoji) VALUES ($id, $issueId, $commentId, $userId, $emoji)`,
-);
+)
 
 export const clearAll = defineMutation(
   'clearAll',
   Schema.Struct({ deleted: Schema.Number }),
   sql`UPDATE issues SET deletedAt = $deleted`,
-);
+)

@@ -6,12 +6,12 @@ import { Undo2Icon } from 'lucide-react-native'
 import { useMemo } from 'react'
 import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
-import IssueDetailsBottomTab from '@/components/IssueDetailsBottomTab'
-import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem'
-import { ThemedText } from '@/components/ThemedText'
-import type { Comment } from '@/livestore/schema'
-import { issuesMutations } from '@/livestore/schema'
-import type { Priority, Status } from '@/types'
+import IssueDetailsBottomTab from '@/components/IssueDetailsBottomTab.tsx'
+import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
+import { ThemedText } from '@/components/ThemedText.tsx'
+import type { Comment } from '@/livestore/schema.ts'
+import { issuesMutations } from '@/livestore/schema.ts'
+import type { Priority, Status } from '@/types.ts'
 
 const IssueDetailsScreen = () => {
   const issueId = useGlobalSearchParams().issueId

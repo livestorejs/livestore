@@ -1,15 +1,14 @@
-import React from 'react';
-import { Text, type TextProps, StyleSheet, type TextStyle } from 'react-native';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react'
+import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native'
 
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useThemeColor } from '@/hooks/useThemeColor.ts'
 
 export type ThemedTextProps = TextProps & {
-  lightColor?: string;
-  darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
-  className?: string;
-};
+  lightColor?: string
+  darkColor?: string
+  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link'
+  className?: string
+}
 
 const styles = StyleSheet.create({
   default: {
@@ -35,7 +34,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0a7ea4',
   },
-});
+})
 
 const styleMap: Record<NonNullable<ThemedTextProps['type']>, TextStyle> = {
   default: styles.default,
@@ -43,28 +42,20 @@ const styleMap: Record<NonNullable<ThemedTextProps['type']>, TextStyle> = {
   defaultSemiBold: styles.defaultSemiBold,
   subtitle: styles.subtitle,
   link: styles.link,
-};
+}
 
-export const ThemedText = React.memo(
-  ({
-    style,
-    lightColor,
-    darkColor,
-    type = 'default',
-    ...rest
-  }: ThemedTextProps) => {
-    const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+export const ThemedText = React.memo(({ style, lightColor, darkColor, type = 'default', ...rest }: ThemedTextProps) => {
+  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text')
 
-    // Pre-calculate base style
-    const baseStyle = useMemo(() => ({ color }), [color]);
+  // Pre-calculate base style
+  const baseStyle = useMemo(() => ({ color }), [color])
 
-    // Memoize the combined style with dependency on all inputs
-    const combinedStyle = useMemo(() => {
-      return [baseStyle, styleMap[type], style];
-    }, [baseStyle, type, style]);
+  // Memoize the combined style with dependency on all inputs
+  const combinedStyle = useMemo(() => {
+    return [baseStyle, styleMap[type], style]
+  }, [baseStyle, type, style])
 
-    return <Text style={combinedStyle} {...rest} />;
-  },
-);
+  return <Text style={combinedStyle} {...rest} />
+})
 
-ThemedText.displayName = 'ThemedText';
+ThemedText.displayName = 'ThemedText'

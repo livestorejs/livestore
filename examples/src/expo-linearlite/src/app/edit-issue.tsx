@@ -3,11 +3,11 @@ import { useScopedQuery, useStore } from '@livestore/react'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native'
 
-import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem'
-import { ThemedText } from '@/components/ThemedText'
-import { updateIssueDescription, updateIssueTitle } from '@/livestore/issues-mutations'
-import { tables } from '@/livestore/schema'
-import type { Priority, Status } from '@/types'
+import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
+import { ThemedText } from '@/components/ThemedText.tsx'
+import { updateIssueDescription, updateIssueTitle } from '@/livestore/issues-mutations.ts'
+import { tables } from '@/livestore/schema.ts'
+import type { Priority, Status } from '@/types.ts'
 
 const EditIssueScreen = () => {
   const issueId = useLocalSearchParams().issueId as string

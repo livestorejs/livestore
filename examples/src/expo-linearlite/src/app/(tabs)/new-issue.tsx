@@ -4,11 +4,11 @@ import { Stack, useRouter } from 'expo-router'
 import React, { Fragment } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
 
-import { useUser } from '@/hooks/useUser'
-import { createIssue } from '@/livestore/issues-mutations'
-import { updateNewIssueDescription, updateNewIssueText } from '@/livestore/mutations'
-import { tables } from '@/livestore/schema'
-import { PRIORITIES, STATUSES } from '@/types'
+import { useUser } from '@/hooks/useUser.ts'
+import { createIssue } from '@/livestore/issues-mutations.ts'
+import { updateNewIssueDescription, updateNewIssueText } from '@/livestore/mutations.ts'
+import { tables } from '@/livestore/schema.ts'
+import { PRIORITIES, STATUSES } from '@/types.ts'
 
 const NewIssueScreen = () => {
   const user = useUser()

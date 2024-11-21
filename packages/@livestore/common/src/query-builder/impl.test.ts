@@ -2,6 +2,7 @@ import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
 import { DbSchema } from '../schema/index.js'
+import { getResultSchema } from './impl.js'
 
 const todos = DbSchema.table(
   'todos',
@@ -26,6 +27,12 @@ const comments = DbSchema.table('comments', {
 const db = { todos: todos.query, comments: comments.query }
 
 describe('query builder', () => {
+  describe('result schema', () => {
+    it('should print the schema', () => {
+      expect(String(getResultSchema(db.todos))).toMatchInlineSnapshot(`"ReadonlyArray<todos>"`)
+    })
+  })
+
   describe('basic queries', () => {
     it('should handle simple SELECT queries', () => {
       expect(db.todos.asSql()).toMatchInlineSnapshot(`

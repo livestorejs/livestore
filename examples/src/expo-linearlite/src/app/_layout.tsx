@@ -10,11 +10,11 @@ import { Stack } from 'expo-router'
 import React from 'react'
 import { Button, LogBox, Platform, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
 
-import LoadingLiveStore from '@/components/LoadingLiveStore'
-import { NavigationHistoryTracker } from '@/context/navigation-history'
-import ThemeProvider from '@/context/ThemeProvider'
+import LoadingLiveStore from '@/components/LoadingLiveStore.tsx'
+import { NavigationHistoryTracker } from '@/context/navigation-history.tsx'
+import ThemeProvider from '@/context/ThemeProvider.tsx'
 
-import { mutations, schema, tables, userMutations } from '../livestore/schema'
+import { mutations, schema, tables, userMutations } from '../livestore/schema.ts'
 
 // export const unstable_settings = {
 //   // Ensure any route can link back to `/`
@@ -23,7 +23,7 @@ import { mutations, schema, tables, userMutations } from '../livestore/schema'
 
 LogBox.ignoreAllLogs()
 
-export default function RootLayout() {
+const RootLayout = () => {
   const adapter = makeAdapter()
   const [, rerender] = React.useState({})
 
@@ -96,3 +96,5 @@ const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
     )
   }
 }
+
+export default RootLayout

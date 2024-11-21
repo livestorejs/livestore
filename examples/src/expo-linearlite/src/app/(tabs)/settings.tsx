@@ -1,11 +1,14 @@
-import { ThemedText } from '@/components/ThemedText';
-import { View } from 'react-native';
+import { View } from 'react-native'
 
-export default function SettingsScreen() {
+import { ThemedText } from '@/components/ThemedText.tsx'
+
+const SettingsScreen = () => {
   return (
     <View className="flex-1 items-center justify-center gap-3">
       <ThemedText type="title">Settings</ThemedText>
       <ThemedText>This screen is not implemented yet</ThemedText>
     </View>
-  );
+  )
 }
+
+export default SettingsScreen

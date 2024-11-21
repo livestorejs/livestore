@@ -5,12 +5,12 @@
 
 // Linear colors
 // https://linear.app/brand
-export const nordicGray = '#222326';
-export const mercuryWhite = '#F4F5F8';
-export const magicBlue = '#5E6AD2';
-export const darkBackground = '#0C0D0D';
-export const darkSecondary = '#18191B';
-export const darkText = '#E2E4E6';
+export const nordicGray = '#222326'
+export const mercuryWhite = '#F4F5F8'
+export const magicBlue = '#5E6AD2'
+export const darkBackground = '#0C0D0D'
+export const darkSecondary = '#18191B'
+export const darkText = '#E2E4E6'
 
 export const Colors = {
   light: {
@@ -29,4 +29,4 @@ export const Colors = {
     tabIconDefault: '#9BA1A6',
     tabIconSelected: magicBlue,
   },
-};
+}

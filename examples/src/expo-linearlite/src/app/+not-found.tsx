@@ -1,10 +1,10 @@
 import { Link, Stack } from 'expo-router'
 import { StyleSheet } from 'react-native'
 
-import { ThemedText } from '@/components/ThemedText'
-import { ThemedView } from '@/components/ThemedView'
+import { ThemedText } from '@/components/ThemedText.tsx'
+import { ThemedView } from '@/components/ThemedView.tsx'
 
-export default function NotFoundScreen() {
+const NotFoundScreen = () => {
   return (
     <>
       <Stack.Screen options={{ title: 'Oops!', freezeOnBlur: false }} />
@@ -30,3 +30,5 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
 })
+
+export default NotFoundScreen

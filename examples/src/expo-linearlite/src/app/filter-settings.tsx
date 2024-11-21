@@ -4,8 +4,8 @@ import { Stack } from 'expo-router'
 import React from 'react'
 import { ScrollView, View } from 'react-native'
 
-import { RowPropertySwitch } from '@/components/RowPropertySwitch'
-import { ThemedText } from '@/components/ThemedText'
+import { RowPropertySwitch } from '@/components/RowPropertySwitch.tsx'
+import { ThemedText } from '@/components/ThemedText.tsx'
 import {
   updateAssignedTabCompletedIssues,
   updateAssignedTabGrouping,
@@ -19,8 +19,8 @@ import {
   updateCreatedTabShowAssignee,
   updateCreatedTabShowPriority,
   updateCreatedTabShowStatus,
-} from '@/livestore/mutations'
-import { tables } from '@/livestore/schema'
+} from '@/livestore/mutations.ts'
+import { tables } from '@/livestore/schema.ts'
 
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
 const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created']

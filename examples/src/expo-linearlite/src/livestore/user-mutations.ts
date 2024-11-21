@@ -1,5 +1,5 @@
-import { Schema } from 'effect';
-import { defineMutation, sql } from '@livestore/livestore';
+import { defineMutation, sql } from '@livestore/livestore'
+import { Schema } from 'effect'
 
 export const createUser = defineMutation(
   'createUser',
@@ -10,10 +10,10 @@ export const createUser = defineMutation(
     photoUrl: Schema.Union(Schema.String, Schema.Null),
   }),
   sql`INSERT INTO users (id, name, email, photoUrl) VALUES ($id, $name, $email, $photoUrl)`,
-);
+)
 
 export const deleteUser = defineMutation(
   'deleteUser',
   Schema.Struct({ id: Schema.String }),
   sql`DELETE FROM users WHERE id = $id`,
-);
+)

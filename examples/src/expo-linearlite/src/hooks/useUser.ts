@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { useScopedQuery } from '@livestore/react'
 
-import { tables } from '@/livestore/schema'
+import { tables } from '@/livestore/schema.ts'
 
 /**
  * @returns The first user in the users table.

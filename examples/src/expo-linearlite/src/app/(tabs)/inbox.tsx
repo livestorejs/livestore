@@ -3,16 +3,16 @@ import { useScopedQuery, useStore } from '@livestore/react'
 import React from 'react'
 import { Button } from 'react-native'
 
-import { useUser } from '@/hooks/useUser'
-import type { Comment, Issue, Reaction, User } from '@/livestore/schema'
-import { issuesMutations, tables, userMutations } from '@/livestore/schema'
+import { useUser } from '@/hooks/useUser.ts'
+import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
+import { issuesMutations, tables, userMutations } from '@/livestore/schema.ts'
 import {
   createRandomComment,
   createRandomIssue,
   createRandomReaction,
   createRandomUser,
   randomValueFromArray,
-} from '@/utils/generate-fake-data'
+} from '@/utils/generate-fake-data.ts'
 
 const COMMENTS_PER_ISSUE = 10
 
@@ -20,7 +20,8 @@ const InboxScreen = () => {
   const user = useUser()
   const { store } = useStore()
 
-  const users = useScopedQuery(() => queryDb(tables.users.query, { label: 'users' }), [])
+  const users = useScopedQuery(() => queryDb(tables.users.query.where({}), { label: 'users' }), ['users2'])
+  // const users = useQuery(users$)
 
   const generateRandomData = (numUsers: number, numIssuesPerUser: number) => {
     const users: User[] = []

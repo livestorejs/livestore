@@ -5,13 +5,13 @@ import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { FlatList, Pressable, View } from 'react-native'
 
-import IssueItem from '@/components/IssueItem'
-import { ThemedText } from '@/components/ThemedText'
-import { useUser } from '@/hooks/useUser'
-import { updateSelectedHomeTab } from '@/livestore/mutations'
-import { tables } from '@/livestore/schema'
+import IssueItem from '@/components/IssueItem.tsx'
+import { ThemedText } from '@/components/ThemedText.tsx'
+import { useUser } from '@/hooks/useUser.ts'
+import { updateSelectedHomeTab } from '@/livestore/mutations.ts'
+import { tables } from '@/livestore/schema.ts'
 
-const homeTabs = ['Assigned', 'Created']
+// const homeTabs = ['Assigned', 'Created']
 // For reference
 // const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status'];
 // const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created'];
