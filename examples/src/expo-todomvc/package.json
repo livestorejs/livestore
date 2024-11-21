@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-src-expo",
+  "name": "livestore-example-src-expo-todomvc",
   "version": "1.0.0",
   "main": "./src/AppEntry.ts",
   "scripts": {
