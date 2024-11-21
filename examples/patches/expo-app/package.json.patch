@@ -2,8 +2,8 @@
 +++ package.json
 @@ -1,5 +1,5 @@
  {
--  "name": "livestore-example-src-expo",
-+  "name": "livestore-example-dist-expo",
+-  "name": "livestore-example-src-expo-todomvc",
++  "name": "livestore-example-dist-expo-todomvc",
    "version": "1.0.0",
    "main": "./src/AppEntry.ts",
    "scripts": {

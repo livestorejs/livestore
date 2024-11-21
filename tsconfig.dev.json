@@ -4,7 +4,8 @@
   "include": [],
   "references": [
     { "path": "./scripts" },
-    { "path": "./examples/src/expo-app" },
+    { "path": "./examples/src/expo-todomvc" },
+    { "path": "./examples/src/expo-linearlite" },
     { "path": "./examples/src/linearlite" },
     { "path": "./examples/src/todomvc" },
     { "path": "./examples/src/todomvc-custom-elements" },

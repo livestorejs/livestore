@@ -4,7 +4,8 @@
   "include": [],
   "references": [
     { "path": "./tsconfig.dev.json" },
-    { "path": "./examples/dist/expo-app" },
+    { "path": "./examples/dist/expo-todomvc" },
+    { "path": "./examples/dist/expo-linearlite" },
     { "path": "./examples/dist/linearlite" },
     { "path": "./examples/dist/todomvc" },
     { "path": "./examples/dist/todomvc-custom-elements" },
