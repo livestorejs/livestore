@@ -26,7 +26,7 @@
 -]
 -
 -addLiveStoreDevtoolsMiddleware(config, {
--  schemaPath: './src/schema/index.ts',
+-  schemaPath: './src/livestore/schema.ts',
 -  viteConfig: (viteConfig) => {
 -    viteConfig.server.fs ??= {}
 -    // Point to Overtone monorepo root
@@ -35,7 +35,7 @@
 -    return viteConfig
 -  },
 -})
-+addLiveStoreDevtoolsMiddleware(config, { schemaPath: './src/schema/index.ts' })
++addLiveStoreDevtoolsMiddleware(config, { schemaPath: './src/livestore/schema.ts' })
  
  // console.log(config)
  module.exports = config

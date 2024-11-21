@@ -13,7 +13,7 @@
   "dependencies": {
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^2.2.0",
-    "@livestore/devtools-vite": "0.1.0",
+    "@livestore/devtools-vite": "0.2.0-dev.1",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/wa-sqlite": "1.0.1-dev.29",
