@@ -38,7 +38,7 @@ const syncDirectories = (direction: SyncDirection) =>
   Effect.gen(function* () {
     if (direction === 'src-to-dist') {
       yield* BunShell.cmd(
-        `rsync -a --delete --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${SRC_DIR}/ ${DIST_DIR}/`,
+        `rsync -a --delete --verbose --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${SRC_DIR}/ ${DIST_DIR}/`,
       )
 
       // Apply patches
@@ -74,6 +74,16 @@ const syncDirectories = (direction: SyncDirection) =>
         }
       }
     } else {
+      // Confirm before syncing from dist to src since this is destructive
+      const answer = prompt(
+        `Are you sure you want to sync from ${DIST_DIR} to ${SRC_DIR}? This will overwrite files in ${SRC_DIR}. (y/N) `,
+      )
+
+      if (answer?.toLowerCase() !== 'y') {
+        console.log('Aborting sync')
+        process.exit(0)
+      }
+
       // From https://unix.stackexchange.com/a/168602
       // This tells rsync to look in each directory for a file .gitignore:
       // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
