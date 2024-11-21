@@ -74,7 +74,7 @@ export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = Quer
 
           return res
         }),
-      { label: queryLabel, meta: { liveStoreThunkType: 'computedResults' } },
+      { label: queryLabel, meta: { liveStoreThunkType: 'computed' } },
     )
   }
 

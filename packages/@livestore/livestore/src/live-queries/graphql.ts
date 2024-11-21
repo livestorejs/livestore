@@ -137,7 +137,7 @@ export class LiveStoreGraphQLQuery<
 
         return result
       },
-      { label: resultsLabel, meta: { liveStoreThunkType: 'graphql.results' } },
+      { label: resultsLabel, meta: { liveStoreThunkType: 'graphql.result' } },
       // otelContext,
     )
   }

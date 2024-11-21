@@ -331,7 +331,7 @@ Result:`,
             return result
           },
         ),
-      { label: `${label}:results`, meta: { liveStoreThunkType: 'db.results' }, equal: resultsEqual },
+      { label: `${label}:results`, meta: { liveStoreThunkType: 'db.result' }, equal: resultsEqual },
     )
 
     this.results$ = results$

@@ -44,7 +44,7 @@
 
 ### React integration
 
-- Fix: `useRow` now type-safe for non-nullable/non-default columns
+- Fix: `useRow` now type-safe for non-nullable/non-default columns. Renamed `options.defaultValues` to `options.insertValues`
 
 ### Misc
 
