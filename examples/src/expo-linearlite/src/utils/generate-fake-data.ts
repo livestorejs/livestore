@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker'
-import { cuid } from '@livestore/utils/cuid'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
 import { PRIORITIES, STATUSES } from '@/types.ts'
 
 export const createRandomUser = (): User => ({
-  id: cuid(),
+  id: nanoid(),
   name: faker.person.firstName(),
   email: faker.internet.email(),
   photoUrl: faker.image.avatar(),
@@ -28,7 +28,7 @@ export const createRandomIssue = (assigneeId: string): Issue => {
   const title = `${randomValueFromArray(actions)} ${randomValueFromArray(subjects)}`
 
   return {
-    id: cuid(),
+    id: nanoid(),
     title,
     description: faker.lorem.sentences({ min: 1, max: 2 }),
     parentIssueId: null,
@@ -42,7 +42,7 @@ export const createRandomIssue = (assigneeId: string): Issue => {
 }
 
 export const createRandomComment = (issueId: string, userId: string): Comment => ({
-  id: cuid(),
+  id: nanoid(),
   issueId,
   userId,
   content: faker.lorem.sentences({ min: 1, max: 2 }),
@@ -51,7 +51,7 @@ export const createRandomComment = (issueId: string, userId: string): Comment =>
 })
 
 export const createRandomReaction = (issueId: string, userId: string, commentId: string): Reaction => ({
-  id: cuid(),
+  id: nanoid(),
   issueId,
   commentId,
   userId,

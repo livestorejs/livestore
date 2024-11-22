@@ -196,7 +196,7 @@ jobs:
       - run: bun run build
         working-directory: example
 
-  build-example-tiged-expo-app:
+  build-example-tiged-expo-linearlite:
     if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
@@ -206,12 +206,12 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
           submodules: recursive
-      - run: cp -r example-repo/examples/dist/expo-app example
+      - run: cp -r example-repo/examples/dist/expo-linearlite example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore expo react common utils db-schema; do

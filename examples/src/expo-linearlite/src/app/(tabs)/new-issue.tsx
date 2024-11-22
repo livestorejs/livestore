@@ -1,5 +1,5 @@
 import { useRow, useStore } from '@livestore/react'
-import { cuid } from '@livestore/utils/cuid'
+import { nanoid } from '@livestore/utils/nanoid'
 import { Stack, useRouter } from 'expo-router'
 import React, { Fragment } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
@@ -19,7 +19,7 @@ const NewIssueScreen = () => {
   const handleCreateIssue = () => {
     if (!newIssueText) return
 
-    const id = cuid()
+    const id = nanoid()
     store.mutate(
       createIssue({
         id,

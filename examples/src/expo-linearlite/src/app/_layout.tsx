@@ -5,7 +5,7 @@ import 'react-native-reanimated'
 import { makeAdapter } from '@livestore/expo'
 import type { BaseGraphQLContext, LiveStoreSchema, Store } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
-import { cuid } from '@livestore/utils/cuid'
+import { nanoid } from '@livestore/utils/nanoid'
 import { Stack } from 'expo-router'
 import React from 'react'
 import { Button, LogBox, Platform, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
@@ -85,7 +85,7 @@ const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
   if (store.query(tables.users.query.count()) === 0) {
     store.mutate(
       userMutations.createUser({
-        id: cuid(),
+        id: nanoid(),
         name: 'Beto',
         email: 'beto@expo.io',
         photoUrl: 'https://avatars.githubusercontent.com/u/43630417?v=4',
