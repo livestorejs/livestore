@@ -46,6 +46,7 @@ export {
   STM,
   TRef,
   Channel,
+  Predicate,
   pipe,
   identity,
   GlobalValue,

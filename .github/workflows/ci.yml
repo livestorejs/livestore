@@ -14,8 +14,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
@@ -29,8 +27,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
@@ -60,8 +56,6 @@ jobs:
     needs: [test]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
@@ -75,20 +69,18 @@ jobs:
       - run: pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
       - run: pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
 
-  generate-examples-dist:
+  generate-examples-standalone:
     strategy:
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: pnpm install
-      - run: pnpm generate:examples:dist
+      - run: pnpm generate:examples:standalone
 
   build-and-deploy-examples-src:
     strategy:
@@ -97,8 +89,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
@@ -119,8 +109,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
@@ -148,8 +136,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-          submodules: recursive
-      - run: cp -r example-repo/examples/dist/todomvc example
+      - run: cp -r example-repo/examples/standalone/todomvc example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore web react common utils db-schema; do
@@ -179,8 +166,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: example-repo
-          submodules: recursive
-      - run: cp -r example-repo/examples/dist/linearlite example
+      - run: cp -r example-repo/examples/standalone/linearlite example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore web react common utils db-schema; do
@@ -196,7 +182,7 @@ jobs:
       - run: bun run build
         working-directory: example
 
-  build-example-tiged-expo-app:
+  build-example-tiged-expo-linearlite:
     if: github.event.pull_request.head.repo.fork != true
     strategy:
       matrix:
@@ -206,12 +192,11 @@ jobs:
     steps:
       - uses: oven-sh/setup-bun@v2
       # TODO bring back once repo is public
-      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-app#${{ github.sha }} example
+      # - run: bunx tiged --mode=git https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
       - uses: actions/checkout@v4
         with:
           path: example-repo
-          submodules: recursive
-      - run: cp -r example-repo/examples/dist/expo-app example
+      - run: cp -r example-repo/examples/standalone/expo-linearlite example
       - name: Add snapshot resolution to package.json
         run: |
           for pkg in livestore expo react common utils db-schema; do

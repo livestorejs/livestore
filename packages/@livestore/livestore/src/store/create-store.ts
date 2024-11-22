@@ -28,7 +28,7 @@ import {
 import * as otel from '@opentelemetry/api'
 
 import { globalReactivityGraph } from '../global-state.js'
-import type { ReactivityGraph } from '../reactiveQueries/base-class.js'
+import type { ReactivityGraph } from '../live-queries/base-class.js'
 import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
 import type { BaseGraphQLContext, GraphQLOptions, OtelOptions } from './store-types.js'

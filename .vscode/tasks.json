@@ -95,7 +95,6 @@
       "label": "dev:example",
       "dependsOn": [
         "dev:example:todomvc",
-        "dev:example:todomvc-drizzle",
         "dev:example:todomvc-custom-elements",
         "dev:example:linearlite",
       ],
@@ -118,27 +117,6 @@
         "focus": false,
         "panel": "shared",
         "group": "examples:todomvc",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-    {
-      "label": "dev:example:todomvc-drizzle",
-      "dependsOn": [
-        "dev:ts",
-        "dev:proxy",
-      ],
-      "type": "shell",
-      "command": "direnv exec . pnpm dev",
-      "isBackground": true,
-      "problemMatcher": [],
-      "options": {
-        "cwd": "${workspaceFolder}/examples/src/todomvc-drizzle"
-      },
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "examples:todomvc-drizzle",
         "showReuseMessage": false,
         "clear": false
       }

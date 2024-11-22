@@ -26,12 +26,6 @@ todomvc-webcomponents.livestore.localhost {
 	}
 }
 
-todomvc-drizzle.livestore.localhost {
-	reverse_proxy localhost:60003 {
-		import common_headers
-	}
-}
-
 electric.livestore.localhost {
 	reverse_proxy localhost:3000 {
 		import common_headers

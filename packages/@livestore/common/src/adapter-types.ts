@@ -89,7 +89,7 @@ export type Coordinator = {
  *
  * Example:
  * ```ts
- * const query$ = rowQuery(tables.app, SessionIdSymbol)
+ * const query$ = queryDb(tables.app.query.row(SessionIdSymbol), SessionIdSymbol)
  * ```
  */
 export const SessionIdSymbol = Symbol.for('@livestore/session-id')

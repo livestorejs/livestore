@@ -51,7 +51,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    livestoreDevtoolsPlugin({ schemaPath: './src/schema/index.ts' }),
+    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
     VitePWA({
       registerType: 'prompt',
       workbox: {

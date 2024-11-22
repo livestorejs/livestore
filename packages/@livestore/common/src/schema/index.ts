@@ -12,7 +12,8 @@ import {
   rawSqlMutation,
 } from './mutations.js'
 import { systemTables } from './system-tables.js'
-import { type TableDef, tableHasDerivedMutations } from './table-def.js'
+import type { TableDef, TableDefBase } from './table-def.js'
+import { tableHasDerivedMutations } from './table-def.js'
 
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
@@ -41,7 +42,7 @@ export type LiveStoreSchema<
 }
 
 export type InputSchema = {
-  readonly tables: Record<string, TableDef> | ReadonlyArray<TableDef>
+  readonly tables: Record<string, TableDefBase> | ReadonlyArray<TableDefBase>
   readonly mutations?: ReadonlyArray<MutationDef.Any> | Record<string, MutationDef.Any>
   /**
    * Can be used to isolate multiple LiveStore apps running in the same origin
@@ -72,6 +73,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   }
 
   for (const tableDef of systemTables) {
+    // @ts-expect-error TODO fix type level issue
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 

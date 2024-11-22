@@ -1,3 +1,8 @@
 # Examples
 
-See [examples repo](https://github.com/livestorejs/examples) for all examples. The contents of this directory is mostly for maintainers.
+- Please see the `standalone` directory if you want to use LiveStore.
+- Please see the `src` directory if you want to contribute to LiveStore.
+
+## For contributors
+
+- Please use the `bun ./scripts/generate-examples.ts` script to keep the `src`, `patches` and `standalone` directories in sync.

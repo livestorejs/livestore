@@ -1,5 +1,5 @@
 import { makeWorker } from '@livestore/web/worker'
 
-import { schema } from './schema/index.js'
+import { schema } from './livestore/schema.js'
 
 makeWorker({ schema })

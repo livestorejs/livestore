@@ -9,9 +9,8 @@ import type * as DbSchema from './schema/table-def.js'
 import { deleteRows, insertRow, updateRows } from './sql-queries/sql-queries.js'
 
 export const makeDerivedMutationDefsForTable = <
-  TTableDef extends DbSchema.TableDef<
+  TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
@@ -23,9 +22,8 @@ export const makeDerivedMutationDefsForTable = <
 })
 
 export const deriveCreateMutationDef = <
-  TTableDef extends DbSchema.TableDef<
+  TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
@@ -61,9 +59,8 @@ export const deriveCreateMutationDef = <
 }
 
 export const deriveUpdateMutationDef = <
-  TTableDef extends DbSchema.TableDef<
+  TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
@@ -92,9 +89,8 @@ export const deriveUpdateMutationDef = <
 }
 
 export const deriveDeleteMutationDef = <
-  TTableDef extends DbSchema.TableDef<
+  TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(

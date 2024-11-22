@@ -1,9 +1,9 @@
-import type { QueryInfo } from '@livestore/common'
+import type { QueryInfo, RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import type { SqliteDsl } from '@livestore/db-schema'
-import type { LiveQuery, ReactivityGraph, RowResult } from '@livestore/livestore'
-import { rowQuery } from '@livestore/livestore'
+import type { LiveQuery, ReactivityGraph } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyRecord } from '@livestore/utils/effect'
 import React from 'react'
@@ -12,15 +12,11 @@ import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 import { useMakeScopedQuery } from './useScopedQuery.js'
 
-export type UseRowResult<TTableDef extends DbSchema.TableDef> = [
-  row: RowResult<TTableDef>,
+export type UseRowResult<TTableDef extends DbSchema.TableDefBase> = [
+  row: RowQuery.Result<TTableDef>,
   setRow: StateSetters<TTableDef>,
-  query$: LiveQuery<RowResult<TTableDef>, QueryInfo>,
+  query$: LiveQuery<RowQuery.Result<TTableDef>, QueryInfo>,
 ]
-
-export type UseRowOptionsDefaulValues<TTableDef extends DbSchema.TableDef> = {
-  defaultValues?: Partial<RowResult<TTableDef>>
-}
 
 export type UseRowOptionsBase = {
   reactivityGraph?: ReactivityGraph
@@ -39,7 +35,6 @@ export const useRow: {
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
-      boolean,
       DbSchema.TableOptions & { isSingleton: true; deriveMutations: { enabled: true } }
     >,
   >(
@@ -49,31 +44,44 @@ export const useRow: {
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
-      boolean,
+      DbSchema.TableOptions & {
+        isSingleton: false
+        requiredInsertColumnNames: 'id'
+        deriveMutations: { enabled: true }
+      }
+    >,
+  >(
+    table: TTableDef,
+    // TODO adjust so it works with arbitrary primary keys or unique constraints
+    id: string | SessionIdSymbol,
+    options?: UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
+  ): UseRowResult<TTableDef>
+  <
+    TTableDef extends DbSchema.TableDef<
+      DbSchema.DefaultSqliteTableDef,
       DbSchema.TableOptions & { isSingleton: false; deriveMutations: { enabled: true } }
     >,
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string | SessionIdSymbol,
-    options?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
+    options: UseRowOptionsBase & RowQuery.RequiredColumnsOptions<TTableDef>,
   ): UseRowResult<TTableDef>
 } = <
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
-    boolean,
     DbSchema.TableOptions & { deriveMutations: { enabled: true } }
   >,
 >(
   table: TTableDef,
   idOrOptions?: string | SessionIdSymbol | UseRowOptionsBase,
-  options_?: UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>,
+  options_?: UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.sqliteDef
   const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
-  const options: (UseRowOptionsBase & UseRowOptionsDefaulValues<TTableDef>) | undefined =
+  const options: (UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>) | undefined =
     typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
-  const { defaultValues, reactivityGraph } = options ?? {}
+  const { insertValues, reactivityGraph } = options ?? {}
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
@@ -95,16 +103,14 @@ export const useRow: {
   // console.debug('useRow', tableName, id)
 
   const idStr = id === SessionIdSymbol ? 'session' : id
+  const rowQuery = table.query.row as any
 
+  type Query$ = LiveQuery<RowQuery.Result<TTableDef>, QueryInfo.Row>
   const { query$, otelContext } = useMakeScopedQuery(
     (otelContext) =>
       DbSchema.tableIsSingleton(table)
-        ? (rowQuery(table, { otelContext, reactivityGraph }) as LiveQuery<RowResult<TTableDef>, QueryInfo>)
-        : (rowQuery(table as TTableDef & { options: { isSingleton: false } }, id!, {
-            otelContext,
-            defaultValues: defaultValues!,
-            reactivityGraph,
-          }) as any as LiveQuery<RowResult<TTableDef>, QueryInfo>),
+        ? (queryDb(rowQuery(), { reactivityGraph, otelContext }) as any as Query$)
+        : (queryDb(rowQuery(id!, { insertValues: insertValues! }), { reactivityGraph, otelContext }) as any as Query$),
     [idStr!, tableName],
     {
       otel: {
@@ -114,11 +120,11 @@ export const useRow: {
     },
   )
 
-  const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowResult<TTableDef>>
+  const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowQuery.Result<TTableDef>>
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {
-    if (table.isSingleColumn) {
-      return (newValueOrFn: RowResult<TTableDef>) => {
+    if (table.options.isSingleColumn) {
+      return (newValueOrFn: RowQuery.Result<TTableDef>) => {
         const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
         if (query$Ref.current === newValue) return
 
@@ -173,10 +179,10 @@ export const useRow: {
 export type Dispatch<A> = (action: A) => void
 export type SetStateAction<S> = S | ((previousValue: S) => S)
 
-export type StateSetters<TTableDef extends DbSchema.TableDef> = TTableDef['isSingleColumn'] extends true
-  ? Dispatch<SetStateAction<RowResult<TTableDef>>>
+export type StateSetters<TTableDef extends DbSchema.TableDefBase> = TTableDef['options']['isSingleColumn'] extends true
+  ? Dispatch<SetStateAction<RowQuery.Result<TTableDef>>>
   : {
-      [K in keyof RowResult<TTableDef>]: Dispatch<SetStateAction<RowResult<TTableDef>[K]>>
+      [K in keyof RowQuery.Result<TTableDef>]: Dispatch<SetStateAction<RowQuery.Result<TTableDef>[K]>>
     } & {
-      setMany: Dispatch<SetStateAction<Partial<RowResult<TTableDef>>>>
+      setMany: Dispatch<SetStateAction<Partial<RowQuery.Result<TTableDef>>>>
     }
