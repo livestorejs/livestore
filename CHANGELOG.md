@@ -49,6 +49,7 @@
 ### Misc
 
 - Removed Drizzle example in favour of new query builder API
+- Removed `livestore/examples` repository in favour of `/examples/standalone` (additionally `/examples/src` for maintainers)
 
 ## 0.1.0
 
