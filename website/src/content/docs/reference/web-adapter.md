@@ -29,6 +29,10 @@ makeWorker({ schema })
 
 - Make sure your schema doesn't depend on any code which needs to run in the main thread (e.g. avoid importing from files using React)
   - Unfortunately this constraints you from co-locating your table definitions in component files.
+  - You might be able to still work around this by using the following import in your worker:
+    ```ts
+    import '@livestore/web/worker-vite-dev-polyfill'
+    ```
 
 ### Why is there a dedicated web worker and a shared worker?
 
@@ -38,6 +42,12 @@ makeWorker({ schema })
 - Dedicated web worker (also called "leader worker"):
   - Acts as the leader/single writer for the storage.
   - Currently needed for synchronous OPFS API. (Hopefully won't be needed in the future anymore.)
+
+### Why not use a service worker?
+
+- While service workers seem similar to shared workers (i.e. only a single instance across all tabs), they serve different purposes and have different trade-offs.
+- Service workers are meant to be used to intercept network requests and tend to "shut down" when there are no requests for some period of time making them unsuitable for our use case.
+- Also note that service workers don't support some needed APIs such as OPFS.
 
 ## Storage
 
