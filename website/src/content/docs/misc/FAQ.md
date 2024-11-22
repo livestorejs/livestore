@@ -1,6 +1,8 @@
 ---
-title: ORMs / Query builders in LiveStore
-description: How to use ORMs and query builders in LiveStore
+title: Frequently Asked Questions
+sidebar:
+  label: FAQ
+description: Frequently asked questions about LiveStore
 ---
 
 It's possible to bring your own ORMs and query builders to LiveStore. WIP.

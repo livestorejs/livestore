@@ -23,11 +23,24 @@ export default defineConfig({
           autogenerate: { directory: 'getting-started' },
         },
         {
+          label: 'Evaluating LiveStore',
+          autogenerate: { directory: 'evaluation' },
+        },
+        {
           label: 'Reference',
           autogenerate: { directory: 'reference' },
         },
+        {
+          label: 'Miscellaneous',
+          autogenerate: { directory: 'misc' },
+        },
       ],
       customCss: ['./src/tailwind.css'],
+      logo: {
+        src: './src/assets/livestore.png',
+        alt: 'LiveStore Logo',
+        replacesTitle: true,
+      },
     }),
     tailwind({ applyBaseStyles: false }),
   ],
