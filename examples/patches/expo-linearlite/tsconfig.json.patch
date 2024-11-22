@@ -1,6 +1,6 @@
 --- tsconfig.json
 +++ tsconfig.json
-@@ -1,26 +1,24 @@
+@@ -1,26 +1,27 @@
  {
 -  "extends": "../../../tsconfig.base.json",
 +  "$schema": "https://json.schemastore.org/tsconfig",
@@ -22,12 +22,13 @@
      "declaration": false,
      "declarationMap": false,
 -    "allowImportingTsExtensions": true,
--    "paths": {
--      "@/*": ["./src/*"]
++    "target": "ESNext",
++    "strict": true,
+     "paths": {
+       "@/*": ["./src/*"]
 -    },
 -    "resolveJsonModule": true
-+    "target": "ESNext",
-+    "strict": true
++    }
    },
 -  "include": [
 -    "**/*.ts",
