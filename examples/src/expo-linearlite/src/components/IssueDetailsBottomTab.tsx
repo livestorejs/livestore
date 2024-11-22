@@ -32,7 +32,6 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
   const handleDelete = () => {
     store.mutate(issuesMutations.deleteIssue({ id: issueId }))
     setVisible(false)
-    console.log('issue deleted')
   }
 
   const IconSize = 22

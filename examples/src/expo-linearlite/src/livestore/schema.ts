@@ -116,8 +116,6 @@ const activity = DbSchema.table(
   { deriveMutations: true },
 )
 
-export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
-export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 export type User = DbSchema.FromTable.RowDecoded<typeof users>
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issues>
 export type Comment = DbSchema.FromTable.RowDecoded<typeof comments>

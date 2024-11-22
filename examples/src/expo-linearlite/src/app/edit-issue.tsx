@@ -16,12 +16,12 @@ const EditIssueScreen = () => {
 
   const issue = useScopedQuery(
     () => queryDb(tables.issues.query.where({ id: issueId }).first(), { label: 'issue' }),
-    [issueId],
+    ['edit-issue', issueId],
   )
 
   const assignee = useScopedQuery(
     () => queryDb(tables.users.query.where({ id: issue.assigneeId! }).first(), { label: 'assignee' }),
-    [issue.assigneeId!],
+    ['edit-issue-assignee', issue.assigneeId!],
   )
 
   const handleGoBack = () => {

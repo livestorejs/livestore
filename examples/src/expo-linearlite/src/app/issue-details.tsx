@@ -3,44 +3,44 @@ import { useScopedQuery, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
-import { useMemo } from 'react'
 import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
-import IssueDetailsBottomTab from '@/components/IssueDetailsBottomTab.tsx'
+import { IssueDetailsBottomTab } from '@/components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
-import type { Comment } from '@/livestore/schema.ts'
-import { issuesMutations } from '@/livestore/schema.ts'
+import { issuesMutations, tables } from '@/livestore/schema.ts'
 import type { Priority, Status } from '@/types.ts'
 
 const IssueDetailsScreen = () => {
-  const issueId = useGlobalSearchParams().issueId
+  const issueId = useGlobalSearchParams().issueId as string
   const store = useStore()
   const router = useRouter()
 
-  const issueQuery = useMemo(
+  const issue = useScopedQuery(
     () =>
       queryDb(
         {
           query: sql`
-        SELECT 
-          issues.*,
-          users.name as assigneeName,
-          users.photoUrl as assigneePhotoUrl
-        FROM issues
-        LEFT JOIN users ON issues.assigneeId = users.id
-        WHERE issues.id = '${issueId}'
-      `,
-          schema: Schema.Any,
+            SELECT 
+              issues.*,
+              users.name as assigneeName,
+              users.photoUrl as assigneePhotoUrl
+            FROM issues
+            LEFT JOIN users ON issues.assigneeId = users.id
+            WHERE issues.id = '${issueId}'
+          `,
+          schema: tables.issues.schema.pipe(
+            Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
+            Schema.Array,
+            Schema.headOrElse(),
+          ),
         },
         { label: 'issue' },
       ),
-    [issueId],
+    ['issue-details', issueId],
   )
 
-  const issue = useScopedQuery(() => issueQuery, 'issue')[0]
-
-  const commentsQuery = useMemo(
+  const comments = useScopedQuery(
     () =>
       queryDb(
         {
@@ -66,23 +66,25 @@ const IssueDetailsScreen = () => {
             GROUP BY comments.id
             ORDER BY comments.createdAt DESC
           `,
-          schema: Schema.Any,
+          schema: tables.comments.schema.pipe(
+            Schema.extend(
+              Schema.Struct({
+                authorName: Schema.String,
+                authorPhotoUrl: Schema.String,
+                reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
+              }),
+            ),
+            Schema.Array,
+          ),
         },
         { label: 'comments' },
       ),
-    [issueId],
+    ['issue-details-comments', issueId],
   )
-
-  const comments = useScopedQuery(() => commentsQuery, 'comments')
 
   if (!issueId) {
     return <ThemedText>Issue not found</ThemedText>
   }
-
-  const parsedComments = comments.map((comment: Comment & { reactions: string }) => ({
-    ...comment,
-    reactions: JSON.parse(comment.reactions || '[]'),
-  }))
 
   return (
     <>
@@ -142,50 +144,38 @@ const IssueDetailsScreen = () => {
 
             <View className="gap-4 mt-4">
               <ThemedText>{comments.length} comments</ThemedText>
-              {parsedComments.map(
-                (
-                  comment: Comment & {
-                    authorName: string
-                    authorPhotoUrl: string
-                    reactions: { id: string; emoji: string }[]
-                  },
-                ) => (
-                  <View key={comment.id} className="bg-neutral-100 dark:bg-neutral-900 rounded-xl p-2 px-3">
-                    <View className="flex-row items-center gap-2 flex-shrink">
-                      <Image source={{ uri: comment.authorPhotoUrl }} className="w-5 h-5 rounded-full" />
-                      <ThemedText className="line-clamp-1 flex-shrink" style={{ fontSize: 14, fontWeight: '500' }}>
-                        {comment.authorName}
-                      </ThemedText>
-                      <ThemedText style={{ fontSize: 12 }}>{new Date(comment.createdAt!).toDateString()}</ThemedText>
-                    </View>
-                    <ThemedText className="" style={{ fontSize: 14 }}>
-                      {comment.content}
+              {comments.map((comment) => (
+                <View key={comment.id} className="bg-neutral-100 dark:bg-neutral-900 rounded-xl p-2 px-3">
+                  <View className="flex-row items-center gap-2 flex-shrink">
+                    <Image source={{ uri: comment.authorPhotoUrl }} className="w-5 h-5 rounded-full" />
+                    <ThemedText className="line-clamp-1 flex-shrink" style={{ fontSize: 14, fontWeight: '500' }}>
+                      {comment.authorName}
                     </ThemedText>
-
-                    <View className="flex-row items-center gap-2 mt-1">
-                      {comment.reactions.length > 0
-                        ? comment.reactions.map((reaction) => {
-                            return (
-                              <View
-                                key={reaction.id}
-                                className="bg-neutral-200 dark:bg-neutral-800 rounded-full px-2 self-start"
-                              >
-                                <ThemedText
-                                  style={{
-                                    fontSize: 12,
-                                    lineHeight: 22,
-                                  }}
-                                >
-                                  {reaction.emoji} 1
-                                </ThemedText>
-                              </View>
-                            )
-                          })
-                        : null}
-                    </View>
+                    <ThemedText style={{ fontSize: 12 }}>{new Date(comment.createdAt!).toDateString()}</ThemedText>
                   </View>
-                ),
-              )}
+                  <ThemedText className="" style={{ fontSize: 14 }}>
+                    {comment.content}
+                  </ThemedText>
+
+                  <View className="flex-row items-center gap-2 mt-1">
+                    {comment.reactions.map((reaction) => (
+                      <View
+                        key={reaction.id}
+                        className="bg-neutral-200 dark:bg-neutral-800 rounded-full px-2 self-start"
+                      >
+                        <ThemedText
+                          style={{
+                            fontSize: 12,
+                            lineHeight: 22,
+                          }}
+                        >
+                          {reaction.emoji} 1
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
         </ScrollView>

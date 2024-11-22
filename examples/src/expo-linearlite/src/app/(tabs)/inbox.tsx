@@ -20,8 +20,7 @@ const InboxScreen = () => {
   const user = useUser()
   const { store } = useStore()
 
-  const users = useScopedQuery(() => queryDb(tables.users.query.where({}), { label: 'users' }), ['users2'])
-  // const users = useQuery(users$)
+  const users = useScopedQuery(() => queryDb(tables.users.query.where({}), { label: 'inbox-users' }), ['inbox-users'])
 
   const generateRandomData = (numUsers: number, numIssuesPerUser: number) => {
     const users: User[] = []

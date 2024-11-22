@@ -1,5 +1,5 @@
 import { queryDb, sql } from '@livestore/livestore'
-import { useRow, useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useRow, useScopedQuery, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
@@ -94,6 +94,8 @@ const getOrderingOptions = (
   return orderClause
 }
 
+const issuesCount$ = queryDb(tables.issues.query.count().where({ deletedAt: null }))
+
 const HomeScreen = () => {
   const user = useUser()
   const { store } = useStore()
@@ -124,40 +126,42 @@ const HomeScreen = () => {
     [appSettings],
   )
 
-  const issuesCount = useScopedQuery(() => queryDb(tables.issues.query.count().where({ deletedAt: null })), [])
+  const issuesCount = useQuery(issuesCount$)
 
-  // Memoize the SQL query
-  const issuesQuery = useMemo(
+  const issues = useScopedQuery(
     () =>
       queryDb(
         {
           query: sql`
-        SELECT issues.title, issues.id, issues.assigneeId, issues.status, issues.priority, users.photoUrl as assigneePhotoUrl
-        FROM issues 
-        LEFT JOIN users ON issues.assigneeId = users.id
-        WHERE issues.deletedAt IS NULL 
-        AND (
-          ${selectedHomeTab === 'Assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
-        )
-        ${getOrderingOptions(
-          selectedHomeTab,
-          assignedTabGrouping,
-          assignedTabOrdering,
-          createdTabGrouping,
-          createdTabOrdering,
-        )}
-        LIMIT 50
-      `,
+            SELECT issues.title, issues.id, issues.assigneeId, issues.status, issues.priority, users.photoUrl as assigneePhotoUrl
+            FROM issues 
+            LEFT JOIN users ON issues.assigneeId = users.id
+            WHERE issues.deletedAt IS NULL 
+            AND (
+              ${selectedHomeTab === 'Assigned' ? `issues.assigneeId = '${user.id}'` : `true`}
+            )
+            ${getOrderingOptions(
+              selectedHomeTab,
+              assignedTabGrouping,
+              assignedTabOrdering,
+              createdTabGrouping,
+              createdTabOrdering,
+            )}
+            LIMIT 50
+          `,
           schema: Schema.Any,
         },
         { label: `issues-${selectedHomeTab}-${user.id}` },
       ),
-    [selectedHomeTab, user.id, assignedTabGrouping, assignedTabOrdering, createdTabGrouping, createdTabOrdering],
-  )
-
-  const issues = useScopedQuery(
-    () => issuesQuery,
-    [selectedHomeTab, assignedTabGrouping, assignedTabOrdering, createdTabGrouping, createdTabOrdering],
+    [
+      'issues',
+      selectedHomeTab,
+      user.id,
+      assignedTabGrouping,
+      assignedTabOrdering,
+      createdTabGrouping,
+      createdTabOrdering,
+    ],
   )
 
   // Memoize the renderItem function

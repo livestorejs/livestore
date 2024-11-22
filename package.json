@@ -23,6 +23,8 @@
     "@livestore/*": "Needed to force PNPM to install local packages"
   },
   "resolutions": {
+    "expo": "52.0.9",
+    "react-native": "0.76.2",
     "@livestore/common": "workspace:*",
     "@livestore/db-schema": "workspace:*",
     "@livestore/expo": "workspace:*",

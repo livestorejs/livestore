@@ -30,6 +30,17 @@ export type DepKey = string | number | ReadonlyArray<string | number>
  * Creates a query, subscribes and destroys it when the component unmounts.
  *
  * The `key` is used to determine whether the a new query should be created or if the existing one should be reused.
+ * This hook should be used instead of `useQuery` when the query should be dynamically created based on some props.
+ * Otherwise when using `useQuery` the query will be leaked (i.e. never destroyed) when the component re-renders/unmounts.
+ *
+ * Example:
+ * ```tsx
+ * const issue = useScopedQuery(() => queryDb(tables.issues.query.where('id', issueId).first()), ['issue-details', issueId])
+ * ```
+ *
+ * Important: On Expo/React Native please make sure the key contains a globally unique identifier, otherwise the query might get reused unintentionally.
+ * Example: `['issue-details', issueId]`
+ * See this issue to track progress: https://github.com/livestorejs/livestore/issues/231
  */
 export const useScopedQuery = <TResult>(makeQuery: () => LiveQuery<TResult>, key: DepKey): TResult =>
   useScopedQueryRef(makeQuery, key).current

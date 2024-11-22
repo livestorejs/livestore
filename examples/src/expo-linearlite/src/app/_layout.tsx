@@ -10,11 +10,11 @@ import { Stack } from 'expo-router'
 import React from 'react'
 import { Button, LogBox, Platform, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
 
-import LoadingLiveStore from '@/components/LoadingLiveStore.tsx'
+import { LoadingLiveStore } from '@/components/LoadingLiveStore.tsx'
 import { NavigationHistoryTracker } from '@/context/navigation-history.tsx'
 import ThemeProvider from '@/context/ThemeProvider.tsx'
 
-import { mutations, schema, tables, userMutations } from '../livestore/schema.ts'
+import { schema, tables, userMutations } from '../livestore/schema.ts'
 
 // export const unstable_settings = {
 //   // Ensure any route can link back to `/`
@@ -82,9 +82,6 @@ const RootLayout = () => {
  * It is used to initialize the database with some data.
  */
 const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
-  if (store.query(tables.todos.query.count()) === 0) {
-    store.mutate(mutations.addTodo({ id: cuid(), text: 'Make coffee' }))
-  }
   if (store.query(tables.users.query.count()) === 0) {
     store.mutate(
       userMutations.createUser({
