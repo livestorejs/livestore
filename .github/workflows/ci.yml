@@ -69,7 +69,7 @@ jobs:
       - run: pnpm --filter '@livestore/*' exec -- pnpm version '0.0.0-snapshot-${{ github.sha }}' --no-git-tag-version
       - run: pnpm --filter '@livestore/*' exec -- pnpm publish --tag=snapshot --no-git-checks
 
-  generate-examples-dist:
+  generate-examples-standalone:
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -80,7 +80,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: pnpm install
-      - run: pnpm generate:examples:dist
+      - run: pnpm generate:examples:standalone
 
   build-and-deploy-examples-src:
     strategy:
