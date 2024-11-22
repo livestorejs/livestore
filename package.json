@@ -35,8 +35,8 @@
     "@livestore/web": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/devtools-expo-common": "workspace:*",
-    "@livestore/devtools-react": "0.2.0-dev.2",
-    "@livestore/devtools-vite": "0.2.0-dev.2"
+    "@livestore/devtools-react": "0.2.0",
+    "@livestore/devtools-vite": "0.2.0"
   },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",

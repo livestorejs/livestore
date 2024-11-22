@@ -9,12 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@livestore/devtools-vite": "0.2.0-dev.2",
-    "@livestore/livestore": "0.2.0-dev.2",
-    "@livestore/react": "0.2.0-dev.2",
-    "@livestore/sync-cf": "0.2.0-dev.2",
+    "@livestore/devtools-vite": "0.2.0",
+    "@livestore/livestore": "0.2.0",
+    "@livestore/react": "0.2.0",
+    "@livestore/sync-cf": "0.2.0",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "0.2.0-dev.2",
+    "@livestore/web": "0.2.0",
     "@overengineering/fps-meter": "^0.1.2",
     "effect": "3.10.12",
     "react": "^18.3.1",

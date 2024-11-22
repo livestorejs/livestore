@@ -1,6 +1,6 @@
 {
   "name": "@livestore/db-schema",
-  "version": "0.2.0-dev.2",
+  "version": "0.2.0",
   "sideEffects": false,
   "type": "module",
   "exports": {

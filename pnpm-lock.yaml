@@ -17,8 +17,8 @@ overrides:
   '@livestore/web': workspace:*
   '@livestore/devtools-expo': workspace:*
   '@livestore/devtools-expo-common': workspace:*
-  '@livestore/devtools-react': 0.2.0-dev.2
-  '@livestore/devtools-vite': 0.2.0-dev.2
+  '@livestore/devtools-react': 0.2.0
+  '@livestore/devtools-vite': 0.2.0
 
 patchedDependencies:
   graphology@0.26.0-alpha1:
@@ -326,8 +326,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -510,8 +510,8 @@ importers:
   examples/src/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -574,8 +574,8 @@ importers:
   examples/src/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -644,8 +644,8 @@ importers:
   examples/src/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -708,8 +708,8 @@ importers:
   examples/src/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -778,8 +778,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1102,8 +1102,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1286,8 +1286,8 @@ importers:
   examples/standalone/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1350,8 +1350,8 @@ importers:
   examples/standalone/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1420,8 +1420,8 @@ importers:
   examples/standalone/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1484,8 +1484,8 @@ importers:
   examples/standalone/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1554,8 +1554,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1563,8 +1563,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/sync-electric':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2
+        specifier: 0.2.0
+        version: 0.2.0
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
@@ -1717,8 +1717,8 @@ importers:
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/devtools-react':
-        specifier: 0.2.0-dev.2
-        version: 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.2.0
+        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.2
         version: 1.0.3-dev.2
@@ -3054,12 +3054,12 @@ packages:
   '@esbuild-plugins/node-globals-polyfill@0.2.3':
     resolution: {integrity: sha512-r3MIryXDeXDOZh7ih1l/yE9ZLORCd5e8vWg02azWRGj5SPTuoh69A2AIyn0Z31V/kHBfZ4HgWJ+OK3GTTwLmnw==}
     peerDependencies:
-      esbuild: 0.21.4
+      esbuild: '*'
 
   '@esbuild-plugins/node-modules-polyfill@0.2.2':
     resolution: {integrity: sha512-LXV7QsWJxRuMYvKbiznh+U1ilIop3g2TeKRzUxOG5X3YITc8JyyTa90BmLwqqv0YnX4v32CSlG+vsziZp9dMvA==}
     peerDependencies:
-      esbuild: '*'
+      esbuild: 0.21.4
 
   '@esbuild/aix-ppc64@0.19.11':
     resolution: {integrity: sha512-FnzU0LyE3ySQk7UntJO4+qIiQgI7KoODnZg5xzXIrFJlKd2P2gwHsHY4927xj9y5PJmJSzULiUCWmv7iWnNa7g==}
@@ -4219,17 +4219,17 @@ packages:
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
 
-  '@livestore/devtools-react@0.2.0-dev.2':
-    resolution: {integrity: sha512-JOFkFAkPJ6gaUzIe6z7xINC0EIaYlv/vfwD9YOnzKp8GPgcwACH6Qj8SfCciaATGkSjNE5RL5Kc0uXFumApT6Q==}
+  '@livestore/devtools-react@0.2.0':
+    resolution: {integrity: sha512-hQEzCxdx/5xt1VvmRxY0xYuyWhSaSPzAmg2fL/TLiLuBcTA8G6BWx//ZvJod2KPGAzc55fbBV/YOsdq1M/GLvw==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ^18
 
-  '@livestore/devtools-vite@0.2.0-dev.2':
-    resolution: {integrity: sha512-4DlEEEtjaemkdhZhMNtge1aax2onaMECgwDYzsc4qNdb5XMc2ut/q9R/8NSRxBWdXJ1HIh7kVyAwpb8nydw8dA==}
+  '@livestore/devtools-vite@0.2.0':
+    resolution: {integrity: sha512-LCj0pa8IcTkwpcxDskCNFnsJrI40EKl5ilN9Adu7cguDrloirNY0DpD5zKAr9AE+ugxa5zgXnlBI1ndNl8zwnw==}
 
-  '@livestore/sync-electric@0.2.0-dev.2':
-    resolution: {integrity: sha512-rA4U9HgzxZbTRq0+NysFKrKKA/I8C3RTTk25kQtOJXOlr+tk9n0AqgU98VffblUrlY35TqcPkZGHysOc8ERkiw==}
+  '@livestore/sync-electric@0.2.0':
+    resolution: {integrity: sha512-ykTPNSH6h6dretXI+ScqDs7h9UZKtqrhzIn0VKFZpeMnjiyGcvw9K6fah7RUTSFN11stfbls3RQcU1SX5nCm7w==}
 
   '@livestore/wa-sqlite@1.0.1-dev.29':
     resolution: {integrity: sha512-9hDwwNrLFQIy4eBZttZmSdYGqGAZb/1UF1CB0a4GXVr6H4i1EGTZ/HKprHOV41pqPBZgJBujvxGHwk12BKglxA==}
@@ -4950,7 +4950,7 @@ packages:
     resolution: {integrity: sha512-2ly7bENj2n2FNBdEN60ZEbNCs5dAOex/QJoo6EZ8RNFfUQxVKAZkMwfQ4ETV2SLWDgkRLj3Jo5n/dx7O2ZGhGw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      typescript: 5.5.4
+      typescript: ^5.1.0
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -17217,20 +17217,20 @@ snapshots:
 
   '@jspm/core@2.1.0': {}
 
-  '@livestore/devtools-react@0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-react@0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
 
-  '@livestore/devtools-vite@0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-vite@0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
-      '@livestore/devtools-react': 0.2.0-dev.2(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-react': 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/web': link:packages/@livestore/web
     transitivePeerDependencies:
       - '@livestore/livestore'
       - react
 
-  '@livestore/sync-electric@0.2.0-dev.2':
+  '@livestore/sync-electric@0.2.0':
     dependencies:
       '@livestore/common': link:packages/@livestore/common
       '@livestore/utils': link:packages/@livestore/utils
