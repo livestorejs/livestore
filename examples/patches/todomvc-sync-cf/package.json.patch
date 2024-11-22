@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-todomvc-sync-cf",
-+  "name": "livestore-example-dist-todomvc-sync-cf",
++  "name": "livestore-example-standalone-todomvc-sync-cf",
    "private": true,
    "type": "module",
    "scripts": {

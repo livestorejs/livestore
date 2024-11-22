@@ -49,7 +49,7 @@ You'll need to have a recent version the following tools installed:
 ## Local setup
 
 ```bash
-git clone --recurse-submodules git@github.com:livestorejs/livestore.git
+git clone git@github.com:livestorejs/livestore.git
 cd livestore
 direnv allow
 pnpm install
@@ -63,18 +63,17 @@ pnpm build
 
 ### Examples
 
-- Once you've set up the monorepo locally, you'll notice both the `src` and `dist` directories in `/examples`.
-- The `/examples/dist` directory is meant as source for app developers using LiveStore. To improve maintainability, the `dist` directory is a git-submodule pointing to the [`livestorejs/examples` repo](https://github.com/livestorejs/examples).
-- The `/examples/src` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples/dist` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
-- Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/dist` version via `pnpm generate:examples:dist`.
+- Once you've set up the monorepo locally, you'll notice both the `src` and `standalone` directories in `/examples`.
+- The `/examples/standalone` directory is meant as a starting point for app developers evaluating LiveStore and looking for a ready-to-run example app.
+- The `/examples/src` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples/standalone` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
+- Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/standalone` version via `pnpm generate:examples:standalone`.
 
 #### Making changes to examples
 
 1. Make your desired changes in `/examples/src`. (You might also need to update some of the patches in `/examples/patches`.)
-2. Run `pnpm generate:examples:dist` to generate the `/examples/dist` version
-3. Check whether the changes in `/examples/dist` are what you expected.
-4. Commit your changes in the examples submodule and update the submodule reference in your git commit.
-5. Create a PR both for the `livestorejs/livestore` repo and the `livestorejs/examples` repo.
+2. Run `pnpm generate:examples:standalone` to generate the `/examples/standalone` version
+3. Check whether the changes in `/examples/standalone` are what you expected.
+4. Commit your changes in both `/examples/src` and `/examples/standalone` (and possibly `/examples/patches`). Note on GitHub, changes to `examples/standalone` are hidden by default.
 
 ## Devtools
 

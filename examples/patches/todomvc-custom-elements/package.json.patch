@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-todomvc-custom-elements",
-+  "name": "livestore-example-dist-todomvc-custom-elements",
++  "name": "livestore-example-standalone-todomvc-custom-elements",
    "private": true,
    "type": "module",
    "scripts": {

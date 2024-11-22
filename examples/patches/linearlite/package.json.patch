@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-linearlite",
-+  "name": "livestore-example-dist-linearlite",
++  "name": "livestore-example-standalone-linearlite",
    "version": "0.0.1",
    "license": "Apache-2.0",
    "type": "module",

@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-expo-linearlite",
-+  "name": "livestore-example-dist-expo-linearlite",
++  "name": "livestore-example-standalone-expo-linearlite",
    "main": "expo-router/entry",
    "version": "1.0.0",
    "private": true,

@@ -4,13 +4,13 @@
   "include": [],
   "references": [
     { "path": "./tsconfig.dev.json" },
-    { "path": "./examples/dist/expo-todomvc" },
-    { "path": "./examples/dist/expo-linearlite" },
-    { "path": "./examples/dist/linearlite" },
-    { "path": "./examples/dist/todomvc" },
-    { "path": "./examples/dist/todomvc-custom-elements" },
-    { "path": "./examples/dist/todomvc-experimental" },
-    { "path": "./examples/dist/todomvc-sync-cf" },
-    { "path": "./examples/dist/todomvc-sync-electric" },
+    { "path": "./examples/standalone/expo-todomvc" },
+    { "path": "./examples/standalone/expo-linearlite" },
+    { "path": "./examples/standalone/linearlite" },
+    { "path": "./examples/standalone/todomvc" },
+    { "path": "./examples/standalone/todomvc-custom-elements" },
+    { "path": "./examples/standalone/todomvc-experimental" },
+    { "path": "./examples/standalone/todomvc-sync-cf" },
+    { "path": "./examples/standalone/todomvc-sync-electric" },
   ]
 }

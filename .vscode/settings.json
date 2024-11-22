@@ -40,7 +40,7 @@
   "search.exclude": {
     "**/.expo": true,
     "**/build": true,
-    "**/examples/dist/**": false,
+    "**/examples/standalone/**": false,
     "**/.vercel": true,
     "**/.direnv": true,
     "**/dist": true,

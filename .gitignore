@@ -25,5 +25,3 @@ dist
 .wrangler
 .vercel
 .netlify
-
-!examples/dist

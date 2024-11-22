@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-expo-todomvc",
-+  "name": "livestore-example-dist-expo-todomvc",
++  "name": "livestore-example-standalone-expo-todomvc",
    "version": "1.0.0",
    "main": "./src/AppEntry.ts",
    "scripts": {

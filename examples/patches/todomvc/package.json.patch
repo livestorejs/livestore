@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-todomvc",
-+  "name": "livestore-example-dist-todomvc",
++  "name": "livestore-example-standalone-todomvc",
    "private": true,
    "type": "module",
    "scripts": {

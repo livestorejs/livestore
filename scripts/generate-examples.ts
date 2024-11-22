@@ -16,7 +16,7 @@ if (!workspaceRoot) {
 }
 
 // Directories
-const DIST_DIR = `${workspaceRoot}/examples/dist`
+const STANDALONE_DIR = `${workspaceRoot}/examples/standalone`
 const PATCHES_DIR = `${workspaceRoot}/examples/patches`
 const SRC_DIR = `${workspaceRoot}/examples/src`
 
@@ -24,21 +24,21 @@ $.cwd(workspaceRoot)
 
 const checkDirs = Effect.gen(function* () {
   // Fails if dirs don't exist
-  if (!fs.existsSync(PATCHES_DIR) || !fs.existsSync(SRC_DIR) || !fs.existsSync(DIST_DIR)) {
+  if (!fs.existsSync(PATCHES_DIR) || !fs.existsSync(SRC_DIR) || !fs.existsSync(STANDALONE_DIR)) {
     console.error('Directories do not exist')
     process.exit(1)
   }
 })
 
-const SyncDirection = Schema.Literal('src-to-dist', 'dist-to-src')
+const SyncDirection = Schema.Literal('src-to-standalone', 'standalone-to-src')
 type SyncDirection = typeof SyncDirection.Type
 
 // Helper function to sync src to src-patched
 const syncDirectories = (direction: SyncDirection) =>
   Effect.gen(function* () {
-    if (direction === 'src-to-dist') {
+    if (direction === 'src-to-standalone') {
       yield* BunShell.cmd(
-        `rsync -a --delete --verbose --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${SRC_DIR}/ ${DIST_DIR}/`,
+        `rsync -a --delete --verbose --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${SRC_DIR}/ ${STANDALONE_DIR}/`,
       )
 
       // Apply patches
@@ -50,7 +50,7 @@ const syncDirectories = (direction: SyncDirection) =>
             await applyPatches(fullPath)
           } else if (entry.isFile() && entry.name.endsWith('.patch')) {
             const relativePath = fullPath.replace(PATCHES_DIR, '').replace('.patch', '')
-            const targetFile = `${DIST_DIR}${relativePath}`
+            const targetFile = `${STANDALONE_DIR}${relativePath}`
             try {
               await $`patch -u ${targetFile} -i ${fullPath} --no-backup-if-mismatch`.nothrow()
               // console.log(`Applied patch: ${fullPath} to ${targetFile}`)
@@ -63,7 +63,7 @@ const syncDirectories = (direction: SyncDirection) =>
 
       yield* Effect.promise(() => applyPatches(PATCHES_DIR))
 
-      console.log(`[${new Date().toISOString()}] Synced and patched ${SRC_DIR} to ${DIST_DIR}`)
+      console.log(`[${new Date().toISOString()}] Synced and patched ${SRC_DIR} to ${STANDALONE_DIR}`)
 
       if (process.env.CI) {
         // Exit with error if there are any unstaged changes
@@ -74,9 +74,9 @@ const syncDirectories = (direction: SyncDirection) =>
         }
       }
     } else {
-      // Confirm before syncing from dist to src since this is destructive
+      // Confirm before syncing from standalone to src since this is destructive
       const answer = prompt(
-        `Are you sure you want to sync from ${DIST_DIR} to ${SRC_DIR}? This will overwrite files in ${SRC_DIR}. (y/N) `,
+        `Are you sure you want to sync from ${STANDALONE_DIR} to ${SRC_DIR}? This will overwrite files in ${SRC_DIR}. (y/N) `,
       )
 
       if (answer?.toLowerCase() !== 'y') {
@@ -88,7 +88,7 @@ const syncDirectories = (direction: SyncDirection) =>
       // This tells rsync to look in each directory for a file .gitignore:
       // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
       yield* BunShell.cmd(
-        `rsync -a --delete --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${DIST_DIR}/ ${SRC_DIR}/`,
+        `rsync -a --delete --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${STANDALONE_DIR}/ ${SRC_DIR}/`,
       )
 
       // Reverse patches
@@ -113,7 +113,7 @@ const syncDirectories = (direction: SyncDirection) =>
 
       yield* Effect.promise(() => reversePatches(PATCHES_DIR))
 
-      console.log(`[${new Date().toISOString()}] Synced and reversed patches from ${DIST_DIR} to ${SRC_DIR}`)
+      console.log(`[${new Date().toISOString()}] Synced and reversed patches from ${STANDALONE_DIR} to ${SRC_DIR}`)
     }
   })
 
@@ -121,13 +121,13 @@ const syncDirectories = (direction: SyncDirection) =>
 const setupWatchman = (direction: SyncDirection) =>
   Effect.gen(function* () {
     const watchDirs =
-      direction === 'src-to-dist'
+      direction === 'src-to-standalone'
         ? [
             { dir: SRC_DIR, name: 'listen-src-changes' },
             { dir: PATCHES_DIR, name: 'listen-patches-changes' },
           ]
         : [
-            { dir: DIST_DIR, name: 'listen-dist-changes' },
+            { dir: STANDALONE_DIR, name: 'listen-standalone-changes' },
             { dir: PATCHES_DIR, name: 'listen-patch-changes' },
           ]
 
@@ -175,7 +175,7 @@ const setupWatchman = (direction: SyncDirection) =>
     }
 
     console.log(
-      `Watchman setup complete. Listening for file changes in ${PATCHES_DIR} and ${direction === 'src-to-dist' ? SRC_DIR : DIST_DIR}...`,
+      `Watchman setup complete. Listening for file changes in ${PATCHES_DIR} and ${direction === 'src-to-standalone' ? SRC_DIR : STANDALONE_DIR}...`,
     )
   })
 
@@ -191,7 +191,7 @@ const updatePatches = Effect.gen(function* () {
     yield* BunShell.cmd(`mkdir -p ${patchDir}`)
 
     for (const file of filesToPatch) {
-      const distFile = `${DIST_DIR}/${exampleDir}/${file}`
+      const distFile = `${STANDALONE_DIR}/${exampleDir}/${file}`
       const srcFile = `${SRC_DIR}/${exampleDir}/${file}`
       const patchFile = `${patchDir}/${file}.patch`
 
