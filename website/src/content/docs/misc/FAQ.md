@@ -2,6 +2,7 @@
 title: Frequently Asked Questions
 sidebar:
   label: FAQ
+  order: 1
 description: Frequently asked questions about LiveStore
 ---
 

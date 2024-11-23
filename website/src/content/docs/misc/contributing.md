@@ -1,6 +1,8 @@
 ---
 title: Contributing
 description: Notes for developers interested in contributing to LiveStore.
+sidebar:
+  order: 5
 ---
 
 ## Before contributing

@@ -243,8 +243,9 @@ export namespace QueryBuilder {
     >
 
     /**
-     *
+     * Gets a single row from the table and will create it if it doesn't exist yet.
      */
+    // TODO maybe call `getsert`?
     readonly row: TTableDef['options']['isSingleton'] extends true
       ? () => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
       : TTableDef['options']['deriveMutations']['enabled'] extends false

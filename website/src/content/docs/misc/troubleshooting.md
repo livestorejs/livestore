@@ -1,6 +1,8 @@
 ---
 title: Troubleshooting
 description: Common issues in apps using LiveStore and possible solutions.
+sidebar:
+  order: 8
 ---
 
 ## Leaking queries

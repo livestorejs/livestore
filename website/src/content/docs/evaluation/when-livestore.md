@@ -1,5 +1,7 @@
 ---
 title: When to use LiveStore (and when not)
+sidebar:
+  label: When to use LiveStore
 description: Considerations when deciding to use LiveStore.
 ---
 

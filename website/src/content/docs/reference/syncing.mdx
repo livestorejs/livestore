@@ -2,7 +2,15 @@
 title: Syncing
 ---
 
-## Design decisions / trade-offs
+import { Card } from '@astrojs/starlight/components'
+
+<Card icon="warning">
+LiveStore's syncing implementation is undergoing a major rewrite. See [this PR](https://github.com/livestorejs/livestore/issues/195) for more details.
+</Card>
+
+## Prior notes
+
+### Design decisions / trade-offs
 
 - LiveStore is based on the idea of event-sourcing
 - It's similar to how Git works.
@@ -13,7 +21,7 @@ title: Syncing
   - LiveStore uses a 6-char nanoid
 	- In the unlikely event of a collision which is detected by the server the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
 
-## Requirements for sync server
+### Requirements for sync server
 
 - Needs to provide an efficient way to query an ordered list of mutation events given a starting event ID (often referred to as cursor).
 - Ideally provides a "reactivity" mechanism to notify clients when new mutation events are available (e.g. via WebSocket, HTTP long-polling, etc).

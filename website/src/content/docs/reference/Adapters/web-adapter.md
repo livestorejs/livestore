@@ -54,3 +54,7 @@ makeWorker({ schema })
 LiveStore currently only support OPFS to locally persist its data. In the future we might add support for other storage types (e.g. IndexedDB).
 
 LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads. 
+
+## Other notes
+
+- The web adapter is using some browser APIs that might require a HTTPS connection (e.g. `navigator.locks`). It's recommended to even use HTTPS during local development (e.g. via [Caddy](https://caddyserver.com/docs/automatic-https)).
