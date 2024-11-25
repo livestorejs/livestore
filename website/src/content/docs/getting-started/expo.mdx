@@ -5,7 +5,7 @@ description: Learn how to use LiveStore with Expo.
 
 import { Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
-### Requirements
+### Prerequisites
 
 - [LiveStore](/) is compatible with [Expo SDK 52](https://docs.expo.dev/versions/latest/) and later.
 - Ensure your project has the [New Architecture](https://docs.expo.dev/guides/new-architecture/) enabled. This is required for transactional state updates. When you create a new project using Expo SDK 52, this setting is enabled by default.
@@ -160,7 +160,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
     **Explanation**
 
     - `addLiveStoreDevtoolsMiddleware`: This function, imported from `@livestore/devtools-expo`, adds middleware that enables LiveStore Devtools.
-    - Conditional Check `if (!process.env.CI && process.stdout.isTTY)`: This condition ensures that LiveStore Devtools are only added in a local development environment and not in Continuous Integration (CI) environments like [EAS Build](https://docs.expo.dev/build/introduction/). This is crucial because enabling devtools in a CI environment could cause the build process to get stuck, especially when building for release mode. The `process.env.CI` variable indicates if the code is running in a CI environment, and `process.stdout.isTTY` checks if the terminal supports interactive output. Together, these conditions prevent devtools from being included in production builds.
+    - `if (!process.env.CI && process.stdout.isTTY)`: This condition ensures that LiveStore Devtools are only added in a local development environment and not in Continuous Integration (CI) environments like [EAS Build](https://docs.expo.dev/build/introduction/). This is crucial because enabling devtools in a CI environment could cause the build process to get stuck, especially when building for release mode. The `process.env.CI` variable indicates if the code is running in a CI environment, and `process.stdout.isTTY` checks if the terminal supports interactive output. Together, these conditions prevent devtools from being included in production builds.
 
 </Steps>
 
@@ -168,7 +168,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
 
-- In your project root, create a `schema` folder and inside it create a file named `index.ts`. This file defines the tables and data structures for your app.
+- In your project root, create a **schema** folder and inside it create a file named **index.ts**. This file defines the tables and data structures for your app.
 
 - In `index.ts`, define a table to represent a data model, such as a `todos`.
 
