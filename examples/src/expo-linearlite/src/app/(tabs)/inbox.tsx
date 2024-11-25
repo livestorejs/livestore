@@ -1,8 +1,10 @@
 import { queryDb } from '@livestore/livestore'
 import { useScopedQuery, useStore } from '@livestore/react'
+import { Stack } from 'expo-router'
 import React from 'react'
-import { Button } from 'react-native'
+import { Button, ScrollView, StyleSheet, View } from 'react-native'
 
+import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
 import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
 import { issuesMutations, tables, userMutations } from '@/livestore/schema.ts'
@@ -96,15 +98,66 @@ const InboxScreen = () => {
 
   return (
     <>
-      <Button title="Generate 5 users with 10 issues" onPress={() => generateRandomData(5, 10)} />
-      <Button title={`Generate 50 issues for ${user.name}`} onPress={() => generateIssuesForCurrentUser(50)} />
-      <Button title="Clear all issues" color="red" onPress={reset} />
-      {/* <Button
-        title="Generate 50 users with 100 issues (can take a while)"
-        onPress={() => generateRandomData(50, 100)}
-      /> */}
+      <Stack.Screen options={{ headerTitle: 'Control Center' }} />
+      <ScrollView style={styles.container}>
+        <View style={styles.section}>
+          <ThemedText type="subtitle">🧪 Test Data Generation</ThemedText>
+          <ThemedText>
+            Generate sample data to explore the app's functionality. Each issue includes comments and reactions from
+            various users.
+          </ThemedText>
+          <View style={styles.buttonGroup}>
+            <Button title="Quick Demo: 5 users, 10 issues" onPress={() => generateRandomData(5, 10)} />
+            <Button title={`Generate 50 issues for ${user.name}`} onPress={() => generateIssuesForCurrentUser(50)} />
+            <Button title="Large Dataset: 50 users, 10 issues" onPress={() => generateRandomData(50, 10)} />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">🧹 Data Management</ThemedText>
+          <ThemedText>
+            Reset the database to start fresh. This will remove all generated issues, comments, and reactions.
+          </ThemedText>
+          <Button title="Clear all issues" onPress={reset} />
+        </View>
+
+        <View style={styles.infoSection}>
+          <ThemedText type="subtitle">ℹ️ About This Screen</ThemedText>
+          <ThemedText>
+            This control center allows you to populate the app with test data to explore its features. Each generated
+            issue includes:
+          </ThemedText>
+          <View style={styles.bulletPoints}>
+            <ThemedText>• Random title and description</ThemedText>
+            <ThemedText>• {COMMENTS_PER_ISSUE} comments per issue (max)</ThemedText>
+            <ThemedText>• Random reactions from users</ThemedText>
+          </View>
+        </View>
+      </ScrollView>
     </>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    borderRadius: 12,
+    gap: 8,
+    marginVertical: 16,
+  },
+  buttonGroup: {
+    gap: 12,
+  },
+  infoSection: {
+    marginTop: 8,
+    padding: 16,
+  },
+  bulletPoints: {
+    paddingLeft: 8,
+  },
+})
 
 export default InboxScreen
