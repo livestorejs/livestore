@@ -7,9 +7,7 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components'
 
 ### Prerequisites
 
-- [LiveStore](/) is compatible with [Expo SDK 52](https://docs.expo.dev/versions/latest/) and later.
-- Ensure your project has the [New Architecture](https://docs.expo.dev/guides/new-architecture/) enabled. This is required for transactional state updates. When you create a new project using Expo SDK 52, this setting is enabled by default.
-- LiveStore requires [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) as a peer dependency.
+To use [LiveStore](/) with [Expo](https://docs.expo.dev/), ensure your project has the [New Architecture](https://docs.expo.dev/guides/new-architecture/) enabled. This is required for transactional state updates.
 
 ### Option A: Quick start
 
@@ -92,26 +90,13 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 <Steps>
 
-1.  **Create a new Expo project**
-
-    If you already have an Expo project with the new architecture enabled, skip to step 2.
-
-    To create a new Expo project, run one of the following commands based on your package manager:
-
-    <Tabs syncKey="package-manager">
-      <TabItem label="bun">`bun create expo-app --template default@latest`</TabItem>
-      <TabItem label="pnpm">`pnpm create expo-app --template default@latest`</TabItem>
-      <TabItem label="yarn">`yarn create expo-app --template default@latest`</TabItem>
-      <TabItem label="npm">`npx create-expo-app@latest`</TabItem>
-    </Tabs>
-
-2.  **Install dependencies**
+1.  **Install dependencies**
 
     ```bash
     npx expo install @livestore/devtools-expo @livestore/expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
     ```
 
-3.  **Add Vite meta plugin to babel config file**
+2.  **Add Vite meta plugin to babel config file**
 
     LiveStore Devtools uses Vite. This plugin emulates Vite's `import.meta.env` functionality.
 
@@ -134,7 +119,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
     }
     ```
 
-4.  **Update Metro config**
+3.  **Update Metro config**
 
     Add the following code to your `metro.config.js` file:
 
@@ -156,11 +141,6 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
     module.exports = config
     ```
-
-    **Explanation**
-
-    - `addLiveStoreDevtoolsMiddleware`: This function, imported from `@livestore/devtools-expo`, adds middleware that enables LiveStore Devtools.
-    - `if (!process.env.CI && process.stdout.isTTY)`: This condition ensures that LiveStore Devtools are only added in a local development environment and not in Continuous Integration (CI) environments like [EAS Build](https://docs.expo.dev/build/introduction/). This is crucial because enabling devtools in a CI environment could cause the build process to get stuck, especially when building for release mode. The `process.env.CI` variable indicates if the code is running in a CI environment, and `process.stdout.isTTY` checks if the terminal supports interactive output. Together, these conditions prevent devtools from being included in production builds.
 
 </Steps>
 
@@ -209,9 +189,11 @@ export * as mutations from './mutations'
 
 ## Mutations
 
-Create a file called `mutations.ts` inside the `schema` folder. This file contains the mutations your app needs to interact with the database.
+Create a file named `mutations.ts` inside the `schema` folder. This file stores the mutations your app uses to interact with the database.
 
-Use `Schema` from `effect`, along with `defineMutation` and `sql` from `@livestore/livestore`, to define fully typed, robust mutations. These functions allow you to create safe, consistent database operations.
+A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
+
+Use the `Schema` module from `effect` along with `defineMutation` and `sql` from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
 
 Here's an example:
 
