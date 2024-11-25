@@ -1,8 +1,9 @@
 import { queryDb } from '@livestore/livestore'
-import { useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useScopedQuery, useStore } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
-import { Button, ScrollView, StyleSheet, View } from 'react-native'
+import type { ViewStyle } from 'react-native'
+import { Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
@@ -96,11 +97,31 @@ const InboxScreen = () => {
 
   const reset = () => store.mutate(issuesMutations.clearAll({ deleted: Date.now() }))
 
+  const issuesCount$ = queryDb(tables.issues.query.count().where({ deletedAt: null }))
+  const issuesCount = useQuery(issuesCount$)
+
+  const issuesDeletedCount$ = queryDb(tables.issues.query.count().where({ deletedAt: { op: '!=', value: null } }))
+  const issuesDeletedCount = useQuery(issuesDeletedCount$)
+
+  const isDarkMode = useColorScheme() === 'dark'
+  const sectionStyle = StyleSheet.compose<ViewStyle, any, any>(styles.section, {
+    boxShadow: isDarkMode ? '0px 0px 10px 0px rgba(255, 255, 255, 0.1)' : '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
+  })
+
   return (
     <>
       <Stack.Screen options={{ headerTitle: 'Control Center' }} />
       <ScrollView style={styles.container}>
-        <View style={styles.section}>
+        <View style={sectionStyle}>
+          <ThemedText type="subtitle">Stats</ThemedText>
+          <ThemedText type="defaultSemiBold">Total Issues: {issuesCount}</ThemedText>
+          <ThemedText type="defaultSemiBold">Total deleted Issues: {issuesDeletedCount}</ThemedText>
+          <ThemedText type="defaultSemiBold">All time issues: {issuesCount + issuesDeletedCount}</ThemedText>
+          <ThemedText type="defaultSemiBold">Total Users: {users.length}</ThemedText>
+          <ThemedText type="defaultSemiBold">Current User: {user.name}</ThemedText>
+        </View>
+
+        <View style={sectionStyle}>
           <ThemedText type="subtitle">🧪 Test Data Generation</ThemedText>
           <ThemedText>
             Generate sample data to explore the app's functionality. Each issue includes comments and reactions from
@@ -113,7 +134,7 @@ const InboxScreen = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={sectionStyle}>
           <ThemedText type="subtitle">🧹 Data Management</ThemedText>
           <ThemedText>
             Reset the database to start fresh. This will remove all generated issues, comments, and reactions.
@@ -121,7 +142,7 @@ const InboxScreen = () => {
           <Button title="Clear all issues" onPress={reset} />
         </View>
 
-        <View style={styles.infoSection}>
+        <View style={sectionStyle}>
           <ThemedText type="subtitle">ℹ️ About This Screen</ThemedText>
           <ThemedText>
             This control center allows you to populate the app with test data to explore its features. Each generated
@@ -147,6 +168,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
     marginVertical: 16,
+    boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
+    padding: 16,
   },
   buttonGroup: {
     gap: 12,
