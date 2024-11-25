@@ -17,7 +17,7 @@ config.resolver.unstable_conditionNames = ['require', 'default']
 const projectRoot = __dirname
 const monorepoRoot = process.env.MONOREPO_ROOT
   ? path.resolve(process.env.MONOREPO_ROOT)
-  : path.resolve(projectRoot, '../..')
+  : path.resolve(projectRoot, '../../..')
 
 config.watchFolders = [monorepoRoot]
 
@@ -31,7 +31,7 @@ addLiveStoreDevtoolsMiddleware(config, {
   viteConfig: (viteConfig) => {
     viteConfig.server.fs ??= {}
     // Point to Overtone monorepo root
-    viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
+    viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../../..')
     viteConfig.optimizeDeps.force = true
     return viteConfig
   },
