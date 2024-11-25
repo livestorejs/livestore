@@ -309,6 +309,8 @@ export const makeAdapter =
         dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()))
 
       // TODO merge with snapshot req
+      // NOTE this currently slows down the "happy path startup" path where the app is restored from the snapshot
+      // We should figure out a way to also restore the initial mutation event id from the snapshot
       const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
       const currentMutationEventIdRef = {
@@ -436,7 +438,12 @@ export const makeAdapter =
                 BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'follower-thread', persisted }),
               )
             }
-          }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:coordinator:mutate')),
+          }).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/web:coordinator:mutate', {
+              attributes: { mutation: mutationEventEncoded.mutation },
+            }),
+          ),
 
         // TODO synchronize event ids across threads
         nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),

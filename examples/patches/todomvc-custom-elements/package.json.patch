@@ -3,22 +3,22 @@
 @@ -1,5 +1,5 @@
  {
 -  "name": "livestore-example-src-todomvc-custom-elements",
-+  "name": "livestore-example-dist-todomvc-custom-elements",
++  "name": "livestore-example-standalone-todomvc-custom-elements",
    "private": true,
    "type": "module",
    "scripts": {
 @@ -9,10 +9,10 @@
    },
    "dependencies": {
-     "@livestore/devtools-vite": "0.1.0",
+     "@livestore/devtools-vite": "0.2.0",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/utils": "workspace:*",
 -    "@livestore/wa-sqlite": "1.0.1-dev.29",
 -    "@livestore/web": "workspace:*",
-+    "@livestore/livestore": "0.1.0",
-+    "@livestore/utils": "0.1.0",
++    "@livestore/livestore": "0.2.0",
++    "@livestore/utils": "0.2.0",
 +    "@livestore/wa-sqlite": "1.0.3-dev.2",
-+    "@livestore/web": "0.1.0",
++    "@livestore/web": "0.2.0",
      "effect": "3.10.12",
      "react": "^18.3.1",
      "react-dom": "^18.3.1",

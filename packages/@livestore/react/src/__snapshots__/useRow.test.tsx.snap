@@ -21,7 +21,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
       "_name": "sql-in-memory-select",
       "attributes": {
         "sql.cached": false,
-        "sql.query": "select 1 from UserInfo where id = 'u1'",
+        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
         "sql.rowsCount": 0,
       },
     },
@@ -29,7 +29,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
       "_name": "sql-in-memory-select",
       "attributes": {
         "sql.cached": false,
-        "sql.query": "select 1 from UserInfo where id = 'u2'",
+        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
         "sql.rowsCount": 1,
       },
     },
@@ -75,9 +75,9 @@ exports[`useRow > otel > should update the data based on component key > strictM
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "sql:select * from UserInfo where id = 'u1' limit 1",
+          "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
           "attributes": {
-            "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+            "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
             "sql.rowsCount": 1,
           },
           "children": [
@@ -85,7 +85,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
               "_name": "sql-in-memory-select",
               "attributes": {
                 "sql.cached": false,
-                "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                 "sql.rowsCount": 1,
               },
             },
@@ -115,16 +115,16 @@ exports[`useRow > otel > should update the data based on component key > strictM
               ],
             },
             {
-              "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
+              "_name": "LiveStore:useQuery:db(row:UserInfo:u1)",
               "attributes": {
-                "label": "sql(rowQuery:query:UserInfo:u1)",
+                "label": "db(row:UserInfo:u1)",
                 "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
               },
               "children": [
                 {
-                  "_name": "sql:select * from UserInfo where id = 'u1' limit 1",
+                  "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
-                    "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
                   "children": [
@@ -132,7 +132,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
                       "_name": "sql-in-memory-select",
                       "attributes": {
                         "sql.cached": false,
-                        "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+                        "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                         "sql.rowsCount": 1,
                       },
                     },
@@ -141,8 +141,8 @@ exports[`useRow > otel > should update the data based on component key > strictM
                 {
                   "_name": "LiveStore.subscribe",
                   "attributes": {
-                    "label": "sql(rowQuery:query:UserInfo:u1)",
-                    "queryLabel": "sql(rowQuery:query:UserInfo:u1)",
+                    "label": "db(row:UserInfo:u1)",
+                    "queryLabel": "db(row:UserInfo:u1)",
                   },
                 },
               ],
@@ -156,16 +156,16 @@ exports[`useRow > otel > should update the data based on component key > strictM
           },
           "children": [
             {
-              "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u2)",
+              "_name": "LiveStore:useQuery:db(row:UserInfo:u2)",
               "attributes": {
-                "label": "sql(rowQuery:query:UserInfo:u2)",
+                "label": "db(row:UserInfo:u2)",
                 "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
               },
               "children": [
                 {
-                  "_name": "sql:select * from UserInfo where id = 'u2' limit 1",
+                  "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
-                    "sql.query": "select * from UserInfo where id = 'u2' limit 1",
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
                   "children": [
@@ -173,7 +173,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
                       "_name": "sql-in-memory-select",
                       "attributes": {
                         "sql.cached": false,
-                        "sql.query": "select * from UserInfo where id = 'u2' limit 1",
+                        "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                         "sql.rowsCount": 1,
                       },
                     },
@@ -182,8 +182,8 @@ exports[`useRow > otel > should update the data based on component key > strictM
                 {
                   "_name": "LiveStore.subscribe",
                   "attributes": {
-                    "label": "sql(rowQuery:query:UserInfo:u2)",
-                    "queryLabel": "sql(rowQuery:query:UserInfo:u2)",
+                    "label": "db(row:UserInfo:u2)",
+                    "queryLabel": "db(row:UserInfo:u2)",
                   },
                 },
               ],
@@ -217,7 +217,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
       "_name": "sql-in-memory-select",
       "attributes": {
         "sql.cached": false,
-        "sql.query": "select 1 from UserInfo where id = 'u1'",
+        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
         "sql.rowsCount": 0,
       },
     },
@@ -225,7 +225,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
       "_name": "sql-in-memory-select",
       "attributes": {
         "sql.cached": false,
-        "sql.query": "select 1 from UserInfo where id = 'u2'",
+        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
         "sql.rowsCount": 1,
       },
     },
@@ -271,9 +271,9 @@ exports[`useRow > otel > should update the data based on component key > strictM
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "sql:select * from UserInfo where id = 'u1' limit 1",
+          "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
           "attributes": {
-            "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+            "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
             "sql.rowsCount": 1,
           },
           "children": [
@@ -281,7 +281,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
               "_name": "sql-in-memory-select",
               "attributes": {
                 "sql.cached": false,
-                "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                 "sql.rowsCount": 1,
               },
             },
@@ -311,16 +311,16 @@ exports[`useRow > otel > should update the data based on component key > strictM
               ],
             },
             {
-              "_name": "LiveStore:useQuery:sql(rowQuery:query:UserInfo:u1)",
+              "_name": "LiveStore:useQuery:db(row:UserInfo:u1)",
               "attributes": {
-                "label": "sql(rowQuery:query:UserInfo:u1)",
+                "label": "db(row:UserInfo:u1)",
                 "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
               },
               "children": [
                 {
-                  "_name": "sql:select * from UserInfo where id = 'u1' limit 1",
+                  "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
-                    "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
                   "children": [
@@ -328,7 +328,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
                       "_name": "sql-in-memory-select",
                       "attributes": {
                         "sql.cached": false,
-                        "sql.query": "select * from UserInfo where id = 'u1' limit 1",
+                        "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                         "sql.rowsCount": 1,
                       },
                     },
@@ -337,15 +337,15 @@ exports[`useRow > otel > should update the data based on component key > strictM
                 {
                   "_name": "LiveStore.subscribe",
                   "attributes": {
-                    "label": "sql(rowQuery:query:UserInfo:u1)",
-                    "queryLabel": "sql(rowQuery:query:UserInfo:u1)",
+                    "label": "db(row:UserInfo:u1)",
+                    "queryLabel": "db(row:UserInfo:u1)",
                   },
                 },
                 {
                   "_name": "LiveStore.subscribe",
                   "attributes": {
-                    "label": "sql(rowQuery:query:UserInfo:u1)",
-                    "queryLabel": "sql(rowQuery:query:UserInfo:u1)",
+                    "label": "db(row:UserInfo:u1)",
+                    "queryLabel": "db(row:UserInfo:u1)",
                   },
                 },
               ],

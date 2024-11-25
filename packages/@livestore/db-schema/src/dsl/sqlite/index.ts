@@ -52,8 +52,8 @@ export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : 
 export type EmptyObjIfConstained<In> = '__constrained' extends keyof In ? {} : In
 
 export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
-  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.Type<TCols[K]['schema']> }>,
-  AnyIfConstained<TCols, { readonly [K in keyof TCols]: Schema.Schema.Encoded<TCols[K]['schema']> }>
+  AnyIfConstained<TCols, { readonly [K in keyof TCols]: TCols[K]['schema']['Type'] }>,
+  AnyIfConstained<TCols, { readonly [K in keyof TCols]: TCols[K]['schema']['Encoded'] }>
 >
 
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
@@ -158,7 +158,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends Columns> = {
-    [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
   }
 
   export type RowEncoded<TColumns extends Columns> = PrettifyFlat<
@@ -167,20 +167,26 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends Columns> = {
-    [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {
+    // TODO double check why there is a `true` in the type
     [K in keyof TColumns as TColumns[K] extends ColumnDefinition<any, true> ? K : never]: {}
   }
 
-  export type RequiredInsertColumnNames<TColumns extends Columns> = keyof {
+  export type RequiredInsertColumns<TColumns extends Columns> = {
     [K in keyof TColumns as TColumns[K]['nullable'] extends true
       ? never
       : TColumns[K]['default'] extends Option.Some<any>
         ? never
         : K]: {}
   }
+
+  export type RequiredInsertColumnNames<TColumns extends Columns> = keyof RequiredInsertColumns<TColumns>
+
+  export type RequiresInsertValues<TColumns extends Columns> =
+    RequiredInsertColumnNames<TColumns> extends never ? false : true
 
   export type InsertRowDecoded<TColumns extends Columns> = PrettifyFlat<
     Pick<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>> &

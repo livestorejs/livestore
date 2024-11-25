@@ -13,6 +13,7 @@ export * as Devtools from './devtools/index.js'
 export * from './debug-info.js'
 export * from './bounded-collections.js'
 export * from './version.js'
+export * from './query-builder/mod.js'
 
 declare global {
   interface LiveStoreGlobal {
