@@ -19,15 +19,6 @@ const monorepoRoot = process.env.MONOREPO_ROOT
   ? path.resolve(process.env.MONOREPO_ROOT)
   : path.resolve(projectRoot, '../../..')
 
-// config.watchFolders = [monorepoRoot]
-
-// config.resolver.nodeModulesPaths = [
-//   path.resolve(projectRoot, 'node_modules'),
-//   path.resolve(monorepoRoot, 'node_modules'),
-// ]
-
-console.log('MONOREPO_ROOT', monorepoRoot)
-
 addLiveStoreDevtoolsMiddleware(config, {
   schemaPath: './src/livestore/schema.ts',
   viteConfig: (viteConfig) => {
