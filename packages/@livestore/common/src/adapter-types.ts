@@ -24,10 +24,7 @@ export type ClientSession = {
   coordinator: Coordinator
 }
 
-export type SynchronousDatabase<
-  TReq extends { fileName: string } = { fileName: string },
-  TMetadata extends TReq = TReq,
-> = {
+export type SynchronousDatabase<TReq = any, TMetadata extends TReq = TReq> = {
   _tag: 'SynchronousDatabase'
   metadata: TMetadata
   prepare(queryStr: string): PreparedStatement
@@ -38,14 +35,14 @@ export type SynchronousDatabase<
   ): void
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
-  import: (data: Uint8Array | SynchronousDatabase<any, TReq>) => void
+  import: (data: Uint8Array | SynchronousDatabase<TReq>) => void
   close(): void
   destroy(): void
   session(): SynchronousDatabaseSession
 }
 
 export type MakeSynchronousDatabase<
-  TReq extends { fileName: string },
+  TReq,
   TInput_ extends { _tag: string } = { _tag: string },
   TMetadata_ extends TReq = TReq,
 > = <
@@ -54,6 +51,15 @@ export type MakeSynchronousDatabase<
 >(
   input: TInput,
 ) => Effect.Effect<SynchronousDatabase<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError>
+
+export const PersistenceInfo = Schema.Struct(
+  {
+    fileName: Schema.String,
+  },
+  { key: Schema.String, value: Schema.Any },
+).annotations({ title: 'LiveStore.PersistenceInfo' })
+
+export type PersistenceInfo<With extends {} = {}> = typeof PersistenceInfo.Type & With
 
 export type ResetMode = 'all-data' | 'only-app-db'
 

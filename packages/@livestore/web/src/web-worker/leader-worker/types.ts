@@ -4,11 +4,12 @@ import type {
   EventId,
   EventIdPair,
   MakeSynchronousDatabase,
+  PersistenceInfo,
   SyncBackend,
+  SynchronousDatabase,
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEventSchema } from '@livestore/common/schema'
-import type { WebDatabaseInput, WebDatabaseMetadata } from '@livestore/sqlite-wasm/browser'
 import type {
   Deferred,
   Effect,
@@ -26,7 +27,6 @@ import type {
 import { Context } from '@livestore/utils/effect'
 
 import type { BCMessage } from '../../common/index.js'
-import type { PersistedSqlite, PersistenceInfoPair } from '../common/persisted-sqlite.js'
 
 export type DevtoolsContextEnabled = {
   enabled: true
@@ -64,16 +64,19 @@ export type InitialSetup =
   | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
+export type LeaderDatabase = SynchronousDatabase<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
+export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
+
 export class LeaderWorkerCtx extends Context.Tag('LeaderWorkerCtx')<
   LeaderWorkerCtx,
   {
     schema: LiveStoreSchema
     storeId: string
     originId: string
-    makeSyncDb: MakeSynchronousDatabase<{ dbPointer: number; fileName: string }>
+    makeSyncDb: MakeSynchronousDatabase<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
     mutationSemaphore: Effect.Semaphore
-    db: PersistedSqlite
-    dbLog: PersistedSqlite
+    db: LeaderDatabase
+    dbLog: LeaderDatabase
     bootStatusQueue: Queue.Queue<BootStatus>
     initialSetupDeferred: Deferred.Deferred<InitialSetup, UnexpectedError>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation

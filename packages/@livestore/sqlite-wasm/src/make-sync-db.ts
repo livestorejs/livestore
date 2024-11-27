@@ -1,11 +1,16 @@
-import type { PreparedBindValues, PreparedStatement, SynchronousDatabase } from '@livestore/common'
+import type { PersistenceInfo, PreparedBindValues, PreparedStatement, SynchronousDatabase } from '@livestore/common'
 import { SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { makeInMemoryDb } from './in-memory-vfs.js'
 
 export const makeSynchronousDatabase = <
-  TMetadata extends { dbPointer: number; fileName: string; deleteDb: () => void },
+  TMetadata extends {
+    dbPointer: number
+    persistenceInfo: PersistenceInfo
+    deleteDb: () => void
+    configureDb: (db: SynchronousDatabase<TMetadata>) => void
+  },
 >({
   sqlite3,
   metadata,
@@ -164,6 +169,8 @@ export const makeSynchronousDatabase = <
       } else {
         sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
       }
+
+      metadata.configureDb(syncDb)
     },
     session: () => {
       const sessionPointer = sqlite3.session_create(dbPointer, 'main')
@@ -181,6 +188,8 @@ export const makeSynchronousDatabase = <
     },
     // TODO changeset invert + apply
   } satisfies SynchronousDatabase<TMetadata>
+
+  metadata.configureDb(syncDb)
 
   return syncDb
 }

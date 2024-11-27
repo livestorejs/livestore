@@ -41,7 +41,7 @@ export const makeApplyMutation = (
 
     const { dbLog } = leaderWorkerCtx
 
-    const syncDbLog = dbLog.syncDb
+    const syncDbLog = dbLog
 
     return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
       Effect.gen(function* () {

@@ -1,4 +1,4 @@
-import type { MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '@livestore/common'
+import type { MakeSynchronousDatabase, PersistenceInfo, SqliteError, SynchronousDatabase } from '@livestore/common'
 import { liveStoreStorageFormatVersion } from '@livestore/common'
 import type { WebDatabaseInputOpfs, WebDatabaseMetadataOpfs } from '@livestore/sqlite-wasm/browser'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
@@ -6,21 +6,8 @@ import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import * as OpfsUtils from '../../opfs-utils.js'
+import type { LeaderDatabase } from '../leader-worker/types.js'
 import type * as WorkerSchema from './worker-schema.js'
-
-export type PersistenceInfo = {
-  fileName: string
-} & Record<string, any>
-
-export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
-
-export interface PersistedSqlite {
-  syncDb: SynchronousDatabase<{ dbPointer: number; fileName: string }>
-  import: (
-    source: SynchronousDatabase<{ dbPointer: number; fileName: string }> | Uint8Array,
-  ) => Effect.Effect<void, PersistedSqliteError>
-  persistenceInfo: PersistenceInfo
-}
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
   cause: Schema.Defect,
@@ -31,71 +18,49 @@ export const makePersistedSqlite = ({
   schemaHashSuffix,
   storeId,
   kind,
-  configure,
+  configureDb,
   makeSyncDb,
 }: {
   storageOptions: WorkerSchema.StorageType
   makeSyncDb: MakeSynchronousDatabase<
-    { dbPointer: number; fileName: string },
+    { dbPointer: number; persistenceInfo: PersistenceInfo },
     WebDatabaseInputOpfs,
     WebDatabaseMetadataOpfs
   >
   schemaHashSuffix: string
   storeId: string
   kind: 'app' | 'mutationlog'
-  configure: (syncDb: SynchronousDatabase) => Effect.Effect<void, SqliteError>
-}) => makePersistedSqliteOpfs({ storageOptions, schemaHashSuffix, storeId, kind, configure, makeSyncDb })
+  configureDb: (syncDb: SynchronousDatabase) => Effect.Effect<void, SqliteError>
+}) => makePersistedSqliteOpfs({ storageOptions, schemaHashSuffix, storeId, kind, configureDb, makeSyncDb })
 
 export const makePersistedSqliteOpfs = ({
   storageOptions,
   schemaHashSuffix,
   storeId,
   kind,
-  configure,
+  configureDb,
   makeSyncDb,
 }: {
   storageOptions: WorkerSchema.StorageTypeOpfs
   schemaHashSuffix: string
   storeId: string
   kind: 'app' | 'mutationlog'
-  configure: (syncDb: SynchronousDatabase) => Effect.Effect<void, SqliteError>
+  configureDb: (syncDb: SynchronousDatabase) => Effect.Effect<void, SqliteError>
   makeSyncDb: MakeSynchronousDatabase<
-    { dbPointer: number; fileName: string },
+    { dbPointer: number; persistenceInfo: PersistenceInfo },
     WebDatabaseInputOpfs,
     WebDatabaseMetadataOpfs
   >
-}): Effect.Effect<PersistedSqlite, PersistedSqliteError, Scope.Scope> =>
+}): Effect.Effect<LeaderDatabase, PersistedSqliteError, Scope.Scope> =>
   Effect.gen(function* () {
     const fileName = kind === 'app' ? getAppDbFileName(schemaHashSuffix) : 'mutationlog.db'
 
     const opfsDirectory = sanitizeOpfsDir(storageOptions.directory, storeId)
-    const syncDb = yield* makeSyncDb({ _tag: 'opfs', directory: opfsDirectory, fileName })
-
-    // // TODO remove this code path
-    // if (syncDb.metadata._tag === 'in-memory') {
-    //   return shouldNeverHappen('in-memory databases are not supported for persisted sqlite')
-    // }
-
-    const opfsFileName = syncDb.metadata.vfs.getOpfsFileName(fileName)
-    const opfsPath = `${opfsDirectory}/${opfsFileName}`
-
-    const persistenceInfo = { fileName, opfsPath }
+    const syncDb = yield* makeSyncDb({ _tag: 'opfs', opfsDirectory, fileName, configureDb })
 
     yield* Effect.addFinalizer(() => Effect.sync(() => syncDb.close()))
 
-    yield* configure(syncDb)
-
-    const import_ = (source: SynchronousDatabase<{ dbPointer: number; fileName: string }> | Uint8Array) =>
-      Effect.gen(function* () {
-        syncDb.import(source)
-
-        yield* configure(syncDb)
-      }).pipe(
-        Effect.catchAllCause((error) => new PersistedSqliteError({ cause: error })),
-        Effect.withSpan('@livestore/web:worker:persistedSqliteOpfs:import'),
-      )
-
-    return { syncDb, import: import_, persistenceInfo } satisfies PersistedSqlite
+    return syncDb
   }).pipe(
     Effect.mapError((cause) => new PersistedSqliteError({ cause })),
     Effect.withSpan('@livestore/web:worker:makePersistedSqliteOpfs', {

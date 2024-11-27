@@ -22,7 +22,7 @@ export const recreateDb = Effect.gen(function* () {
 
   yield* Effect.addFinalizer((ex) => {
     if (ex._tag === 'Success') return Effect.void
-    return Effect.sync(() => db.syncDb.destroy())
+    return Effect.sync(() => db.destroy())
   })
 
   // NOTE to speed up the operations below, we're creating a temporary in-memory database
@@ -55,7 +55,7 @@ export const recreateDb = Effect.gen(function* () {
 
       yield* rehydrateFromMutationLog({
         db: tmpSyncDb,
-        logDb: dbLog.syncDb,
+        logDb: dbLog,
         schema,
         migrationOptions,
         onProgress: ({ done, total }) =>
@@ -77,7 +77,7 @@ export const recreateDb = Effect.gen(function* () {
       break
     }
     case 'manual': {
-      const oldDbData = db.syncDb.export()
+      const oldDbData = db.export()
 
       const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
         UnexpectedError.mapToUnexpectedError,
@@ -98,7 +98,7 @@ export const recreateDb = Effect.gen(function* () {
     Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
   )
 
-  yield* db.import(tmpSyncDb)
+  db.import(tmpSyncDb)
 
   const snapshotFromTmpDb = tmpSyncDb.export()
 
@@ -179,7 +179,7 @@ const getCursorInfo = Effect.gen(function* () {
   }).pipe(Schema.Array, Schema.headOrElse())
 
   const syncPullInfo = yield* Effect.try(() =>
-    dbLog.syncDb.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
+    dbLog.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
       sql`SELECT idGlobal, idLocal, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY idGlobal DESC LIMIT 1`,
     ),
   ).pipe(

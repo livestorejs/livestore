@@ -15,10 +15,9 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type { PersistenceInfoPair } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import { makeApplyMutation } from './apply-mutation.js'
-import type { DevtoolsContextEnabled } from './types.js'
+import type { DevtoolsContextEnabled, PersistenceInfoPair } from './types.js'
 import { LeaderWorkerCtx } from './types.js'
 
 type SendMessage = (
@@ -146,7 +145,7 @@ const listenToDevtools = ({
     const innerWorkerCtx = yield* LeaderWorkerCtx
     const { syncBackend, makeSyncDb, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair } = innerWorkerCtx
 
-    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.syncDb)
+    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
 
     const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -201,7 +200,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.SnapshotReq': {
-              const snapshot = db.syncDb.export()
+              const snapshot = db.export()
 
               yield* sendMessage(Devtools.SnapshotRes.make({ snapshot, ...reqPayload }))
 
@@ -232,15 +231,15 @@ const listenToDevtools = ({
               if (tableNames.has(MUTATION_LOG_META_TABLE)) {
                 yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                yield* dbLog.import(data)
+                dbLog.import(data)
 
-                db.syncDb.destroy()
+                db.destroy()
               } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
                 yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                yield* db.import(data)
+                db.import(data)
 
-                dbLog.syncDb.destroy()
+                dbLog.destroy()
               } else {
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }))
                 return
@@ -257,10 +256,10 @@ const listenToDevtools = ({
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-              db.syncDb.destroy()
+              db.destroy()
 
               if (mode === 'all-data') {
-                dbLog.syncDb.destroy()
+                dbLog.destroy()
               }
 
               yield* sendMessage(Devtools.ResetAllDataRes.make({ ...reqPayload }))
@@ -271,8 +270,8 @@ const listenToDevtools = ({
             }
             case 'LSD.DatabaseFileInfoReq': {
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
-              const dbFileSize = db.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
-              const mutationLogFileSize = dbLog.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const dbFileSize = db.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const mutationLogFileSize = dbLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(
                 Devtools.DatabaseFileInfoRes.make({
@@ -285,7 +284,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.MutationLogReq': {
-              const mutationLog = dbLog.syncDb.export()
+              const mutationLog = dbLog.export()
 
               yield* sendMessage(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
 

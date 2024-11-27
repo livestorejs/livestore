@@ -115,7 +115,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             schemaHashSuffix,
             storeId,
             makeSyncDb,
-            configure: (db) => configureConnection(db, { fkEnabled: true }),
+            configureDb: (db) => configureConnection(db, { fkEnabled: true }),
           })
 
           const makeDbLog = makePersistedSqlite({
@@ -124,7 +124,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             schemaHashSuffix,
             storeId,
             makeSyncDb,
-            configure: (db) => configureConnection(db, { fkEnabled: false }),
+            configureDb: (db) => configureConnection(db, { fkEnabled: false }),
           })
 
           // Might involve some async work, so we're running them concurrently
@@ -205,15 +205,15 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
           const cachedSnapshot =
             result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-          return cachedSnapshot ?? workerCtx.db.syncDb.export()
+          return cachedSnapshot ?? workerCtx.db.export()
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
       Export: () =>
-        Effect.andThen(LeaderWorkerCtx, (_) => _.db.syncDb.export()).pipe(
+        Effect.andThen(LeaderWorkerCtx, (_) => _.db.export()).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:Export'),
         ),
       ExportMutationlog: () =>
-        Effect.andThen(LeaderWorkerCtx, (_) => _.dbLog.syncDb.export()).pipe(
+        Effect.andThen(LeaderWorkerCtx, (_) => _.dbLog.export()).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
         ),
@@ -228,7 +228,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
       GetCurrentMutationEventId: () =>
         Effect.gen(function* () {
           const workerCtx = yield* LeaderWorkerCtx
-          const result = workerCtx.dbLog.syncDb.select<{ idGlobal: number; idLocal: number }>(
+          const result = workerCtx.dbLog.select<{ idGlobal: number; idLocal: number }>(
             sql`SELECT idGlobal, idLocal FROM mutation_log ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
           )[0]
 
@@ -258,8 +258,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             yield* FiberSet.clear(devtools.connections)
           }
 
-          db.syncDb.close()
-          dbLog.syncDb.close()
+          db.close()
+          dbLog.close()
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       // NOTE We're using a stream here to express a scoped effect over the worker boundary
       // so the code below can cause an interrupt on the worker client side
@@ -283,7 +283,10 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
                   storeId: workerCtx.storeId,
                   appHostId,
                   isLeader,
-                  persistenceInfo: { db: workerCtx.db.persistenceInfo, mutationLog: workerCtx.dbLog.persistenceInfo },
+                  persistenceInfo: {
+                    db: workerCtx.db.metadata.persistenceInfo,
+                    mutationLog: workerCtx.dbLog.metadata.persistenceInfo,
+                  },
                 })
                 .pipe(
                   Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
@@ -311,14 +314,14 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
     }
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = yield* makeApplyMutation(createdAtMemo, db.syncDb)
+    const applyMutation = yield* makeApplyMutation(createdAtMemo, db)
 
     let offset = 0
 
     while (offset < executionItems.length) {
       try {
-        db.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-        dbLog.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        dbLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
         batchItems = executionItems.slice(offset, offset + 50)
         offset += 50
@@ -336,7 +339,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item
-            db.syncDb.execute(query, bindValues)
+            db.execute(query, bindValues)
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
@@ -356,12 +359,12 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
           }
         }
 
-        db.syncDb.execute('COMMIT', undefined) // Commit the transaction
-        dbLog.syncDb.execute('COMMIT', undefined) // Commit the transaction
+        db.execute('COMMIT', undefined) // Commit the transaction
+        dbLog.execute('COMMIT', undefined) // Commit the transaction
       } catch (error) {
         try {
-          db.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
-          dbLog.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
+          db.execute('ROLLBACK', undefined) // Rollback in case of an error
+          dbLog.execute('ROLLBACK', undefined) // Rollback in case of an error
         } catch (e) {
           console.error('Error rolling back transaction', e)
         }
@@ -388,18 +391,17 @@ const bootLeaderWorker = Effect.gen(function* () {
   globalThis.__leaderWorkerCtx = leaderWorkerCtx
 
   yield* migrateTable({
-    db: dbLog.syncDb,
+    db: dbLog,
     behaviour: 'create-if-not-exists',
     tableAst: mutationLogMetaTable.sqliteDef.ast,
     skipMetaTable: true,
   })
 
   // TODO do more validation here
-  const needsRecreate =
-    db.syncDb.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+  const needsRecreate = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
   const initializeCurrentMutationEventId = Effect.gen(function* () {
-    const initialMutationEventId = dbLog.syncDb.select<{ idGlobal: number; idLocal: number }>(
+    const initialMutationEventId = dbLog.select<{ idGlobal: number; idLocal: number }>(
       sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
     )[0]
 
@@ -430,7 +432,7 @@ const bootLeaderWorker = Effect.gen(function* () {
   } else {
     yield* initializeCurrentMutationEventId
 
-    yield* fetchAndApplyRemoteMutations(db.syncDb, true, ({ done, total }) =>
+    yield* fetchAndApplyRemoteMutations(db, true, ({ done, total }) =>
       Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
     ).pipe(
       Effect.tap((syncInfo) =>
@@ -448,7 +450,7 @@ const bootLeaderWorker = Effect.gen(function* () {
 
   const { syncInfo } = yield* Deferred.await(initialSetupDeferred)
 
-  const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.syncDb)
+  const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
 
   if (syncBackend !== undefined) {
     // TODO try to do this in a batched-way if possible
