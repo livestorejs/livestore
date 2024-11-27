@@ -30,9 +30,9 @@ import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { BaseGraphQLContext, RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel } from './store-types.js'
 
-if (import.meta.env.DEV) {
-  exposeDebugUtils()
-}
+// if (import.meta.env.DEV) {
+//   exposeDebugUtils()
+// }
 
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,

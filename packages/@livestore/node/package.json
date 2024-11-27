@@ -1,0 +1,31 @@
+{
+  "name": "@livestore/node",
+  "version": "0.2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {}
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/wa-sqlite": "1.0.3-dev.2",
+    "better-sqlite3": "^11.5.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

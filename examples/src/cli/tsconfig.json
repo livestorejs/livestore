@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react",
+    "declaration": false,
+    "declarationMap": false,
+    "composite": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../packages/@livestore/livestore" },
+    { "path": "../../../packages/@livestore/utils" },
+    { "path": "../../../packages/@livestore/node" },
+    { "path": "../../../packages/@livestore/common" }
+  ]
+}

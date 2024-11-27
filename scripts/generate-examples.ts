@@ -20,6 +20,8 @@ const STANDALONE_DIR = `${workspaceRoot}/examples/standalone`
 const PATCHES_DIR = `${workspaceRoot}/examples/patches`
 const SRC_DIR = `${workspaceRoot}/examples/src`
 
+const EXCLUDE_EXAMPLES = ['cli']
+
 $.cwd(workspaceRoot)
 
 const checkDirs = Effect.gen(function* () {
@@ -38,7 +40,7 @@ const syncDirectories = (direction: SyncDirection) =>
   Effect.gen(function* () {
     if (direction === 'src-to-standalone') {
       yield* BunShell.cmd(
-        `rsync -a --delete --verbose --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${SRC_DIR}/ ${STANDALONE_DIR}/`,
+        `rsync -a --delete --verbose --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' --exclude='${EXCLUDE_EXAMPLES.join(' ')}' ${SRC_DIR}/ ${STANDALONE_DIR}/`,
       )
 
       // Apply patches
@@ -88,7 +90,7 @@ const syncDirectories = (direction: SyncDirection) =>
       // This tells rsync to look in each directory for a file .gitignore:
       // The `-n` after the `dir-merge,-` means that (`-`) the file specifies only excludes and (`n`) rules are not inherited by subdirectories.
       yield* BunShell.cmd(
-        `rsync -a --delete --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' ${STANDALONE_DIR}/ ${SRC_DIR}/`,
+        `rsync -a --delete --filter='dir-merge,- .gitignore' --exclude='.git' --exclude='README.md' --exclude='${EXCLUDE_EXAMPLES.join(' ')}' ${STANDALONE_DIR}/ ${SRC_DIR}/`,
       )
 
       // Reverse patches

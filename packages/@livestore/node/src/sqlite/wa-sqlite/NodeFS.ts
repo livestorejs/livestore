@@ -1,0 +1,181 @@
+/* eslint-disable prefer-arrow/prefer-arrow-functions */
+import * as fs from 'node:fs'
+import path from 'node:path'
+
+import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
+import { FacadeVFS } from './FacadeVFS.js'
+
+class File {
+  pathname: string
+  flags: number
+  fileHandle: number | null = null
+
+  constructor(pathname: string, flags: number) {
+    this.pathname = pathname
+    this.flags = flags
+  }
+}
+
+export class NodeFS extends FacadeVFS {
+  private mapIdToFile = new Map<number, File>()
+  private lastError: Error | null = null
+
+  getFilename(fileId: number): string {
+    const pathname = this.mapIdToFile.get(fileId)?.pathname
+    return `NodeFS:${pathname}`
+  }
+
+  jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
+    try {
+      const pathname = zName ? path.resolve(zName) : Math.random().toString(36).slice(2)
+      const file = new File(pathname, flags)
+      this.mapIdToFile.set(fileId, file)
+
+      const create = !!(flags & VFS.SQLITE_OPEN_CREATE)
+      const readwrite = !!(flags & VFS.SQLITE_OPEN_READWRITE)
+
+      // Convert SQLite flags to Node.js flags
+      let fsFlags = 'r'
+      if (create && readwrite) {
+        // Check if file exists first
+        const exists = fs.existsSync(pathname)
+        fsFlags = exists ? 'r+' : 'w+' // Use r+ for existing files, w+ only for new files
+      } else if (readwrite) {
+        fsFlags = 'r+' // Open file for reading and writing
+      }
+
+      try {
+        file.fileHandle = fs.openSync(pathname, fsFlags)
+        pOutFlags.setInt32(0, flags, true)
+        return VFS.SQLITE_OK
+      } catch (err: any) {
+        if (err.code === 'ENOENT' && !create) {
+          return VFS.SQLITE_CANTOPEN
+        }
+        throw err
+      }
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_CANTOPEN
+    }
+  }
+
+  jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
+    try {
+      const file = this.mapIdToFile.get(fileId)
+      if (!file?.fileHandle) return VFS.SQLITE_IOERR_READ
+
+      // const view = new DataView(pData.buffer, pData.byteOffset, pData.length)
+      // const bytesRead = fs.readSync(file.fileHandle, view, 0, pData.length, iOffset)
+      const bytesRead = fs.readSync(file.fileHandle, pData.subarray(), { position: iOffset })
+
+      if (bytesRead < pData.length) {
+        pData.fill(0, bytesRead)
+        return VFS.SQLITE_IOERR_SHORT_READ
+      }
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_READ
+    }
+  }
+
+  jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
+    try {
+      const file = this.mapIdToFile.get(fileId)
+      if (!file?.fileHandle) return VFS.SQLITE_IOERR_WRITE
+
+      // const view = new DataView(pData.buffer, pData.byteOffset, pData.length)
+      // fs.writeSync(file.fileHandle, view, 0, pData.length, iOffset)
+      fs.writeSync(file.fileHandle, pData.subarray(), 0, pData.length, iOffset)
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_WRITE
+    }
+  }
+
+  jClose(fileId: number): number {
+    try {
+      const file = this.mapIdToFile.get(fileId)
+      if (!file) return VFS.SQLITE_OK
+
+      this.mapIdToFile.delete(fileId)
+      if (file.fileHandle !== null) {
+        fs.closeSync(file.fileHandle)
+      }
+
+      if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
+        fs.unlinkSync(file.pathname)
+      }
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_CLOSE
+    }
+  }
+
+  jFileSize(fileId: number, pSize64: DataView): number {
+    try {
+      const file = this.mapIdToFile.get(fileId)
+      if (!file?.fileHandle) return VFS.SQLITE_IOERR_FSTAT
+
+      const stats = fs.fstatSync(file.fileHandle)
+      pSize64.setBigInt64(0, BigInt(stats.size), true)
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_FSTAT
+    }
+  }
+
+  jTruncate(fileId: number, iSize: number): number {
+    try {
+      const file = this.mapIdToFile.get(fileId)
+      if (!file?.fileHandle) return VFS.SQLITE_IOERR_TRUNCATE
+
+      fs.ftruncateSync(file.fileHandle, iSize)
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_TRUNCATE
+    }
+  }
+
+  jSync(fileId: number, _flags: number): number {
+    try {
+      const file = this.mapIdToFile.get(fileId)
+      if (!file?.fileHandle) return VFS.SQLITE_OK
+
+      fs.fsyncSync(file.fileHandle)
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_FSYNC
+    }
+  }
+
+  jDelete(name: string, _syncDir: number): number {
+    try {
+      const pathname = path.resolve(name)
+      fs.unlinkSync(pathname)
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_DELETE
+    }
+  }
+
+  jAccess(name: string, _flags: number, pResOut: DataView): number {
+    try {
+      const pathname = path.resolve(name)
+      const exists = fs.existsSync(pathname)
+      pResOut.setInt32(0, exists ? 1 : 0, true)
+      return VFS.SQLITE_OK
+    } catch (e: any) {
+      this.lastError = e
+      return VFS.SQLITE_IOERR_ACCESS
+    }
+  }
+}

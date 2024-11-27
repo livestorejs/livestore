@@ -4,6 +4,7 @@
   "include": [],
   "references": [
     { "path": "./scripts" },
+    { "path": "./examples/src/cli" },
     { "path": "./examples/src/expo-todomvc" },
     { "path": "./examples/src/expo-linearlite" },
     { "path": "./examples/src/linearlite" },
