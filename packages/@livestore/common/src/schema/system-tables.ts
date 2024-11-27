@@ -45,8 +45,11 @@ export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
 export const sessionChangesetMetaTable = table(
   SESSION_CHANGESET_META_TABLE,
   {
-    idGlobal: SqliteDsl.integer({ primaryKey: true }),
-    idLocal: SqliteDsl.integer({ primaryKey: true }),
+    // TODO bring back primary key
+    idGlobal: SqliteDsl.integer({}),
+    idLocal: SqliteDsl.integer({}),
+    // idGlobal: SqliteDsl.integer({ primaryKey: true }),
+    // idLocal: SqliteDsl.integer({ primaryKey: true }),
     changeset: SqliteDsl.blob({}),
   },
   { disableAutomaticIdColumn: true },

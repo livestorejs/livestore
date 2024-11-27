@@ -61,7 +61,7 @@
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.3-dev.2",
+    "@livestore/sqlite-wasm": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {

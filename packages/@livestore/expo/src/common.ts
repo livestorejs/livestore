@@ -7,7 +7,8 @@ import type * as SQLite from 'expo-sqlite'
 export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousDatabase => {
   const stmts: PreparedStatement[] = []
 
-  const syncDb: SynchronousDatabase = {
+  const syncDb: SynchronousDatabase<any> = {
+    metadata: { fileName: db.databasePath },
     _tag: 'SynchronousDatabase',
     prepare: (queryStr) => {
       try {
@@ -55,11 +56,24 @@ export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousD
       stmt.finalize()
       return res as any
     },
+    // TODO
+    destroy: () => {},
     close: () => {
       for (const stmt of stmts) {
         stmt.finalize()
       }
       return db.closeSync()
+    },
+    import: () => {
+      throw new Error('Not implemented')
+      // TODO properly implement this as it seems to require importing to a temporary in-memory db,
+      // save it to a file, and then reopen the DB from that file? (see `overwriteDbFile` below)
+    },
+    session: () => {
+      return {
+        changeset: () => new Uint8Array(),
+        finish: () => {},
+      }
     },
   } satisfies SynchronousDatabase
 

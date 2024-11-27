@@ -7,22 +7,16 @@ import {
   migrateDb,
   type NetworkStatus,
   ROOT_ID,
-  type SynchronousDatabase,
 } from '@livestore/common'
 import { makeMutationEventSchema } from '@livestore/common/schema'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import { Effect, FileSystem, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
-
-import type { DatabaseInterface } from './sqlite.js'
-import { makeSyncDb } from './sqlite.js'
-import { makeSynchronousDatabase } from './sqlite/make-sync-db.js'
-import { importBytesToDb, loadSqlite3Wasm, makeInMemoryDb, makeNodeFsDb } from './sqlite/sqlite-utils.js'
-
-export type { DatabaseInterface } from './sqlite.js'
 
 export const makeNodeAdapter = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
 
-  return (makeDb: DatabaseInterface.Constructor, dbFilePath: string): Adapter => {
+  return (dbFilePath: string): Adapter => {
     return (({ schema }) =>
       Effect.gen(function* () {
         const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
@@ -36,18 +30,19 @@ export const makeNodeAdapter = Effect.gen(function* () {
 
         // const syncDb = makeSyncDb({ _tag: 'in-memory' }, makeDb)
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
-        const nodeFsDb = makeNodeFsDb(sqlite3, dbFilePath)
-        const syncNodeFsDb = makeSynchronousDatabase(sqlite3, nodeFsDb)
+        // const nodeFsDb = makeNodeFsDb(sqlite3, dbFilePath)
+        // const syncNodeFsDb = makeSynchronousDatabase(sqlite3, nodeFsDb)
+        const makeSyncDb = syncDbFactory({ sqlite3 })
+        const syncNodeFsDb = yield* makeSyncDb({ _tag: 'fs', directory: '', fileName: dbFilePath }).pipe(Effect.orDie)
         const mutationEventSchema = makeMutationEventSchema(schema)
 
         yield* migrateDb({ db: syncNodeFsDb, schema })
 
-        const inMemoryDb = makeInMemoryDb(sqlite3)
-        const syncInMemoryDb = makeSynchronousDatabase(sqlite3, inMemoryDb)
+        const syncInMemoryDb = yield* makeSyncDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 
         const fileData = yield* fs.readFile(dbFilePath).pipe(Effect.either)
         if (fileData._tag === 'Right') {
-          importBytesToDb(sqlite3, inMemoryDb, fileData.right, false)
+          syncInMemoryDb.import(fileData.right)
         } else {
           yield* Effect.logWarning('Failed to load database file', fileData.left)
         }

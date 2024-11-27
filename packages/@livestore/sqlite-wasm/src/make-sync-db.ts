@@ -2,16 +2,26 @@ import type { PreparedBindValues, PreparedStatement, SynchronousDatabase } from 
 import { SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
-import { exportDb } from './sqlite-utils.js'
+import { makeInMemoryDb } from './in-memory-vfs.js'
 
-export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): SynchronousDatabase => {
+export const makeSynchronousDatabase = <
+  TMetadata extends { dbPointer: number; fileName: string; deleteDb: () => void },
+>({
+  sqlite3,
+  metadata,
+}: {
+  sqlite3: SQLiteAPI
+  metadata: TMetadata
+}): SynchronousDatabase<TMetadata> => {
   const preparedStmts: PreparedStatement[] = []
+  const { dbPointer } = metadata
 
-  const syncDb: SynchronousDatabase = {
+  const syncDb: SynchronousDatabase<TMetadata> = {
     _tag: 'SynchronousDatabase',
+    metadata,
     prepare: (queryStr) => {
       try {
-        const stmts = sqlite3.statements(db, queryStr.trim(), { unscoped: true })
+        const stmts = sqlite3.statements(dbPointer, queryStr.trim(), { unscoped: true })
 
         let isFinalized = false
 
@@ -26,7 +36,7 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
                 sqlite3.step(stmt)
               } finally {
                 if (options?.onRowsChanged) {
-                  options.onRowsChanged(sqlite3.changes(db))
+                  options.onRowsChanged(sqlite3.changes(dbPointer))
                 }
 
                 sqlite3.reset(stmt) // Reset is needed for next execution
@@ -106,7 +116,7 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
         })
       }
     },
-    export: () => exportDb(sqlite3, db),
+    export: () => sqlite3.serialize(dbPointer, 'main'),
     execute: (queryStr, bindValues, options) => {
       const stmt = syncDb.prepare(queryStr)
       stmt.execute(bindValues, options)
@@ -118,13 +128,59 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
       stmt.finalize()
       return results as ReadonlyArray<any>
     },
+    destroy: () => {
+      syncDb.close()
+
+      metadata.deleteDb()
+      // if (metadata._tag === 'opfs') {
+      //   metadata.vfs.resetAccessHandle(metadata.fileName)
+      // }
+    },
     close: () => {
       for (const stmt of preparedStmts) {
         stmt.finalize()
       }
-      return sqlite3.close(db)
+      sqlite3.close(dbPointer)
     },
-  } satisfies SynchronousDatabase
+    import: (source) => {
+      // https://www.sqlite.org/c3ref/c_deserialize_freeonclose.html
+      // #define SQLITE_DESERIALIZE_FREEONCLOSE 1 /* Call sqlite3_free() on close */
+      // #define SQLITE_DESERIALIZE_RESIZEABLE  2 /* Resize using sqlite3_realloc64() */
+      // #define SQLITE_DESERIALIZE_READONLY    4 /* Database is read-only */
+      const FREE_ON_CLOSE = 1
+      const RESIZEABLE = 2
+
+      // NOTE in case we'll have a future use-case where we need a read-only database, we can reuse this code below
+      // if (readOnly === true) {
+      //   sqlite3.deserialize(db, 'main', bytes, bytes.length, bytes.length, FREE_ON_CLOSE | RESIZEABLE)
+      // } else {
+      if (source instanceof Uint8Array) {
+        const tmpDb = makeInMemoryDb(sqlite3)
+        // TODO find a way to do this more efficiently with sqlite to avoid either of the deserialize + backup call
+        // Maybe this can be done via the VFS API
+        sqlite3.deserialize(tmpDb.dbPointer, 'main', source, source.length, source.length, FREE_ON_CLOSE | RESIZEABLE)
+        sqlite3.backup(dbPointer, 'main', tmpDb.dbPointer, 'main')
+        sqlite3.close(tmpDb.dbPointer)
+      } else {
+        sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
+      }
+    },
+    session: () => {
+      const sessionPointer = sqlite3.session_create(dbPointer, 'main')
+      sqlite3.session_attach(sessionPointer, null)
+
+      return {
+        changeset: () => {
+          const res = sqlite3.session_changeset(sessionPointer)
+          return res.changeset
+        },
+        finish: () => {
+          sqlite3.session_delete(sessionPointer)
+        },
+      }
+    },
+    // TODO changeset invert + apply
+  } satisfies SynchronousDatabase<TMetadata>
 
   return syncDb
 }

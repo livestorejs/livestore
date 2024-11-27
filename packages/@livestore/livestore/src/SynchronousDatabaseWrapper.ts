@@ -8,6 +8,7 @@ import type {
   SynchronousDatabase,
 } from '@livestore/common'
 import { BoundArray, BoundMap, sql } from '@livestore/common'
+import { isDevEnv } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
@@ -138,7 +139,7 @@ export class SynchronousDatabaseWrapper {
         this.debugInfo.queryFrameDuration += durationMs
         this.debugInfo.queryFrameCount++
 
-        if (durationMs > 5 && import.meta.env.DEV) {
+        if (durationMs > 5 && isDevEnv()) {
           this.debugInfo.slowQueries.push({
             queryStr,
             bindValues,
@@ -206,7 +207,7 @@ export class SynchronousDatabaseWrapper {
           this.debugInfo.queryFrameCount++
 
           // TODO also enable in non-dev mode
-          if (durationMs > 5 && import.meta.env.DEV) {
+          if (durationMs > 5 && isDevEnv()) {
             this.debugInfo.slowQueries.push({
               queryStr,
               bindValues,

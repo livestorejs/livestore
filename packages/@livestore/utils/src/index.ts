@@ -8,12 +8,14 @@ export * from './set.js'
 export * from './browser.js'
 export * from './Deferred.js'
 export * from './misc.js'
+export * from './env.js'
 export * from './fast-deep-equal.js'
 export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
 
 import type * as otel from '@opentelemetry/api'
 
+import { isDevEnv } from './env.js'
 import { objectToString } from './misc.js'
 
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
@@ -88,7 +90,7 @@ export function casesHandled(unexpectedCase: never): never {
 
 export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
   console.error(msg, ...args)
-  if (isDev()) {
+  if (isDevEnv()) {
     debugger
   }
 
@@ -228,13 +230,3 @@ export const isPromise = (value: any): value is Promise<unknown> => typeof value
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 
 export { objectToString as errorToString } from './misc.js'
-
-const isDev = memoizeByRef(() => {
-  if (import.meta.env !== undefined) {
-    return import.meta.env.DEV || import.meta.env.VITE_DEV
-  } else if (typeof process !== 'undefined' && process.env !== undefined) {
-    return process.env.DEV
-  } else {
-    return false
-  }
-})

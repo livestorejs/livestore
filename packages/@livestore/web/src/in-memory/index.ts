@@ -6,15 +6,15 @@ import {
   ROOT_ID,
   UnexpectedError,
 } from '@livestore/common'
+import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { configureConnection } from '../common/connection.js'
-import { WaSqlite } from '../sqlite/index.js'
-import { makeSynchronousDatabase } from '../sqlite/make-sync-db.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
-const sqlite3Promise = WaSqlite.loadSqlite3Wasm()
+const sqlite3Promise = loadSqlite3Wasm()
 
 /** NOTE: This coordinator is currently only used for testing */
 export const makeInMemoryAdapter =
@@ -26,19 +26,18 @@ export const makeInMemoryAdapter =
     Effect.gen(function* () {
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
 
-      const db = WaSqlite.makeInMemoryDb(sqlite3)
-      const syncDb = makeSynchronousDatabase(sqlite3, db)
+      const syncDb = yield* syncDbFactory({ sqlite3 })({ _tag: 'in-memory' })
 
       if (initialData === undefined) {
-        yield* configureConnection({ syncDb }, { fkEnabled: true })
+        yield* configureConnection(syncDb, { fkEnabled: true })
 
         yield* migrateDb({ db: syncDb, schema })
 
         initializeSingletonTables(schema, syncDb)
       } else {
-        WaSqlite.importBytesToDb(sqlite3, db, initialData)
+        syncDb.import(initialData)
 
-        yield* configureConnection({ syncDb }, { fkEnabled: true })
+        yield* configureConnection(syncDb, { fkEnabled: true })
       }
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)

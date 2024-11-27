@@ -1,25 +1,27 @@
+/// <reference types="node" />
+
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 import * as fs from 'node:fs'
 import path from 'node:path'
 
+import type * as WaSqlite from '@livestore/wa-sqlite'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
-import { FacadeVFS } from './FacadeVFS.js'
+import { FacadeVFS } from '../FacadeVFS.js'
 
-class File {
+interface NodeFsFile {
   pathname: string
   flags: number
-  fileHandle: number | null = null
-
-  constructor(pathname: string, flags: number) {
-    this.pathname = pathname
-    this.flags = flags
-  }
+  fileHandle: number | null
 }
 
 export class NodeFS extends FacadeVFS {
-  private mapIdToFile = new Map<number, File>()
+  private mapIdToFile = new Map<number, NodeFsFile>()
   private lastError: Error | null = null
+
+  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI) {
+    super(name, sqlite3)
+  }
 
   getFilename(fileId: number): string {
     const pathname = this.mapIdToFile.get(fileId)?.pathname
@@ -29,7 +31,7 @@ export class NodeFS extends FacadeVFS {
   jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
       const pathname = zName ? path.resolve(zName) : Math.random().toString(36).slice(2)
-      const file = new File(pathname, flags)
+      const file: NodeFsFile = { pathname, flags, fileHandle: null }
       this.mapIdToFile.set(fileId, file)
 
       const create = !!(flags & VFS.SQLITE_OPEN_CREATE)
@@ -177,5 +179,9 @@ export class NodeFS extends FacadeVFS {
       this.lastError = e
       return VFS.SQLITE_IOERR_ACCESS
     }
+  }
+
+  deleteDb(fileName: string) {
+    fs.unlinkSync(fileName)
   }
 }

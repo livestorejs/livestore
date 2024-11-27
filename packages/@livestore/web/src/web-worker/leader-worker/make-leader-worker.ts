@@ -6,7 +6,9 @@ import {
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
 } from '@livestore/common/schema'
-import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { isDevEnv, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
@@ -32,8 +34,7 @@ import {
 import { configureConnection } from '../../common/connection.js'
 import { BCMessage } from '../../common/index.js'
 import * as OpfsUtils from '../../opfs-utils.js'
-import { WaSqlite } from '../../sqlite/index.js'
-import { makePersistedSqlite, prepareVfs } from '../common/persisted-sqlite.js'
+import { makePersistedSqlite } from '../common/persisted-sqlite.js'
 import type { ExecutionBacklogItem } from '../common/worker-schema.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -47,7 +48,7 @@ export type WorkerOptions = {
   makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
 }
 
-if (import.meta.env.DEV) {
+if (isDevEnv()) {
   globalThis.__opfsUtils = OpfsUtils
 }
 
@@ -101,22 +102,20 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
     return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
       InitialMessage: ({ storageOptions, storeId, originId, syncOptions, devtoolsEnabled }) =>
         Effect.gen(function* () {
-          const sqlite3 = yield* Effect.promise(() => WaSqlite.loadSqlite3Wasm())
+          const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+          const makeSyncDb = syncDbFactory({ sqlite3 })
 
           const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
           const shutdownStateSubRef = yield* SubscriptionRef.make<ShutdownState>('running')
-
-          const vfs = yield* prepareVfs({ sqlite3, storageOptions, storeId })
 
           const makeDb = makePersistedSqlite({
             storageOptions,
             kind: 'app',
             schemaHashSuffix,
             storeId,
-            sqlite3,
+            makeSyncDb,
             configure: (db) => configureConnection(db, { fkEnabled: true }),
-            vfs,
           })
 
           const makeDbLog = makePersistedSqlite({
@@ -124,9 +123,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             kind: 'mutationlog',
             schemaHashSuffix,
             storeId,
-            sqlite3,
+            makeSyncDb,
             configure: (db) => configureConnection(db, { fkEnabled: false }),
-            vfs,
           })
 
           // Might involve some async work, so we're running them concurrently
@@ -167,13 +165,11 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
           const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventIdRef)
 
           const leaderWorkerCtx = {
-            storageOptions,
             schema,
             storeId,
             originId,
             mutationSemaphore,
             shutdownStateSubRef,
-            sqlite3,
             initialSetupDeferred,
             bootStatusQueue,
             db,
@@ -185,6 +181,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             broadcastChannel,
             devtools,
             syncBackend,
+            makeSyncDb,
           } satisfies typeof LeaderWorkerCtx.Service
 
           const leaderContextLayer = Layer.succeed(LeaderWorkerCtx, leaderWorkerCtx)
@@ -208,15 +205,15 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
           const cachedSnapshot =
             result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-          return cachedSnapshot ?? (yield* workerCtx.db.export)
+          return cachedSnapshot ?? workerCtx.db.syncDb.export()
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
       Export: () =>
-        Effect.andThen(LeaderWorkerCtx, (_) => _.db.export).pipe(
+        Effect.andThen(LeaderWorkerCtx, (_) => _.db.syncDb.export()).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:Export'),
         ),
       ExportMutationlog: () =>
-        Effect.andThen(LeaderWorkerCtx, (_) => _.dbLog.export).pipe(
+        Effect.andThen(LeaderWorkerCtx, (_) => _.dbLog.syncDb.export()).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
         ),
@@ -231,7 +228,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
       GetCurrentMutationEventId: () =>
         Effect.gen(function* () {
           const workerCtx = yield* LeaderWorkerCtx
-          const result = workerCtx.dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number }>(
+          const result = workerCtx.dbLog.syncDb.select<{ idGlobal: number; idLocal: number }>(
             sql`SELECT idGlobal, idLocal FROM mutation_log ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
           )[0]
 
@@ -261,8 +258,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend }: WorkerOptions) =>
             yield* FiberSet.clear(devtools.connections)
           }
 
-          db.dbRef.current.syncDb.close()
-          dbLog.dbRef.current.syncDb.close()
+          db.syncDb.close()
+          dbLog.syncDb.close()
         }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
       // NOTE We're using a stream here to express a scoped effect over the worker boundary
       // so the code below can cause an interrupt on the worker client side
@@ -314,14 +311,14 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
     }
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = yield* makeApplyMutation(createdAtMemo, db.dbRef.current.pointer)
+    const applyMutation = yield* makeApplyMutation(createdAtMemo, db.syncDb)
 
     let offset = 0
 
     while (offset < executionItems.length) {
       try {
-        db.dbRef.current.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-        dbLog.dbRef.current.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        db.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        dbLog.syncDb.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
         batchItems = executionItems.slice(offset, offset + 50)
         offset += 50
@@ -339,7 +336,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         for (const item of batchItems) {
           if (item._tag === 'execute') {
             const { query, bindValues } = item
-            db.dbRef.current.syncDb.execute(query, bindValues)
+            db.syncDb.execute(query, bindValues)
 
             // NOTE we're not writing `execute` events to the mutation_log
           } else if (item._tag === 'mutate') {
@@ -359,12 +356,12 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
           }
         }
 
-        db.dbRef.current.syncDb.execute('COMMIT', undefined) // Commit the transaction
-        dbLog.dbRef.current.syncDb.execute('COMMIT', undefined) // Commit the transaction
+        db.syncDb.execute('COMMIT', undefined) // Commit the transaction
+        dbLog.syncDb.execute('COMMIT', undefined) // Commit the transaction
       } catch (error) {
         try {
-          db.dbRef.current.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
-          dbLog.dbRef.current.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
+          db.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
+          dbLog.syncDb.execute('ROLLBACK', undefined) // Rollback in case of an error
         } catch (e) {
           console.error('Error rolling back transaction', e)
         }
@@ -391,7 +388,7 @@ const bootLeaderWorker = Effect.gen(function* () {
   globalThis.__leaderWorkerCtx = leaderWorkerCtx
 
   yield* migrateTable({
-    db: dbLog.dbRef.current.syncDb,
+    db: dbLog.syncDb,
     behaviour: 'create-if-not-exists',
     tableAst: mutationLogMetaTable.sqliteDef.ast,
     skipMetaTable: true,
@@ -399,10 +396,10 @@ const bootLeaderWorker = Effect.gen(function* () {
 
   // TODO do more validation here
   const needsRecreate =
-    db.dbRef.current.syncDb.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    db.syncDb.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
   const initializeCurrentMutationEventId = Effect.gen(function* () {
-    const initialMutationEventId = dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number }>(
+    const initialMutationEventId = dbLog.syncDb.select<{ idGlobal: number; idLocal: number }>(
       sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
     )[0]
 
@@ -433,7 +430,7 @@ const bootLeaderWorker = Effect.gen(function* () {
   } else {
     yield* initializeCurrentMutationEventId
 
-    yield* fetchAndApplyRemoteMutations(leaderWorkerCtx, db.dbRef.current.pointer, true, ({ done, total }) =>
+    yield* fetchAndApplyRemoteMutations(db.syncDb, true, ({ done, total }) =>
       Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
     ).pipe(
       Effect.tap((syncInfo) =>
@@ -451,7 +448,7 @@ const bootLeaderWorker = Effect.gen(function* () {
 
   const { syncInfo } = yield* Deferred.await(initialSetupDeferred)
 
-  const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.dbRef.current.pointer)
+  const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.syncDb)
 
   if (syncBackend !== undefined) {
     // TODO try to do this in a batched-way if possible

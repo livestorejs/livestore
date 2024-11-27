@@ -3,7 +3,7 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/examples/AccessHandlePoolVFS.js
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
-import { FacadeVFS } from './FacadeVFS.js'
+import { FacadeVFS } from '../../FacadeVFS.js'
 
 const SECTOR_SIZE = 4096
 

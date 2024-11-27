@@ -15,7 +15,7 @@ import {
   SCHEMA_MUTATIONS_META_TABLE,
   SESSION_CHANGESET_META_TABLE,
 } from '@livestore/common/schema'
-import { assertNever, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isDevEnv, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -30,9 +30,9 @@ import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { BaseGraphQLContext, RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel } from './store-types.js'
 
-// if (import.meta.env.DEV) {
-//   exposeDebugUtils()
-// }
+if (isDevEnv()) {
+  exposeDebugUtils()
+}
 
 export class Store<
   TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,

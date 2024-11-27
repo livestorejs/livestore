@@ -15,8 +15,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { WaSqlite } from '../../sqlite/index.js'
-import { makeSynchronousDatabase } from '../../sqlite/make-sync-db.js'
 import type { PersistenceInfoPair } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -146,9 +144,9 @@ const listenToDevtools = ({
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* LeaderWorkerCtx
-    const { syncBackend, sqlite3, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair } = innerWorkerCtx
+    const { syncBackend, makeSyncDb, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair } = innerWorkerCtx
 
-    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.dbRef.current.pointer)
+    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db.syncDb)
 
     const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -203,9 +201,9 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.SnapshotReq': {
-              const data = yield* db.export
+              const snapshot = db.syncDb.export()
 
-              yield* sendMessage(Devtools.SnapshotRes.make({ snapshot: data, ...reqPayload }))
+              yield* sendMessage(Devtools.SnapshotRes.make({ snapshot, ...reqPayload }))
 
               return
             }
@@ -215,18 +213,15 @@ const listenToDevtools = ({
               let tableNames: Set<string>
 
               try {
-                const tmpDb = WaSqlite.makeInMemoryDb(sqlite3)
-
-                WaSqlite.importBytesToDb(sqlite3, tmpDb, data)
-
-                const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
+                const tmpSyncDb = yield* makeSyncDb({ _tag: 'in-memory' })
+                tmpSyncDb.import(data)
                 const tableNameResults = tmpSyncDb.select<{ name: string }>(
                   `select name from sqlite_master where type = 'table'`,
                 )
 
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 
-                sqlite3.close(tmpDb)
+                tmpSyncDb.close()
               } catch (e) {
                 yield* Effect.logError(`Error importing database file`, e)
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }))
@@ -239,13 +234,13 @@ const listenToDevtools = ({
 
                 yield* dbLog.import(data)
 
-                yield* db.destroy
+                db.syncDb.destroy()
               } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
                 yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
                 yield* db.import(data)
 
-                yield* dbLog.destroy
+                dbLog.syncDb.destroy()
               } else {
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }))
                 return
@@ -262,10 +257,10 @@ const listenToDevtools = ({
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-              yield* db.destroy
+              db.syncDb.destroy()
 
               if (mode === 'all-data') {
-                yield* dbLog.destroy
+                dbLog.syncDb.destroy()
               }
 
               yield* sendMessage(Devtools.ResetAllDataRes.make({ ...reqPayload }))
@@ -276,13 +271,8 @@ const listenToDevtools = ({
             }
             case 'LSD.DatabaseFileInfoReq': {
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
-
-              const dbFileSize = db.dbRef.current.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
-
-              const mutationLogFileSize = dbLog.dbRef.current.syncDb.select<{ size: number }>(
-                dbSizeQuery,
-                undefined,
-              )[0]!.size
+              const dbFileSize = db.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const mutationLogFileSize = dbLog.syncDb.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(
                 Devtools.DatabaseFileInfoRes.make({
@@ -295,7 +285,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.MutationLogReq': {
-              const mutationLog = yield* dbLog.export
+              const mutationLog = dbLog.syncDb.export()
 
               yield* sendMessage(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
 

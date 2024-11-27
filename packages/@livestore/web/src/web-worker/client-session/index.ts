@@ -2,7 +2,9 @@ import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOption
 import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
-import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
+import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   BrowserWorker,
   Cause,
@@ -26,7 +28,6 @@ import { nanoid } from '@livestore/utils/nanoid'
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { BCMessage } from '../../common/index.js'
 import * as OpfsUtils from '../../opfs-utils.js'
-import { WaSqlite } from '../../sqlite/index.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
 import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from '../common/shutdown-channel.js'
 import { validateAndUpdateMutationEventId } from '../common/validateAndUpdateMutationEventId.js'
@@ -34,9 +35,9 @@ import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './coordinator-devtools.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
-const sqlite3Promise = WaSqlite.loadSqlite3Wasm()
+const sqlite3Promise = loadSqlite3Wasm()
 
-if (import.meta.env.DEV) {
+if (isDevEnv()) {
   globalThis.__opfsUtils = OpfsUtils
 }
 
@@ -317,10 +318,10 @@ export const makeAdapter =
         current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
       }
 
-      const dbPointer = WaSqlite.makeInMemoryDb(sqlite3)
-      const syncDb = WaSqlite.makeSynchronousDatabase(sqlite3, dbPointer)
+      const makeSyncDb = syncDbFactory({ sqlite3 })
+      const syncDb = yield* makeSyncDb({ _tag: 'in-memory' })
 
-      WaSqlite.importBytesToDb(sqlite3, dbPointer, initialSnapshot)
+      syncDb.import(initialSnapshot)
 
       const numberOfTables =
         syncDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0

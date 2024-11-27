@@ -16,15 +16,12 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "better-sqlite3": "^11.5.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12"
-  },
+  "devDependencies": {},
   "publishConfig": {
     "access": "public"
   }

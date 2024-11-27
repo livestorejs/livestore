@@ -1,5 +1,6 @@
 import type { Coordinator, UnexpectedError } from '@livestore/common'
 import { Devtools } from '@livestore/common'
+import { isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Either, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -43,7 +44,7 @@ export const bootDevtools = ({
 
     yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
 
-    if (import.meta.env.DEV) {
+    if (isDevEnv()) {
       yield* Effect.log(
         `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}`,
       )

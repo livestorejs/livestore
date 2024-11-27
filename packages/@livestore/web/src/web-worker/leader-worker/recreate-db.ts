@@ -1,4 +1,4 @@
-import type { MigrationHooks } from '@livestore/common'
+import type { MigrationHooks, SynchronousDatabase } from '@livestore/common'
 import {
   initializeSingletonTables,
   migrateDb,
@@ -11,28 +11,24 @@ import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 
 import { configureConnection } from '../../common/connection.js'
-import { WaSqlite } from '../../sqlite/index.js'
-import { makeSynchronousDatabase } from '../../sqlite/make-sync-db.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import type { InitialSyncInfo } from './types.js'
 import { LeaderWorkerCtx } from './types.js'
 
 export const recreateDb = Effect.gen(function* () {
-  const leaderWorkerCtx = yield* LeaderWorkerCtx
-  const { db, dbLog, sqlite3, schema, bootStatusQueue } = leaderWorkerCtx
+  const { db, dbLog, makeSyncDb, schema, bootStatusQueue } = yield* LeaderWorkerCtx
 
   const migrationOptions = schema.migrationOptions
 
   yield* Effect.addFinalizer((ex) => {
     if (ex._tag === 'Success') return Effect.void
-    return db.destroy.pipe(Effect.tapCauseLogPretty, Effect.orDie)
+    return Effect.sync(() => db.syncDb.destroy())
   })
 
   // NOTE to speed up the operations below, we're creating a temporary in-memory database
   // and later we'll overwrite the persisted database with the new data
-  const tmpDb = WaSqlite.makeInMemoryDb(sqlite3)
-  const tmpSyncDb = makeSynchronousDatabase(sqlite3, tmpDb)
-  yield* configureConnection({ syncDb: tmpSyncDb }, { fkEnabled: true })
+  const tmpSyncDb = yield* makeSyncDb({ _tag: 'in-memory' })
+  yield* configureConnection(tmpSyncDb, { fkEnabled: true })
 
   const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
     Effect.gen(function* () {
@@ -52,8 +48,6 @@ export const recreateDb = Effect.gen(function* () {
       return tmpSyncDb
     })
 
-  const syncDbLog = dbLog.dbRef.current.syncDb
-
   switch (migrationOptions.strategy) {
     case 'from-mutation-log': {
       const hooks = migrationOptions.hooks
@@ -61,7 +55,7 @@ export const recreateDb = Effect.gen(function* () {
 
       yield* rehydrateFromMutationLog({
         db: tmpSyncDb,
-        logDb: syncDbLog,
+        logDb: dbLog.syncDb,
         schema,
         migrationOptions,
         onProgress: ({ done, total }) =>
@@ -83,13 +77,13 @@ export const recreateDb = Effect.gen(function* () {
       break
     }
     case 'manual': {
-      const oldDbData = yield* db.export
+      const oldDbData = db.syncDb.export()
 
       const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
         UnexpectedError.mapToUnexpectedError,
       )
 
-      WaSqlite.importBytesToDb(sqlite3, tmpDb, newDbData)
+      tmpSyncDb.import(newDbData)
 
       // TODO validate schema
 
@@ -100,13 +94,13 @@ export const recreateDb = Effect.gen(function* () {
     }
   }
 
-  const syncInfo = yield* fetchAndApplyRemoteMutations(leaderWorkerCtx, tmpDb, false, ({ done, total }) =>
+  const syncInfo = yield* fetchAndApplyRemoteMutations(tmpSyncDb, false, ({ done, total }) =>
     Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
   )
 
-  yield* db.import({ pointer: tmpDb })
+  yield* db.import(tmpSyncDb)
 
-  const snapshotFromTmpDb = WaSqlite.exportDb(sqlite3, tmpDb)
+  const snapshotFromTmpDb = tmpSyncDb.export()
 
   tmpSyncDb.close()
 
@@ -119,14 +113,13 @@ export const recreateDb = Effect.gen(function* () {
 
 // TODO replace with proper rebasing impl
 export const fetchAndApplyRemoteMutations = (
-  leaderWorkerCtx: typeof LeaderWorkerCtx.Service,
-  db: number,
+  db: SynchronousDatabase,
   shouldBroadcast: boolean,
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>,
 ) =>
   Effect.gen(function* () {
-    if (leaderWorkerCtx.syncBackend === undefined) return Option.none() as InitialSyncInfo
-    const { syncBackend, currentMutationEventIdRef } = leaderWorkerCtx
+    const { syncBackend, currentMutationEventIdRef } = yield* LeaderWorkerCtx
+    if (syncBackend === undefined) return Option.none() as InitialSyncInfo
 
     const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
     const applyMutation = yield* makeApplyMutation(createdAtMemo, db)
@@ -186,7 +179,7 @@ const getCursorInfo = Effect.gen(function* () {
   }).pipe(Schema.Array, Schema.headOrElse())
 
   const syncPullInfo = yield* Effect.try(() =>
-    dbLog.dbRef.current.syncDb.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
+    dbLog.syncDb.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
       sql`SELECT idGlobal, idLocal, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY idGlobal DESC LIMIT 1`,
     ),
   ).pipe(

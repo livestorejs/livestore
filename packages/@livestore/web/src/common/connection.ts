@@ -1,14 +1,10 @@
 import type { PreparedBindValues, SynchronousDatabase } from '@livestore/common'
 import { prepareBindValues, sql, SqliteError } from '@livestore/common'
 import type { BindValues } from '@livestore/common/sql-queries'
+import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 
-import type { WaSqlite } from '../sqlite/index.js'
-
-export const configureConnection = (
-  { syncDb }: { syncDb: SynchronousDatabase },
-  { fkEnabled }: { fkEnabled: boolean },
-) =>
+export const configureConnection = (syncDb: SynchronousDatabase, { fkEnabled }: { fkEnabled: boolean }) =>
   execSql(
     syncDb,
     sql`

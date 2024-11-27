@@ -1,4 +1,4 @@
-import type { SqliteError, UnexpectedError } from '@livestore/common'
+import type { SqliteError, SynchronousDatabase, UnexpectedError } from '@livestore/common'
 import {
   Devtools,
   getExecArgsFromMutation,
@@ -17,7 +17,6 @@ import { Effect, Schema, SubscriptionRef } from '@livestore/utils/effect'
 
 import { execSql, execSqlPrepared } from '../../common/connection.js'
 import { BCMessage } from '../../common/index.js'
-import { makeSynchronousDatabase } from '../../sqlite/make-sync-db.js'
 import { validateAndUpdateMutationEventId } from '../common/validateAndUpdateMutationEventId.js'
 import { LeaderWorkerCtx } from './types.js'
 
@@ -34,7 +33,7 @@ export type ApplyMutation = (
 
 export const makeApplyMutation = (
   createdAtMemo: () => string,
-  db: number,
+  syncDb: SynchronousDatabase,
 ): Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderWorkerCtx> =>
   Effect.gen(function* () {
     const leaderWorkerCtx = yield* LeaderWorkerCtx
@@ -42,7 +41,7 @@ export const makeApplyMutation = (
 
     const { dbLog } = leaderWorkerCtx
 
-    const syncDbLog = dbLog.dbRef.current.syncDb
+    const syncDbLog = dbLog.syncDb
 
     return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
       Effect.gen(function* () {
@@ -54,7 +53,6 @@ export const makeApplyMutation = (
           syncBackend,
           schema,
           mutationSemaphore,
-          sqlite3,
           currentMutationEventIdRef,
         } = leaderWorkerCtx
         const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
@@ -63,8 +61,6 @@ export const makeApplyMutation = (
         const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-        const syncDb = makeSynchronousDatabase(sqlite3, db)
 
         yield* validateAndUpdateMutationEventId({
           currentMutationEventIdRef,
@@ -75,11 +71,7 @@ export const makeApplyMutation = (
         // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
 
         const transaction = Effect.gen(function* () {
-          const sessionEnabled = import.meta.env.VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT
-          const session = sessionEnabled ? sqlite3.session_create(db, 'main') : -1
-          if (sessionEnabled) {
-            sqlite3.session_attach(session, null)
-          }
+          const session = import.meta.env.VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT ? syncDb.session() : undefined
 
           const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
           if (hasDbTransaction) {
@@ -98,10 +90,9 @@ export const makeApplyMutation = (
             yield* execSql(syncDb, 'COMMIT', {})
           }
 
-          if (sessionEnabled) {
-            const { changeset } = sqlite3.session_changeset(session)
-            sqlite3.session_delete(session)
-
+          if (session !== undefined) {
+            const changeset = session.changeset()
+            session.finish()
             // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
             // TODO possibly write a null value instead of omitting the row
             if (changeset.length > 0) {

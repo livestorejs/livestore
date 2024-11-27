@@ -1,3 +1,5 @@
+import { isDevEnv } from '@livestore/utils'
+
 /* eslint-disable unicorn/prefer-global-this */
 export const downloadBlob = (
   data: Uint8Array | Blob | string,
@@ -24,7 +26,7 @@ export const downloadURL = (data: string, fileName: string) => {
 }
 
 export const exposeDebugUtils = () => {
-  if (import.meta.env.DEV) {
+  if (isDevEnv()) {
     globalThis.__debugDownloadBlob = downloadBlob
   }
 }

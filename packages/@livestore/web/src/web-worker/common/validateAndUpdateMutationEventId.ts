@@ -20,7 +20,7 @@ export const validateAndUpdateMutationEventId = ({
     ) {
       currentMutationEventIdRef.current = { ...mutationEventId }
     } else if (mutationEventId.global < currentMutationEventIdRef.current.global) {
-      // if (import.meta.env.DEV) {
+      // if (isDevEnv()) {
       //   debugger
       // }
       console.warn(

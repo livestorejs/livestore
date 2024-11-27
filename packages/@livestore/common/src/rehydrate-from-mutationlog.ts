@@ -1,7 +1,12 @@
-import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import { isDevEnv, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type MigrationOptionsFromMutationLog, type SynchronousDatabase, UnexpectedError } from './adapter-types.js'
+import {
+  type MigrationOptionsFromMutationLog,
+  ROOT_ID,
+  type SynchronousDatabase,
+  UnexpectedError,
+} from './adapter-types.js'
 import { getExecArgsFromMutation } from './mutation.js'
 import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/index.js'
 import { MUTATION_LOG_META_TABLE } from './schema/index.js'
@@ -72,11 +77,7 @@ This likely means the schema has changed in an incompatible way.
 
         for (const { statementSql, bindValues } of execArgsArr) {
           // TODO cache prepared statements for mutations
-          db.execute(
-            statementSql,
-            bindValues,
-            import.meta.env.DEV ? makeExecuteOptions(statementSql, bindValues) : undefined,
-          )
+          db.execute(statementSql, bindValues, isDevEnv() ? makeExecuteOptions(statementSql, bindValues) : undefined)
           // console.log(`Re-executed mutation ${mutationSql}`, bindValues)
         }
       }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromMutationLog:processMutation`))
@@ -85,7 +86,7 @@ This likely means the schema has changed in an incompatible way.
 
     const stmt = logDb.prepare(sql`\
 SELECT * FROM ${MUTATION_LOG_META_TABLE} 
-WHERE idGlobal > COALESCE($idGlobal, '') AND idLocal > COALESCE($idLocal, '')
+WHERE idGlobal > $idGlobal OR (idGlobal = $idGlobal AND idLocal > $idLocal)
 ORDER BY idGlobal ASC, idLocal ASC
 LIMIT ${CHUNK_SIZE}
 `)
@@ -101,9 +102,9 @@ LIMIT ${CHUNK_SIZE}
         const lastId = Chunk.isChunk(item)
           ? Chunk.last(item).pipe(
               Option.map((_) => ({ global: _.idGlobal, local: _.idLocal })),
-              Option.getOrUndefined,
+              Option.getOrElse(() => ROOT_ID),
             )
-          : undefined
+          : ROOT_ID
         const nextItem = Chunk.fromIterable(
           stmt.select<MutationLogMetaRow>({
             $idGlobal: lastId?.global,

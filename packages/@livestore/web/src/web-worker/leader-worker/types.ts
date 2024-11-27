@@ -1,5 +1,14 @@
-import type { BootStatus, Devtools, EventId, EventIdPair, SyncBackend, UnexpectedError } from '@livestore/common'
+import type {
+  BootStatus,
+  Devtools,
+  EventId,
+  EventIdPair,
+  MakeSynchronousDatabase,
+  SyncBackend,
+  UnexpectedError,
+} from '@livestore/common'
 import type { LiveStoreSchema, MutationEventSchema } from '@livestore/common/schema'
+import type { WebDatabaseInput, WebDatabaseMetadata } from '@livestore/sqlite-wasm/browser'
 import type {
   Deferred,
   Effect,
@@ -17,9 +26,7 @@ import type {
 import { Context } from '@livestore/utils/effect'
 
 import type { BCMessage } from '../../common/index.js'
-import type { WaSqlite } from '../../sqlite/index.js'
 import type { PersistedSqlite, PersistenceInfoPair } from '../common/persisted-sqlite.js'
-import type { StorageType } from '../common/worker-schema.js'
 
 export type DevtoolsContextEnabled = {
   enabled: true
@@ -63,11 +70,10 @@ export class LeaderWorkerCtx extends Context.Tag('LeaderWorkerCtx')<
     schema: LiveStoreSchema
     storeId: string
     originId: string
-    storageOptions: StorageType
+    makeSyncDb: MakeSynchronousDatabase<{ dbPointer: number; fileName: string }>
     mutationSemaphore: Effect.Semaphore
     db: PersistedSqlite
     dbLog: PersistedSqlite
-    sqlite3: WaSqlite.SQLiteAPI
     bootStatusQueue: Queue.Queue<BootStatus>
     initialSetupDeferred: Deferred.Deferred<InitialSetup, UnexpectedError>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation

@@ -3,7 +3,7 @@ import './polyfill.js'
 import { BunContext, BunRuntime } from '@effect/platform-bun'
 import { BootStatus, liveStoreVersion } from '@livestore/common'
 import { DbSchema, makeSchema } from '@livestore/common/schema'
-import { createStore } from '@livestore/livestore'
+import { createStore, queryDb } from '@livestore/livestore'
 import { makeNodeAdapter } from '@livestore/node'
 import { Effect, FiberSet, Queue } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -33,24 +33,21 @@ const live = Cli.Command.make('live', {}, () =>
   Effect.gen(function* () {
     // const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
     const { schema, tables } = makeMockSchema()
-    // const adapter = (yield* makeNodeAdapter)((filename) => new Database(filename), 'test.db')
-    const adapter = (yield* makeNodeAdapter)(() => null as any, 'test.db')
-    // ({
-    //   schema,
-    //   storeId: 'default',
-    //   devtoolsEnabled: false,
-    //   bootStatusQueue,
-    //   shutdown: () => Effect.void,
-    //   connectDevtoolsToStore: () => Effect.void,
-    // })
+    const adapter = (yield* makeNodeAdapter)('test.db')
 
     const fiberSet = yield* FiberSet.make()
     const store = yield* createStore({ adapter, fiberSet, schema, storeId: 'default' })
 
+    const queries$ = queryDb(tables.todo.query)
+
+    queries$.subscribe((res) => {
+      console.log('res', res)
+    })
+
     store.mutate(tables.todo.insert({ id: nanoid(), title: 'Hello, world!' }))
 
-    const res = store.query(tables.todo.query)
-    console.log('res', res)
+    // const res = store.query(tables.todo.query)
+    // console.log('res', res)
   }).pipe(Effect.scoped),
 )
 

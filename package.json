@@ -32,6 +32,7 @@
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/web": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/devtools-expo-common": "workspace:*",

@@ -12,6 +12,11 @@ export interface PreparedStatement {
   sql: string
 }
 
+export type SynchronousDatabaseSession = {
+  changeset: () => Uint8Array
+  finish: () => void
+}
+
 export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
@@ -19,8 +24,12 @@ export type ClientSession = {
   coordinator: Coordinator
 }
 
-export type SynchronousDatabase = {
+export type SynchronousDatabase<
+  TReq extends { fileName: string } = { fileName: string },
+  TMetadata extends TReq = TReq,
+> = {
   _tag: 'SynchronousDatabase'
+  metadata: TMetadata
   prepare(queryStr: string): PreparedStatement
   execute(
     queryStr: string,
@@ -29,8 +38,22 @@ export type SynchronousDatabase = {
   ): void
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
+  import: (data: Uint8Array | SynchronousDatabase<any, TReq>) => void
   close(): void
+  destroy(): void
+  session(): SynchronousDatabaseSession
 }
+
+export type MakeSynchronousDatabase<
+  TReq extends { fileName: string },
+  TInput_ extends { _tag: string } = { _tag: string },
+  TMetadata_ extends TReq = TReq,
+> = <
+  TInput extends TInput_,
+  TMetadata extends TMetadata_ & { _tag: TInput['_tag'] } = TMetadata_ & { _tag: TInput['_tag'] },
+>(
+  input: TInput,
+) => Effect.Effect<SynchronousDatabase<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError>
 
 export type ResetMode = 'all-data' | 'only-app-db'
 
