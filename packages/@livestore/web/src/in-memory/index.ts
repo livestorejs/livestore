@@ -6,12 +6,13 @@ import {
   ROOT_ID,
   UnexpectedError,
 } from '@livestore/common'
+import { configureConnection } from '@livestore/common/leader-thread'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { configureConnection } from '../common/connection.js'
+// TODO unify in-memory adapter with other in-memory adapter implementations
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()

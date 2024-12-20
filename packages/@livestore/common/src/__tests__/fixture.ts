@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { DbSchema } from '../schema/index.js'
+import { DbSchema, makeSchema } from '../schema/index.js'
 
 export const todos = DbSchema.table(
   'todos',
@@ -21,3 +21,7 @@ export const appConfig = DbSchema.table('app_config', DbSchema.json({ schema: Co
   isSingleton: true,
   deriveMutations: true,
 })
+
+export const tables = [todos, appConfig]
+
+export const schema = makeSchema({ tables })

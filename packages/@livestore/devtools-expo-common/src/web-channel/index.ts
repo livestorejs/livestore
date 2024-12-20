@@ -1,6 +1,6 @@
 import { UnexpectedError } from '@livestore/common'
-import type { Either, ParseResult, Scope, WebChannel } from '@livestore/utils/effect'
-import { Deferred, Effect, Schema, Stream } from '@livestore/utils/effect'
+import type { Either, ParseResult, Scope } from '@livestore/utils/effect'
+import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import * as ExpoDevtools from 'expo/devtools'
 
 export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -44,5 +44,14 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
     // Let's see whether it will be needed in the future
     const closedDeferred = yield* Deferred.make<void>()
 
-    return { send, listen, closedDeferred }
+    const supportsTransferables = false
+
+    return {
+      [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
+      send,
+      listen,
+      closedDeferred,
+      schema: { listen: listenSchema, send: sendSchema },
+      supportsTransferables,
+    }
   }).pipe(Effect.withSpan(`devtools-expo-common:makeExpoDevtoolsChannel`))

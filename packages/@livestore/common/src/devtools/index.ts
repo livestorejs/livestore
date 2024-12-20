@@ -43,7 +43,6 @@ export namespace WebBridge {
   ): Effect.Effect<WebChannel.WebChannel<typeof All.Type, typeof All.Type>, never, Scope.Scope> =>
     WebChannel.broadcastChannel({
       channelName: `livestore-web-bridge-devtools${key ? `-${key}` : ''}`,
-      listenSchema: All,
-      sendSchema: All,
+      schema: All,
     })
 }

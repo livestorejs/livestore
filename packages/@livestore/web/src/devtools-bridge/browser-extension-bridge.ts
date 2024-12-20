@@ -12,14 +12,15 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
 
   const iframeChannel = yield* WebChannel.windowChannel({
     window: iframeWindow,
-    listenSchema: Schema.Union(MessagePortInit.PortForDevtools, BackgroundMessage.Disconnect),
-    sendSchema: Schema.Never,
+    schema: {
+      listen: Schema.Union(MessagePortInit.PortForDevtools, BackgroundMessage.Disconnect),
+      send: Schema.Never,
+    },
   })
 
   const panelChannel = yield* WebChannel.windowChannel({
     window: iframeWindow.parent,
-    listenSchema: Schema.Never,
-    sendSchema: MessageToPanel,
+    schema: { listen: Schema.Never, send: MessageToPanel },
   })
 
   const responsePubSub = yield* PubSub.unbounded<

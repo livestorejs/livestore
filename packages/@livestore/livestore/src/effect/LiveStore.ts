@@ -32,10 +32,10 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
    */
   storeId?: string
   graphQLOptions?: {
-    schema: Effect.Effect<GraphQLSchema, never, otel.Tracer>
+    schema: Effect.Effect<GraphQLSchema, never, OtelTracer.OtelTracer>
     makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
   }
-  boot?: (store: Store<GraphQLContext, LiveStoreSchema>) => Effect.Effect<void, unknown, otel.Tracer>
+  boot?: (store: Store<GraphQLContext, LiveStoreSchema>) => Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   adapter: Adapter
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -44,7 +44,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
 
 export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
   props: LiveStoreContextProps<GraphQLContext>,
-): Layer.Layer<LiveStoreContextRunning, UnexpectedError | Cause.TimeoutException, otel.Tracer> =>
+): Layer.Layer<LiveStoreContextRunning, UnexpectedError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
   Layer.scoped(LiveStoreContextRunning, makeLiveStoreContext(props)).pipe(
     Layer.withSpan('LiveStore'),
     Layer.provide(LiveStoreContextDeferred),
@@ -67,13 +67,13 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
   LiveStoreContextRunning,
   UnexpectedError | Cause.TimeoutException,
-  DeferredStoreContext | Scope.Scope | otel.Tracer
+  DeferredStoreContext | Scope.Scope | OtelTracer.OtelTracer
 > =>
   pipe(
     Effect.gen(function* () {
       const otelRootSpanContext = otel.context.active()
 
-      const otelTracer = yield* OtelTracer.Tracer
+      const otelTracer = yield* OtelTracer.OtelTracer
 
       const graphQLOptions = yield* graphQLOptions_
         ? Effect.all({ schema: graphQLOptions_.schema, makeContext: Effect.succeed(graphQLOptions_.makeContext) })

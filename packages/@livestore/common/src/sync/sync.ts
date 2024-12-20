@@ -27,10 +27,15 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   >
   // TODO support batching
   push: (
-    mutationEventEncoded: MutationEvent.AnyEncoded,
+    /**
+     * Constraints for batch:
+     * - Number of events: 1-100
+     * - event ids must be in ascending order
+     * */
+    batch: ReadonlyArray<MutationEvent.AnyEncoded>,
     persisted: boolean,
   ) => Effect.Effect<
-    { metadata: Option.Option<TSyncMetadata> },
+    { metadata: ReadonlyArray<Option.Option<TSyncMetadata>> },
     IsOfflineError | InvalidPushError,
     HttpClient.HttpClient
   >
@@ -39,7 +44,15 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {}) {}
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
-  message: Schema.String,
+  reason: Schema.Union(
+    Schema.TaggedStruct('Unexpected', {
+      message: Schema.String,
+    }),
+    Schema.TaggedStruct('ServerAhead', {
+      minimumExpectedId: Schema.Number,
+      providedId: Schema.Number,
+    }),
+  ),
 }) {}
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
   message: Schema.String,

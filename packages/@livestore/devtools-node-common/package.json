@@ -1,0 +1,27 @@
+{
+  "name": "@livestore/devtools-node-common",
+  "version": "0.2.0",
+  "type": "module",
+  "exports": {
+    "./web-channel": {
+      "types": "./dist/web-channel/index.d.ts",
+      "default": "./dist/web-channel/index.js"
+    },
+    "./devtools-bridge": {
+      "types": "./dist/devtools-bridge/index.d.ts",
+      "default": "./dist/devtools-bridge/index.js"
+    }
+  },
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*"
+  },
+  "devDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  }
+}

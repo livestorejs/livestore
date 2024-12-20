@@ -39,9 +39,11 @@ export {
   HashSet,
   MutableHashSet,
   MutableHashMap,
+  TQueue,
   Option,
   LogLevel,
   Logger,
+  Config,
   Layer,
   STM,
   TRef,
@@ -51,6 +53,7 @@ export {
   identity,
   GlobalValue,
   Match,
+  TestServices,
 } from 'effect'
 
 export { dual } from 'effect/Function'
@@ -60,6 +63,7 @@ export * as Stream from './Stream.js'
 export * as SubscriptionRef from './SubscriptionRef.js'
 
 export * as WebChannel from './WebChannel.js'
+export * as WebSocket from './WebSocket.js'
 
 export * as SchemaAST from 'effect/SchemaAST'
 export { TreeFormatter } from 'effect/ParseResult'
@@ -67,6 +71,7 @@ export { ParseResult, Pretty } from 'effect'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as Schema from './Schema/index.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
+// export * as OtelResource from '@effect/opentelemetry/Resource'
 
 export {
   Transferable,
@@ -81,6 +86,7 @@ export {
   HttpClientRequest,
   HttpClientResponse,
   FetchHttpClient,
+  Socket,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 

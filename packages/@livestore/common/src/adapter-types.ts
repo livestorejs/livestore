@@ -42,7 +42,7 @@ export type SynchronousDatabase<TReq = any, TMetadata extends TReq = TReq> = {
 }
 
 export type MakeSynchronousDatabase<
-  TReq,
+  TReq = { dbPointer: number; persistenceInfo: PersistenceInfo },
   TInput_ extends { _tag: string } = { _tag: string },
   TMetadata_ extends TReq = TReq,
 > = <
@@ -104,7 +104,7 @@ export type Coordinator = {
     options: { persisted: boolean },
   ): Effect.Effect<void, UnexpectedError>
   /** Can be called synchronously */
-  nextMutationEventIdPair: (opts: { localOnly: boolean }) => Effect.Effect<EventIdPair, UnexpectedError>
+  nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
   /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
   getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>

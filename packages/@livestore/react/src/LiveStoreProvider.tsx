@@ -11,6 +11,7 @@ import type {
 } from '@livestore/livestore'
 import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
 import { errorToString } from '@livestore/utils'
+import type { OtelTracer } from '@livestore/utils/effect'
 import { Effect, FiberSet, Logger, LogLevel, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
@@ -34,7 +35,7 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
   boot?: (
     store: Store<GraphQLContext, LiveStoreSchema>,
     parentSpan: otel.Span,
-  ) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
+  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: OtelOptions
   renderLoading: (status: BootStatus) => ReactElement

@@ -99,6 +99,12 @@ export class Store<
     const mutationsSpan = otelOptions.tracer.startSpan('LiveStore:mutations', {}, otelOptions.rootSpanContext)
     const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
 
+    // TODO with Tim Smart (fix otel span propagation)
+    // console.log(
+    //   'otelOptions.rootSpanContext',
+    //   otelOptions.rootSpanContext,
+    //   otel.trace.getSpanContext(otelOptions.rootSpanContext),
+    // )
     const queriesSpan = otelOptions.tracer.startSpan('LiveStore:queries', {}, otelOptions.rootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
 
@@ -304,7 +310,8 @@ export class Store<
       firstMutationOrTxnFnOrOptions?.label !== undefined ||
       firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
       firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined ||
-      firstMutationOrTxnFnOrOptions?.persisted !== undefined
+      firstMutationOrTxnFnOrOptions?.persisted !== undefined ||
+      firstMutationOrTxnFnOrOptions?.spanLinks !== undefined
     ) {
       options = firstMutationOrTxnFnOrOptions
       mutationsEvents = restMutations
@@ -339,7 +346,7 @@ export class Store<
 
     const res = this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
-      { attributes: { 'livestore.mutateLabel': label } },
+      { attributes: { 'livestore.mutateLabel': label }, links: options?.spanLinks },
       this.otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -469,9 +476,9 @@ export class Store<
 
     // Needs to happen only for partial mutation events (thus a function)
     const nextMutationEventId = () => {
-      const { id, parentId } = this.clientSession.coordinator
-        .nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })
-        .pipe(Effect.runSync)
+      const { id, parentId } = this.clientSession.coordinator.nextMutationEventIdPair({
+        localOnly: mutationDef.options.localOnly,
+      })
 
       return { id, parentId }
     }

@@ -2,7 +2,8 @@ import { Devtools, liveStoreVersion } from '@livestore/common'
 import { Deferred, Effect, PubSub, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 
 /**
- * This code is running in the devtools window
+ * This code is running in the devtools window where it's assumed that message ports
+ * can be transferred over the bridge.
  */
 export const makeShared = ({
   portForDevtoolsDeferred,
@@ -23,8 +24,7 @@ export const makeShared = ({
 
     const appHostCoordinatorChannel = yield* WebChannel.messagePortChannel({
       port: portForDevtools,
-      listenSchema: Devtools.MessageFromAppHostCoordinator,
-      sendSchema: Devtools.MessageToAppHostCoordinator,
+      schema: { listen: Devtools.MessageFromAppHostCoordinator, send: Devtools.MessageToAppHostCoordinator },
     })
 
     yield* appHostCoordinatorChannel.listen.pipe(
@@ -51,8 +51,7 @@ export const makeShared = ({
 
             const portForAppHostStoreChannel = yield* WebChannel.messagePortChannel({
               port: storeMessageChannel.port2,
-              listenSchema: Devtools.MessageFromAppHostStore,
-              sendSchema: Devtools.MessageToAppHostStore,
+              schema: { listen: Devtools.MessageFromAppHostStore, send: Devtools.MessageToAppHostStore },
             })
 
             yield* portForAppHostStoreChannel.listen.pipe(

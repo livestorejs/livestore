@@ -11,6 +11,10 @@
       "types": "./dist/sql-queries/index.d.ts",
       "default": "./dist/sql-queries/index.js"
     },
+    "./leader-thread": {
+      "types": "./dist/leader-thread/mod.d.ts",
+      "default": "./dist/leader-thread/mod.js"
+    },
     "./schema": {
       "types": "./dist/schema/index.d.ts",
       "default": "./dist/schema/index.js"
@@ -32,6 +36,9 @@
       ],
       "sql-queries": [
         "./dist/sql-queries/index.d.ts"
+      ],
+      "leader-thread": [
+        "./dist/leader-thread/mod.d.ts"
       ],
       "sync/next": [
         "./dist/sync/next/mod.d.ts"

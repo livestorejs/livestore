@@ -10,17 +10,17 @@
     "preview": "remix vite:preview"
   },
   "dependencies": {
-    "@livestore/common": "0.2.0",
-    "@livestore/devtools-vite": "0.2.0",
-    "@livestore/livestore": "0.2.0",
-    "@livestore/react": "0.2.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/devtools-vite": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
     "@livestore/sync-electric": "0.2.0",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
-    "@livestore/web": "0.2.0",
+    "@livestore/web": "workspace:*",
     "@overengineering/fps-meter": "^0.1.2",
     "@remix-run/node": "^2.11.2",
     "@remix-run/react": "^2.11.2",
-    "effect": "3.10.12",
+    "effect": "3.11.7",
     "isbot": "^5.1.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -38,7 +38,7 @@
     "@vite-pwa/remix": "^0.1.3",
     "postgres": "^3.4.5",
     "rollup-plugin-visualizer": "^5.12.0",
-    "typescript": "5.5.4",
+    "typescript": "5.7.2",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5"
   }

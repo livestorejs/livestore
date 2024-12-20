@@ -3,6 +3,22 @@
 > NOTE: LiveStore is still in alpha and releases can include breaking changes. See [state of the project](https://preview.livestore.dev/reference/state-of-the-project/) for more info.
 > LiveStore is following a semver-like release strategy where breaking changes are released in minor versions before the 1.0 release.
 
+## 0.3.0
+
+- New devtools protocol via webmesh
+- New: Node adapter
+  - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
+- Improved syncing
+  - `sync-cf` backend: More reliable websocket connection handling
+  - Configurable initial sync semantics (skip or block with timeout)
+- Node syncing integration tests
+- Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
+- Improve Otel tracing integration
+- Internal:
+  - Large refactoring to share more code between adapters
+  - Upgrade to TypeScript 5.7
+- Upgraded dependencies (effect 3.11.7 or higher)
+
 ## 0.2.0
 
 ### Core

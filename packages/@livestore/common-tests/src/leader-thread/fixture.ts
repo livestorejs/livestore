@@ -1,0 +1,26 @@
+import { DbSchema, makeSchema } from '@livestore/common/schema'
+import { Schema } from '@livestore/utils/effect'
+
+export const todos = DbSchema.table(
+  'todos',
+  {
+    id: DbSchema.text({ primaryKey: true }),
+    text: DbSchema.text({ default: '', nullable: false }),
+    completed: DbSchema.boolean({ default: false, nullable: false }),
+  },
+  { deriveMutations: true },
+)
+
+const Config = Schema.Struct({
+  fontSize: Schema.Number,
+  theme: Schema.Literal('light', 'dark'),
+})
+
+export const appConfig = DbSchema.table('app_config', DbSchema.json({ schema: Config, nullable: true }), {
+  isSingleton: true,
+  deriveMutations: true,
+})
+
+export const tables = { todos, appConfig }
+
+export const schema = makeSchema({ tables })

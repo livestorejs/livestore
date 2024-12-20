@@ -18,9 +18,11 @@ interface NodeFsFile {
 export class NodeFS extends FacadeVFS {
   private mapIdToFile = new Map<number, NodeFsFile>()
   private lastError: Error | null = null
-
-  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI) {
+  private readonly directory: string
+  constructor(name: string, sqlite3: WaSqlite.SQLiteAPI, directory: string) {
     super(name, sqlite3)
+
+    this.directory = directory
   }
 
   getFilename(fileId: number): string {
@@ -30,7 +32,7 @@ export class NodeFS extends FacadeVFS {
 
   jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
-      const pathname = zName ? path.resolve(zName) : Math.random().toString(36).slice(2)
+      const pathname = zName ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
       const file: NodeFsFile = { pathname, flags, fileHandle: null }
       this.mapIdToFile.set(fileId, file)
 
@@ -90,7 +92,7 @@ export class NodeFS extends FacadeVFS {
 
       // const view = new DataView(pData.buffer, pData.byteOffset, pData.length)
       // fs.writeSync(file.fileHandle, view, 0, pData.length, iOffset)
-      fs.writeSync(file.fileHandle, pData.subarray(), 0, pData.length, iOffset)
+      fs.writeSync(file.fileHandle, Buffer.from(pData.subarray()), 0, pData.length, iOffset)
       return VFS.SQLITE_OK
     } catch (e: any) {
       this.lastError = e
@@ -150,7 +152,8 @@ export class NodeFS extends FacadeVFS {
       const file = this.mapIdToFile.get(fileId)
       if (!file?.fileHandle) return VFS.SQLITE_OK
 
-      fs.fsyncSync(file.fileHandle)
+      // TODO do this out of band (for now we disable it to speed up the node vfs)
+      // fs.fsyncSync(file.fileHandle)
       return VFS.SQLITE_OK
     } catch (e: any) {
       this.lastError = e
@@ -158,9 +161,9 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jDelete(name: string, _syncDir: number): number {
+  jDelete(zName: string, _syncDir: number): number {
     try {
-      const pathname = path.resolve(name)
+      const pathname = path.resolve(this.directory, zName)
       fs.unlinkSync(pathname)
       return VFS.SQLITE_OK
     } catch (e: any) {
@@ -169,9 +172,9 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jAccess(name: string, _flags: number, pResOut: DataView): number {
+  jAccess(zName: string, _flags: number, pResOut: DataView): number {
     try {
-      const pathname = path.resolve(name)
+      const pathname = path.resolve(this.directory, zName)
       const exists = fs.existsSync(pathname)
       pResOut.setInt32(0, exists ? 1 : 0, true)
       return VFS.SQLITE_OK
@@ -182,6 +185,6 @@ export class NodeFS extends FacadeVFS {
   }
 
   deleteDb(fileName: string) {
-    fs.unlinkSync(fileName)
+    fs.unlinkSync(path.join(this.directory, fileName))
   }
 }

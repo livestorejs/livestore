@@ -14,7 +14,7 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
 
     const responsePubSub = yield* PubSub.unbounded<
       Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
-    >()
+    >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
     const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 

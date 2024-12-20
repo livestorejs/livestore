@@ -3,7 +3,9 @@ export const env = (name: string): string | undefined => {
     return process.env[name]
   }
 
-  if (import.meta !== undefined && import.meta.env !== undefined) {
+  // TODO re-enable the full guard code once `import.meta` is supported in Expo
+  // if (import.meta !== undefined && import.meta.env !== undefined) {
+  if (import.meta.env !== undefined) {
     return import.meta.env[name]
   }
 
@@ -15,7 +17,9 @@ export const isDevEnv = () => {
     return process.env.NODE_ENV !== 'production'
   }
 
-  if (import.meta !== undefined && import.meta.env !== undefined) {
+  // TODO re-enable the full guard code once `import.meta` is supported in Expo
+  // if (import.meta !== undefined && import.meta.env !== undefined) {
+  if (import.meta.env !== undefined) {
     return import.meta.env.DEV
   }
 

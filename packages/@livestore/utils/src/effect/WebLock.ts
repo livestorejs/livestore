@@ -93,3 +93,78 @@ export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: 
       ])
     })
   })
+
+export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
+  Effect.async<boolean>((cb, signal) => {
+    navigator.locks.request(lockName, { mode: 'exclusive', steal: true }, (lock) => {
+      cb(Effect.succeed(lock !== null))
+
+      // the code below is still running
+
+      const abortPromise = new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => {
+          resolve()
+        })
+      })
+
+      // holding lock until deferred is resolved
+      return Promise.race([Effect.runPromise(Deferred.await(deferred)), abortPromise])
+      // .finally(() =>
+      //   console.log('[@livestore/utils:WebLock] tryGetDeferredLock. finally', lockName),
+      // )
+    })
+  })
+
+export const waitForLock = (lockName: string) =>
+  Effect.async<void>((cb, signal) => {
+    if (signal.aborted) return
+
+    navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock) => {
+      cb(Effect.succeed(void 0))
+    })
+  })
+
+/** Attempts to get the lock if available and waits for it to be stolen */
+export const getLockAndWaitForSteal = (lockName: string) =>
+  Effect.async<void>((cb, signal) => {
+    if (signal.aborted) return
+
+    navigator.locks
+      .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock) => {
+        if (lock === null) {
+          // Lock wasn't available, resolve immediately
+          cb(Effect.succeed(void 0))
+          return
+        }
+
+        // We got the lock, now wait for it to be stolen
+        // When the lock is stolen, the promise will resolve
+        await new Promise<void>((resolve) => {
+          // Create a never-resolving promise unless interrupted
+          const holdLock = new Promise(() => {})
+
+          // Listen for the abort signal
+          signal.addEventListener('abort', () => {
+            resolve()
+          })
+
+          return Promise.race([holdLock, signal.aborted ? Promise.resolve() : holdLock]).catch(() => {})
+        }).catch(() => {})
+
+        cb(Effect.succeed(void 0))
+      })
+      .catch((error) => {
+        if (
+          error.code === 20 &&
+          (error.message === 'signal is aborted without reason' ||
+            error.message === `Lock broken by another request with the 'steal' option.`)
+        ) {
+          // Given signal interruption is handled via Effect, we can ignore this case
+          // or the case when the lock is stolen
+          cb(Effect.succeed(void 0))
+        } else {
+          console.error('[@livestore/utils:WebLock] getLockAndWaitForSteal. error', error)
+          throw error
+        }
+      })
+  })

@@ -20,10 +20,10 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "expo": "51.0.32"
+    "expo": "52.0.9"
   },
   "peerDependencies": {
-    "expo": "51.0.32"
+    "expo": "52.0.9"
   },
   "publishConfig": {
     "access": "public"

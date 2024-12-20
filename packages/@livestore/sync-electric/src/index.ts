@@ -45,7 +45,7 @@ export const syncBackend = {} as any
 
 export const ApiPushEventPayload = Schema.TaggedStruct('sync-electric.PushEvent', {
   roomId: Schema.String,
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  batch: Schema.Array(mutationEventSchemaEncodedAny),
   persisted: Schema.Boolean,
 })
 
@@ -179,30 +179,40 @@ export const makeSyncBackend = ({
           (metadataOption) => pull(metadataOption, { listenForNew }),
         ),
 
-      push: (mutationEventEncoded, persisted) =>
+      push: (batch, persisted) =>
         Effect.gen(function* () {
-          const deferred = yield* Deferred.make<SyncMetadata>()
-          pendingPushDeferredMap.set(eventIdToString(mutationEventEncoded.id), deferred)
+          const deferreds: Deferred.Deferred<SyncMetadata>[] = []
+          for (const mutationEventEncoded of batch) {
+            const deferred = yield* Deferred.make<SyncMetadata>()
+            pendingPushDeferredMap.set(eventIdToString(mutationEventEncoded.id), deferred)
+            deferreds.push(deferred)
+          }
 
           const resp = yield* HttpClientRequest.schemaBodyJson(ApiPushEventPayload)(
             HttpClientRequest.post(pushEventEndpoint),
-            ApiPushEventPayload.make({ roomId, mutationEventEncoded, persisted }),
+            ApiPushEventPayload.make({ roomId, batch, persisted }),
           ).pipe(
             Effect.andThen(HttpClient.execute),
             Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
             Effect.scoped,
-            Effect.mapError((cause) => InvalidPushError.make({ message: cause.toString() })),
+            Effect.mapError((cause) =>
+              InvalidPushError.make({ reason: { _tag: 'Unexpected', message: cause.toString() } }),
+            ),
           )
 
           if (!resp.success) {
-            yield* InvalidPushError.make({ message: 'Push failed' })
+            yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
           }
 
-          const metadata = yield* Deferred.await(deferred)
+          const metadata = yield* Effect.all(deferreds, { concurrency: 'unbounded' }).pipe(
+            Effect.map((_) => _.map(Option.some)),
+          )
 
-          pendingPushDeferredMap.delete(eventIdToString(mutationEventEncoded.id))
+          for (const mutationEventEncoded of batch) {
+            pendingPushDeferredMap.delete(eventIdToString(mutationEventEncoded.id))
+          }
 
-          return { metadata: Option.some(metadata) }
+          return { metadata }
         }),
       isConnected,
     } satisfies SyncBackend<SyncMetadata>

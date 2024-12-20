@@ -21,6 +21,15 @@ type Unsub = () => void
 type RequestId = string
 type SubMap = Map<RequestId, Unsub>
 
+// When running this code in Node.js, we need to use `setTimeout` instead of `requestAnimationFrame`
+const requestNextTick: (cb: () => void) => number =
+  globalThis.requestAnimationFrame === undefined
+    ? (cb: () => void) => setTimeout(cb, 1000) as unknown as number
+    : globalThis.requestAnimationFrame
+
+const cancelTick: (id: number) => void =
+  globalThis.cancelAnimationFrame === undefined ? (id: number) => clearTimeout(id) : globalThis.cancelAnimationFrame
+
 export const connectDevtoolsToStore = ({
   storeDevtoolsChannel,
   store,
@@ -44,13 +53,18 @@ export const connectDevtoolsToStore = ({
     )
 
     const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
-      storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runSync)
+      storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runFork)
 
     const onMessage = (decodedMessage: typeof Devtools.MessageToAppHostStore.Type) => {
-      // console.log('storeMessagePort message', decodedMessage)
+      // console.debug('@livestore/livestore:store:devtools:onMessage', decodedMessage)
 
       if (decodedMessage.appHostId !== store.clientSession.coordinator.devtools.appHostId) {
         // console.log(`Unknown message`, event)
+        return
+      }
+
+      if (decodedMessage._tag === 'LSD.Disconnect') {
+        console.error('TODO handle disconnect properly in store')
         return
       }
 
@@ -103,7 +117,7 @@ export const connectDevtoolsToStore = ({
         case 'LSD.DebugInfoHistorySubscribe': {
           const buffer: DebugInfo[] = []
           let hasStopped = false
-          let rafHandle: number | undefined
+          let tickHandle: number | undefined
 
           const tick = () => {
             buffer.push(store.syncDbWrapper.debugInfo)
@@ -127,16 +141,17 @@ export const connectDevtoolsToStore = ({
             }
 
             if (hasStopped === false) {
-              rafHandle = requestAnimationFrame(tick)
+              tickHandle = requestNextTick(tick)
             }
           }
 
-          rafHandle = requestAnimationFrame(tick)
+          tickHandle = requestNextTick(tick)
 
           const unsub = () => {
             hasStopped = true
-            if (rafHandle !== undefined) {
-              cancelAnimationFrame(rafHandle)
+            if (tickHandle !== undefined) {
+              cancelTick(tickHandle)
+              tickHandle = undefined
             }
           }
 
@@ -145,6 +160,7 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.DebugInfoHistoryUnsubscribe': {
+          console.log('unsubscribing from debug info history')
           debugInfoHistorySubscriptions.get(requestId)!()
           debugInfoHistorySubscriptions.delete(requestId)
           break
@@ -209,6 +225,7 @@ export const connectDevtoolsToStore = ({
     }
 
     yield* storeDevtoolsChannel.listen.pipe(
+      // Stream.tapLogWithLabel('@livestore/livestore:store:devtools:onMessage'),
       Stream.flatten(),
       Stream.tapSync((message) => onMessage(message)),
       Stream.runDrain,

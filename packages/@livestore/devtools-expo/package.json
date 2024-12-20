@@ -7,7 +7,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/devtools-react": "0.2.0",
+    "@livestore/devtools-react": "workspace:*",
+    "@livestore/node": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.2",
     "@livestore/web": "workspace:*",
     "vite": "^5.4.10",
@@ -16,10 +17,10 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/ws": "8.5.12",
-    "expo": "51.0.32"
+    "expo": "52.0.9"
   },
   "peerDependencies": {
-    "expo": "51.0.32"
+    "expo": "52.0.9"
   },
   "publishConfig": {
     "access": "public"

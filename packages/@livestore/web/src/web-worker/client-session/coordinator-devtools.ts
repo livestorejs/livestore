@@ -1,11 +1,12 @@
 import type { Coordinator, UnexpectedError } from '@livestore/common'
 import { Devtools } from '@livestore/common'
+import { DedicatedWorkerDisconnectBroadcast } from '@livestore/common/leader-thread'
 import { isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Effect, Either, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
+import { Effect, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from '../common/shutdown-channel.js'
+import { makeShutdownChannel } from '../common/shutdown-channel.js'
 
 export const bootDevtools = ({
   coordinator,
@@ -24,19 +25,19 @@ export const bootDevtools = ({
     // NOTE we're not using the existing coordinator `shutdownChannel` as we won't be able to listen to messages emitted by the same coordinator
     const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-    const runWebBridge = FiberHandle.run(
+    const connectWebBridge = FiberHandle.run(
       webBridgeFiberHandle,
       listenToWebBridge({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId }),
     )
 
-    yield* runWebBridge
+    yield* connectWebBridge
 
     // TODO Given we're listening to our own messages and given the leader will emit an initial
     // `DedicatedWorkerDisconnectBroadcast`, this will re-run and we should avoid it
     yield* shutdownChannel.listen.pipe(
       Stream.flatten(),
       Stream.filter(Schema.is(DedicatedWorkerDisconnectBroadcast)),
-      Stream.tap(() => runWebBridge),
+      Stream.tap(() => connectWebBridge),
       Stream.runDrain,
       Effect.ignoreLogged,
       Effect.forkScoped,
@@ -109,7 +110,7 @@ const listenToWebBridge = ({
     yield* Effect.never
   }).pipe(Effect.scoped)
 
-export const listenToBrowserExtensionBridge = ({
+const listenToBrowserExtensionBridge = ({
   coordinator,
   connectToDevtools,
 }: {
@@ -121,14 +122,16 @@ export const listenToBrowserExtensionBridge = ({
 
     const windowChannel = yield* WebChannel.windowChannel({
       window,
-      listenSchema: Devtools.DevtoolsWindowMessage.MessageForStore,
-      sendSchema: Devtools.DevtoolsWindowMessage.MessageForContentscript,
+      schema: {
+        listen: Devtools.DevtoolsWindowMessage.MessageForStore,
+        send: Devtools.DevtoolsWindowMessage.MessageForContentscript,
+      },
     })
 
     yield* windowChannel.send(Devtools.DevtoolsWindowMessage.LoadIframe.make({}))
 
     yield* windowChannel.listen.pipe(
-      Stream.filterMap(Either.getRight),
+      Stream.flatten(),
       Stream.tap((message) =>
         Effect.gen(function* () {
           if (message._tag === 'LSD.WindowMessage.ContentscriptListening') {

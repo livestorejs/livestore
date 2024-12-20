@@ -1,5 +1,10 @@
 import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, UnexpectedError } from '@livestore/common'
+// TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
+// NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
+// import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
+import { BCMessage } from '@livestore/common/leader-thread'
+import { DedicatedWorkerDisconnectBroadcast } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
@@ -23,13 +28,10 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-// TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
-// NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
-// import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
-import { BCMessage } from '../../common/index.js'
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
-import { DedicatedWorkerDisconnectBroadcast, makeShutdownChannel } from '../common/shutdown-channel.js'
+import { makeShutdownChannel } from '../common/shutdown-channel.js'
+import { makeSyncBroadcastChannel } from '../common/sync-channel.js'
 import { validateAndUpdateMutationEventId } from '../common/validateAndUpdateMutationEventId.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './coordinator-devtools.js'
@@ -100,11 +102,7 @@ export const makeAdapter =
         yield* resetPersistedDataFromCoordinator({ storageOptions, storeId })
       }
 
-      const broadcastChannel = yield* WebChannel.broadcastChannel({
-        channelName: `livestore-sync-${schema.hash}-${storeId}`,
-        listenSchema: BCMessage.Message,
-        sendSchema: BCMessage.Message,
-      })
+      const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
 
       // TODO also verify persisted data
       const dataFromFile = yield* readPersistedAppDbFromCoordinator({
@@ -496,8 +494,7 @@ export const makeAdapter =
             Effect.gen(function* () {
               const storeDevtoolsChannel = yield* WebChannel.messagePortChannel({
                 port: storeMessagePort,
-                listenSchema: Devtools.MessageToAppHostStore,
-                sendSchema: Devtools.MessageFromAppHostStore,
+                schema: { listen: Devtools.MessageToAppHostStore, send: Devtools.MessageFromAppHostStore },
               })
 
               yield* connectDevtoolsToStore(storeDevtoolsChannel)

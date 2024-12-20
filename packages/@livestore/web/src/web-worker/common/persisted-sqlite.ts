@@ -1,72 +1,13 @@
-import type { MakeSynchronousDatabase, PersistenceInfo, SqliteError, SynchronousDatabase } from '@livestore/common'
 import { liveStoreStorageFormatVersion } from '@livestore/common'
-import type { WebDatabaseInputOpfs, WebDatabaseMetadataOpfs } from '@livestore/sqlite-wasm/browser'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
-import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import * as OpfsUtils from '../../opfs-utils.js'
-import type { LeaderDatabase } from '../leader-worker/types.js'
 import type * as WorkerSchema from './worker-schema.js'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
   cause: Schema.Defect,
 }) {}
-
-export const makePersistedSqlite = ({
-  storageOptions,
-  schemaHashSuffix,
-  storeId,
-  kind,
-  configureDb,
-  makeSyncDb,
-}: {
-  storageOptions: WorkerSchema.StorageType
-  makeSyncDb: MakeSynchronousDatabase<
-    { dbPointer: number; persistenceInfo: PersistenceInfo },
-    WebDatabaseInputOpfs,
-    WebDatabaseMetadataOpfs
-  >
-  schemaHashSuffix: string
-  storeId: string
-  kind: 'app' | 'mutationlog'
-  configureDb: (syncDb: SynchronousDatabase) => Effect.Effect<void, SqliteError>
-}) => makePersistedSqliteOpfs({ storageOptions, schemaHashSuffix, storeId, kind, configureDb, makeSyncDb })
-
-export const makePersistedSqliteOpfs = ({
-  storageOptions,
-  schemaHashSuffix,
-  storeId,
-  kind,
-  configureDb,
-  makeSyncDb,
-}: {
-  storageOptions: WorkerSchema.StorageTypeOpfs
-  schemaHashSuffix: string
-  storeId: string
-  kind: 'app' | 'mutationlog'
-  configureDb: (syncDb: SynchronousDatabase) => Effect.Effect<void, SqliteError>
-  makeSyncDb: MakeSynchronousDatabase<
-    { dbPointer: number; persistenceInfo: PersistenceInfo },
-    WebDatabaseInputOpfs,
-    WebDatabaseMetadataOpfs
-  >
-}): Effect.Effect<LeaderDatabase, PersistedSqliteError, Scope.Scope> =>
-  Effect.gen(function* () {
-    const fileName = kind === 'app' ? getAppDbFileName(schemaHashSuffix) : 'mutationlog.db'
-
-    const opfsDirectory = sanitizeOpfsDir(storageOptions.directory, storeId)
-    const syncDb = yield* makeSyncDb({ _tag: 'opfs', opfsDirectory, fileName, configureDb })
-
-    yield* Effect.addFinalizer(() => Effect.sync(() => syncDb.close()))
-
-    return syncDb
-  }).pipe(
-    Effect.mapError((cause) => new PersistedSqliteError({ cause })),
-    Effect.withSpan('@livestore/web:worker:makePersistedSqliteOpfs', {
-      attributes: { directory: storageOptions.directory },
-    }),
-  )
 
 export const readPersistedAppDbFromCoordinator = ({
   storageOptions,
@@ -171,7 +112,7 @@ const opfsDeleteAbs = (absPath: string) =>
     }
   }).pipe(Effect.withSpan('@livestore/web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }))
 
-const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
+export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
   // Root dir should be `''` not `/`
   if (directory === undefined || directory === '' || directory === '/')
     return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
@@ -183,4 +124,4 @@ const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
   return `${directory}@${liveStoreStorageFormatVersion}`
 }
 
-const getAppDbFileName = (suffix: string) => `app${suffix}.db`
+export const getAppDbFileName = (suffix: string) => `app${suffix}.db`

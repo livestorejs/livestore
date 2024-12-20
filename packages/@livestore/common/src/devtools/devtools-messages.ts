@@ -210,6 +210,7 @@ export const MessageToAppHostStore = Schema.Union(
   ReactivityGraphUnsubscribe,
   LiveQueriesSubscribe,
   LiveQueriesUnsubscribe,
+  Disconnect,
   // Ping,
 ).annotations({ identifier: 'LSD.MessageToAppHostStore' })
 
@@ -241,6 +242,7 @@ export const MessageFromAppHostStore = Schema.Union(
   DebugInfoRerunQueryRes,
   ReactivityGraphRes,
   LiveQueriesRes,
+  Disconnect,
   // Pong,
 ).annotations({ identifier: 'LSD.MessageFromAppHostStore' })
 

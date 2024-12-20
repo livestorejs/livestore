@@ -28,7 +28,7 @@ export type PushBroadcast = typeof PushBroadcast.Type
 
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  batch: Schema.Array(mutationEventSchemaEncodedAny),
   persisted: Schema.Boolean,
 })
 

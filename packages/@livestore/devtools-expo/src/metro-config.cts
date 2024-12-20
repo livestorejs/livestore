@@ -2,7 +2,7 @@ import type * as http from 'node:http'
 
 import type { MetroConfig } from 'expo/metro-config'
 
-import type { Middleware, Options } from '../types.js'
+import type { Middleware, Options } from './types.js'
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
@@ -33,8 +33,11 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
 }
 
 const makeLiveStoreDevtoolsMiddleware = (options: Options) => {
+  // TODO Once Expo supports proper ESM, we can make this a static import
   // const viteServerPromise = makeViteServer(options)
-  const viteServerPromise = import('./vite-dev-server.mjs').then(({ makeViteServer }) => makeViteServer(options))
+  const viteServerPromise = import('@livestore/node/devtools').then(({ makeViteServer }) =>
+    makeViteServer({ ...options, mode: { _tag: 'expo' } }),
+  )
 
   const middleware = async (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => {
     if (req.url?.startsWith('/livestore-devtools') == false) {

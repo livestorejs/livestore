@@ -33,6 +33,7 @@
             nodejs_22
             corepack
             bun
+            esbuild
             watchman
             caddy
             
@@ -40,7 +41,7 @@
 
             # needed for Expo
             (lib.optionals stdenv.isDarwin [
-              cocoapods
+              # cocoapods
             ])
           ];
 

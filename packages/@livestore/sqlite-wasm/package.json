@@ -8,17 +8,17 @@
       "default": "./dist/index.js"
     },
     "./load-wasm": {
-      "types": "./src/load-wasm/mod.browser.d.ts",
-      "node": "./src/load-wasm/mod.node.ts",
-      "browser": "./src/load-wasm/mod.browser.ts"
+      "types": "./dist/load-wasm/mod.browser.d.ts",
+      "node": "./dist/load-wasm/mod.node.js",
+      "browser": "./dist/load-wasm/mod.browser.js"
     },
     "./node": {
-      "types": "./src/node/mod.d.ts",
-      "default": "./src/node/mod.ts"
+      "types": "./dist/node/mod.d.ts",
+      "default": "./dist/node/mod.js"
     },
     "./browser": {
-      "types": "./src/browser/mod.d.ts",
-      "default": "./src/browser/mod.ts"
+      "types": "./dist/browser/mod.d.ts",
+      "default": "./dist/browser/mod.js"
     }
   },
   "scripts": {},

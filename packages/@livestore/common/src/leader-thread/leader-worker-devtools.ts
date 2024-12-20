@@ -1,26 +1,14 @@
-import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '@livestore/common'
-import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import {
-  Deferred,
-  Effect,
-  FiberMap,
-  FiberSet,
-  Option,
-  PubSub,
-  Queue,
-  Stream,
-  SubscriptionRef,
-  WebChannel,
-} from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
+import { Effect, FiberMap, FiberSet, Option, PubSub, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
-import { makeShutdownChannel } from '../common/shutdown-channel.js'
+import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
+import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/index.js'
 import { makeApplyMutation } from './apply-mutation.js'
+import type { ShutdownChannel } from './shutdown-channel.js'
 import type { DevtoolsContextEnabled, PersistenceInfoPair } from './types.js'
-import { LeaderWorkerCtx } from './types.js'
+import { LeaderThreadCtx } from './types.js'
 
-type SendMessage = (
+type SendMessageToDevtools = (
   message: Devtools.MessageFromAppHostCoordinator,
   options?: {
     /** Send message even if not connected (e.g. for initial broadcast messages) */
@@ -34,16 +22,18 @@ export const makeDevtoolsContext = Effect.gen(function* () {
   const connections = yield* FiberSet.make()
 
   const connect: DevtoolsContextEnabled['connect'] = ({
-    coordinatorMessagePort,
+    coordinatorMessagePortOrChannel,
     disconnect,
-    storeMessagePortDeferred,
+    // storeMessagePortDeferred,
     storeId,
     appHostId,
     isLeader,
     persistenceInfo,
+    shutdownChannel,
   }) =>
     Effect.gen(function* () {
-      const isConnected = yield* SubscriptionRef.make(false)
+      // const isConnected = yield* SubscriptionRef.make(false)
+      const isConnected = yield* SubscriptionRef.make(true)
 
       const incomingMessagesPubSub = yield* PubSub.unbounded<Devtools.MessageToAppHostCoordinator>().pipe(
         Effect.acquireRelease(PubSub.shutdown),
@@ -55,16 +45,18 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.acquireRelease(Queue.shutdown),
       )
 
-      const portChannel = yield* WebChannel.messagePortChannel({
-        port: coordinatorMessagePort,
-        sendSchema: Devtools.MessageFromAppHostCoordinator,
-        listenSchema: Devtools.MessageToAppHostCoordinator,
-      })
+      const devtoolsCoordinatorChannel = coordinatorMessagePortOrChannel
+      // coordinatorMessagePortOrChannel instanceof MessagePort
+      //   ? yield* WebChannel.messagePortChannel({
+      //       port: coordinatorMessagePortOrChannel,
+      //       schema: { send: Devtools.MessageFromAppHostCoordinator, listen: Devtools.MessageToAppHostCoordinator },
+      //     })
+      //   : coordinatorMessagePortOrChannel
 
-      const sendMessage: SendMessage = (message, options) =>
+      const sendMessage: SendMessageToDevtools = (message, options) =>
         Effect.gen(function* () {
-          if (options?.force === true || (yield* SubscriptionRef.get(isConnected))) {
-            yield* portChannel.send(message)
+          if (options?.force === true || (yield* isConnected)) {
+            yield* devtoolsCoordinatorChannel.send(message)
           } else {
             yield* Queue.offer(outgoingMessagesQueue, message)
           }
@@ -76,16 +68,17 @@ export const makeDevtoolsContext = Effect.gen(function* () {
 
       broadcastCallbacks.add((message) => sendMessage(message))
 
-      yield* portChannel.listen.pipe(
+      yield* devtoolsCoordinatorChannel.listen.pipe(
         Stream.flatten(),
+        // Stream.tapLogWithLabel('@livestore/web:worker:devtools:onPortMessage'),
         Stream.tap((msg) =>
           Effect.gen(function* () {
             // yield* Effect.logDebug(`[@livestore/web:worker:devtools] message from port: ${msg._tag}`, msg)
-            if (msg._tag === 'LSD.MessagePortForStoreRes') {
-              yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
-            } else {
-              yield* PubSub.publish(incomingMessagesPubSub, msg)
-            }
+            // if (msg._tag === 'LSD.MessagePortForStoreRes') {
+            //   yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
+            // } else {
+            yield* PubSub.publish(incomingMessagesPubSub, msg)
+            // }
           }),
         ),
         Stream.runDrain,
@@ -94,11 +87,11 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         Effect.forkScoped,
       )
 
-      yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), { force: true })
+      // yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), { force: true })
 
-      yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: nanoid() }), {
-        force: true,
-      })
+      // yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: nanoid() }), {
+      //   force: true,
+      // })
 
       yield* listenToDevtools({
         incomingMessages,
@@ -109,6 +102,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         appHostId,
         isLeader,
         persistenceInfo,
+        shutdownChannel,
       })
     }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { appHostId } }))
 
@@ -131,23 +125,23 @@ const listenToDevtools = ({
   storeId,
   isLeader,
   persistenceInfo,
+  shutdownChannel,
 }: {
   incomingMessages: Stream.Stream<Devtools.MessageToAppHostCoordinator>
-  sendMessage: SendMessage
+  sendMessage: SendMessageToDevtools
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   disconnect: Effect.Effect<void>
   appHostId: string
   storeId: string
   isLeader: boolean
   persistenceInfo: PersistenceInfoPair
+  shutdownChannel: ShutdownChannel
 }) =>
   Effect.gen(function* () {
-    const innerWorkerCtx = yield* LeaderWorkerCtx
+    const innerWorkerCtx = yield* LeaderThreadCtx
     const { syncBackend, makeSyncDb, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair } = innerWorkerCtx
 
     const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
-
-    const shutdownChannel = yield* makeShutdownChannel(storeId)
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
@@ -158,35 +152,35 @@ const listenToDevtools = ({
           // yield* Effect.logDebug('[@livestore/web:worker:devtools] incomingMessage', decodedEvent)
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
-            if ((yield* isConnected.get) === false) {
-              yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
-                force: true,
-              })
-            }
+            // if ((yield* isConnected) === false) {
+            //   yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
+            //     force: true,
+            //   })
+            // }
             return
           }
 
           if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
-            if (yield* isConnected.get) {
-              console.warn('devtools already connected')
-              return
-            }
+            // if (yield* isConnected) {
+            //   console.warn('devtools already connected')
+            //   return
+            // }
 
-            yield* SubscriptionRef.set(isConnected, true)
+            // yield* SubscriptionRef.set(isConnected, true)
             return
           }
 
           if (decodedEvent.appHostId !== appHostId) return
 
           if (decodedEvent._tag === 'LSD.Disconnect') {
-            yield* SubscriptionRef.set(isConnected, false)
+            // yield* SubscriptionRef.set(isConnected, false)
 
-            yield* disconnect
+            // yield* disconnect
 
             // TODO is there a better place for this?
-            yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
-              force: true,
-            })
+            // yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
+            //   force: true,
+            // })
 
             return
           }
@@ -299,7 +293,7 @@ const listenToDevtools = ({
 
               const mutationEventEncoded = {
                 ...mutationEventEncoded_,
-                ...(yield* nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly })),
+                ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
               }
 
               yield* applyMutation(mutationEventEncoded, {

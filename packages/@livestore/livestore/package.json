@@ -41,9 +41,9 @@
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.27.0",
+    "@opentelemetry/sdk-trace-base": "1.29.0",
     "jsdom": "^25.0.1",
-    "typescript": "5.5.4",
+    "typescript": "5.7.2",
     "vite": "5.4.10",
     "vitest": "^2.1.4"
   },

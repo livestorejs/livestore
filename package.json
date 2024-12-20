@@ -20,11 +20,15 @@
   },
   "#resolutions": {
     "esbuild": "Needed for CF Wrangler",
-    "@livestore/*": "Needed to force PNPM to install local packages"
+    "react": "React 19 isn't supported by Expo yet. TODO Upgrade to React 19 once Expo supports it.",
+    "@livestore/*": "Needed to force PNPM to install local packages",
+    "expo*": "Avoid duplicate expo packages"
   },
   "resolutions": {
     "expo": "52.0.9",
-    "react-native": "0.76.2",
+    "expo-sqlite": "15.0.3",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
     "@livestore/common": "workspace:*",
     "@livestore/db-schema": "workspace:*",
     "@livestore/expo": "workspace:*",
@@ -58,7 +62,7 @@
     "playwright": "1.48.2",
     "prettier": "3.3.3",
     "prettier-plugin-packagejson": "2.5.3",
-    "typescript": "5.5.4"
+    "typescript": "5.7.2"
   },
   "packageManager": "pnpm@9.9.0",
   "pnpm": {

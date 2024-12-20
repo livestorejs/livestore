@@ -50,16 +50,19 @@ export const bootDevtools = ({
     const isLeader = true
 
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
-      sendSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
       listenSchema: Schema.Union(Devtools.MessageToAppHostCoordinator, Devtools.MessageToAppHostStore),
+      sendSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
     })
 
     const isConnected = yield* SubscriptionRef.make(false)
 
-    const storeDevtoolsChannelProxy = yield* WebChannel.queueChannelProxy<
-      Devtools.MessageToAppHostStore,
-      Devtools.MessageFromAppHostStore
-    >()
+    /**
+     * Used to forward messages from `expoDevtoolsChannel` to a "filtered" `storeDevtoolsChannel`
+     * which is expected by the `connectDevtoolsToStore` function.
+     */
+    const storeDevtoolsChannelProxy = yield* WebChannel.queueChannelProxy({
+      schema: { listen: Devtools.MessageToAppHostStore, send: Devtools.MessageFromAppHostStore },
+    })
 
     yield* storeDevtoolsChannelProxy.sendQueue.pipe(
       Stream.fromQueue,
@@ -105,16 +108,16 @@ export const bootDevtools = ({
             return
           }
 
-          if (decodedEvent._tag === 'LSD.Disconnect') {
-            yield* SubscriptionRef.set(isConnected, false)
+          // if (decodedEvent._tag === 'LSD.Disconnect') {
+          //   yield* SubscriptionRef.set(isConnected, false)
 
-            // yield* disconnect
+          //   // yield* disconnect
 
-            // TODO is there a better place for this?
-            yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
+          //   // TODO is there a better place for this?
+          //   yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
 
-            return
-          }
+          //   return
+          // }
 
           const { requestId } = decodedEvent
           const reqPayload = { requestId, appHostId, liveStoreVersion }
@@ -237,7 +240,7 @@ export const bootDevtools = ({
             case 'LSD.RunMutationReq': {
               const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
-              const nextMutationEventIdPair = yield* coordinator.nextMutationEventIdPair({
+              const nextMutationEventIdPair = coordinator.nextMutationEventIdPair({
                 localOnly: mutationDef.options.localOnly,
               })
 

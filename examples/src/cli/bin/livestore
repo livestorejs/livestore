@@ -1,3 +1,6 @@
 #!/usr/bin/env sh
 
-bun ./src/main.ts "$@"
+# bun ./dist/main.js "$@"
+# node --enable-source-maps ./dist/main.js "$@"
+node --enable-source-maps $WORKSPACE_ROOT/examples/src/cli/dist/main.js "$@"
+# node --inspect-wait ./dist/main.js "$@"

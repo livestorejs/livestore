@@ -4,17 +4,6 @@ import type { BindValues } from '@livestore/common/sql-queries'
 import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 
-export const configureConnection = (syncDb: SynchronousDatabase, { fkEnabled }: { fkEnabled: boolean }) =>
-  execSql(
-    syncDb,
-    sql`
-    PRAGMA page_size=8192;
-    PRAGMA journal_mode=MEMORY;
-    ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
-  `,
-    {},
-  )
-
 export const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({

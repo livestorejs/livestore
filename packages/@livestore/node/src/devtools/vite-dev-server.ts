@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url'
 
 import * as Vite from 'vite'
 
-import type { Options } from '../types.js'
+import type { Options } from './types.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-export const makeViteServer = async (options: Options) => {
+export const makeViteServer = async (options: Options): Promise<Vite.ViteDevServer> => {
   const hmrPort = await getFreePort()
 
   const cwd = process.cwd()
@@ -36,7 +36,9 @@ export const makeViteServer = async (options: Options) => {
     },
     root: __dirname,
     base: '/livestore-devtools/',
-    plugins: [virtualHtmlPlugin],
+    plugins: [virtualHtmlPlugin(options.mode)],
+    clearScreen: false,
+    logLevel: 'silent',
   })
 
   const viteConfig = options.viteConfig?.(defaultViteConfig) ?? defaultViteConfig
@@ -46,7 +48,7 @@ export const makeViteServer = async (options: Options) => {
   return viteServer
 }
 
-const virtualHtmlPlugin: Vite.Plugin = {
+const virtualHtmlPlugin = (mode: Options['mode']): Vite.Plugin => ({
   name: 'virtual-html',
   configureServer: (server) => {
     return () => {
@@ -69,7 +71,7 @@ import { mountDevtools } from '@livestore/devtools-react'
 import sharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { schema } from '@schema'
 
-mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker, expo: true })
+mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker, mode: ${JSON.stringify(mode)}})
 </script>
 </body>
 </html>
@@ -84,7 +86,7 @@ mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker, e
       })
     }
   },
-}
+})
 
 const getFreePort = (): Promise<number> => {
   return new Promise((resolve, reject) => {

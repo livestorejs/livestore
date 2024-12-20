@@ -98,52 +98,50 @@ export class WebSocketServer extends DurableObject<Env> {
           const latestEvent = await this.storage.getLatestEvent()
           const expectedParentId = latestEvent?.id ?? ROOT_ID
 
-          if (decodedMessage.mutationEventEncoded.parentId.global !== expectedParentId.global) {
-            ws.send(
-              encodeOutgoingMessage(
-                WSMessage.Error.make({
-                  message: `Invalid parent id. Received ${decodedMessage.mutationEventEncoded.parentId.global} but expected ${expectedParentId.global}`,
-                  requestId,
-                }),
-              ),
-            )
-            return
-          }
-
-          // TODO handle clientId unique conflict
-
-          // NOTE we're currently not blocking on this to allow broadcasting right away
-          const storePromise = decodedMessage.persisted
-            ? this.storage.appendEvent(decodedMessage.mutationEventEncoded)
-            : Promise.resolve()
-
-          ws.send(
-            encodeOutgoingMessage(
-              WSMessage.PushAck.make({ mutationId: decodedMessage.mutationEventEncoded.id.global, requestId }),
-            ),
-          )
-
-          // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
-
-          const connectedClients = this.ctx.getWebSockets()
-
-          if (connectedClients.length > 0) {
-            const broadcastMessage = encodeOutgoingMessage(
-              WSMessage.PushBroadcast.make({
-                mutationEventEncoded: decodedMessage.mutationEventEncoded,
-                persisted: decodedMessage.persisted,
-              }),
-            )
-
-            for (const conn of connectedClients) {
-              console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
-              // if (conn !== ws) {
-              conn.send(broadcastMessage)
-              // }
+          for (const mutationEventEncoded of decodedMessage.batch) {
+            if (mutationEventEncoded.parentId.global !== expectedParentId.global) {
+              ws.send(
+                encodeOutgoingMessage(
+                  WSMessage.Error.make({
+                    message: `Invalid parent id. Received ${mutationEventEncoded.parentId.global} but expected ${expectedParentId.global}`,
+                    requestId,
+                  }),
+                ),
+              )
+              return
             }
-          }
 
-          await storePromise
+            // TODO handle clientId unique conflict
+
+            // NOTE we're currently not blocking on this to allow broadcasting right away
+            const storePromise = decodedMessage.persisted
+              ? this.storage.appendEvent(mutationEventEncoded)
+              : Promise.resolve()
+
+            ws.send(
+              encodeOutgoingMessage(WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id.global, requestId })),
+            )
+
+            // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
+
+            const connectedClients = this.ctx.getWebSockets()
+
+            if (connectedClients.length > 0) {
+              const broadcastMessage = encodeOutgoingMessage(
+                // TODO refactor to batch api
+                WSMessage.PushBroadcast.make({ mutationEventEncoded, persisted: decodedMessage.persisted }),
+              )
+
+              for (const conn of connectedClients) {
+                console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
+                // if (conn !== ws) {
+                conn.send(broadcastMessage)
+                // }
+              }
+            }
+
+            await storePromise
+          }
 
           break
         }

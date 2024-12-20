@@ -107,4 +107,5 @@ export type StoreMutateOptions = {
    * @default true
    */
   persisted?: boolean
+  spanLinks?: otel.Link[]
 }

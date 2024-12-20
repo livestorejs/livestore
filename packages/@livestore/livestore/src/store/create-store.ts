@@ -11,6 +11,7 @@ import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeNoopTracer } from '@livestore/utils'
 import {
   Cause,
+  Context,
   Deferred,
   Duration,
   Effect,
@@ -43,7 +44,7 @@ export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSche
   boot?: (
     store: Store<TGraphQLContext, TSchema>,
     parentSpan: otel.Span,
-  ) => void | Promise<void> | Effect.Effect<void, unknown, otel.Tracer>
+  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -99,116 +100,132 @@ export const createStore = <
   Store<TGraphQLContext, TSchema>,
   UnexpectedError,
   Scope.Scope
-> => {
-  const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
-  const otelRootSpanContext = otelOptions?.rootSpanContext ?? otel.context.active()
+> =>
+  Effect.gen(function* () {
+    // const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
+    const otelRootSpanContext =
+      otelOptions?.rootSpanContext ??
+      (yield* OtelTracer.currentOtelSpan.pipe(
+        Effect.map((span) => otel.trace.setSpan(otel.context.active(), span)),
+        Effect.catchAll(() => Effect.succeed(otel.context.active())),
+      ))
 
-  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
-    Layer.provide(Layer.sync(OtelTracer.Tracer, () => otelTracer)),
-  )
+    const ctx = yield* Effect.context<never>()
 
-  return Effect.gen(function* () {
-    const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
-
-    yield* Queue.take(bootStatusQueue).pipe(
-      Effect.tapSync((status) => onBootStatus?.(status)),
-      Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
-      Effect.forever,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
+    const OtelTracerLive = Layer.succeed(
+      OtelTracer.OtelTracer,
+      otelOptions?.tracer ?? Context.getOrElse(ctx, OtelTracer.OtelTracer, () => makeNoopTracer()),
     )
 
-    const storeDeferred = yield* Deferred.make<Store>()
+    const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+      Layer.provideMerge(OtelTracerLive),
+    ) as any as Layer.Layer<OtelTracer.OtelTracer>
 
-    const connectDevtoolsToStore_ = (storeDevtoolsChannel: StoreDevtoolsChannel) =>
-      Effect.gen(function* () {
-        const store = yield* Deferred.await(storeDeferred)
-        yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
-      })
+    return yield* Effect.gen(function* () {
+      const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      // TODO remove
+      // const span = otel.trace.getTracer('livestore').startSpan('createStore')
+      const otelTracer = yield* OtelTracer.OtelTracer
 
-    const runtime = yield* Effect.runtime<Scope.Scope>()
+      const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-    // TODO close parent scope? (Needs refactor with Mike Arnaldi)
-    const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
-      Effect.gen(function* () {
-        // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
-        const logCause =
-          Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
-            ? cause.toString()
-            : cause
-        yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
-
-        FiberSet.clear(fiberSet).pipe(
-          Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
-          Effect.timeout(Duration.seconds(1)),
-          Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
-          Effect.catchTag('TimeoutException', (err) =>
-            Effect.logError('Store shutdown timed out. Forcing shutdown.', err).pipe(
-              Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
-            ),
-          ),
-          Runtime.runFork(runtime), // NOTE we need to fork this separately otherwise it will also be interrupted
-        )
-      }).pipe(Effect.withSpan('livestore:shutdown'))
-
-    const clientSession: ClientSession = yield* adapter({
-      schema,
-      storeId,
-      devtoolsEnabled: disableDevtools !== true,
-      bootStatusQueue,
-      shutdown,
-      connectDevtoolsToStore: connectDevtoolsToStore_,
-    }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
-
-    // TODO fill up with unsynced mutation events from the client session
-    const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
-
-    const store = Store.createStore<TGraphQLContext, TSchema>(
-      {
-        clientSession,
-        schema,
-        graphQLOptions,
-        otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-        reactivityGraph,
-        disableDevtools,
-        unsyncedMutationEvents,
-        fiberSet,
-        runtime,
-        // NOTE during boot we're not yet executing mutations in a batched context
-        // but only set the provided `batchUpdates` function after boot
-        batchUpdates: (run) => run(),
-        storeId,
-      },
-      span,
-    )
-
-    if (boot !== undefined) {
-      // TODO also incorporate `boot` function progress into `bootStatusQueue`
-      yield* Effect.tryAll(() => boot(store, span)).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('createStore:boot'),
+      yield* Queue.take(bootStatusQueue).pipe(
+        Effect.tapSync((status) => onBootStatus?.(status)),
+        Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
+        Effect.forever,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
       )
-    }
 
-    // NOTE it's important to yield here to allow the forked Effect in the store constructor to run
-    yield* Effect.yieldNow()
+      const storeDeferred = yield* Deferred.make<Store>()
 
-    if (batchUpdates !== undefined) {
-      // Replacing the default batchUpdates function with the provided one after boot
-      store.reactivityGraph.context!.effectsWrapper = batchUpdates
-    }
+      const connectDevtoolsToStore_ = (storeDevtoolsChannel: StoreDevtoolsChannel) =>
+        Effect.gen(function* () {
+          const store = yield* Deferred.await(storeDeferred)
+          yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
+        })
 
-    yield* Deferred.succeed(storeDeferred, store as any as Store)
+      const runtime = yield* Effect.runtime<Scope.Scope>()
 
-    return store
-  }).pipe(
-    Effect.withSpan('createStore', {
-      parent: otelOptions?.rootSpanContext
-        ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
-        : undefined,
-    }),
-    Effect.provide(TracingLive),
-  )
-}
+      // TODO close parent scope? (Needs refactor with Mike Arnaldi)
+      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
+        Effect.gen(function* () {
+          // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
+          const logCause =
+            Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
+              ? cause.toString()
+              : cause
+          yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
+
+          FiberSet.clear(fiberSet).pipe(
+            Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
+            Effect.timeout(Duration.seconds(1)),
+            Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
+            Effect.catchTag('TimeoutException', (err) =>
+              Effect.logError('Store shutdown timed out. Forcing shutdown.', err).pipe(
+                Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
+              ),
+            ),
+            Runtime.runFork(runtime), // NOTE we need to fork this separately otherwise it will also be interrupted
+          )
+        }).pipe(Effect.withSpan('livestore:shutdown'))
+
+      const clientSession: ClientSession = yield* adapter({
+        schema,
+        storeId,
+        devtoolsEnabled: disableDevtools !== true,
+        bootStatusQueue,
+        shutdown,
+        connectDevtoolsToStore: connectDevtoolsToStore_,
+      }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
+
+      // TODO fill up with unsynced mutation events from the client session
+      const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
+
+      const store = Store.createStore<TGraphQLContext, TSchema>(
+        {
+          clientSession,
+          schema,
+          graphQLOptions,
+          otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
+          reactivityGraph,
+          disableDevtools,
+          unsyncedMutationEvents,
+          fiberSet,
+          runtime,
+          // NOTE during boot we're not yet executing mutations in a batched context
+          // but only set the provided `batchUpdates` function after boot
+          batchUpdates: (run) => run(),
+          storeId,
+        },
+        span,
+      )
+
+      if (boot !== undefined) {
+        // TODO also incorporate `boot` function progress into `bootStatusQueue`
+        yield* Effect.tryAll(() => boot(store, span)).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('createStore:boot'),
+        )
+      }
+
+      // NOTE it's important to yield here to allow the forked Effect in the store constructor to run
+      yield* Effect.yieldNow()
+
+      if (batchUpdates !== undefined) {
+        // Replacing the default batchUpdates function with the provided one after boot
+        store.reactivityGraph.context!.effectsWrapper = batchUpdates
+      }
+
+      yield* Deferred.succeed(storeDeferred, store as any as Store)
+
+      return store
+    }).pipe(
+      Effect.withSpan('createStore', {
+        // parent: otelOptions?.rootSpanContext
+        //   ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
+        //   : undefined,
+      }),
+      Effect.provide(TracingLive),
+    )
+  })

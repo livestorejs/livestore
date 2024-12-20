@@ -53,7 +53,7 @@ export const prepareWebDevtoolsBridge = (
   Effect.gen(function* () {
     const responsePubSub = yield* PubSub.unbounded<
       Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
-    >()
+    >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
     const devtoolsId = nanoid()
 
