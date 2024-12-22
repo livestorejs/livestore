@@ -1,6 +1,6 @@
 import type { Coordinator, UnexpectedError } from '@livestore/common'
 import { Devtools } from '@livestore/common'
-import { DedicatedWorkerDisconnectBroadcast } from '@livestore/common/leader-thread'
+import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, FiberHandle, Runtime, Schema, Stream, WebChannel } from '@livestore/utils/effect'
@@ -36,7 +36,7 @@ export const bootDevtools = ({
     // `DedicatedWorkerDisconnectBroadcast`, this will re-run and we should avoid it
     yield* shutdownChannel.listen.pipe(
       Stream.flatten(),
-      Stream.filter(Schema.is(DedicatedWorkerDisconnectBroadcast)),
+      Stream.filter(Schema.is(ShutdownChannel.DedicatedWorkerDisconnectBroadcast)),
       Stream.tap(() => connectWebBridge),
       Stream.runDrain,
       Effect.ignoreLogged,

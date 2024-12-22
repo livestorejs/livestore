@@ -99,13 +99,13 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class Export extends Schema.TaggedRequest<Export>()('Export', {
+  export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {},
-    success: Transferable.Uint8Array,
+    success: mutationEventSchemaEncodedAny,
     failure: UnexpectedError,
   }) {}
 
-  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
+  export class Export extends Schema.TaggedRequest<Export>()('Export', {
     payload: {},
     success: Transferable.Uint8Array,
     failure: UnexpectedError,
@@ -161,8 +161,8 @@ export namespace LeaderWorkerInner {
     InitialMessage,
     BootStatusStream,
     ExecuteBulk,
+    PullStream,
     Export,
-    GetRecreateSnapshot,
     ExportMutationlog,
     GetCurrentMutationEventId,
     NetworkStatusStream,
@@ -227,8 +227,9 @@ export namespace SharedWorker {
     // Proxied requests
     LeaderWorkerInner.BootStatusStream,
     LeaderWorkerInner.ExecuteBulk,
+    LeaderWorkerInner.PullStream,
     LeaderWorkerInner.Export,
-    LeaderWorkerInner.GetRecreateSnapshot,
+    // LeaderWorkerInner.GetRecreateSnapshot,
     LeaderWorkerInner.ExportMutationlog,
     LeaderWorkerInner.GetCurrentMutationEventId,
     LeaderWorkerInner.NetworkStatusStream,

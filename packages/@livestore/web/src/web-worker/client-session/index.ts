@@ -3,9 +3,7 @@ import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, Unexpe
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
-import { BCMessage } from '@livestore/common/leader-thread'
-import { DedicatedWorkerDisconnectBroadcast } from '@livestore/common/leader-thread'
-import type { MutationEvent } from '@livestore/common/schema'
+import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -31,7 +29,6 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import { makeSyncBroadcastChannel } from '../common/sync-channel.js'
 import { validateAndUpdateMutationEventId } from '../common/validateAndUpdateMutationEventId.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './coordinator-devtools.js'
@@ -101,8 +98,6 @@ export const makeAdapter =
       if (options.resetPersistence === true) {
         yield* resetPersistedDataFromCoordinator({ storageOptions, storeId })
       }
-
-      const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
 
       // TODO also verify persisted data
       const dataFromFile = yield* readPersistedAppDbFromCoordinator({
@@ -188,7 +183,7 @@ export const makeAdapter =
           Effect.forkScoped,
         )
 
-        yield* shutdownChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
+        yield* shutdownChannel.send(ShutdownChannel.DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
         yield* sharedWorker
@@ -304,8 +299,9 @@ export const makeAdapter =
         Effect.forkScoped,
       )
 
-      const initialSnapshot =
-        dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()))
+      // TODO maybe bring back transfering the initially created in-memory db snapshot instead of
+      // re-exporting the db
+      const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.Export()))
 
       // TODO merge with snapshot req
       // NOTE this currently slows down the "happy path startup" path where the app is restored from the snapshot
@@ -353,35 +349,20 @@ export const makeAdapter =
         Effect.forkScoped,
       )
 
-      const incomingSyncMutationsQueue = yield* Queue.unbounded<MutationEvent.Any>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
-      )
-
       const mutationEventSchema = makeMutationEventSchema(schema)
 
-      // Forwarding all mutations from the leader worker to the incoming sync mutations queue .
-      // As all writes are going through the leader worker and each client session has seen their own writes already,
-      // we can ignore all mutations that are not coming from the leader worker.
-      yield* broadcastChannel.listen.pipe(
-        Stream.flatten(),
-        Stream.filter(({ sender }) => sender === 'leader-worker'),
-        Stream.tap(({ mutationEventEncoded }) =>
-          Effect.gen(function* () {
-            const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
-
-            // TODO replace this with a proper rebase sync strategy
-            yield* validateAndUpdateMutationEventId({
-              currentMutationEventIdRef,
-              mutationEventId: mutationEventDecoded.id,
-              debugContext: { label: `client-session:broadcastChannel`, mutationEventEncoded },
-            })
-
-            yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
+      const pullMutations = runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream()).pipe(
+        // TODO handle rebase case
+        Stream.tap((mutationEventEncoded) =>
+          validateAndUpdateMutationEventId({
+            currentMutationEventIdRef,
+            mutationEventId: mutationEventEncoded.id,
+            debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
           }),
         ),
-        Stream.runDrain,
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        Stream.mapEffect((mutationEventEncoded) => Schema.decode(mutationEventSchema)(mutationEventEncoded)),
+        Stream.onDone(() => Effect.logDebug('[@livestore/web:coordinator] pullMutations done')),
+        Stream.orDie,
       )
 
       yield* Effect.addFinalizer((ex) =>
@@ -402,7 +383,6 @@ export const makeAdapter =
         devtools: { enabled: devtoolsEnabled, appHostId: clientId },
         lockStatus,
         sessionId,
-        syncMutations: Stream.fromQueue(incomingSyncMutationsQueue),
 
         export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
           Effect.timeout(10_000),
@@ -423,43 +403,40 @@ export const makeAdapter =
             }
           }),
 
-        mutate: (mutationEventEncoded, { persisted }) =>
-          Effect.gen(function* () {
-            const currentLockStatus = yield* SubscriptionRef.get(lockStatus)
-            if (currentLockStatus === 'has-lock') {
+        mutations: {
+          pull: pullMutations,
+
+          push: (mutationEventEncoded, { persisted }) =>
+            Effect.gen(function* () {
+              // TODO refactor with PushQueue
               yield* Queue.offer(
                 executionBacklogQueue,
                 WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
               )
-            } else {
-              // In case we don't have the lock, we're broadcasting the mutation to the leader worker
-              yield* broadcastChannel.send(
-                BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'follower-thread', persisted }),
-              )
-            }
-          }).pipe(
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/web:coordinator:mutate', {
-              attributes: { mutation: mutationEventEncoded.mutation },
-            }),
-          ),
+            }).pipe(
+              UnexpectedError.mapToUnexpectedError,
+              Effect.withSpan('@livestore/web:coordinator:push', {
+                attributes: { mutation: mutationEventEncoded.mutation },
+              }),
+            ),
 
-        // TODO synchronize event ids across threads
-        nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
+          // TODO synchronize event ids across threads
+          nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
 
-        // TODO this needs to be specific to the current context
-        // getCurrentMutationEventId: runInWorker(new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId()).pipe(
-        //   Effect.timeout(10_000),
-        //   UnexpectedError.mapToUnexpectedError,
-        //   Effect.withSpan('@livestore/web:coordinator:getCurrentMutationEventId'),
-        // ),
+          // TODO this needs to be specific to the current context
+          // getCurrentMutationEventId: runInWorker(new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId()).pipe(
+          //   Effect.timeout(10_000),
+          //   UnexpectedError.mapToUnexpectedError,
+          //   Effect.withSpan('@livestore/web:coordinator:getCurrentMutationEventId'),
+          // ),
 
-        getCurrentMutationEventId: Effect.gen(function* () {
-          // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
-          // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
-          // return { global, local }
-          return currentMutationEventIdRef.current
-        }),
+          getCurrentMutationEventId: Effect.gen(function* () {
+            // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
+            // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
+            // return { global, local }
+            return currentMutationEventIdRef.current
+          }),
+        },
 
         getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),

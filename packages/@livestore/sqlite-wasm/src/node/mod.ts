@@ -1,8 +1,12 @@
-import fs from 'node:fs'
 import path from 'node:path'
 
-import type { MakeSynchronousDatabase, PersistenceInfo, SynchronousDatabase } from '@livestore/common'
-import { Effect } from '@livestore/utils/effect'
+import {
+  type MakeSynchronousDatabase,
+  type PersistenceInfo,
+  type SynchronousDatabase,
+  UnexpectedError,
+} from '@livestore/common'
+import { Effect, FileSystem } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
@@ -44,50 +48,60 @@ export type NodeDatabaseInputFs = {
 
 export type NodeDatabaseInput = NodeDatabaseInputInMemory | NodeDatabaseInputFs
 
-// TODO refactor with Effect FileSystem instead of using `node:fs` directly
-export const syncDbFactory =
-  ({
-    sqlite3,
-  }: {
-    sqlite3: SQLiteAPI
-  }): MakeSynchronousDatabase<
+export const syncDbFactory = ({
+  sqlite3,
+}: {
+  sqlite3: SQLiteAPI
+}): Effect.Effect<
+  MakeSynchronousDatabase<
     { dbPointer: number; persistenceInfo: PersistenceInfo },
     NodeDatabaseInput,
     NodeDatabaseMetadata
-  > =>
-  (input) =>
-    Effect.gen(function* () {
-      if (input._tag === 'in-memory') {
-        const { dbPointer, vfs } = makeInMemoryDb(sqlite3)
-        return makeSynchronousDatabase<NodeDatabaseMetadataInMemory>({
+  >,
+  never,
+  FileSystem.FileSystem
+> =>
+  Effect.andThen(
+    FileSystem.FileSystem,
+    (fs) => (input) =>
+      Effect.gen(function* () {
+        if (input._tag === 'in-memory') {
+          const { dbPointer, vfs } = makeInMemoryDb(sqlite3)
+          return makeSynchronousDatabase<NodeDatabaseMetadataInMemory>({
+            sqlite3,
+            metadata: {
+              _tag: 'in-memory',
+              vfs,
+              dbPointer,
+              persistenceInfo: { fileName: ':memory:' },
+              deleteDb: () => {},
+              configureDb: input.configureDb ?? (() => {}),
+            },
+          }) as any
+        }
+
+        const { dbPointer, vfs } = yield* makeNodeFsDb({
+          sqlite3,
+          fileName: input.fileName,
+          directory: input.directory,
+          fs,
+        })
+
+        const filePath = path.join(input.directory, input.fileName)
+
+        return makeSynchronousDatabase<NodeDatabaseMetadataFs>({
           sqlite3,
           metadata: {
-            _tag: 'in-memory',
+            _tag: 'fs',
             vfs,
             dbPointer,
-            persistenceInfo: { fileName: ':memory:' },
-            deleteDb: () => {},
+            persistenceInfo: { fileName: input.fileName, directory: input.directory },
+            deleteDb: () => vfs.deleteDb(filePath),
             configureDb: input.configureDb ?? (() => {}),
           },
-        }) as any
-      }
-
-      const { dbPointer, vfs } = makeNodeFsDb({ sqlite3, fileName: input.fileName, directory: input.directory })
-
-      const filePath = path.join(input.directory, input.fileName)
-
-      return makeSynchronousDatabase<NodeDatabaseMetadataFs>({
-        sqlite3,
-        metadata: {
-          _tag: 'fs',
-          vfs,
-          dbPointer,
-          persistenceInfo: { fileName: input.fileName, directory: input.directory },
-          deleteDb: () => vfs.deleteDb(filePath),
-          configureDb: input.configureDb ?? (() => {}),
-        },
-      })
-    })
+        })
+      }),
+  )
 
 let nodeFsVfs: NodeFS | undefined
 
@@ -95,29 +109,33 @@ const makeNodeFsDb = ({
   sqlite3,
   fileName,
   directory,
+  fs,
 }: {
   sqlite3: WaSqlite.SQLiteAPI
   fileName: string
   directory: string
-}) => {
-  // NOTE to keep the filePath short, we use the directory name in the vfs name
-  // If this is becoming a problem, we can use a hashed version of the directory name
-  const vfsName = `node-fs-${directory}`
-  if (nodeFsVfs === undefined) {
-    nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory)
-    // @ts-expect-error TODO fix types
-    sqlite3.vfs_register(nodeFsVfs, false)
-  }
+  fs: FileSystem.FileSystem
+}) =>
+  Effect.gen(function* () {
+    // NOTE to keep the filePath short, we use the directory name in the vfs name
+    // If this is becoming a problem, we can use a hashed version of the directory name
+    const vfsName = `node-fs-${directory}`
+    if (nodeFsVfs === undefined) {
+      // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of NodeFS
+      nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory)
+      // @ts-expect-error TODO fix types
+      sqlite3.vfs_register(nodeFsVfs, false)
+    }
 
-  fs.mkdirSync(directory, { recursive: true })
+    yield* fs.makeDirectory(directory, { recursive: true })
 
-  const FILE_NAME_MAX_LENGTH = 56
-  if (fileName.length > FILE_NAME_MAX_LENGTH) {
-    throw new Error(`File name ${fileName} is too long. Maximum length is ${FILE_NAME_MAX_LENGTH} characters.`)
-  }
+    const FILE_NAME_MAX_LENGTH = 56
+    if (fileName.length > FILE_NAME_MAX_LENGTH) {
+      throw new Error(`File name ${fileName} is too long. Maximum length is ${FILE_NAME_MAX_LENGTH} characters.`)
+    }
 
-  // NOTE SQLite will return a "disk I/O error" if the file path is too long.
-  const dbPointer = sqlite3.open_v2Sync(fileName, undefined, vfsName)
+    // NOTE SQLite will return a "disk I/O error" if the file path is too long.
+    const dbPointer = sqlite3.open_v2Sync(fileName, undefined, vfsName)
 
-  return { dbPointer, vfs: nodeFsVfs }
-}
+    return { dbPointer, vfs: nodeFsVfs }
+  }).pipe(UnexpectedError.mapToUnexpectedError)

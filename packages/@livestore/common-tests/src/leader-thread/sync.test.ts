@@ -1,7 +1,6 @@
 import '@livestore/utils/node-vitest-polyfill'
 
 import {
-  InvalidPushError,
   makeNextMutationEventIdPair,
   type MakeSynchronousDatabase,
   ROOT_ID,
@@ -16,7 +15,6 @@ import {
   makeLeaderThreadCtx,
 } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
-import { makeSyncBroadcastChannel } from '@livestore/node/common'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Scope } from '@livestore/utils/effect'
@@ -34,7 +32,7 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils/node'
+import { OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
 import { expect } from 'vitest'
 
@@ -45,6 +43,8 @@ TODO:
 - batch queued mutations which are about to be pushed
 - rebase handling
 - throughput metrics
+- rebase thrashing tests
+  - general idea: make rebase take 10ms but cause new pull events every 5ms
 - benchmarks
   - 10.000 mutations
   - 100.000 mutations
@@ -124,14 +124,12 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
   )
 
-  const makeSyncDb = syncDbFactory({ sqlite3 }) as MakeSynchronousDatabase
+  const makeSyncDb = (yield* syncDbFactory({ sqlite3 })) as MakeSynchronousDatabase
   const storeId = 'test'
   const originId = 'test'
 
   const db = yield* makeSyncDb({ _tag: 'in-memory' })
   const dbLog = yield* makeSyncDb({ _tag: 'in-memory' })
-
-  const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
 
   const syncEventIdRef = { current: -1 }
   const syncPullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>()
@@ -144,7 +142,12 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       isConnected: syncIsConnectedRef,
       pull: () =>
         Stream.fromQueue(syncPullQueue).pipe(
-          Stream.map((mutationEventEncoded) => ({ mutationEventEncoded, metadata: Option.none(), persisted: true })),
+          Stream.map((mutationEventEncoded) => ({
+            mutationEventEncoded,
+            metadata: Option.none(),
+            persisted: true,
+            remaining: 0,
+          })),
           Stream.withSpan('mock-sync-backend:pull'),
         ),
       push: (batch) =>
@@ -172,14 +175,11 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     dbLog,
     devtoolsEnabled: false,
     initialSyncOptions: { _tag: 'Skip' },
-    broadcastChannel,
   })
 
   const leaderContextLayer = Layer.succeed(LeaderThreadCtx, leaderThreadCtx)
 
-  yield* bootLeaderThread.pipe(Effect.provide(leaderContextLayer), Effect.tapCauseLogPretty, Effect.forkScoped)
-
-  yield* leaderThreadCtx.initialSetupDeferred
+  yield* bootLeaderThread.pipe(Effect.provide(leaderContextLayer))
 
   const encodeMutationEvent = Schema.encodeSync(leaderThreadCtx.mutationEventSchema)
 
@@ -231,6 +231,7 @@ const withCtx =
       Effect.timeout(isCi ? 60_000 : 10_000),
       Effect.provide(LeaderThreadCtxLive),
       Effect.provide(FetchHttpClient.layer),
+      Effect.provide(PlatformNode.NodeFileSystem.layer),
       Effect.provide(Logger.pretty),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),

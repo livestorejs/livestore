@@ -45,12 +45,17 @@ export type MakeSynchronousDatabase<
   TReq = { dbPointer: number; persistenceInfo: PersistenceInfo },
   TInput_ extends { _tag: string } = { _tag: string },
   TMetadata_ extends TReq = TReq,
+  R = never,
 > = <
   TInput extends TInput_,
   TMetadata extends TMetadata_ & { _tag: TInput['_tag'] } = TMetadata_ & { _tag: TInput['_tag'] },
 >(
   input: TInput,
-) => Effect.Effect<SynchronousDatabase<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError>
+) => Effect.Effect<
+  SynchronousDatabase<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>,
+  SqliteError | UnexpectedError,
+  R
+>
 
 export const PersistenceInfo = Schema.Struct(
   {
@@ -97,16 +102,19 @@ export type Coordinator = {
   sessionId: string
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  syncMutations: Stream.Stream<MutationEvent.Any, UnexpectedError>
+  mutations: {
+    pull: Stream.Stream<MutationEvent.Any, UnexpectedError>
+    push(
+      mutationEventEncoded: MutationEvent.AnyEncoded,
+      options: { persisted: boolean },
+    ): Effect.Effect<void, UnexpectedError>
+    /** Can be called synchronously */
+    nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
+    /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
+    getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
+  }
+  // TODO get rid of this in favour of raw sql mutations
   execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
-  mutate(
-    mutationEventEncoded: MutationEvent.AnyEncoded,
-    options: { persisted: boolean },
-  ): Effect.Effect<void, UnexpectedError>
-  /** Can be called synchronously */
-  nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
-  /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
-  getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>

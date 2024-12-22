@@ -148,6 +148,8 @@ export const makeSyncBackend = ({
               parentId: item.value!.parentId,
             },
             persisted: true,
+            // TODO implement proper `remaining` handling
+            remaining: 0,
           }))
 
         if (listenForNew === false && items.length === 0) {

@@ -155,13 +155,14 @@ export class Store<
     }
 
     Effect.gen(this, function* () {
-      yield* this.clientSession.coordinator.syncMutations.pipe(
+      yield* this.clientSession.coordinator.mutations.pull.pipe(
         Stream.tapChunk((mutationsEventsDecodedChunk) =>
           Effect.sync(() => {
             this.mutate({ wasSyncMessage: true }, ...mutationsEventsDecodedChunk)
           }),
         ),
         Stream.runDrain,
+        Effect.forever, // In case the stream is closed (e.g. during leader re-election), we want to re-subscribe
         Effect.interruptible,
         Effect.withSpan('LiveStore:syncMutations'),
         Effect.forkScoped,
@@ -476,7 +477,7 @@ export class Store<
 
     // Needs to happen only for partial mutation events (thus a function)
     const nextMutationEventId = () => {
-      const { id, parentId } = this.clientSession.coordinator.nextMutationEventIdPair({
+      const { id, parentId } = this.clientSession.coordinator.mutations.nextMutationEventIdPair({
         localOnly: mutationDef.options.localOnly,
       })
 
@@ -534,8 +535,8 @@ export class Store<
 
         if (coordinatorMode !== 'skip-coordinator') {
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          this.clientSession.coordinator
-            .mutate(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
+          this.clientSession.coordinator.mutations
+            .push(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
             .pipe(this.runEffectFork)
         }
 
@@ -554,6 +555,8 @@ export class Store<
    * Directly execute a SQL query on the Store.
    * This should only be used for framework-internal purposes;
    * all app writes should go through mutate.
+   *
+   * TODO get rid of this in favour of raw sql mutations
    */
   __execute = (
     query: string,
@@ -584,7 +587,8 @@ export class Store<
       downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
 
-  __devCurrentMutationEventId = () => this.clientSession.coordinator.getCurrentMutationEventId.pipe(Effect.runSync)
+  __devCurrentMutationEventId = () =>
+    this.clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync)
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
   toJSON = () => {

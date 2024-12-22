@@ -105,6 +105,12 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
+  export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
+    payload: {},
+    success: mutationEventSchemaEncodedAny,
+    failure: UnexpectedError,
+  }) {}
+
   export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', {
     payload: {
       items: Schema.Array(ExecutionBacklogItem),
@@ -119,11 +125,11 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
-    payload: {},
-    success: Transferable.Uint8Array,
-    failure: UnexpectedError,
-  }) {}
+  // export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
+  //   payload: {},
+  //   success: Transferable.Uint8Array,
+  //   failure: UnexpectedError,
+  // }) {}
 
   export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()('ExportMutationlog', {
     payload: {},
@@ -158,9 +164,10 @@ export namespace LeaderWorkerInner {
   export const Request = Schema.Union(
     InitialMessage,
     BootStatusStream,
+    PullStream,
     ExecuteBulk,
     Export,
-    GetRecreateSnapshot,
+    // GetRecreateSnapshot,
     ExportMutationlog,
     GetCurrentMutationEventId,
     NetworkStatusStream,

@@ -21,6 +21,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
       mutationEventEncoded: MutationEvent.AnyEncoded
       metadata: Option.Option<TSyncMetadata>
       persisted: boolean
+      remaining: number
     },
     IsOfflineError | InvalidPullError,
     HttpClient.HttpClient

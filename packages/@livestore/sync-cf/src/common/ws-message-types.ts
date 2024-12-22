@@ -14,7 +14,7 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   // /** The  */
   // cursor: Schema.String,
   events: Schema.Array(mutationEventSchemaEncodedAny),
-  hasMore: Schema.Boolean,
+  remaining: Schema.Number,
 })
 
 export type PullRes = typeof PullRes.Type

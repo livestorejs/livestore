@@ -7,10 +7,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./common": {
-      "types": "./dist/common/mod.d.ts",
-      "default": "./dist/common/mod.js"
-    },
     "./devtools": {
       "types": "./dist/devtools/mod.d.ts",
       "default": "./dist/devtools/mod.js"
@@ -19,9 +15,6 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "./common": [
-        "./dist/common/mod.d.ts"
-      ],
       "./devtools": [
         "./dist/devtools/mod.d.ts"
       ]

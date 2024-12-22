@@ -240,7 +240,7 @@ export const bootDevtools = ({
             case 'LSD.RunMutationReq': {
               const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
-              const nextMutationEventIdPair = coordinator.nextMutationEventIdPair({
+              const nextMutationEventIdPair = coordinator.mutations.nextMutationEventIdPair({
                 localOnly: mutationDef.options.localOnly,
               })
 
@@ -253,7 +253,7 @@ export const bootDevtools = ({
               //   schema.mutations.get(mutationEventEncoded.mutation) ??
               //   shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
 
-              yield* coordinator.mutate(mutationEventEncoded, { persisted })
+              yield* coordinator.mutations.push(mutationEventEncoded, { persisted })
 
               yield* expoDevtoolsChannel.send(Devtools.RunMutationRes.make({ ...reqPayload }))
 

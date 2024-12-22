@@ -217,8 +217,9 @@ const makeWorkerRunner = Effect.gen(function* () {
     // Proxied requests
     BootStatusStream: forwardRequestStream,
     ExecuteBulk: forwardRequest,
+    PullStream: forwardRequestStream,
     Export: forwardRequest,
-    GetRecreateSnapshot: forwardRequest,
+    // GetRecreateSnapshot: forwardRequest,
     ExportMutationlog: forwardRequest,
     Setup: forwardRequest,
     GetCurrentMutationEventId: forwardRequest,

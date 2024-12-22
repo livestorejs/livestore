@@ -35,7 +35,7 @@ class WorkerContext extends Context.Tag('WorkerContext')<
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
   InitialMessage: ({ storeId, clientId }) =>
     Effect.gen(function* () {
-      const adapter = (yield* makeNodeAdapter({
+      const adapter = makeNodeAdapter({
         schemaPath: new URL('./schema.js', import.meta.url).toString(),
         // TODO bring back when fixed https://github.com/vitest-dev/vitest/issues/6953
         // makeSyncBackendUrl: import.meta.resolve('@livestore/sync-cf'),
@@ -49,7 +49,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         otel: {
           workerServiceName: `node-sync-test:livestore-leader-${clientId}`,
         },
-      }))()
+      })
       // const adapter = makeInMemoryAdapter()
 
       const fiberSet = yield* FiberSet.make()
@@ -66,10 +66,9 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
     ),
   CreateTodos: ({ count }) =>
     Effect.gen(function* () {
+      // TODO check sync connection status
       const { store } = yield* WorkerContext
-      // const otelSpan = yield* Effect.currentSpan
       const otelSpan = yield* OtelTracer.currentOtelSpan
-      // otelContext.spanContext()
       for (let i = 0; i < count; i++) {
         store.mutate(
           { spanLinks: [{ context: otelSpan.spanContext() }] },

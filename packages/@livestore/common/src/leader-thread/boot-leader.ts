@@ -1,6 +1,5 @@
-import { shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, Option, Queue, Ref, Schema, Stream, SubscriptionRef, TQueue } from '@livestore/utils/effect'
+import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { SqliteError, UnexpectedError } from '../adapter-types.js'
 import { MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '../schema/system-tables.js'
@@ -8,33 +7,28 @@ import { migrateTable } from '../schema-management/migrations.js'
 import { updateRows } from '../sql-queries/sql-queries.js'
 import type { InvalidPullError, IsOfflineError } from '../sync/sync.js'
 import { prepareBindValues, sql } from '../util.js'
+import type { ApplyMutation } from './apply-mutation.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
-import { fetchAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
+import { pullAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
 import type { InitialSyncInfo } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
+/**
+ * Blocks until the leader thread has finished its initial setup.
+ * It also starts various background processes (e.g. syncing)
+ */
 export const bootLeaderThread: Effect.Effect<
   void,
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > = Effect.gen(function* () {
   const leaderThreadCtx = yield* LeaderThreadCtx
-  const {
-    db,
-    dbLog,
-    bootStatusQueue,
-    initialSetupDeferred,
-    currentMutationEventIdRef,
-    syncBackend,
-    syncPushQueue,
-    broadcastChannel,
-    schema,
-    initialSyncOptions,
-  } = leaderThreadCtx
 
   // @ts-expect-error For debugging purposes
   globalThis.__leaderThreadCtx = leaderThreadCtx
+
+  const { db, dbLog, bootStatusQueue, currentMutationEventIdRef, initialSyncOptions } = leaderThreadCtx
 
   yield* migrateTable({
     db: dbLog,
@@ -59,57 +53,42 @@ export const bootLeaderThread: Effect.Effect<
     }
   })
 
-  let syncInfo: InitialSyncInfo
-
   if (needsRecreate) {
-    const res = yield* recreateDb({ initialSyncOptions })
-    // Effect.tap(({ snapshot }) =>
-    //   Effect.gen(function* () {
-    //     yield* Queue.offer(bootStatusQueue, { stage: 'done' })
-    //     const snapshotRef = yield* Ref.make<Uint8Array | undefined>(snapshot)
-    //     yield* Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshotRef, syncInfo })
-    //   }),
-    // ),
-
-    syncInfo = res.syncInfo
-
-    yield* Queue.offer(bootStatusQueue, { stage: 'done' })
-    const snapshotRef = yield* Ref.make<Uint8Array | undefined>(res.snapshot)
-    yield* Deferred.succeed(initialSetupDeferred, { _tag: 'Recreate', snapshotRef, syncInfo })
-
-    yield* initializeCurrentMutationEventId
-  } else {
-    yield* initializeCurrentMutationEventId
-
-    if (initialSyncOptions._tag === 'Blocking') {
-      syncInfo = yield* fetchAndApplyRemoteMutations(db, true, ({ done, total }) =>
-        Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
-      ).pipe(
-        Effect.timeout(initialSyncOptions.timeout),
-        Effect.catchTag('TimeoutException', () => Effect.succeed(Option.none())),
-      )
-    } else {
-      syncInfo = Option.none()
-    }
-
-    // .pipe(
-    // Effect.tap((syncInfo) =>
-    //   Effect.gen(function* () {
-    yield* Queue.offer(bootStatusQueue, { stage: 'done' })
-    yield* Deferred.succeed(initialSetupDeferred, { _tag: 'Reuse', syncInfo })
-    // }),
-    //   ),
-    //   UnexpectedError.mapToUnexpectedError,
-    //   // NOTE we don't need to log the error here as we log it on the `await` side
-    //   Effect.tapError((cause) => Deferred.fail(initialSetupDeferred, cause)),
-    // )
+    yield* recreateDb
   }
 
-  // const { syncInfo } = yield* Deferred.await(initialSetupDeferred)
+  yield* initializeCurrentMutationEventId
+
+  // TODO unify with sync-pulling below (so it's a single pull call)
+  // TODO also already kick off pulling concurrently as network IO can take a while
+  let syncInfo: InitialSyncInfo
+  if (initialSyncOptions._tag === 'Blocking') {
+    syncInfo = yield* pullAndApplyRemoteMutations({
+      db,
+      shouldBroadcast: true,
+      onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
+    }).pipe(
+      Effect.timeout(initialSyncOptions.timeout),
+      Effect.catchTag('TimeoutException', () => Effect.succeed(Option.none())),
+      Effect.withSpan('@livestore/web:worker:initialSync(blocking)'),
+    )
+  } else {
+    syncInfo = Option.none()
+  }
+
+  yield* Queue.offer(bootStatusQueue, { stage: 'done' })
 
   const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
 
-  if (syncBackend !== undefined) {
+  // TODO start earlier to give sync backend a chance to pull concurrently
+  yield* initSyncing({ syncInfo, applyMutation }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+})
+
+const initSyncing = ({ syncInfo, applyMutation }: { syncInfo: InitialSyncInfo; applyMutation: ApplyMutation }) =>
+  Effect.gen(function* () {
+    const { syncBackend, currentMutationEventIdRef, dbLog, syncPushQueue } = yield* LeaderThreadCtx
+    if (syncBackend === undefined) return
+
     // TODO try to do this in a batched-way if possible
     yield* syncBackend.pull(syncInfo, { listenForNew: true }).pipe(
       // TODO only take from queue while connected
@@ -117,6 +96,9 @@ export const bootLeaderThread: Effect.Effect<
       // Stream.filter((_) => _.mutationEventEncoded.id.startsWith(originId) === false),
       Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
         Effect.gen(function* () {
+          // TODO bring back and properly implement by running some of the code above concurrently
+          // yield* initialSetupDeferred
+
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -143,21 +125,24 @@ export const bootLeaderThread: Effect.Effect<
     )
 
     // rehydrate pushQueue from dbLog
-    const query = mutationLogMetaTable.query.where({ syncStatus: 'pending' }).asSql()
-    const pendingMutationEventsRaw = dbLog.select(query.query, prepareBindValues(query.bindValues, query.query))
-    const pendingMutationEvents = Schema.decodeUnknownSync(mutationLogMetaTable.schema.pipe(Schema.Array))(
-      pendingMutationEventsRaw,
-    )
+    {
+      const query = mutationLogMetaTable.query.where({ syncStatus: 'pending' }).asSql()
+      const pendingMutationEventsRaw = dbLog.select(query.query, prepareBindValues(query.bindValues, query.query))
+      const pendingMutationEvents = Schema.decodeUnknownSync(mutationLogMetaTable.schema.pipe(Schema.Array))(
+        pendingMutationEventsRaw,
+      )
 
-    yield* syncPushQueue.offerAll(
-      pendingMutationEvents.map((_) => ({
-        mutation: _.mutation,
-        args: _.argsJson,
-        id: { global: _.idGlobal, local: _.idLocal },
-        parentId: { global: _.parentIdGlobal, local: _.parentIdLocal },
-      })),
-    )
+      yield* syncPushQueue.queue.offerAll(
+        pendingMutationEvents.map((_) => ({
+          mutation: _.mutation,
+          args: _.argsJson,
+          id: { global: _.idGlobal, local: _.idLocal },
+          parentId: { global: _.parentIdGlobal, local: _.parentIdLocal },
+        })),
+      )
+    }
 
+    // Continously pushes mutations to the sync backend from the push queue
     yield* Effect.gen(function* () {
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -165,7 +150,7 @@ export const bootLeaderThread: Effect.Effect<
 
       // TODO make batch size configurable
       // TODO peek instead of take
-      const queueItems = yield* syncPushQueue.takeBetween(1, 50)
+      const queueItems = yield* syncPushQueue.queue.takeBetween(1, 50)
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -191,28 +176,6 @@ export const bootLeaderThread: Effect.Effect<
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-  }
 
-  yield* broadcastChannel.listen.pipe(
-    Stream.flatten(),
-    Stream.filter(({ sender }) => sender === 'follower-thread'),
-    Stream.tap(({ mutationEventEncoded, persisted }) =>
-      Effect.gen(function* () {
-        const mutationDef =
-          schema.mutations.get(mutationEventEncoded.mutation) ??
-          shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
-
-        yield* applyMutation(mutationEventEncoded, {
-          syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
-          shouldBroadcast: true,
-          persisted,
-          inTransaction: false,
-          syncMetadataJson: Option.none(),
-        })
-      }).pipe(Effect.withSpan('@livestore/web:worker:broadcastChannel:message')),
-    ),
-    Stream.runDrain,
-    Effect.tapCauseLogPretty,
-    Effect.forkScoped,
-  )
-})
+    yield* Effect.never
+  })

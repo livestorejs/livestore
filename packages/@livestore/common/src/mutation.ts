@@ -1,8 +1,6 @@
-import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from './adapter-types.js'
-import type { LiveStoreSchema } from './schema/index.js'
 import type { MutationDef, MutationEvent } from './schema/mutations.js'
 import type { PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
@@ -51,23 +49,6 @@ export const getExecArgsFromMutation = ({
     return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
   })
 }
-
-export const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
-  const migrationOptions = schema.migrationOptions
-  const mutationLogExclude =
-    migrationOptions.strategy === 'from-mutation-log'
-      ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
-      : new Set(['livestore.RawSql'])
-
-  return (mutationName: string, mutationEventDecoded: MutationEvent.Any): boolean => {
-    if (mutationLogExclude.has(mutationName)) return true
-
-    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-    return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
-  }
-})
 
 // NOTE we should explore whether there is a more elegant solution
 // e.g. by leveraging the schema to replace the sessionIdSymbol

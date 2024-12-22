@@ -36,7 +36,7 @@ const live = Cli.Command.make(
       const relativeSchemaPath = path.isAbsolute(schemaPath) ? schemaPath : path.resolve(process.cwd(), schemaPath)
       console.log('relativeSchemaPath', relativeSchemaPath)
       const schema: LiveStoreSchema = yield* Effect.promise(() => import(relativeSchemaPath).then((m) => m.schema))
-      const adapter = (yield* makeNodeAdapter({
+      const adapter = makeNodeAdapter({
         schemaPath: relativeSchemaPath,
         makeSyncBackendUrl: import.meta.resolve('@livestore/sync-cf'),
         baseDirectory,
@@ -45,7 +45,7 @@ const live = Cli.Command.make(
           url: 'ws://localhost:8787/websocket',
           roomId: `todomvc_${storeId}`,
         },
-      }))()
+      })
 
       const fiberSet = yield* FiberSet.make()
       const store = yield* createStore({ adapter, fiberSet, schema, storeId, disableDevtools: !enableDevtools })

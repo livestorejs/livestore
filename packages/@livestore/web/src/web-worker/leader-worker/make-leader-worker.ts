@@ -9,7 +9,7 @@ import {
   makeLeaderThreadCtx,
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
-import { type LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
@@ -25,7 +25,7 @@ import {
   Logger,
   LogLevel,
   Option,
-  Ref,
+  Queue,
   Scheduler,
   Stream,
   SubscriptionRef,
@@ -35,7 +35,6 @@ import {
 import * as OpfsUtils from '../../opfs-utils.js'
 import { getAppDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import { makeSyncBroadcastChannel } from '../common/sync-channel.js'
 import type { ExecutionBacklogItem } from '../common/worker-schema.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 
@@ -109,7 +108,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // Might involve some async work, so we're running them concurrently
         const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
-        const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
+        // const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
 
         const leaderThreadCtx = yield* makeLeaderThreadCtx({
           schema,
@@ -124,12 +123,12 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           dbLog,
           devtoolsEnabled,
           initialSyncOptions,
-          broadcastChannel,
+          // broadcastChannel,
         })
 
         const leaderContextLayer = Layer.succeed(LeaderThreadCtx, leaderThreadCtx)
 
-        yield* bootLeaderThread.pipe(Effect.provide(leaderContextLayer), Effect.tapCauseLogPretty, Effect.forkScoped)
+        yield* bootLeaderThread.pipe(Effect.provide(leaderContextLayer))
 
         return leaderContextLayer
       }).pipe(
@@ -139,17 +138,29 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         Effect.withSpan('@livestore/web:worker:InitialMessage'),
         Layer.unwrapScoped,
       ),
-    GetRecreateSnapshot: () =>
+    // GetRecreateSnapshot: () =>
+    //   Effect.gen(function* () {
+    //     const workerCtx = yield* LeaderThreadCtx
+
+    //     // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+    //     const cachedSnapshot =
+    //       result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+
+    //     return cachedSnapshot ?? workerCtx.db.export()
+    //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
+    PullStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
+        const pullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-        // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-        const cachedSnapshot =
-          result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+        workerCtx.connectedClientSessionPullQueues.add(pullQueue)
 
-        return cachedSnapshot ?? workerCtx.db.export()
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => workerCtx.connectedClientSessionPullQueues.delete(pullQueue)),
+        )
+
+        return Stream.fromQueue(pullQueue)
+      }).pipe(Stream.unwrapScoped),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
@@ -280,6 +291,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         // console.groupEnd()
 
         for (const item of batchItems) {
+          // TODO get rid of this in favour of raw sql mutations
           if (item._tag === 'execute') {
             const { query, bindValues } = item
             db.execute(query, bindValues)

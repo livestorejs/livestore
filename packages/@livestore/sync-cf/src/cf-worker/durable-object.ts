@@ -82,11 +82,18 @@ export class WebSocketServer extends DurableObject<Env> {
           while (true) {
             const events = remainingEvents.splice(0, CHUNK_SIZE)
             const encodedEvents = Schema.encodeSync(Schema.Array(mutationEventSchemaAny))(events)
-            const hasMore = remainingEvents.length > 0
 
-            ws.send(encodeOutgoingMessage(WSMessage.PullRes.make({ events: encodedEvents, hasMore, requestId })))
+            ws.send(
+              encodeOutgoingMessage(
+                WSMessage.PullRes.make({
+                  events: encodedEvents,
+                  remaining: remainingEvents.length,
+                  requestId,
+                }),
+              ),
+            )
 
-            if (hasMore === false) {
+            if (remainingEvents.length === 0) {
               break
             }
           }

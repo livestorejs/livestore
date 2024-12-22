@@ -1,12 +1,10 @@
 import type {
-  Deferred,
   Effect,
   Fiber,
   FiberSet,
   HttpClient,
   Option,
   Queue,
-  Ref,
   Scope,
   SubscriptionRef,
   WebChannel,
@@ -25,7 +23,6 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
-import type * as BCMessage from './broadcast-types.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -49,7 +46,7 @@ export type DevtoolsContextEnabled = {
     shutdownChannel: ShutdownChannel
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
   connections: FiberSet.FiberSet
-  // TODO document why this is needed or remove it if possible
+  // TODO consider to refactor to use existing syncing mechanism instead of devtools-specific broadcast channel
   broadcast: (
     message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
   ) => Effect.Effect<void>
@@ -82,9 +79,9 @@ export type InitialSyncInfo = Option.Option<{
   metadata: Option.Option<Schema.JsonValue>
 }>
 
-export type InitialSetup =
-  | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
-  | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
+// export type InitialSetup =
+//   | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
+//   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
 export type LeaderDatabase = SynchronousDatabase<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
 export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
@@ -100,25 +97,25 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     db: LeaderDatabase
     dbLog: LeaderDatabase
     bootStatusQueue: Queue.Queue<BootStatus>
-    // TODO get rid of this?
-    initialSetupDeferred: Deferred.Deferred<InitialSetup, UnexpectedError>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEventSchema<any>
     mutationDefSchemaHashMap: Map<string, number>
     currentMutationEventIdRef: { current: EventId }
     nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
-    broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
+    // broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
-    syncPushQueue: Queue.Queue<MutationEvent.AnyEncoded>
-    syncPushQueueSemaphore: Effect.Semaphore
+    // syncPushQueue: Queue.Queue<MutationEvent.AnyEncoded>
+    // syncPushQueueSemaphore: Effect.Semaphore
+    syncPushQueue: SyncPushQueue
     initialSyncOptions: InitialSyncOptions
+    connectedClientSessionPullQueues: Set<Queue.Queue<MutationEvent.AnyEncoded>>
   }
 >() {}
 
 export type SyncPushQueue = {
   queue: Queue.Queue<MutationEvent.AnyEncoded>
   semaphore: Effect.Semaphore
-  rebase: Effect.Effect<void>
+  isOpen: Effect.Latch
 }

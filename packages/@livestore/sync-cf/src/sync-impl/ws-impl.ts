@@ -59,8 +59,20 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
                 Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
                 Stream.map((msg) =>
                   msg._tag === 'WSMessage.PushBroadcast'
-                    ? [{ mutationEventEncoded: msg.mutationEventEncoded, persisted: msg.persisted, metadata }]
-                    : msg.events.map((_) => ({ mutationEventEncoded: _, metadata, persisted: true })),
+                    ? [
+                        {
+                          mutationEventEncoded: msg.mutationEventEncoded,
+                          persisted: msg.persisted,
+                          metadata,
+                          remaining: 0,
+                        },
+                      ]
+                    : msg.events.map((_, i) => ({
+                        mutationEventEncoded: _,
+                        metadata,
+                        persisted: true,
+                        remaining: msg.remaining - i,
+                      })),
                 ),
                 Stream.flattenIterables,
               )
@@ -77,14 +89,16 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
                   _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
                 ),
                 Stream.filter(Schema.is(WSMessage.PullRes)),
-                Stream.takeUntil((_) => _.hasMore === false),
-                Stream.map((_) => _.events),
+                Stream.takeUntil((_) => _.remaining === 0),
+                Stream.map((_) =>
+                  _.events.map((event, i) => ({
+                    mutationEventEncoded: event,
+                    metadata,
+                    persisted: true,
+                    remaining: _.remaining - i,
+                  })),
+                ),
                 Stream.flattenIterables,
-                Stream.map((mutationEventEncoded) => ({
-                  mutationEventEncoded,
-                  metadata,
-                  persisted: true,
-                })),
               )
             }).pipe(Stream.unwrap),
       push: (batch, persisted) =>

@@ -17,15 +17,15 @@ Vitest.describe('node-sync', { timeout: 10_000 }, () => {
       const storeId = nanoid(10)
       const todoCount = 4
 
-      const [workerA, workerB] = yield* Effect.all(
+      const [clientA, clientB] = yield* Effect.all(
         [makeWorker({ clientId: 'client-a', storeId }), makeWorker({ clientId: 'client-b', storeId })],
         { concurrency: 'unbounded' },
       )
 
-      yield* workerA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
+      yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
 
       // const result = yield* workerA.execute(WorkerSchema.StreamTodos.make()).pipe(Stream.runHead, Effect.flatten)
-      const result = yield* workerB.execute(WorkerSchema.StreamTodos.make()).pipe(
+      const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
         Stream.filter((_) => _.length === todoCount),
         Stream.runHead,
         Effect.flatten,

@@ -1,21 +1,19 @@
-import { env, shouldNeverHappen } from '@livestore/utils'
+import { env, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Option, Scope } from '@livestore/utils/effect'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Queue, Schema } from '@livestore/utils/effect'
 
 import type { SqliteError, SynchronousDatabase, UnexpectedError } from '../index.js'
 import {
   Devtools,
   getExecArgsFromMutation,
   liveStoreVersion,
-  makeShouldExcludeMutationFromLog,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
   SESSION_CHANGESET_META_TABLE,
   sessionChangesetMetaTable,
 } from '../index.js'
-import type { MutationEvent, SyncStatus } from '../schema/index.js'
+import type { LiveStoreSchema, MutationEvent, SyncStatus } from '../schema/index.js'
 import { insertRow } from '../sql-queries/index.js'
-import * as BCMessage from './broadcast-types.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import { LeaderThreadCtx } from './types.js'
 import { validateAndUpdateMutationEventId } from './validateAndUpdateMutationEventId.js'
@@ -32,7 +30,12 @@ export type ApplyMutation = (
 ) => Effect.Effect<void, SqliteError | UnexpectedError, HttpClient.HttpClient>
 
 export const makeApplyMutation = (
+  // TODO get rid of this as it's only used for mutation log metadata which isn't really needed
   createdAtMemo: () => string,
+  /**
+   * NOTE we're making this syncDb a parameter instead of using LeaderThreadCtx.syncDb
+   * as we're also using this function when creating a temporary in-memory database
+   */
   syncDb: SynchronousDatabase,
 ): Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> =>
   Effect.gen(function* () {
@@ -44,7 +47,6 @@ export const makeApplyMutation = (
         const {
           mutationEventSchema,
           mutationDefSchemaHashMap,
-          broadcastChannel,
           devtools,
           syncBackend,
           syncPushQueue,
@@ -130,13 +132,13 @@ export const makeApplyMutation = (
           //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
         }
 
-        // TODO refactor so it matches the push<>pull model between client sessions and leader thread
         if (shouldBroadcast) {
-          yield* broadcastChannel
-            .send(BCMessage.Broadcast.make({ mutationEventEncoded, ref: '', sender: 'leader-worker', persisted }))
-            .pipe(Effect.orDie)
+          for (const queue of leaderThreadCtx.connectedClientSessionPullQueues) {
+            yield* Queue.offer(queue, mutationEventEncoded)
+          }
 
           if (devtools.enabled) {
+            // TODO consider to refactor devtools to use syncing mechanism instead of devtools-specific broadcast channel
             yield* devtools.broadcast(
               Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }),
             )
@@ -149,7 +151,8 @@ export const makeApplyMutation = (
           syncBackend !== undefined &&
           syncStatus === 'pending'
         ) {
-          yield* syncPushQueue.offer(mutationEventEncoded)
+          // TODO how to handle this if currently rebasing?
+          yield* syncPushQueue.queue.offer(mutationEventEncoded)
         }
       }).pipe(
         Effect.withSpan(`@livestore/web:worker:applyMutation`, {
@@ -200,3 +203,21 @@ const insertIntoMutationLog = (
       }),
     )
   })
+
+// TODO let's consider removing this "should exclude" mechanism in favour of log compaction etc
+const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
+  const migrationOptions = schema.migrationOptions
+  const mutationLogExclude =
+    migrationOptions.strategy === 'from-mutation-log'
+      ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
+      : new Set(['livestore.RawSql'])
+
+  return (mutationName: string, mutationEventDecoded: MutationEvent.Any): boolean => {
+    if (mutationLogExclude.has(mutationName)) return true
+
+    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+    return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
+  }
+})

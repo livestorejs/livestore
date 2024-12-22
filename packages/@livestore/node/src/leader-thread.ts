@@ -8,7 +8,7 @@ if (process.execArgv.includes('--inspect')) {
   inspector.waitForDebugger()
 }
 
-import { NodeWorkerRunner } from '@effect/platform-node'
+import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus, SqliteError } from '@livestore/common'
 import { Devtools, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { DevtoolsContext } from '@livestore/common/leader-thread'
@@ -20,14 +20,13 @@ import {
   makeDevtoolsContext,
   makeLeaderThreadCtx,
 } from '@livestore/common/leader-thread'
-import { type LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Scope } from '@livestore/utils/effect'
+import type { FileSystem, HttpClient, Scope } from '@livestore/utils/effect'
 import {
-  Deferred,
   Effect,
   FetchHttpClient,
   Fiber,
@@ -36,7 +35,7 @@ import {
   Logger,
   LogLevel,
   Option,
-  Ref,
+  Queue,
   Schema,
   Stream,
   SubscriptionRef,
@@ -44,7 +43,6 @@ import {
 } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'
 
-import { makeSyncBroadcastChannel } from './common/mod.js'
 import { startDevtoolsServer } from './devtools/devtools-server.js'
 import { makeShutdownChannel } from './shutdown-channel.js'
 import type { ExecutionBacklogItem } from './worker-schema.js'
@@ -68,6 +66,17 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
     ),
   BootStatusStream: () =>
     Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+  PullStream: () =>
+    Effect.gen(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      const pullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+      workerCtx.connectedClientSessionPullQueues.add(pullQueue)
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => workerCtx.connectedClientSessionPullQueues.delete(pullQueue)))
+
+      return Stream.fromQueue(pullQueue)
+    }).pipe(Stream.unwrapScoped),
   Export: () =>
     Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(
       UnexpectedError.mapToUnexpectedError,
@@ -99,17 +108,17 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
         Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
       )
     }).pipe(Stream.unwrap),
-  GetRecreateSnapshot: () =>
-    Effect.gen(function* () {
-      const workerCtx = yield* LeaderThreadCtx
-      const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
+  // GetRecreateSnapshot: () =>
+  //   Effect.gen(function* () {
+  //     const workerCtx = yield* LeaderThreadCtx
+  //     const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
 
-      // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-      const cachedSnapshot =
-        result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+  //     // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+  //     const cachedSnapshot =
+  //       result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-      return cachedSnapshot ?? workerCtx.db.export()
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
+  //     return cachedSnapshot ?? workerCtx.db.export()
+  //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
   Shutdown: () =>
     Effect.gen(function* () {
       const { db, dbLog, devtools } = yield* LeaderThreadCtx
@@ -130,6 +139,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   Effect.annotateLogs({ thread: argvOptions.otel?.workerServiceName ?? 'livestore-node-leader-thread' }),
   Effect.provide(Logger.pretty),
   Effect.provide(FetchHttpClient.layer),
+  Effect.provide(NodeFileSystem.layer),
   Effect.provide(
     OtelLiveHttp({
       serviceName: argvOptions.otel?.workerServiceName ?? 'livestore-node-leader-thread',
@@ -153,7 +163,7 @@ const initLeaderThread = ({
 }: WorkerSchema.LeaderWorkerInner.InitialMessage): Effect.Effect<
   Layer.Layer<LeaderThreadCtx, never, never>,
   SqliteError | UnexpectedError,
-  Scope.Scope | HttpClient.HttpClient
+  Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
     const schema = yield* Effect.promise(() => import(schemaPath).then((m) => m.schema as LiveStoreSchema))
@@ -164,9 +174,9 @@ const initLeaderThread = ({
     const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
       Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
     )
-    const makeSyncDb = syncDbFactory({ sqlite3 })
+    const makeSyncDb = yield* syncDbFactory({ sqlite3 })
 
-    const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
+    // const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
 
     const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
@@ -194,7 +204,7 @@ const initLeaderThread = ({
       dbLog,
       devtoolsEnabled,
       initialSyncOptions,
-      broadcastChannel,
+      // broadcastChannel,
     })
 
     const leaderContextLayer = Layer.succeed(LeaderThreadCtx, leaderThreadCtx)
@@ -253,6 +263,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         // console.groupEnd()
 
         for (const item of batchItems) {
+          // TODO get rid of this in favour of raw sql mutations
           if (item._tag === 'execute') {
             const { query, bindValues } = item
             db.execute(query, bindValues)
