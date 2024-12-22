@@ -393,19 +393,6 @@ export const makeAdapter =
           Effect.withSpan('@livestore/web:coordinator:export'),
         ),
 
-        execute: (query, bindValues) =>
-          Effect.gen(function* () {
-            const currentLockStatus = yield* SubscriptionRef.get(lockStatus)
-            if (currentLockStatus === 'has-lock') {
-              yield* Queue.offer(
-                executionBacklogQueue,
-                WorkerSchema.ExecutionBacklogItemExecute.make({ query, bindValues }),
-              )
-            } else {
-              console.warn(`[@livestore/web:coordinator] TODO: implement execute without lock`, query, bindValues)
-            }
-          }),
-
         mutations: {
           pull: pullMutations,
 

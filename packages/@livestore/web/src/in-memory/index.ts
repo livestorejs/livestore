@@ -55,7 +55,6 @@ export const makeInMemoryAdapter =
           getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
         },
         lockStatus,
-        execute: () => Effect.void,
         export: Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.succeed(new Uint8Array()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),

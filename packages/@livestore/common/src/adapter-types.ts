@@ -113,8 +113,6 @@ export type Coordinator = {
     /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
     getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   }
-  // TODO get rid of this in favour of raw sql mutations
-  execute(queryStr: string, bindValues: PreparedBindValues | undefined): Effect.Effect<void, UnexpectedError>
   export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>

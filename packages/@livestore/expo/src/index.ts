@@ -28,6 +28,7 @@ export type MakeDbOptions = {
   // syncBackend?: TODO
 }
 
+// TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makeAdapter =
   (options?: MakeDbOptions): Adapter =>
   ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled }) =>
@@ -149,8 +150,6 @@ export const makeAdapter =
         lockStatus,
         // Expo doesn't support multiple client sessions, so we just use a fixed session id
         sessionId: 'expo',
-        // NOTE not doing anything since syncDb is already persisted
-        execute: () => Effect.void,
         mutations: {
           pull: Stream.fromQueue(incomingSyncMutationsQueue),
           // TODO implement proper event id generation using persistent cliendId

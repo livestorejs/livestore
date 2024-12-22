@@ -281,13 +281,7 @@ const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
         // console.groupEnd()
 
         for (const item of batchItems) {
-          // TODO get rid of this in favour of raw sql mutations
-          if (item._tag === 'execute') {
-            const { query, bindValues } = item
-            db.execute(query, bindValues)
-
-            // NOTE we're not writing `execute` events to the mutation_log
-          } else if (item._tag === 'mutate') {
+          if (item._tag === 'mutate') {
             const mutationDef =
               leaderThreadCtx.schema.mutations.get(item.mutationEventEncoded.mutation) ??
               shouldNeverHappen(`Unknown mutation: ${item.mutationEventEncoded.mutation}`)

@@ -1,4 +1,5 @@
 import { sql } from '@livestore/common'
+import { rawSqlMutation } from '@livestore/common/schema'
 import { queryDb, type Store } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
@@ -30,7 +31,11 @@ describe('LiveStoreProvider', () => {
     const Root = ({ forceUpdate }: { forceUpdate: number }) => {
       const bootCb = React.useCallback(
         (store: Store) =>
-          store.__execute(sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0);`),
+          store.mutate(
+            rawSqlMutation({
+              sql: sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
+            }),
+          ),
         [],
       )
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,7 +86,11 @@ describe('LiveStoreProvider', () => {
     const Root = ({ forceUpdate }: { forceUpdate: number }) => {
       const bootCb = React.useCallback(
         (store: Store) =>
-          store.__execute(sql`INSERT INTO todos_mising_table (id, text, completed) VALUES ('t1', 'buy milk', 0);`),
+          store.mutate(
+            rawSqlMutation({
+              sql: sql`INSERT OR IGNORE INTO todos_missing_table (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
+            }),
+          ),
         [],
       )
       // eslint-disable-next-line react-hooks/exhaustive-deps

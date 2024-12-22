@@ -2,25 +2,16 @@ import { BootStatus, EventId, UnexpectedError } from '@livestore/common'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-export const ExecutionBacklogItemExecute = Schema.TaggedStruct('execute', {
-  query: Schema.String,
-  bindValues: Schema.Any,
-})
-
 export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
 })
 
 export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
-  items: Schema.Union(ExecutionBacklogItemExecute, ExecutionBacklogItemMutate),
+  items: Schema.Union(ExecutionBacklogItemMutate),
 })
 
-export const ExecutionBacklogItem = Schema.Union(
-  ExecutionBacklogItemExecute,
-  ExecutionBacklogItemMutate,
-  ExecutionBacklogItemTxn,
-)
+export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
 
 export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
 

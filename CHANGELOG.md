@@ -13,6 +13,7 @@
   - Configurable initial sync semantics (skip or block with timeout)
 - Node syncing integration tests
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
+- Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Improve Otel tracing integration
 - Internal:
   - Large refactoring to share more code between adapters

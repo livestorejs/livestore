@@ -551,24 +551,6 @@ export class Store<
   }
   // #endregion mutateWithoutRefresh
 
-  /**
-   * Directly execute a SQL query on the Store.
-   * This should only be used for framework-internal purposes;
-   * all app writes should go through mutate.
-   *
-   * TODO get rid of this in favour of raw sql mutations
-   */
-  __execute = (
-    query: string,
-    params: ParamsObject = {},
-    writeTables?: ReadonlySet<string>,
-    otelContext?: otel.Context,
-  ) => {
-    this.syncDbWrapper.execute(query, prepareBindValues(params, query), writeTables, { otelContext })
-
-    this.clientSession.coordinator.execute(query, prepareBindValues(params, query)).pipe(this.runEffectFork)
-  }
-
   private makeTableRef = (tableName: string) =>
     this.reactivityGraph.makeRef(null, {
       equal: () => false,
