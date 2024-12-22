@@ -134,7 +134,8 @@ export const makeApplyMutation = (
 
         if (shouldBroadcast) {
           for (const queue of leaderThreadCtx.connectedClientSessionPullQueues) {
-            yield* Queue.offer(queue, mutationEventEncoded)
+            // TODO do batching if possible
+            yield* Queue.offer(queue, { mutationEvents: [mutationEventEncoded], remaining: 0 })
           }
 
           if (devtools.enabled) {

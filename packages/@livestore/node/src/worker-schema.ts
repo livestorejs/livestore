@@ -107,7 +107,10 @@ export namespace LeaderWorkerInner {
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {},
-    success: mutationEventSchemaEncodedAny,
+    success: Schema.Struct({
+      mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      remaining: Schema.Number,
+    }),
     failure: UnexpectedError,
   }) {}
 

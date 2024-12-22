@@ -1,15 +1,14 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
 import { ROOT_ID, sql, UnexpectedError } from '@livestore/common'
-import type { InitialSyncOptions } from '@livestore/common/leader-thread'
+import type { InitialSyncOptions, PullQueueItem } from '@livestore/common/leader-thread'
 import {
-  bootLeaderThread,
   configureConnection,
   LeaderThreadCtx,
   makeApplyMutation,
-  makeLeaderThreadCtx,
+  makeLeaderThread,
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
@@ -108,9 +107,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // Might involve some async work, so we're running them concurrently
         const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
-        // const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
-
-        const leaderThreadCtx = yield* makeLeaderThreadCtx({
+        return makeLeaderThread({
           schema,
           storeId,
           originId,
@@ -123,14 +120,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           dbLog,
           devtoolsEnabled,
           initialSyncOptions,
-          // broadcastChannel,
         })
-
-        const leaderContextLayer = Layer.succeed(LeaderThreadCtx, leaderThreadCtx)
-
-        yield* bootLeaderThread.pipe(Effect.provide(leaderContextLayer))
-
-        return leaderContextLayer
       }).pipe(
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
@@ -151,7 +141,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
     PullStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        const pullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(Effect.acquireRelease(Queue.shutdown))
+        const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
 
         workerCtx.connectedClientSessionPullQueues.add(pullQueue)
 

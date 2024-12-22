@@ -9,18 +9,17 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
-import type { NetworkStatus, SqliteError } from '@livestore/common'
+import type { NetworkStatus } from '@livestore/common'
 import { Devtools, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
-import type { DevtoolsContext } from '@livestore/common/leader-thread'
+import type { DevtoolsContext, PullQueueItem } from '@livestore/common/leader-thread'
 import {
-  bootLeaderThread,
   configureConnection,
   LeaderThreadCtx,
   makeApplyMutation,
   makeDevtoolsContext,
-  makeLeaderThreadCtx,
+  makeLeaderThread,
 } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -51,13 +50,7 @@ import * as WorkerSchema from './worker-schema.js'
 const argvOptions = Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
-  InitialMessage: (args) =>
-    initLeaderThread(args).pipe(
-      Effect.tapCauseLogPretty,
-      UnexpectedError.mapToUnexpectedError,
-      Effect.withSpan('@livestore/node:worker:InitialMessage'),
-      Layer.unwrapScoped,
-    ),
+  InitialMessage: (args) => makeLeaderThreadLayer(args),
   ExecuteBulk: ({ items }) =>
     executeBulk(items).pipe(
       Effect.uninterruptible,
@@ -69,7 +62,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   PullStream: () =>
     Effect.gen(function* () {
       const workerCtx = yield* LeaderThreadCtx
-      const pullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
 
       workerCtx.connectedClientSessionPullQueues.add(pullQueue)
 
@@ -150,7 +143,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   Effect.runFork,
 )
 
-const initLeaderThread = ({
+const makeLeaderThreadLayer = ({
   schemaPath,
   storeId,
   originId,
@@ -160,9 +153,9 @@ const initLeaderThread = ({
   devtoolsEnabled,
   devtoolsPort,
   initialSyncOptions,
-}: WorkerSchema.LeaderWorkerInner.InitialMessage): Effect.Effect<
-  Layer.Layer<LeaderThreadCtx, never, never>,
-  SqliteError | UnexpectedError,
+}: WorkerSchema.LeaderWorkerInner.InitialMessage): Layer.Layer<
+  LeaderThreadCtx,
+  UnexpectedError,
   Scope.Scope | HttpClient.HttpClient | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -175,8 +168,6 @@ const initLeaderThread = ({
       Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
     )
     const makeSyncDb = yield* syncDbFactory({ sqlite3 })
-
-    // const broadcastChannel = yield* makeSyncBroadcastChannel(schema, storeId)
 
     const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
@@ -194,7 +185,7 @@ const initLeaderThread = ({
 
     const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false }
 
-    const leaderThreadCtx = yield* makeLeaderThreadCtx({
+    const leaderThreadLayer = makeLeaderThread({
       schema,
       storeId,
       originId,
@@ -204,27 +195,23 @@ const initLeaderThread = ({
       dbLog,
       devtoolsEnabled,
       initialSyncOptions,
-      // broadcastChannel,
     })
-
-    const leaderContextLayer = Layer.succeed(LeaderThreadCtx, leaderThreadCtx)
 
     if (devtools.enabled === true) {
       yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(
-        Effect.provide(leaderContextLayer),
+        Effect.provide(leaderThreadLayer),
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
     }
 
-    yield* bootLeaderThread.pipe(
-      Effect.provide(leaderContextLayer),
-      UnexpectedError.mapToUnexpectedError,
-      Effect.tapCauseLogPretty,
-    )
-
-    return leaderContextLayer
-  })
+    return leaderThreadLayer
+  }).pipe(
+    Effect.tapCauseLogPretty,
+    UnexpectedError.mapToUnexpectedError,
+    Effect.withSpan('@livestore/node:worker:InitialMessage'),
+    Layer.unwrapScoped,
+  )
 
 const getAppDbFileName = (suffix: string) => `app${suffix}.db`
 

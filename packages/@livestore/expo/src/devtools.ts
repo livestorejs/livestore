@@ -8,6 +8,7 @@ import {
   SCHEMA_MUTATIONS_META_TABLE,
   UnexpectedError,
 } from '@livestore/common'
+import type { PullQueueItem } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
@@ -43,7 +44,7 @@ export const bootDevtools = ({
   dbRef: DbPairRef
   dbLogRef: DbPairRef
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
-  incomingSyncMutationsQueue: Queue.Queue<MutationEvent.Any>
+  incomingSyncMutationsQueue: Queue.Queue<PullQueueItem>
 }): Effect.Effect<BootedDevtools, UnexpectedError | ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {
     const appHostId = 'expo'
@@ -247,7 +248,7 @@ export const bootDevtools = ({
               const mutationEventEncoded = { ...mutationEventEncoded_, ...nextMutationEventIdPair }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
-              yield* Queue.offer(incomingSyncMutationsQueue, mutationEventDecoded)
+              yield* Queue.offer(incomingSyncMutationsQueue, { mutationEvents: [mutationEventDecoded], remaining: 0 })
 
               // const mutationDef =
               //   schema.mutations.get(mutationEventEncoded.mutation) ??

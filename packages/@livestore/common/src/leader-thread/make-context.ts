@@ -1,21 +1,23 @@
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
+import { Effect, Layer, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import {
   type BootStatus,
   type MakeSynchronousDatabase,
   ROOT_ID,
   type SynchronousDatabase,
-  type UnexpectedError,
+  UnexpectedError,
 } from '../adapter-types.js'
 import type { LiveStoreSchema, MutationEvent } from '../schema/index.js'
 import { makeMutationEventSchema } from '../schema/index.js'
 import { makeNextMutationEventIdPair } from '../sync/next-mutation-event-id-pair.js'
 import type { SyncBackend } from '../sync/sync.js'
+import { bootLeaderThread } from './boot-leader.js'
 import { makeDevtoolsContext } from './leader-worker-devtools.js'
-import type { DevtoolsContext, InitialSyncOptions, LeaderThreadCtx, ShutdownState } from './types.js'
+import type { DevtoolsContext, InitialSyncOptions, PullQueueItem, ShutdownState } from './types.js'
+import { LeaderThreadCtx } from './types.js'
 
-export const makeLeaderThreadCtx = ({
+export const makeLeaderThread = ({
   schema,
   storeId,
   originId,
@@ -35,7 +37,7 @@ export const makeLeaderThreadCtx = ({
   dbLog: SynchronousDatabase
   devtoolsEnabled: boolean
   initialSyncOptions: InitialSyncOptions | undefined
-}): Effect.Effect<typeof LeaderThreadCtx.Service, UnexpectedError, Scope.Scope> =>
+}): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const mutationEventSchema = makeMutationEventSchema(schema)
     const mutationDefSchemaHashMap = new Map(
@@ -75,9 +77,9 @@ export const makeLeaderThreadCtx = ({
 
     const isNotRebasingLatch = yield* Effect.makeLatch(false)
 
-    const connectedClientSessionPullQueues = new Set<Queue.Queue<MutationEvent.AnyEncoded>>()
+    const connectedClientSessionPullQueues = new Set<Queue.Queue<PullQueueItem>>()
 
-    return {
+    const ctx = {
       schema,
       mutationDefSchemaHashMap,
       bootStatusQueue,
@@ -101,4 +103,10 @@ export const makeLeaderThreadCtx = ({
       },
       connectedClientSessionPullQueues,
     } satisfies typeof LeaderThreadCtx.Service
-  })
+
+    const layer = Layer.succeed(LeaderThreadCtx, ctx)
+
+    yield* bootLeaderThread.pipe(Effect.provide(layer))
+
+    return layer
+  }).pipe(UnexpectedError.mapToUnexpectedError, Layer.unwrapScoped)

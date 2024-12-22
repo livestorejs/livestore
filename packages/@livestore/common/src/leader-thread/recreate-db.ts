@@ -1,19 +1,10 @@
-import { casesHandled, memoizeByStringifyArgs } from '@livestore/utils'
+import { casesHandled } from '@livestore/utils'
 import type { HttpClient } from '@livestore/utils/effect'
-import { Effect, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Queue } from '@livestore/utils/effect'
 
-import type { InvalidPullError, IsOfflineError, MigrationHooks, SqliteError, SynchronousDatabase } from '../index.js'
-import {
-  initializeSingletonTables,
-  migrateDb,
-  MUTATION_LOG_META_TABLE,
-  rehydrateFromMutationLog,
-  sql,
-  UnexpectedError,
-} from '../index.js'
-import { makeApplyMutation } from './apply-mutation.js'
+import type { InvalidPullError, IsOfflineError, MigrationHooks, SqliteError } from '../index.js'
+import { initializeSingletonTables, migrateDb, rehydrateFromMutationLog, UnexpectedError } from '../index.js'
 import { configureConnection } from './connection.js'
-import type { InitialSyncInfo } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const recreateDb: Effect.Effect<
@@ -114,96 +105,3 @@ export const recreateDb: Effect.Effect<
   Effect.withSpan('@livestore/web:worker:recreateDb'),
   Effect.withPerformanceMeasure('@livestore/web:worker:recreateDb'),
 )
-
-// TODO replace with proper rebasing impl
-export const pullAndApplyRemoteMutations = ({
-  db,
-  shouldBroadcast,
-  onProgress,
-}: {
-  db: SynchronousDatabase
-  shouldBroadcast: boolean
-  onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
-}) =>
-  Effect.gen(function* () {
-    const { syncBackend, currentMutationEventIdRef } = yield* LeaderThreadCtx
-    if (syncBackend === undefined) return Option.none() as InitialSyncInfo
-
-    const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = yield* makeApplyMutation(createdAtMemo, db)
-
-    let processedMutations = 0
-
-    const cursorInfo = yield* getCursorInfo
-
-    let total = -1
-
-    const lastSyncEvent = yield* syncBackend.pull(cursorInfo, { listenForNew: false }).pipe(
-      Stream.tap(({ mutationEventEncoded, metadata, remaining }) =>
-        Effect.gen(function* () {
-          if (total === -1) {
-            // To account for the current mutation event we're adding 1 to the total
-            total = remaining + 1
-          }
-
-          // NOTE this is a temporary workaround until rebase-syncing is implemented
-          if (mutationEventEncoded.id.global <= currentMutationEventIdRef.current.global) {
-            return
-          }
-
-          // TODO handle rebasing
-          // if incoming mutation parent id !== current mutation event id, we need to rebase
-          yield* applyMutation(mutationEventEncoded, {
-            syncStatus: 'synced',
-            shouldBroadcast,
-            persisted: true,
-            inTransaction: false,
-            syncMetadataJson: metadata,
-          }).pipe(
-            Effect.andThen(() => {
-              processedMutations += 1
-              return onProgress({ done: processedMutations, total })
-            }),
-          )
-        }),
-      ),
-      Stream.runLast,
-    )
-
-    // In case there weren't any new synced events, we return the current cursor info
-    if (lastSyncEvent._tag === 'None') return cursorInfo
-
-    return lastSyncEvent.pipe(
-      Option.map((lastSyncEvent) => ({
-        cursor: lastSyncEvent.mutationEventEncoded.id,
-        metadata: lastSyncEvent.metadata,
-      })),
-    ) as InitialSyncInfo
-  }).pipe(Effect.withSpan('@livestore/web:worker:pullAndApplyRemoteMutations'))
-
-const getCursorInfo = Effect.gen(function* () {
-  const { dbLog } = yield* LeaderThreadCtx
-
-  const MutationlogQuerySchema = Schema.Struct({
-    idGlobal: Schema.Number,
-    idLocal: Schema.Number,
-    syncMetadataJson: Schema.parseJson(Schema.Option(Schema.JsonValue)),
-  }).pipe(Schema.Array, Schema.headOrElse())
-
-  const syncPullInfo = yield* Effect.try(() =>
-    dbLog.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
-      sql`SELECT idGlobal, idLocal, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY idGlobal DESC LIMIT 1`,
-    ),
-  ).pipe(
-    Effect.andThen(Schema.decode(MutationlogQuerySchema)),
-    // NOTE this initially fails when the table doesn't exist yet
-    Effect.catchAll(() => Effect.succeed(undefined)),
-  )
-
-  if (syncPullInfo === undefined) return Option.none()
-
-  return Option.some({
-    cursor: { global: syncPullInfo.idGlobal, local: syncPullInfo.idLocal },
-    metadata: syncPullInfo.syncMetadataJson,
-  }) satisfies InitialSyncInfo
-})

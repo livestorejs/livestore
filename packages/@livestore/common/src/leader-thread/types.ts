@@ -110,9 +110,11 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // syncPushQueueSemaphore: Effect.Semaphore
     syncPushQueue: SyncPushQueue
     initialSyncOptions: InitialSyncOptions
-    connectedClientSessionPullQueues: Set<Queue.Queue<MutationEvent.AnyEncoded>>
+    connectedClientSessionPullQueues: Set<Queue.Queue<PullQueueItem>>
   }
 >() {}
+
+export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>; remaining: number }
 
 export type SyncPushQueue = {
   queue: Queue.Queue<MutationEvent.AnyEncoded>

@@ -156,9 +156,9 @@ export class Store<
 
     Effect.gen(this, function* () {
       yield* this.clientSession.coordinator.mutations.pull.pipe(
-        Stream.tapChunk((mutationsEventsDecodedChunk) =>
+        Stream.tap(({ mutationEvents }) =>
           Effect.sync(() => {
-            this.mutate({ wasSyncMessage: true }, ...mutationsEventsDecodedChunk)
+            this.mutate({ wasSyncMessage: true }, ...mutationEvents)
           }),
         ),
         Stream.runDrain,

@@ -1,5 +1,5 @@
 import type { HttpClient, Scope } from '@livestore/utils/effect'
-import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Deferred, Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { SqliteError, UnexpectedError } from '../adapter-types.js'
 import { MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '../schema/system-tables.js'
@@ -7,10 +7,9 @@ import { migrateTable } from '../schema-management/migrations.js'
 import { updateRows } from '../sql-queries/sql-queries.js'
 import type { InvalidPullError, IsOfflineError } from '../sync/sync.js'
 import { prepareBindValues, sql } from '../util.js'
-import type { ApplyMutation } from './apply-mutation.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
-import { pullAndApplyRemoteMutations, recreateDb } from './recreate-db.js'
+import { recreateDb } from './recreate-db.js'
 import type { InitialSyncInfo } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -37,8 +36,30 @@ export const bootLeaderThread: Effect.Effect<
     skipMetaTable: true,
   })
 
+  const dbReady = yield* Deferred.make<void>()
+
+  const waitForInitialSync =
+    initialSyncOptions._tag === 'Blocking'
+      ? yield* Deferred.make<void>().pipe(
+          Effect.tap((def) =>
+            Deferred.succeed(def, void 0).pipe(Effect.delay(initialSyncOptions.timeout), Effect.forkScoped),
+          ),
+        )
+      : undefined
+
+  // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
+  // processing any incoming mutations
+  yield* initSyncing({ dbReady, waitForInitialSyncRef: { current: waitForInitialSync } }).pipe(
+    Effect.tapCauseLogPretty,
+    Effect.forkScoped,
+  )
+
   // TODO do more validation here
   const needsRecreate = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+
+  if (needsRecreate) {
+    yield* recreateDb
+  }
 
   const initializeCurrentMutationEventId = Effect.gen(function* () {
     const initialMutationEventId = dbLog.select<{ idGlobal: number; idLocal: number }>(
@@ -53,69 +74,83 @@ export const bootLeaderThread: Effect.Effect<
     }
   })
 
-  if (needsRecreate) {
-    yield* recreateDb
-  }
-
   yield* initializeCurrentMutationEventId
 
-  // TODO unify with sync-pulling below (so it's a single pull call)
-  // TODO also already kick off pulling concurrently as network IO can take a while
-  let syncInfo: InitialSyncInfo
-  if (initialSyncOptions._tag === 'Blocking') {
-    syncInfo = yield* pullAndApplyRemoteMutations({
-      db,
-      shouldBroadcast: true,
-      onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done, total } }),
-    }).pipe(
-      Effect.timeout(initialSyncOptions.timeout),
-      Effect.catchTag('TimeoutException', () => Effect.succeed(Option.none())),
-      Effect.withSpan('@livestore/web:worker:initialSync(blocking)'),
-    )
-  } else {
-    syncInfo = Option.none()
+  yield* Deferred.succeed(dbReady, void 0)
+
+  if (waitForInitialSync !== undefined) {
+    yield* Deferred.succeed(waitForInitialSync, void 0)
+
+    yield* waitForInitialSync
   }
 
   yield* Queue.offer(bootStatusQueue, { stage: 'done' })
-
-  const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
-
-  // TODO start earlier to give sync backend a chance to pull concurrently
-  yield* initSyncing({ syncInfo, applyMutation }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 })
 
-const initSyncing = ({ syncInfo, applyMutation }: { syncInfo: InitialSyncInfo; applyMutation: ApplyMutation }) =>
+const initSyncing = ({
+  dbReady,
+  waitForInitialSyncRef,
+}: {
+  dbReady: Deferred.Deferred<void>
+  waitForInitialSyncRef: { current: Deferred.Deferred<void> | undefined }
+}) =>
   Effect.gen(function* () {
-    const { syncBackend, currentMutationEventIdRef, dbLog, syncPushQueue } = yield* LeaderThreadCtx
+    const { syncBackend, currentMutationEventIdRef, db, dbLog, syncPushQueue, bootStatusQueue } = yield* LeaderThreadCtx
     if (syncBackend === undefined) return
 
+    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
+
+    const cursorInfo = yield* getCursorInfo
+
+    // Initial sync context
+    let processedMutations = 0
+    let total = -1
+
     // TODO try to do this in a batched-way if possible
-    yield* syncBackend.pull(syncInfo, { listenForNew: true }).pipe(
+    yield* syncBackend.pull(cursorInfo).pipe(
       // TODO only take from queue while connected
-      // Filter out "own" mutations
-      // Stream.filter((_) => _.mutationEventEncoded.id.startsWith(originId) === false),
-      Stream.tap(({ mutationEventEncoded, persisted, metadata }) =>
+      Stream.tap(({ items, remaining }) =>
         Effect.gen(function* () {
           // TODO bring back and properly implement by running some of the code above concurrently
           // yield* initialSetupDeferred
 
+          if (total === -1) {
+            total = remaining + items.length
+          }
+
+          yield* dbReady
+
+          // NOTE we only want to take process mutations when the sync backend is connected
+          // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
-          // NOTE this is a temporary workaround until rebase-syncing is implemented
-          if (mutationEventEncoded.id.global <= currentMutationEventIdRef.current.global) {
-            return
+          for (const { mutationEventEncoded, persisted, metadata } of items) {
+            // NOTE this is a temporary workaround until rebase-syncing is implemented
+            if (mutationEventEncoded.id.global <= currentMutationEventIdRef.current.global) {
+              return
+            }
+
+            // TODO handle rebasing
+            // if incoming mutation parent id !== current mutation event id, we need to rebase
+            yield* applyMutation(mutationEventEncoded, {
+              syncStatus: 'synced',
+              shouldBroadcast: true,
+              persisted,
+              inTransaction: false,
+              syncMetadataJson: metadata,
+            })
+
+            if (waitForInitialSyncRef.current !== undefined) {
+              processedMutations += 1
+              yield* Queue.offer(bootStatusQueue, { stage: 'syncing', progress: { done: processedMutations, total } })
+            }
           }
 
-          // TODO handle rebasing
-          // if incoming mutation parent id !== current mutation event id, we need to rebase
-          yield* applyMutation(mutationEventEncoded, {
-            syncStatus: 'synced',
-            shouldBroadcast: true,
-            persisted,
-            inTransaction: false,
-            syncMetadataJson: metadata,
-          })
+          if (remaining === 0 && waitForInitialSyncRef.current !== undefined) {
+            yield* Deferred.succeed(waitForInitialSyncRef.current, void 0)
+            waitForInitialSyncRef.current = undefined
+          }
         }),
       ),
       Stream.runDrain,
@@ -123,6 +158,8 @@ const initSyncing = ({ syncInfo, applyMutation }: { syncInfo: InitialSyncInfo; a
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
+
+    yield* dbReady
 
     // rehydrate pushQueue from dbLog
     {
@@ -178,4 +215,31 @@ const initSyncing = ({ syncInfo, applyMutation }: { syncInfo: InitialSyncInfo; a
     )
 
     yield* Effect.never
-  })
+  }).pipe(Effect.withSpan('@livestore/web:worker:syncBackend:initSyncing'))
+
+const getCursorInfo = Effect.gen(function* () {
+  const { dbLog } = yield* LeaderThreadCtx
+
+  const MutationlogQuerySchema = Schema.Struct({
+    idGlobal: Schema.Number,
+    idLocal: Schema.Number,
+    syncMetadataJson: Schema.parseJson(Schema.Option(Schema.JsonValue)),
+  }).pipe(Schema.Array, Schema.headOrElse())
+
+  const syncPullInfo = yield* Effect.try(() =>
+    dbLog.select<{ idGlobal: number; idLocal: number; syncMetadataJson: string }>(
+      sql`SELECT idGlobal, idLocal, syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE syncStatus = 'synced' ORDER BY idGlobal DESC LIMIT 1`,
+    ),
+  ).pipe(
+    Effect.andThen(Schema.decode(MutationlogQuerySchema)),
+    // NOTE this initially fails when the table doesn't exist yet
+    Effect.catchAll(() => Effect.succeed(undefined)),
+  )
+
+  if (syncPullInfo === undefined) return Option.none()
+
+  return Option.some({
+    cursor: { global: syncPullInfo.idGlobal, local: syncPullInfo.idLocal },
+    metadata: syncPullInfo.syncMetadataJson,
+  }) satisfies InitialSyncInfo
+})

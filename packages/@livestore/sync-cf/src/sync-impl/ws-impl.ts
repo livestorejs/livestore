@@ -43,64 +43,43 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
 
     const api = {
       isConnected,
-      pull: (args, { listenForNew }) =>
-        listenForNew
-          ? Effect.gen(function* () {
-              const requestId = nanoid()
-              const cursor = Option.getOrUndefined(args)?.cursor.global
+      pull: (args) =>
+        Effect.gen(function* () {
+          const requestId = nanoid()
+          const cursor = Option.getOrUndefined(args)?.cursor.global
 
-              yield* send(WSMessage.PullReq.make({ cursor, requestId }))
+          yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
-              return Stream.fromPubSub(incomingMessages).pipe(
-                Stream.filter((_) => (_._tag === 'WSMessage.PullRes' ? _.requestId === requestId : true)),
-                Stream.tap((_) =>
-                  _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
-                ),
-                Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
-                Stream.map((msg) =>
-                  msg._tag === 'WSMessage.PushBroadcast'
-                    ? [
-                        {
-                          mutationEventEncoded: msg.mutationEventEncoded,
-                          persisted: msg.persisted,
-                          metadata,
-                          remaining: 0,
-                        },
-                      ]
-                    : msg.events.map((_, i) => ({
-                        mutationEventEncoded: _,
+          return Stream.fromPubSub(incomingMessages).pipe(
+            Stream.filter((_) => (_._tag === 'WSMessage.PullRes' ? _.requestId === requestId : true)),
+            Stream.tap((_) =>
+              _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
+            ),
+            Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
+            Stream.map((msg) =>
+              msg._tag === 'WSMessage.PushBroadcast'
+                ? {
+                    items: [
+                      {
+                        mutationEventEncoded: msg.mutationEventEncoded,
+                        persisted: msg.persisted,
                         metadata,
-                        persisted: true,
-                        remaining: msg.remaining - i,
-                      })),
-                ),
-                Stream.flattenIterables,
-              )
-            }).pipe(Stream.unwrap)
-          : Effect.gen(function* () {
-              const requestId = nanoid()
-              const cursor = Option.getOrUndefined(args)?.cursor.global
+                      },
+                    ],
+                    remaining: 0,
+                  }
+                : {
+                    items: msg.events.map((mutationEventEncoded) => ({
+                      mutationEventEncoded,
+                      metadata,
+                      persisted: true,
+                    })),
+                    remaining: msg.remaining,
+                  },
+            ),
+          )
+        }).pipe(Stream.unwrap),
 
-              yield* send(WSMessage.PullReq.make({ cursor, requestId }))
-
-              return Stream.fromPubSub(incomingMessages).pipe(
-                Stream.filter((_) => _._tag !== 'WSMessage.PushBroadcast' && _.requestId === requestId),
-                Stream.tap((_) =>
-                  _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
-                ),
-                Stream.filter(Schema.is(WSMessage.PullRes)),
-                Stream.takeUntil((_) => _.remaining === 0),
-                Stream.map((_) =>
-                  _.events.map((event, i) => ({
-                    mutationEventEncoded: event,
-                    metadata,
-                    persisted: true,
-                    remaining: _.remaining - i,
-                  })),
-                ),
-                Stream.flattenIterables,
-              )
-            }).pipe(Stream.unwrap),
       push: (batch, persisted) =>
         Effect.gen(function* () {
           const ready = yield* Deferred.make<void, InvalidPushError>()

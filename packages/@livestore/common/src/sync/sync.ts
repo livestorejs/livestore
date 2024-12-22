@@ -15,12 +15,13 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
       cursor: EventId
       metadata: Option.Option<TSyncMetadata>
     }>,
-    options: { listenForNew: boolean },
   ) => Stream.Stream<
     {
-      mutationEventEncoded: MutationEvent.AnyEncoded
-      metadata: Option.Option<TSyncMetadata>
-      persisted: boolean
+      items: ReadonlyArray<{
+        mutationEventEncoded: MutationEvent.AnyEncoded
+        metadata: Option.Option<TSyncMetadata>
+        persisted: boolean
+      }>
       remaining: number
     },
     IsOfflineError | InvalidPullError,

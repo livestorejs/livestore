@@ -8,12 +8,7 @@ import {
   UnexpectedError,
   validatePushPayload,
 } from '@livestore/common'
-import {
-  bootLeaderThread,
-  LeaderThreadCtx,
-  makeApplyMutation,
-  makeLeaderThreadCtx,
-} from '@livestore/common/leader-thread'
+import { LeaderThreadCtx, makeApplyMutation, makeLeaderThread } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -142,10 +137,13 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       isConnected: syncIsConnectedRef,
       pull: () =>
         Stream.fromQueue(syncPullQueue).pipe(
-          Stream.map((mutationEventEncoded) => ({
-            mutationEventEncoded,
-            metadata: Option.none(),
-            persisted: true,
+          Stream.chunks,
+          Stream.map((chunk) => ({
+            items: [...chunk].map((mutationEventEncoded) => ({
+              mutationEventEncoded,
+              metadata: Option.none(),
+              persisted: true,
+            })),
             remaining: 0,
           })),
           Stream.withSpan('mock-sync-backend:pull'),
@@ -165,7 +163,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     } satisfies SyncBackend
   })
 
-  const leaderThreadCtx = yield* makeLeaderThreadCtx({
+  const leaderContextLayer = makeLeaderThread({
     schema,
     storeId,
     originId,
@@ -177,42 +175,42 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     initialSyncOptions: { _tag: 'Skip' },
   })
 
-  const leaderContextLayer = Layer.succeed(LeaderThreadCtx, leaderThreadCtx)
+  const testContextLayer = Effect.gen(function* () {
+    const leaderThreadCtx = yield* LeaderThreadCtx
 
-  yield* bootLeaderThread.pipe(Effect.provide(leaderContextLayer))
+    const encodeMutationEvent = Schema.encodeSync(leaderThreadCtx.mutationEventSchema)
 
-  const encodeMutationEvent = Schema.encodeSync(leaderThreadCtx.mutationEventSchema)
+    const currentMutationEventId = { current: ROOT_ID }
+    const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventId)
 
-  const currentMutationEventId = { current: ROOT_ID }
-  const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventId)
+    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny) =>
+      encodeMutationEvent({
+        ...partialEvent,
+        ...nextMutationEventIdPair({ localOnly: false }),
+      }) satisfies MutationEvent.AnyEncoded
 
-  const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny) =>
-    encodeMutationEvent({
-      ...partialEvent,
-      ...nextMutationEventIdPair({ localOnly: false }),
-    }) satisfies MutationEvent.AnyEncoded
+    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), leaderThreadCtx.db)
 
-  const mutate = (partialEvent: MutationEvent.PartialAny) =>
-    Effect.gen(function* () {
-      const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), leaderThreadCtx.db)
+    const mutate = (partialEvent: MutationEvent.PartialAny) =>
+      Effect.gen(function* () {
+        yield* applyMutation(toEncodedMutationEvent(partialEvent), {
+          shouldBroadcast: true,
+          persisted: true,
+          inTransaction: true,
+          syncStatus: 'pending',
+          syncMetadataJson: Option.none(),
+        }).pipe(UnexpectedError.mapToUnexpectedError)
+      }).pipe(Effect.provide(FetchHttpClient.layer))
 
-      yield* applyMutation(toEncodedMutationEvent(partialEvent), {
-        shouldBroadcast: true,
-        persisted: true,
-        inTransaction: true,
-        syncStatus: 'pending',
-        syncMetadataJson: Option.none(),
-      }).pipe(UnexpectedError.mapToUnexpectedError)
-    }).pipe(Effect.provide(FetchHttpClient.layer), Effect.provide(leaderContextLayer))
-
-  const testContextLayer = Layer.succeed(TestContext, {
-    pushedMutationEvents,
-    syncEventIdRef,
-    syncPullQueue,
-    syncIsConnectedRef,
-    encodeMutationEvent,
-    mutate,
-  })
+    return Layer.succeed(TestContext, {
+      pushedMutationEvents,
+      syncEventIdRef,
+      syncPullQueue,
+      syncIsConnectedRef,
+      encodeMutationEvent,
+      mutate,
+    })
+  }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
 
   return leaderContextLayer.pipe(Layer.merge(testContextLayer))
 }).pipe(Layer.unwrapScoped)

@@ -104,15 +104,15 @@ export const makeSyncBackend = ({
       ApiInitRoomPayload.make({ roomId }),
     ).pipe(Effect.andThen(HttpClient.execute))
 
+    // TODO check whether we still need this
     const pendingPushDeferredMap = new Map<string, Deferred.Deferred<SyncMetadata>>()
 
-    const pull = (args: Option.Option<SyncMetadata>, { listenForNew }: { listenForNew: boolean }) =>
+    const pull = (args: Option.Option<SyncMetadata>) =>
       Effect.gen(function* () {
-        const liveParam = listenForNew ? '&live=true' : ''
         const url =
           args._tag === 'None'
             ? `${endpointUrl}?offset=-1`
-            : `${endpointUrl}?offset=${args.value.offset}&shape_id=${args.value.shapeId}${liveParam}`
+            : `${endpointUrl}?offset=${args.value.offset}&shape_id=${args.value.shapeId}&live=true`
 
         const resp = yield* HttpClient.get(url).pipe(
           Effect.tapErrorTag('ResponseError', (error) =>
@@ -148,13 +148,14 @@ export const makeSyncBackend = ({
               parentId: item.value!.parentId,
             },
             persisted: true,
-            // TODO implement proper `remaining` handling
-            remaining: 0,
           }))
 
-        if (listenForNew === false && items.length === 0) {
-          return Option.none()
-        }
+        // // TODO implement proper `remaining` handling
+        // remaining: 0,
+
+        // if (listenForNew === false && items.length === 0) {
+        //   return Option.none()
+        // }
 
         const [newItems, pendingPushItems] = Chunk.fromIterable(items).pipe(
           Chunk.partition((item) => pendingPushDeferredMap.has(eventIdToString(item.mutationEventEncoded.id))),
@@ -172,13 +173,16 @@ export const makeSyncBackend = ({
       )
 
     return {
-      pull: (args, { listenForNew }) =>
+      pull: (args) =>
         Stream.unfoldChunkEffect(
           args.pipe(
             Option.map((_) => _.metadata),
             Option.flatten,
           ),
-          (metadataOption) => pull(metadataOption, { listenForNew }),
+          (metadataOption) => pull(metadataOption),
+        ).pipe(
+          Stream.chunks,
+          Stream.map((chunk) => ({ items: [...chunk], remaining: 0 })),
         ),
 
       push: (batch, persisted) =>

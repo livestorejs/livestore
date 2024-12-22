@@ -103,7 +103,7 @@ export type Coordinator = {
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   mutations: {
-    pull: Stream.Stream<MutationEvent.Any, UnexpectedError>
+    pull: Stream.Stream<{ mutationEvents: ReadonlyArray<MutationEvent.Any>; remaining: number }, UnexpectedError>
     push(
       mutationEventEncoded: MutationEvent.AnyEncoded,
       options: { persisted: boolean },

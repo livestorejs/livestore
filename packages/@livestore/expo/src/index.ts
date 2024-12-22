@@ -10,7 +10,8 @@ import {
   sql,
   UnexpectedError,
 } from '@livestore/common'
-import type { MutationEvent, MutationLogMetaRow } from '@livestore/common/schema'
+import type { PullQueueItem } from '@livestore/common/leader-thread'
+import type { MutationLogMetaRow } from '@livestore/common/schema'
 import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
 import { insertRowPrepared, makeBindValues } from '@livestore/common/sql-queries'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
@@ -118,7 +119,7 @@ export const makeAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const incomingSyncMutationsQueue = yield* Queue.unbounded<MutationEvent.Any>().pipe(
+      const incomingSyncMutationsQueue = yield* Queue.unbounded<PullQueueItem>().pipe(
         Effect.acquireRelease(Queue.shutdown),
       )
 

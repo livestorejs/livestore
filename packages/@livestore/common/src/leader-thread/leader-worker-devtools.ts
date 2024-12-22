@@ -296,6 +296,7 @@ const listenToDevtools = ({
                 ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
               }
 
+              // TODO ingest to push queue instead
               yield* applyMutation(mutationEventEncoded, {
                 syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
                 shouldBroadcast: true,
@@ -312,7 +313,10 @@ const listenToDevtools = ({
               const { requestId } = decodedEvent
 
               if (syncBackend !== undefined) {
-                yield* syncBackend.pull(Option.none(), { listenForNew: true }).pipe(
+                // TODO consider piggybacking on the existing leader-thread sync-pulling
+                yield* syncBackend.pull(Option.none()).pipe(
+                  Stream.map((_) => _.items),
+                  Stream.flattenIterables,
                   Stream.tap(({ mutationEventEncoded, metadata }) =>
                     sendMessage(Devtools.SyncHistoryRes.make({ mutationEventEncoded, metadata, ...reqPayload })),
                   ),

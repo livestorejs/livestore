@@ -196,14 +196,18 @@ export const makeNodeAdapter = ({
 
       const pullMutations = runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream()).pipe(
         // TODO handle rebase case
-        Stream.tap((mutationEventEncoded) =>
-          validateAndUpdateMutationEventId({
-            currentMutationEventIdRef,
-            mutationEventId: mutationEventEncoded.id,
-            debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
-          }),
+        Stream.tap(({ mutationEvents }) =>
+          Effect.forEach(mutationEvents, (mutationEventEncoded) =>
+            validateAndUpdateMutationEventId({
+              currentMutationEventIdRef,
+              mutationEventId: mutationEventEncoded.id,
+              debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
+            }),
+          ),
         ),
-        Stream.mapEffect((mutationEventEncoded) => Schema.decode(mutationEventSchema)(mutationEventEncoded)),
+        Stream.mapEffect(
+          Schema.decode(Schema.Struct({ mutationEvents: Schema.Array(mutationEventSchema), remaining: Schema.Number })),
+        ),
         Stream.orDie,
       )
 
