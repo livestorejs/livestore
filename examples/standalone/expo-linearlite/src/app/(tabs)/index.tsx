@@ -1,5 +1,5 @@
 import { queryDb, sql } from '@livestore/livestore'
-import { useQuery, useRow, useScopedQuery, useStore } from '@livestore/react'
+import { useRow, useScopedQuery, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
@@ -94,8 +94,6 @@ const getOrderingOptions = (
   return orderClause
 }
 
-const issuesCount$ = queryDb(tables.issues.query.count().where({ deletedAt: null }))
-
 const HomeScreen = () => {
   const user = useUser()
   const { store } = useStore()
@@ -125,8 +123,6 @@ const HomeScreen = () => {
     }),
     [appSettings],
   )
-
-  const issuesCount = useQuery(issuesCount$)
 
   const issues = useScopedQuery(
     () =>
@@ -190,8 +186,7 @@ const HomeScreen = () => {
   // Memoize the header component
   const ListHeaderComponent = useMemo(
     () => (
-      <View className="px-3">
-        <ThemedText type="subtitle">Engineering {`${issuesCount} issues`}</ThemedText>
+      <View className="px-3 bg-white dark:bg-[#0C0D0D]">
         <View className="flex-row gap-2 my-3">
           <Pressable
             onPressIn={async () => {
@@ -224,7 +219,7 @@ const HomeScreen = () => {
         </View>
       </View>
     ),
-    [issuesCount, selectedHomeTab, store],
+    [selectedHomeTab, store],
   )
 
   return (
@@ -235,6 +230,7 @@ const HomeScreen = () => {
       initialNumToRender={100}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
+      stickyHeaderIndices={[0]}
     />
   )
 }

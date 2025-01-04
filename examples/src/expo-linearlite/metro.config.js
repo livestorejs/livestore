@@ -17,21 +17,14 @@ config.resolver.unstable_conditionNames = ['require', 'default']
 const projectRoot = __dirname
 const monorepoRoot = process.env.MONOREPO_ROOT
   ? path.resolve(process.env.MONOREPO_ROOT)
-  : path.resolve(projectRoot, '../..')
-
-config.watchFolders = [monorepoRoot]
-
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(monorepoRoot, 'node_modules'),
-]
+  : path.resolve(projectRoot, '../../..')
 
 addLiveStoreDevtoolsMiddleware(config, {
   schemaPath: './src/livestore/schema.ts',
   viteConfig: (viteConfig) => {
     viteConfig.server.fs ??= {}
     // Point to Overtone monorepo root
-    viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
+    viteConfig.server.fs.allow.push(monorepoRoot)
     viteConfig.optimizeDeps.force = true
     return viteConfig
   },
