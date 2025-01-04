@@ -8,8 +8,9 @@ description: Best practices for using LiveStore
 - In some cases (such as text input/scroll position/resize events) it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations
 
 
-## Queries
+## SQL Queries
 
+- Query results should be treated as immutable/read-only
 - For queries which could return many rows, it's recommended to paginate the results
   - Usually both via paginated/virtualized rendering as well as paginated queries
 	- You'll get best query performance by using a `WHERE` clause over an indexed column combined with a `LIMIT` clause. Avoid `OFFSET` as it can be slow on large tables

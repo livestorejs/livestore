@@ -34,6 +34,10 @@ export default defineConfig({
           label: 'Miscellaneous',
           autogenerate: { directory: 'misc' },
         },
+        {
+          label: 'Changelog',
+          link: '/changelog',
+        },
       ],
       customCss: ['./src/tailwind.css'],
       logo: {

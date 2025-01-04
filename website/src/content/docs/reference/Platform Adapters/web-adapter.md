@@ -1,5 +1,5 @@
 ---
-title: Web adapter
+title: Web Adapter
 description: Information about LiveStore's web adapter
 ---
 

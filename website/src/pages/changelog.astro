@@ -1,0 +1,16 @@
+---
+import { Content, getHeadings } from '../../../CHANGELOG.md'
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
+---
+
+<StarlightPage frontmatter={{ title: 'Changelog' }} headings={getHeadings()}>
+	<div class="changelog-content">
+		<Content />
+	</div>
+</StarlightPage>
+
+<style>
+	.changelog-content :global(h1:first-of-type) {
+		display: none;
+	}
+</style>

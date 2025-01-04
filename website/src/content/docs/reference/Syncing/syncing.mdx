@@ -1,5 +1,7 @@
 ---
 title: Syncing
+sidebar:
+  order: 4
 ---
 
 import { Card } from '@astrojs/starlight/components'
@@ -26,3 +28,8 @@ LiveStore's syncing implementation is undergoing a major rewrite. See [this PR](
 - Needs to provide an efficient way to query an ordered list of mutation events given a starting event ID (often referred to as cursor).
 - Ideally provides a "reactivity" mechanism to notify clients when new mutation events are available (e.g. via WebSocket, HTTP long-polling, etc).
   - Alternatively, the client can periodically query for new events which is less efficient.
+
+### Local syncing across client sessions
+
+- For adapters which support multiple client sessions (e.g. web), LiveStore also supports local syncing across client sessions (e.g. across browser tabs or worker threads).
+- LiveStore does this by electing a leader thread which is responsible for syncing and persiting data locally.

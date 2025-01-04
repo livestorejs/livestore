@@ -5,17 +5,20 @@
 
 ## 0.3.0
 
-- New devtools protocol via webmesh
-- New: Node adapter
+- New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
+  - Still lacks a few devtools-related flows (e.g. graceful import/reset)
 - Improved syncing
   - `sync-cf` backend: More reliable websocket connection handling
   - Configurable initial sync semantics (skip or block with timeout)
-- Node syncing integration tests
+- Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Improve Otel tracing integration
 - Internal:
+  - Node syncing integration tests
+  - New devtools protocol via webmesh
+    - Should improve reliability of devtools connection (particularly during app reloads)
   - Large refactoring to share more code between adapters
   - Embraced git-style push/pull semantics to sync mutations across the system
   - Upgrade to TypeScript 5.7

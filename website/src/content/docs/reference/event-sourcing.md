@@ -21,3 +21,7 @@ description: Why and how LiveStore uses event sourcing for data flow, syncing an
 - Downsides
   - Slightly more boilerplate to manually define mutations
   - Need to be careful so mutation log doesn't grow too much
+
+## Further reading
+
+- [The Log: What every software engineer should know about real-time data's unifying abstraction](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)
