@@ -2204,9 +2204,18 @@ importers:
       sharp:
         specifier: ^0.33.5
         version: 0.33.5
+      starlight-typedoc:
+        specifier: ^0.18.0
+        version: 0.18.0(@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.10.2)(lightningcss@1.27.0)(rollup@4.29.1)(terser@5.36.0)(typescript@5.7.2)))(typedoc-plugin-markdown@4.4.1(typedoc@0.27.6(typescript@5.7.2)))(typedoc@0.27.6(typescript@5.7.2))
       tailwindcss:
         specifier: ^3.4.14
         version: 3.4.14(ts-node@10.9.2(@types/node@22.10.2)(typescript@5.7.2))
+      typedoc:
+        specifier: ^0.27.6
+        version: 0.27.6(typescript@5.7.2)
+      typedoc-plugin-markdown:
+        specifier: ^4.4.1
+        version: 4.4.1(typedoc@0.27.6(typescript@5.7.2))
       typescript:
         specifier: 5.7.2
         version: 5.7.2
@@ -2863,7 +2872,7 @@ packages:
     resolution: {integrity: sha512-KJfMlYIUxQB1CJfO3e0+h0ZHWOTLCPP115Awhaz8U0Zpq36Gl/cXlpoyMRnUWlhNUBAzldnCiAZNvCDj7CrKxQ==}
     engines: {node: '>=6.9.0'}
     peerDependencies:
-      '@babel/core': 7.26.0
+      '@babel/core': ^7.0.0-0
 
   '@babel/plugin-transform-react-jsx-development@7.25.9':
     resolution: {integrity: sha512-9mj6rm7XVYs4mdLIpbZnHOYdpW42uoiBCTVowg7sP1thUOiANgMb4UtpRivR0pp5iL+ocvUv7X4mZgFRpJEzGw==}
@@ -4200,6 +4209,9 @@ packages:
 
   '@floating-ui/utils@0.2.8':
     resolution: {integrity: sha512-kym7SodPp8/wloecOpcmSnWJsK7M0E5Wg8UcFA+uO4B9s5d0ywXOEro/8HM9x0rW+TljRzul/14UYz3TleT3ig==}
+
+  '@gerrit0/mini-shiki@1.26.1':
+    resolution: {integrity: sha512-gHFUvv9f1fU2Piou/5Y7Sx5moYxcERbC7CXc6rkDLQTUBg5Dgg9L4u29/nHqfoQ3Y9R0h0BcOhd14uOEZIBP7Q==}
 
   '@graphql-typed-document-node/core@3.2.0':
     resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
@@ -5641,8 +5653,17 @@ packages:
   '@shikijs/engine-oniguruma@1.22.2':
     resolution: {integrity: sha512-GIZPAGzQOy56mGvWMoZRPggn0dTlBf1gutV5TdceLCZlFNqWmuc7u+CzD0Gd9vQUTgLbrt0KLzz6FNprqYAxlA==}
 
+  '@shikijs/engine-oniguruma@1.26.1':
+    resolution: {integrity: sha512-F5XuxN1HljLuvfXv7d+mlTkV7XukC1cawdtOo+7pKgPD83CAB1Sf8uHqP3PK0u7njFH0ZhoXE1r+0JzEgAQ+kg==}
+
   '@shikijs/types@1.22.2':
     resolution: {integrity: sha512-NCWDa6LGZqTuzjsGfXOBWfjS/fDIbDdmVDug+7ykVe1IKT4c1gakrvlfFYp5NhAXH/lyqLM8wsAPo5wNy73Feg==}
+
+  '@shikijs/types@1.26.1':
+    resolution: {integrity: sha512-d4B00TKKAMaHuFYgRf3L0gwtvqpW4hVdVwKcZYbBfAAQXspgkbWqnFfuFl3MDH6gLbsubOcr+prcnsqah3ny7Q==}
+
+  '@shikijs/vscode-textmate@10.0.1':
+    resolution: {integrity: sha512-fTIQwLF+Qhuws31iw7Ncl1R3HUDtGwIipiJ9iU+UsDUwMhegFcQKQHd51nZjb7CArq0MvON8rbgCGQYWHUKAdg==}
 
   '@shikijs/vscode-textmate@9.3.0':
     resolution: {integrity: sha512-jn7/7ky30idSkd/O5yDBfAnVt+JJpepofP/POZ1iMOxK59cOfqIgg/Dj0eFsjOTMw+4ycJN0uhZH/Eb0bs/EUA==}
@@ -10690,6 +10711,9 @@ packages:
       react-native: 0.76.5
       react-native-svg: ^12.0.0 || ^13.0.0 || ^14.0.0 || ^15.0.0
 
+  lunr@2.3.9:
+    resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
+
   luxon@3.5.0:
     resolution: {integrity: sha512-rh+Zjr6DNfUYR3bPwJEnuwDdqMbxZW7LOQfUN4B54+Cl+0o5zaU9RJ6bcidfDtC1cWCZXQ+nvX8bf6bAji37QQ==}
     engines: {node: '>=12'}
@@ -13505,6 +13529,14 @@ packages:
   stacktracey@2.1.8:
     resolution: {integrity: sha512-Kpij9riA+UNg7TnphqjH7/CzctQ/owJGNbFkfEeve4Z4uxT5+JapVLFXcsurIfN34gnTWZNJ/f7NMG0E8JDzTw==}
 
+  starlight-typedoc@0.18.0:
+    resolution: {integrity: sha512-DdyoAkK20zmfiqKaDQgSF8wDFCKaxo/EzRvC3+4OJJgDtzjMZdBy1mY5JMJLw46UCvBs/tvGVjI1rIeovwd6lQ==}
+    engines: {node: '>=18.17.1'}
+    peerDependencies:
+      '@astrojs/starlight': '>=0.30.0'
+      typedoc: '>=0.26.5'
+      typedoc-plugin-markdown: '>=4.1.1'
+
   statuses@1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}
     engines: {node: '>= 0.6'}
@@ -14133,6 +14165,19 @@ packages:
 
   typedarray-to-buffer@3.1.5:
     resolution: {integrity: sha512-zdu8XMNEDepKKR+XYOXAVPtWui0ly0NtohUscw+UmaHiAWT8hrV1rr//H6V+0DvJ3OQ19S979M0laLfX8rm82Q==}
+
+  typedoc-plugin-markdown@4.4.1:
+    resolution: {integrity: sha512-fx23nSCvewI9IR8lzIYtzDphETcgTDuxKcmHKGD4lo36oexC+B1k4NaCOY58Snqb4OlE8OXDAGVcQXYYuLRCNw==}
+    engines: {node: '>= 18'}
+    peerDependencies:
+      typedoc: 0.27.x
+
+  typedoc@0.27.6:
+    resolution: {integrity: sha512-oBFRoh2Px6jFx366db0lLlihcalq/JzyCVp7Vaq1yphL/tbgx2e+bkpkCgJPunaPvPwoTOXSwasfklWHm7GfAw==}
+    engines: {node: '>= 18'}
+    hasBin: true
+    peerDependencies:
+      typescript: 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x || 5.7.x
 
   typesafe-path@0.2.2:
     resolution: {integrity: sha512-OJabfkAg1WLZSqJAJ0Z6Sdt3utnbzr/jh+NAHoyWHJe8CMSy79Gm085094M9nvTPy22KzTVn5Zq5mbapCI/hPA==}
@@ -15054,6 +15099,11 @@ packages:
 
   yaml@2.6.0:
     resolution: {integrity: sha512-a6ae//JvKDEra2kdi1qzCyrJW/WZCgFi8ydDV+eXExl95t+5R+ijnqHJbz9tmMh8FUjx3iv2fCQ4dclAQlO2UQ==}
+    engines: {node: '>= 14'}
+    hasBin: true
+
+  yaml@2.7.0:
+    resolution: {integrity: sha512-+hSoy/QHluxmC9kCIJyL/uyFmLmc+e5CFR5Wa+bpIhIj85LVb9ZH2nVnqrHoSvKogwODv0ClqZkmiSSaIH5LTA==}
     engines: {node: '>= 14'}
     hasBin: true
 
@@ -17507,6 +17557,12 @@ snapshots:
 
   '@floating-ui/utils@0.2.8': {}
 
+  '@gerrit0/mini-shiki@1.26.1':
+    dependencies:
+      '@shikijs/engine-oniguruma': 1.26.1
+      '@shikijs/types': 1.26.1
+      '@shikijs/vscode-textmate': 10.0.1
+
   '@graphql-typed-document-node/core@3.2.0(graphql@16.9.0)':
     dependencies:
       graphql: 16.9.0
@@ -19490,10 +19546,22 @@ snapshots:
       '@shikijs/types': 1.22.2
       '@shikijs/vscode-textmate': 9.3.0
 
+  '@shikijs/engine-oniguruma@1.26.1':
+    dependencies:
+      '@shikijs/types': 1.26.1
+      '@shikijs/vscode-textmate': 10.0.1
+
   '@shikijs/types@1.22.2':
     dependencies:
       '@shikijs/vscode-textmate': 9.3.0
       '@types/hast': 3.0.4
+
+  '@shikijs/types@1.26.1':
+    dependencies:
+      '@shikijs/vscode-textmate': 10.0.1
+      '@types/hast': 3.0.4
+
+  '@shikijs/vscode-textmate@10.0.1': {}
 
   '@shikijs/vscode-textmate@9.3.0': {}
 
@@ -25758,6 +25826,8 @@ snapshots:
       react-native: 0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)
       react-native-svg: 15.8.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
 
+  lunr@2.3.9: {}
+
   luxon@3.5.0: {}
 
   lz-string@1.5.0: {}
@@ -29713,6 +29783,13 @@ snapshots:
       as-table: 1.0.55
       get-source: 2.0.12
 
+  starlight-typedoc@0.18.0(@astrojs/starlight@0.26.4(astro@4.16.8(@types/node@22.10.2)(lightningcss@1.27.0)(rollup@4.29.1)(terser@5.36.0)(typescript@5.7.2)))(typedoc-plugin-markdown@4.4.1(typedoc@0.27.6(typescript@5.7.2)))(typedoc@0.27.6(typescript@5.7.2)):
+    dependencies:
+      '@astrojs/starlight': 0.26.4(astro@4.16.8(@types/node@22.10.2)(lightningcss@1.27.0)(rollup@4.29.1)(terser@5.36.0)(typescript@5.7.2))
+      github-slugger: 2.0.0
+      typedoc: 0.27.6(typescript@5.7.2)
+      typedoc-plugin-markdown: 4.4.1(typedoc@0.27.6(typescript@5.7.2))
+
   statuses@1.5.0: {}
 
   statuses@2.0.1: {}
@@ -30388,6 +30465,19 @@ snapshots:
   typedarray-to-buffer@3.1.5:
     dependencies:
       is-typedarray: 1.0.0
+
+  typedoc-plugin-markdown@4.4.1(typedoc@0.27.6(typescript@5.7.2)):
+    dependencies:
+      typedoc: 0.27.6(typescript@5.7.2)
+
+  typedoc@0.27.6(typescript@5.7.2):
+    dependencies:
+      '@gerrit0/mini-shiki': 1.26.1
+      lunr: 2.3.9
+      markdown-it: 14.1.0
+      minimatch: 9.0.5
+      typescript: 5.7.2
+      yaml: 2.7.0
 
   typesafe-path@0.2.2: {}
 
@@ -31431,6 +31521,8 @@ snapshots:
   yaml@2.2.2: {}
 
   yaml@2.6.0: {}
+
+  yaml@2.7.0: {}
 
   yargs-parser@21.1.1: {}
 
