@@ -3,6 +3,7 @@ import { useScopedQuery, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
+import React from 'react'
 import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
 import { IssueDetailsBottomTab } from '@/components/IssueDetailsBottomTab.tsx'

@@ -17,7 +17,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (parsedPayload.persisted) {
-    await db.createEvents([parsedPayload.mutationEventEncoded])
+    await db.createEvents(parsedPayload.batch)
   } else {
     console.warn(`Electric sync backend doesn't yet support unpersisted events`)
   }

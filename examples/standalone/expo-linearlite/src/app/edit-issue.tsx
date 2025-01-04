@@ -1,6 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { useScopedQuery, useStore } from '@livestore/react'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import React from 'react'
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native'
 
 import { IssueStatusIcon, PriorityIcon } from '@/components/IssueItem.tsx'
