@@ -114,6 +114,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
       - run: pnpm install
+      - run: pnpm build:ts # Needed for starlight-typedoc
       - run: pnpm build
         working-directory: website
       - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --filter=website
