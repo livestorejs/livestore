@@ -7,7 +7,7 @@ sidebar:
 
 ## Overview
 
-- Adapter
+- Adapter (platform adapter)
   - An adapter can instantiate a client session for a given platform (e.g. web, Expo)
 - Client
   - A logical group of client sessions
@@ -30,6 +30,8 @@ sidebar:
 - Devtools
 - Sync backend
   - A central server that is responsible for syncing the mutation eventlog between clients
+- Framework integration
+  - A framework integration is a package that provides a way to integrate LiveStore with a framework (e.g. React, Solid, Svelte, etc.)
 
 ## Architecture diagram
 

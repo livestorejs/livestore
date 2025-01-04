@@ -1,9 +1,12 @@
 ---
-title: Rules of Mutations
-description: A reference page outlining the rules of mutations in LiveStore
+title: Mutations
+sidebar:
+  order: 4
 ---
 
-## Schema evolution
+## Rules of Mutations
+
+### Schema evolution
 
 - Mutation definitions can't be removed after they were added to your app.
 - Mutation schema definitions can be evolved as long as the changes are forward-compatible.
@@ -13,20 +16,20 @@ description: A reference page outlining the rules of mutations in LiveStore
 			- you can add new fields if they have default values or are optional
 			- you can remove fields
 
-## Derived mutations
+### Derived mutations
 
 - When using `enabledCud` on a table definition, LiveStore will automatically generate some mutations for you. This includes a insert, update, and delete mutation.
 
-## Other Notes
+### Other Notes
 
 - Mutations need to be deterministic. This means that the same input will always produce the same output.
 - When re-using existing schema definitions for mutation schemas, be careful to also apply the rules of mutations to the schema definitions you are re-using. A more conservative approach is to copy the schema definitions and evolve them separately.
 
-## Syncing related
+### Syncing related
 
 - SQL writes need to be deterministic e.g. have no branching/reading.
 
-## Non-persisted mutations
+### Non-persisted mutations
 
 Sometimes it can be useful to not persist mutations but still sync them across clients (e.g. for frequent in-progress updates like position updates during a drag & drop interaction). Calling `store.mutate({ persisted: false }, myMutation)` will still apply and sync the mutation but won't persist it in the mutation log and in the sync server.
 

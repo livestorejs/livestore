@@ -1,5 +1,7 @@
 ---
 title: SQL Queries
+sidebar:
+  order: 3
 ---
 
 ## Raw SQL queries

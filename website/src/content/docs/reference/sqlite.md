@@ -1,6 +1,8 @@
 ---
 title: SQLite in LiveStore
 description: Notes on how to use SQLite in LiveStore
+sidebar:
+  order: 21
 ---
 
 LiveStore heavily relies on SQLite.

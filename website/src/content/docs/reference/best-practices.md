@@ -1,6 +1,8 @@
 ---
 title: Best Practices
 description: Best practices for using LiveStore
+sidebar:
+  order: 6
 ---
 
 - It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.

@@ -1,5 +1,7 @@
 ---
 title: Reactivity system
+sidebar:
+  order: 5
 ---
 
 - LiveStore provides a Signals-like reactivity system which supports

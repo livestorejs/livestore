@@ -1,5 +1,7 @@
 ---
 title: Encryption
+sidebar:
+  order: 20
 ---
 
 LiveStore doesn't yet support encryption but might in the future.

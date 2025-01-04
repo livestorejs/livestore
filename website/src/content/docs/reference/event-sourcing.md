@@ -1,6 +1,8 @@
 ---
 title: Event Sourcing
 description: Why and how LiveStore uses event sourcing for data flow, syncing and migrations.
+sidebar:
+  order: 8
 ---
 
 - Similar to Redux but persisted and synced across devices
