@@ -12,18 +12,18 @@ LiveStore supports arbitrary SQL queries on top of SQLite. In order for LiveStor
 import { queryDb, DbSchema, sql } from '@livestore/livestore'
 import { Schema } from 'effect'
 
-const table = DbSchema.table('myTable', {
+const table = DbSchema.table('my_table', {
 	id: DbSchema.text({ primaryKey: true }),
 	name: DbSchema.text(),
 })
 
 const filtered$ = queryDb({
-	query: sql`select * from myTable where name = 'Alice'`,
+	query: sql`select * from my_table where name = 'Alice'`,
 	schema: Schema.Array(table.schema),
 })
 
 const count$ = queryDb({
-	query: sql`select count(*) as count from myTable`,
+	query: sql`select count(*) as count from my_table`,
 	schema: Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse()),
 })
 ```
@@ -33,7 +33,7 @@ const count$ = queryDb({
 LiveStore also provides a small query builder for the most common queries. The query builder automatically derives the appropriate result schema internally.
 
 ```ts
-const table = DbSchema.table('myTable', {
+const table = DbSchema.table('my_table', {
 	id: DbSchema.text({ primaryKey: true }),
 	name: DbSchema.text(),
 })

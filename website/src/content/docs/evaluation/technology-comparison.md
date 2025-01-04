@@ -1,6 +1,8 @@
 ---
 title: Technology comparison
 description: How LiveStore compares to other related libraries
+sidebar:
+  order: 4
 ---
 
 ## TLDR of LiveStore's USPs

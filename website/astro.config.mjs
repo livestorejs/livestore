@@ -1,6 +1,7 @@
 import starlight from '@astrojs/starlight'
 import tailwind from '@astrojs/tailwind'
 import { defineConfig } from 'astro/config'
+import starlightTypeDoc from 'starlight-typedoc'
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,6 +11,19 @@ export default defineConfig({
       social: {
         github: 'https://github.com/livestorejs/livestore',
       },
+      plugins: [
+        starlightTypeDoc({
+          entryPoints: ['../packages/@livestore/livestore/src/index.ts'],
+          tsconfig: '../packages/@livestore/livestore/tsconfig.json',
+          output: 'api/livestore',
+        }),
+        starlightTypeDoc({
+          entryPoints: ['../packages/@livestore/web/src/index.ts'],
+          tsconfig: '../packages/@livestore/web/tsconfig.json',
+          output: 'api/web',
+        }),
+      ],
+
       sidebar: [
         // {
         // 	label: 'Guides',
@@ -37,6 +51,11 @@ export default defineConfig({
         {
           label: 'Changelog',
           link: '/changelog',
+        },
+        {
+          label: 'API Reference (generated)',
+          autogenerate: { directory: 'api' },
+          collapsed: true,
         },
       ],
       customCss: ['./src/tailwind.css'],

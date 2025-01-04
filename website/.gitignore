@@ -21,3 +21,6 @@ pnpm-debug.log*
 .DS_Store
 
 .direnv
+
+# build output
+src/content/docs/api/

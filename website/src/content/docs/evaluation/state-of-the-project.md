@@ -1,6 +1,8 @@
 ---
 title: State of the project
 description: A high-level overview of the current state of the project.
+sidebar:
+  order: 2
 ---
 
 LiveStore is based on years of research (see [Riffle](https://riffle.systems/essays/prelude/)) and is used as the foundation for ambitious apps such as [Overtone](https://overtone.pro). LiveStore has been in development since 2021 and is getting closer to a stable release. LiveStore is not yet ready for production use but can already be used during development.

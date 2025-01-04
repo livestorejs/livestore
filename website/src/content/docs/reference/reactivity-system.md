@@ -6,8 +6,8 @@ sidebar:
 
 - LiveStore provides a Signals-like reactivity system which supports
   - Reactive SQL queries on top of SQLite (`queryDb()`)
-	- Reactive computed values (`computed()`)
-	- Reactive state values
+  - Reactive computed values (`computed()`)
+  - Reactive state values
 
 ## Examples
 
