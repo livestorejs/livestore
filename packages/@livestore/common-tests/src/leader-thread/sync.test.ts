@@ -1,14 +1,8 @@
 import '@livestore/utils/node-vitest-polyfill'
 
-import {
-  makeNextMutationEventIdPair,
-  type MakeSynchronousDatabase,
-  ROOT_ID,
-  type SyncBackend,
-  UnexpectedError,
-  validatePushPayload,
-} from '@livestore/common'
-import { LeaderThreadCtx, makeApplyMutation, makeLeaderThread } from '@livestore/common/leader-thread'
+import type { MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
+import { makeNextMutationEventIdPair, ROOT_ID, validatePushPayload } from '@livestore/common'
+import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -16,6 +10,7 @@ import type { Scope } from '@livestore/utils/effect'
 import {
   Config,
   Context,
+  Deferred,
   Effect,
   FetchHttpClient,
   identity,
@@ -53,8 +48,10 @@ Vitest.describe('sync', () => {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
-      yield* testContext.mutate(tables.todos.insert({ id: '1', text: 't1', completed: false }))
-      yield* testContext.mutate(tables.todos.insert({ id: '2', text: 't2', completed: false }))
+      yield* testContext.mutate(
+        tables.todos.insert({ id: '1', text: 't1', completed: false }),
+        tables.todos.insert({ id: '2', text: 't2', completed: false }),
+      )
 
       const result = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
 
@@ -63,9 +60,9 @@ Vitest.describe('sync', () => {
         { id: '2', text: 't2', completed: 0 },
       ])
 
-      yield* Effect.sleep(20)
+      yield* Effect.sleep(30).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
-      expect(testContext.pushedMutationEvents.length).toEqual(1)
+      expect(testContext.pushedMutationEvents.length).toEqual(2)
     }).pipe(withCtx(test)),
   )
 
@@ -87,7 +84,7 @@ Vitest.describe('sync', () => {
 
       yield* testContext.mutate(tables.todos.insert({ id: '2', text: 't2', completed: false }))
 
-      yield* Effect.sleep(20)
+      yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
       yield* SubscriptionRef.set(testContext.syncIsConnectedRef, true)
 
@@ -95,7 +92,7 @@ Vitest.describe('sync', () => {
 
       expect(result).toEqual([{ id: '2', text: 't2', completed: 0 }])
 
-      yield* Effect.sleep(20)
+      yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
       // expect(testContext.pushedMutationEvents.length).toEqual(1)
     }).pipe(withCtx(test)),
@@ -110,7 +107,7 @@ class TestContext extends Context.Tag('TestContext')<
     syncPullQueue: Queue.Queue<MutationEvent.AnyEncoded>
     syncIsConnectedRef: SubscriptionRef.SubscriptionRef<boolean>
     encodeMutationEvent: (partialEvent: MutationEvent.Any) => MutationEvent.AnyEncoded
-    mutate: (partialEvent: MutationEvent.PartialAny) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+    mutate: (...partialEvents: MutationEvent.PartialAny[]) => Effect.Effect<void, UnexpectedError, Scope.Scope>
   }
 >() {}
 
@@ -152,7 +149,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
         Effect.gen(function* () {
           yield* validatePushPayload(batch, syncEventIdRef.current)
 
-          yield* Effect.sleep(10) // Simulate network latency
+          yield* Effect.sleep(10).pipe(Effect.withSpan('mock-sync-backend:push:sleep')) // Simulate network latency
 
           pushedMutationEvents.push(...batch)
 
@@ -163,7 +160,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     } satisfies SyncBackend
   })
 
-  const leaderContextLayer = makeLeaderThread({
+  const leaderContextLayer = makeLeaderThreadLayer({
     schema,
     storeId,
     originId,
@@ -189,17 +186,20 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
         ...nextMutationEventIdPair({ localOnly: false }),
       }) satisfies MutationEvent.AnyEncoded
 
-    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), leaderThreadCtx.db)
-
-    const mutate = (partialEvent: MutationEvent.PartialAny) =>
+    const mutate = (...partialEvents: MutationEvent.PartialAny[]) =>
       Effect.gen(function* () {
-        yield* applyMutation(toEncodedMutationEvent(partialEvent), {
-          shouldBroadcast: true,
-          persisted: true,
-          inTransaction: true,
-          syncStatus: 'pending',
-          syncMetadataJson: Option.none(),
-        }).pipe(UnexpectedError.mapToUnexpectedError)
+        const deferreds = yield* Effect.forEach(partialEvents, () => Deferred.make<void>())
+
+        yield* leaderThreadCtx.syncPushQueue.push(
+          partialEvents.map((partialEvent, index) => ({
+            mutationEventEncoded: toEncodedMutationEvent(partialEvent),
+            syncStatus: 'pending',
+            deferred: deferreds[index]!,
+          })),
+        )
+
+        // This ensures that the mutation execution queue is processed
+        yield* Effect.all(deferreds, { concurrency: 'unbounded' })
       }).pipe(Effect.provide(FetchHttpClient.layer))
 
     return Layer.succeed(TestContext, {

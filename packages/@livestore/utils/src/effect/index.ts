@@ -90,6 +90,8 @@ export {
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 
+// export { DevTools as EffectDevtools } from '@effect/experimental'
+
 export * as Effect from './Effect.js'
 export * as Schedule from './Schedule.js'
 export * as Scheduler from './Scheduler.js'

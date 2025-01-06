@@ -32,7 +32,9 @@ export const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValu
   }).pipe(
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSql:${sql}`),
-    Effect.withSpan(`@livestore/common:execSql`, { attributes: { sql, bindValueKeys: Object.keys(bindValues) } }),
+    Effect.withSpan(`@livestore/common:execSql`, {
+      attributes: { 'span.label': sql, sql, bindValueKeys: Object.keys(bindValues) },
+    }),
   )
 }
 
@@ -55,7 +57,11 @@ export const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindVa
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSqlPrepared:${sql}`),
     Effect.withSpan(`@livestore/common:execSqlPrepared`, {
-      attributes: { sql, bindValueKeys: Object.keys(bindValues) },
+      attributes: {
+        'span.label': sql,
+        sql,
+        bindValueKeys: Object.keys(bindValues),
+      },
     }),
   )
 }

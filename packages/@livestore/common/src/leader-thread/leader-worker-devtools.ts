@@ -3,7 +3,6 @@ import { Effect, FiberMap, FiberSet, Option, PubSub, Queue, Stream, Subscription
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/index.js'
-import { makeApplyMutation } from './apply-mutation.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 import type { DevtoolsContextEnabled, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
@@ -61,7 +60,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
             yield* Queue.offer(outgoingMessagesQueue, message)
           }
         }).pipe(
-          Effect.withSpan('@livestore/web:worker:devtools:sendToDevtools'),
+          Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
           Effect.interruptible,
           Effect.ignoreLogged,
         )
@@ -70,10 +69,10 @@ export const makeDevtoolsContext = Effect.gen(function* () {
 
       yield* devtoolsCoordinatorChannel.listen.pipe(
         Stream.flatten(),
-        // Stream.tapLogWithLabel('@livestore/web:worker:devtools:onPortMessage'),
+        // Stream.tapLogWithLabel('@livestore/common:leader-thread:devtools:onPortMessage'),
         Stream.tap((msg) =>
           Effect.gen(function* () {
-            // yield* Effect.logDebug(`[@livestore/web:worker:devtools] message from port: ${msg._tag}`, msg)
+            // yield* Effect.logDebug(`[@livestore/common:leader-thread:devtools] message from port: ${msg._tag}`, msg)
             // if (msg._tag === 'LSD.MessagePortForStoreRes') {
             //   yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
             // } else {
@@ -82,7 +81,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
           }),
         ),
         Stream.runDrain,
-        Effect.withSpan(`@livestore/web:worker:devtools:onPortMessage`),
+        Effect.withSpan(`@livestore/common:leader-thread:devtools:onPortMessage`),
         Effect.ignoreLogged,
         Effect.forkScoped,
       )
@@ -104,7 +103,7 @@ export const makeDevtoolsContext = Effect.gen(function* () {
         persistenceInfo,
         shutdownChannel,
       })
-    }).pipe(Effect.withSpan('@livestore/web:worker:devtools:connect', { attributes: { appHostId } }))
+    }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:connect', { attributes: { appHostId } }))
 
   const broadcast: DevtoolsContextEnabled['broadcast'] = (message) =>
     Effect.gen(function* () {
@@ -139,9 +138,8 @@ const listenToDevtools = ({
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* LeaderThreadCtx
-    const { syncBackend, makeSyncDb, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair } = innerWorkerCtx
-
-    const applyMutation = yield* makeApplyMutation(() => new Date().toISOString(), db)
+    const { syncBackend, makeSyncDb, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair, syncPushQueue } =
+      innerWorkerCtx
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
@@ -149,7 +147,7 @@ const listenToDevtools = ({
     yield* incomingMessages.pipe(
       Stream.tap((decodedEvent) =>
         Effect.gen(function* () {
-          // yield* Effect.logDebug('[@livestore/web:worker:devtools] incomingMessage', decodedEvent)
+          // yield* Effect.logDebug('[@livestore/common:leader-thread:devtools] incomingMessage', decodedEvent)
 
           if (decodedEvent._tag === 'LSD.DevtoolsReady') {
             // if ((yield* isConnected) === false) {
@@ -285,7 +283,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
+              const { mutationEventEncoded: mutationEventEncoded_ } = decodedEvent
 
               const mutationDef =
                 schema.mutations.get(mutationEventEncoded_.mutation) ??
@@ -296,14 +294,12 @@ const listenToDevtools = ({
                 ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
               }
 
-              // TODO ingest to push queue instead
-              yield* applyMutation(mutationEventEncoded, {
-                syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
-                shouldBroadcast: true,
-                persisted,
-                inTransaction: false,
-                syncMetadataJson: Option.none(),
-              })
+              yield* syncPushQueue.push([
+                {
+                  mutationEventEncoded,
+                  // syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending'
+                },
+              ])
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
 
@@ -383,7 +379,7 @@ const listenToDevtools = ({
               return
             }
           }
-        }).pipe(Effect.withSpan(`@livestore/web:worker:onDevtoolsMessage:${decodedEvent._tag}`)),
+        }).pipe(Effect.withSpan(`@livestore/common:leader-thread:onDevtoolsMessage:${decodedEvent._tag}`)),
       ),
       UnexpectedError.mapToUnexpectedErrorStream,
       Stream.runDrain,

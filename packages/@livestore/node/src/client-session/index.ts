@@ -194,8 +194,10 @@ export const makeNodeAdapter = ({
 
       const appHostId = `${storeId}-${sessionId}`
 
-      const pullMutations = runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream()).pipe(
-        // TODO handle rebase case
+      const pullMutations = runInWorkerStream(
+        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
+      ).pipe(
+        // TODO handle rebase case in client session
         Stream.tap(({ mutationEvents }) =>
           Effect.forEach(mutationEvents, (mutationEventEncoded) =>
             validateAndUpdateMutationEventId({

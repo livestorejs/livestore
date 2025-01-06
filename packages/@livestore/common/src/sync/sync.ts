@@ -27,7 +27,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
     IsOfflineError | InvalidPullError,
     HttpClient.HttpClient
   >
-  // TODO support batching
+  // TODO support transactions (i.e. group of mutation events which need to be applied together)
   push: (
     /**
      * Constraints for batch:
@@ -37,7 +37,10 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
     batch: ReadonlyArray<MutationEvent.AnyEncoded>,
     persisted: boolean,
   ) => Effect.Effect<
-    { metadata: ReadonlyArray<Option.Option<TSyncMetadata>> },
+    {
+      /** Indexes are relative to `batch` */
+      metadata: ReadonlyArray<Option.Option<TSyncMetadata>>
+    },
     IsOfflineError | InvalidPushError,
     HttpClient.HttpClient
   >

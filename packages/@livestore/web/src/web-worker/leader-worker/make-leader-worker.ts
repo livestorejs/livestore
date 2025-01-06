@@ -4,14 +4,13 @@ import type { InitialSyncOptions, PullQueueItem } from '@livestore/common/leader
 import {
   configureConnection,
   LeaderThreadCtx,
-  makeApplyMutation,
-  makeLeaderThread,
+  makeLeaderThreadLayer,
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv, memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
+import { isDevEnv } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
@@ -23,18 +22,15 @@ import {
   Layer,
   Logger,
   LogLevel,
-  Option,
   Queue,
   Scheduler,
   Stream,
-  SubscriptionRef,
   WorkerRunner,
 } from '@livestore/utils/effect'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import { getAppDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import type { ExecutionBacklogItem } from '../common/worker-schema.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 
 export type WorkerOptions = {
@@ -107,7 +103,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // Might involve some async work, so we're running them concurrently
         const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
-        return makeLeaderThread({
+        return makeLeaderThreadLayer({
           schema,
           storeId,
           originId,
@@ -138,10 +134,14 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
 
     //     return cachedSnapshot ?? workerCtx.db.export()
     //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
-    PullStream: () =>
+    PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+        // emit new items which came in during boot and now
+        const missingItems = yield* workerCtx.syncPushQueue.getNewMutationEvents(cursor)
+        yield* pullQueue.offer({ mutationEvents: missingItems, remaining: 0 })
 
         workerCtx.connectedClientSessionPullQueues.add(pullQueue)
 
@@ -162,7 +162,14 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
       ),
     ExecuteBulk: ({ items }) =>
-      executeBulk(items).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) =>
+        _.syncPushQueue.push(
+          items
+            // TODO handle txn
+            .filter((_) => _._tag === 'mutate')
+            .map((item) => ({ mutationEventEncoded: item.mutationEventEncoded, syncStatus: 'pending' })),
+        ),
+      ).pipe(
         Effect.uninterruptible,
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/web:worker:ExecuteBulk'),
@@ -244,71 +251,4 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
             emit.single({ storeMessagePort })
           }),
       ).pipe(Stream.withSpan('@livestore/web:worker:ConnectDevtools')),
-  })
-
-const executeBulk = (executionItems: ReadonlyArray<ExecutionBacklogItem>) =>
-  Effect.gen(function* () {
-    let batchItems: ExecutionBacklogItem[] = []
-    const leaderThreadCtx = yield* LeaderThreadCtx
-    const { db, dbLog, shutdownStateSubRef } = yield* LeaderThreadCtx
-
-    if ((yield* SubscriptionRef.get(shutdownStateSubRef)) !== 'running') {
-      console.warn('livestore-webworker: shutting down, skipping execution')
-      return
-    }
-
-    const createdAtMemo = memoizeByStringifyArgs(() => new Date().toISOString())
-    const applyMutation = yield* makeApplyMutation(createdAtMemo, db)
-
-    let offset = 0
-
-    while (offset < executionItems.length) {
-      try {
-        db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-        dbLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-
-        batchItems = executionItems.slice(offset, offset + 50)
-        offset += 50
-
-        // console.group('livestore-webworker: executing batch')
-        // batchItems.forEach((_) => {
-        //   if (_._tag === 'execute') {
-        //     console.log(_.query, _.bindValues)
-        //   } else if (_._tag === 'mutate') {
-        //     console.log(_.mutationEventEncoded.mutation, _.mutationEventEncoded.id, _.mutationEventEncoded.args)
-        //   }
-        // })
-        // console.groupEnd()
-
-        for (const item of batchItems) {
-          if (item._tag === 'mutate') {
-            const mutationDef =
-              leaderThreadCtx.schema.mutations.get(item.mutationEventEncoded.mutation) ??
-              shouldNeverHappen(`Unknown mutation: ${item.mutationEventEncoded.mutation}`)
-
-            yield* applyMutation(item.mutationEventEncoded, {
-              shouldBroadcast: true,
-              persisted: item.persisted,
-              inTransaction: true,
-              syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending',
-              syncMetadataJson: Option.none(),
-            })
-          } else {
-            // TODO handle txn
-          }
-        }
-
-        db.execute('COMMIT', undefined) // Commit the transaction
-        dbLog.execute('COMMIT', undefined) // Commit the transaction
-      } catch (error) {
-        try {
-          db.execute('ROLLBACK', undefined) // Rollback in case of an error
-          dbLog.execute('ROLLBACK', undefined) // Rollback in case of an error
-        } catch (e) {
-          console.error('Error rolling back transaction', e)
-        }
-
-        shouldNeverHappen(`Error executing query: ${error} \n ${JSON.stringify(batchItems)}`)
-      }
-    }
   })

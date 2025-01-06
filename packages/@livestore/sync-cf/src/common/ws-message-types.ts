@@ -9,11 +9,21 @@ export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
 
 export type PullReq = typeof PullReq.Type
 
+export const SyncMetadata = Schema.Struct({
+  /** ISO date format */
+  createdAt: Schema.String,
+})
+
+export type SyncMetadata = typeof SyncMetadata.Type
+
 export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   requestId: Schema.String,
-  // /** The  */
-  // cursor: Schema.String,
-  events: Schema.Array(mutationEventSchemaEncodedAny),
+  events: Schema.Array(
+    Schema.Struct({
+      mutationEventEncoded: mutationEventSchemaEncodedAny,
+      metadata: Schema.Option(SyncMetadata),
+    }),
+  ),
   remaining: Schema.Number,
 })
 
@@ -22,6 +32,7 @@ export type PullRes = typeof PullRes.Type
 export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
   mutationEventEncoded: mutationEventSchemaEncodedAny,
   persisted: Schema.Boolean,
+  metadata: Schema.Option(SyncMetadata),
 })
 
 export type PushBroadcast = typeof PushBroadcast.Type

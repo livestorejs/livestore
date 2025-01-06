@@ -1,18 +1,16 @@
 import { env, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Option, Scope } from '@livestore/utils/effect'
-import { Effect, Queue, Schema } from '@livestore/utils/effect'
+import type { Option, Scope } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 import type { SqliteError, SynchronousDatabase, UnexpectedError } from '../index.js'
 import {
-  Devtools,
   getExecArgsFromMutation,
-  liveStoreVersion,
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
   SESSION_CHANGESET_META_TABLE,
   sessionChangesetMetaTable,
 } from '../index.js'
-import type { LiveStoreSchema, MutationEvent, SyncStatus } from '../schema/index.js'
+import type { LiveStoreSchema, MutationEvent } from '../schema/index.js'
 import { insertRow } from '../sql-queries/index.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import { LeaderThreadCtx } from './types.js'
@@ -21,36 +19,24 @@ import { validateAndUpdateMutationEventId } from './validateAndUpdateMutationEve
 export type ApplyMutation = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
   options: {
-    syncStatus: SyncStatus
-    shouldBroadcast: boolean
     persisted: boolean
     inTransaction: boolean
     syncMetadataJson: Option.Option<Schema.JsonValue>
   },
-) => Effect.Effect<void, SqliteError | UnexpectedError, HttpClient.HttpClient>
+) => Effect.Effect<void, SqliteError | UnexpectedError>
 
-export const makeApplyMutation = (
-  // TODO get rid of this as it's only used for mutation log metadata which isn't really needed
-  createdAtMemo: () => string,
-  /**
-   * NOTE we're making this syncDb a parameter instead of using LeaderThreadCtx.syncDb
-   * as we're also using this function when creating a temporary in-memory database
-   */
-  syncDb: SynchronousDatabase,
-): Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> =>
-  Effect.gen(function* () {
+export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> = Effect.gen(
+  function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
     const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(leaderThreadCtx.schema)
 
-    return (mutationEventEncoded, { syncStatus, shouldBroadcast, persisted, inTransaction, syncMetadataJson }) =>
+    return (mutationEventEncoded, { persisted, inTransaction, syncMetadataJson }) =>
       Effect.gen(function* () {
         const {
           mutationEventSchema,
           mutationDefSchemaHashMap,
-          devtools,
-          syncBackend,
-          syncPushQueue,
           schema,
+          db,
           dbLog,
           mutationSemaphore,
           currentMutationEventIdRef,
@@ -68,26 +54,26 @@ export const makeApplyMutation = (
           debugContext: { label: `leader-worker:applyMutation`, mutationEventEncoded },
         })
 
-        // console.group('livestore-webworker: executing mutation', { mutationName, syncStatus, shouldBroadcast })
+        // console.group('livestore-webworker: executing mutation', { mutationName })
 
         const transaction = Effect.gen(function* () {
-          const session = env('VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT') ? syncDb.session() : undefined
+          const session = env('VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT') ? db.session() : undefined
 
           const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
           if (hasDbTransaction) {
-            yield* execSql(syncDb, 'BEGIN TRANSACTION', {})
+            yield* execSql(db, 'BEGIN TRANSACTION', {})
           }
 
           for (const { statementSql, bindValues } of execArgsArr) {
             // console.debug(mutationName, statementSql, bindValues)
             // TODO use cached prepared statements instead of exec
-            yield* execSqlPrepared(syncDb, statementSql, bindValues).pipe(
-              Effect.tapError(() => (hasDbTransaction ? execSql(syncDb, 'ROLLBACK', {}) : Effect.void)),
+            yield* execSqlPrepared(db, statementSql, bindValues).pipe(
+              Effect.tapError(() => (hasDbTransaction ? execSql(db, 'ROLLBACK', {}) : Effect.void)),
             )
           }
 
           if (hasDbTransaction) {
-            yield* execSql(syncDb, 'COMMIT', {})
+            yield* execSql(db, 'COMMIT', {})
           }
 
           if (session !== undefined) {
@@ -98,7 +84,7 @@ export const makeApplyMutation = (
             if (changeset.length > 0) {
               // TODO use prepared statements
               yield* execSql(
-                syncDb,
+                db,
                 ...insertRow({
                   tableName: SESSION_CHANGESET_META_TABLE,
                   columns: sessionChangesetMetaTable.sqliteDef.columns,
@@ -120,62 +106,28 @@ export const makeApplyMutation = (
         // write to mutation_log
         const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
         if (persisted && excludeFromMutationLogAndSyncing === false) {
-          yield* insertIntoMutationLog(
-            mutationEventEncoded,
-            dbLog,
-            mutationDefSchemaHashMap,
-            createdAtMemo,
-            syncStatus,
-            syncMetadataJson,
-          )
+          yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap, syncMetadataJson)
         } else {
-          //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-        }
-
-        if (shouldBroadcast) {
-          for (const queue of leaderThreadCtx.connectedClientSessionPullQueues) {
-            // TODO do batching if possible
-            yield* Queue.offer(queue, { mutationEvents: [mutationEventEncoded], remaining: 0 })
-          }
-
-          if (devtools.enabled) {
-            // TODO consider to refactor devtools to use syncing mechanism instead of devtools-specific broadcast channel
-            yield* devtools.broadcast(
-              Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }),
-            )
-          }
-        }
-
-        if (
-          excludeFromMutationLogAndSyncing === false &&
-          mutationDef.options.localOnly === false &&
-          syncBackend !== undefined &&
-          syncStatus === 'pending'
-        ) {
-          // TODO how to handle this if currently rebasing?
-          yield* syncPushQueue.queue.offer(mutationEventEncoded)
+          //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
         }
       }).pipe(
-        Effect.withSpan(`@livestore/web:worker:applyMutation`, {
+        Effect.withSpan(`@livestore/common:leader-thread:applyMutation`, {
           attributes: {
             mutationName: mutationEventEncoded.mutation,
             mutationId: mutationEventEncoded.id,
-            syncStatus,
-            shouldBroadcast,
             persisted,
             'span.label': mutationEventEncoded.mutation,
           },
         }),
-        // Effect.logDuration('@livestore/web:worker:applyMutation'),
+        // Effect.logDuration('@livestore/common:leader-thread:applyMutation'),
       )
-  })
+  },
+)
 
 const insertIntoMutationLog = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
   dbLog: SynchronousDatabase,
   mutationDefSchemaHashMap: Map<string, number>,
-  createdAtMemo: () => string,
-  syncStatus: SyncStatus,
   syncMetadataJson: Option.Option<Schema.JsonValue>,
 ) =>
   Effect.gen(function* () {
@@ -197,8 +149,6 @@ const insertIntoMutationLog = (
           mutation: mutationEventEncoded.mutation,
           argsJson: mutationEventEncoded.args ?? {},
           schemaHash: mutationDefSchemaHash,
-          createdAt: createdAtMemo(),
-          syncStatus,
           syncMetadataJson,
         },
       }),

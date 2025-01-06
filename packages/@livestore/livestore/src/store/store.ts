@@ -165,6 +165,7 @@ export class Store<
         Effect.forever, // In case the stream is closed (e.g. during leader re-election), we want to re-subscribe
         Effect.interruptible,
         Effect.withSpan('LiveStore:syncMutations'),
+        Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
@@ -558,10 +559,11 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
-  __devDownloadDb = () => {
-    const data = this.syncDbWrapper.export()
-    downloadBlob(data, `livestore-${Date.now()}.db`)
-  }
+  __devDownloadDb = (source: 'local' | 'leader' = 'local') =>
+    Effect.gen(this, function* () {
+      const data = source === 'local' ? this.syncDbWrapper.export() : yield* this.clientSession.coordinator.export
+      downloadBlob(data, `livestore-${Date.now()}.db`)
+    }).pipe(this.runEffectFork)
 
   __devDownloadMutationLogDb = () =>
     Effect.gen(this, function* () {

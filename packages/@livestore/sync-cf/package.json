@@ -9,6 +9,7 @@
     }
   },
   "scripts": {
+    "dev": "wrangler dev --inspector-port 9230",
     "deploy": "wrangler publish",
     "test": "echo 'No tests yet'"
   },

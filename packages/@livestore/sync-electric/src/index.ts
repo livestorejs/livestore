@@ -85,7 +85,7 @@ declare global {
 
 type SyncMetadata = {
   offset: string
-  // TODO move this into "global" sync metadata as it's the same for each event
+  // TODO move this into some kind of "global" sync metadata as it's the same for each event
   shapeId: string
 }
 

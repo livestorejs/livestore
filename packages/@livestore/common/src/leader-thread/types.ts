@@ -23,6 +23,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
+import type { PushQueueLeader } from './rebase.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -108,7 +109,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncBackend: SyncBackend | undefined
     // syncPushQueue: Queue.Queue<MutationEvent.AnyEncoded>
     // syncPushQueueSemaphore: Effect.Semaphore
-    syncPushQueue: SyncPushQueue
+    syncPushQueue: PushQueueLeader
     initialSyncOptions: InitialSyncOptions
     connectedClientSessionPullQueues: Set<Queue.Queue<PullQueueItem>>
   }
@@ -116,8 +117,8 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 
 export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>; remaining: number }
 
-export type SyncPushQueue = {
-  queue: Queue.Queue<MutationEvent.AnyEncoded>
-  semaphore: Effect.Semaphore
-  isOpen: Effect.Latch
-}
+// export type SyncPushQueue = {
+//   queue: Queue.Queue<MutationEvent.AnyEncoded>
+//   semaphore: Effect.Semaphore
+//   isOpen: Effect.Latch
+// }

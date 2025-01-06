@@ -92,7 +92,9 @@ export const recreateDb: Effect.Effect<
   }
 
   // Import the temporary in-memory database into the persistent database
-  yield* Effect.sync(() => db.import(tmpSyncDb)).pipe(Effect.withSpan('@livestore/web:worker:recreateDb:import'))
+  yield* Effect.sync(() => db.import(tmpSyncDb)).pipe(
+    Effect.withSpan('@livestore/common:leader-thread:recreateDb:import'),
+  )
 
   // TODO maybe bring back re-using this initial snapshot to avoid calling `.export()` again
   // We've disabled this for now as it made the code too complex, as we often run syncing right after
@@ -102,6 +104,6 @@ export const recreateDb: Effect.Effect<
   tmpSyncDb.close()
 }).pipe(
   Effect.scoped, // NOTE we're closing the scope here so finalizers are called when the effect is done
-  Effect.withSpan('@livestore/web:worker:recreateDb'),
-  Effect.withPerformanceMeasure('@livestore/web:worker:recreateDb'),
+  Effect.withSpan('@livestore/common:leader-thread:recreateDb'),
+  Effect.withPerformanceMeasure('@livestore/common:leader-thread:recreateDb'),
 )

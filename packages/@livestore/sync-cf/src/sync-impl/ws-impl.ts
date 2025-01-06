@@ -18,6 +18,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { WSMessage } from '../common/index.js'
+import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface WsSyncOptions extends SyncBackendOptionsBase {
   type: 'cf'
@@ -33,13 +34,11 @@ declare global {
   interface LiveStoreGlobal extends LiveStoreGlobalCf {}
 }
 
-export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<null>, never, Scope.Scope> =>
+export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const wsUrl = `${options.url}/websocket?room=${options.roomId}`
 
     const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
-
-    const metadata = Option.none()
 
     const api = {
       isConnected,
@@ -58,18 +57,9 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
             Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
             Stream.map((msg) =>
               msg._tag === 'WSMessage.PushBroadcast'
-                ? {
-                    items: [
-                      {
-                        mutationEventEncoded: msg.mutationEventEncoded,
-                        persisted: msg.persisted,
-                        metadata,
-                      },
-                    ],
-                    remaining: 0,
-                  }
+                ? { items: [msg], remaining: 0 }
                 : {
-                    items: msg.events.map((mutationEventEncoded) => ({
+                    items: msg.events.map(({ mutationEventEncoded, metadata }) => ({
                       mutationEventEncoded,
                       metadata,
                       persisted: true,
@@ -106,9 +96,11 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<nu
 
           yield* Deferred.await(ready)
 
-          return { metadata: Array.from({ length: batch.length }, () => metadata) }
+          const createdAt = new Date().toISOString()
+
+          return { metadata: Array.from({ length: batch.length }, () => Option.some({ createdAt })) }
         }),
-    } satisfies SyncBackend<null>
+    } satisfies SyncBackend<SyncMetadata>
 
     return api
   })
@@ -174,7 +166,7 @@ const connect = (wsUrl: string) =>
             if (decodedEventRes.right._tag === 'WSMessage.Pong') {
               yield* Queue.offer(pongMessages, decodedEventRes.right)
             } else {
-              yield* Effect.log(`decodedEventRes: ${decodedEventRes.right._tag}`)
+              // yield* Effect.logDebug(`decodedEventRes: ${decodedEventRes.right._tag}`)
               yield* PubSub.publish(incomingMessages, decodedEventRes.right)
             }
           }

@@ -7,7 +7,7 @@ import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeNodeAdapter } from '@livestore/node'
-import { Effect, FiberSet, Layer, Logger, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FiberSet, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
@@ -38,8 +38,8 @@ const live = Cli.Command.make(
       const schema: LiveStoreSchema = yield* Effect.promise(() => import(relativeSchemaPath).then((m) => m.schema))
       const adapter = makeNodeAdapter({
         schemaPath: relativeSchemaPath,
-        makeSyncBackendUrl: import.meta.resolve('@livestore/sync-cf'),
         baseDirectory,
+        makeSyncBackendUrl: import.meta.resolve('@livestore/sync-cf'),
         syncOptions: {
           type: 'cf',
           url: 'ws://localhost:8787/websocket',
@@ -66,8 +66,13 @@ const live = Cli.Command.make(
       //   store.mutate(tables.todo.insert({ id: nanoid(), title: prompt }))
       // }
 
-      // yield* Effect.never
-      yield* Effect.sleep(400)
+      // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
+      yield* Effect.addFinalizer(() => FiberSet.clear(fiberSet))
+
+      yield* Effect.never
+      // yield* Effect.sleep(400)
+
+      // yield* FiberSet.clear(fiberSet)
 
       // TODO get rid of this sleep in better handle initial boot/interruption of worker thread
       // const res = store.query(tables.todo.query)
@@ -88,9 +93,15 @@ const server = Cli.Command.make('server').pipe(Cli.Command.withSubcommands([star
 
 const otelLayer = OtelLiveHttp({ serviceName: 'livestore-cli', skipLogUrl: false })
 
-const command = Cli.Command.make('livestore')
-  .pipe(Cli.Command.withSubcommands([client, server]))
-  .pipe(Cli.Command.provide(otelLayer))
+// const DevToolsLive = EffectDevtools.layerWebSocket().pipe(
+//   Layer.provide(PlatformNode.NodeSocket.layerWebSocketConstructor),
+// )
+
+const command = Cli.Command.make('livestore').pipe(
+  Cli.Command.withSubcommands([client, server]),
+  // Cli.Command.provide(DevToolsLive),
+  Cli.Command.provide(otelLayer),
+)
 
 const cli = Cli.Command.run(command, { name: 'LiveStore CLI', version: liveStoreVersion })
 
@@ -98,6 +109,7 @@ const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.pretty)
 
 cli(process.argv).pipe(
   Effect.annotateLogs({ thread: 'cli-main' }),
+  Logger.withMinimumLogLevel(LogLevel.Debug),
   Effect.provide(layer),
   PlatformNode.NodeRuntime.runMain,
 )

@@ -99,6 +99,11 @@ export const makeAdapter =
         yield* resetPersistedDataFromCoordinator({ storageOptions, storeId })
       }
 
+      // Note on fast-path booting:
+      // Instead of waiting for the leader worker to boot and then get a database snapshot from it,
+      // we're here trying to get the snapshot directly from storage
+      // we usually speeds up the boot process by a lot.
+      // We need to be extra careful though to not run into any race conditions or inconsistencies.
       // TODO also verify persisted data
       const dataFromFile = yield* readPersistedAppDbFromCoordinator({
         storageOptions,
@@ -351,7 +356,10 @@ export const makeAdapter =
 
       const mutationEventSchema = makeMutationEventSchema(schema)
 
-      const pullMutations = runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream()).pipe(
+      const pullMutations = runInWorkerStream(
+        // TODO use last know upstream head as cursor instead of currentMutationEventIdRef.current
+        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: currentMutationEventIdRef.current }),
+      ).pipe(
         // TODO handle rebase case
         Stream.tap(({ mutationEvents }) =>
           Effect.forEach(mutationEvents, (mutationEventEncoded) =>

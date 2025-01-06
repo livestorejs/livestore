@@ -76,12 +76,21 @@ export const mutationLogMetaTable = table(
     mutation: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     schemaHash: SqliteDsl.integer({}),
-    /** ISO date format */
-    createdAt: SqliteDsl.text({}),
-    syncStatus: SqliteDsl.text({ schema: SyncStatus }),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
   { disableAutomaticIdColumn: true, indexes: [] },
 )
 
 export type MutationLogMetaRow = FromTable.RowDecoded<typeof mutationLogMetaTable>
+
+export const SYNC_STATUS_TABLE = '__livestore_sync_status'
+
+export const syncStatusTable = table(
+  SYNC_STATUS_TABLE,
+  {
+    head: SqliteDsl.integer({ primaryKey: true }),
+  },
+  { disableAutomaticIdColumn: true },
+)
+
+export type SyncStatusRow = FromTable.RowDecoded<typeof syncStatusTable>

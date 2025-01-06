@@ -29,6 +29,7 @@ class WorkerContext extends Context.Tag('WorkerContext')<
   WorkerContext,
   {
     store: Store<any, any>
+    fiberSet: FiberSet.FiberSet
   }
 >() {}
 
@@ -56,7 +57,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
 
       const store = yield* createStore({ adapter, fiberSet, schema, storeId, disableDevtools: true })
 
-      return Layer.succeed(WorkerContext, { store })
+      return Layer.succeed(WorkerContext, { store, fiberSet })
     }).pipe(
       Effect.orDie,
       Effect.annotateLogs({ clientId }),
@@ -64,6 +65,12 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       Effect.withSpan('@livestore/node-sync:test:initialize-worker'),
       Layer.unwrapScoped,
     ),
+  // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
+  TmpShutdown: () =>
+    Effect.gen(function* () {
+      const { fiberSet } = yield* WorkerContext
+      yield* FiberSet.clear(fiberSet)
+    }),
   CreateTodos: ({ count }) =>
     Effect.gen(function* () {
       // TODO check sync connection status

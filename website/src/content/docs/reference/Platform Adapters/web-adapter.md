@@ -58,3 +58,8 @@ LiveStore also uses `window.sessionStorage` to retain the identity of a client s
 ## Other notes
 
 - The web adapter is using some browser APIs that might require a HTTPS connection (e.g. `navigator.locks`). It's recommended to even use HTTPS during local development (e.g. via [Caddy](https://caddyserver.com/docs/automatic-https)).
+
+## Browser support
+
+- Notable required browser APIs: OPFS, SharedWorker, `navigator.locks`, WASM
+- The web adapter of LiveStore currently doesn't work on Android browsers as they don't support the `SharedWorker` API (see [Chromium bug](https://issues.chromium.org/issues/40290702)).

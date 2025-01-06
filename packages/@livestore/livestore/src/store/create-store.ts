@@ -123,8 +123,6 @@ export const createStore = <
 
     return yield* Effect.gen(function* () {
       const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-      // TODO remove
-      // const span = otel.trace.getTracer('livestore').startSpan('createStore')
       const otelTracer = yield* OtelTracer.OtelTracer
 
       const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))

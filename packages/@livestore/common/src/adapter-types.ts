@@ -113,7 +113,7 @@ export type Coordinator = {
     /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
     getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
   }
-  export: Effect.Effect<Uint8Array | undefined, UnexpectedError>
+  export: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
 }
@@ -144,6 +144,16 @@ export const EventId = Schema.Struct({
   global: Schema.Number,
   local: Schema.Number,
 }).annotations({ title: 'LiveStore.EventId' })
+
+/**
+ * Compare two event ids i.e. checks if the first event id is less than the second.
+ */
+export const compareEventIds = (a: EventId, b: EventId) => {
+  if (a.global !== b.global) {
+    return a.global - b.global
+  }
+  return a.local - b.local
+}
 
 export type EventIdPair = { id: EventId; parentId: EventId }
 
