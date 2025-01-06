@@ -17,10 +17,9 @@ import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync
 import { sql } from '../util.js'
 import { execSql } from './connection.js'
 import { makeDevtoolsContext } from './leader-worker-devtools.js'
-import { makePushQueueLeader } from './rebase.js'
 import { recreateDb } from './recreate-db.js'
-import { initSyncing } from './syncing.js'
-import type { DevtoolsContext, InitialSyncOptions, PullQueueItem, ShutdownState } from './types.js'
+import { makePushQueueLeader } from './syncing.js'
+import type { InitialSyncOptions, PullQueueItem, ShutdownState } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const makeLeaderThreadLayer = ({
@@ -45,7 +44,6 @@ export const makeLeaderThreadLayer = ({
   initialSyncOptions: InitialSyncOptions | undefined
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const mutationEventSchema = makeMutationEventSchema(schema)
     const mutationDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
@@ -54,12 +52,6 @@ export const makeLeaderThreadLayer = ({
     )
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
-
-    const mutationSemaphore = yield* Effect.makeSemaphore(1)
-
-    const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false }
-
-    const shutdownStateSubRef = yield* SubscriptionRef.make<ShutdownState>('running')
 
     // TODO do more validation here than just checking the count of tables
     // Either happens on initial boot or if schema changes
@@ -72,37 +64,42 @@ export const makeLeaderThreadLayer = ({
 
     const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
 
-    const syncPushQueue = yield* makePushQueueLeader({ db, dbLog, schema, syncBackend, currentMutationEventIdRef })
-
-    const connectedClientSessionPullQueues = new Set<Queue.Queue<PullQueueItem>>()
+    const syncPushQueue = yield* makePushQueueLeader({ schema })
 
     const ctx = {
       schema,
       mutationDefSchemaHashMap,
       bootStatusQueue,
-      mutationSemaphore,
+      mutationSemaphore: yield* Effect.makeSemaphore(1),
       storeId,
       originId,
       currentMutationEventIdRef,
       db,
       dbLog,
-      devtools,
+      devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
       initialSyncOptions: initialSyncOptions ?? { _tag: 'Skip' },
       makeSyncDb,
-      mutationEventSchema,
+      mutationEventSchema: makeMutationEventSchema(schema),
       nextMutationEventIdPair,
-      shutdownStateSubRef,
+      shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       syncBackend,
       syncPushQueue,
-      connectedClientSessionPullQueues,
+      connectedClientSessionPullQueues: new Set<Queue.Queue<PullQueueItem>>(),
     } satisfies typeof LeaderThreadCtx.Service
+
+    // @ts-expect-error For debugging purposes
+    globalThis.__leaderThreadCtx = ctx
 
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
     yield* bootLeaderThread({ dbMissing }).pipe(Effect.provide(layer))
 
     return layer
-  }).pipe(UnexpectedError.mapToUnexpectedError, Layer.unwrapScoped)
+  }).pipe(
+    Effect.withSpan('@livestore/common:leader-thread:boot'),
+    UnexpectedError.mapToUnexpectedError,
+    Layer.unwrapScoped,
+  )
 
 /**
  * Blocks until the leader thread has finished its initial setup.
@@ -118,12 +115,7 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const leaderThreadCtx = yield* LeaderThreadCtx
-
-    // @ts-expect-error For debugging purposes
-    globalThis.__leaderThreadCtx = leaderThreadCtx
-
-    const { dbLog, bootStatusQueue, initialSyncOptions } = leaderThreadCtx
+    const { dbLog, bootStatusQueue, syncPushQueue } = yield* LeaderThreadCtx
 
     yield* migrateTable({
       db: dbLog,
@@ -139,6 +131,7 @@ const bootLeaderThread = ({
       skipMetaTable: true,
     })
 
+    // Create sync status row if it doesn't exist
     yield* execSql(
       dbLog,
       sql`INSERT INTO ${SYNC_STATUS_TABLE} (head)
@@ -149,21 +142,9 @@ const bootLeaderThread = ({
 
     const dbReady = yield* Deferred.make<void>()
 
-    const waitForInitialSync =
-      initialSyncOptions._tag === 'Blocking'
-        ? yield* Deferred.make<void>().pipe(
-            Effect.tap((def) =>
-              Deferred.succeed(def, void 0).pipe(Effect.delay(initialSyncOptions.timeout), Effect.forkScoped),
-            ),
-          )
-        : undefined
-
     // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
     // processing any incoming mutations
-    yield* initSyncing({ dbReady, waitForInitialSyncRef: { current: waitForInitialSync } }).pipe(
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    const waitForInitialSync = yield* syncPushQueue.initSyncing({ dbReady })
 
     if (dbMissing) {
       yield* recreateDb
@@ -172,8 +153,6 @@ const bootLeaderThread = ({
     yield* Deferred.succeed(dbReady, void 0)
 
     if (waitForInitialSync !== undefined) {
-      yield* Deferred.succeed(waitForInitialSync, void 0)
-
       yield* waitForInitialSync
     }
 

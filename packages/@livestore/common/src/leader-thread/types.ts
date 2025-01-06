@@ -1,4 +1,5 @@
 import type {
+  Deferred,
   Effect,
   Fiber,
   FiberSet,
@@ -23,7 +24,6 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
-import type { PushQueueLeader } from './rebase.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -122,3 +122,36 @@ export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEnc
 //   semaphore: Effect.Semaphore
 //   isOpen: Effect.Latch
 // }
+
+/**
+ * The push queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
+ *
+ * Mutation Log visualization:
+ *
+ * ```
+ *                    Remote Head         Local Head
+ *                         ▼                   ▼
+ *   [-1]->[0]->[1]->[2]->[3]->[4]->[5]->[6]->[7]
+ *  (Root)                      └─ Push Queue ─┘
+ *                              (unpushed events)
+ * ```
+ *
+ * - Events Root-3: Already pushed/confirmed events (Remote Head at 3)
+ * - Events 4-6: Events in push queue (not yet pushed/confirmed)
+ */
+export interface PushQueueLeader {
+  push: (items: PushQueueItemLeader[]) => Effect.Effect<void, UnexpectedError, HttpClient.HttpClient>
+  initSyncing: (args: {
+    dbReady: Deferred.Deferred<void>
+  }) => Effect.Effect<
+    Deferred.Deferred<void> | undefined,
+    UnexpectedError,
+    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+  >
+}
+
+export interface PushQueueItemLeader {
+  mutationEventEncoded: MutationEvent.AnyEncoded
+  // syncStatus: 'confirmed' | 'pending' | 'localOnly'
+  deferred?: Deferred.Deferred<void>
+}

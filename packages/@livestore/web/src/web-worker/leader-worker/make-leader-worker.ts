@@ -3,6 +3,7 @@ import { ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { InitialSyncOptions, PullQueueItem } from '@livestore/common/leader-thread'
 import {
   configureConnection,
+  getNewMutationEvents,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
   OuterWorkerCtx,
@@ -140,7 +141,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
 
         // emit new items which came in during boot and now
-        const missingItems = yield* workerCtx.syncPushQueue.getNewMutationEvents(cursor)
+        const missingItems = yield* getNewMutationEvents(cursor)
         yield* pullQueue.offer({ mutationEvents: missingItems, remaining: 0 })
 
         workerCtx.connectedClientSessionPullQueues.add(pullQueue)

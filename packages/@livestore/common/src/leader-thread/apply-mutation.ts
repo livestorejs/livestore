@@ -1,6 +1,6 @@
 import { env, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Option, Scope } from '@livestore/utils/effect'
-import { Effect, Schema } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteError, SynchronousDatabase, UnexpectedError } from '../index.js'
 import {
@@ -20,8 +20,6 @@ export type ApplyMutation = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
   options: {
     persisted: boolean
-    inTransaction: boolean
-    syncMetadataJson: Option.Option<Schema.JsonValue>
   },
 ) => Effect.Effect<void, SqliteError | UnexpectedError>
 
@@ -30,7 +28,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
     const leaderThreadCtx = yield* LeaderThreadCtx
     const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(leaderThreadCtx.schema)
 
-    return (mutationEventEncoded, { persisted, inTransaction, syncMetadataJson }) =>
+    return (mutationEventEncoded, { persisted }) =>
       Effect.gen(function* () {
         const {
           mutationEventSchema,
@@ -59,21 +57,10 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         const transaction = Effect.gen(function* () {
           const session = env('VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT') ? db.session() : undefined
 
-          const hasDbTransaction = execArgsArr.length > 1 && inTransaction === false
-          if (hasDbTransaction) {
-            yield* execSql(db, 'BEGIN TRANSACTION', {})
-          }
-
           for (const { statementSql, bindValues } of execArgsArr) {
             // console.debug(mutationName, statementSql, bindValues)
             // TODO use cached prepared statements instead of exec
-            yield* execSqlPrepared(db, statementSql, bindValues).pipe(
-              Effect.tapError(() => (hasDbTransaction ? execSql(db, 'ROLLBACK', {}) : Effect.void)),
-            )
-          }
-
-          if (hasDbTransaction) {
-            yield* execSql(db, 'COMMIT', {})
+            yield* execSqlPrepared(db, statementSql, bindValues)
           }
 
           if (session !== undefined) {
@@ -106,7 +93,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         // write to mutation_log
         const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
         if (persisted && excludeFromMutationLogAndSyncing === false) {
-          yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap, syncMetadataJson)
+          yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap)
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
         }
@@ -128,7 +115,6 @@ const insertIntoMutationLog = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
   dbLog: SynchronousDatabase,
   mutationDefSchemaHashMap: Map<string, number>,
-  syncMetadataJson: Option.Option<Schema.JsonValue>,
 ) =>
   Effect.gen(function* () {
     const mutationName = mutationEventEncoded.mutation
@@ -149,7 +135,7 @@ const insertIntoMutationLog = (
           mutation: mutationEventEncoded.mutation,
           argsJson: mutationEventEncoded.args ?? {},
           schemaHash: mutationDefSchemaHash,
-          syncMetadataJson,
+          syncMetadataJson: Option.none(),
         },
       }),
     )

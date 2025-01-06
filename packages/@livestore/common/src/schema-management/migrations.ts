@@ -151,7 +151,14 @@ export const migrateTable = ({
         { tableName, schemaHash, updatedAt },
       )
     }
-  }).pipe(Effect.withSpan('@livestore/common:migrateTable', { attributes: { tableName: tableAst.name } }))
+  }).pipe(
+    Effect.withSpan('@livestore/common:migrateTable', {
+      attributes: {
+        'span.label': tableAst.name,
+        tableName: tableAst.name,
+      },
+    }),
+  )
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
   const uniqueStr = index.unique ? 'UNIQUE' : ''

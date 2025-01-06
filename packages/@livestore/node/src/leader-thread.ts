@@ -63,6 +63,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
     Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
   PullStream: ({ cursor }) =>
     Effect.gen(function* () {
+      // TODO move this logic into common:leader-thread
       const workerCtx = yield* LeaderThreadCtx
       const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
 
