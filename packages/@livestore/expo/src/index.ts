@@ -181,8 +181,6 @@ export const makeAdapter =
                   mutation: mutationEventEncoded.mutation,
                   argsJson,
                   schemaHash: mutationDefSchemaHash,
-                  createdAt: new Date().toISOString(),
-                  syncStatus: 'localOnly',
                   syncMetadataJson: Option.none(),
                   parentIdGlobal: mutationEventEncoded.parentId.global,
                   parentIdLocal: mutationEventEncoded.parentId.local,

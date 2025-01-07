@@ -1,18 +1,11 @@
 import type { HttpClient, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, Layer, Queue, Schema, SubscriptionRef } from '@livestore/utils/effect'
+import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
 import { ROOT_ID, UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/index.js'
-import {
-  makeMutationEventSchema,
-  MUTATION_LOG_META_TABLE,
-  mutationLogMetaTable,
-  SYNC_STATUS_TABLE,
-  syncStatusTable,
-} from '../schema/index.js'
+import { makeMutationEventSchema, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/index.js'
 import { migrateTable } from '../schema-management/migrations.js'
-import { makeNextMutationEventIdPair } from '../sync/next-mutation-event-id-pair.js'
 import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync.js'
 import { sql } from '../util.js'
 import { execSql } from './connection.js'
@@ -45,42 +38,27 @@ export const makeLeaderThreadLayer = ({
   initialSyncOptions: InitialSyncOptions | undefined
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const mutationDefSchemaHashMap = new Map(
-      // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
-      // at build time and lookup the pre-computed hash at runtime.
-      // Also see https://github.com/Effect-TS/effect/issues/2719
-      [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
-    )
-
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
     // TODO do more validation here than just checking the count of tables
     // Either happens on initial boot or if schema changes
     const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
-    const currentMutationEventIdRef = {
-      current: dbMissing ? ROOT_ID : getInitialCurrentMutationEventIdFromDb(dbLog),
-    }
-    const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventIdRef)
-
     const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
 
-    const syncPushQueue = yield* makePushQueueLeader({ schema })
+    const syncPushQueue = yield* makePushQueueLeader({ schema, dbMissing, dbLog })
 
     const ctx = {
       schema,
-      mutationDefSchemaHashMap,
       bootStatusQueue,
       storeId,
       originId,
-      currentMutationEventIdRef,
       db,
       dbLog,
       devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
       initialSyncOptions: initialSyncOptions ?? { _tag: 'Skip' },
       makeSyncDb,
       mutationEventSchema: makeMutationEventSchema(schema),
-      nextMutationEventIdPair,
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       syncBackend,
       syncPushQueue,
@@ -144,7 +122,7 @@ const bootLeaderThread = ({
 
     // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
     // processing any incoming mutations
-    const waitForInitialSync = yield* syncPushQueue.initSyncing({ dbReady })
+    const waitForInitialSync = yield* syncPushQueue.boot({ dbReady })
 
     if (dbMissing) {
       yield* recreateDb
@@ -158,11 +136,3 @@ const bootLeaderThread = ({
 
     yield* Queue.offer(bootStatusQueue, { stage: 'done' })
   })
-
-const getInitialCurrentMutationEventIdFromDb = (dbLog: SynchronousDatabase) => {
-  const res = dbLog.select<{ idGlobal: number; idLocal: number }>(
-    sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
-  )[0]
-
-  return res ? { global: res.idGlobal, local: res.idLocal } : ROOT_ID
-}

@@ -16,7 +16,6 @@ import type {
   BootStatus,
   Devtools,
   EventId,
-  EventIdPair,
   InvalidPushError,
   MakeSynchronousDatabase,
   PersistenceInfo,
@@ -102,9 +101,6 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEventSchema<any>
-    mutationDefSchemaHashMap: Map<string, number>
-    currentMutationEventIdRef: { current: EventId }
-    nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncPushQueue: PushQueueLeader
@@ -136,7 +132,9 @@ export interface PushQueueLeader {
   push: (
     batch: PushQueueItemLeader[],
   ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
-  initSyncing: (args: {
+
+  pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
+  boot: (args: {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<
     Deferred.Deferred<void> | undefined,

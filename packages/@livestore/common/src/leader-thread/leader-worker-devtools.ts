@@ -138,8 +138,7 @@ const listenToDevtools = ({
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* LeaderThreadCtx
-    const { syncBackend, makeSyncDb, db, dbLog, schema, shutdownStateSubRef, nextMutationEventIdPair, syncPushQueue } =
-      innerWorkerCtx
+    const { syncBackend, makeSyncDb, db, dbLog, shutdownStateSubRef, syncPushQueue } = innerWorkerCtx
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
@@ -283,23 +282,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              const { mutationEventEncoded: mutationEventEncoded_ } = decodedEvent
-
-              const mutationDef =
-                schema.mutations.get(mutationEventEncoded_.mutation) ??
-                shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
-
-              const mutationEventEncoded = {
-                ...mutationEventEncoded_,
-                ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
-              }
-
-              yield* syncPushQueue.push([
-                {
-                  mutationEventEncoded,
-                  // syncStatus: mutationDef.options.localOnly ? 'localOnly' : 'pending'
-                },
-              ])
+              yield* syncPushQueue.pushPartial(decodedEvent.mutationEventEncoded)
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
 

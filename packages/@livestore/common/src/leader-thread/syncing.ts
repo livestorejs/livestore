@@ -2,7 +2,8 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Chunk, Deferred, Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
-import { ROOT_ID, type UnexpectedError } from '../adapter-types.js'
+import type { SynchronousDatabase, UnexpectedError } from '../adapter-types.js'
+import { ROOT_ID } from '../adapter-types.js'
 import * as Devtools from '../devtools/index.js'
 import {
   type LiveStoreSchema,
@@ -12,18 +13,24 @@ import {
   SYNC_STATUS_TABLE,
 } from '../schema/index.js'
 import { updateRows } from '../sql-queries/index.js'
-import { prepareBindValues, sql } from '../util.js'
+import { makeNextMutationEventIdPair } from '../sync/next-mutation-event-id-pair.js'
+import { sql } from '../util.js'
 import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
+import { getInitialCurrentMutationEventIdFromDb, getNewMutationEvents } from './mutationlog.js'
 import type { InitialSyncInfo, PushQueueItemLeader, PushQueueLeader } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 import { validateAndUpdateMutationEventId } from './validateAndUpdateMutationEventId.js'
 
 export const makePushQueueLeader = ({
   schema,
+  dbMissing,
+  dbLog,
 }: {
   schema: LiveStoreSchema
+  dbMissing: boolean
+  dbLog: SynchronousDatabase
 }): Effect.Effect<PushQueueLeader, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     // const localItems: PushQueueItemLeader[] = []
@@ -39,10 +46,23 @@ export const makePushQueueLeader = ({
 
     const syncHeadRef = { current: 0 }
 
+    const currentMutationEventIdRef = {
+      // In the case where the db is missing, querying it will fail, so we safely use ROOT_ID
+      current: dbMissing ? ROOT_ID : getInitialCurrentMutationEventIdFromDb(dbLog),
+    }
+    const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventIdRef)
+
+    // In case of leader thread:
+    // For mutation event coming from client session, we want to ...
+    // - reject if it's behind, and wait for it to pull + rebase itself
+    // - broadcast to other connected client sessions
+    // - write to mutation log + apply to read model
+    // - push to sync backend
     const push = (batch: PushQueueItemLeader[]) =>
       Effect.gen(function* () {
         // localItems.push(...items)
-        const { currentMutationEventIdRef } = yield* LeaderThreadCtx
+
+        // TODO handle rebase
 
         // TODO reject mutation events that are behind current mutation event id
         for (const { mutationEventEncoded } of batch) {
@@ -53,7 +73,6 @@ export const makePushQueueLeader = ({
           })
         }
 
-        // TODO handle rebase
         yield* syncQueue.offerAll(
           batch
             .filter((item) => {
@@ -63,17 +82,26 @@ export const makePushQueueLeader = ({
             .map((item) => item.mutationEventEncoded),
         )
 
-        // In case of leader thread:
-        // For mutation event coming from client session, we want to ...
-        // - reject if it's behind, and wait for it to pull + rebase itself
-        // - broadcast to other connected client sessions
-        // - write to mutation log + apply to read model
-        // - push to sync backend
-
         yield* executeQueue.offerAll(batch)
+      }).pipe(
+        Effect.withSpan('@livestore/common:leader-thread:syncing:push', { attributes: { batchSize: batch.length } }),
+      )
+
+    const pushPartial: PushQueueLeader['pushPartial'] = (mutationEventEncoded_) =>
+      Effect.gen(function* () {
+        const mutationDef =
+          schema.mutations.get(mutationEventEncoded_.mutation) ??
+          shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
+
+        const mutationEventEncoded = {
+          ...mutationEventEncoded_,
+          ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
+        }
+
+        yield* push([{ mutationEventEncoded }])
       })
 
-    const initSyncing: PushQueueLeader['initSyncing'] = ({ dbReady }) =>
+    const boot: PushQueueLeader['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
         const { dbLog } = yield* LeaderThreadCtx
 
@@ -84,24 +112,9 @@ export const makePushQueueLeader = ({
           syncHeadRef.current = initialSyncHead
 
           // rehydrate pushQueue from dbLog
-          {
-            const query = mutationLogMetaTable.query.where('idGlobal', '>', initialSyncHead).asSql()
-            const pendingMutationEventsRaw = dbLog.select(query.query, prepareBindValues(query.bindValues, query.query))
-            const pendingMutationEvents = Schema.decodeUnknownSync(mutationLogMetaTable.schema.pipe(Schema.Array))(
-              pendingMutationEventsRaw,
-            )
+          const pendingMutationEvents = yield* getNewMutationEvents({ global: initialSyncHead, local: 0 })
 
-            yield* push(
-              pendingMutationEvents.map((_) => ({
-                mutationEventEncoded: {
-                  mutation: _.mutation,
-                  args: _.argsJson,
-                  id: { global: _.idGlobal, local: _.idLocal },
-                  parentId: { global: _.parentIdGlobal, local: _.parentIdLocal },
-                },
-              })),
-            )
-          }
+          yield* push(pendingMutationEvents.map((mutationEventEncoded) => ({ mutationEventEncoded })))
         }
 
         yield* executeMutationsLoop(executeQueue)
@@ -111,7 +124,7 @@ export const makePushQueueLeader = ({
         return yield* backgroundPulling({ dbReady, syncHeadRef, executeQueue })
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
-    return { push, initSyncing } satisfies PushQueueLeader
+    return { push, pushPartial, boot } satisfies PushQueueLeader
   })
 
 const getCursorInfo = (syncHead: number) =>

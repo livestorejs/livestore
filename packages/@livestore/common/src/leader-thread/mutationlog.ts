@@ -1,9 +1,9 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
-import type { EventId } from '../adapter-types.js'
-import { compareEventIds } from '../adapter-types.js'
-import { mutationLogMetaTable } from '../schema/system-tables.js'
-import { prepareBindValues } from '../util.js'
+import type { EventId, SynchronousDatabase } from '../adapter-types.js'
+import { compareEventIds, ROOT_ID } from '../adapter-types.js'
+import { MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '../schema/system-tables.js'
+import { prepareBindValues, sql } from '../util.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const getNewMutationEvents = (since: EventId) =>
@@ -25,3 +25,11 @@ export const getNewMutationEvents = (since: EventId) =>
       }))
       .filter((_) => compareEventIds(_.id, since) > 0)
   })
+
+export const getInitialCurrentMutationEventIdFromDb = (dbLog: SynchronousDatabase) => {
+  const res = dbLog.select<{ idGlobal: number; idLocal: number }>(
+    sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
+  )[0]
+
+  return res ? { global: res.idGlobal, local: res.idLocal } : ROOT_ID
+}
