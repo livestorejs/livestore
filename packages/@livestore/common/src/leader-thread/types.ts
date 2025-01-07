@@ -17,6 +17,7 @@ import type {
   Devtools,
   EventId,
   EventIdPair,
+  InvalidPushError,
   MakeSynchronousDatabase,
   PersistenceInfo,
   SyncBackend,
@@ -24,6 +25,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
+import type { PullQueueSet } from './pull-queue-set.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -94,7 +96,6 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     storeId: string
     originId: string
     makeSyncDb: MakeSynchronousDatabase
-    mutationSemaphore: Effect.Semaphore
     db: LeaderDatabase
     dbLog: LeaderDatabase
     bootStatusQueue: Queue.Queue<BootStatus>
@@ -104,24 +105,15 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     mutationDefSchemaHashMap: Map<string, number>
     currentMutationEventIdRef: { current: EventId }
     nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
-    // broadcastChannel: WebChannel.WebChannel<BCMessage.Message, BCMessage.Message>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
-    // syncPushQueue: Queue.Queue<MutationEvent.AnyEncoded>
-    // syncPushQueueSemaphore: Effect.Semaphore
     syncPushQueue: PushQueueLeader
     initialSyncOptions: InitialSyncOptions
-    connectedClientSessionPullQueues: Set<Queue.Queue<PullQueueItem>>
+    connectedClientSessionPullQueues: PullQueueSet
   }
 >() {}
 
 export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>; remaining: number }
-
-// export type SyncPushQueue = {
-//   queue: Queue.Queue<MutationEvent.AnyEncoded>
-//   semaphore: Effect.Semaphore
-//   isOpen: Effect.Latch
-// }
 
 /**
  * The push queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
@@ -140,7 +132,10 @@ export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEnc
  * - Events 4-6: Events in push queue (not yet pushed/confirmed)
  */
 export interface PushQueueLeader {
-  push: (items: PushQueueItemLeader[]) => Effect.Effect<void, UnexpectedError, HttpClient.HttpClient>
+  /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
+  push: (
+    batch: PushQueueItemLeader[],
+  ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
   initSyncing: (args: {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<
@@ -152,6 +147,5 @@ export interface PushQueueLeader {
 
 export interface PushQueueItemLeader {
   mutationEventEncoded: MutationEvent.AnyEncoded
-  // syncStatus: 'confirmed' | 'pending' | 'localOnly'
   deferred?: Deferred.Deferred<void>
 }

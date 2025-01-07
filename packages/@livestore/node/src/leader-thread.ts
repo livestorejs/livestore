@@ -11,7 +11,7 @@ if (process.execArgv.includes('--inspect')) {
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus } from '@livestore/common'
 import { Devtools, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
-import type { DevtoolsContext, PullQueueItem } from '@livestore/common/leader-thread'
+import type { DevtoolsContext } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   LeaderThreadCtx,
@@ -31,7 +31,6 @@ import {
   Layer,
   Logger,
   LogLevel,
-  Queue,
   Schema,
   Stream,
   WorkerRunner,
@@ -63,15 +62,8 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
     Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
   PullStream: ({ cursor }) =>
     Effect.gen(function* () {
-      // TODO move this logic into common:leader-thread
-      const workerCtx = yield* LeaderThreadCtx
-      const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
-
-      // TODO emit new events since cursor
-      workerCtx.connectedClientSessionPullQueues.add(pullQueue)
-
-      yield* Effect.addFinalizer(() => Effect.sync(() => workerCtx.connectedClientSessionPullQueues.delete(pullQueue)))
-
+      const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
+      const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
       return Stream.fromQueue(pullQueue)
     }).pipe(Stream.unwrapScoped),
   Export: () =>

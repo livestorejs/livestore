@@ -14,7 +14,6 @@ import type { LiveStoreSchema, MutationEvent } from '../schema/index.js'
 import { insertRow } from '../sql-queries/index.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import { LeaderThreadCtx } from './types.js'
-import { validateAndUpdateMutationEventId } from './validateAndUpdateMutationEventId.js'
 
 export type ApplyMutation = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
@@ -30,15 +29,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
     return (mutationEventEncoded, { persisted }) =>
       Effect.gen(function* () {
-        const {
-          mutationEventSchema,
-          mutationDefSchemaHashMap,
-          schema,
-          db,
-          dbLog,
-          mutationSemaphore,
-          currentMutationEventIdRef,
-        } = leaderThreadCtx
+        const { mutationEventSchema, mutationDefSchemaHashMap, schema, db, dbLog } = leaderThreadCtx
         const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
         const mutationName = mutationEventDecoded.mutation
@@ -46,53 +37,43 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-        yield* validateAndUpdateMutationEventId({
-          currentMutationEventIdRef,
-          mutationEventId: mutationEventDecoded.id,
-          debugContext: { label: `leader-worker:applyMutation`, mutationEventEncoded },
-        })
+        // console.group('[@livestore/common:leader-thread:applyMutation]', { mutationName })
 
-        // console.group('livestore-webworker: executing mutation', { mutationName })
+        const session = env('VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT') ? db.session() : undefined
 
-        const transaction = Effect.gen(function* () {
-          const session = env('VITE_LIVESTORE_EXPERIMENTAL_SYNC_NEXT') ? db.session() : undefined
+        for (const { statementSql, bindValues } of execArgsArr) {
+          // console.debug(mutationName, statementSql, bindValues)
+          // TODO use cached prepared statements instead of exec
+          yield* execSqlPrepared(db, statementSql, bindValues)
+        }
 
-          for (const { statementSql, bindValues } of execArgsArr) {
-            // console.debug(mutationName, statementSql, bindValues)
-            // TODO use cached prepared statements instead of exec
-            yield* execSqlPrepared(db, statementSql, bindValues)
+        if (session !== undefined) {
+          const changeset = session.changeset()
+          session.finish()
+          // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
+          // TODO possibly write a null value instead of omitting the row
+          if (changeset.length > 0) {
+            // TODO use prepared statements
+            yield* execSql(
+              db,
+              ...insertRow({
+                tableName: SESSION_CHANGESET_META_TABLE,
+                columns: sessionChangesetMetaTable.sqliteDef.columns,
+                values: {
+                  idGlobal: mutationEventEncoded.id.global,
+                  idLocal: mutationEventEncoded.id.local,
+                  changeset,
+                },
+              }),
+            )
           }
-
-          if (session !== undefined) {
-            const changeset = session.changeset()
-            session.finish()
-            // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
-            // TODO possibly write a null value instead of omitting the row
-            if (changeset.length > 0) {
-              // TODO use prepared statements
-              yield* execSql(
-                db,
-                ...insertRow({
-                  tableName: SESSION_CHANGESET_META_TABLE,
-                  columns: sessionChangesetMetaTable.sqliteDef.columns,
-                  values: {
-                    idGlobal: mutationEventEncoded.id.global,
-                    idLocal: mutationEventEncoded.id.local,
-                    changeset,
-                  },
-                }),
-              )
-            }
-          }
-        })
-
-        yield* mutationSemaphore.withPermits(1)(transaction)
+        }
 
         // console.groupEnd()
 
         // write to mutation_log
-        const excludeFromMutationLogAndSyncing = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
-        if (persisted && excludeFromMutationLogAndSyncing === false) {
+        const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
+        if (persisted && excludeFromMutationLog === false) {
           yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap)
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)

@@ -1,9 +1,8 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
 import { ROOT_ID, sql, UnexpectedError } from '@livestore/common'
-import type { InitialSyncOptions, PullQueueItem } from '@livestore/common/leader-thread'
+import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
-  getNewMutationEvents,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
   OuterWorkerCtx,
@@ -23,7 +22,6 @@ import {
   Layer,
   Logger,
   LogLevel,
-  Queue,
   Scheduler,
   Stream,
   WorkerRunner,
@@ -137,19 +135,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
     //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        const pullQueue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
-
-        // emit new items which came in during boot and now
-        const missingItems = yield* getNewMutationEvents(cursor)
-        yield* pullQueue.offer({ mutationEvents: missingItems, remaining: 0 })
-
-        workerCtx.connectedClientSessionPullQueues.add(pullQueue)
-
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => workerCtx.connectedClientSessionPullQueues.delete(pullQueue)),
-        )
-
+        const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
+        const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
         return Stream.fromQueue(pullQueue)
       }).pipe(Stream.unwrapScoped),
     Export: () =>

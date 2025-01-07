@@ -17,9 +17,10 @@ import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync
 import { sql } from '../util.js'
 import { execSql } from './connection.js'
 import { makeDevtoolsContext } from './leader-worker-devtools.js'
+import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
 import { makePushQueueLeader } from './syncing.js'
-import type { InitialSyncOptions, PullQueueItem, ShutdownState } from './types.js'
+import type { InitialSyncOptions, ShutdownState } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const makeLeaderThreadLayer = ({
@@ -70,7 +71,6 @@ export const makeLeaderThreadLayer = ({
       schema,
       mutationDefSchemaHashMap,
       bootStatusQueue,
-      mutationSemaphore: yield* Effect.makeSemaphore(1),
       storeId,
       originId,
       currentMutationEventIdRef,
@@ -84,7 +84,7 @@ export const makeLeaderThreadLayer = ({
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       syncBackend,
       syncPushQueue,
-      connectedClientSessionPullQueues: new Set<Queue.Queue<PullQueueItem>>(),
+      connectedClientSessionPullQueues: yield* makePullQueueSet,
     } satisfies typeof LeaderThreadCtx.Service
 
     // @ts-expect-error For debugging purposes

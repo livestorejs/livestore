@@ -18,6 +18,7 @@ import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
 import type { InitialSyncInfo, PushQueueItemLeader, PushQueueLeader } from './types.js'
 import { LeaderThreadCtx } from './types.js'
+import { validateAndUpdateMutationEventId } from './validateAndUpdateMutationEventId.js'
 
 export const makePushQueueLeader = ({
   schema,
@@ -38,13 +39,23 @@ export const makePushQueueLeader = ({
 
     const syncHeadRef = { current: 0 }
 
-    const push = (items: PushQueueItemLeader[]) =>
+    const push = (batch: PushQueueItemLeader[]) =>
       Effect.gen(function* () {
         // localItems.push(...items)
+        const { currentMutationEventIdRef } = yield* LeaderThreadCtx
+
+        // TODO reject mutation events that are behind current mutation event id
+        for (const { mutationEventEncoded } of batch) {
+          yield* validateAndUpdateMutationEventId({
+            currentMutationEventIdRef,
+            mutationEventId: mutationEventEncoded.id,
+            debugContext: { label: `leader-worker:applyMutation`, mutationEventEncoded },
+          })
+        }
 
         // TODO handle rebase
         yield* syncQueue.offerAll(
-          items
+          batch
             .filter((item) => {
               const mutationDef = schema.mutations.get(item.mutationEventEncoded.mutation)!
               return mutationDef.options.localOnly === false
@@ -59,15 +70,7 @@ export const makePushQueueLeader = ({
         // - write to mutation log + apply to read model
         // - push to sync backend
 
-        yield* executeQueue.offerAll(
-          items.map((item) => ({
-            mutationEventEncoded: item.mutationEventEncoded,
-            syncStatus: 'pending',
-            deferred: item.deferred,
-          })),
-        )
-
-        // TODO handle rebase
+        yield* executeQueue.offerAll(batch)
       })
 
     const initSyncing: PushQueueLeader['initSyncing'] = ({ dbReady }) =>
@@ -77,8 +80,6 @@ export const makePushQueueLeader = ({
         {
           const initialSyncHead =
             dbLog.select<{ head: number }>(sql`select head from ${SYNC_STATUS_TABLE}`)[0]?.head ?? ROOT_ID.global
-          console.log('sync status', dbLog.select(sql`select * from ${SYNC_STATUS_TABLE}`))
-          console.log('initialSyncHead', initialSyncHead)
 
           syncHeadRef.current = initialSyncHead
 
@@ -116,8 +117,6 @@ export const makePushQueueLeader = ({
 const getCursorInfo = (syncHead: number) =>
   Effect.gen(function* () {
     const { dbLog } = yield* LeaderThreadCtx
-
-    console.log('syncHead', syncHead)
 
     if (syncHead === ROOT_ID.global) return Option.none()
 
@@ -255,7 +254,6 @@ const backgroundPulling = ({
           yield* execSql(dbLog, sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head}`, {}).pipe(Effect.orDie)
 
           syncHeadRef.current = head
-          console.log('syncHeadRef', syncHeadRef.current)
         }
       })
 
