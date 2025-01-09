@@ -17,7 +17,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
     }>,
   ) => Stream.Stream<
     {
-      items: ReadonlyArray<{
+      batch: ReadonlyArray<{
         mutationEventEncoded: MutationEvent.AnyEncoded
         metadata: Option.Option<TSyncMetadata>
         persisted: boolean

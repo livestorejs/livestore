@@ -48,6 +48,7 @@ export const makeViteServer = async (options: Options): Promise<Vite.ViteDevServ
   return viteServer
 }
 
+// TODO unify this with `@livestore/devtools-vite/plugin.ts`
 const virtualHtmlPlugin = (mode: Options['mode']): Vite.Plugin => ({
   name: 'virtual-html',
   configureServer: (server) => {
@@ -71,7 +72,13 @@ import { mountDevtools } from '@livestore/devtools-react'
 import sharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { schema } from '@schema'
 
-mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker, mode: ${JSON.stringify(mode)}})
+mountDevtools({
+  schema,
+  rootEl: document.getElementById('root'),
+  sharedWorker,
+  mode: ${JSON.stringify(mode)},
+  license: ${JSON.stringify(process.env.LSD_LICENSE)},
+})
 </script>
 </body>
 </html>

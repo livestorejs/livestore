@@ -181,7 +181,7 @@ const makeLeaderThread = ({
 
     const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false }
 
-    const leaderThreadLayer = makeLeaderThreadLayer({
+    const leaderThreadLayer = yield* makeLeaderThreadLayer({
       schema,
       storeId,
       originId,
@@ -191,7 +191,7 @@ const makeLeaderThread = ({
       dbLog,
       devtoolsEnabled,
       initialSyncOptions,
-    })
+    }).pipe(Layer.memoize)
 
     if (devtools.enabled === true) {
       yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(

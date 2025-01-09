@@ -2,6 +2,7 @@
 
 import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { pick } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Deferred,
@@ -57,9 +58,9 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
             Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
             Stream.map((msg) =>
               msg._tag === 'WSMessage.PushBroadcast'
-                ? { items: [msg], remaining: 0 }
+                ? { batch: [pick(msg, ['mutationEventEncoded', 'metadata', 'persisted'])], remaining: 0 }
                 : {
-                    items: msg.events.map(({ mutationEventEncoded, metadata }) => ({
+                    batch: msg.events.map(({ mutationEventEncoded, metadata }) => ({
                       mutationEventEncoded,
                       metadata,
                       persisted: true,
@@ -94,7 +95,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
 
           yield* send(WSMessage.PushReq.make({ batch, requestId, persisted }))
 
-          yield* Deferred.await(ready)
+          yield* ready
 
           const createdAt = new Date().toISOString()
 
@@ -124,7 +125,11 @@ const connect = (wsUrl: string) =>
         yield* Effect.spanEvent(
           `Sending message: ${message._tag}`,
           message._tag === 'WSMessage.PushReq'
-            ? { id: message.batch[0]!.id.global, parentId: message.batch[0]!.parentId.global }
+            ? {
+                id: message.batch[0]!.id.global,
+                parentId: message.batch[0]!.parentId.global,
+                batchLength: message.batch.length,
+              }
             : message._tag === 'WSMessage.PullReq'
               ? { cursor: message.cursor ?? '-' }
               : {},
@@ -213,7 +218,7 @@ const connect = (wsUrl: string) =>
         Effect.forkScoped,
       )
 
-      yield* Deferred.await(connectionClosed)
+      yield* connectionClosed
     }).pipe(Effect.scoped, Effect.withSpan('@livestore/sync-cf:connect'))
 
     yield* innerConnect.pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)

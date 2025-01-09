@@ -3,7 +3,7 @@ import type { EventId } from '@livestore/common'
 import { Effect } from '@livestore/utils/effect'
 
 // TODO replace this with a proper rebase sync strategy
-export const validateAndUpdateMutationEventId = ({
+export const validateAndUpdateLocalHead = ({
   currentMutationEventIdRef,
   mutationEventId,
   debugContext,
@@ -23,7 +23,7 @@ export const validateAndUpdateMutationEventId = ({
       // if (isDevEnv()) {
       //   debugger
       // }
-      console.warn(
+      yield* Effect.logWarning(
         `LiveStore doesn't support concurrent writes yet. Mutation event id is behind current mutation event id`,
         { mutationEventId, currentMutationEventId: currentMutationEventIdRef.current, debugContext },
       )

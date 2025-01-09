@@ -111,22 +111,6 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 
 export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>; remaining: number }
 
-/**
- * The push queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
- *
- * Mutation Log visualization:
- *
- * ```
- *                    Remote Head         Local Head
- *                         ▼                   ▼
- *   [-1]->[0]->[1]->[2]->[3]->[4]->[5]->[6]->[7]
- *  (Root)                      └─ Push Queue ─┘
- *                              (unpushed events)
- * ```
- *
- * - Events Root-3: Already pushed/confirmed events (Remote Head at 3)
- * - Events 4-6: Events in push queue (not yet pushed/confirmed)
- */
 export interface PushQueueLeader {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
@@ -145,5 +129,6 @@ export interface PushQueueLeader {
 
 export interface PushQueueItemLeader {
   mutationEventEncoded: MutationEvent.AnyEncoded
+  /** Used in scenarios where the pusher wants to know when the mutation has been applied to the read model */
   deferred?: Deferred.Deferred<void>
 }

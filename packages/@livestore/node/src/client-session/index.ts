@@ -11,7 +11,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
-import { validateAndUpdateMutationEventId } from '@livestore/common/leader-thread'
+import { validateAndUpdateLocalHead } from '@livestore/common/leader-thread'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -179,7 +179,7 @@ export const makeNodeAdapter = ({
 
       const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
-      const currentMutationEventIdRef = {
+      const localHeadRef = {
         current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
       }
 
@@ -200,8 +200,8 @@ export const makeNodeAdapter = ({
         // TODO handle rebase case in client session
         Stream.tap(({ mutationEvents }) =>
           Effect.forEach(mutationEvents, (mutationEventEncoded) =>
-            validateAndUpdateMutationEventId({
-              currentMutationEventIdRef,
+            validateAndUpdateLocalHead({
+              localHeadRef,
               mutationEventId: mutationEventEncoded.id,
               debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
             }),
@@ -229,12 +229,12 @@ export const makeNodeAdapter = ({
                 attributes: { mutation: mutationEventEncoded.mutation },
               }),
             ),
-          nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
+          nextMutationEventIdPair: makeNextMutationEventIdPair(localHeadRef),
           getCurrentMutationEventId: Effect.gen(function* () {
             // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
             // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
             // return { global, local }
-            return currentMutationEventIdRef.current
+            return localHeadRef.current
           }),
         },
         export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(

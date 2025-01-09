@@ -22,6 +22,14 @@ Vitest.describe('node-sync', { timeout: 10_000 }, () => {
         { concurrency: 'unbounded' },
       )
 
+      // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
+      yield* Effect.addFinalizer(() =>
+        Effect.gen(function* () {
+          yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
+          yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())
+        }).pipe(Effect.orDie),
+      )
+
       yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
 
       // const result = yield* workerA.execute(WorkerSchema.StreamTodos.make()).pipe(Stream.runHead, Effect.flatten)

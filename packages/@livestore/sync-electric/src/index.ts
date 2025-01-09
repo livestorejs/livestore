@@ -182,7 +182,7 @@ export const makeSyncBackend = ({
           (metadataOption) => pull(metadataOption),
         ).pipe(
           Stream.chunks,
-          Stream.map((chunk) => ({ items: [...chunk], remaining: 0 })),
+          Stream.map((chunk) => ({ batch: [...chunk], remaining: 0 })),
         ),
 
       push: (batch, persisted) =>

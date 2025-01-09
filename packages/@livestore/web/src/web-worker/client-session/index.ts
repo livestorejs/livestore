@@ -29,7 +29,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import { validateAndUpdateMutationEventId } from '../common/validateAndUpdateMutationEventId.js'
+import { validateAndUpdateLocalHead } from '../common/validateAndUpdateLocalHead.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './coordinator-devtools.js'
 
@@ -363,7 +363,7 @@ export const makeAdapter =
         // TODO handle rebase case
         Stream.tap(({ mutationEvents }) =>
           Effect.forEach(mutationEvents, (mutationEventEncoded) =>
-            validateAndUpdateMutationEventId({
+            validateAndUpdateLocalHead({
               currentMutationEventIdRef,
               mutationEventId: mutationEventEncoded.id,
               debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },

@@ -1,6 +1,6 @@
 import '@livestore/utils/node-vitest-polyfill'
 
-import type { MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
+import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
 import { makeNextMutationEventIdPair, ROOT_ID, validatePushPayload } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
@@ -107,7 +107,9 @@ class TestContext extends Context.Tag('TestContext')<
     syncPullQueue: Queue.Queue<MutationEvent.AnyEncoded>
     syncIsConnectedRef: SubscriptionRef.SubscriptionRef<boolean>
     encodeMutationEvent: (partialEvent: MutationEvent.Any) => MutationEvent.AnyEncoded
-    mutate: (...partialEvents: MutationEvent.PartialAny[]) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+    mutate: (
+      ...partialEvents: MutationEvent.PartialAny[]
+    ) => Effect.Effect<void, UnexpectedError | InvalidPushError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
 
@@ -136,7 +138,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
         Stream.fromQueue(syncPullQueue).pipe(
           Stream.chunks,
           Stream.map((chunk) => ({
-            items: [...chunk].map((mutationEventEncoded) => ({
+            batch: [...chunk].map((mutationEventEncoded) => ({
               mutationEventEncoded,
               metadata: Option.none(),
               persisted: true,

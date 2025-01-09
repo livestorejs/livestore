@@ -294,7 +294,7 @@ const listenToDevtools = ({
               if (syncBackend !== undefined) {
                 // TODO consider piggybacking on the existing leader-thread sync-pulling
                 yield* syncBackend.pull(Option.none()).pipe(
-                  Stream.map((_) => _.items),
+                  Stream.map((_) => _.batch),
                   Stream.flattenIterables,
                   Stream.tap(({ mutationEventEncoded, metadata }) =>
                     sendMessage(Devtools.SyncHistoryRes.make({ mutationEventEncoded, metadata, ...reqPayload })),

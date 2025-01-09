@@ -2,7 +2,7 @@ import type { Scope } from '@livestore/utils/effect'
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { EventId, UnexpectedError } from '../adapter-types.js'
-import { getNewMutationEvents } from './mutationlog.js'
+import { getMutationEventsSince } from './mutationlog.js'
 import type { LeaderThreadCtx, PullQueueItem } from './types.js'
 
 export interface PullQueueSet extends Iterable<Queue.Queue<PullQueueItem>> {
@@ -30,7 +30,7 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
-      const mutationEvents = yield* getNewMutationEvents(since)
+      const mutationEvents = yield* getMutationEventsSince(since)
 
       yield* queue.offer({ mutationEvents, remaining: 0 })
 

@@ -2,11 +2,11 @@ import { Effect, Schema } from '@livestore/utils/effect'
 
 import type { EventId, SynchronousDatabase } from '../adapter-types.js'
 import { compareEventIds, ROOT_ID } from '../adapter-types.js'
-import { MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '../schema/system-tables.js'
+import { MUTATION_LOG_META_TABLE, mutationLogMetaTable, SYNC_STATUS_TABLE } from '../schema/system-tables.js'
 import { prepareBindValues, sql } from '../util.js'
 import { LeaderThreadCtx } from './types.js'
 
-export const getNewMutationEvents = (since: EventId) =>
+export const getMutationEventsSince = (since: EventId) =>
   Effect.gen(function* () {
     const { dbLog } = yield* LeaderThreadCtx
 
@@ -33,3 +33,6 @@ export const getInitialCurrentMutationEventIdFromDb = (dbLog: SynchronousDatabas
 
   return res ? { global: res.idGlobal, local: res.idLocal } : ROOT_ID
 }
+
+export const getInitialRemoteHeadFromDb = (dbLog: SynchronousDatabase) =>
+  dbLog.select<{ head: number }>(sql`select head from ${SYNC_STATUS_TABLE}`)[0]?.head ?? ROOT_ID.global
