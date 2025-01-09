@@ -1,15 +1,7 @@
-import type { Scope } from '@livestore/utils/effect'
 import { Effect, Queue } from '@livestore/utils/effect'
 
-import type { EventId, UnexpectedError } from '../adapter-types.js'
 import { getMutationEventsSince } from './mutationlog.js'
-import type { LeaderThreadCtx, PullQueueItem } from './types.js'
-
-export interface PullQueueSet extends Iterable<Queue.Queue<PullQueueItem>> {
-  makeQueue: (
-    since: EventId,
-  ) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope | LeaderThreadCtx>
-}
+import type { PullQueueItem, PullQueueSet } from './types.js'
 
 export const makePullQueueSet = Effect.gen(function* () {
   const set = new Set<Queue.Queue<PullQueueItem>>()

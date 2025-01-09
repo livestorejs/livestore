@@ -151,7 +151,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       ),
     ExecuteBulk: ({ items }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncPushQueue.push(
+        _.syncQueue.push(
           items
             // TODO handle txn
             .filter((_) => _._tag === 'mutate')

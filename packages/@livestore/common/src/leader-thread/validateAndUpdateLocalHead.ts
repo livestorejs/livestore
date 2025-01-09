@@ -25,7 +25,7 @@ export const validateAndUpdateLocalHead = ({
       // }
       yield* Effect.logWarning(
         `LiveStore doesn't support concurrent writes yet. Mutation event id is behind current mutation event id`,
-        { mutationEventId, currentMutationEventId: localHeadRef.current, debugContext },
+        { mutationEventId, localHead: localHeadRef.current, debugContext },
       )
       // yield* UnexpectedError.make({
       //   cause: `LiveStore doesn't support concurrent writes yet. Mutation event id is behind current mutation event id`,

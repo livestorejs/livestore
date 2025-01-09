@@ -24,7 +24,6 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
-import type { PullQueueSet } from './pull-queue-set.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -103,7 +102,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     mutationEventSchema: MutationEventSchema<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
-    syncPushQueue: PushQueueLeader
+    syncQueue: SyncQueue
     initialSyncOptions: InitialSyncOptions
     connectedClientSessionPullQueues: PullQueueSet
   }
@@ -111,10 +110,10 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 
 export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>; remaining: number }
 
-export interface PushQueueLeader {
+export interface SyncQueue {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
-    batch: PushQueueItemLeader[],
+    batch: SyncQueueItem[],
   ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
 
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
@@ -127,8 +126,14 @@ export interface PushQueueLeader {
   >
 }
 
-export interface PushQueueItemLeader {
+export interface SyncQueueItem {
   mutationEventEncoded: MutationEvent.AnyEncoded
   /** Used in scenarios where the pusher wants to know when the mutation has been applied to the read model */
   deferred?: Deferred.Deferred<void>
+}
+
+export interface PullQueueSet extends Iterable<Queue.Queue<PullQueueItem>> {
+  makeQueue: (
+    since: EventId,
+  ) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope | LeaderThreadCtx>
 }

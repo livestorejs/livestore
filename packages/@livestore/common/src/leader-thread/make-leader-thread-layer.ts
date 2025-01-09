@@ -12,7 +12,7 @@ import { execSql } from './connection.js'
 import { makeDevtoolsContext } from './leader-worker-devtools.js'
 import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
-import { makePushQueueLeader } from './syncing.js'
+import { makeSyncQueue } from './sync-queue.js'
 import type { InitialSyncOptions, ShutdownState } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -46,7 +46,7 @@ export const makeLeaderThreadLayer = ({
 
     const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
 
-    const syncPushQueue = yield* makePushQueueLeader({ schema, dbMissing, dbLog })
+    const syncQueue = yield* makeSyncQueue({ schema, dbMissing, dbLog })
 
     const ctx = {
       schema,
@@ -61,7 +61,7 @@ export const makeLeaderThreadLayer = ({
       mutationEventSchema: makeMutationEventSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       syncBackend,
-      syncPushQueue,
+      syncQueue,
       connectedClientSessionPullQueues: yield* makePullQueueSet,
     } satisfies typeof LeaderThreadCtx.Service
 
@@ -93,7 +93,7 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbLog, bootStatusQueue, syncPushQueue } = yield* LeaderThreadCtx
+    const { dbLog, bootStatusQueue, syncQueue } = yield* LeaderThreadCtx
 
     yield* migrateTable({
       db: dbLog,
@@ -122,7 +122,7 @@ const bootLeaderThread = ({
 
     // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
     // processing any incoming mutations
-    const waitForInitialSync = yield* syncPushQueue.boot({ dbReady })
+    const waitForInitialSync = yield* syncQueue.boot({ dbReady })
 
     if (dbMissing) {
       yield* recreateDb

@@ -138,7 +138,7 @@ const listenToDevtools = ({
 }) =>
   Effect.gen(function* () {
     const innerWorkerCtx = yield* LeaderThreadCtx
-    const { syncBackend, makeSyncDb, db, dbLog, shutdownStateSubRef, syncPushQueue } = innerWorkerCtx
+    const { syncBackend, makeSyncDb, db, dbLog, shutdownStateSubRef, syncQueue } = innerWorkerCtx
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
@@ -282,7 +282,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.RunMutationReq': {
-              yield* syncPushQueue.pushPartial(decodedEvent.mutationEventEncoded)
+              yield* syncQueue.pushPartial(decodedEvent.mutationEventEncoded)
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
 

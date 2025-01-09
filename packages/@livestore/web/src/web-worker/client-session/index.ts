@@ -4,6 +4,7 @@ import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, Unexpe
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
+import { validateAndUpdateLocalHead } from '@livestore/common/leader-thread'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -29,7 +30,6 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
-import { validateAndUpdateLocalHead } from '../common/validateAndUpdateLocalHead.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './coordinator-devtools.js'
 
@@ -313,7 +313,7 @@ export const makeAdapter =
       // We should figure out a way to also restore the initial mutation event id from the snapshot
       const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
-      const currentMutationEventIdRef = {
+      const localHeadRef = {
         current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
       }
 
@@ -357,14 +357,14 @@ export const makeAdapter =
       const mutationEventSchema = makeMutationEventSchema(schema)
 
       const pullMutations = runInWorkerStream(
-        // TODO use last know upstream head as cursor instead of currentMutationEventIdRef.current
-        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: currentMutationEventIdRef.current }),
+        // TODO use last know upstream head as cursor instead of localHeadRef.current
+        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: localHeadRef.current }),
       ).pipe(
         // TODO handle rebase case
         Stream.tap(({ mutationEvents }) =>
           Effect.forEach(mutationEvents, (mutationEventEncoded) =>
             validateAndUpdateLocalHead({
-              currentMutationEventIdRef,
+              localHeadRef,
               mutationEventId: mutationEventEncoded.id,
               debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
             }),
@@ -419,7 +419,7 @@ export const makeAdapter =
             ),
 
           // TODO synchronize event ids across threads
-          nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
+          nextMutationEventIdPair: makeNextMutationEventIdPair(localHeadRef),
 
           // TODO this needs to be specific to the current context
           // getCurrentMutationEventId: runInWorker(new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId()).pipe(
@@ -432,7 +432,7 @@ export const makeAdapter =
             // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
             // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
             // return { global, local }
-            return currentMutationEventIdRef.current
+            return localHeadRef.current
           }),
         },
 

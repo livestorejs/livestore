@@ -23,7 +23,7 @@ import {
   getInitialRemoteHeadFromDb,
   getMutationEventsSince,
 } from './mutationlog.js'
-import type { InitialSyncInfo, PushQueueItemLeader, PushQueueLeader } from './types.js'
+import type { InitialSyncInfo, SyncQueue, SyncQueueItem } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 import { validateAndUpdateLocalHead } from './validateAndUpdateLocalHead.js'
 
@@ -31,7 +31,7 @@ const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined
 // const whenTraceVerbose = <T>(object: T) => TRACE_VERBOSE ? object : undefined
 
 /**
- * The push queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
+ * The sync queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
  *
  * Mutation Log visualization:
  *
@@ -39,14 +39,14 @@ const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined
  *                    Remote Head         Local Head
  *                         ▼                   ▼
  *   [-1]->[0]->[1]->[2]->[3]->[4]->[5]->[6]->[7]
- *  (Root)                      └─ Push Queue ─┘
+ *  (Root)                      └─ Sync Queue ─┘
  *                              (unpushed events)
  * ```
  *
  * - Events Root-3: Already pushed/confirmed events (Remote Head at 3)
  * - Events 4-6: Events in push queue (not yet pushed/confirmed)
  */
-export const makePushQueueLeader = ({
+export const makeSyncQueue = ({
   schema,
   dbMissing,
   dbLog,
@@ -55,18 +55,18 @@ export const makePushQueueLeader = ({
   /** Only used to know whether we can safely query dbLog during setup execution */
   dbMissing: boolean
   dbLog: SynchronousDatabase
-}): Effect.Effect<PushQueueLeader, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<SyncQueue, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const pendingSyncItems: PushQueueItemLeader[] = []
+    const pendingSyncItems: SyncQueueItem[] = []
 
-    const executeQueue = yield* Queue.unbounded<PushQueueItemLeader>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const executeQueue = yield* Queue.unbounded<SyncQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
 
     const syncBackendQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    // const syncPushQueueSemaphore = yield* Effect.makeSemaphore(1)
-    // const syncPushQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>()
+    // const syncQueueSemaphore = yield* Effect.makeSemaphore(1)
+    // const syncQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>()
 
     // const isNotRebasingLatch = yield* Effect.makeLatch(false)
 
@@ -87,7 +87,7 @@ export const makePushQueueLeader = ({
     // - broadcast to other connected client sessions
     // - write to mutation log + apply to read model
     // - push to sync backend
-    const push = (batch: PushQueueItemLeader[]) =>
+    const push = (batch: SyncQueueItem[]) =>
       Effect.gen(function* () {
         if (batch.length === 0) return
 
@@ -124,7 +124,7 @@ export const makePushQueueLeader = ({
         }),
       )
 
-    const pushPartial: PushQueueLeader['pushPartial'] = (mutationEventEncoded_) =>
+    const pushPartial: SyncQueue['pushPartial'] = (mutationEventEncoded_) =>
       Effect.gen(function* () {
         const mutationDef =
           schema.mutations.get(mutationEventEncoded_.mutation) ??
@@ -139,7 +139,7 @@ export const makePushQueueLeader = ({
       })
 
     // Starts various background loops
-    const boot: PushQueueLeader['boot'] = ({ dbReady }) =>
+    const boot: SyncQueue['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
         {
           // rehydrate pushQueue from dbLog
@@ -166,10 +166,10 @@ export const makePushQueueLeader = ({
         return yield* backgroundBackendPulling({ dbReady, remoteHeadRef, localHeadRef, executeQueue, pendingSyncItems })
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
-    return { push, pushPartial, boot } satisfies PushQueueLeader
+    return { push, pushPartial, boot } satisfies SyncQueue
   })
 
-const executeMutationsLoop = (executeQueue: Queue.Queue<PushQueueItemLeader>) =>
+const executeMutationsLoop = (executeQueue: Queue.Queue<SyncQueueItem>) =>
   Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
     const { db, dbLog } = leaderThreadCtx
@@ -238,8 +238,8 @@ const backgroundBackendPulling = ({
   dbReady: Deferred.Deferred<void>
   remoteHeadRef: { current: number }
   localHeadRef: { current: EventId }
-  executeQueue: Queue.Queue<PushQueueItemLeader>
-  pendingSyncItems: PushQueueItemLeader[]
+  executeQueue: Queue.Queue<SyncQueueItem>
+  pendingSyncItems: SyncQueueItem[]
 }) =>
   Effect.gen(function* () {
     const { syncBackend, bootStatusQueue, dbLog, initialSyncOptions } = yield* LeaderThreadCtx

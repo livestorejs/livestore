@@ -192,7 +192,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       Effect.gen(function* () {
         const deferreds = yield* Effect.forEach(partialEvents, () => Deferred.make<void>())
 
-        yield* leaderThreadCtx.syncPushQueue.push(
+        yield* leaderThreadCtx.syncQueue.push(
           partialEvents.map((partialEvent, index) => ({
             mutationEventEncoded: toEncodedMutationEvent(partialEvent),
             syncStatus: 'pending',

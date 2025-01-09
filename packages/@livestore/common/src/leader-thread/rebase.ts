@@ -21,10 +21,10 @@ export const rebasePushQueue = (newUpstreamEvents: MutationEvent.AnyEncoded[]) =
     LeaderThreadCtx,
     (ctx) =>
       Effect.gen(function* () {
-        const { syncPushQueue } = ctx
-        // const { syncPushQueue } = yield* LeaderThreadCtx
+        const { syncQueue } = ctx
+        // const { syncQueue } = yield* LeaderThreadCtx
 
-        // yield* syncPushQueue.isOpen.close
+        // yield* syncQueue.isOpen.close
         // TODO implement rebasing
 
         // Overall plan:
@@ -32,7 +32,7 @@ export const rebasePushQueue = (newUpstreamEvents: MutationEvent.AnyEncoded[]) =
         // Step 2: Rollback and apply rebased mutation log
 
         // Step 1:
-        // const queueItems = yield* Queue.takeAll(syncPushQueue.queue)
+        // const queueItems = yield* Queue.takeAll(syncQueue.queue)
 
         const headGlobalId = newUpstreamEvents.at(-1)!.id.global
 
@@ -50,11 +50,11 @@ export const rebasePushQueue = (newUpstreamEvents: MutationEvent.AnyEncoded[]) =
 
         // Also update mutation log db rows
 
-        // yield* syncPushQueue.isOpen.open
+        // yield* syncQueue.isOpen.open
       }),
-    // .pipe(ctx.syncPushQueue.semaphore.withPermits(1)),
+    // .pipe(ctx.syncQueue.semaphore.withPermits(1)),
   )
-// .pipe(syncPushQueueSemaphore.withPermits(1))
+// .pipe(syncQueueSemaphore.withPermits(1))
 
 // TODO use a push queue abstraction that's automatically persisted or allows for an in-memory implementation
 
