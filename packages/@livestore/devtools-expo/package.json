@@ -15,12 +15,12 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "22.10.5",
     "@types/ws": "8.5.12",
-    "expo": "52.0.9"
+    "expo": "52.0.18"
   },
   "peerDependencies": {
-    "expo": "52.0.9"
+    "expo": "52.0.18"
   },
   "publishConfig": {
     "access": "public"

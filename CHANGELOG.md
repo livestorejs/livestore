@@ -22,7 +22,7 @@
   - Large refactoring to share more code between adapters
   - Embraced git-style push/pull semantics to sync mutations across the system
   - Upgrade to TypeScript 5.7
-- Upgraded dependencies (effect 3.11.7 or higher)
+- Upgraded dependencies (effect 3.12.0 or higher)
 
 ## 0.2.0
 

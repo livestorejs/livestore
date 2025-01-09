@@ -28,11 +28,11 @@
     "dprint-node": "^1.0.8"
   },
   "peerDependencies": {
-    "effect": "3.11.7"
+    "effect": "3.12.1"
   },
   "devDependencies": {
     "drizzle-orm": "^0.32.1",
-    "effect": "3.11.7",
+    "effect": "3.12.1",
     "vite": "^5.4.10",
     "vitest": "^2.1.4"
   },
