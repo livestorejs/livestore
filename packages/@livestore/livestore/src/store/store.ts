@@ -99,12 +99,6 @@ export class Store<
     const mutationsSpan = otelOptions.tracer.startSpan('LiveStore:mutations', {}, otelOptions.rootSpanContext)
     const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
 
-    // TODO with Tim Smart (fix otel span propagation)
-    // console.log(
-    //   'otelOptions.rootSpanContext',
-    //   otelOptions.rootSpanContext,
-    //   otel.trace.getSpanContext(otelOptions.rootSpanContext),
-    // )
     const queriesSpan = otelOptions.tracer.startSpan('LiveStore:queries', {}, otelOptions.rootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
 
@@ -302,35 +296,9 @@ export class Store<
       ) => void,
     ): void
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
-    let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
-    let options: StoreMutateOptions | undefined
+    const { mutationsEvents, options } = this.getMutateArgs(firstMutationOrTxnFnOrOptions, restMutations)
 
-    if (typeof firstMutationOrTxnFnOrOptions === 'function') {
-      // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
-      mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
-    } else if (
-      firstMutationOrTxnFnOrOptions?.label !== undefined ||
-      firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined ||
-      firstMutationOrTxnFnOrOptions?.persisted !== undefined ||
-      firstMutationOrTxnFnOrOptions?.spanLinks !== undefined
-    ) {
-      options = firstMutationOrTxnFnOrOptions
-      mutationsEvents = restMutations
-    } else if (firstMutationOrTxnFnOrOptions === undefined) {
-      // When `mutate` is called with no arguments (which sometimes happens when dynamically filtering mutations)
-      mutationsEvents = []
-    } else {
-      mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
-    }
-
-    mutationsEvents = mutationsEvents.filter(
-      (_) => _.id === undefined || !MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(_.id)),
-    )
-
-    if (mutationsEvents.length === 0) {
-      return
-    }
+    if (mutationsEvents.length === 0) return
 
     const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
@@ -349,7 +317,7 @@ export class Store<
     const res = this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
       { attributes: { 'livestore.mutateLabel': label }, links: options?.spanLinks },
-      this.otel.mutationsSpanContext,
+      options?.otelContext ?? this.otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
@@ -464,7 +432,7 @@ export class Store<
    * This is an internal method that doesn't trigger a refresh;
    * the caller must refresh queries after calling this method.
    */
-  mutateWithoutRefresh = (
+  private mutateWithoutRefresh = (
     mutationEventDecoded_: MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>,
     options: {
       otelContext: otel.Context
@@ -505,6 +473,7 @@ export class Store<
       {
         attributes: {
           'livestore.mutation': mutationEventDecoded.mutation,
+          // TODO(performance) add flag to disable this
           'livestore.args': JSON.stringify(mutationEventDecoded.args, null, 2),
         },
       },
@@ -524,25 +493,20 @@ export class Store<
           bindValues,
           writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
         } of execArgsArr) {
-          // TODO when the store doesn't have the lock, we need wait for the coordinator to confirm the mutation
-          // before executing the mutation on the main db
           const { durationMs } = this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
 
           durationMsTotal += durationMs
           writeTables.forEach((table) => allWriteTables.add(table))
         }
 
-        const mutationEventEncoded = Schema.encodeUnknownSync(this.__mutationEventSchema)(mutationEventDecoded)
-
         if (coordinatorMode !== 'skip-coordinator') {
+          const mutationEventEncoded = Schema.encodeUnknownSync(this.__mutationEventSchema)(mutationEventDecoded)
+
           // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
           this.clientSession.coordinator.mutations
             .push(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
             .pipe(this.runEffectFork)
         }
-
-        // Uncomment to print a list of queries currently registered on the store
-        // console.debug(JSON.parse(JSON.stringify([...this.queries].map((q) => `${labelForKey(q.componentKey)}/${q.label}`))))
 
         span.end()
 
@@ -575,13 +539,48 @@ export class Store<
     this.clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync)
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
-  toJSON = () => {
-    return {
-      _tag: 'livestore.Store',
-      reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults: true }),
-    }
-  }
+  toJSON = () => ({
+    _tag: 'livestore.Store',
+    reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults: true }),
+  })
 
   private runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
     effect.pipe(Effect.tapCauseLogPretty, FiberSet.run(this.fiberSet), Runtime.runFork(this.runtime))
+
+  private getMutateArgs = (
+    firstMutationOrTxnFnOrOptions: any,
+    restMutations: any[],
+  ): {
+    mutationsEvents: MutationEvent.ForSchema<TSchema>[]
+    options: StoreMutateOptions | undefined
+  } => {
+    let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
+    let options: StoreMutateOptions | undefined
+
+    if (typeof firstMutationOrTxnFnOrOptions === 'function') {
+      // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
+      mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
+    } else if (
+      firstMutationOrTxnFnOrOptions?.label !== undefined ||
+      firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
+      firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined ||
+      firstMutationOrTxnFnOrOptions?.persisted !== undefined ||
+      firstMutationOrTxnFnOrOptions?.otelContext !== undefined ||
+      firstMutationOrTxnFnOrOptions?.spanLinks !== undefined
+    ) {
+      options = firstMutationOrTxnFnOrOptions
+      mutationsEvents = restMutations
+    } else if (firstMutationOrTxnFnOrOptions === undefined) {
+      // When `mutate` is called with no arguments (which sometimes happens when dynamically filtering mutations)
+      mutationsEvents = []
+    } else {
+      mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
+    }
+
+    mutationsEvents = mutationsEvents.filter(
+      (_) => _.id === undefined || !MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(_.id)),
+    )
+
+    return { mutationsEvents, options }
+  }
 }

@@ -26,6 +26,7 @@ export interface NodeAdapterOptions {
   syncOptions?: WorkerSchema.SyncBackendOptions | undefined
   baseDirectory?: string
   devtools?: {
+    /** @default 4242 */
     port: number
   }
   otel?: {
@@ -40,9 +41,7 @@ export const makeNodeAdapter = ({
   makeSyncBackendUrl,
   syncOptions,
   baseDirectory,
-  devtools: devtoolsOptions = {
-    port: 4242,
-  },
+  devtools: devtoolsOptions = { port: 4242 },
   otel: otelOptions,
   initialSyncOptions,
 }: NodeAdapterOptions): Adapter =>
