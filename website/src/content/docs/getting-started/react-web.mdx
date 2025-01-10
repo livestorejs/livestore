@@ -5,32 +5,307 @@ description: How to use LiveStore with React on the web.
 
 import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
+
+### Option A: Quick start
+
+For a quick start we recommend using our template app following the steps below.
+
+For existing projects see [Existing project setup](#existing-project-setup).
+
 <Steps>
 
-1. Set up project via: `npx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/linearlite my-app`
+  1.  **Set up project from template**
 
-2. Install dependencies
+  ```bash
+  npx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/linearlite my-app
+  ```
 
-		<Tabs syncKey="package-manager">
-			<TabItem label="bun">`bun install`</TabItem>
-			<TabItem label="pnpm">`pnpm install`</TabItem>
-			<TabItem label="npm">`npm install`</TabItem>
-			<TabItem label="yarn">`yarn install`</TabItem>
-		</Tabs>
+  Replace `my-app` with your desired app name.
 
-3. Run dev environment
+  2.  **Install dependencies**
 
-		<Tabs syncKey="package-manager">
-			<TabItem label="bun">`bun dev`</TabItem>
-			<TabItem label="pnpm">`pnpm dev`</TabItem>
-			<TabItem label="npm">`npm run dev`</TabItem>
-			<TabItem label="yarn">`yarn dev`</TabItem>
-		</Tabs>
+  It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup.
 
-4. Open browser
+  <Tabs syncKey="package-manager">
+    <TabItem label="bun">
+      `bun install`
 
-		Open `http://localhost:60000` in your browser.
+      You can ignore the peer-dependency warnings.
+    </TabItem>
+    <TabItem label="pnpm">
+      `pnpm install`
 
-		You can also open the devtools by going to `http://localhost:60000/_devtools.html`.
+      You can ignore the peer-dependency warnings.
+    </TabItem>
+    <TabItem label="npm">
+      Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
+
+      ```
+      npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+      ```
+
+      Going forward you can use `npm install` again to install the dependencies.
+    </TabItem>
+    <TabItem label="yarn">
+      Given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
+
+      ```
+      yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+      ```
+
+      Going forward you can use `yarn install` again to install the dependencies.
+    </TabItem>
+  </Tabs>
+
+  Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+
+  3.  **Run dev environment**
+
+  <Tabs syncKey="package-manager">
+    <TabItem label="bun">`bun dev`</TabItem>
+    <TabItem label="pnpm">`pnpm dev`</TabItem>
+    <TabItem label="npm">`npm run dev`</TabItem>
+    <TabItem label="yarn">`yarn dev`</TabItem>
+  </Tabs>
+
+  4.  **Open browser**
+
+  Open `http://localhost:60000` in your browser.
+
+  You can also open the devtools by going to `http://localhost:60000/_devtools.html`.
 
 </Steps>
+
+### Option B: Existing project setup
+
+  1.  **Install dependencies**
+
+
+  <Tabs syncKey="package-manager">
+    <TabItem label="bun">`bun add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
+    <TabItem label="pnpm">`pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
+    <TabItem label="npm">`npm install @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
+    <TabItem label="yarn">`yarn add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
+  </Tabs>
+
+  ```bash
+  npx expo install @livestore/devtools-expo @livestore/expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
+  ```
+
+  2.  **Update Vite config**
+
+  Add the following code to your `vite.config.ts` file:
+
+  ```ts
+  import { defineConfig } from 'vite'
+  import react from '@vitejs/plugin-react'
+
+  // https://vite.dev/config/
+  export default defineConfig({
+    plugins: [react()],
+    optimizeDeps: {
+      exclude: ['@livestore/wa-sqlite'] // Needed until https://github.com/vitejs/vite/issues/8427 is resolved
+    },
+  })
+  ```
+
+## Define your schema
+
+To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
+
+- In `src`, create a `schema` folder and inside it create a file named `index.ts`. This file defines the tables and data structures for your app.
+
+- In `index.ts`, define a table to represent a data model, such as a `todos`.
+
+Here's an example:
+
+```ts
+import { DbSchema, makeSchema } from '@livestore/livestore'
+import * as mutations from './mutations'
+
+const todos = DbSchema.table(
+  'todos',
+  {
+    id: DbSchema.text({ primaryKey: true }), // Unique identifier for each todo item
+    text: DbSchema.text({ default: '' }), // Text content of the todo
+    completed: DbSchema.boolean({ default: false }), // Status of the todo item
+    deleted: DbSchema.integer({ nullable: true }), // Optional field to mark deletion
+  },
+  { deriveMutations: true }, // Automatically derive mutations for this table
+)
+
+export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
+
+export const tables = {
+  todos,
+}
+
+export const schema = makeSchema({
+  tables,
+  mutations: {
+    // Add more mutations
+    ...mutations,
+  },
+  migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
+})
+
+export * as mutations from './mutations'
+```
+
+## Mutations
+
+Create a file named `mutations.ts` inside the `schema` folder. This file stores the mutations your app uses to interact with the database.
+
+A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
+
+Use the `Schema` module from `effect` along with `defineMutation` and `sql` from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
+
+Here's an example:
+
+```ts
+import { Schema } from 'effect'
+import { defineMutation, sql } from '@livestore/livestore'
+
+export const addTodo = defineMutation(
+  'addTodo',
+  Schema.Struct({ id: Schema.String, text: Schema.String }),
+  sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
+)
+
+export const completeTodo = defineMutation(
+  'completeTodo',
+  Schema.Struct({ id: Schema.String }),
+  sql`UPDATE todos SET completed = true WHERE id = $id`,
+)
+
+export const deleteTodo = defineMutation(
+  'deleteTodo',
+  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
+)
+```
+
+## Create the LiveStore Worker
+
+Create a file named `livestore.worker.ts` inside the `src` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
+
+```ts
+import { makeWorker } from '@livestore/web/worker';
+import { schema } from './schema';
+
+makeWorker({ schema });
+```
+
+
+## Add the LiveStore Provider
+
+To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
+
+Here's an example:
+
+```tsx
+import { StrictMode } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom';
+import { createRoot } from 'react-dom/client'
+import { Store } from '@livestore/livestore';
+import { LiveStoreProvider } from '@livestore/react';
+import { makeAdapter } from '@livestore/web';
+import { nanoid } from '@livestore/utils/nanoid';
+import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker';
+import LiveStoreWorker from './livestore.worker?worker';
+import { schema, tables, mutations } from './schema';
+import App from './App.tsx'
+
+const adapter = makeAdapter({
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+  storage: { type: 'opfs' },
+})
+
+/**
+ * This function is called when the app is booted.
+ * It is used to initialize the database with initial data.
+ */
+const boot = (store: Store) => {
+  // If the todos table is empty, add an initial todo
+  if (store.query(tables.todos.query.count()) === 0) {
+    store.mutate(mutations.addTodo({ id: nanoid(), text: '☕ Make coffee' }))
+  }
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <LiveStoreProvider
+      boot={boot}
+      schema={schema}
+      adapter={adapter}
+      batchUpdates={batchUpdates}
+      renderLoading={(bootStatus) => <p>Stage: {bootStatus.stage}</p>}
+    >
+      <App />
+    </LiveStoreProvider>
+  </StrictMode>,
+)
+```
+
+### Use a mutation
+
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute mutations.
+
+Here's an example:
+
+```ts
+import { useStore } from '@livestore/react';
+import { deleteTodo } from './schema/mutations.ts';
+
+export default function App() {
+  const { store } = useStore()
+
+  return (
+    <button
+      onClick={() => {
+        store.mutate(deleteTodo({ id: '1', deleted: Date.now() }))
+      }}
+    >Delete my todo</button>
+  )
+}
+```
+
+## Queries
+
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+
+Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
+
+Here's an example:
+
+```ts
+import { queryDb } from '@livestore/livestore';
+import { useQuery } from '@livestore/react';
+import { tables } from './schema';
+
+export default function App() {
+  // Define a query
+  const todosQuery$ = queryDb(tables.todos.query.select())
+
+  // Use the query
+  const todos = useQuery(todosQuery$)
+
+  console.log(todos)
+  // Output:
+  // [
+  //   {
+  //     id: "1",
+  //     completed: false,
+  //     deleted: null,
+  //     text: "Make coffee"
+  //   }
+  // ]
+
+  return (
+    <div>
+      <p>{todos[0].text}</p>
+    </div>
+  )
+}
+```
