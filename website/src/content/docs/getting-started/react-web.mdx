@@ -8,106 +8,140 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ### Option A: Quick start
 
-For a quick start we recommend using our template app following the steps below.
+For a quick start, we recommend using our template app following the steps below.
 
-For existing projects see [Existing project setup](#existing-project-setup).
+For existing projects, see [Existing project setup](#existing-project-setup).
 
 <Steps>
 
-  1.  **Set up project from template**
+1. **Set up project from template**
 
-  ```bash
-  npx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/linearlite my-app
-  ```
+   ```shell
+   npx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/linearlite my-app
+   ```
 
-  Replace `my-app` with your desired app name.
+   Replace `my-app` with your desired app name.
 
-  2.  **Install dependencies**
+2. **Install dependencies**
 
-  It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup.
+   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup.
 
-  <Tabs syncKey="package-manager">
-    <TabItem label="bun">
-      `bun install`
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       ```shell
+       bun install
+       ```
 
-      You can ignore the peer-dependency warnings.
-    </TabItem>
-    <TabItem label="pnpm">
-      `pnpm install`
+        You can ignore the peer-dependency warnings.
+     </TabItem>
+     <TabItem label="pnpm">
+       ```shell
+       pnpm install
+       ```
 
-      You can ignore the peer-dependency warnings.
-    </TabItem>
-    <TabItem label="npm">
-      Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
+       You can ignore the peer-dependency warnings.
+     </TabItem>
+     <TabItem label="npm">
+       Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
 
-      ```
-      npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
-      ```
+       ```shell
+       npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+       ```
 
-      Going forward you can use `npm install` again to install the dependencies.
-    </TabItem>
-    <TabItem label="yarn">
-      Given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
+       Going forward you can use `npm install` again to install the dependencies.
+     </TabItem>
+     <TabItem label="yarn">
+       Given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
 
-      ```
-      yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
-      ```
+       ```shell
+       yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+       ```
 
-      Going forward you can use `yarn install` again to install the dependencies.
-    </TabItem>
-  </Tabs>
+       Going forward you can use `yarn install` again to install the dependencies.
+     </TabItem>
+   </Tabs>
 
-  Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+   Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
 
-  3.  **Run dev environment**
+3. **Run dev environment**
 
-  <Tabs syncKey="package-manager">
-    <TabItem label="bun">`bun dev`</TabItem>
-    <TabItem label="pnpm">`pnpm dev`</TabItem>
-    <TabItem label="npm">`npm run dev`</TabItem>
-    <TabItem label="yarn">`yarn dev`</TabItem>
-  </Tabs>
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       ```shell
+       bun dev
+       ```
+     </TabItem>
+     <TabItem label="pnpm">
+       ```shell
+       pnpm dev
+       ```
+     </TabItem>
+     <TabItem label="npm">
+       ```shell
+       npm run dev
+       ```
+     </TabItem>
+     <TabItem label="yarn">
+       ```shell
+       yarn dev
+       ```
+     </TabItem>
+   </Tabs>
 
-  4.  **Open browser**
+4. **Open browser**
 
-  Open `http://localhost:60000` in your browser.
+   Open `http://localhost:60000` in your browser.
 
-  You can also open the devtools by going to `http://localhost:60000/_devtools.html`.
+   You can also open the devtools by going to `http://localhost:60000/_devtools.html`.
 
 </Steps>
 
 ### Option B: Existing project setup
 
-  1.  **Install dependencies**
+<Steps>
 
+1. **Install dependencies**
 
-  <Tabs syncKey="package-manager">
-    <TabItem label="bun">`bun add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
-    <TabItem label="pnpm">`pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
-    <TabItem label="npm">`npm install @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
-    <TabItem label="yarn">`yarn add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect`</TabItem>
-  </Tabs>
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       ```shell
+       bun add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       ```
+     </TabItem>
+     <TabItem label="pnpm">
+       ```shell
+       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       ```
+     </TabItem>
+     <TabItem label="npm">
+       ```shell
+       npm install @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       ```
+     </TabItem>
+     <TabItem label="yarn">
+       ```shell
+       yarn add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       ```
+     </TabItem>
+   </Tabs>
 
-  ```bash
-  npx expo install @livestore/devtools-expo @livestore/expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
-  ```
+2. **Update Vite config**
 
-  2.  **Update Vite config**
+   Add the following code to your `vite.config.ts` file:
 
-  Add the following code to your `vite.config.ts` file:
+   ```ts
+   import { defineConfig } from 'vite'
+   import react from '@vitejs/plugin-react'
 
-  ```ts
-  import { defineConfig } from 'vite'
-  import react from '@vitejs/plugin-react'
-
-  // https://vite.dev/config/
-  export default defineConfig({
-    plugins: [react()],
-    optimizeDeps: {
-      exclude: ['@livestore/wa-sqlite'] // Needed until https://github.com/vitejs/vite/issues/8427 is resolved
-    },
-  })
-  ```
+   // https://vite.dev/config/
+   export default defineConfig({
+     plugins: [react()],
+     optimizeDeps: {
+       exclude: ['@livestore/wa-sqlite'] // Needed until https://github.com/vitejs/vite/issues/8427 is resolved
+     },
+   })
+   ```
+</Steps>
 
 ## Define your schema
 
