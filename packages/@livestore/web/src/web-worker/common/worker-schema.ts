@@ -3,7 +3,7 @@ import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  batch: Schema.Array(mutationEventSchemaEncodedAny),
   persisted: Schema.Boolean,
 })
 
@@ -95,7 +95,9 @@ export namespace LeaderWorkerInner {
       cursor: EventId,
     },
     success: Schema.Struct({
+      // TODO use actual app-defined mutation event schema
       mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      backendHead: Schema.Number,
       remaining: Schema.Number,
     }),
     failure: UnexpectedError,

@@ -1,7 +1,7 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import { getMutationEventsSince } from './mutationlog.js'
-import type { PullQueueItem, PullQueueSet } from './types.js'
+import { LeaderThreadCtx, type PullQueueItem, type PullQueueSet } from './types.js'
 
 export const makePullQueueSet = Effect.gen(function* () {
   const set = new Set<Queue.Queue<PullQueueItem>>()
@@ -24,7 +24,9 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       const mutationEvents = yield* getMutationEventsSince(since)
 
-      yield* queue.offer({ mutationEvents, remaining: 0 })
+      const { syncQueue } = yield* LeaderThreadCtx
+
+      yield* queue.offer({ mutationEvents, backendHead: syncQueue.backendHeadRef.current, remaining: 0 })
 
       set.add(queue)
 

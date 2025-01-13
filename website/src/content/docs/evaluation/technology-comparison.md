@@ -20,3 +20,13 @@ sidebar:
 - JazzTools
 - TinyBase
 - Prisma
+
+## Other state management libraries
+
+- Zustand
+- Redux / Redux Toolkit (RTK)
+- MobX
+- Jotai
+- Xstate
+- Recoil
+- React Query

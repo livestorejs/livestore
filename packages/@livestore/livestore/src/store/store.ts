@@ -1,8 +1,15 @@
-import type { ClientSession, ParamsObject, PreparedBindValues, QueryBuilder } from '@livestore/common'
+import type {
+  ClientSession,
+  ClientSessionSyncQueue,
+  ParamsObject,
+  PreparedBindValues,
+  QueryBuilder,
+} from '@livestore/common'
 import {
   getExecArgsFromMutation,
   getResultSchema,
   isQueryBuilder,
+  makeClientSessionSyncQueue,
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
@@ -17,7 +24,17 @@ import {
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Data,
+  Effect,
+  FiberSet,
+  Inspectable,
+  MutableHashMap,
+  Predicate,
+  Runtime,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -61,6 +78,7 @@ export class Store<
   // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
   private unsyncedMutationEvents
+  private syncQueue: ClientSessionSyncQueue
 
   // #region constructor
   private constructor({
@@ -88,6 +106,50 @@ export class Store<
 
     this.fiberSet = fiberSet
     this.runtime = runtime
+
+    this.syncQueue = makeClientSessionSyncQueue({
+      schema,
+      initialLeaderHead: clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync),
+      pushToLeader: clientSession.coordinator.mutations.push,
+      pullFromLeader: clientSession.coordinator.mutations.pull,
+      applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
+        const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!
+        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+
+        const writeTablesForEvent = new Set<string>()
+
+        const exec = () => {
+          for (const {
+            statementSql,
+            bindValues,
+            writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
+          } of execArgsArr) {
+            this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
+
+            // durationMsTotal += durationMs
+            writeTables.forEach((table) => writeTablesForEvent.add(table))
+          }
+        }
+
+        let sessionChangeset: Uint8Array | undefined
+        if (withChangeset === true) {
+          sessionChangeset = this.syncDbWrapper.withChangeset(exec).changeset
+        } else {
+          exec()
+        }
+
+        return { writeTables: writeTablesForEvent, sessionChangeset }
+      },
+      refreshTables: (tables) => {
+        const tablesToUpdate = [] as [Ref<null, QueryContext, RefreshReason>, null][]
+        for (const tableName of tables) {
+          const tableRef = this.tableRefs[tableName]
+          assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+          tablesToUpdate.push([tableRef!, null])
+        }
+        this.reactivityGraph.setRefs(tablesToUpdate)
+      },
+    })
 
     // TODO refactor
     this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
@@ -149,19 +211,21 @@ export class Store<
     }
 
     Effect.gen(this, function* () {
-      yield* this.clientSession.coordinator.mutations.pull.pipe(
-        Stream.tap(({ mutationEvents }) =>
-          Effect.sync(() => {
-            this.mutate({ wasSyncMessage: true }, ...mutationEvents)
-          }),
-        ),
-        Stream.runDrain,
-        Effect.forever, // In case the stream is closed (e.g. during leader re-election), we want to re-subscribe
-        Effect.interruptible,
-        Effect.withSpan('LiveStore:syncMutations'),
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
+      // yield* this.clientSession.coordinator.mutations.pull.pipe(
+      //   Stream.tap(({ mutationEvents }) =>
+      //     Effect.sync(() => {
+      //       this.mutate(...mutationEvents)
+      //     }),
+      //   ),
+      //   Stream.runDrain,
+      //   Effect.forever, // In case the stream is closed (e.g. during leader re-election), we want to re-subscribe
+      //   Effect.interruptible,
+      //   Effect.withSpan('LiveStore:syncMutations'),
+      //   Effect.tapCauseLogPretty,
+      //   Effect.forkScoped,
+      // )
+
+      yield* this.syncQueue.boot
 
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
@@ -244,6 +308,20 @@ export class Store<
       },
     )
 
+  /**
+   * Synchronously queries the database without creating a LiveQuery.
+   * This is useful for queries that don't need to be reactive.
+   *
+   * Example: Query builder
+   * ```ts
+   * const completedTodos = store.query(tables.todo.where({ complete: true }))
+   * ```
+   *
+   * Example: Raw SQL query
+   * ```ts
+   * const completedTodos = store.query({ query: 'SELECT * FROM todo WHERE complete = 1', bindValues: {} })
+   * ```
+   */
   query = <TResult>(
     query: QueryBuilder<TResult, any, any> | LiveQuery<TResult, any> | { query: string; bindValues: ParamsObject },
     options?: { otelContext?: otel.Context },
@@ -298,12 +376,16 @@ export class Store<
   } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
     const { mutationsEvents, options } = this.getMutateArgs(firstMutationOrTxnFnOrOptions, restMutations)
 
+    for (const mutationEvent of mutationsEvents) {
+      replaceSessionIdSymbol(mutationEvent.args, this.clientSession.coordinator.sessionId)
+    }
+
     if (mutationsEvents.length === 0) return
 
     const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
-    const wasSyncMessage = options?.wasSyncMessage ?? false
-    const persisted = options?.persisted ?? true
+    // const wasSyncMessage = options?.wasSyncMessage ?? false
+    // const persisted = options?.persisted ?? true
 
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
     mutationsSpan.addEvent('mutate')
@@ -314,7 +396,7 @@ export class Store<
 
     let durationMs: number
 
-    const res = this.otel.tracer.startActiveSpan(
+    return this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
       { attributes: { 'livestore.mutateLabel': label }, links: options?.spanLinks },
       options?.otelContext ?? this.otel.mutationsSpanContext,
@@ -322,39 +404,22 @@ export class Store<
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         try {
-          const writeTables: Set<string> = new Set()
-
-          this.otel.tracer.startActiveSpan(
-            'LiveStore:processWrites',
+          const { writeTables } = this.otel.tracer.startActiveSpan(
+            'LiveStore:mutate:applyMutations',
             { attributes: { 'livestore.mutateLabel': label } },
             otel.trace.setSpan(otel.context.active(), span),
             (span) => {
               try {
                 const otelContext = otel.trace.setSpan(otel.context.active(), span)
+                // 5
 
-                const applyMutations = () => {
-                  for (const mutationEvent of mutationsEvents) {
-                    try {
-                      const { writeTables: writeTablesForEvent } = this.mutateWithoutRefresh(mutationEvent, {
-                        otelContext,
-                        // NOTE if it was a sync message, it's already coming from the coordinator, so we can skip the coordinator
-                        coordinatorMode: wasSyncMessage ? 'skip-coordinator' : persisted ? 'default' : 'skip-persist',
-                      })
-                      for (const tableName of writeTablesForEvent) {
-                        writeTables.add(tableName)
-                      }
-                    } catch (e: any) {
-                      console.error(e, mutationEvent)
-                      throw e
-                    }
-                  }
-                }
+                const applyMutations = () => this.syncQueue.push(mutationsEvents, { otelContext })
 
                 if (mutationsEvents.length > 1) {
                   // TODO: what to do about coordinator transaction here?
-                  this.syncDbWrapper.txn(applyMutations)
+                  return this.syncDbWrapper.txn(applyMutations)
                 } else {
-                  applyMutations()
+                  return applyMutations()
                 }
               } catch (e: any) {
                 console.error(e)
@@ -394,16 +459,6 @@ export class Store<
         return { durationMs }
       },
     )
-
-    // NOTE we need to add the mutation events to the unsynced mutation events map only after running the code above
-    // so the short-circuiting in `mutateWithoutRefresh` doesn't kick in for those events
-    for (const mutationEvent of mutationsEvents) {
-      if (mutationEvent.id !== undefined) {
-        MutableHashMap.set(this.unsyncedMutationEvents, Data.struct(mutationEvent.id), mutationEvent)
-      }
-    }
-
-    return res
   }
   // #endregion mutate
 
@@ -432,88 +487,70 @@ export class Store<
    * This is an internal method that doesn't trigger a refresh;
    * the caller must refresh queries after calling this method.
    */
-  private mutateWithoutRefresh = (
-    mutationEventDecoded_: MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>,
-    options: {
-      otelContext: otel.Context
-      // TODO adjust `skip-persist` with new rebase sync strategy
-      coordinatorMode: 'default' | 'skip-coordinator' | 'skip-persist'
-    },
-  ): { writeTables: ReadonlySet<string>; durationMs: number } => {
-    const mutationDef =
-      this.schema.mutations.get(mutationEventDecoded_.mutation) ??
-      shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded_.mutation}`)
+  // private mutateWithoutRefresh = (
+  //   mutationEventDecoded: MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>,
+  //   options: {
+  //     otelContext: otel.Context
+  //   },
+  // ): { writeTables: ReadonlySet<string>; durationMs: number } => {
+  //   // const mutationDef =
+  //   //   this.schema.mutations.get(mutationEventDecoded.mutation) ??
+  //   //   shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
 
-    // Needs to happen only for partial mutation events (thus a function)
-    const nextMutationEventId = () => {
-      const { id, parentId } = this.clientSession.coordinator.mutations.nextMutationEventIdPair({
-        localOnly: mutationDef.options.localOnly,
-      })
+  //   // // const mutationEventDecoded: MutationEvent.ForSchema<TSchema> = isPartialMutationEvent(mutationEventDecoded_)
+  //   // //   ? { ...mutationEventDecoded_, ...nextMutationEventId() }
+  //   // //   : mutationEventDecoded_
 
-      return { id, parentId }
-    }
+  //   // // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
+  //   // // e.g. the row-query functionality
+  //   // if (Predicate.hasProperty(mutationEventDecoded, 'id')) {
+  //   //   if (MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id))) {
+  //   //     // NOTE this data should never be used
+  //   //     return { writeTables: new Set(), durationMs: 0 }
+  //   //   } else {
+  //   //     MutableHashMap.set(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
+  //   //   }
+  //   // }
 
-    const mutationEventDecoded: MutationEvent.ForSchema<TSchema> = isPartialMutationEvent(mutationEventDecoded_)
-      ? { ...mutationEventDecoded_, ...nextMutationEventId() }
-      : mutationEventDecoded_
+  //   const { otelContext } = options
 
-    // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
-    // e.g. the row-query functionality
-    if (MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id))) {
-      // NOTE this data should never be used
-      return { writeTables: new Set(), durationMs: 0 }
-    } else {
-      MutableHashMap.set(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
-    }
+  //   return this.otel.tracer.startActiveSpan(
+  //     'LiveStore:mutateWithoutRefresh',
+  //     {
+  //       attributes: {
+  //         'livestore.mutation': mutationEventDecoded.mutation,
+  //         // TODO(performance) add flag to disable this
+  //         'livestore.args': JSON.stringify(mutationEventDecoded.args, null, 2),
+  //       },
+  //     },
+  //     otelContext,
+  //     (span) => {
+  //       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const { otelContext, coordinatorMode = 'default' } = options
+  //       const allWriteTables = new Set<string>()
+  //       let durationMsTotal = 0
 
-    return this.otel.tracer.startActiveSpan(
-      'LiveStore:mutateWithoutRefresh',
-      {
-        attributes: {
-          'livestore.mutation': mutationEventDecoded.mutation,
-          // TODO(performance) add flag to disable this
-          'livestore.args': JSON.stringify(mutationEventDecoded.args, null, 2),
-        },
-      },
-      otelContext,
-      (span) => {
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+  //       replaceSessionIdSymbol(mutationEventDecoded.args, this.clientSession.coordinator.sessionId)
 
-        const allWriteTables = new Set<string>()
-        let durationMsTotal = 0
+  //       const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-        replaceSessionIdSymbol(mutationEventDecoded.args, this.clientSession.coordinator.sessionId)
+  //       for (const {
+  //         statementSql,
+  //         bindValues,
+  //         writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
+  //       } of execArgsArr) {
+  //         const { durationMs } = this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
 
-        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+  //         durationMsTotal += durationMs
+  //         writeTables.forEach((table) => allWriteTables.add(table))
+  //       }
 
-        for (const {
-          statementSql,
-          bindValues,
-          writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
-        } of execArgsArr) {
-          const { durationMs } = this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
+  //       span.end()
 
-          durationMsTotal += durationMs
-          writeTables.forEach((table) => allWriteTables.add(table))
-        }
-
-        if (coordinatorMode !== 'skip-coordinator') {
-          const mutationEventEncoded = Schema.encodeUnknownSync(this.__mutationEventSchema)(mutationEventDecoded)
-
-          // Asynchronously apply mutation to a persistent storage (we're not awaiting this promise here)
-          this.clientSession.coordinator.mutations
-            .push(mutationEventEncoded as MutationEvent.AnyEncoded, { persisted: coordinatorMode !== 'skip-persist' })
-            .pipe(this.runEffectFork)
-        }
-
-        span.end()
-
-        return { writeTables: allWriteTables, durationMs: durationMsTotal }
-      },
-    )
-  }
+  //       return { writeTables: allWriteTables, durationMs: durationMsTotal }
+  //     },
+  //   )
+  // }
   // #endregion mutateWithoutRefresh
 
   private makeTableRef = (tableName: string) =>
@@ -551,10 +588,10 @@ export class Store<
     firstMutationOrTxnFnOrOptions: any,
     restMutations: any[],
   ): {
-    mutationsEvents: MutationEvent.ForSchema<TSchema>[]
+    mutationsEvents: (MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>)[]
     options: StoreMutateOptions | undefined
   } => {
-    let mutationsEvents: MutationEvent.ForSchema<TSchema>[]
+    let mutationsEvents: (MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>)[]
     let options: StoreMutateOptions | undefined
 
     if (typeof firstMutationOrTxnFnOrOptions === 'function') {
@@ -563,7 +600,6 @@ export class Store<
     } else if (
       firstMutationOrTxnFnOrOptions?.label !== undefined ||
       firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstMutationOrTxnFnOrOptions?.wasSyncMessage !== undefined ||
       firstMutationOrTxnFnOrOptions?.persisted !== undefined ||
       firstMutationOrTxnFnOrOptions?.otelContext !== undefined ||
       firstMutationOrTxnFnOrOptions?.spanLinks !== undefined
@@ -578,6 +614,7 @@ export class Store<
     }
 
     mutationsEvents = mutationsEvents.filter(
+      // @ts-expect-error TODO
       (_) => _.id === undefined || !MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(_.id)),
     )
 

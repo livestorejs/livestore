@@ -34,5 +34,5 @@ export const getInitialCurrentMutationEventIdFromDb = (dbLog: SynchronousDatabas
   return res ? { global: res.idGlobal, local: res.idLocal } : ROOT_ID
 }
 
-export const getInitialRemoteHeadFromDb = (dbLog: SynchronousDatabase) =>
+export const getInitialBackendHeadFromDb = (dbLog: SynchronousDatabase) =>
   dbLog.select<{ head: number }>(sql`select head from ${SYNC_STATUS_TABLE}`)[0]?.head ?? ROOT_ID.global

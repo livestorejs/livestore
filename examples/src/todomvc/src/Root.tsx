@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-global-this */
 import { LiveStoreProvider } from '@livestore/react'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
@@ -19,10 +20,19 @@ const AppBody: React.FC = () => (
   </section>
 )
 
+const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+
+if (resetPersistence) {
+  const searchParams = new URLSearchParams(window.location.search)
+  searchParams.delete('reset')
+  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
+}
+
 const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
+  resetPersistence,
 })
 
 export const App: React.FC = () => (

@@ -186,7 +186,8 @@ const makeLeaderThread = ({
       storeId,
       originId,
       makeSyncDb,
-      makeSyncBackend: makeSyncBackend === undefined ? undefined : makeSyncBackend(syncOptions),
+      makeSyncBackend:
+        makeSyncBackend === undefined || syncOptions === undefined ? undefined : makeSyncBackend(syncOptions),
       db,
       dbLog,
       devtoolsEnabled,

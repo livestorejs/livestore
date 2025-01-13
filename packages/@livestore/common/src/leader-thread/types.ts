@@ -108,7 +108,11 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   }
 >() {}
 
-export type PullQueueItem = { mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>; remaining: number }
+export type PullQueueItem = {
+  mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>
+  backendHead: number
+  remaining: number
+}
 
 export interface SyncQueue {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
@@ -124,6 +128,7 @@ export interface SyncQueue {
     UnexpectedError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
+  backendHeadRef: { current: number }
 }
 
 export interface SyncQueueItem {

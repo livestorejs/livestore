@@ -248,13 +248,17 @@ export const bootDevtools = ({
               const mutationEventEncoded = { ...mutationEventEncoded_, ...nextMutationEventIdPair }
 
               const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
-              yield* Queue.offer(incomingSyncMutationsQueue, { mutationEvents: [mutationEventDecoded], remaining: 0 })
+              yield* Queue.offer(incomingSyncMutationsQueue, {
+                mutationEvents: [mutationEventDecoded],
+                backendHead: 0,
+                remaining: 0,
+              })
 
               // const mutationDef =
               //   schema.mutations.get(mutationEventEncoded.mutation) ??
               //   shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
 
-              yield* coordinator.mutations.push(mutationEventEncoded, { persisted })
+              yield* coordinator.mutations.push([mutationEventEncoded], { persisted })
 
               yield* expoDevtoolsChannel.send(Devtools.RunMutationRes.make({ ...reqPayload }))
 

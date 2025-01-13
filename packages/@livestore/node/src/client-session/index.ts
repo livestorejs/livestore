@@ -207,7 +207,14 @@ export const makeNodeAdapter = ({
           ),
         ),
         Stream.mapEffect(
-          Schema.decode(Schema.Struct({ mutationEvents: Schema.Array(mutationEventSchema), remaining: Schema.Number })),
+          // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
+          Schema.decode(
+            Schema.Struct({
+              mutationEvents: Schema.Array(mutationEventSchema),
+              backendHead: Schema.Number,
+              remaining: Schema.Number,
+            }),
+          ),
         ),
         Stream.orDie,
       )
@@ -216,16 +223,18 @@ export const makeNodeAdapter = ({
         networkStatus,
         mutations: {
           pull: pullMutations,
-          push: (mutationEventEncoded, { persisted }) =>
+          push: (batch, { persisted }) =>
             Effect.gen(function* () {
-              yield* Queue.offer(
+              yield* Queue.offerAll(
                 executionBacklogQueue,
-                WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
+                batch.map((mutationEventEncoded) =>
+                  WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
+                ),
               )
             }).pipe(
               UnexpectedError.mapToUnexpectedError,
               Effect.withSpan('@livestore/node:coordinator:mutate', {
-                attributes: { mutation: mutationEventEncoded.mutation },
+                attributes: { batchSize: batch.length },
               }),
             ),
           nextMutationEventIdPair: makeNextMutationEventIdPair(localHeadRef),

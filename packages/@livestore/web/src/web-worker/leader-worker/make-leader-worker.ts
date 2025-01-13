@@ -110,7 +110,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           // TODO handle cases where options are provided but makeSyncBackend is not provided
           // TODO handle cases where makeSyncBackend is provided but options are not
           // TODO handle cases where backend and options don't match
-          makeSyncBackend: makeSyncBackend === undefined ? undefined : makeSyncBackend(syncOptions),
+          makeSyncBackend:
+            makeSyncBackend === undefined || syncOptions === undefined ? undefined : makeSyncBackend(syncOptions),
           db,
           dbLog,
           devtoolsEnabled,
@@ -155,7 +156,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           items
             // TODO handle txn
             .filter((_) => _._tag === 'mutate')
-            .map((item) => ({ mutationEventEncoded: item.mutationEventEncoded, syncStatus: 'pending' })),
+            .flatMap((item) => item.batch)
+            .map((mutationEventEncoded) => ({ mutationEventEncoded })),
         ),
       ).pipe(
         Effect.uninterruptible,

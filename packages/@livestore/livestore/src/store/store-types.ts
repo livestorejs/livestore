@@ -69,7 +69,7 @@ export type RefreshReason =
   | {
       _tag: 'mutate'
       /** The mutations that were applied */
-      mutations: ReadonlyArray<MutationEvent.Any>
+      mutations: ReadonlyArray<MutationEvent.Any | MutationEvent.PartialAny>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -99,7 +99,6 @@ export type StoreOtel = {
 export type StoreMutateOptions = {
   label?: string
   skipRefresh?: boolean
-  wasSyncMessage?: boolean
   /**
    * When set to `false` the mutation won't be persisted in the mutation log and sync server (but still synced).
    * This can be useful e.g. for fine-granular update events (e.g. position updates during drag & drop)

@@ -1,6 +1,16 @@
 import { env, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Chunk, Deferred, Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import {
+  BucketQueue,
+  Chunk,
+  Deferred,
+  Effect,
+  Option,
+  Queue,
+  Schema,
+  Stream,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 
 import type { EventId, SynchronousDatabase, UnexpectedError } from '../adapter-types.js'
 import { ROOT_ID } from '../adapter-types.js'
@@ -19,8 +29,8 @@ import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
 import {
+  getInitialBackendHeadFromDb,
   getInitialCurrentMutationEventIdFromDb,
-  getInitialRemoteHeadFromDb,
   getMutationEventsSince,
 } from './mutationlog.js'
 import type { InitialSyncInfo, SyncQueue, SyncQueueItem } from './types.js'
@@ -59,7 +69,7 @@ export const makeSyncQueue = ({
   Effect.gen(function* () {
     const pendingSyncItems: SyncQueueItem[] = []
 
-    const executeQueue = yield* Queue.unbounded<SyncQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const executeQueue = yield* BucketQueue.make<SyncQueueItem>()
 
     const syncBackendQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(
       Effect.acquireRelease(Queue.shutdown),
@@ -70,9 +80,9 @@ export const makeSyncQueue = ({
 
     // const isNotRebasingLatch = yield* Effect.makeLatch(false)
 
-    const remoteHeadRef = {
+    const backendHeadRef = {
       // In the case where the db is missing, querying it will fail, so we safely use ROOT_ID.global
-      current: dbMissing ? ROOT_ID.global : getInitialRemoteHeadFromDb(dbLog),
+      current: dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog),
     }
 
     const localHeadRef = {
@@ -114,7 +124,7 @@ export const makeSyncQueue = ({
 
         yield* syncBackendQueue.offerAll(filteredBatch.map((item) => item.mutationEventEncoded))
 
-        yield* executeQueue.offerAll(batch)
+        yield* BucketQueue.offerAll(executeQueue, batch)
       }).pipe(
         Effect.withSpan('@livestore/common:leader-thread:syncing:push', {
           attributes: {
@@ -143,7 +153,7 @@ export const makeSyncQueue = ({
       Effect.gen(function* () {
         {
           // rehydrate pushQueue from dbLog
-          const pendingMutationEvents = yield* getMutationEventsSince({ global: remoteHeadRef.current, local: 0 })
+          const pendingMutationEvents = yield* getMutationEventsSince({ global: backendHeadRef.current, local: 0 })
 
           if (pendingMutationEvents.length > 0) {
             const filteredBatch = pendingMutationEvents
@@ -159,17 +169,29 @@ export const makeSyncQueue = ({
           }
         }
 
-        yield* executeMutationsLoop(executeQueue)
+        yield* executeMutationsLoop({ executeQueue, backendHeadRef })
 
         yield* backgroundBackendPushing({ dbReady, syncBackendQueue })
 
-        return yield* backgroundBackendPulling({ dbReady, remoteHeadRef, localHeadRef, executeQueue, pendingSyncItems })
+        return yield* backgroundBackendPulling({
+          dbReady,
+          backendHeadRef,
+          localHeadRef,
+          executeQueue,
+          pendingSyncItems,
+        })
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
-    return { push, pushPartial, boot } satisfies SyncQueue
+    return { push, pushPartial, boot, backendHeadRef } satisfies SyncQueue
   })
 
-const executeMutationsLoop = (executeQueue: Queue.Queue<SyncQueueItem>) =>
+const executeMutationsLoop = ({
+  executeQueue,
+  backendHeadRef,
+}: {
+  executeQueue: BucketQueue.BucketQueue<SyncQueueItem>
+  backendHeadRef: { current: number }
+}) =>
   Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
     const { db, dbLog } = leaderThreadCtx
@@ -177,7 +199,7 @@ const executeMutationsLoop = (executeQueue: Queue.Queue<SyncQueueItem>) =>
     const applyMutation = yield* makeApplyMutation
 
     yield* Effect.gen(function* () {
-      const batchItems = yield* Queue.takeBetween(executeQueue, 1, 50)
+      const batchItems = yield* BucketQueue.takeBetween(executeQueue, 1, 50)
 
       try {
         db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
@@ -188,6 +210,7 @@ const executeMutationsLoop = (executeQueue: Queue.Queue<SyncQueueItem>) =>
           // TODO do batching if possible
           yield* Queue.offer(queue, {
             mutationEvents: [...batchItems].map((_) => _.mutationEventEncoded),
+            backendHead: backendHeadRef.current,
             remaining: 0,
           })
         }
@@ -230,22 +253,22 @@ const executeMutationsLoop = (executeQueue: Queue.Queue<SyncQueueItem>) =>
 
 const backgroundBackendPulling = ({
   dbReady,
-  remoteHeadRef,
+  backendHeadRef,
   localHeadRef,
   executeQueue,
   pendingSyncItems,
 }: {
   dbReady: Deferred.Deferred<void>
-  remoteHeadRef: { current: number }
+  backendHeadRef: { current: number }
   localHeadRef: { current: EventId }
-  executeQueue: Queue.Queue<SyncQueueItem>
+  executeQueue: BucketQueue.BucketQueue<SyncQueueItem>
   pendingSyncItems: SyncQueueItem[]
 }) =>
   Effect.gen(function* () {
     const { syncBackend, bootStatusQueue, dbLog, initialSyncOptions } = yield* LeaderThreadCtx
     if (syncBackend === undefined) return
 
-    const cursorInfo = yield* getCursorInfo(remoteHeadRef.current)
+    const cursorInfo = yield* getCursorInfo(backendHeadRef.current)
 
     const initialSyncContext = {
       blockingDeferred: initialSyncOptions._tag === 'Blocking' ? yield* Deferred.make<void>() : undefined,
@@ -273,14 +296,8 @@ const backgroundBackendPulling = ({
 
           if (matchesPendingEvents) {
             // apply chunk to read model
-            const mode = 'leader' // TODO
-
-            if (mode === 'leader') {
-              // forward chunk to client sessions
-              // remove from items
-            } else {
-              // if confirmed by sync backend, remove from items
-            }
+            // forward chunk to client sessions
+            // remove from items
           } else {
             // rebase
             // yield* rebasePushQueue(chunk)
@@ -299,17 +316,20 @@ const backgroundBackendPulling = ({
 
           // console.log('pull res', { filteredChunk, pendingSyncItems, chunk })
 
-          yield* executeQueue.offerAll(filteredChunk.map((_) => ({ mutationEventEncoded: _, deferred: undefined })))
+          const newBackendHead = chunk.at(-1)!.id.global
 
-          const head = chunk.at(-1)!.id.global
+          yield* execSql(dbLog, sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${newBackendHead}`, {}).pipe(Effect.orDie)
 
-          yield* execSql(dbLog, sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head}`, {}).pipe(Effect.orDie)
+          backendHeadRef.current = newBackendHead
 
-          remoteHeadRef.current = head
-
-          if (localHeadRef.current.global < head) {
-            localHeadRef.current = { global: head, local: 0 }
+          if (localHeadRef.current.global < newBackendHead) {
+            localHeadRef.current = { global: newBackendHead, local: 0 }
           }
+
+          yield* BucketQueue.offerAll(
+            executeQueue,
+            filteredChunk.map((mutationEventEncoded) => ({ mutationEventEncoded, deferred: undefined })),
+          )
         }
       })
 

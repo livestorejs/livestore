@@ -10,7 +10,7 @@ export const getExecArgsFromMutation = ({
   mutationEventDecoded,
 }: {
   mutationDef: MutationDef.Any
-  mutationEventDecoded: MutationEvent.Any
+  mutationEventDecoded: MutationEvent.Any | MutationEvent.PartialAny
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues

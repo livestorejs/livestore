@@ -102,6 +102,7 @@ export namespace LeaderWorkerInner {
     },
     success: Schema.Struct({
       mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      backendHead: Schema.Number,
       remaining: Schema.Number,
     }),
     failure: UnexpectedError,

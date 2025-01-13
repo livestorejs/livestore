@@ -76,6 +76,16 @@ export class SynchronousDatabaseWrapper {
     return result
   }
 
+  withChangeset<TRes>(callback: () => TRes): { result: TRes; changeset: Uint8Array } {
+    const session = this.db.session()
+    const result = callback()
+    const changeset = session.changeset()
+
+    session.finish()
+
+    return { result, changeset }
+  }
+
   getTablesUsed(query: string) {
     // It seems that SQLite doesn't properly handle `DELETE FROM SOME_TABLE` queries without a WHERE clause
     // So we need to handle these queries separately

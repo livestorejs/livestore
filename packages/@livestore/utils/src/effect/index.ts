@@ -60,6 +60,8 @@ export { dual } from 'effect/Function'
 
 export * as Stream from './Stream.js'
 
+export * as BucketQueue from './BucketQueue.js'
+
 export * as SubscriptionRef from './SubscriptionRef.js'
 
 export * as WebChannel from './WebChannel.js'

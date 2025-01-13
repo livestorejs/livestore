@@ -26,13 +26,13 @@ const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
-  syncBackend: import.meta.env.VITE_LIVESTORE_SYNC_URL
-    ? {
-        type: 'cf',
-        url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
-        roomId: `todomvc_${appId}`,
-      }
-    : undefined,
+  // syncBackend: import.meta.env.VITE_LIVESTORE_SYNC_URL
+  //   ? {
+  //       type: 'cf',
+  //       url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
+  //       roomId: `todomvc_${appId}`,
+  //     }
+  //   : undefined,
 })
 
 export const App: React.FC = () => (
