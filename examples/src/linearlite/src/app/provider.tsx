@@ -5,7 +5,6 @@ import LiveStoreWorker from '@/lib/livestore/worker?worker'
 import { LiveStoreProvider } from '@livestore/react'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
-import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
@@ -30,10 +29,17 @@ interface MenuContextInterface {
   setShowMenu: (show: boolean) => void
 }
 
+interface ToolbarContextInterface {
+  showToolbar: boolean
+  setShowToolbar: (show: boolean) => void
+}
+
 export const MenuContext = React.createContext(null as MenuContextInterface | null)
+export const ToolbarContext = React.createContext(null as ToolbarContextInterface | null)
 
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const [showMenu, setShowMenu] = React.useState(false)
+  const [showToolbar, setShowToolbar] = React.useState(false)
 
   return (
     <LiveStoreProvider
@@ -43,8 +49,10 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       boot={seed}
       batchUpdates={batchUpdates}
     >
-      <FPSMeter className="absolute right-1 z-50 bottom-1 bg-black/30" height={40} />
-      <MenuContext.Provider value={{ showMenu, setShowMenu }}>{children}</MenuContext.Provider>
+      {/* <FPSMeter className="absolute right-1 z-50 bottom-1 bg-black/30" height={40} /> */}
+      <MenuContext.Provider value={{ showMenu, setShowMenu }}>
+        <ToolbarContext.Provider value={{ showToolbar, setShowToolbar }}>{children}</ToolbarContext.Provider>
+      </MenuContext.Provider>
     </LiveStoreProvider>
   )
 }

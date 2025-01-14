@@ -13,6 +13,7 @@
   "dependencies": {
     "@firefox-devtools/react-contextmenu": "^5.2.0",
     "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
     "@livestore/devtools-vite": "0.2.0",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
@@ -37,6 +38,7 @@
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.0.7",
     "react": "^18.3.1",
+    "react-aria-components": "^1.5.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
     "react-icons": "^4.10.1",

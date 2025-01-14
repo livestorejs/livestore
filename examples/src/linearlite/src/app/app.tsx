@@ -1,5 +1,6 @@
 import { Provider } from '@/app/provider'
-import { LeftMenu } from '@/components/LeftMenu'
+import { Layout } from '@/components/layout'
+import { Sidebar } from '@/components/sidebar'
 import Board from '@/pages/Board'
 import { IssuePage } from '@/pages/Issue'
 import { List } from '@/pages/List'
@@ -20,10 +21,10 @@ export const App = () => {
   return (
     <Provider>
       <BrowserRouter>
-        <div className="flex w-full h-screen overflow-y-hidden">
-          <LeftMenu />
+        <Layout>
+          <Sidebar className="hidden lg:flex" />
           {router}
-        </div>
+        </Layout>
       </BrowserRouter>
     </Provider>
   )

@@ -1,0 +1,40 @@
+import { XMarkIcon } from '@heroicons/react/20/solid'
+import React from 'react'
+import { Button, Heading, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
+
+export const Modal = ({
+  show,
+  setShow,
+  title,
+  children,
+}: {
+  show: boolean
+  setShow: (show: boolean) => void
+  title: string
+  children: React.ReactNode
+}) => {
+  return (
+    <ModalOverlay
+      isOpen={show}
+      onOpenChange={setShow}
+      className="fixed inset-0 bg-black/10 flex items-start justify-center p-4 pt-16 lg:pt-32"
+      isDismissable
+    >
+      <ReactAriaModal className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-xl">
+        <div className="flex justify-between items-center p-4 pl-6 border-b border-gray-200">
+          <Heading slot="title" className="text-lg font-bold">
+            {title}
+          </Heading>
+          <Button
+            slot="close"
+            onPress={() => setShow(false)}
+            className="size-8 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex items-center justify-center"
+          >
+            <XMarkIcon className="size-5" />
+          </Button>
+        </div>
+        {children}
+      </ReactAriaModal>
+    </ModalOverlay>
+  )
+}

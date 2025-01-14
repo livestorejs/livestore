@@ -3,8 +3,7 @@
 @tailwind utilities;
 
 body {
-  font-size: 12px;
-  @apply font-medium text-gray-600;
+  @apply text-xs text-gray-600;
 }
 
 @font-face {
