@@ -155,7 +155,14 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
     [TypeId]: TypeId,
     [QueryBuilderAstSymbol]: ast,
     asSql: () => astToSql(ast),
-    toString: () => astToSql(ast).query,
+    toString: () => {
+      try {
+        return astToSql(ast).query
+      } catch (cause) {
+        console.debug(`QueryBuilder.toString(): Error converting query builder to string`, cause, ast)
+        return `Error converting query builder to string`
+      }
+    },
     ...api,
   } satisfies QueryBuilder<TResult, TTableDef>
 }
@@ -198,9 +205,18 @@ const astToSql = (ast: QueryBuilderAst) => {
               if (colDef === undefined) {
                 throw new Error(`Column ${col} not found`)
               }
-              const encodedValue = Schema.encodeSync(colDef.schema)(value)
-              bindValues.push(encodedValue)
-              return `${col} ${op} ?`
+              const isArray = op === 'IN' || op === 'NOT IN'
+              const colSchema = isArray ? Schema.Array(colDef.schema) : colDef.schema
+              const encodedValue = Schema.encodeSync(colSchema)(value)
+
+              if (isArray) {
+                bindValues.push(...encodedValue)
+                const placeholders = Array.from({ length: encodedValue.length }, () => '?').join(', ')
+                return `${col} ${op} (${placeholders})`
+              } else {
+                bindValues.push(encodedValue)
+                return `${col} ${op} ?`
+              }
             }
           })
           .join(' AND ')}`
