@@ -18,7 +18,6 @@ import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../lib/livestore/schema'
-import { showInfo, showWarning } from '../utils/notification'
 
 interface Props {
   isOpen: boolean
@@ -36,7 +35,6 @@ function IssueModal({ isOpen, onDismiss }: Props) {
 
   const handleSubmit = async () => {
     if (title === '') {
-      showWarning('Please enter a title before submitting', 'Title required')
       return
     }
 
@@ -66,7 +64,6 @@ function IssueModal({ isOpen, onDismiss }: Props) {
 
     if (onDismiss) onDismiss()
     reset()
-    showInfo('You created new issue.', 'Issue created')
   }
 
   const handleClickCloseBtn = () => {

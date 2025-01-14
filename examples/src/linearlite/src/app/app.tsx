@@ -6,25 +6,6 @@ import { List } from '@/pages/List'
 import 'animate.css/animate.min.css'
 import React, { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { cssTransition, ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
-
-const slideUp = cssTransition({
-  enter: 'animate__animated animate__slideInUp',
-  exit: 'animate__animated animate__slideOutDown',
-})
-
-// function deleteDB() {
-//   console.log("Deleting DB as schema doesn't match server's")
-//   const DBDeleteRequest = window.indexedDB.deleteDatabase(dbName)
-//   DBDeleteRequest.onsuccess = function () {
-//     console.log('Database deleted successfully')
-//   }
-//   // the indexedDB cannot be deleted if the database connection is still open,
-//   // so we need to reload the page to close any open connections.
-//   // On reload, the database will be recreated.
-//   window.location.reload()
-// }
 
 export const App = () => {
   const [showMenu, setShowMenu] = useState(false)
@@ -45,18 +26,6 @@ export const App = () => {
           <LeftMenu />
           {router}
         </div>
-        <ToastContainer
-          position="bottom-right"
-          autoClose={5000}
-          hideProgressBar
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          transition={slideUp}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
       </BrowserRouter>
     </MenuContext.Provider>
   )

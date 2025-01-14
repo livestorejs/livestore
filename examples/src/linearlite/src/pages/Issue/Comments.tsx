@@ -8,7 +8,6 @@ import Avatar from '../../components/Avatar'
 import Editor from '../../components/editor/Editor'
 import { mutations, tables } from '../../lib/livestore/schema'
 import { formatDate } from '../../utils/date'
-import { showWarning } from '../../utils/notification'
 
 export interface CommentsProps {
   issue: Issue
@@ -44,7 +43,6 @@ function Comments({ issue }: CommentsProps) {
 
   const handlePost = () => {
     if (!newCommentBody) {
-      showWarning('Please enter a comment before submitting', 'Comment required')
       return
     }
 
