@@ -1,6 +1,7 @@
 import HelpIcon from '../assets/icons/help.svg?react'
 import MenuIcon from '../assets/icons/menu.svg?react'
 // import LiveStoreIcon from '../assets/images/logo.svg?react'
+import { MenuContext } from '@/app/provider'
 import classnames from 'classnames'
 import React, { RefObject, useContext, useRef, useState } from 'react'
 import {
@@ -12,7 +13,6 @@ import {
 import { MdKeyboardArrowDown as ExpandMore } from 'react-icons/md'
 import { Link } from 'react-router-dom'
 import BacklogIcon from '../assets/icons/circle-dot.svg?react'
-import { MenuContext } from '../context/MenuContext'
 import { useFilterState } from '../lib/livestore/queries'
 import AboutModal from './AboutModal'
 import Avatar from './Avatar'
