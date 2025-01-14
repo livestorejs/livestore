@@ -5,7 +5,7 @@ import { Status } from '@/types/status'
 import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
 import React, { ReactNode, useState } from 'react'
 import { BsCheck2 } from 'react-icons/bs'
-import { useFilterState } from '../../livestore/queries'
+import { useFilterState } from '../../lib/livestore/queries'
 import { Portal } from '../Portal'
 import { Menu } from './menu'
 

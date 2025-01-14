@@ -1,10 +1,9 @@
-import React from 'react'
 import { Transition } from '@headlessui/react'
+import React, { useRef } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
-import { useRef } from 'react'
+import { useFilterState } from '../lib/livestore/queries'
+import { OrderBy, OrderDirection } from '../lib/livestore/schema'
 import Select from './Select'
-import { useFilterState } from '../livestore/queries'
-import { OrderBy, OrderDirection } from '../livestore/schema'
 
 interface Props {
   isOpen: boolean

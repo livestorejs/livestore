@@ -1,14 +1,14 @@
+import { App } from '@/app/app'
+import LiveStoreWorker from '@/app/livestore.worker?worker'
+import { schema } from '@/lib/livestore/schema'
+import { seed } from '@/lib/livestore/seed'
+import { BootStatus } from '@livestore/livestore'
+import { LiveStoreProvider } from '@livestore/react'
+import { makeAdapter } from '@livestore/web'
+import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
+import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { LiveStoreProvider } from '@livestore/react'
-import { FPSMeter } from '@overengineering/fps-meter'
-import { makeAdapter } from '@livestore/web'
-import { schema } from './livestore/schema'
-import { App } from './App'
-import { seed } from './livestore/seed'
-import LiveStoreWorker from './livestore.worker?worker'
-import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
-import { BootStatus } from '@livestore/livestore'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 

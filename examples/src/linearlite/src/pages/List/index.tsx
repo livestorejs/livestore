@@ -1,14 +1,13 @@
-import React from 'react'
-import TopFilter from '../../components/TopFilter'
-import * as ReactWindow from 'react-window'
 import { queryDb } from '@livestore/livestore'
-import { tables } from '../../livestore/schema'
-import { filterStateToOrderBy, filterStateToWhere } from '../../utils/filterState'
 import { useQuery, useRow } from '@livestore/react'
-import { memo, type CSSProperties } from 'react'
+import React, { memo, type CSSProperties } from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
+import * as ReactWindow from 'react-window'
+import TopFilter from '../../components/TopFilter'
+import { filterState$ } from '../../lib/livestore/queries'
+import { tables } from '../../lib/livestore/schema'
+import { filterStateToOrderBy, filterStateToWhere } from '../../utils/filterState'
 import IssueRow from './IssueRow'
-import { filterState$ } from '../../livestore/queries'
 
 const ITEM_HEIGHT = 36
 

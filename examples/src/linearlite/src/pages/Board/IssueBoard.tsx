@@ -5,7 +5,7 @@ import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React, { useEffect, useMemo, useState } from 'react'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
-import { mutations } from '../../livestore/schema'
+import { mutations } from '../../lib/livestore/schema'
 import IssueCol from './IssueCol'
 
 export interface IssueBoardProps {

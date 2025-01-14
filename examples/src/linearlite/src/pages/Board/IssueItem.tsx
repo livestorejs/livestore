@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import PriorityIcon from '../../components/PriorityIcon'
-import { mutations } from '../../livestore/schema'
+import { mutations } from '../../lib/livestore/schema'
 
 interface IssueProps {
   issue: Issue

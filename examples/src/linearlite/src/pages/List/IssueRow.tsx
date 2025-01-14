@@ -10,7 +10,7 @@ import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import StatusMenu from '../../components/contextmenu/StatusMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
-import { mutations } from '../../livestore/schema'
+import { mutations } from '../../lib/livestore/schema'
 import { formatDate } from '../../utils/date'
 
 interface Props {

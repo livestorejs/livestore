@@ -1,7 +1,7 @@
-import { useSearchParams } from 'react-router-dom'
-import { FilterState, tables } from '../livestore/schema'
-import { Schema } from 'effect'
 import { QueryBuilder } from '@livestore/livestore'
+import { Schema } from 'effect'
+import { useSearchParams } from 'react-router-dom'
+import { FilterState, tables } from '../lib/livestore/schema'
 
 export function useFilterState(): [FilterState, (state: Partial<FilterState>) => void] {
   const [searchParams, setSearchParams] = useSearchParams()

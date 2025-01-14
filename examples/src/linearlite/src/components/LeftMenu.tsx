@@ -1,23 +1,24 @@
 import HelpIcon from '../assets/icons/help.svg?react'
 import MenuIcon from '../assets/icons/menu.svg?react'
 // import LiveStoreIcon from '../assets/images/logo.svg?react'
-import BacklogIcon from '../assets/icons/circle-dot.svg?react'
 import classnames from 'classnames'
-import { RefObject, useRef, useState, useContext } from 'react'
-import { BsPencilSquare as AddIcon } from 'react-icons/bs'
-import { BsSearch as SearchIcon } from 'react-icons/bs'
-import { BsFillGrid3X3GapFill as BoardIcon } from 'react-icons/bs'
-import { BsCollectionFill as IssuesIcon } from 'react-icons/bs'
+import React, { RefObject, useContext, useRef, useState } from 'react'
+import {
+  BsPencilSquare as AddIcon,
+  BsFillGrid3X3GapFill as BoardIcon,
+  BsCollectionFill as IssuesIcon,
+  BsSearch as SearchIcon,
+} from 'react-icons/bs'
 import { MdKeyboardArrowDown as ExpandMore } from 'react-icons/md'
 import { Link } from 'react-router-dom'
-import Avatar from './Avatar'
+import BacklogIcon from '../assets/icons/circle-dot.svg?react'
+import { MenuContext } from '../context/MenuContext'
+import { useFilterState } from '../lib/livestore/queries'
 import AboutModal from './AboutModal'
+import Avatar from './Avatar'
 import IssueModal from './IssueModal'
 import ItemGroup from './ItemGroup'
 import ProfileMenu from './ProfileMenu'
-import { useFilterState } from '../livestore/queries'
-import React from 'react'
-import { MenuContext } from '../context/MenuContext'
 
 export const LeftMenu = () => {
   const ref = useRef<HTMLDivElement>() as RefObject<HTMLDivElement>

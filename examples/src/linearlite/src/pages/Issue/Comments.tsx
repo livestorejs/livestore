@@ -6,7 +6,7 @@ import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Avatar from '../../components/Avatar'
 import Editor from '../../components/editor/Editor'
-import { mutations, tables } from '../../livestore/schema'
+import { mutations, tables } from '../../lib/livestore/schema'
 import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
 

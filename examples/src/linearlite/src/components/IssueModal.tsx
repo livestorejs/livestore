@@ -17,7 +17,7 @@ import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
-import { mutations, tables } from '../livestore/schema'
+import { mutations, tables } from '../lib/livestore/schema'
 import { showInfo, showWarning } from '../utils/notification'
 
 interface Props {

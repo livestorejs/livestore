@@ -12,7 +12,7 @@ import StatusMenu from '../../components/contextmenu/StatusMenu'
 import Editor from '../../components/editor/Editor'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
-import { mutations, tables } from '../../livestore/schema'
+import { mutations, tables } from '../../lib/livestore/schema'
 import Comments from './Comments'
 import DeleteModal from './DeleteModal'
 

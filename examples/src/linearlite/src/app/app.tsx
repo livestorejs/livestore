@@ -1,14 +1,13 @@
-import React from 'react'
+import { LeftMenu } from '@/components/LeftMenu'
+import { MenuContext } from '@/context/MenuContext'
+import Board from '@/pages/Board'
+import { IssuePage } from '@/pages/Issue'
+import { List } from '@/pages/List'
 import 'animate.css/animate.min.css'
-import Board from './pages/Board'
-import { useState } from 'react'
-import { Route, Routes, BrowserRouter } from 'react-router-dom'
+import React, { useState } from 'react'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { cssTransition, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import { List } from './pages/List'
-import { IssuePage } from './pages/Issue'
-import { LeftMenu } from './components/LeftMenu'
-import { MenuContext } from './context/MenuContext'
 
 const slideUp = cssTransition({
   enter: 'animate__animated animate__slideInUp',

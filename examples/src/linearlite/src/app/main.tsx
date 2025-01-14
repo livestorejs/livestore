@@ -1,8 +1,8 @@
+import '@/app/style.css'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import './style.css'
 
-import { Root } from './Root'
+import { Root } from '@/app/root'
 
 const container = document.getElementById('root')!
 const root = createRoot(container)

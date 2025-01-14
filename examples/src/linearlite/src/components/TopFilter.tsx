@@ -7,7 +7,7 @@ import React, { useContext, useState } from 'react'
 import { BsPlus, BsSortUp, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
 import MenuIcon from '../assets/icons/menu.svg?react'
 import { MenuContext } from '../context/MenuContext'
-import { issueCount$, useFilterState } from '../livestore/queries'
+import { issueCount$, useFilterState } from '../lib/livestore/queries'
 import { ViewOptionMenu } from './ViewOptionMenu'
 import { FilterMenu } from './contextmenu/FilterMenu'
 
