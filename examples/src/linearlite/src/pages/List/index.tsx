@@ -1,3 +1,4 @@
+import { filterStateToOrderBy, filterStateToWhere } from '@/lib/livestore/utils'
 import { queryDb } from '@livestore/livestore'
 import { useQuery, useRow } from '@livestore/react'
 import React, { memo, type CSSProperties } from 'react'
@@ -6,7 +7,6 @@ import * as ReactWindow from 'react-window'
 import TopFilter from '../../components/TopFilter'
 import { filterState$ } from '../../lib/livestore/queries'
 import { tables } from '../../lib/livestore/schema'
-import { filterStateToOrderBy, filterStateToWhere } from '../../utils/filterState'
 import IssueRow from './IssueRow'
 
 const ITEM_HEIGHT = 36

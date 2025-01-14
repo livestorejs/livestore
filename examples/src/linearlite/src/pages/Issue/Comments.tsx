@@ -1,4 +1,5 @@
 import { Issue } from '@/types/issue'
+import { formatDate } from '@/utils/format-date'
 import { queryDb } from '@livestore/livestore'
 import { useScopedQuery, useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
@@ -7,7 +8,6 @@ import ReactMarkdown from 'react-markdown'
 import Avatar from '../../components/Avatar'
 import Editor from '../../components/editor/Editor'
 import { mutations, tables } from '../../lib/livestore/schema'
-import { formatDate } from '../../utils/date'
 
 export interface CommentsProps {
   issue: Issue

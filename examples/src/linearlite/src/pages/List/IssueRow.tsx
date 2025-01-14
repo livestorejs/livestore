@@ -1,6 +1,7 @@
 import { Issue } from '@/types/issue'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
+import { formatDate } from '@/utils/format-date'
 import { useStore } from '@livestore/react'
 import type { CSSProperties } from 'react'
 import React, { memo } from 'react'
@@ -11,7 +12,6 @@ import StatusMenu from '../../components/contextmenu/StatusMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
 import { mutations } from '../../lib/livestore/schema'
-import { formatDate } from '../../utils/date'
 
 interface Props {
   issue: Issue

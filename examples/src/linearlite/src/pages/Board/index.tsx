@@ -1,10 +1,10 @@
+import { filterStateToWhere } from '@/lib/livestore/utils'
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
 import TopFilter from '../../components/TopFilter'
 import { filterState$ } from '../../lib/livestore/queries'
 import { tables } from '../../lib/livestore/schema'
-import { filterStateToWhere } from '../../utils/filterState'
 import IssueBoard from './IssueBoard'
 
 const issues$ = queryDb(
