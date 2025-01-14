@@ -94,6 +94,33 @@ describe('query builder', () => {
           "query": "SELECT id, text FROM 'todos' WHERE deletedAt <= ?",
         }
       `)
+      expect(
+        db.todos
+          .select('id', 'text')
+          .where({ status: { op: 'IN', value: ['active'] } })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "active",
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE status IN (?)",
+        }
+      `)
+      expect(
+        db.todos
+          .select('id', 'text')
+          .where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "active",
+            "completed",
+          ],
+          "query": "SELECT id, text FROM 'todos' WHERE status NOT IN (?, ?)",
+        }
+      `)
     })
 
     it('should handle OFFSET and LIMIT clauses', () => {

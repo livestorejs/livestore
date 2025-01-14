@@ -15,6 +15,7 @@
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Improve Otel tracing integration
+- Fix: The query builder now correctly handles `IN` and `NOT IN` where operations
 - Internal:
   - Node syncing integration tests
   - New devtools protocol via webmesh

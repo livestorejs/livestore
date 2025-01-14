@@ -5,6 +5,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  UnexpectedError,
 } from '@livestore/common'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
@@ -144,28 +145,32 @@ export class LiveStoreDbQuery<
     let queryInputRaw$OrQueryInputRaw: TQueryInputRaw | Thunk<TQueryInputRaw, QueryContext, RefreshReason>
 
     const fromQueryBuilder = (qb: QueryBuilder.Any, otelContext: otel.Context | undefined) => {
-      const qbRes = qb.asSql()
-      const schema = getResultSchema(qb) as Schema.Schema<TResultSchema, ReadonlyArray<any>>
-      const ast = qb[QueryBuilderAstSymbol]
+      try {
+        const qbRes = qb.asSql()
+        const schema = getResultSchema(qb) as Schema.Schema<TResultSchema, ReadonlyArray<any>>
+        const ast = qb[QueryBuilderAstSymbol]
 
-      return {
-        queryInputRaw: {
-          query: qbRes.query,
-          schema,
-          bindValues: qbRes.bindValues,
-          queriedTables: new Set([ast.tableDef.sqliteDef.name]),
-          queryInfo: ast._tag === 'RowQuery' ? { _tag: 'Row', table: ast.tableDef, id: ast.id } : { _tag: 'None' },
-        } satisfies TQueryInputRaw,
-        label: ast._tag === 'RowQuery' ? rowQueryLabel(ast.tableDef, ast.id) : qb.toString(),
-        execBeforeFirstRun:
-          ast._tag === 'RowQuery'
-            ? makeExecBeforeFirstRun({
-                table: ast.tableDef,
-                insertValues: ast.insertValues,
-                id: ast.id,
-                otelContext,
-              })
-            : undefined,
+        return {
+          queryInputRaw: {
+            query: qbRes.query,
+            schema,
+            bindValues: qbRes.bindValues,
+            queriedTables: new Set([ast.tableDef.sqliteDef.name]),
+            queryInfo: ast._tag === 'RowQuery' ? { _tag: 'Row', table: ast.tableDef, id: ast.id } : { _tag: 'None' },
+          } satisfies TQueryInputRaw,
+          label: ast._tag === 'RowQuery' ? rowQueryLabel(ast.tableDef, ast.id) : qb.toString(),
+          execBeforeFirstRun:
+            ast._tag === 'RowQuery'
+              ? makeExecBeforeFirstRun({
+                  table: ast.tableDef,
+                  insertValues: ast.insertValues,
+                  id: ast.id,
+                  otelContext,
+                })
+              : undefined,
+        }
+      } catch (cause) {
+        throw new UnexpectedError({ cause, note: `Error building query for ${qb.toString()}`, payload: { qb } })
       }
     }
 
