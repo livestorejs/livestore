@@ -1,12 +1,12 @@
-import React from 'react'
-import { DragDropContext, DropResult } from 'react-beautiful-dnd'
-import { useMemo, useState, useEffect } from 'react'
-import { StatusOptions, StatusType } from '../../types/issue'
-import IssueCol from './IssueCol'
-import { Issue } from '../../types'
+import { StatusOptions } from '@/data/status-options'
+import { Issue } from '@/types/issue'
+import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
+import React, { useEffect, useMemo, useState } from 'react'
+import { DragDropContext, DropResult } from 'react-beautiful-dnd'
 import { mutations } from '../../livestore/schema'
+import IssueCol from './IssueCol'
 
 export interface IssueBoardProps {
   issues: readonly Issue[]
@@ -14,7 +14,7 @@ export interface IssueBoardProps {
 
 interface MovedIssues {
   [id: string]: {
-    status?: StatusType
+    status?: Status
     kanbanorder?: string
   }
 }
@@ -34,7 +34,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
   }, [issues])
 
   const { issuesByStatus } = useMemo(() => {
-    const issuesByStatus: Partial<Record<StatusType, Issue[]>> = {}
+    const issuesByStatus: Partial<Record<Status, Issue[]>> = {}
     issues.forEach((issue) => {
       // If the issue has been moved, patch with new status and kanbanorder for sorting
       if (movedIssues[issue.id]) {
@@ -52,7 +52,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
 
     // Sort issues in each column by kanbanorder and issue id
     Object.keys(issuesByStatus).forEach((status) => {
-      issuesByStatus[status as StatusType]!.sort((a, b) => {
+      issuesByStatus[status as Status]!.sort((a, b) => {
         if (a.kanbanorder < b.kanbanorder) {
           return -1
         }
@@ -71,7 +71,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
     return { issuesByStatus }
   }, [issues, movedIssues])
 
-  const adjacentIssues = (column: StatusType, index: number, sameColumn = true, currentIndex: number) => {
+  const adjacentIssues = (column: Status, index: number, sameColumn = true, currentIndex: number) => {
     const columnIssues = issuesByStatus[column] || []
     let prevIssue: Issue | undefined
     let nextIssue: Issue | undefined
@@ -155,7 +155,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
     console.log(source, destination, draggableId)
     if (destination && destination.droppableId) {
       const { prevIssue, nextIssue } = adjacentIssues(
-        destination.droppableId as StatusType,
+        destination.droppableId as Status,
         destination.index,
         destination.droppableId === source.droppableId,
         source.index,
@@ -165,7 +165,7 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
       // Keep track of moved issues so we can override the status and kanbanorder when
       // sorting issues into columns.
       const modified = new Date()
-      const status = destination.droppableId as StatusType
+      const status = destination.droppableId as Status
       setMovedIssues((prev) => ({
         ...prev,
         [draggableId]: { status, kanbanorder, modified },
@@ -178,11 +178,9 @@ export default function IssueBoard({ issues }: IssueBoardProps) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex flex-1 pt-6 pl-8 overflow-scroll bg-gray-100">
-        {(Object.entries(StatusOptions) as [StatusType, (typeof StatusOptions)[StatusType]][]).map(
-          ([status, option]) => (
-            <IssueCol key={status} title={option.display} status={status} issues={issuesByStatus[status]} />
-          ),
-        )}
+        {(Object.entries(StatusOptions) as [Status, (typeof StatusOptions)[Status]][]).map(([status, option]) => (
+          <IssueCol key={status} title={option.display} status={status} issues={issuesByStatus[status]} />
+        ))}
       </div>
     </DragDropContext>
   )

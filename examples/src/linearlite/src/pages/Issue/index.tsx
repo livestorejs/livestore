@@ -1,18 +1,20 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { PriorityOptions } from '@/data/priority-options'
+import { StatusOptions } from '@/data/status-options'
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
+import { useRow, useStore } from '@livestore/react'
 import React, { useState } from 'react'
-import { BsTrash3 as DeleteIcon } from 'react-icons/bs'
-import { BsXLg as CloseIcon } from 'react-icons/bs'
+import { BsXLg as CloseIcon, BsTrash3 as DeleteIcon } from 'react-icons/bs'
+import { useNavigate, useParams } from 'react-router-dom'
+import Avatar from '../../components/Avatar'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import StatusMenu from '../../components/contextmenu/StatusMenu'
+import Editor from '../../components/editor/Editor'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
-import Avatar from '../../components/Avatar'
-import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
-import Editor from '../../components/editor/Editor'
-import DeleteModal from './DeleteModal'
-import Comments from './Comments'
-import { useRow, useStore } from '@livestore/react'
 import { mutations, tables } from '../../livestore/schema'
+import Comments from './Comments'
+import DeleteModal from './DeleteModal'
 
 export const IssuePage = () => {
   const navigate = useNavigate()
@@ -30,9 +32,9 @@ export const IssuePage = () => {
     return <div className="p-8 w-full text-center">Issue not found</div>
   }
 
-  const handleStatusChange = (status: StatusType) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
+  const handleStatusChange = (status: Status) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
 
-  const handlePriorityChange = (priority: PriorityType) =>
+  const handlePriorityChange = (priority: Priority) =>
     store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   const handleTitleChange = (title: string, { inProgress }: { inProgress: boolean }) =>

@@ -1,9 +1,10 @@
-import React from 'react'
+import { StatusOptions } from '@/data/status-options'
+import { Status } from '@/types/status'
 import classNames from 'classnames'
-import { StatusOptions, StatusType } from '../types/issue'
+import React from 'react'
 
 interface Props {
-  status: StatusType
+  status: Status
   className?: string
 }
 

@@ -1,9 +1,10 @@
-import React from 'react'
+import { PriorityOptions } from '@/data/priority-options'
+import { Priority } from '@/types/priority'
 import classNames from 'classnames'
-import { PriorityOptions, PriorityType } from '../types/issue'
+import React from 'react'
 
 interface Props {
-  priority: PriorityType
+  priority: Priority
   className?: string
 }
 

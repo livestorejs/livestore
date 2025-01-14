@@ -1,11 +1,13 @@
-import React from 'react'
-import { Portal } from '../Portal'
-import { ReactNode, useState } from 'react'
+import { PriorityOptions } from '@/data/priority-options'
+import { StatusOptions } from '@/data/status-options'
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
 import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
+import React, { ReactNode, useState } from 'react'
 import { BsCheck2 } from 'react-icons/bs'
-import { Menu } from './menu'
-import { PriorityOptions, PriorityType, StatusOptions, StatusType } from '../../types/issue'
 import { useFilterState } from '../../livestore/queries'
+import { Portal } from '../Portal'
+import { Menu } from './menu'
 
 interface Props {
   id: string
@@ -19,7 +21,7 @@ export const FilterMenu: React.FC<Props> = ({ id, button, className }) => {
 
   const priorities = Object.entries(PriorityOptions).map(([priority, { Icon, display }]) => ({
     Icon,
-    priority: priority as PriorityType,
+    priority: priority as Priority,
     display,
   }))
 
@@ -28,7 +30,7 @@ export const FilterMenu: React.FC<Props> = ({ id, button, className }) => {
 
   let statuses = Object.entries(StatusOptions).map(([status, { Icon, display }]) => ({
     Icon,
-    status: status as StatusType,
+    status: status as Status,
     display,
   }))
   if (keyword !== '') {
@@ -56,7 +58,7 @@ export const FilterMenu: React.FC<Props> = ({ id, button, className }) => {
     )
   })
 
-  const handlePrioritySelect = (priority: PriorityType) => {
+  const handlePrioritySelect = (priority: Priority) => {
     setKeyword('')
     const newPriority = [...(filterState.priority ?? [])]
     if (newPriority.includes(priority)) {
@@ -67,7 +69,7 @@ export const FilterMenu: React.FC<Props> = ({ id, button, className }) => {
     setFilterState((_) => ({ ..._, priority: newPriority }))
   }
 
-  const handleStatusSelect = (status: StatusType) => {
+  const handleStatusSelect = (status: Status) => {
     setKeyword('')
     const newStatus = [...(filterState.status || [])]
     if (newStatus.includes(status)) {

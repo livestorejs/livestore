@@ -1,5 +1,6 @@
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
 import { DbSchema, makeSchema } from '@livestore/livestore'
-import { PriorityType, StatusType } from '../types/issue'
 import { Schema } from 'effect'
 import * as mutations from './mutations'
 
@@ -11,8 +12,8 @@ const issue = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     title: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
-    priority: DbSchema.text({ schema: PriorityType, default: 'none' }),
-    status: DbSchema.text({ schema: StatusType, default: 'todo' }),
+    priority: DbSchema.text({ schema: Priority, default: 'none' }),
+    status: DbSchema.text({ schema: Status, default: 'todo' }),
     created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
     deleted: DbSchema.integer({ nullable: true }),
     modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
@@ -62,8 +63,8 @@ const comment = DbSchema.table(
 export const FilterState = Schema.Struct({
   orderBy: OrderBy,
   orderDirection: OrderDirection,
-  status: Schema.optional(Schema.Array(StatusType)),
-  priority: Schema.optional(Schema.Array(PriorityType)),
+  status: Schema.optional(Schema.Array(Status)),
+  priority: Schema.optional(Schema.Array(Priority)),
   query: Schema.optional(Schema.String),
 })
 

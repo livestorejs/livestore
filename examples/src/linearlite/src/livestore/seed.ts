@@ -1,14 +1,15 @@
 import { type Store } from '@livestore/livestore'
 
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
 import { nanoid } from 'nanoid'
 import { Issue, mutations, tables } from './schema'
-import { PriorityType, StatusType } from '../types/issue'
 
 export const names = ['John', 'Jane', 'Sam', 'Anna', 'Michael', 'Sarah', 'Chris', 'Jessica']
 export const projects = ['Website Redesign', 'App Development', 'Marketing Strategy', 'Customer Outreach']
 export const labels = ['frontend', 'backend', 'ux', 'research', 'design', 'bug', 'feature']
-export const priorities = ['none', 'low', 'medium', 'high', 'urgent'] satisfies PriorityType[]
-export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled'] satisfies StatusType[]
+export const priorities = ['none', 'low', 'medium', 'high', 'urgent'] satisfies Priority[]
+export const statuses = ['backlog', 'todo', 'in_progress', 'done', 'canceled'] satisfies Status[]
 
 export const seed = (store: Store) => {
   try {

@@ -1,17 +1,17 @@
-import React from 'react'
+import { Issue } from '@/types/issue'
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
+import { useStore } from '@livestore/react'
 import type { CSSProperties } from 'react'
+import React, { memo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Avatar from '../../components/Avatar'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import StatusMenu from '../../components/contextmenu/StatusMenu'
 import PriorityIcon from '../../components/PriorityIcon'
 import StatusIcon from '../../components/StatusIcon'
-import Avatar from '../../components/Avatar'
-import { memo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { formatDate } from '../../utils/date'
-import { Issue } from '../../types'
-import { PriorityType, StatusType } from '../../types/issue'
-import { useStore } from '@livestore/react'
 import { mutations } from '../../livestore/schema'
+import { formatDate } from '../../utils/date'
 
 interface Props {
   issue: Issue
@@ -23,9 +23,9 @@ function IssueRow({ issue, style }: Props) {
   const navigate = useNavigate()
   const { store } = useStore()
 
-  const handleChangeStatus = (status: StatusType) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
+  const handleChangeStatus = (status: Status) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
 
-  const handleChangePriority = (priority: PriorityType) =>
+  const handleChangePriority = (priority: Priority) =>
     store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   return (

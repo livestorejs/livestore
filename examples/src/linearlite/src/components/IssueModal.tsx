@@ -1,23 +1,24 @@
-import React from 'react'
-import { memo, useEffect, useRef, useState } from 'react'
+import React, { memo, useEffect, useRef, useState } from 'react'
 
+import { generateKeyBetween } from 'fractional-indexing'
 import { BsChevronRight as ChevronRight } from 'react-icons/bs'
 import CloseIcon from '../assets/icons/close.svg?react'
 import LivestoreIcon from '../assets/images/icon.inverse.svg?react'
-import { generateKeyBetween } from 'fractional-indexing'
 
 import Modal from './Modal'
-import Editor from './editor/Editor'
 import PriorityIcon from './PriorityIcon'
 import StatusIcon from './StatusIcon'
 import PriorityMenu from './contextmenu/PriorityMenu'
 import StatusMenu from './contextmenu/StatusMenu'
+import Editor from './editor/Editor'
 
-import { PriorityOptions, StatusType, PriorityType } from '../types/issue'
-import { showInfo, showWarning } from '../utils/notification'
+import { PriorityOptions } from '@/data/priority-options'
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../livestore/schema'
+import { showInfo, showWarning } from '../utils/notification'
 
 interface Props {
   isOpen: boolean
@@ -29,8 +30,8 @@ function IssueModal({ isOpen, onDismiss }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState<string>('')
-  const [priority, setPriority] = useState<PriorityType>('none')
-  const [status, setStatus] = useState<StatusType>('backlog')
+  const [priority, setPriority] = useState<Priority>('none')
+  const [status, setStatus] = useState<Status>('backlog')
   const { store } = useStore()
 
   const handleSubmit = async () => {

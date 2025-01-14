@@ -1,11 +1,12 @@
 // @ts-check
 
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import svgr from 'vite-plugin-svgr'
-import { VitePWA } from 'vite-plugin-pwa'
-import process from 'node:process'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import react from '@vitejs/plugin-react'
+import path from 'node:path'
+import process from 'node:process'
+import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
+import svgr from 'vite-plugin-svgr'
 // import path from 'path'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
@@ -62,4 +63,9 @@ export default defineConfig({
       },
     },
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
 })

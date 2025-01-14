@@ -1,15 +1,14 @@
-import { useState } from 'react'
+import { Issue } from '@/types/issue'
+import { queryDb } from '@livestore/livestore'
+import { useScopedQuery, useStore } from '@livestore/react'
+import { nanoid } from 'nanoid'
+import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import Editor from '../../components/editor/Editor'
 import Avatar from '../../components/Avatar'
+import Editor from '../../components/editor/Editor'
+import { mutations, tables } from '../../livestore/schema'
 import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
-import { Issue } from '../../types'
-import { useStore, useScopedQuery } from '@livestore/react'
-import { queryDb } from '@livestore/livestore'
-import { nanoid } from 'nanoid'
-import { mutations, tables } from '../../livestore/schema'
-import React from 'react'
 
 export interface CommentsProps {
   issue: Issue

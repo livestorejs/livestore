@@ -1,22 +1,21 @@
-import React from 'react'
-import StatusIcon from '../../components/StatusIcon'
-import { CSSProperties, memo } from 'react'
+import { Issue } from '@/types/issue'
+import { Status } from '@/types/status'
+import React, { CSSProperties, memo } from 'react'
 import {
-  Droppable,
-  DroppableProvided,
-  DroppableStateSnapshot,
   Draggable,
   DraggableProvided,
   DraggableStateSnapshot,
+  Droppable,
+  DroppableProvided,
+  DroppableStateSnapshot,
 } from 'react-beautiful-dnd'
-import { FixedSizeList as List, areEqual } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer'
+import { FixedSizeList as List, areEqual } from 'react-window'
+import StatusIcon from '../../components/StatusIcon'
 import IssueItem, { itemHeight } from './IssueItem'
-import { Issue } from '../../types'
-import { StatusType } from '../../types/issue'
 
 interface Props {
-  status: StatusType
+  status: Status
   title: string
   issues: Array<Issue> | undefined
 }

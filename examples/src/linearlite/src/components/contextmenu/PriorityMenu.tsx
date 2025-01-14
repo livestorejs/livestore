@@ -1,28 +1,28 @@
-import React from 'react'
-import { Portal } from '../Portal'
-import { ReactNode, useState } from 'react'
+import { PriorityOptions } from '@/data/priority-options'
+import { Priority } from '@/types/priority'
 import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
+import React, { ReactNode, useState } from 'react'
+import { Portal } from '../Portal'
 import { Menu } from './menu'
-import { PriorityOptions, PriorityType } from '../../types/issue'
 
 interface Props {
   id: string
   button: ReactNode
   filterKeyword?: boolean
   className?: string
-  onSelect?: (item: PriorityType) => void
+  onSelect?: (item: Priority) => void
 }
 
 function PriorityMenu({ id, button, filterKeyword = false, className, onSelect }: Props) {
   const [keyword, setKeyword] = useState('')
 
-  const handleSelect = (priority: PriorityType) => {
+  const handleSelect = (priority: Priority) => {
     setKeyword('')
     if (onSelect) onSelect(priority)
   }
   let statusOpts = Object.entries(PriorityOptions).map(([priority, { Icon, display }]) => ({
     Icon,
-    priority: priority as PriorityType,
+    priority: priority as Priority,
     display,
   }))
   if (keyword !== '') {

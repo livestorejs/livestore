@@ -1,14 +1,15 @@
-import { Schema } from 'effect'
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
 import { defineMutation, sql } from '@livestore/livestore'
-import { PriorityType, StatusType } from '../types/issue'
+import { Schema } from 'effect'
 
 export const createIssueWithDescription = defineMutation(
   'createIssueWithDescription',
   Schema.Struct({
     id: Schema.String,
     title: Schema.String,
-    priority: PriorityType,
-    status: StatusType,
+    priority: Priority,
+    status: Status,
     created: Schema.Number,
     modified: Schema.Number,
     kanbanorder: Schema.String,
@@ -63,8 +64,8 @@ export const updateIssue = defineMutation(
   Schema.Struct({
     id: Schema.String,
     title: Schema.String,
-    priority: PriorityType,
-    status: StatusType,
+    priority: Priority,
+    status: Status,
     modified: Schema.Number,
   }),
   sql`UPDATE issue SET title = $title, priority = $priority, status = $status, modified = $modified WHERE id = $id`,
@@ -72,7 +73,7 @@ export const updateIssue = defineMutation(
 
 export const updateIssueStatus = defineMutation(
   'updateIssueStatus',
-  Schema.Struct({ id: Schema.String, status: StatusType }),
+  Schema.Struct({ id: Schema.String, status: Status }),
   sql`UPDATE issue SET status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
@@ -90,13 +91,13 @@ export const updateIssueTitle = defineMutation(
 
 export const moveIssue = defineMutation(
   'moveIssue',
-  Schema.Struct({ id: Schema.String, kanbanorder: Schema.String, status: StatusType }),
+  Schema.Struct({ id: Schema.String, kanbanorder: Schema.String, status: Status }),
   sql`UPDATE issue SET kanbanorder = $kanbanorder, status = $status, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const updateIssuePriority = defineMutation(
   'updateIssuePriority',
-  Schema.Struct({ id: Schema.String, priority: PriorityType }),
+  Schema.Struct({ id: Schema.String, priority: Priority }),
   sql`UPDATE issue SET priority = $priority, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 

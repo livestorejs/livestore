@@ -1,14 +1,13 @@
-import React from 'react'
-import { memo, type CSSProperties } from 'react'
+import { Issue } from '@/types/issue'
+import { Priority } from '@/types/priority'
+import { useStore } from '@livestore/react'
 import classNames from 'classnames'
-import { useNavigate } from 'react-router-dom'
+import React, { memo, type CSSProperties } from 'react'
 import { DraggableProvided } from 'react-beautiful-dnd'
+import { useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import PriorityMenu from '../../components/contextmenu/PriorityMenu'
 import PriorityIcon from '../../components/PriorityIcon'
-import { Issue } from '../../types'
-import { PriorityType } from '../../types/issue'
-import { useStore } from '@livestore/react'
 import { mutations } from '../../livestore/schema'
 
 interface IssueProps {
@@ -39,8 +38,7 @@ const IssueItem = ({ issue, style, isDragging, provided }: IssueProps) => {
     </span>
   )
 
-  const updatePriority = (priority: PriorityType) =>
-    store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
+  const updatePriority = (priority: Priority) => store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   return (
     <div

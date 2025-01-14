@@ -1,13 +1,15 @@
-import React from 'react'
+import { PriorityOptions } from '@/data/priority-options'
+import { StatusOptions } from '@/data/status-options'
+import { Priority } from '@/types/priority'
+import { Status } from '@/types/status'
+import { useQuery } from '@livestore/react'
+import React, { useContext, useState } from 'react'
+import { BsPlus, BsSortUp, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
 import MenuIcon from '../assets/icons/menu.svg?react'
-import { useState, useContext } from 'react'
-import { BsSortUp, BsPlus, BsX, BsSearch as SearchIcon } from 'react-icons/bs'
+import { MenuContext } from '../context/MenuContext'
+import { issueCount$, useFilterState } from '../livestore/queries'
 import { ViewOptionMenu } from './ViewOptionMenu'
 import { FilterMenu } from './contextmenu/FilterMenu'
-import { PriorityOptions, StatusOptions } from '../types/issue'
-import { useQuery } from '@livestore/react'
-import { issueCount$, useFilterState } from '../livestore/queries'
-import { MenuContext } from '../context/MenuContext'
 
 interface Props {
   filteredIssuesCount: number
@@ -83,7 +85,7 @@ export default function TopFilter({ filteredIssuesCount, hideSort, showSearch, t
             <div className="flex pr-4 space-x-[1px]">
               <span className="px-1 bg-gray-300 rounded-l">Priority is</span>
               <span className="px-1 bg-gray-300 ">
-                {filterState.priority?.map((priority) => PriorityOptions[priority].display).join(', ')}
+                {filterState.priority?.map((priority) => PriorityOptions[priority as Priority].display).join(', ')}
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"
@@ -97,7 +99,7 @@ export default function TopFilter({ filteredIssuesCount, hideSort, showSearch, t
             <div className="flex pr-4 space-x-[1px]">
               <span className="px-1 bg-gray-300 rounded-l">Status is</span>
               <span className="px-1 bg-gray-300 ">
-                {filterState.status?.map((status) => StatusOptions[status].display).join(', ')}
+                {filterState.status?.map((status) => StatusOptions[status as Status].display).join(', ')}
               </span>
               <span
                 className="px-1 bg-gray-300 rounded-r cursor-pointer flex items-center"

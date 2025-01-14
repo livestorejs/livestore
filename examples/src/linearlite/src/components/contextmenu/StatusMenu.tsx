@@ -1,25 +1,25 @@
-import React from 'react'
-import { Portal } from '../Portal'
-import { ReactNode, useState } from 'react'
+import { StatusOptions } from '@/data/status-options'
+import { Status } from '@/types/status'
 import { ContextMenuTrigger } from '@firefox-devtools/react-contextmenu'
-import { StatusOptions, StatusType } from '../../types/issue'
+import React, { ReactNode, useState } from 'react'
+import { Portal } from '../Portal'
 import { Menu } from './menu'
 
 interface Props {
   id: string
   button: ReactNode
   className?: string
-  onSelect?: (item: StatusType) => void
+  onSelect?: (item: Status) => void
 }
 export default function StatusMenu({ id, button, className, onSelect }: Props) {
   const [keyword, setKeyword] = useState('')
-  const handleSelect = (status: StatusType) => {
+  const handleSelect = (status: Status) => {
     if (onSelect) onSelect(status)
   }
 
   let statuses = Object.entries(StatusOptions).map(([status, { Icon, display }]) => ({
     Icon,
-    status: status as StatusType,
+    status: status as Status,
     display,
   }))
   if (keyword !== '') {
