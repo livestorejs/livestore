@@ -4,7 +4,7 @@ export type BucketQueue<A> = TRef.TRef<A[]>
 
 export const make = <A>(): STM.STM<BucketQueue<A>> => TRef.make<A[]>([])
 
-export const offerAll = <A>(self: BucketQueue<A>, elements: A[]) =>
+export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
   TRef.update(self, (bucket) => Array.appendAll(bucket, elements))
 
 export const takeBetween = <A>(self: BucketQueue<A>, min: number, max: number) =>

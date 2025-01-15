@@ -10,7 +10,7 @@ import type {
   SubscriptionRef,
   WebChannel,
 } from '@livestore/utils/effect'
-import { Context, Schema } from '@livestore/utils/effect'
+import { Context, Inspectable, Schema } from '@livestore/utils/effect'
 
 import type {
   BootStatus,
@@ -117,7 +117,7 @@ export type PullQueueItem = {
 export interface SyncQueue {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
-    batch: SyncQueueItem[],
+    batch: ReadonlyArray<MutationEventEncodedWithDeferred>,
   ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
 
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
@@ -128,13 +128,57 @@ export interface SyncQueue {
     UnexpectedError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
-  backendHeadRef: { current: number }
+  // backendHeadRef: { current: number }
 }
 
-export interface SyncQueueItem {
-  mutationEventEncoded: MutationEvent.AnyEncoded
-  /** Used in scenarios where the pusher wants to know when the mutation has been applied to the read model */
-  deferred?: Deferred.Deferred<void>
+// export interface SyncQueueItem {
+//   mutationEventEncoded: MutationEvent.AnyEncoded
+//   /** Used in scenarios where the pusher wants to know when the mutation has been applied to the read model */
+//   deferred?: Deferred.Deferred<void>
+// }
+
+// export type MutationEventWithDeferred = MutationEvent.AnyEncoded & { deferred?: Deferred.Deferred<void> }
+
+export class MutationEventEncodedWithDeferred extends Inspectable.Class {
+  mutation: string
+  args: any
+  id: EventId
+  parentId: EventId
+  meta: {
+    deferred?: Deferred.Deferred<void>
+  }
+
+  constructor({
+    mutation,
+    args,
+    id,
+    parentId,
+    meta,
+  }: {
+    mutation: string
+    args: any
+    id: EventId
+    parentId: EventId
+    meta?: { deferred?: Deferred.Deferred<void> }
+  }) {
+    super()
+
+    this.mutation = mutation
+    this.args = args
+    this.id = id
+    this.parentId = parentId
+    this.meta = { deferred: meta?.deferred }
+  }
+
+  toJSON = () => {
+    // Only used for logging/debugging
+    return {
+      id: `(${this.id.global},${this.id.local}) → (${this.parentId.global},${this.parentId.local})`,
+      mutation: this.mutation,
+      args: this.args,
+      // meta: this.meta,
+    }
+  }
 }
 
 export interface PullQueueSet extends Iterable<Queue.Queue<PullQueueItem>> {

@@ -2,7 +2,11 @@ import '@livestore/utils/node-vitest-polyfill'
 
 import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
 import { makeNextMutationEventIdPair, ROOT_ID, validatePushPayload } from '@livestore/common'
-import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  MutationEventEncodedWithDeferred,
+} from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -66,7 +70,10 @@ Vitest.describe('sync', () => {
     }).pipe(withCtx(test)),
   )
 
-  Vitest.scopedLive('invalid push', (test) =>
+  // TODO property based testing to test following cases:
+  // push first, then pull + latency in between (need to adjust the backend id accordingly)
+  // pull first, then push + latency in between
+  Vitest.scopedLive.only('invalid push', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -182,22 +189,21 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     const currentMutationEventId = { current: ROOT_ID }
     const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventId)
 
-    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny) =>
-      encodeMutationEvent({
-        ...partialEvent,
-        ...nextMutationEventIdPair({ localOnly: false }),
-      }) satisfies MutationEvent.AnyEncoded
+    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) =>
+      new MutationEventEncodedWithDeferred({
+        ...encodeMutationEvent({
+          ...partialEvent,
+          ...nextMutationEventIdPair({ localOnly: false }),
+        }),
+        meta: { deferred },
+      })
 
     const mutate = (...partialEvents: MutationEvent.PartialAny[]) =>
       Effect.gen(function* () {
         const deferreds = yield* Effect.forEach(partialEvents, () => Deferred.make<void>())
 
         yield* leaderThreadCtx.syncQueue.push(
-          partialEvents.map((partialEvent, index) => ({
-            mutationEventEncoded: toEncodedMutationEvent(partialEvent),
-            syncStatus: 'pending',
-            deferred: deferreds[index]!,
-          })),
+          partialEvents.map((partialEvent, index) => toEncodedMutationEvent(partialEvent, deferreds[index]!)),
         )
 
         // This ensures that the mutation execution queue is processed

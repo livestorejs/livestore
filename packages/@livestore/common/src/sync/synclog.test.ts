@@ -15,10 +15,6 @@ class TestEvent implements MutationEventLike {
     public readonly isLocal: boolean,
   ) {}
 
-  // TODO reimplement by only requiring the parentId and deriving the id
-  rebase = ({ id, parentId }: { id: EventId; parentId: EventId }) =>
-    new TestEvent(id, parentId, this.payload, this.isLocal)
-
   rebase_ = (parentId_: EventId) => {
     const parentId = this.isLocal ? parentId_ : { global: parentId_.global, local: 0 }
     return new TestEvent(createNextEventId(parentId, this.isLocal), parentId, this.payload, this.isLocal)
@@ -313,6 +309,7 @@ describe('synclog2', () => {
         update,
         isLocalEvent,
         isEqualEvent,
+        rebase: (args) => args.event.rebase_(args.parentId),
       })
 
     describe('upstream-rebase', () => {
@@ -353,7 +350,7 @@ describe('synclog2', () => {
     describe('advance', () => {
       it('should acknowledge pending event when receiving matching event', () => {
         const syncLog = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_0] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance2(result)
         expectEventArraysEqual(result.syncLog.pending, [])
@@ -364,7 +361,7 @@ describe('synclog2', () => {
 
       it('should acknowledge pending event and add new event', () => {
         const syncLog = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_0, e_0_1] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_1] } })
 
         expectAdvance2(result)
         expectEventArraysEqual(result.syncLog.pending, [])
@@ -375,7 +372,7 @@ describe('synclog2', () => {
 
       it('should acknowledge pending event and add multiple new events', () => {
         const syncLog = { pending: [e_0_1], rollbackTail: [], upstreamHead: e_0_0.id }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] } })
 
         expectAdvance2(result)
         expectEventArraysEqual(result.syncLog.pending, [])
@@ -388,7 +385,7 @@ describe('synclog2', () => {
     describe('rebase', () => {
       it('should rebase single local event to end', () => {
         const syncLog = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_1] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_1] } })
 
         const e_0_0_e_0_2 = e_0_0.rebase_(e_0_1.id)
 
@@ -396,25 +393,42 @@ describe('synclog2', () => {
         expectEventArraysEqual(result.syncLog.pending, [e_0_0_e_0_2])
         expectEventArraysEqual(result.syncLog.rollbackTail, [e_0_1])
         expect(result.syncLog.upstreamHead).toBe(e_0_1.id)
-        expectEventArraysEqual(result.eventsToRollback, [])
-        expectEventArraysEqual(result.newEvents, [e_0_1])
+        expectEventArraysEqual(result.eventsToRollback, [e_0_0])
+        expectEventArraysEqual(result.newEvents, [e_0_1, e_0_0_e_0_2])
+      })
+
+      it('should rebase different event with same id (no rollback tail)', () => {
+        const e_0_0_b = new TestEvent({ global: 0, local: 0 }, ROOT_ID, '0_0_b', true)
+        const syncLog = { pending: [e_0_0_b], rollbackTail: [], upstreamHead: ROOT_ID }
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+
+        const e_0_0_e_1_0 = e_0_0_b.rebase_(e_0_0.id)
+
+        expectRebase2(result)
+        expectEventArraysEqual(result.syncLog.pending, [e_0_0_e_1_0])
+        expectEventArraysEqual(result.syncLog.rollbackTail, [e_0_0])
+        expectEventArraysEqual(result.newEvents, [e_0_0, e_0_0_e_1_0])
+        expectEventArraysEqual(result.eventsToRollback, [e_0_0_b])
+        expect(result.syncLog.upstreamHead).toBe(e_0_0.id)
       })
 
       it('should rebase different event with same id', () => {
         const e_1_0_b = new TestEvent({ global: 1, local: 0 }, e_0_0.id, '1_0_b', false)
         const syncLog = { pending: [e_1_0_b], rollbackTail: [e_0_0, e_0_1], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_1_0] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_1_0] } })
         const e_1_0_e_2_0 = e_1_0_b.rebase_(e_1_0.id)
 
         expectRebase2(result)
         expectEventArraysEqual(result.syncLog.pending, [e_1_0_e_2_0])
         expectEventArraysEqual(result.syncLog.rollbackTail, [e_0_0, e_0_1, e_1_0])
+        expectEventArraysEqual(result.newEvents, [e_1_0, e_1_0_e_2_0])
+        expectEventArraysEqual(result.eventsToRollback, [e_0_0, e_0_1, e_1_0_b])
         expect(result.syncLog.upstreamHead).toBe(e_1_0.id)
       })
 
       it('should rebase single local event to end (more incoming events)', () => {
         const syncLog = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] } })
 
         const e_0_0_e_2_0 = e_0_0.rebase_(e_1_0.id)
 
@@ -426,7 +440,7 @@ describe('synclog2', () => {
 
       it('should only rebase divergent events when first event matches', () => {
         const syncLog = { pending: [e_0_0, e_0_1], rollbackTail: [], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_0, e_0_2, e_0_3, e_1_0] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_2, e_0_3, e_1_0] } })
 
         const e_0_1_e_1_1 = e_0_1.rebase_(e_1_0.id)
 
@@ -438,7 +452,7 @@ describe('synclog2', () => {
 
       it('should rebase all local events when incoming chain starts differently', () => {
         const syncLog = { pending: [e_0_0, e_0_1], rollbackTail: [], upstreamHead: ROOT_ID }
-        const result = run({ syncLog, update: { _tag: 'advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] } })
+        const result = run({ syncLog, update: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] } })
 
         const e_0_0_e_1_1 = e_0_0.rebase_(e_1_0.id)
         const e_0_1_e_1_2 = e_0_1.rebase_(e_0_0_e_1_1.id)
@@ -447,6 +461,38 @@ describe('synclog2', () => {
         expectEventArraysEqual(result.syncLog.pending, [e_0_0_e_1_1, e_0_1_e_1_2])
         expectEventArraysEqual(result.syncLog.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0])
         expect(result.syncLog.upstreamHead).toBe(e_1_0.id)
+      })
+
+      describe('local-push', () => {
+        describe('advance', () => {
+          it('should advance with new events', () => {
+            const syncLog = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID }
+            const result = run({ syncLog, update: { _tag: 'local-push', newEvents: [e_0_1, e_0_2, e_0_3] } })
+
+            expectAdvance2(result)
+            expectEventArraysEqual(result.syncLog.pending, [e_0_0, e_0_1, e_0_2, e_0_3])
+            expectEventArraysEqual(result.syncLog.rollbackTail, [])
+            expect(result.syncLog.upstreamHead).toBe(ROOT_ID)
+            expectEventArraysEqual(result.newEvents, [e_0_1, e_0_2, e_0_3])
+          })
+        })
+
+        describe('rebase', () => {
+          it('should rebase when new events are greater than pending events', () => {
+            const syncLog = { pending: [e_0_0, e_0_1], rollbackTail: [], upstreamHead: ROOT_ID }
+            const result = run({ syncLog, update: { _tag: 'local-push', newEvents: [e_0_1, e_0_2] } })
+
+            const e_0_1_e_0_2 = e_0_1.rebase_(e_0_1.id)
+            const e_0_2_e_0_3 = e_0_2.rebase_(e_0_1_e_0_2.id)
+
+            expectRebase2(result)
+            expectEventArraysEqual(result.syncLog.pending, [e_0_0, e_0_1, e_0_1_e_0_2, e_0_2_e_0_3])
+            expectEventArraysEqual(result.syncLog.rollbackTail, [])
+            expect(result.syncLog.upstreamHead).toBe(ROOT_ID)
+            expectEventArraysEqual(result.newEvents, [e_0_1_e_0_2, e_0_2_e_0_3])
+            expectEventArraysEqual(result.eventsToRollback, [])
+          })
+        })
       })
     })
 
@@ -463,10 +509,11 @@ describe('synclog2', () => {
   /**
    * Topology: Session <-(synclog1)-> Leader <-(synclog2)-> Backend
    */
-  describe.only('synclog-network', () => {
+  describe('synclog-network', () => {
     const isLocalEvent = (event: TestEvent) => event.isLocal
     const isEqualEvent = (a: TestEvent, b: TestEvent) =>
       a.id.global === b.id.global && a.id.local === b.id.local && a.payload === b.payload
+    const rebase = (args: { event: TestEvent; id: EventId; parentId: EventId }) => args.event.rebase_(args.parentId)
 
     const e_0_1_b = new TestEvent({ global: 0, local: 1 }, e_0_0.id, '0_1_b', true)
 
@@ -493,6 +540,7 @@ describe('synclog2', () => {
         ],
         isLocalEvent,
         isEqualEvent,
+        rebase,
       )
 
       // Propagate events
@@ -590,9 +638,10 @@ describe('synclog2', () => {
         from.events.push(...events)
         const result = SyncLog2.updateSyncLog2({
           syncLog: syncLogRef.current,
-          update: { _tag: 'advance', newEvents: events },
+          update: { _tag: 'upstream-advance', newEvents: events },
           isLocalEvent,
           isEqualEvent,
+          rebase: (args) => args.event.rebase_(args.parentId),
         })
         if (result._tag === 'advance') {
           // console.log('pushing', result.syncLog.pending)
@@ -636,6 +685,7 @@ describe('synclog2', () => {
           update: { _tag: 'upstream-rebase', rollbackUntil, newEvents: events },
           isLocalEvent,
           isEqualEvent,
+          rebase: (args) => args.event.rebase_(args.parentId),
         })
 
         if (result._tag === 'rebase') {

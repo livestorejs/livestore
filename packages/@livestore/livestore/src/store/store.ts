@@ -13,6 +13,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  ROOT_ID,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
@@ -110,6 +111,8 @@ export class Store<
     this.syncQueue = makeClientSessionSyncQueue({
       schema,
       initialLeaderHead: clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync),
+      initialBackendHead: ROOT_ID.global,
+      rebaseBehaviour: 'auto-rebase',
       pushToLeader: clientSession.coordinator.mutations.push,
       pullFromLeader: clientSession.coordinator.mutations.pull,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {

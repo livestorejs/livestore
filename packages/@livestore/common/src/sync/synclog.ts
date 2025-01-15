@@ -1,6 +1,8 @@
 import { shouldNeverHappen } from '@livestore/utils'
+import { Schema } from '@livestore/utils/effect'
 
-import type { EventId } from '../adapter-types.js'
+import { EventId } from '../adapter-types.js'
+import { mutationEventSchemaEncodedAny } from '../schema/index.js'
 
 /**
  * SyncLog maintains a consistent event chain across three states: backend, leader, and local.
@@ -51,6 +53,30 @@ export namespace SyncLog2 {
     upstreamHead: EventId
   }
 
+  export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
+    rollbackUntil: EventId,
+    newEvents: Schema.Array(mutationEventSchemaEncodedAny),
+  }) {}
+
+  export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
+    newEvents: Schema.Array(mutationEventSchemaEncodedAny),
+  }) {}
+
+  export class PayloadUpstreamTrimRollbackTail extends Schema.TaggedStruct('upstream-trim-rollback-tail', {
+    newRollbackStart: EventId,
+  }) {}
+
+  export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
+    newEvents: Schema.Array(mutationEventSchemaEncodedAny),
+  }) {}
+
+  export class Payload extends Schema.Union(
+    PayloadUpstreamRebase,
+    PayloadUpstreamAdvance,
+    PayloadUpstreamTrimRollbackTail,
+    PayloadLocalPush,
+  ) {}
+
   export type UpdateFromUpstream<T extends MutationEventLike> =
     | {
         _tag: 'upstream-rebase'
@@ -62,12 +88,16 @@ export namespace SyncLog2 {
         // newRollbackStart: EventId | undefined
       }
     | {
-        _tag: 'advance'
+        _tag: 'upstream-advance'
         newEvents: ReadonlyArray<T>
       }
     | {
         _tag: 'trim-rollback-tail'
         newRollbackStart: EventId
+      }
+    | {
+        _tag: 'local-push'
+        newEvents: ReadonlyArray<T>
       }
 
   export type UpdateResult2Advance<T extends MutationEventLike> = {
@@ -92,11 +122,13 @@ export namespace SyncLog2 {
     update,
     isLocalEvent,
     isEqualEvent,
+    rebase,
   }: {
     syncLog: SyncLogState<T>
     update: UpdateFromUpstream<T>
     isLocalEvent: (event: T) => boolean
     isEqualEvent: (a: T, b: T) => boolean
+    rebase: (args: { event: T; id: EventId; parentId: EventId }) => T
   }): UpdateResult2<T> => {
     switch (update._tag) {
       case 'upstream-rebase': {
@@ -114,7 +146,12 @@ export namespace SyncLog2 {
         const newUpstreamHead = update.newEvents.at(-1)?.id ?? syncLog.upstreamHead
 
         // Rebase pending events on top of the new events
-        const rebasedPending = rebaseEvents({ events: syncLog.pending, baseEventId: newUpstreamHead, isLocalEvent })
+        const rebasedPending = rebaseEvents({
+          events: syncLog.pending,
+          baseEventId: newUpstreamHead,
+          isLocalEvent,
+          rebase,
+        })
 
         return {
           _tag: 'rebase',
@@ -128,7 +165,7 @@ export namespace SyncLog2 {
         }
       }
 
-      case 'advance': {
+      case 'upstream-advance': {
         if (update.newEvents.length === 0) {
           return { _tag: 'advance', syncLog, newEvents: [] }
         }
@@ -152,9 +189,8 @@ export namespace SyncLog2 {
             events: divergentPending,
             baseEventId: newUpstreamHead,
             isLocalEvent,
+            rebase,
           })
-
-          const eventsToRollback = syncLog.rollbackTail.slice(0, firstDivergentIndex)
 
           return {
             _tag: 'rebase',
@@ -163,8 +199,8 @@ export namespace SyncLog2 {
               rollbackTail: [...syncLog.rollbackTail, ...update.newEvents],
               upstreamHead: newUpstreamHead,
             },
-            newEvents: update.newEvents,
-            eventsToRollback,
+            newEvents: [...update.newEvents, ...rebasedPending],
+            eventsToRollback: [...syncLog.rollbackTail, ...divergentPending],
           }
         } else {
           const newEvents = update.newEvents.slice(syncLog.pending.length)
@@ -177,6 +213,46 @@ export namespace SyncLog2 {
               upstreamHead: newUpstreamHead,
             },
             newEvents,
+          }
+        }
+      }
+
+      case 'local-push': {
+        if (update.newEvents.length === 0) {
+          return { _tag: 'advance', syncLog, newEvents: [] }
+        }
+
+        const newEventsHead = update.newEvents.at(0)!.id
+        const pendingHead = syncLog.pending.at(-1)?.id
+        const needsRebase = pendingHead && eventIsGreaterThan(newEventsHead, pendingHead) === false
+
+        if (needsRebase) {
+          const rebasedPending = rebaseEvents({
+            events: update.newEvents,
+            baseEventId: pendingHead,
+            isLocalEvent,
+            rebase,
+          })
+
+          return {
+            _tag: 'rebase',
+            syncLog: {
+              pending: [...syncLog.pending, ...rebasedPending],
+              rollbackTail: syncLog.rollbackTail,
+              upstreamHead: syncLog.upstreamHead,
+            },
+            newEvents: rebasedPending,
+            eventsToRollback: [],
+          }
+        } else {
+          return {
+            _tag: 'advance',
+            syncLog: {
+              pending: [...syncLog.pending, ...update.newEvents],
+              rollbackTail: syncLog.rollbackTail,
+              upstreamHead: syncLog.upstreamHead,
+            },
+            newEvents: update.newEvents,
           }
         }
       }
@@ -228,7 +304,7 @@ export type UpdateResult<T extends MutationEventLike> = UpdateResultAdvance<T> |
 export type MutationEventLike = {
   id: EventId
   parentId: EventId
-  rebase: (args: { id: EventId; parentId: EventId }) => any
+  // rebase: (args: { id: EventId; parentId: EventId }) => any
 }
 
 export const updateSyncLog = <T extends MutationEventLike>({
@@ -237,12 +313,14 @@ export const updateSyncLog = <T extends MutationEventLike>({
   origin,
   isEqualEvent,
   isLocalEvent,
+  rebase,
 }: {
   syncLog: SyncLog<T>
   incomingEvents: ReadonlyArray<T>
   origin: 'leader' | 'backend'
   isEqualEvent: (a: T, b: T) => boolean
   isLocalEvent: (event: T) => boolean
+  rebase: (args: { event: T; id: EventId; parentId: EventId }) => T
 }): UpdateResult<T> => {
   if (incomingEvents.length === 0) {
     return { _tag: 'advance', syncLog, newEvents: [] }
@@ -256,7 +334,7 @@ export const updateSyncLog = <T extends MutationEventLike>({
     })
 
     return needsRebase
-      ? handleRebaseLeader({ syncLog, incomingEvents, newLeaderHead, isLocalEvent })
+      ? handleRebaseLeader({ syncLog, incomingEvents, newLeaderHead, isLocalEvent, rebase })
       : handleAdvanceLeader({ syncLog, incomingEvents, newLeaderHead })
   }
 
@@ -270,7 +348,7 @@ export const updateSyncLog = <T extends MutationEventLike>({
     })
 
     if (needsRebase) {
-      return handleRebaseBackend({ syncLog, incomingEvents, isEqualEvent, isLocalEvent })
+      return handleRebaseBackend({ syncLog, incomingEvents, isEqualEvent, isLocalEvent, rebase })
     } else {
       // Fail if there are unconfirmed leader events
       const unconfirmedLeaderEvents = incomingEvents.filter(
@@ -335,11 +413,13 @@ const handleRebaseBackend = <T extends MutationEventLike>({
   incomingEvents,
   isEqualEvent,
   isLocalEvent,
+  rebase,
 }: {
   syncLog: SyncLog<T>
   incomingEvents: ReadonlyArray<T>
   isEqualEvent: (a: T, b: T) => boolean
   isLocalEvent: (event: T) => boolean
+  rebase: (args: { event: T; id: EventId; parentId: EventId }) => T
 }): UpdateResultRebase<T> => {
   // Find index where events start to diverge
   const divergenceIndex = findDivergencePoint({
@@ -357,7 +437,7 @@ const handleRebaseBackend = <T extends MutationEventLike>({
   const newBackendHead = incomingEvents.at(-1)!.id
 
   // Rebase the remaining events on top of the last incoming event
-  const rebasedEvents = rebaseEvents({ events: eventsToRebase, baseEventId: newBackendHead, isLocalEvent })
+  const rebasedEvents = rebaseEvents({ events: eventsToRebase, baseEventId: newBackendHead, isLocalEvent, rebase })
 
   return {
     _tag: 'rebase',
@@ -374,11 +454,13 @@ const handleRebaseLeader = <T extends MutationEventLike>({
   incomingEvents,
   newLeaderHead,
   isLocalEvent,
+  rebase,
 }: {
   syncLog: SyncLog<T>
   incomingEvents: ReadonlyArray<T>
   newLeaderHead: EventId
   isLocalEvent: (event: T) => boolean
+  rebase: (args: { event: T; id: EventId; parentId: EventId }) => T
 }): UpdateResultRebase<T> => {
   const divergenceIndex = findDivergencePoint({
     existingEvents: syncLog.pendingEvents.local,
@@ -387,7 +469,7 @@ const handleRebaseLeader = <T extends MutationEventLike>({
   })
 
   const eventsToRebase = syncLog.pendingEvents.local.slice(divergenceIndex)
-  const rebasedEvents = rebaseEvents({ events: eventsToRebase, baseEventId: newLeaderHead, isLocalEvent })
+  const rebasedEvents = rebaseEvents({ events: eventsToRebase, baseEventId: newLeaderHead, isLocalEvent, rebase })
 
   return {
     _tag: 'rebase',
@@ -457,10 +539,12 @@ export const rebaseEvents = <T extends MutationEventLike>({
   events,
   baseEventId,
   isLocalEvent,
+  rebase,
 }: {
   events: ReadonlyArray<T>
   baseEventId: EventId
   isLocalEvent: (event: T) => boolean
+  rebase: (args: { event: T; id: EventId; parentId: EventId }) => T
 }): ReadonlyArray<T> => {
   let prevEventId = baseEventId
   return events.map((event) => {
@@ -468,7 +552,7 @@ export const rebaseEvents = <T extends MutationEventLike>({
     const parentId = isLocal ? { ...prevEventId } : { global: prevEventId.global, local: 0 }
     const newEventId = createNextEventId(parentId, isLocal)
     prevEventId = newEventId
-    return event.rebase({ id: newEventId, parentId }) as T
+    return rebase({ id: newEventId, parentId, event })
   })
 }
 
@@ -477,4 +561,9 @@ export const createNextEventId = (parentId: EventId, isLocalEvent: boolean): Eve
     return { global: parentId.global, local: parentId.local + 1 }
   }
   return { global: parentId.global + 1, local: 0 }
+}
+
+/** a > b */
+const eventIsGreaterThan = (a: EventId, b: EventId): boolean => {
+  return a.global > b.global || (a.global === b.global && a.local > b.local)
 }

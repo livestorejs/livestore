@@ -26,7 +26,8 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       const { syncQueue } = yield* LeaderThreadCtx
 
-      yield* queue.offer({ mutationEvents, backendHead: syncQueue.backendHeadRef.current, remaining: 0 })
+      // TODO remove backendHead
+      yield* queue.offer({ mutationEvents, backendHead: -1, remaining: 0 })
 
       set.add(queue)
 

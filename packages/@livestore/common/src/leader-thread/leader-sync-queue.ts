@@ -6,11 +6,13 @@ import {
   Deferred,
   Effect,
   Option,
+  OtelTracer,
   Queue,
   Schema,
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 
 import type { EventId, SynchronousDatabase, UnexpectedError } from '../adapter-types.js'
 import { ROOT_ID } from '../adapter-types.js'
@@ -24,6 +26,7 @@ import {
 } from '../schema/index.js'
 import { updateRows } from '../sql-queries/index.js'
 import { makeNextMutationEventIdPair } from '../sync/next-mutation-event-id-pair.js'
+import { SyncLog2 } from '../sync/synclog.js'
 import { sql } from '../util.js'
 import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -33,12 +36,21 @@ import {
   getInitialCurrentMutationEventIdFromDb,
   getMutationEventsSince,
 } from './mutationlog.js'
-import type { InitialSyncInfo, SyncQueue, SyncQueueItem } from './types.js'
-import { LeaderThreadCtx } from './types.js'
+import type { InitialSyncInfo, SyncQueue } from './types.js'
+import { LeaderThreadCtx, MutationEventEncodedWithDeferred } from './types.js'
 import { validateAndUpdateLocalHead } from './validateAndUpdateLocalHead.js'
+
+const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) =>
+  a.id.global === b.id.global &&
+  a.id.local === b.id.local &&
+  a.mutation === b.mutation &&
+  // TODO use schema equality here
+  JSON.stringify(a.args) === JSON.stringify(b.args)
 
 const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined
 // const whenTraceVerbose = <T>(object: T) => TRACE_VERBOSE ? object : undefined
+
+// type MutationEventWithDeferred = MutationEvent.AnyEncoded & { deferred?: Deferred.Deferred<void> }
 
 /**
  * The sync queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
@@ -67,9 +79,9 @@ export const makeSyncQueue = ({
   dbLog: SynchronousDatabase
 }): Effect.Effect<SyncQueue, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const pendingSyncItems: SyncQueueItem[] = []
+    // const pendingSyncItems: SyncQueueItem[] = []
 
-    const executeQueue = yield* BucketQueue.make<SyncQueueItem>()
+    const executeQueue = yield* BucketQueue.make<MutationEventEncodedWithDeferred>()
 
     const syncBackendQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(
       Effect.acquireRelease(Queue.shutdown),
@@ -80,16 +92,28 @@ export const makeSyncQueue = ({
 
     // const isNotRebasingLatch = yield* Effect.makeLatch(false)
 
-    const backendHeadRef = {
-      // In the case where the db is missing, querying it will fail, so we safely use ROOT_ID.global
-      current: dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog),
+    const initialBackendHead = dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog)
+
+    // const localHeadRef = {
+    //   // In the case where the db is missing, querying it will fail, so we safely use ROOT_ID
+    //   current: dbMissing ? ROOT_ID : getInitialCurrentMutationEventIdFromDb(dbLog),
+    // }
+    // const nextMutationEventIdPair = makeNextMutationEventIdPair(localHeadRef)
+
+    const syncLogStateRef = {
+      current: {
+        pending: [],
+        rollbackTail: [],
+        upstreamHead: { global: dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog), local: 0 },
+      } as SyncLog2.SyncLogState<MutationEventEncodedWithDeferred>,
     }
 
-    const localHeadRef = {
-      // In the case where the db is missing, querying it will fail, so we safely use ROOT_ID
-      current: dbMissing ? ROOT_ID : getInitialCurrentMutationEventIdFromDb(dbLog),
+    const isLocalEvent = (mutationEventEncoded: MutationEvent.AnyEncoded) => {
+      const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
+      return mutationDef.options.localOnly
     }
-    const nextMutationEventIdPair = makeNextMutationEventIdPair(localHeadRef)
+
+    const spanRef = { current: undefined as otel.Span | undefined }
 
     // In case of leader thread:
     // For mutation event coming from client session, we want to ...
@@ -97,34 +121,56 @@ export const makeSyncQueue = ({
     // - broadcast to other connected client sessions
     // - write to mutation log + apply to read model
     // - push to sync backend
-    const push = (batch: SyncQueueItem[]) =>
+    const push = (batch: ReadonlyArray<MutationEventEncodedWithDeferred>) =>
       Effect.gen(function* () {
         if (batch.length === 0) return
 
         // TODO validate batch
 
+        const res = SyncLog2.updateSyncLog2<MutationEventEncodedWithDeferred>({
+          syncLog: syncLogStateRef.current,
+          update: { _tag: 'local-push', newEvents: batch },
+          isLocalEvent,
+          isEqualEvent,
+          rebase: ({ event, id, parentId }) => new MutationEventEncodedWithDeferred({ ...event, id, parentId }),
+        })
+
+        spanRef.current?.addEvent('push', {
+          batchSize: batch.length,
+          res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
+        })
+
+        const filteredBatch = res.newEvents
+
+        syncLogStateRef.current = res.syncLog
+
+        if (res._tag === 'rebase') {
+          throw new Error('TODO: implement rebase in leader-thread for push')
+        }
+
         // Don't sync localOnly mutations
-        const filteredBatch = batch.filter((item) => {
-          const mutationDef = schema.mutations.get(item.mutationEventEncoded.mutation)!
+        const filteredBatch_ = filteredBatch.filter((mutationEventEncoded) => {
+          const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
           return mutationDef.options.localOnly === false
         })
 
-        pendingSyncItems.push(...filteredBatch)
+        // pendingSyncItems.push(...filteredBatch)
 
         // TODO handle rebase
 
         // TODO reject mutation events that are behind current mutation event id
-        for (const { mutationEventEncoded } of batch) {
-          yield* validateAndUpdateLocalHead({
-            localHeadRef,
-            mutationEventId: mutationEventEncoded.id,
-            debugContext: { label: `leader-worker:applyMutation`, mutationEventEncoded },
-          })
-        }
+        // for (const { mutationEventEncoded } of batch) {
+        // yield* validateAndUpdateLocalHead({
+        //   // localHeadRef,
+        //   mutationEventId: mutationEventEncoded.id,
+        //   debugContext: { label: `leader-worker:applyMutation`, mutationEventEncoded },
+        // })
+        // }
 
-        yield* syncBackendQueue.offerAll(filteredBatch.map((item) => item.mutationEventEncoded))
+        yield* syncBackendQueue.offerAll(filteredBatch_)
 
-        yield* BucketQueue.offerAll(executeQueue, batch)
+        // TODO clean up implementation (currently using `batch` as the event ids aren't used in this code path)
+        yield* BucketQueue.offerAll(executeQueue, filteredBatch)
       }).pipe(
         Effect.withSpan('@livestore/common:leader-thread:syncing:push', {
           attributes: {
@@ -136,24 +182,28 @@ export const makeSyncQueue = ({
 
     const pushPartial: SyncQueue['pushPartial'] = (mutationEventEncoded_) =>
       Effect.gen(function* () {
+        // TODO bring back
         const mutationDef =
           schema.mutations.get(mutationEventEncoded_.mutation) ??
           shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
 
-        const mutationEventEncoded = {
-          ...mutationEventEncoded_,
-          ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
-        }
+        // const mutationEventEncoded = {
+        //   ...mutationEventEncoded_,
+        //   ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
+        // }
 
-        yield* push([{ mutationEventEncoded }])
+        // yield* push([{ mutationEventEncoded }])
       })
 
     // Starts various background loops
     const boot: SyncQueue['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
+        const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+        spanRef.current = span
+
         {
           // rehydrate pushQueue from dbLog
-          const pendingMutationEvents = yield* getMutationEventsSince({ global: backendHeadRef.current, local: 0 })
+          const pendingMutationEvents = yield* getMutationEventsSince({ global: initialBackendHead, local: 0 })
 
           if (pendingMutationEvents.length > 0) {
             const filteredBatch = pendingMutationEvents
@@ -163,34 +213,42 @@ export const makeSyncQueue = ({
                 return mutationDef.options.localOnly === false
               })
 
-            pendingSyncItems.push(...filteredBatch.map((_) => ({ mutationEventEncoded: _ })))
+            // pendingSyncItems.push(...filteredBatch.map((_) => ({ mutationEventEncoded: _ })))
+
+            syncLogStateRef.current = {
+              ...syncLogStateRef.current,
+              pending: filteredBatch.map((_) => new MutationEventEncodedWithDeferred(_)),
+            }
 
             yield* syncBackendQueue.offerAll(filteredBatch)
           }
         }
 
-        yield* executeMutationsLoop({ executeQueue, backendHeadRef })
+        yield* executeMutationsLoop({ executeQueue, syncLogStateRef })
 
         yield* backgroundBackendPushing({ dbReady, syncBackendQueue })
 
         return yield* backgroundBackendPulling({
           dbReady,
-          backendHeadRef,
-          localHeadRef,
+          initialBackendHead,
+          // localHeadRef,
+          isLocalEvent,
+          syncLogStateRef,
           executeQueue,
-          pendingSyncItems,
+          span,
+          // pendingSyncItems,
         })
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
-    return { push, pushPartial, boot, backendHeadRef } satisfies SyncQueue
+    return { push, pushPartial, boot } satisfies SyncQueue
   })
 
 const executeMutationsLoop = ({
   executeQueue,
-  backendHeadRef,
+  syncLogStateRef,
 }: {
-  executeQueue: BucketQueue.BucketQueue<SyncQueueItem>
-  backendHeadRef: { current: number }
+  executeQueue: BucketQueue.BucketQueue<MutationEventEncodedWithDeferred>
+  syncLogStateRef: { current: SyncLog2.SyncLogState<MutationEventEncodedWithDeferred> }
 }) =>
   Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
@@ -208,14 +266,11 @@ const executeMutationsLoop = ({
         // Now we're sending the mutation event to all "pulling" client sessions
         for (const queue of leaderThreadCtx.connectedClientSessionPullQueues) {
           // TODO do batching if possible
-          yield* Queue.offer(queue, {
-            mutationEvents: [...batchItems].map((_) => _.mutationEventEncoded),
-            backendHead: backendHeadRef.current,
-            remaining: 0,
-          })
+          // TODO remove backendHead
+          yield* Queue.offer(queue, { mutationEvents: batchItems, backendHead: -1, remaining: 0 })
         }
 
-        for (const { mutationEventEncoded, deferred } of batchItems) {
+        for (const { meta, ...mutationEventEncoded } of batchItems) {
           // if (item._tag === 'mutate') {
           // const mutationDef =
           //   schema.mutations.get(mutationEventEncoded.mutation) ??
@@ -231,9 +286,14 @@ const executeMutationsLoop = ({
             )
           }
 
-          if (deferred) {
-            yield* Deferred.succeed(deferred, void 0)
+          if (meta.deferred) {
+            yield* Deferred.succeed(meta.deferred, void 0)
           }
+
+          // syncLogStateRef.current = {
+          //   ...syncLogStateRef.current,
+          //   pending: syncLogStateRef.current.pending.slice(1),
+          // }
         }
 
         db.execute('COMMIT', undefined) // Commit the transaction
@@ -253,22 +313,28 @@ const executeMutationsLoop = ({
 
 const backgroundBackendPulling = ({
   dbReady,
-  backendHeadRef,
-  localHeadRef,
+  initialBackendHead,
+  // localHeadRef,
+  syncLogStateRef,
+  isLocalEvent,
   executeQueue,
-  pendingSyncItems,
+  // pendingSyncItems,
+  span,
 }: {
   dbReady: Deferred.Deferred<void>
-  backendHeadRef: { current: number }
-  localHeadRef: { current: EventId }
-  executeQueue: BucketQueue.BucketQueue<SyncQueueItem>
-  pendingSyncItems: SyncQueueItem[]
+  initialBackendHead: number
+  // localHeadRef: { current: EventId }
+  syncLogStateRef: { current: SyncLog2.SyncLogState<MutationEventEncodedWithDeferred> }
+  isLocalEvent: (mutationEventEncoded: MutationEvent.AnyEncoded) => boolean
+  executeQueue: BucketQueue.BucketQueue<MutationEventEncodedWithDeferred>
+  // pendingSyncItems: SyncQueueItem[]
+  span: otel.Span
 }) =>
   Effect.gen(function* () {
     const { syncBackend, bootStatusQueue, dbLog, initialSyncOptions } = yield* LeaderThreadCtx
     if (syncBackend === undefined) return
 
-    const cursorInfo = yield* getCursorInfo(backendHeadRef.current)
+    const cursorInfo = yield* getCursorInfo(initialBackendHead)
 
     const initialSyncContext = {
       blockingDeferred: initialSyncOptions._tag === 'Blocking' ? yield* Deferred.make<void>() : undefined,
@@ -284,53 +350,75 @@ const backgroundBackendPulling = ({
       )
     }
 
-    const onNewPullChunk = (chunk: MutationEvent.AnyEncoded[]) =>
+    const onNewPullChunk = (chunk: MutationEventEncodedWithDeferred[]) =>
       Effect.gen(function* () {
         if (chunk.length === 0) return
 
+        span.addEvent('pre-pull', {
+          syncLogState: TRACE_VERBOSE ? JSON.stringify(syncLogStateRef.current) : undefined,
+        })
+
+        const res = SyncLog2.updateSyncLog2<MutationEventEncodedWithDeferred>({
+          syncLog: syncLogStateRef.current,
+          update: { _tag: 'upstream-advance', newEvents: chunk },
+          isLocalEvent,
+          isEqualEvent,
+          rebase: ({ event, id, parentId }) => new MutationEventEncodedWithDeferred({ ...event, id, parentId }),
+        })
+
+        span.addEvent('pull', {
+          chunkSize: chunk.length,
+          res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
+        })
+
+        syncLogStateRef.current = res.syncLog
+
         // TODO either use `sessionId` to verify or introduce a new nanoid-field
-        const hasLocalPendingEvents = false
+        // const hasLocalPendingEvents = false
 
-        if (hasLocalPendingEvents) {
-          const matchesPendingEvents = true
+        // if (hasLocalPendingEvents) {
+        //   const matchesPendingEvents = true
 
-          if (matchesPendingEvents) {
-            // apply chunk to read model
-            // forward chunk to client sessions
-            // remove from items
-          } else {
-            // rebase
-            // yield* rebasePushQueue(chunk)
-          }
-        } else {
-          const filteredChunk: MutationEvent.AnyEncoded[] = []
-          for (let i = 0; i < chunk.length; i++) {
-            const localItem = pendingSyncItems[i]
-            const pullItem = chunk[i]!
-            if (localItem?.mutationEventEncoded.id.global === pullItem.id.global) {
-              pendingSyncItems.splice(i, 1)
-            } else {
-              filteredChunk.push(pullItem)
-            }
-          }
+        //   if (matchesPendingEvents) {
+        //     // apply chunk to read model
+        //     // forward chunk to client sessions
+        //     // remove from items
+        //   } else {
+        //     // rebase
+        //     // yield* rebasePushQueue(chunk)
+        //   }
+        // } else {
+        //   const filteredChunk: MutationEvent.AnyEncoded[] = []
+        //   for (let i = 0; i < chunk.length; i++) {
+        //     const localItem = pendingSyncItems[i]
+        //     const pullItem = chunk[i]!
+        //     if (localItem?.mutationEventEncoded.id.global === pullItem.id.global) {
+        //       pendingSyncItems.splice(i, 1)
+        //     } else {
+        //       filteredChunk.push(pullItem)
+        //     }
+        //   }
 
-          // console.log('pull res', { filteredChunk, pendingSyncItems, chunk })
-
-          const newBackendHead = chunk.at(-1)!.id.global
-
-          yield* execSql(dbLog, sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${newBackendHead}`, {}).pipe(Effect.orDie)
-
-          backendHeadRef.current = newBackendHead
-
-          if (localHeadRef.current.global < newBackendHead) {
-            localHeadRef.current = { global: newBackendHead, local: 0 }
-          }
-
-          yield* BucketQueue.offerAll(
-            executeQueue,
-            filteredChunk.map((mutationEventEncoded) => ({ mutationEventEncoded, deferred: undefined })),
-          )
+        if (res._tag === 'rebase' && res.eventsToRollback.length > 0) {
+          throw new Error('TODO: implement rebase in leader-thread')
         }
+
+        const filteredChunk = res.newEvents
+
+        // console.log('pull res', { filteredChunk, pendingSyncItems, chunk })
+
+        const newBackendHead = filteredChunk.at(-1)!.id.global
+
+        yield* execSql(dbLog, sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${newBackendHead}`, {}).pipe(Effect.orDie)
+
+        // backendHeadRef.current = newBackendHead
+
+        // if (localHeadRef.current.global < newBackendHead) {
+        //   localHeadRef.current = { global: newBackendHead, local: 0 }
+        // }
+
+        yield* BucketQueue.offerAll(executeQueue, filteredChunk)
+        // }
       })
 
     yield* syncBackend.pull(cursorInfo).pipe(
@@ -363,7 +451,7 @@ const backgroundBackendPulling = ({
           // TODO handle rebasing
           // if incoming mutation parent id !== current mutation event id, we need to rebase
           // TODO pass in metadata
-          yield* onNewPullChunk(batch.map((_) => _.mutationEventEncoded))
+          yield* onNewPullChunk(batch.map((_) => new MutationEventEncodedWithDeferred(_.mutationEventEncoded)))
 
           if (initialSyncContext.isDone === false) {
             initialSyncContext.processedMutations += batch.length

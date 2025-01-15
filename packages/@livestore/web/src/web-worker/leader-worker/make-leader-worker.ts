@@ -5,6 +5,7 @@ import {
   configureConnection,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
+  MutationEventEncodedWithDeferred,
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -157,7 +158,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
             // TODO handle txn
             .filter((_) => _._tag === 'mutate')
             .flatMap((item) => item.batch)
-            .map((mutationEventEncoded) => ({ mutationEventEncoded })),
+            .map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent)),
         ),
       ).pipe(
         Effect.uninterruptible,

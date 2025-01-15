@@ -63,6 +63,13 @@ pnpm build
 - This project uses [pnpm](https://pnpm.io/) to manage the workspace.
 - We also make heavy use of TypeScript project references.
 
+### VSCode tasks
+
+- This project is primarily developed in VSCode and makes use of [tasks](https://code.visualstudio.com/docs/editor/tasks) to run commands.
+- Common tasks are:
+  - `dev:ts` to run the TypeScript compiler in watch mode for the entire monorepo
+  - `pnpm:install` to install all dependencies (e.g. when changing a `package.json`)
+
 ### Examples
 
 - Once you've set up the monorepo locally, you'll notice both the `src` and `standalone` directories in `/examples`.

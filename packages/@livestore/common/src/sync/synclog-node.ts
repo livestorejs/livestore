@@ -7,6 +7,7 @@ export class SyncLogNode<TEvent extends MutationEventLike> {
     public state: SyncLog2.SyncLogState<TEvent>,
     private readonly isLocalEvent: (event: TEvent) => boolean,
     private readonly isEqualEvent: (a: TEvent, b: TEvent) => boolean,
+    private readonly rebase: (args: { event: TEvent; id: EventId; parentId: EventId }) => TEvent,
   ) {}
 
   handleUpstreamEvents = (
@@ -17,9 +18,10 @@ export class SyncLogNode<TEvent extends MutationEventLike> {
   } => {
     const result = SyncLog2.updateSyncLog2({
       syncLog: this.state,
-      update: { _tag: 'advance', newEvents: events },
+      update: { _tag: 'upstream-advance', newEvents: events },
       isLocalEvent: this.isLocalEvent,
       isEqualEvent: this.isEqualEvent,
+      rebase: this.rebase,
     })
 
     // Update internal state
@@ -54,6 +56,7 @@ export class SyncLogNode<TEvent extends MutationEventLike> {
       },
       isLocalEvent: this.isLocalEvent,
       isEqualEvent: this.isEqualEvent,
+      rebase: this.rebase,
     })
 
     if (result._tag !== 'rebase') {
@@ -95,12 +98,13 @@ export class SyncLogNetwork<TEvent extends MutationEventLike> {
     }[],
     private readonly isLocalEvent: (event: TEvent) => boolean,
     private readonly isEqualEvent: (a: TEvent, b: TEvent) => boolean,
+    private readonly rebase: (args: { event: TEvent; id: EventId; parentId: EventId }) => TEvent,
   ) {
     // Initialize nodes and connections based on topology
     topology.forEach(({ nodeId, initialEvents, syncLogState, upstreamNodeId }) => {
       this.nodes.set(nodeId, {
         events: [...initialEvents],
-        syncLog: new SyncLogNode(syncLogState, isLocalEvent, isEqualEvent),
+        syncLog: new SyncLogNode(syncLogState, isLocalEvent, isEqualEvent, rebase),
       })
 
       if (upstreamNodeId) {
@@ -179,7 +183,7 @@ export class SyncLogNetwork<TEvent extends MutationEventLike> {
     }
 
     if (syncLogState) {
-      node.syncLog = new SyncLogNode(syncLogState, this.isLocalEvent, this.isEqualEvent)
+      node.syncLog = new SyncLogNode(syncLogState, this.isLocalEvent, this.isEqualEvent, this.rebase)
     }
   }
 

@@ -17,6 +17,7 @@ import {
   LeaderThreadCtx,
   makeDevtoolsContext,
   makeLeaderThreadLayer,
+  MutationEventEncodedWithDeferred,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
@@ -51,7 +52,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
         items
           // TODO handle txn
           .filter((_) => _._tag === 'mutate')
-          .map((item) => ({ mutationEventEncoded: item.mutationEventEncoded, syncStatus: 'pending' })),
+          .map((item) => new MutationEventEncodedWithDeferred(item.mutationEventEncoded)),
       ),
     ).pipe(
       Effect.uninterruptible,
