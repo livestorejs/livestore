@@ -8,18 +8,18 @@ export const BacklogIcon = ({ className }: { className?: string }) => {
         cy="7"
         r="6"
         fill="none"
-        stroke-width="2"
-        stroke-dasharray="1.4 1.74"
-        stroke-dashoffset="0.65"
+        strokeWidth="2"
+        strokeDasharray="1.4 1.74"
+        strokeDashoffset="0.65"
       ></circle>
       <circle
         cx="7"
         cy="7"
         r="2"
         fill="none"
-        stroke-width="4"
-        stroke-dasharray="0 100"
-        stroke-dashoffset="0"
+        strokeWidth="4"
+        strokeDasharray="0 100"
+        strokeDashoffset="0"
         transform="rotate(-90 7 7)"
       ></circle>
     </svg>

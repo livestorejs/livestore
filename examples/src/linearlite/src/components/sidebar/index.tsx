@@ -66,9 +66,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
   ]
 
   return (
-    <aside
-      className={`bg-white border-r border-gray-200 w-64 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}
-    >
+    <aside className={`bg-white w-64 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}>
       <div>
         <div className="flex items-center justify-between pr-2">
           <AboutMenu />
@@ -77,7 +75,9 @@ export const Sidebar = ({ className }: { className?: string }) => {
             <NewIssueButton />
           </div>
         </div>
-        <h2 className="p-2 pt-0 leading-none text-2xs uppercase font-bold tracking-wide text-gray-400 mt-8">Issues</h2>
+        <h2 className="p-2 pt-0 leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mt-8">
+          Issues
+        </h2>
         <nav className="text-sm leading-none space-y-px">
           {navItems.map(({ title, icon: Icon, href, onClick, inset }, index) => (
             <Link
