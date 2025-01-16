@@ -3,10 +3,12 @@ import { SortingDirection, SortingOption, sortingOptions } from '@/data/sorting-
 import { useFilterState } from '@/lib/livestore/queries'
 import { ArrowsUpDownIcon, BarsArrowDownIcon, BarsArrowUpIcon } from '@heroicons/react/20/solid'
 import React from 'react'
+import { useKeyboard } from 'react-aria'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
 
 export const SortMenu = ({ type, children }: { type?: 'status' | 'priority'; children?: React.ReactNode }) => {
   const [filterState, setFilterState] = useFilterState()
+  const [isOpen, setIsOpen] = React.useState(false)
 
   const toggleSorting = (sortingOption: SortingOption) => {
     const currentSorting = filterState.orderBy
@@ -21,18 +23,33 @@ export const SortMenu = ({ type, children }: { type?: 'status' | 'priority'; chi
       }))
   }
 
+  const { keyboardProps } = useKeyboard({
+    onKeyDown: (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        return
+      }
+      Object.entries(sortingOptions).forEach(([sortingOption, { shortcut }]) => {
+        if (e.key === shortcut) {
+          toggleSorting(sortingOption as SortingOption)
+          return
+        }
+      })
+    },
+  })
+
   return (
-    <MenuTrigger>
+    <MenuTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <Button
         aria-label="Select sorting"
         className="relative group h-6 min-w-6 rounded-lg flex gap-1.5 px-1.5 items-center justify-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 text-xs font-medium"
       >
         <ArrowsUpDownIcon className="size-3.5" />
         <span>Sort</span>
-        <div className="size-2 rounded-full bg-orange-500 absolute -right-1 top-0" />
+        <div className="size-1.5 rounded-full bg-orange-500 absolute -right-0.5 top-0" />
       </Button>
       <Popover className="w-48 bg-white rounded-lg shadow-md border border-gray-200 text-sm leading-none">
-        <Menu className="focus:outline-none" selectionMode="multiple">
+        <Menu className="focus:outline-none" selectionMode="multiple" {...keyboardProps}>
           {type !== 'priority' && (
             <MenuSection key="status" className="p-2">
               <Header className="p-2 text-2xs uppercase font-medium tracking-wide text-gray-400">Sorting</Header>

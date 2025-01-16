@@ -20,6 +20,10 @@ export const StatusMenu = ({
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        return
+      }
       Object.entries(statusOptions).forEach(([statusOption, { shortcut }]) => {
         if (e.key === shortcut) {
           onStatusChange(statusOption as Status)

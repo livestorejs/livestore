@@ -22,7 +22,11 @@ export default {
     // color: {
     //   // gray: colors.trueGray,
     // },
-    fontFamily: {
+    extend: {
+      fontSize: {
+        '2xs': '0.625rem',
+      },
+      fontFamily: {
       sans: [
         'Inter\\ UI',
         'SF\\ Pro\\ Display',
@@ -38,10 +42,6 @@ export default {
         'sans-serif',
       ],
     },
-    extend: {
-      fontSize: {
-        '2xs': '0.625rem',
-      },
     },
   },
   variants: {

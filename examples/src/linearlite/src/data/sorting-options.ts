@@ -1,8 +1,8 @@
 export const sortingOptions = {
-  priority: { name: 'Priority', shortcut: 'P', defaultDirection: 'asc' },
-  status: { name: 'Status', shortcut: 'S', defaultDirection: 'asc' },
-  created: { name: 'Created', shortcut: 'C', defaultDirection: 'desc' },
-  modified: { name: 'Updated', shortcut: 'U', defaultDirection: 'desc' },
+  priority: { name: 'Priority', shortcut: 'p', defaultDirection: 'asc' },
+  status: { name: 'Status', shortcut: 's', defaultDirection: 'asc' },
+  created: { name: 'Created', shortcut: 'c', defaultDirection: 'desc' },
+  modified: { name: 'Updated', shortcut: 'u', defaultDirection: 'desc' },
 }
 
 export type SortingOption = keyof typeof sortingOptions

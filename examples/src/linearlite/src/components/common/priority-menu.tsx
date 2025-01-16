@@ -20,6 +20,10 @@ export const PriorityMenu = ({
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        return
+      }
       Object.entries(priorityOptions).forEach(([priorityOption, { shortcut }]) => {
         if (e.key === shortcut) {
           onPriorityChange(priorityOption as Priority)
