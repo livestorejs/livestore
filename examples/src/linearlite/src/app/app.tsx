@@ -2,6 +2,7 @@ import { Provider } from '@/app/provider'
 import { Layout } from '@/components/layout'
 import { Board } from '@/components/layout/board'
 import { Issue } from '@/components/layout/issue'
+import { NewIssueModal } from '@/components/layout/issue/new-issue-modal'
 import { List } from '@/components/layout/list'
 import { Search } from '@/components/search'
 import { Sidebar } from '@/components/sidebar'
@@ -28,6 +29,7 @@ export const App = () => {
             <main className="flex flex-col h-full border rounded-lg">{router}</main>
           </div>
         </Layout>
+        <NewIssueModal />
       </BrowserRouter>
     </Provider>
   )

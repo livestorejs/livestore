@@ -4,16 +4,32 @@ import { Issue } from '@/types/issue'
 import { useRow, useStore } from '@livestore/react'
 import React from 'react'
 
-export const DescriptionInput = ({ issue }: { issue: Issue }) => {
+export const DescriptionInput = ({
+  issue,
+  description,
+  setDescription,
+  className,
+}: {
+  issue?: Issue
+  description?: string
+  setDescription?: (description: string) => void
+  className?: string
+}) => {
   const { store } = useStore()
-  const [{ body: description }] = useRow(tables.description, issue.id)
+  if (issue) {
+    const [{ body }] = useRow(tables.description, issue.id)
+    description = body
+  }
 
-  const handleDescriptionChange = (body: string) => store.mutate(mutations.updateDescription({ id: issue.id, body }))
+  const handleDescriptionChange = (body: string) => {
+    if (issue) store.mutate(mutations.updateDescription({ id: issue.id, body }))
+    if (setDescription) setDescription(body)
+  }
 
   return (
     <Editor
-      className="px-2 py-px rounded-md focus:bg-gray-50"
-      value={description || ''}
+      className={`px-2 py-px rounded-md focus:bg-gray-50 ${className}`}
+      value={description ?? ''}
       onChange={(value) => handleDescriptionChange(value)}
       placeholder="Add description..."
     />

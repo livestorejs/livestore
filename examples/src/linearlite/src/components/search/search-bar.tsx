@@ -2,7 +2,7 @@ import { useFilterState } from '@/lib/livestore/queries'
 import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import React from 'react'
-import { Button } from 'react-aria-components'
+import { Button, Input } from 'react-aria-components'
 
 export const SearchBar = () => {
   const [filterState, setFilterState] = useFilterState()
@@ -10,9 +10,10 @@ export const SearchBar = () => {
   return (
     <div className="h-12 relative border-b border-gray-200 flex items-center text-sm pl-6 pr-2">
       <MagnifyingGlassIcon className="size-4" />
-      <input
+      <Input
         type="text"
-        className="w-full border-none focus:outline-none focus:ring-0 placholder:text-gray-400 text-gray-800 text-sm"
+        autoFocus
+        className="input w-full border-none focus:outline-none focus:ring-0 placholder:text-gray-400 text-gray-800 text-sm"
         value={filterState.query ?? ''}
         placeholder="Search issues..."
         onChange={(e) => setFilterState((state) => ({ ...state, query: e.target.value }))}

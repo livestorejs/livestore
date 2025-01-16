@@ -2,6 +2,7 @@ import { schema } from '@/lib/livestore/schema'
 import { seed } from '@/lib/livestore/seed'
 import { renderBootStatus } from '@/lib/livestore/utils'
 import LiveStoreWorker from '@/lib/livestore/worker?worker'
+import { Status } from '@/types/status'
 import { LiveStoreProvider } from '@livestore/react'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
@@ -28,18 +29,23 @@ interface MenuContextInterface {
   showMenu: boolean
   setShowMenu: (show: boolean) => void
 }
-
 interface ToolbarContextInterface {
   showToolbar: boolean
   setShowToolbar: (show: boolean) => void
 }
+interface NewIssueModalContextInterface {
+  showNewIssueModal: Status | boolean
+  setShowNewIssueModal: (status: Status | boolean) => void
+}
 
 export const MenuContext = React.createContext(null as MenuContextInterface | null)
 export const ToolbarContext = React.createContext(null as ToolbarContextInterface | null)
+export const NewIssueModalContext = React.createContext(null as NewIssueModalContextInterface | null)
 
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const [showMenu, setShowMenu] = React.useState(false)
   const [showToolbar, setShowToolbar] = React.useState(false)
+  const [showNewIssueModal, setShowNewIssueModal] = React.useState<Status | boolean>(false)
 
   return (
     <LiveStoreProvider
@@ -50,7 +56,11 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       batchUpdates={batchUpdates}
     >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
-        <ToolbarContext.Provider value={{ showToolbar, setShowToolbar }}>{children}</ToolbarContext.Provider>
+        <ToolbarContext.Provider value={{ showToolbar, setShowToolbar }}>
+          <NewIssueModalContext.Provider value={{ showNewIssueModal, setShowNewIssueModal }}>
+            {children}
+          </NewIssueModalContext.Provider>
+        </ToolbarContext.Provider>
       </MenuContext.Provider>
     </LiveStoreProvider>
   )

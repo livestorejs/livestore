@@ -10,9 +10,17 @@ export const Modal = ({
 }: {
   show: boolean
   setShow: (show: boolean) => void
-  title: string
+  title?: string
   children: React.ReactNode
 }) => {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShow(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <ModalOverlay
       isOpen={show}
@@ -20,20 +28,22 @@ export const Modal = ({
       className="fixed inset-0 bg-black/10 flex items-start justify-center p-4 pt-16 lg:pt-32"
       isDismissable
     >
-      <ReactAriaModal className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-xl">
-        <div className="flex justify-between items-center p-4 pl-6 border-b border-gray-200">
-          <Heading slot="title" className="text-lg font-bold">
-            {title}
-          </Heading>
-          <Button
-            slot="close"
-            onPress={() => setShow(false)}
-            className="size-8 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex items-center justify-center"
-          >
-            <XMarkIcon className="size-5" />
-          </Button>
-        </div>
+      <ReactAriaModal className="relative bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-xl">
+        {title && (
+          <div className="flex justify-between items-center p-2 pl-4 border-b border-gray-200">
+            <Heading slot="title" className="text-lg font-bold">
+              {title}
+            </Heading>
+          </div>
+        )}
         {children}
+        <Button
+          slot="close"
+          onPress={() => setShow(false)}
+          className="absolute top-2 right-2 size-8 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex items-center justify-center"
+        >
+          <XMarkIcon className="size-5" />
+        </Button>
       </ReactAriaModal>
     </ModalOverlay>
   )

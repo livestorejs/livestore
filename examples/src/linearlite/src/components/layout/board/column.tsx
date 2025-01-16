@@ -17,7 +17,8 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
     (get) =>
       tables.issue.query
         .select('id', { pluck: true })
-        .where({ priority: filterStateToWhere(get(filterState$)).priority, status, deleted: null }),
+        .where({ priority: filterStateToWhere(get(filterState$)).priority, status, deleted: null })
+        .orderBy('kanbanorder', 'desc'),
     { label: 'Column.visibleIssueIds' },
   )
   const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
