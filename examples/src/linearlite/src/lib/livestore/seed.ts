@@ -41,8 +41,7 @@ function* createIssues(numTasks: number): Generator<Issue & { description: strin
   for (let i = 0; i < numTasks; i++) {
     const [title, description] = generateText()
     const issue = {
-      id: nanoid(),
-      // id: ++issueId,
+      id: nanoid(10),
       creator: getRandomItem(names),
       title,
       created: now - i * 5 * ONE_DAY,

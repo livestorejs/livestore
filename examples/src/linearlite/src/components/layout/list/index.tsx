@@ -19,7 +19,7 @@ const filteredIssueIds$ = queryDb(
 )
 
 export const List = () => {
-  const filteredIssueIds = useQuery(filteredIssueIds$)
+  const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
 
   return (
     <>

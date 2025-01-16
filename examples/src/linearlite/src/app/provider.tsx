@@ -49,7 +49,6 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       boot={seed}
       batchUpdates={batchUpdates}
     >
-      {/* <FPSMeter className="absolute right-1 z-50 bottom-1 bg-black/30" height={40} /> */}
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
         <ToolbarContext.Provider value={{ showToolbar, setShowToolbar }}>{children}</ToolbarContext.Provider>
       </MenuContext.Provider>

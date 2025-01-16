@@ -20,7 +20,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         .where({ priority: filterStateToWhere(get(filterState$)).priority, status, deleted: null }),
     { label: 'Column.visibleIssueIds' },
   )
-  const filteredIssueIds = useQuery(filteredIssueIds$)
+  const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
 
   return (
     <div className="bg-gray-50 border border-gray-100 rounded-lg w-80 shrink-0 h-full flex flex-col">
