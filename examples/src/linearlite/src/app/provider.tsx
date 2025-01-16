@@ -46,7 +46,6 @@ export const NewIssueModalContext = React.createContext(null as NewIssueModalCon
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = React.useState(false)
-  const [showToolbar, setShowToolbar] = React.useState(false)
   const [showNewIssueModal, setShowNewIssueModal] = React.useState<Status | boolean>(false)
 
   React.useEffect(() => {
@@ -77,11 +76,9 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       batchUpdates={batchUpdates}
     >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
-        <ToolbarContext.Provider value={{ showToolbar, setShowToolbar }}>
-          <NewIssueModalContext.Provider value={{ showNewIssueModal, setShowNewIssueModal }}>
-            {children}
-          </NewIssueModalContext.Provider>
-        </ToolbarContext.Provider>
+        <NewIssueModalContext.Provider value={{ showNewIssueModal, setShowNewIssueModal }}>
+          {children}
+        </NewIssueModalContext.Provider>
       </MenuContext.Provider>
     </LiveStoreProvider>
   )

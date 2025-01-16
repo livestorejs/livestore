@@ -19,15 +19,13 @@ export const ResetButton = () => {
   }
 
   return (
-    <div className="h-full flex items-center border-r border-gray-700">
-      <Button
-        aria-label="Reset database"
-        onPress={onClick}
-        className={`h-8 pl-2 pr-2.5 border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none ${confirm ? 'text-red-500' : 'text-gray-400'}`}
-      >
-        <TrashIcon className="size-3" />
-        <span>{confirm ? 'Confirm reset' : 'Reset database'}</span>
-      </Button>
-    </div>
+    <Button
+      aria-label="Delete issue"
+      onPress={onClick}
+      className={`rounded-lg h-7 px-2 flex items-center justify-center focus-outline-none bg-gray-700 hover:bg-gray-600 focus:outline-none focus:bg-gray-600 ${confirm ? 'text-red-500' : 'text-gray-300'}`}
+    >
+      <TrashIcon className="size-3.5" />
+      <span className="ml-1.5 mr-1 font-medium">{confirm ? 'Confirm reset' : 'Reset database'}</span>
+    </Button>
   )
 }

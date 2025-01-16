@@ -59,7 +59,7 @@ export const PriorityMenu = ({
             >
               <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
               <span>{name}</span>
-              {priorityOption === priority && <CheckIcon className="size-4 absolute right-10" />}
+              {priorityOption === priority && <CheckIcon className="size-4 absolute right-9" />}
               <Shortcut keys={[shortcut]} className="absolute right-3" />
             </MenuItem>
           ))}

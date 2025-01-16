@@ -2,6 +2,7 @@ import { NewIssueModalContext } from '@/app/provider'
 import { Modal } from '@/components/common/modal'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
+import { useFrontendState } from '@/lib/livestore/queries'
 import { mutations, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
@@ -14,6 +15,7 @@ import { DescriptionInput } from './description-input'
 import { TitleInput } from './title-input'
 
 export const NewIssueModal = () => {
+  const [frontendState, setFrontendState] = useFrontendState()
   const { showNewIssueModal, setShowNewIssueModal } = React.useContext(NewIssueModalContext)!
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')
@@ -39,7 +41,7 @@ export const NewIssueModal = () => {
         status,
         modified: date,
         created: date,
-        creator: 'User',
+        creator: frontendState.user,
         kanbanorder,
         description,
       }),

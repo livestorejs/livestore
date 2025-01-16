@@ -1,4 +1,5 @@
 import Editor from '@/components/common/editor'
+import { useFrontendState } from '@/lib/livestore/queries'
 import { mutations } from '@/lib/livestore/schema'
 import { ArrowUpIcon } from '@heroicons/react/20/solid'
 import { useStore } from '@livestore/react'
@@ -10,6 +11,7 @@ import { Button } from 'react-aria-components'
 export const CommentInput = ({ issueId, className }: { issueId: string; className?: string }) => {
   // TODO move this into LiveStore
   const [commentDraft, setCommentDraft] = React.useState<string>('')
+  const [frontendState] = useFrontendState()
   const { store } = useStore()
 
   const { keyboardProps } = useKeyboard({
@@ -28,7 +30,7 @@ export const CommentInput = ({ issueId, className }: { issueId: string; classNam
         body: commentDraft,
         issueId: issueId,
         created: Date.now(),
-        creator: 'user', // TODO get user from frontend state
+        creator: frontendState.user,
       }),
     )
     setCommentDraft('')

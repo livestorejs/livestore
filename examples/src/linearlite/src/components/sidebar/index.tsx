@@ -11,6 +11,7 @@ import { TodoIcon } from '../icons/todo'
 import { ToolbarButton } from '../toolbar/toolbar-button'
 import { NewIssueButton } from './new-issue-button'
 import { SearchButton } from './search-button'
+import { ThemeButton } from './theme-button'
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [filterState, setFilterState] = useFilterState()
@@ -92,8 +93,9 @@ export const Sidebar = ({ className }: { className?: string }) => {
           ))}
         </nav>
       </div>
-      <div className="p-2">
+      <div className="p-2 flex items-center gap-2">
         <ToolbarButton />
+        <ThemeButton />
       </div>
     </aside>
   )

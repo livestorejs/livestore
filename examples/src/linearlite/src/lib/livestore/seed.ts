@@ -2,10 +2,10 @@ import { type Store } from '@livestore/livestore'
 
 import { priorityOptions } from '@/data/priority-options'
 import { statusOptions } from '@/data/status-options'
+import { Issue, mutations, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { nanoid } from 'nanoid'
-import { Issue, mutations, tables } from './schema'
 
 export const seed = (store: Store) => {
   try {
@@ -42,7 +42,7 @@ function* createIssues(numTasks: number): Generator<Issue & { description: strin
     const [title, description] = generateText()
     const issue = {
       id: nanoid(10),
-      creator: getRandomItem(names),
+      creator: 'John Doe',
       title,
       created: now - i * 5 * ONE_DAY,
       modified: now - i * 2 * ONE_DAY,
@@ -56,9 +56,6 @@ function* createIssues(numTasks: number): Generator<Issue & { description: strin
   }
 }
 
-export const names = ['John', 'Jane', 'Sam', 'Anna', 'Michael', 'Sarah', 'Chris', 'Jessica']
-export const projects = ['Website Redesign', 'App Development', 'Marketing Strategy', 'Customer Outreach']
-export const labels = ['frontend', 'backend', 'ux', 'research', 'design', 'bug', 'feature']
 export const priorities = Object.keys(priorityOptions) as Priority[]
 export const statuses = Object.keys(statusOptions) as Status[]
 const actionPhrases = [
