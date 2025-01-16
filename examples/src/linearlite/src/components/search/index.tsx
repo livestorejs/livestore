@@ -1,11 +1,11 @@
 import { Filters } from '@/components/layout/filters'
-import { filterState$ } from '@/lib/livestore/queries'
+import { FilteredList } from '@/components/layout/list/filtered-list'
+import { filterState$, useFilterState } from '@/lib/livestore/queries'
 import { tables } from '@/lib/livestore/schema'
 import { filterStateToOrderBy, filterStateToWhere } from '@/lib/livestore/utils'
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
-import { FilteredList } from './filtered-list'
 
 const filteredIssueIds$ = queryDb(
   (get) =>
@@ -16,13 +16,14 @@ const filteredIssueIds$ = queryDb(
   { label: 'List.visibleIssueIds' },
 )
 
-export const List = () => {
+export const Search = () => {
   const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
+  const [filterState] = useFilterState()
 
   return (
     <>
-      <Filters filteredCount={filteredIssueIds.length} />
-      <FilteredList filteredIssueIds={filteredIssueIds} />
+      <Filters filteredCount={filterState.query ? filteredIssueIds.length : 0} search />
+      <FilteredList filteredIssueIds={filterState.query ? filteredIssueIds : []} />
     </>
   )
 }
