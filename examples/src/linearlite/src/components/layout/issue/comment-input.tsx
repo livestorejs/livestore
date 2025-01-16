@@ -37,7 +37,7 @@ export const CommentInput = ({ issueId, className }: { issueId: string; classNam
   }
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 shadow ${className}`} {...keyboardProps}>
+    <div className={`bg-white pb-4 rounded-lg shadow ${className}`} {...keyboardProps}>
       <Editor
         className="px-4 py-1"
         value={commentDraft}
@@ -48,7 +48,7 @@ export const CommentInput = ({ issueId, className }: { issueId: string; classNam
       <Button
         aria-label="Submit comment"
         onPress={submitComment}
-        className="size-7 rounded-full text-gray-600 hover:text-gray-800 focus:text-gray-800 bg-white hover:bg-gray-100 focus:outline-none focus:bg-gray-100 shadow border border-gray-200 flex items-center justify-center ml-auto mr-4 mb-4"
+        className="size-7 rounded-full text-gray-600 hover:text-gray-800 focus:text-gray-800 bg-white hover:bg-gray-100 focus:outline-none focus:bg-gray-100 shadow border border-gray-200 flex items-center justify-center ml-auto mr-4"
       >
         <ArrowUpIcon className="size-4" />
       </Button>

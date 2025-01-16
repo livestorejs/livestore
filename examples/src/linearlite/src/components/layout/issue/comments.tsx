@@ -15,7 +15,7 @@ export const Comments = ({ issueId }: { issueId: string }) => {
   return (
     <ul className="mt-4 flex flex-col gap-4">
       {comments.map(({ id, body, creator, created }) => (
-        <li key={id} className="bg-white rounded-lg border border-gray-200 shadow p-4">
+        <li key={id} className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center -ml-0.5 -mt-0.5 mb-2 text-sm">
             <Avatar name={creator} />
             <div className="font-medium ml-2.5 mr-2">{creator}</div>
