@@ -10,7 +10,15 @@ import { useQuery } from '@livestore/react'
 import React from 'react'
 import { Button } from 'react-aria-components'
 
-export const Filters = ({ filteredCount }: { filteredCount: number }) => {
+export const Filters = ({
+  filteredCount,
+  hideStatusFilter,
+  hideSorting,
+}: {
+  filteredCount: number
+  hideStatusFilter?: boolean
+  hideSorting?: boolean
+}) => {
   const totalCount = useQuery(issueCount$)
   const [filterState] = useFilterState()
 
@@ -28,7 +36,7 @@ export const Filters = ({ filteredCount }: { filteredCount: number }) => {
       </div>
       <div className="h-12 border-b border-gray-200 flex items-center justify-between text-sm px-4 gap-8">
         <div className="flex items-center">
-          <FilterMenu>
+          <FilterMenu type={hideStatusFilter ? 'priority' : undefined}>
             <Button
               aria-label="Select filters"
               className="group h-6 min-w-6 rounded-lg flex gap-1.5 px-1.5 items-center justify-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 text-xs font-medium"
@@ -37,10 +45,11 @@ export const Filters = ({ filteredCount }: { filteredCount: number }) => {
               {!filterState.status?.length && !filterState.priority?.length && <span>Filter</span>}
             </Button>
           </FilterMenu>
-          <StatusFilter />
+          {!hideStatusFilter && <StatusFilter />}
           <PriorityFilter />
         </div>
-        <SortMenu />
+        {/* TODO add clear filters/sorting button */}
+        {!hideSorting && <SortMenu />}
       </div>
     </>
   )

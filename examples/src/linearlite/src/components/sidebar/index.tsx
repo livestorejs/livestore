@@ -66,7 +66,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
   ]
 
   return (
-    <aside className={`bg-white w-64 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}>
+    <aside className={`bg-white w-64 shrink-0 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}>
       <div>
         <div className="flex items-center justify-between pr-2">
           <AboutMenu />

@@ -7,7 +7,7 @@ import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
-import * as ReactWindow from 'react-window'
+import { FixedSizeList } from 'react-window'
 
 const filteredIssueIds$ = queryDb(
   (get) =>
@@ -27,7 +27,7 @@ export const List = () => {
       <div className="grow">
         <AutoSizer>
           {({ height, width }: { width: number; height: number }) => (
-            <ReactWindow.FixedSizeList
+            <FixedSizeList
               height={height}
               itemCount={filteredIssueIds.length}
               itemSize={48}
@@ -36,7 +36,7 @@ export const List = () => {
               width={width}
             >
               {VirtualRow}
-            </ReactWindow.FixedSizeList>
+            </FixedSizeList>
           )}
         </AutoSizer>
       </div>

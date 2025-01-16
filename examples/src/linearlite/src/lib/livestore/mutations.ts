@@ -14,10 +14,11 @@ export const createIssueWithDescription = defineMutation(
     modified: Schema.Number,
     kanbanorder: Schema.String,
     description: Schema.String,
+    creator: Schema.String,
   }),
   [
-    sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder")
-                        VALUES ($id, $title, $priority, $status, $created, $modified, $kanbanorder)`,
+    sql`INSERT INTO issue ("id", "title", "priority", "status", "created", "modified", "kanbanorder", "creator")
+                        VALUES ($id, $title, $priority, $status, $created, $modified, $kanbanorder, $creator)`,
     sql`INSERT INTO description ("id", "body") VALUES ($id, $description)`,
   ],
 )
