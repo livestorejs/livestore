@@ -8,6 +8,7 @@ import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
@@ -43,9 +44,29 @@ export const ToolbarContext = React.createContext(null as ToolbarContextInterfac
 export const NewIssueModalContext = React.createContext(null as NewIssueModalContextInterface | null)
 
 export const Provider = ({ children }: { children: React.ReactNode }) => {
+  const navigate = useNavigate()
   const [showMenu, setShowMenu] = React.useState(false)
   const [showToolbar, setShowToolbar] = React.useState(false)
   const [showNewIssueModal, setShowNewIssueModal] = React.useState<Status | boolean>(false)
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const element = e.target as HTMLElement
+      if (element.classList.contains('input')) return
+      if (e.key === 'c') {
+        if (!element.classList.contains('input')) {
+          setShowNewIssueModal(true)
+          e.preventDefault()
+        }
+      }
+      if (e.key === '/' && e.shiftKey) {
+        navigate('/search')
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   return (
     <LiveStoreProvider

@@ -48,20 +48,6 @@ export const NewIssueModal = () => {
   }
 
   React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'c') {
-        const element = e.target as HTMLElement
-        if (!element.classList.contains('input')) {
-          setShowNewIssueModal(true)
-          e.preventDefault()
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  React.useEffect(() => {
     setTitle('')
     setDescription('')
     setStatus('backlog')

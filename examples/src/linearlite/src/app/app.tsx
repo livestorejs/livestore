@@ -21,8 +21,8 @@ export const App = () => {
   )
 
   return (
-    <Provider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <Provider>
         <Layout>
           <Sidebar className="hidden lg:flex" />
           <div className="w-full lg:max-w-[calc(100%-16rem)] p-2 lg:pl-0">
@@ -30,7 +30,7 @@ export const App = () => {
           </div>
         </Layout>
         <NewIssueModal />
-      </BrowserRouter>
-    </Provider>
+      </Provider>
+    </BrowserRouter>
   )
 }

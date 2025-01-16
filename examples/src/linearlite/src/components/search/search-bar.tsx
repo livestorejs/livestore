@@ -2,10 +2,18 @@ import { useFilterState } from '@/lib/livestore/queries'
 import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import React from 'react'
+import { useKeyboard } from 'react-aria'
 import { Button, Input } from 'react-aria-components'
 
 export const SearchBar = () => {
+  const inputRef = React.useRef<HTMLInputElement>(null)
   const [filterState, setFilterState] = useFilterState()
+
+  const { keyboardProps } = useKeyboard({
+    onKeyDown: (e) => {
+      if (e.key === 'Escape') (e.target as HTMLInputElement)?.blur()
+    },
+  })
 
   return (
     <div className="h-12 relative border-b border-gray-200 flex items-center text-sm pl-6 pr-2">
@@ -17,6 +25,7 @@ export const SearchBar = () => {
         value={filterState.query ?? ''}
         placeholder="Search issues..."
         onChange={(e) => setFilterState((state) => ({ ...state, query: e.target.value }))}
+        {...keyboardProps}
       />
       {filterState.query && (
         <Button
