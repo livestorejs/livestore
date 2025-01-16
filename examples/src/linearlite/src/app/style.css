@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply text-xs text-gray-600;
+  @apply text-xs text-gray-600 antialiased;
 }
 
 @font-face {
@@ -51,13 +51,6 @@ body {
   max-height: calc(100vh - 32px);
 }
 
-.editor ul {
-  list-style-type: circle;
-}
-.editor ol {
-  list-style-type: decimal;
-}
-
 #root,
 body,
 html {
@@ -65,7 +58,7 @@ html {
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  color: #adb5bd;
+  color: #9ca3af;
   content: attr(data-placeholder);
   float: left;
   height: 0;

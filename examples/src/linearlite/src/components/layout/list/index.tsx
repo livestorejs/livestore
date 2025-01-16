@@ -13,7 +13,7 @@ const filteredIssueIds$ = queryDb(
   (get) =>
     tables.issue.query
       .select('id', { pluck: true })
-      .where(filterStateToWhere(get(filterState$)))
+      .where({ ...filterStateToWhere(get(filterState$)), deleted: null })
       .orderBy(filterStateToOrderBy(get(filterState$))),
   { label: 'List.visibleIssueIds' },
 )
