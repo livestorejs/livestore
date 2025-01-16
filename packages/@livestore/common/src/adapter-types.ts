@@ -17,6 +17,12 @@ export type SynchronousDatabaseSession = {
   finish: () => void
 }
 
+export type SynchronousDatabaseChangeset = {
+  // TODO combining changesets (requires changes in the SQLite WASM binding)
+  invert: () => SynchronousDatabaseChangeset
+  apply: () => void
+}
+
 export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
@@ -39,6 +45,7 @@ export type SynchronousDatabase<TReq = any, TMetadata extends TReq = TReq> = {
   close(): void
   destroy(): void
   session(): SynchronousDatabaseSession
+  makeChangeset: (data: Uint8Array) => SynchronousDatabaseChangeset
 }
 
 export type MakeSynchronousDatabase<

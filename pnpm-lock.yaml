@@ -1777,8 +1777,8 @@ importers:
         specifier: workspace:*
         version: link:../node
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.3-dev.4
+        version: 1.0.3-dev.4
       '@livestore/web':
         specifier: workspace:*
         version: link:../web
@@ -2018,8 +2018,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.2
-        version: 1.0.3-dev.2
+        specifier: 1.0.3-dev.4
+        version: 1.0.3-dev.4
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.279
@@ -4612,6 +4612,9 @@ packages:
 
   '@livestore/wa-sqlite@1.0.3-dev.2':
     resolution: {integrity: sha512-VEO1aSGE/OV+1tasmx6IhPQMuMs4cbXMKQvez/Z1F2d9FK3LF5RG4jlovEzfYN+rOsnzE9wZ1vf6j2zeCor9Tg==}
+
+  '@livestore/wa-sqlite@1.0.3-dev.4':
+    resolution: {integrity: sha512-hZCFK+F7hnQslE2EtbjidSH/WlEKJm8+JCU64UDCn0IjB0OJm2/Cs6UjAySic7xzQlmhSC0cM9F2VcW7Sglqdw==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -18088,6 +18091,8 @@ snapshots:
   '@livestore/wa-sqlite@1.0.1-dev.29': {}
 
   '@livestore/wa-sqlite@1.0.3-dev.2': {}
+
+  '@livestore/wa-sqlite@1.0.3-dev.4': {}
 
   '@lukeed/ms@2.0.2': {}
 

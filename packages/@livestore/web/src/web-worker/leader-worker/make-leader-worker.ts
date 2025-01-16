@@ -1,11 +1,10 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
-import { ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { MutationEventEncodedWithDeferred, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
-  MutationEventEncodedWithDeferred,
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'

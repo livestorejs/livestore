@@ -1,4 +1,10 @@
-import type { PersistenceInfo, PreparedBindValues, PreparedStatement, SynchronousDatabase } from '@livestore/common'
+import type {
+  PersistenceInfo,
+  PreparedBindValues,
+  PreparedStatement,
+  SynchronousDatabase,
+  SynchronousDatabaseChangeset,
+} from '@livestore/common'
 import { SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
@@ -186,7 +192,19 @@ export const makeSynchronousDatabase = <
         },
       }
     },
-    // TODO changeset invert + apply
+    makeChangeset: (data) => {
+      const changeset = {
+        invert: () => {
+          const inverted = sqlite3.changeset_invert(data)
+          return syncDb.makeChangeset(inverted)
+        },
+        apply: () => {
+          sqlite3.changeset_apply(dbPointer, data)
+        },
+      } satisfies SynchronousDatabaseChangeset
+
+      return changeset
+    },
   } satisfies SynchronousDatabase<TMetadata>
 
   metadata.configureDb(syncDb)

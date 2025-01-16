@@ -14,19 +14,19 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { EventId, SynchronousDatabase, UnexpectedError } from '../adapter-types.js'
-import { ROOT_ID } from '../adapter-types.js'
+import type { SynchronousDatabase, UnexpectedError } from '../adapter-types.js'
+import { compareEventIds, ROOT_ID } from '../adapter-types.js'
 import * as Devtools from '../devtools/index.js'
+import type { LiveStoreSchema, MutationEvent, SessionChangesetMetaRow } from '../schema/index.js'
 import {
-  type LiveStoreSchema,
   MUTATION_LOG_META_TABLE,
-  type MutationEvent,
   mutationLogMetaTable,
+  SESSION_CHANGESET_META_TABLE,
   SYNC_STATUS_TABLE,
 } from '../schema/index.js'
 import { updateRows } from '../sql-queries/index.js'
-import { makeNextMutationEventIdPair } from '../sync/next-mutation-event-id-pair.js'
-import { SyncLog2 } from '../sync/synclog.js'
+import * as SyncState from '../sync/syncstate.js'
+import { MutationEventEncodedWithDeferred, nextEventIdPair } from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -37,8 +37,7 @@ import {
   getMutationEventsSince,
 } from './mutationlog.js'
 import type { InitialSyncInfo, SyncQueue } from './types.js'
-import { LeaderThreadCtx, MutationEventEncodedWithDeferred } from './types.js'
-import { validateAndUpdateLocalHead } from './validateAndUpdateLocalHead.js'
+import { LeaderThreadCtx } from './types.js'
 
 const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) =>
   a.id.global === b.id.global &&
@@ -50,7 +49,41 @@ const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) 
 const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined
 // const whenTraceVerbose = <T>(object: T) => TRACE_VERBOSE ? object : undefined
 
-// type MutationEventWithDeferred = MutationEvent.AnyEncoded & { deferred?: Deferred.Deferred<void> }
+/*
+New implementation idea: Model the sync thing as a state machine.
+
+External events:
+- Mutation pushed from client session
+- Mutation pushed from devtools (via pushPartial)
+- Mutation pulled from sync backend
+
+The machine can be in the following states:
+- in-sync: fully synced with remote, now idling
+- applying-syncstate-advance (with pointer to current progress in case of rebase interrupt)
+- applying-syncstate-rebase (with pointer to current progress in case of interrupt)
+
+
+Transitions:
+- in-sync -> applying-syncstate-update
+- applying-syncstate-update -> in-sync
+- applying-syncstate-update -> applying-syncstate-update (need to interrupt previous operation)
+
+Open questions:
+- Which things can be done synchronously vs which are inherently async vs which need to be sliced up?
+  - Synchronous:
+    - Mutation pushed from client session
+    - non-interactive rebase
+    - rolling back and applying a short log of events (limit needs to be configurable)
+  - Asynchronous:
+    - interactive rebase
+  - with loading spinner: (only on main thread)
+    - rolling back + applying a long log of events
+    - interactive rebase
+- Which things are allowed concurrently vs which not?
+- Is there anything that's not interruptible?
+  - interactive rebase
+
+*/
 
 /**
  * The sync queue represents the "tail" of the mutation log i.e. events that haven't been pushed yet.
@@ -94,21 +127,16 @@ export const makeSyncQueue = ({
 
     const initialBackendHead = dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog)
 
-    // const localHeadRef = {
-    //   // In the case where the db is missing, querying it will fail, so we safely use ROOT_ID
-    //   current: dbMissing ? ROOT_ID : getInitialCurrentMutationEventIdFromDb(dbLog),
-    // }
-    // const nextMutationEventIdPair = makeNextMutationEventIdPair(localHeadRef)
-
-    const syncLogStateRef = {
+    const syncStateStateRef = {
       current: {
         pending: [],
         rollbackTail: [],
         upstreamHead: { global: dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog), local: 0 },
-      } as SyncLog2.SyncLogState<MutationEventEncodedWithDeferred>,
+        localHead: { global: dbMissing ? ROOT_ID.global : getInitialCurrentMutationEventIdFromDb(dbLog), local: 0 },
+      } as SyncState.SyncState,
     }
 
-    const isLocalEvent = (mutationEventEncoded: MutationEvent.AnyEncoded) => {
+    const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithDeferred) => {
       const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
       return mutationDef.options.localOnly
     }
@@ -127,50 +155,39 @@ export const makeSyncQueue = ({
 
         // TODO validate batch
 
-        const res = SyncLog2.updateSyncLog2<MutationEventEncodedWithDeferred>({
-          syncLog: syncLogStateRef.current,
-          update: { _tag: 'local-push', newEvents: batch },
+        const res = SyncState.updateSyncState({
+          syncState: syncStateStateRef.current,
+          payload: { _tag: 'local-push', newEvents: batch },
           isLocalEvent,
           isEqualEvent,
-          rebase: ({ event, id, parentId }) => new MutationEventEncodedWithDeferred({ ...event, id, parentId }),
         })
+
+        syncStateStateRef.current = res.syncState
 
         spanRef.current?.addEvent('push', {
           batchSize: batch.length,
           res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
         })
 
-        const filteredBatch = res.newEvents
-
-        syncLogStateRef.current = res.syncLog
+        if (res._tag === 'reject') {
+          throw new Error('TODO: implement reject in leader-thread for push')
+        }
 
         if (res._tag === 'rebase') {
           throw new Error('TODO: implement rebase in leader-thread for push')
         }
 
+        const newEvents = res.newEvents
+
+        yield* BucketQueue.offerAll(executeQueue, newEvents)
+
         // Don't sync localOnly mutations
-        const filteredBatch_ = filteredBatch.filter((mutationEventEncoded) => {
+        const filteredBatch = newEvents.filter((mutationEventEncoded) => {
           const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
           return mutationDef.options.localOnly === false
         })
 
-        // pendingSyncItems.push(...filteredBatch)
-
-        // TODO handle rebase
-
-        // TODO reject mutation events that are behind current mutation event id
-        // for (const { mutationEventEncoded } of batch) {
-        // yield* validateAndUpdateLocalHead({
-        //   // localHeadRef,
-        //   mutationEventId: mutationEventEncoded.id,
-        //   debugContext: { label: `leader-worker:applyMutation`, mutationEventEncoded },
-        // })
-        // }
-
-        yield* syncBackendQueue.offerAll(filteredBatch_)
-
-        // TODO clean up implementation (currently using `batch` as the event ids aren't used in this code path)
-        yield* BucketQueue.offerAll(executeQueue, filteredBatch)
+        yield* syncBackendQueue.offerAll(filteredBatch)
       }).pipe(
         Effect.withSpan('@livestore/common:leader-thread:syncing:push', {
           attributes: {
@@ -182,17 +199,16 @@ export const makeSyncQueue = ({
 
     const pushPartial: SyncQueue['pushPartial'] = (mutationEventEncoded_) =>
       Effect.gen(function* () {
-        // TODO bring back
         const mutationDef =
           schema.mutations.get(mutationEventEncoded_.mutation) ??
           shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
 
-        // const mutationEventEncoded = {
-        //   ...mutationEventEncoded_,
-        //   ...nextMutationEventIdPair({ localOnly: mutationDef.options.localOnly }),
-        // }
+        const mutationEventEncoded = new MutationEventEncodedWithDeferred({
+          ...mutationEventEncoded_,
+          ...nextEventIdPair(syncStateStateRef.current.localHead, mutationDef.options.localOnly),
+        })
 
-        // yield* push([{ mutationEventEncoded }])
+        yield* push([mutationEventEncoded])
       })
 
     // Starts various background loops
@@ -215,8 +231,8 @@ export const makeSyncQueue = ({
 
             // pendingSyncItems.push(...filteredBatch.map((_) => ({ mutationEventEncoded: _ })))
 
-            syncLogStateRef.current = {
-              ...syncLogStateRef.current,
+            syncStateStateRef.current = {
+              ...syncStateStateRef.current,
               pending: filteredBatch.map((_) => new MutationEventEncodedWithDeferred(_)),
             }
 
@@ -224,7 +240,7 @@ export const makeSyncQueue = ({
           }
         }
 
-        yield* executeMutationsLoop({ executeQueue, syncLogStateRef })
+        yield* executeMutationsLoop({ executeQueue, syncStateStateRef })
 
         yield* backgroundBackendPushing({ dbReady, syncBackendQueue })
 
@@ -233,22 +249,24 @@ export const makeSyncQueue = ({
           initialBackendHead,
           // localHeadRef,
           isLocalEvent,
-          syncLogStateRef,
+          syncStateStateRef,
           executeQueue,
           span,
           // pendingSyncItems,
         })
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
-    return { push, pushPartial, boot } satisfies SyncQueue
+    const state = yield* SubscriptionRef.make({ online: true })
+
+    return { push, pushPartial, boot, state } satisfies SyncQueue
   })
 
 const executeMutationsLoop = ({
   executeQueue,
-  syncLogStateRef,
+  syncStateStateRef,
 }: {
   executeQueue: BucketQueue.BucketQueue<MutationEventEncodedWithDeferred>
-  syncLogStateRef: { current: SyncLog2.SyncLogState<MutationEventEncodedWithDeferred> }
+  syncStateStateRef: { current: SyncState.SyncState }
 }) =>
   Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
@@ -286,13 +304,13 @@ const executeMutationsLoop = ({
             )
           }
 
-          if (meta.deferred) {
+          if (meta?.deferred) {
             yield* Deferred.succeed(meta.deferred, void 0)
           }
 
-          // syncLogStateRef.current = {
-          //   ...syncLogStateRef.current,
-          //   pending: syncLogStateRef.current.pending.slice(1),
+          // syncStateStateRef.current = {
+          //   ...syncStateStateRef.current,
+          //   pending: syncStateStateRef.current.pending.slice(1),
           // }
         }
 
@@ -315,7 +333,7 @@ const backgroundBackendPulling = ({
   dbReady,
   initialBackendHead,
   // localHeadRef,
-  syncLogStateRef,
+  syncStateStateRef,
   isLocalEvent,
   executeQueue,
   // pendingSyncItems,
@@ -324,14 +342,14 @@ const backgroundBackendPulling = ({
   dbReady: Deferred.Deferred<void>
   initialBackendHead: number
   // localHeadRef: { current: EventId }
-  syncLogStateRef: { current: SyncLog2.SyncLogState<MutationEventEncodedWithDeferred> }
-  isLocalEvent: (mutationEventEncoded: MutationEvent.AnyEncoded) => boolean
+  syncStateStateRef: { current: SyncState.SyncState }
+  isLocalEvent: (mutationEventEncoded: MutationEventEncodedWithDeferred) => boolean
   executeQueue: BucketQueue.BucketQueue<MutationEventEncodedWithDeferred>
   // pendingSyncItems: SyncQueueItem[]
   span: otel.Span
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, bootStatusQueue, dbLog, initialSyncOptions } = yield* LeaderThreadCtx
+    const { syncBackend, bootStatusQueue, db, dbLog, initialSyncOptions } = yield* LeaderThreadCtx
     if (syncBackend === undefined) return
 
     const cursorInfo = yield* getCursorInfo(initialBackendHead)
@@ -354,16 +372,11 @@ const backgroundBackendPulling = ({
       Effect.gen(function* () {
         if (chunk.length === 0) return
 
-        span.addEvent('pre-pull', {
-          syncLogState: TRACE_VERBOSE ? JSON.stringify(syncLogStateRef.current) : undefined,
-        })
-
-        const res = SyncLog2.updateSyncLog2<MutationEventEncodedWithDeferred>({
-          syncLog: syncLogStateRef.current,
-          update: { _tag: 'upstream-advance', newEvents: chunk },
+        const res = SyncState.updateSyncState({
+          syncState: syncStateStateRef.current,
+          payload: { _tag: 'upstream-advance', newEvents: chunk },
           isLocalEvent,
           isEqualEvent,
-          rebase: ({ event, id, parentId }) => new MutationEventEncodedWithDeferred({ ...event, id, parentId }),
         })
 
         span.addEvent('pull', {
@@ -371,7 +384,7 @@ const backgroundBackendPulling = ({
           res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
         })
 
-        syncLogStateRef.current = res.syncLog
+        syncStateStateRef.current = res.syncState
 
         // TODO either use `sessionId` to verify or introduce a new nanoid-field
         // const hasLocalPendingEvents = false
@@ -400,8 +413,32 @@ const backgroundBackendPulling = ({
         //   }
 
         if (res._tag === 'rebase' && res.eventsToRollback.length > 0) {
-          throw new Error('TODO: implement rebase in leader-thread')
+          const eventIdsToRollback = res.eventsToRollback.map((_) => _.id)
+          const rollbackEvents = db
+            .select<SessionChangesetMetaRow>(
+              sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
+            )
+            .map((_) => ({ id: { global: _.idGlobal, local: _.idLocal }, changeset: _.changeset }))
+            .toSorted((a, b) => compareEventIds(a.id, b.id))
+
+          // Apply changesets in reverse order
+          for (let i = rollbackEvents.length - 1; i >= 0; i--) {
+            const { changeset } = rollbackEvents[i]!
+            db.makeChangeset(changeset).invert().apply()
+          }
+
+          // Delete the changeset rows
+          db.execute(
+            sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
+          )
+
+          // Delete the mutation log rows
+          dbLog.execute(
+            sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
+          )
         }
+
+        if (res._tag === 'reject') return shouldNeverHappen()
 
         const filteredChunk = res.newEvents
 

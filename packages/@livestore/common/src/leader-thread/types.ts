@@ -10,7 +10,7 @@ import type {
   SubscriptionRef,
   WebChannel,
 } from '@livestore/utils/effect'
-import { Context, Inspectable, Schema } from '@livestore/utils/effect'
+import { Context, Schema } from '@livestore/utils/effect'
 
 import type {
   BootStatus,
@@ -24,6 +24,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
+import type { MutationEventEncodedWithDeferred } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -128,6 +129,7 @@ export interface SyncQueue {
     UnexpectedError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
+  state: SubscriptionRef.SubscriptionRef<{ online: boolean }>
   // backendHeadRef: { current: number }
 }
 
@@ -138,48 +140,6 @@ export interface SyncQueue {
 // }
 
 // export type MutationEventWithDeferred = MutationEvent.AnyEncoded & { deferred?: Deferred.Deferred<void> }
-
-export class MutationEventEncodedWithDeferred extends Inspectable.Class {
-  mutation: string
-  args: any
-  id: EventId
-  parentId: EventId
-  meta: {
-    deferred?: Deferred.Deferred<void>
-  }
-
-  constructor({
-    mutation,
-    args,
-    id,
-    parentId,
-    meta,
-  }: {
-    mutation: string
-    args: any
-    id: EventId
-    parentId: EventId
-    meta?: { deferred?: Deferred.Deferred<void> }
-  }) {
-    super()
-
-    this.mutation = mutation
-    this.args = args
-    this.id = id
-    this.parentId = parentId
-    this.meta = { deferred: meta?.deferred }
-  }
-
-  toJSON = () => {
-    // Only used for logging/debugging
-    return {
-      id: `(${this.id.global},${this.id.local}) → (${this.parentId.global},${this.parentId.local})`,
-      mutation: this.mutation,
-      args: this.args,
-      // meta: this.meta,
-    }
-  }
-}
 
 export interface PullQueueSet extends Iterable<Queue.Queue<PullQueueItem>> {
   makeQueue: (

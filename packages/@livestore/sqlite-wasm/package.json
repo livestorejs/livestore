@@ -25,7 +25,7 @@
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.3-dev.2"
+    "@livestore/wa-sqlite": "1.0.3-dev.4"
   },
   "devDependencies": {
     "@types/node": "22.10.5",

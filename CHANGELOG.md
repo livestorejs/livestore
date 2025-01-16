@@ -5,6 +5,15 @@
 
 ## 0.3.0
 
+- Still todo:
+  - Fix devtools for web + expo
+  - Get rid of `makeNextMutationEventIdPair` + `validateAndUpdateLocalHead`
+  - Sync queue
+    - Refactor `MutationEventEncodedWithDeferred` to work better alongside `mutationEventSchemaEncodedAny`
+    - Implement in client session
+    - Refactor to state machine
+    - Use synclog payload as sync items
+
 - New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
@@ -23,7 +32,9 @@
   - Large refactoring to share more code between adapters
   - Embraced git-style push/pull semantics to sync mutations across the system
   - Upgrade to TypeScript 5.7
-- Upgraded dependencies (effect 3.12.0 or higher)
+- Upgraded dependencies
+  - `effect` (needs to be 3.12.0 or higher)
+  - `@livestore/wa-sqlite` (needs to be 1.0.3-dev.4)
 
 ## 0.2.0
 

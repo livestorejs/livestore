@@ -1,12 +1,13 @@
 import '@livestore/utils/node-vitest-polyfill'
 
 import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
-import { makeNextMutationEventIdPair, ROOT_ID, validatePushPayload } from '@livestore/common'
 import {
-  LeaderThreadCtx,
-  makeLeaderThreadLayer,
+  makeNextMutationEventIdPair,
   MutationEventEncodedWithDeferred,
-} from '@livestore/common/leader-thread'
+  ROOT_ID,
+  validatePushPayload,
+} from '@livestore/common'
+import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -73,6 +74,7 @@ Vitest.describe('sync', () => {
   // TODO property based testing to test following cases:
   // push first, then pull + latency in between (need to adjust the backend id accordingly)
   // pull first, then push + latency in between
+  // In this test we're simulating a client leader that is behind the backend
   Vitest.scopedLive.only('invalid push', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx

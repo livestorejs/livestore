@@ -14,7 +14,7 @@ export * from './debug-info.js'
 export * from './bounded-collections.js'
 export * from './version.js'
 export * from './query-builder/mod.js'
-export * from './sync/synclog.js'
+export * from './sync/syncstate.js'
 
 declare global {
   interface LiveStoreGlobal {

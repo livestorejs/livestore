@@ -75,6 +75,16 @@ export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousD
         finish: () => {},
       }
     },
+    makeChangeset: (data) => {
+      return {
+        invert: () => {
+          return syncDb.makeChangeset(data)
+        },
+        apply: () => {
+          // TODO
+        },
+      }
+    },
   } satisfies SynchronousDatabase
 
   return syncDb
