@@ -26,7 +26,7 @@ export const ResetButton = ({ className }: { className?: string }) => {
         className={`h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none ${confirm ? 'text-red-500' : 'text-gray-400'}`}
       >
         <TrashIcon className="size-3" />
-        <span>{confirm ? 'Confirm reset' : 'Reset database'}</span>
+        <span>{confirm ? 'Confirm' : 'Reset DB'}</span>
       </Button>
     </div>
   )

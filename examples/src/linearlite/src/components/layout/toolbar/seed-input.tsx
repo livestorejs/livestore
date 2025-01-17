@@ -16,7 +16,7 @@ export const SeedInput = ({ className }: { className?: string }) => {
   return (
     <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 ${className}`}>
       <div className="h-8 border-y border-r border-gray-700 whitespace-nowrap shrink-0 flex items-center px-2 text-sm text-gray-400">
-        Seed database:
+        Seed DB:
       </div>
       <Input
         aria-label="Seed count"

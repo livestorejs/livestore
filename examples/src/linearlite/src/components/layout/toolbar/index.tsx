@@ -6,6 +6,7 @@ import { UserInput } from '@/components/layout/toolbar/user-input'
 import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { DownloadButton } from './download-button'
 
 export const Toolbar = () => {
   return (
@@ -24,6 +25,7 @@ export const Toolbar = () => {
       <UserInput className="hidden lg:flex" />
       <SeedInput className="hidden lg:flex" />
       <ResetButton className="hidden lg:flex" />
+      <DownloadButton className="hidden lg:flex" />
       <div className="grow h-8 border-y border-gray-700" />
       <div className="h-full hidden lg:flex items-center border-x border-gray-700">
         <FPSMeter height={32} />
