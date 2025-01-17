@@ -1,4 +1,4 @@
-import { MenuContext } from '@/app/provider'
+import { MenuContext } from '@/app/contexts'
 import { AboutMenu } from '@/components/sidebar/about-menu'
 import { useFilterState } from '@/lib/livestore/queries'
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
@@ -15,7 +15,7 @@ import { SearchButton } from './search-button'
 import { ThemeButton } from './theme-button'
 
 export const Sidebar = ({ className }: { className?: string }) => {
-  const [filterState, setFilterState] = useFilterState()
+  const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
 
   const navItems = [

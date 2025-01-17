@@ -1,4 +1,4 @@
-import { MenuContext } from '@/app/provider'
+import { MenuContext } from '@/app/contexts'
 import { useFrontendState } from '@/lib/livestore/queries'
 import React from 'react'
 import { ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'

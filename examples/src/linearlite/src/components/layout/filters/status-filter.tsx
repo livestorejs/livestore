@@ -1,6 +1,4 @@
-import { IconName } from '@/components/icons'
-
-import { Icon } from '@/components/icons'
+import { Icon, IconName } from '@/components/icons'
 import { FilterMenu } from '@/components/layout/filters/filter-menu'
 import { statusOptions } from '@/data/status-options'
 import { useFilterState } from '@/lib/livestore/queries'
@@ -22,7 +20,7 @@ export const StatusFilter = () => {
       <FilterMenu type="status">
         <Button className="pl-5 pr-2 flex items-center h-full hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 gap-1.5">
           {filterState.status.map((status, index) => (
-            <div className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-gray-900">
+            <div key={index} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-gray-900">
               <Icon
                 name={statusOptions[status as Status].icon as IconName}
                 className={`h-full ${statusOptions[status as Status].style}`}

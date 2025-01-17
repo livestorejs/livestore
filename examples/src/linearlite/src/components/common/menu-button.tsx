@@ -1,4 +1,4 @@
-import { MenuContext } from '@/app/provider'
+import { MenuContext } from '@/app/contexts'
 import React, { useContext } from 'react'
 import { Button } from 'react-aria-components'
 import { Icon } from '../icons'

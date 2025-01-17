@@ -1,4 +1,4 @@
-import { MenuContext, NewIssueModalContext } from '@/app/provider'
+import { MenuContext, NewIssueModalContext } from '@/app/contexts'
 import { Status } from '@/types/status'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import React from 'react'

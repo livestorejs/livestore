@@ -6,7 +6,7 @@ import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
 
-export const SortMenu = ({ type, children }: { type?: 'status' | 'priority'; children?: React.ReactNode }) => {
+export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
   const [filterState, setFilterState] = useFilterState()
   const [isOpen, setIsOpen] = React.useState(false)
 

@@ -7,7 +7,6 @@ import { Button, Input } from 'react-aria-components'
 import { MenuButton } from '../common/menu-button'
 
 export const SearchBar = () => {
-  const inputRef = React.useRef<HTMLInputElement>(null)
   const [filterState, setFilterState] = useFilterState()
 
   const { keyboardProps } = useKeyboard({

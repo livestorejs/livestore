@@ -1,11 +1,11 @@
-import { MenuContext } from '@/app/provider'
+import { MenuContext } from '@/app/contexts'
 import { useFilterState } from '@/lib/livestore/queries'
 import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Link } from 'react-router-dom'
 
 export const SearchButton = () => {
-  const [filterState, setFilterState] = useFilterState()
+  const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
 
   return (

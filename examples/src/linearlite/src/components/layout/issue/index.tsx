@@ -79,7 +79,7 @@ export const Issue = () => {
             <Comments issueId={issue.id} />
           </div>
         </div>
-        <div className="hidden lg:blockw-64 py-16 px-8 border-l border-gray-200 dark:border-gray-700 space-y-px">
+        <div className="hidden lg:block w-64 py-16 px-8 border-l border-gray-200 dark:border-gray-700 space-y-px">
           <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mb-4">Properties</h2>
           <div className="flex items-center h-8">
             <div className="w-16 -mr-0.5 shrink-0">Creator:</div>

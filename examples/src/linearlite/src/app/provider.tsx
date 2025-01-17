@@ -1,3 +1,4 @@
+import { MenuContext, NewIssueModalContext } from '@/app/contexts'
 import { schema } from '@/lib/livestore/schema'
 import { seed } from '@/lib/livestore/seed'
 import { renderBootStatus } from '@/lib/livestore/utils'
@@ -26,18 +27,6 @@ const adapter = makeAdapter({
   resetPersistence,
 })
 
-interface MenuContextInterface {
-  showMenu: boolean
-  setShowMenu: (show: boolean) => void
-}
-interface NewIssueModalContextInterface {
-  showNewIssueModal: Status | boolean
-  setShowNewIssueModal: (status: Status | boolean) => void
-}
-
-export const MenuContext = React.createContext(null as MenuContextInterface | null)
-export const NewIssueModalContext = React.createContext(null as NewIssueModalContextInterface | null)
-
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = React.useState(false)
@@ -60,7 +49,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [navigate])
 
   return (
     <LiveStoreProvider

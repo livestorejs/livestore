@@ -1,4 +1,4 @@
-import { NewIssueModalContext } from '@/app/provider'
+import { NewIssueModalContext } from '@/app/contexts'
 import { Modal } from '@/components/common/modal'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
@@ -15,7 +15,7 @@ import { DescriptionInput } from './description-input'
 import { TitleInput } from './title-input'
 
 export const NewIssueModal = () => {
-  const [frontendState, setFrontendState] = useFrontendState()
+  const [frontendState] = useFrontendState()
   const { showNewIssueModal, setShowNewIssueModal } = React.useContext(NewIssueModalContext)!
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')

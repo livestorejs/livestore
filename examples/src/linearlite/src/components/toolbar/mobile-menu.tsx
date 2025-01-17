@@ -1,4 +1,3 @@
-import { useFrontendState } from '@/lib/livestore/queries'
 import { ChevronUpIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
@@ -7,8 +6,6 @@ import { SeedInput } from './seed-input'
 import { UserInput } from './user-input'
 
 export const MobileMenu = () => {
-  const [frontendState] = useFrontendState()
-
   return (
     <div className="h-full lg:hidden items-center border-x border-gray-700 shrink-0 flex">
       <DialogTrigger>

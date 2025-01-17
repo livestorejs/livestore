@@ -16,10 +16,8 @@ export const DescriptionInput = ({
   className?: string
 }) => {
   const { store } = useStore()
-  if (issue) {
-    const [{ body }] = useRow(tables.description, issue.id)
-    description = body
-  }
+  const [row] = useRow(tables.description, issue?.id ?? '')
+  if (issue) description = row?.body
 
   const handleDescriptionChange = (body: string) => {
     if (issue) store.mutate(mutations.updateDescription({ id: issue.id, body }))
