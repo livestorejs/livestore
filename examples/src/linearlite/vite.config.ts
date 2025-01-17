@@ -7,7 +7,6 @@ import process from 'node:process'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import svgr from 'vite-plugin-svgr'
-// import path from 'path'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -24,6 +23,11 @@ export default defineConfig({
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/wa-sqlite'],
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
   },
   // NOTE This is only in here for convenience while developing the LiveStore devtools (feel free to remove it in your app)
   // resolve: {
@@ -63,9 +67,4 @@ export default defineConfig({
       },
     },
   ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
 })

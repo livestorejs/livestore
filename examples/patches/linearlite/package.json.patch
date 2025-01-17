@@ -7,9 +7,9 @@
    "version": "0.0.1",
    "license": "Apache-2.0",
    "type": "module",
-@@ -14,10 +14,10 @@
-     "@firefox-devtools/react-contextmenu": "^5.1.1",
+@@ -15,10 +15,10 @@
      "@headlessui/react": "^2.2.0",
+     "@heroicons/react": "^2.2.0",
      "@livestore/devtools-vite": "0.2.0",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/react": "workspace:*",
