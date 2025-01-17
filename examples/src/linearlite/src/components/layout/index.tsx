@@ -1,5 +1,6 @@
 import { useFrontendState } from '@/lib/livestore/queries'
 import React from 'react'
+import { MobileMenu } from '../sidebar/mobile-menu'
 import { Toolbar } from '../toolbar'
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -7,10 +8,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className={`flex w-screen grow ${frontendState.showToolbar ? 'h-[calc(100%-4rem)]' : 'h-full'}`}>
+      <div className={`relative flex w-screen grow ${frontendState.showToolbar ? 'h-[calc(100%-4rem)]' : 'h-full'}`}>
         {children}
       </div>
       {frontendState.showToolbar && <Toolbar />}
+      <MobileMenu />
     </div>
   )
 }

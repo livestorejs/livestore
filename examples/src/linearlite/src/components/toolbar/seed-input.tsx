@@ -3,7 +3,7 @@ import React from 'react'
 import { Button, Input } from 'react-aria-components'
 import { useNavigate } from 'react-router-dom'
 
-export const SeedInput = () => {
+export const SeedInput = ({ className }: { className?: string }) => {
   const [seed, setSeed] = React.useState(50)
   const navigate = useNavigate()
 
@@ -14,8 +14,8 @@ export const SeedInput = () => {
   }
 
   return (
-    <div className="h-full flex items-center border-r border-gray-700">
-      <div className="h-8 border-y border-r border-gray-700 flex items-center px-2 text-sm text-gray-400">
+    <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 ${className}`}>
+      <div className="h-8 border-y border-r border-gray-700 whitespace-nowrap shrink-0 flex items-center px-2 text-sm text-gray-400">
         Seed database:
       </div>
       <Input
@@ -25,7 +25,7 @@ export const SeedInput = () => {
         type="number"
         value={seed}
         onChange={(e) => setSeed(Number(e.target.value))}
-        className="h-8 px-2 border-y !border-x-0 border-gray-700 text-sm placeholder:text-gray-500 text-gray-300 w-16 bg-transparent focus:outline-none focus:ring-0 focus:border-gray-700"
+        className="h-8 px-2 border-y !border-x-0 border-gray-700 text-sm placeholder:text-gray-500 text-gray-300 grow w-16 bg-transparent focus:outline-none focus:ring-0 focus:border-gray-700"
       />
       <Button
         aria-label="Seed database"

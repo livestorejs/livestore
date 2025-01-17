@@ -3,7 +3,7 @@ import React from 'react'
 import { Button } from 'react-aria-components'
 import { useNavigate } from 'react-router-dom'
 
-export const ResetButton = () => {
+export const ResetButton = ({ className }: { className?: string }) => {
   const [confirm, setConfirm] = React.useState(false)
   const navigate = useNavigate()
 
@@ -19,11 +19,11 @@ export const ResetButton = () => {
   }
 
   return (
-    <div className="h-full flex items-center border-r border-gray-700">
+    <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 ${className}`}>
       <Button
         aria-label="Reset database"
         onPress={onClick}
-        className={`h-8 pl-2 pr-2.5 border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none ${confirm ? 'text-red-500' : 'text-gray-400'}`}
+        className={`h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none ${confirm ? 'text-red-500' : 'text-gray-400'}`}
       >
         <TrashIcon className="size-3" />
         <span>{confirm ? 'Confirm reset' : 'Reset database'}</span>

@@ -1,3 +1,4 @@
+import { MenuContext } from '@/app/provider'
 import { AboutMenu } from '@/components/sidebar/about-menu'
 import { useFilterState } from '@/lib/livestore/queries'
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
@@ -15,6 +16,7 @@ import { ThemeButton } from './theme-button'
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [filterState, setFilterState] = useFilterState()
+  const { setShowMenu } = React.useContext(MenuContext)!
 
   const navItems = [
     {
@@ -86,7 +88,10 @@ export const Sidebar = ({ className }: { className?: string }) => {
             <Link
               key={index}
               to={href}
-              onClick={onClick}
+              onClick={() => {
+                onClick()
+                setShowMenu(false)
+              }}
               className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-gray-800 dark:focus:bg-gray-800 hover:bg-gray-100 focus:bg-gray-100"
             >
               <Icon className={`${inset ? 'size-3 ml-6 text-gray-400' : 'size-4'}`} />

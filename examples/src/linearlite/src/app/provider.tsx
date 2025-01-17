@@ -30,17 +30,12 @@ interface MenuContextInterface {
   showMenu: boolean
   setShowMenu: (show: boolean) => void
 }
-interface ToolbarContextInterface {
-  showToolbar: boolean
-  setShowToolbar: (show: boolean) => void
-}
 interface NewIssueModalContextInterface {
   showNewIssueModal: Status | boolean
   setShowNewIssueModal: (status: Status | boolean) => void
 }
 
 export const MenuContext = React.createContext(null as MenuContextInterface | null)
-export const ToolbarContext = React.createContext(null as ToolbarContextInterface | null)
 export const NewIssueModalContext = React.createContext(null as NewIssueModalContextInterface | null)
 
 export const Provider = ({ children }: { children: React.ReactNode }) => {

@@ -14,7 +14,7 @@ export const PriorityFilter = () => {
   if (!filterState.priority) return null
 
   return (
-    <div className="text-xs text-gray-500 ml-2 border border-gray-300 dark:border-gray-600 dark:text-gray-400 rounded-md flex h-6 overflow-hidden">
+    <div className="text-xs text-gray-500 ml-2 border border-gray-300 dark:border-gray-600 dark:text-gray-400 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
       <div className="px-2 border-r border-gray-200 dark:border-gray-700 h-full flex items-center gap-1">
         <span className="font-medium text-gray-600 dark:text-gray-200">Priority</span>
         <span>{filterState.priority.length > 1 ? 'is any of' : 'is'}</span>

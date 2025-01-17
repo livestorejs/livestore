@@ -2,13 +2,14 @@ import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '../icons'
+import { MobileMenu } from './mobile-menu'
 import { ResetButton } from './reset-button'
 import { SeedInput } from './seed-input'
 import { UserInput } from './user-input'
 
 export const Toolbar = () => {
   return (
-    <div className="w-screen h-12 bg-gray-900 dark:border-t dark:border-gray-700 flex items-center">
+    <div className="w-screen h-12 bg-gray-900 dark:bg-gray-950 dark:border-t dark:border-gray-700 flex items-center">
       <div className="h-8 border-y border-gray-700 w-2" />
       <div className="h-full flex items-center border-x border-gray-700">
         <Link
@@ -20,13 +21,14 @@ export const Toolbar = () => {
           <span>LiveStore</span>
         </Link>
       </div>
-      <UserInput />
-      <SeedInput />
-      <ResetButton />
+      <UserInput className="hidden lg:flex" />
+      <SeedInput className="hidden lg:flex" />
+      <ResetButton className="hidden lg:flex" />
       <div className="grow h-8 border-y border-gray-700" />
-      <div className="h-full flex items-center border-x border-gray-700">
+      <div className="h-full hidden lg:flex items-center border-x border-gray-700">
         <FPSMeter height={32} />
       </div>
+      <MobileMenu />
       <div className="h-8 border-y border-gray-700 w-2" />
     </div>
   )

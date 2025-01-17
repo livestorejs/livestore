@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/common/avatar'
+import { MenuButton } from '@/components/common/menu-button'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
 import { mutations, tables } from '@/lib/livestore/schema'
@@ -38,11 +39,12 @@ export const Issue = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-12 shrink-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-8 pl-6 pr-2">
-        <div className="flex items-center gap-2 text-sm">
+      <div className="h-12 shrink-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-8 px-2 lg:pl-6">
+        <div className="flex items-center gap-1 lg:gap-2 text-sm">
+          <MenuButton />
           <Button
             aria-label="Back to issues"
-            className="font-medium hover:text-gray-800 dark:hover:text-gray-100 focus:outline-none"
+            className="font-medium hover:text-gray-800 dark:hover:text-gray-100 focus:outline-none ml-2 lg:ml-0"
             onPress={close}
           >
             Issues
@@ -51,23 +53,33 @@ export const Issue = () => {
           <div className="text-gray-500 dark:text-gray-400">{id}</div>
         </div>
         <div className="flex items-center gap-px">
-          <DeleteButton issueId={id} close={close} />
+          <DeleteButton issueId={id} close={close} className="hidden lg:block" />
           <BackButton close={close} />
         </div>
       </div>
-      <div className="flex h-[calc(100%-3rem)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100%-3rem)]">
+        <div className="flex lg:hidden flex-wrap justify-between gap-2 p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-px">
+            <StatusMenu showLabel status={issue.status} onStatusChange={handleChangeStatus} />
+            <PriorityMenu showLabel priority={issue.priority} onPriorityChange={handleChangePriority} />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-gray-500 dark:text-gray-400 text-xs">{formatDate(new Date(issue.created))}</div>
+            <Avatar name={issue.creator} />
+          </div>
+        </div>
         <div className="grow overflow-y-auto">
-          <div className="p-14 border-b border-gray-200 dark:border-gray-700">
-            <TitleInput issue={issue} className="mb-4" />
+          <div className="p-4 lg:p-14 border-b border-gray-200 dark:border-gray-700">
+            <TitleInput issue={issue} className="lg:mb-4" />
             <DescriptionInput issue={issue} />
           </div>
-          <div className="p-14">
+          <div className="p-4 lg:p-14">
             <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mb-4">Comments</h2>
             <CommentInput issueId={issue.id} />
             <Comments issueId={issue.id} />
           </div>
         </div>
-        <div className="w-64 py-16 px-8 border-l border-gray-200 dark:border-gray-700 space-y-px">
+        <div className="hidden lg:blockw-64 py-16 px-8 border-l border-gray-200 dark:border-gray-700 space-y-px">
           <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mb-4">Properties</h2>
           <div className="flex items-center h-8">
             <div className="w-16 -mr-0.5 shrink-0">Creator:</div>

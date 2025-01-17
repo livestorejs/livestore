@@ -4,6 +4,7 @@ import { XMarkIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Input } from 'react-aria-components'
+import { MenuButton } from '../common/menu-button'
 
 export const SearchBar = () => {
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -16,12 +17,13 @@ export const SearchBar = () => {
   })
 
   return (
-    <div className="h-12 relative border-b border-gray-200 dark:border-gray-700 flex items-center text-sm pl-6 pr-2">
-      <MagnifyingGlassIcon className="size-4" />
+    <div className="h-12 relative border-b border-gray-200 dark:border-gray-700 flex items-center text-sm p-2 lg:pl-6">
+      <MenuButton className="lg:hidden" />
+      <MagnifyingGlassIcon className="size-4 shrink-0 ml-2.5 lg:ml-0" />
       <Input
         type="text"
         autoFocus
-        className="input w-full border-none bg-transparent focus:outline-none focus:ring-0 placholder:text-gray-400 dark:placeholder:text-gray-500 dark:text-gray-200 text-gray-800 text-sm"
+        className="input w-full border-none pl-2 lg:pl-3 bg-transparent focus:outline-none focus:ring-0 placholder:text-gray-400 dark:placeholder:text-gray-500 dark:text-gray-200 text-gray-800 text-sm"
         value={filterState.query ?? ''}
         placeholder="Search issues..."
         onChange={(e) => setFilterState((state) => ({ ...state, query: e.target.value }))}
