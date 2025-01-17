@@ -1,9 +1,9 @@
 import { MenuContext, NewIssueModalContext } from '@/app/contexts'
+import { Icon } from '@/components/icons'
 import { Status } from '@/types/status'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { Button } from 'react-aria-components'
-import { Icon } from '../icons'
 
 export const NewIssueButton = ({ status }: { status?: Status }) => {
   const { setShowNewIssueModal } = React.useContext(NewIssueModalContext)!

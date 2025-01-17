@@ -1,16 +1,16 @@
 import { Icon } from '@/components/icons'
 import { FilterMenu } from '@/components/layout/filters/filter-menu'
+import { Header } from '@/components/layout/filters/header'
 import { PriorityFilter } from '@/components/layout/filters/priority-filter'
 import { SortMenu } from '@/components/layout/filters/sort-menu'
 import { StatusFilter } from '@/components/layout/filters/status-filter'
-import { SearchBar } from '@/components/search/search-bar'
+import { SearchBar } from '@/components/layout/search/search-bar'
 import { statusOptions } from '@/data/status-options'
 import { issueCount$, useFilterState } from '@/lib/livestore/queries'
 import { Status } from '@/types/status'
 import { useQuery } from '@livestore/react'
 import React from 'react'
 import { Button } from 'react-aria-components'
-import { Header } from './header'
 
 export const Filters = ({
   filteredCount,

@@ -1,3 +1,4 @@
+import { Column } from '@/components/layout/board/column'
 import { Filters } from '@/components/layout/filters'
 import { statusOptions } from '@/data/status-options'
 import { filterState$ } from '@/lib/livestore/queries'
@@ -7,7 +8,6 @@ import { Status } from '@/types/status'
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
-import { Column } from './column'
 
 const filteredIssueIds$ = queryDb(
   (get) =>

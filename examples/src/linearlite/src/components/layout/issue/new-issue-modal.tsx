@@ -2,6 +2,8 @@ import { NewIssueModalContext } from '@/app/contexts'
 import { Modal } from '@/components/common/modal'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
+import { DescriptionInput } from '@/components/layout/issue/description-input'
+import { TitleInput } from '@/components/layout/issue/title-input'
 import { useFrontendState } from '@/lib/livestore/queries'
 import { mutations, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
@@ -11,8 +13,6 @@ import { generateKeyBetween } from 'fractional-indexing'
 import { nanoid } from 'nanoid'
 import React from 'react'
 import { Button } from 'react-aria-components'
-import { DescriptionInput } from './description-input'
-import { TitleInput } from './title-input'
 
 export const NewIssueModal = () => {
   const [frontendState] = useFrontendState()
@@ -72,7 +72,7 @@ export const NewIssueModal = () => {
           <Button
             onPress={createIssue}
             aria-label="Create issue"
-            className="ml-auto bg-indigo-500 rounded-lg text-white text-sm px-4 hover:bg-indigo-400 focus:outline-none focus:bg-indigo-400"
+            className="ml-auto bg-orange-500 rounded-lg text-white text-sm px-4 hover:bg-orange-400 focus:outline-none focus:bg-orange-400"
           >
             Create issue
           </Button>

@@ -1,11 +1,11 @@
 import { Filters } from '@/components/layout/filters'
+import { FilteredList } from '@/components/layout/list/filtered-list'
 import { filterState$ } from '@/lib/livestore/queries'
 import { tables } from '@/lib/livestore/schema'
 import { filterStateToOrderBy, filterStateToWhere } from '@/lib/livestore/utils'
 import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
-import { FilteredList } from './filtered-list'
 
 const filteredIssueIds$ = queryDb(
   (get) =>

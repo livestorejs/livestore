@@ -1,11 +1,11 @@
+import { Icon } from '@/components/icons'
+import { MobileMenu } from '@/components/layout/toolbar/mobile-menu'
+import { ResetButton } from '@/components/layout/toolbar/reset-button'
+import { SeedInput } from '@/components/layout/toolbar/seed-input'
+import { UserInput } from '@/components/layout/toolbar/user-input'
 import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Icon } from '../icons'
-import { MobileMenu } from './mobile-menu'
-import { ResetButton } from './reset-button'
-import { SeedInput } from './seed-input'
-import { UserInput } from './user-input'
 
 export const Toolbar = () => {
   return (

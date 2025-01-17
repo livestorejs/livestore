@@ -1,5 +1,6 @@
 import { Icon } from '@/components/icons'
-import { NewIssueButton } from '@/components/sidebar/new-issue-button'
+import { VirtualCard } from '@/components/layout/board/virtual-card'
+import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
 import { StatusDetails } from '@/data/status-options'
 import { filterState$ } from '@/lib/livestore/queries'
 import { tables } from '@/lib/livestore/schema'
@@ -10,7 +11,6 @@ import { useQuery } from '@livestore/react'
 import React from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import { FixedSizeList } from 'react-window'
-import { VirtualCard } from './virtual-card'
 
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
   const filteredIssueIds$ = queryDb(

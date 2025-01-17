@@ -1,10 +1,10 @@
+import { MenuButton } from '@/components/common/menu-button'
 import { useFilterState } from '@/lib/livestore/queries'
 import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Input } from 'react-aria-components'
-import { MenuButton } from '../common/menu-button'
 
 export const SearchBar = () => {
   const [filterState, setFilterState] = useFilterState()
