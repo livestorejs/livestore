@@ -1,4 +1,4 @@
-import { BootStatus, EventId, UnexpectedError } from '@livestore/common'
+import { BootStatus, EventId, PayloadUpstream, UnexpectedError } from '@livestore/common'
 import { InitialSyncOptions } from '@livestore/common/leader-thread'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -101,8 +101,9 @@ export namespace LeaderWorkerInner {
       cursor: EventId,
     },
     success: Schema.Struct({
-      mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
-      backendHead: Schema.Number,
+      // mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      // backendHead: Schema.Number,
+      payload: PayloadUpstream,
       remaining: Schema.Number,
     }),
     failure: UnexpectedError,

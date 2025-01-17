@@ -3,6 +3,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
+import type { PayloadUpstream } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
@@ -110,10 +111,7 @@ export type Coordinator = {
   // TODO is exposing the lock status really needed (or only relevant for web adapter?)
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   mutations: {
-    pull: Stream.Stream<
-      { mutationEvents: ReadonlyArray<MutationEvent.Any>; backendHead: number; remaining: number },
-      UnexpectedError
-    >
+    pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
     push(
       batch: ReadonlyArray<MutationEvent.AnyEncoded>,
       options: { persisted: boolean },

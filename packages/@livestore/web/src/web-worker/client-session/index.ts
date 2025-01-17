@@ -4,7 +4,6 @@ import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, Unexpe
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
-import { validateAndUpdateLocalHead } from '@livestore/common/leader-thread'
 import { makeMutationEventSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -175,7 +174,9 @@ export const makeAdapter =
 
         const mc = new MessageChannel()
 
-        const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}` })
+        // NOTE we're adding the `storeId` to the worker name to make it unique
+        // and adding the `sessionId` to make it easier to debug which session a worker belongs to in logs
+        const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
         yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuter.Request>({
           initialMessage: () => new WorkerSchema.LeaderWorkerOuter.InitialMessage({ port: mc.port1 }),
@@ -361,25 +362,25 @@ export const makeAdapter =
         new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: localHeadRef.current }),
       ).pipe(
         // TODO handle rebase case
-        Stream.tap(({ mutationEvents }) =>
-          Effect.forEach(mutationEvents, (mutationEventEncoded) =>
-            validateAndUpdateLocalHead({
-              localHeadRef,
-              mutationEventId: mutationEventEncoded.id,
-              debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
-            }),
-          ),
-        ),
-        Stream.mapEffect(
-          // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
-          Schema.decode(
-            Schema.Struct({
-              mutationEvents: Schema.Array(mutationEventSchema),
-              backendHead: Schema.Number,
-              remaining: Schema.Number,
-            }),
-          ),
-        ),
+        // Stream.tap(({ mutationEvents }) =>
+        //   Effect.forEach(mutationEvents, (mutationEventEncoded) =>
+        //     validateAndUpdateLocalHead({
+        //       localHeadRef,
+        //       mutationEventId: mutationEventEncoded.id,
+        //       debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
+        //     }),
+        //   ),
+        // ),
+        // Stream.mapEffect(
+        //   // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
+        //   Schema.decode(
+        //     Schema.Struct({
+        //       mutationEvents: Schema.Array(mutationEventSchema),
+        //       backendHead: Schema.Number,
+        //       remaining: Schema.Number,
+        //     }),
+        //   ),
+        // ),
         Stream.orDie,
       )
 

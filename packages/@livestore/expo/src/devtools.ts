@@ -4,6 +4,7 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   MUTATION_LOG_META_TABLE,
+  MutationEventEncodedWithDeferred,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
   UnexpectedError,
@@ -245,12 +246,14 @@ export const bootDevtools = ({
                 localOnly: mutationDef.options.localOnly,
               })
 
-              const mutationEventEncoded = { ...mutationEventEncoded_, ...nextMutationEventIdPair }
+              const mutationEventEncoded = new MutationEventEncodedWithDeferred({
+                ...mutationEventEncoded_,
+                ...nextMutationEventIdPair,
+              })
 
-              const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
+              // const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
               yield* Queue.offer(incomingSyncMutationsQueue, {
-                mutationEvents: [mutationEventDecoded],
-                backendHead: 0,
+                payload: { _tag: 'upstream-advance', newEvents: [mutationEventEncoded] },
                 remaining: 0,
               })
 

@@ -132,7 +132,7 @@ export const makeSyncQueue = ({
         pending: [],
         rollbackTail: [],
         upstreamHead: { global: dbMissing ? ROOT_ID.global : getInitialBackendHeadFromDb(dbLog), local: 0 },
-        localHead: { global: dbMissing ? ROOT_ID.global : getInitialCurrentMutationEventIdFromDb(dbLog), local: 0 },
+        localHead: dbMissing ? ROOT_ID : getInitialCurrentMutationEventIdFromDb(dbLog),
       } as SyncState.SyncState,
     }
 
@@ -170,7 +170,10 @@ export const makeSyncQueue = ({
         })
 
         if (res._tag === 'reject') {
-          throw new Error('TODO: implement reject in leader-thread for push')
+          debugger
+          throw new Error(
+            `TODO: implement reject in leader-thread for push. Expected ${res.expectedMinimumId.global}, ${res.expectedMinimumId.local}`,
+          )
         }
 
         if (res._tag === 'rebase') {
@@ -214,7 +217,7 @@ export const makeSyncQueue = ({
     // Starts various background loops
     const boot: SyncQueue['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
-        const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+        const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
         spanRef.current = span
 
         {
@@ -283,9 +286,11 @@ const executeMutationsLoop = ({
 
         // Now we're sending the mutation event to all "pulling" client sessions
         for (const queue of leaderThreadCtx.connectedClientSessionPullQueues) {
-          // TODO do batching if possible
-          // TODO remove backendHead
-          yield* Queue.offer(queue, { mutationEvents: batchItems, backendHead: -1, remaining: 0 })
+          // TODO refactor this with state machine
+          yield* Queue.offer(queue, {
+            payload: { _tag: 'upstream-advance', newEvents: batchItems },
+            remaining: 0,
+          })
         }
 
         for (const { meta, ...mutationEventEncoded } of batchItems) {
@@ -346,7 +351,7 @@ const backgroundBackendPulling = ({
   isLocalEvent: (mutationEventEncoded: MutationEventEncodedWithDeferred) => boolean
   executeQueue: BucketQueue.BucketQueue<MutationEventEncodedWithDeferred>
   // pendingSyncItems: SyncQueueItem[]
-  span: otel.Span
+  span: otel.Span | undefined
 }) =>
   Effect.gen(function* () {
     const { syncBackend, bootStatusQueue, db, dbLog, initialSyncOptions } = yield* LeaderThreadCtx
@@ -379,7 +384,7 @@ const backgroundBackendPulling = ({
           isEqualEvent,
         })
 
-        span.addEvent('pull', {
+        span?.addEvent('pull', {
           chunkSize: chunk.length,
           res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
         })

@@ -12,7 +12,9 @@ export class MutationEventEncodedWithDeferred extends Schema.Class<MutationEvent
   args: Schema.Any,
   id: EventId,
   parentId: EventId,
-  meta: Schema.optional(Schema.Any as Schema.Schema<{ deferred?: Deferred.Deferred<void> }>),
+  meta: Schema.optional(
+    Schema.Any as Schema.Schema<{ deferred?: Deferred.Deferred<void>; sessionChangeset?: Uint8Array }>,
+  ),
 }) {
   toJSON = (): any => {
     // Only used for logging/debugging
@@ -51,8 +53,7 @@ export const nextEventIdPair = (id: EventId, isLocal: boolean) => {
 }
 
 /**
- * SyncState manages the synchronization of events between local and upstream states.
- *
+ * SyncState represents the current sync state of a sync node relative to an upstream node.
  * Events flow from local to upstream, with each state maintaining its own event head.
  *
  * Event Chain Structure:
@@ -117,6 +118,14 @@ export class Payload extends Schema.Union(
   PayloadUpstreamTrimRollbackTail,
   PayloadLocalPush,
 ) {}
+
+export const PayloadUpstream = Schema.Union(
+  PayloadUpstreamRebase,
+  PayloadUpstreamAdvance,
+  PayloadUpstreamTrimRollbackTail,
+)
+
+export type PayloadUpstream = typeof PayloadUpstream.Type
 
 export type UpdateResultAdvance = {
   _tag: 'advance'

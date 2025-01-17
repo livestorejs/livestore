@@ -197,25 +197,25 @@ export const makeNodeAdapter = ({
         new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
       ).pipe(
         // TODO handle rebase case in client session
-        Stream.tap(({ mutationEvents }) =>
-          Effect.forEach(mutationEvents, (mutationEventEncoded) =>
-            validateAndUpdateLocalHead({
-              localHeadRef,
-              mutationEventId: mutationEventEncoded.id,
-              debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
-            }),
-          ),
-        ),
-        Stream.mapEffect(
-          // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
-          Schema.decode(
-            Schema.Struct({
-              mutationEvents: Schema.Array(mutationEventSchema),
-              backendHead: Schema.Number,
-              remaining: Schema.Number,
-            }),
-          ),
-        ),
+        // Stream.tap(({ mutationEvents }) =>
+        //   Effect.forEach(mutationEvents, (mutationEventEncoded) =>
+        //     validateAndUpdateLocalHead({
+        //       localHeadRef,
+        //       mutationEventId: mutationEventEncoded.id,
+        //       debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
+        //     }),
+        //   ),
+        // ),
+        // Stream.mapEffect(
+        //   // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
+        //   Schema.decode(
+        //     Schema.Struct({
+        //       mutationEvents: Schema.Array(mutationEventSchema),
+        //       backendHead: Schema.Number,
+        //       remaining: Schema.Number,
+        //     }),
+        //   ),
+        // ),
         Stream.orDie,
       )
 

@@ -12,6 +12,7 @@
     - Refactor `MutationEventEncodedWithDeferred` to work better alongside `mutationEventSchemaEncodedAny`
     - Implement in client session
     - Refactor to state machine
+      - Expose `state` as a subscription ref
     - Use synclog payload as sync items
 
 - New: Node adapter (experimental)

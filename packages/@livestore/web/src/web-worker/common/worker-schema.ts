@@ -1,4 +1,4 @@
-import { BootStatus, EventId, UnexpectedError } from '@livestore/common'
+import { BootStatus, EventId, PayloadUpstream, UnexpectedError } from '@livestore/common'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -96,8 +96,9 @@ export namespace LeaderWorkerInner {
     },
     success: Schema.Struct({
       // TODO use actual app-defined mutation event schema
-      mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
-      backendHead: Schema.Number,
+      // mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      // backendHead: Schema.Number,
+      payload: PayloadUpstream,
       remaining: Schema.Number,
     }),
     failure: UnexpectedError,

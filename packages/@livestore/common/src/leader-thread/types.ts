@@ -24,7 +24,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
-import type { MutationEventEncodedWithDeferred } from '../sync/syncstate.js'
+import type { MutationEventEncodedWithDeferred, PayloadUpstream } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -110,8 +110,10 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 >() {}
 
 export type PullQueueItem = {
-  mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>
-  backendHead: number
+  // mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>
+  // backendHead: number
+  payload: PayloadUpstream
+  // TODO move `remaining` into `PayloadUpstream`
   remaining: number
 }
 

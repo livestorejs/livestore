@@ -1,5 +1,6 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
+import { MutationEventEncodedWithDeferred } from '../sync/syncstate.js'
 import { getMutationEventsSince } from './mutationlog.js'
 import { LeaderThreadCtx, type PullQueueItem, type PullQueueSet } from './types.js'
 
@@ -24,10 +25,16 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       const mutationEvents = yield* getMutationEventsSince(since)
 
-      const { syncQueue } = yield* LeaderThreadCtx
+      // const { syncQueue } = yield* LeaderThreadCtx
 
       // TODO remove backendHead
-      yield* queue.offer({ mutationEvents, backendHead: -1, remaining: 0 })
+      yield* queue.offer({
+        payload: {
+          _tag: 'upstream-advance',
+          newEvents: mutationEvents.map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent)),
+        },
+        remaining: 0,
+      })
 
       set.add(queue)
 
