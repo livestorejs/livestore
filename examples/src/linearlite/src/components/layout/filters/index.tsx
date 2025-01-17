@@ -37,10 +37,10 @@ export const Filters = ({
           heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0] as Status].name : 'Issues'}
         />
       )}
-      <div className="h-12 border-b border-gray-200 flex items-center justify-between text-sm px-4 gap-8">
+      <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm px-4 gap-8">
         <div className="flex items-center">
           {search && (
-            <div className="text-gray-500 text-xs mx-2">
+            <div className="text-gray-500 dark:text-gray-400 text-xs mx-2">
               <span>{filteredCount}</span>
               {filteredCount !== totalCount && <span> of {totalCount}</span>}
               <span> Issues</span>
@@ -49,7 +49,7 @@ export const Filters = ({
           <FilterMenu type={hideStatusFilter ? 'priority' : undefined}>
             <Button
               aria-label="Select filters"
-              className="group h-6 min-w-6 rounded-lg flex gap-1.5 px-1.5 items-center justify-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 text-xs font-medium"
+              className="group h-6 min-w-6 rounded-lg flex gap-1.5 px-1.5 items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 text-xs font-medium"
             >
               <Icon name="filter" className="size-3.5" />
               {!filterState.status?.length && !filterState.priority?.length && <span>Filter</span>}

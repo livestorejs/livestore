@@ -67,7 +67,9 @@ export const Sidebar = ({ className }: { className?: string }) => {
   ]
 
   return (
-    <aside className={`bg-white w-64 shrink-0 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}>
+    <aside
+      className={`bg-white dark:bg-gray-900 w-64 shrink-0 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}
+    >
       <div>
         <div className="flex items-center justify-between pr-2">
           <AboutMenu />
@@ -85,7 +87,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
               key={index}
               to={href}
               onClick={onClick}
-              className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none hover:bg-gray-100 focus:bg-gray-100"
+              className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-gray-800 dark:focus:bg-gray-800 hover:bg-gray-100 focus:bg-gray-100"
             >
               <Icon className={`${inset ? 'size-3 ml-6 text-gray-400' : 'size-4'}`} />
               <span>{title}</span>

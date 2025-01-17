@@ -26,7 +26,7 @@ export const TitleInput = ({
   return (
     <input
       autoFocus={autoFocus}
-      className={`input w-full text-xl max-w-xl font-semibold placeholder-gray-400 border-none leading-none p-2 focus:outline-none focus:border-none focus:ring-0 focus:bg-gray-50 rounded-md ${className}`}
+      className={`input w-full text-xl bg-transparent max-w-xl font-semibold placeholder-gray-400 border-none leading-none p-2 focus:outline-none focus:border-none focus:ring-0 focus:bg-gray-50 dark:focus:bg-gray-800 rounded-md ${className}`}
       placeholder="Issue title"
       value={issue?.title ?? title}
       onChange={(e) => handleTitleChange(e.target.value, { inProgress: true })}

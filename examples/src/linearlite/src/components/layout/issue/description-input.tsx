@@ -28,7 +28,7 @@ export const DescriptionInput = ({
 
   return (
     <Editor
-      className={`px-2 py-px rounded-md focus:bg-gray-50 ${className}`}
+      className={`px-2 py-px rounded-md focus:bg-gray-50 dark:focus:bg-gray-800 ${className}`}
       value={description ?? ''}
       onChange={(value) => handleDescriptionChange(value)}
       placeholder="Add description..."

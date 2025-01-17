@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply text-xs text-gray-600 antialiased;
+  @apply bg-white text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-200 antialiased;
 }
 
 @font-face {
@@ -58,7 +58,7 @@ html {
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  color: #9ca3af;
+  @apply text-gray-400 dark:text-gray-500;
   content: attr(data-placeholder);
   float: left;
   height: 0;

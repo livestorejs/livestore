@@ -26,7 +26,9 @@ export const App = () => {
         <Layout>
           <Sidebar className="hidden lg:flex" />
           <div className="w-full lg:max-w-[calc(100%-16rem)] p-2 lg:pl-0">
-            <main className="flex flex-col h-full border rounded-lg">{router}</main>
+            <main className="flex flex-col h-full border border-gray-200 dark:border-gray-700 rounded-lg">
+              {router}
+            </main>
           </div>
         </Layout>
         <NewIssueModal />

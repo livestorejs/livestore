@@ -38,17 +38,17 @@ export const Issue = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-12 shrink-0 border-b border-gray-200 flex items-center justify-between gap-8 pl-6 pr-2">
+      <div className="h-12 shrink-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-8 pl-6 pr-2">
         <div className="flex items-center gap-2 text-sm">
           <Button
             aria-label="Back to issues"
-            className="font-medium hover:text-gray-800 focus:outline-none"
+            className="font-medium hover:text-gray-800 dark:hover:text-gray-100 focus:outline-none"
             onPress={close}
           >
             Issues
           </Button>
           <ChevronRightIcon className="size-3.5" />
-          <div className="text-gray-500">{id}</div>
+          <div className="text-gray-500 dark:text-gray-400">{id}</div>
         </div>
         <div className="flex items-center gap-px">
           <DeleteButton issueId={id} close={close} />
@@ -57,7 +57,7 @@ export const Issue = () => {
       </div>
       <div className="flex h-[calc(100%-3rem)]">
         <div className="grow overflow-y-auto">
-          <div className="p-14 border-b border-gray-200">
+          <div className="p-14 border-b border-gray-200 dark:border-gray-700">
             <TitleInput issue={issue} className="mb-4" />
             <DescriptionInput issue={issue} />
           </div>
@@ -67,7 +67,7 @@ export const Issue = () => {
             <Comments issueId={issue.id} />
           </div>
         </div>
-        <div className="w-64 py-16 px-8 border-l border-gray-200 space-y-px">
+        <div className="w-64 py-16 px-8 border-l border-gray-200 dark:border-gray-700 space-y-px">
           <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mb-4">Properties</h2>
           <div className="flex items-center h-8">
             <div className="w-16 -mr-0.5 shrink-0">Creator:</div>

@@ -8,7 +8,7 @@ import { UserInput } from './user-input'
 
 export const Toolbar = () => {
   return (
-    <div className="w-screen h-12 bg-gray-900 flex items-center">
+    <div className="w-screen h-12 bg-gray-900 dark:border-t dark:border-gray-700 flex items-center">
       <div className="h-8 border-y border-gray-700 w-2" />
       <div className="h-full flex items-center border-x border-gray-700">
         <Link

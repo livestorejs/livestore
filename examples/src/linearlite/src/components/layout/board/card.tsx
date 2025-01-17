@@ -22,7 +22,7 @@ export const Card = memo(({ issue, style }: { issue: Issue; style: CSSProperties
   return (
     <div key={issue.id} id={issue.id} className="px-2 pb-2" style={style}>
       <div
-        className="p-2 w-full text-sm bg-white rounded-md shadow-sm cursor-pointer h-full"
+        className="p-2 w-full text-sm bg-white dark:bg-gray-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-gray-700/50 cursor-pointer h-full"
         onClick={() => navigate(`/issue/${issue.id}`)}
       >
         <div className="flex items-center gap-px">

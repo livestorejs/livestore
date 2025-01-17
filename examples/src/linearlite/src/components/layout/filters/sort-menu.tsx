@@ -42,13 +42,13 @@ export const SortMenu = ({ type, children }: { type?: 'status' | 'priority'; chi
     <MenuTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <Button
         aria-label="Select sorting"
-        className="relative group h-6 min-w-6 rounded-lg flex gap-1.5 px-1.5 items-center justify-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 text-xs font-medium"
+        className="relative group h-6 min-w-6 rounded-lg flex gap-1.5 px-1.5 items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 text-xs font-medium"
       >
         <ArrowsUpDownIcon className="size-3.5" />
         <span>Sort</span>
         <div className="size-1.5 rounded-full bg-orange-500 absolute -right-0.5 top-0" />
       </Button>
-      <Popover className="w-48 bg-white rounded-lg shadow-md border border-gray-200 text-sm leading-none">
+      <Popover className="w-48 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-sm leading-none">
         <Menu className="focus:outline-none" selectionMode="multiple" {...keyboardProps}>
           {type !== 'priority' && (
             <MenuSection key="status" className="p-2">
@@ -58,7 +58,7 @@ export const SortMenu = ({ type, children }: { type?: 'status' | 'priority'; chi
                   <MenuItem
                     key={sortingOption}
                     onAction={() => toggleSorting(sortingOption as SortingOption)}
-                    className="group/item p-2 rounded-md flex items-center gap-2 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 cursor-pointer"
+                    className="group/item p-2 rounded-md flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer"
                   >
                     <span>{name}</span>
                     {filterState.orderBy === sortingOption && (

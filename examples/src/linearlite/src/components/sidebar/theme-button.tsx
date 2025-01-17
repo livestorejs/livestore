@@ -50,19 +50,19 @@ export const ThemeButton = () => {
     <MenuTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <Button
         aria-label="Change theme"
-        className="size-8 flex items-center justify-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 rounded-lg bg-white border border-gray-200 shadow"
+        className="size-8 flex items-center justify-center hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 rounded-lg bg-white border border-gray-200 dark:border-gray-700 shadow"
       >
         <SunIcon className="size-4 dark:hidden" />
         <MoonIcon className="size-4 hidden dark:block" />
       </Button>
-      <Popover className="bg-white w-40 rounded-lg shadow-md border border-gray-200 text-sm leading-none">
+      <Popover className="bg-white dark:bg-gray-800 w-40 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-sm leading-none">
         <Menu className="p-2 focus:outline-none" {...keyboardProps}>
           {themeOptions.map(({ id, label, shortcut }) => {
             return (
               <MenuItem
                 key={id}
                 onAction={() => selectTheme(id)}
-                className="group/item p-2 rounded-md flex items-center gap-2 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 cursor-pointer"
+                className="group/item p-2 rounded-md flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer"
               >
                 {id === 'light' && <SunIcon className="size-3.5" />}
                 {id === 'dark' && <MoonIcon className="size-3.5" />}

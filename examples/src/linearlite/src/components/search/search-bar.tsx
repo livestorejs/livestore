@@ -16,12 +16,12 @@ export const SearchBar = () => {
   })
 
   return (
-    <div className="h-12 relative border-b border-gray-200 flex items-center text-sm pl-6 pr-2">
+    <div className="h-12 relative border-b border-gray-200 dark:border-gray-700 flex items-center text-sm pl-6 pr-2">
       <MagnifyingGlassIcon className="size-4" />
       <Input
         type="text"
         autoFocus
-        className="input w-full border-none focus:outline-none focus:ring-0 placholder:text-gray-400 text-gray-800 text-sm"
+        className="input w-full border-none bg-transparent focus:outline-none focus:ring-0 placholder:text-gray-400 dark:placeholder:text-gray-500 dark:text-gray-200 text-gray-800 text-sm"
         value={filterState.query ?? ''}
         placeholder="Search issues..."
         onChange={(e) => setFilterState((state) => ({ ...state, query: e.target.value }))}

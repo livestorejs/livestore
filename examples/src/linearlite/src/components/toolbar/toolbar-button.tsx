@@ -12,7 +12,7 @@ export const ToolbarButton = () => {
   return (
     <Button
       aria-label={frontendState.showToolbar ? 'Hide LiveStore Toolbar' : 'Show LiveStore Toolbar'}
-      className="bg-white rounded-lg border border-gray-200 shadow size-8 flex items-center justify-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+      className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow size-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800"
       onPress={onClick}
     >
       <Icon name="sidebar" className="size-5 -rotate-90" />

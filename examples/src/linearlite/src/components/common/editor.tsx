@@ -26,7 +26,7 @@ const Editor = ({
     extensions,
     editorProps: {
       attributes: {
-        class: `input prose text-gray-600 prose-sm prose-strong:text-gray-600 prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-pre:my-2 w-full max-w-xl font-normal focus:outline-none appearance-none editor ${className}`,
+        class: `input prose text-gray-600 dark:text-gray-200 prose-sm prose-strong:text-gray-600 dark:prose-strong:text-gray-200 prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-pre:my-2 w-full max-w-xl font-normal focus:outline-none appearance-none editor ${className}`,
       },
     },
     content: value || undefined,

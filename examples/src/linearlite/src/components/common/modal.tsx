@@ -25,12 +25,12 @@ export const Modal = ({
     <ModalOverlay
       isOpen={show}
       onOpenChange={setShow}
-      className="fixed inset-0 bg-black/10 flex items-start justify-center p-4 pt-16 lg:pt-32"
+      className="fixed inset-0 bg-black/10 dark:bg-black/20 flex items-start justify-center p-4 pt-16 lg:pt-32"
       isDismissable
     >
-      <ReactAriaModal className="relative bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-xl">
+      <ReactAriaModal className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 w-full max-w-xl">
         {title && (
-          <div className="flex justify-between items-center p-2 pl-4 border-b border-gray-200">
+          <div className="flex justify-between items-center p-2 pl-4 border-b border-gray-200 dark:border-gray-700">
             <Heading slot="title" className="text-lg font-bold">
               {title}
             </Heading>
@@ -40,7 +40,7 @@ export const Modal = ({
         <Button
           slot="close"
           onPress={() => setShow(false)}
-          className="absolute top-2 right-2 size-8 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex items-center justify-center"
+          className="absolute top-2 right-2 size-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-700 flex items-center justify-center"
         >
           <XMarkIcon className="size-5" />
         </Button>
