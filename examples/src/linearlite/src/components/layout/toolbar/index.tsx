@@ -1,16 +1,17 @@
 import { Icon } from '@/components/icons'
+import { DownloadButton } from '@/components/layout/toolbar/download-button'
 import { MobileMenu } from '@/components/layout/toolbar/mobile-menu'
 import { ResetButton } from '@/components/layout/toolbar/reset-button'
 import { SeedInput } from '@/components/layout/toolbar/seed-input'
+import { ShareButton } from '@/components/layout/toolbar/share-button'
 import { UserInput } from '@/components/layout/toolbar/user-input'
 import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { DownloadButton } from './download-button'
 
 export const Toolbar = () => {
   return (
-    <div className="w-screen h-12 bg-gray-900 dark:bg-gray-950 dark:border-t dark:border-gray-700 flex items-center">
+    <div className="w-screen h-12 bg-gray-950 border-t border-gray-700 flex items-center">
       <div className="h-8 border-y border-gray-700 w-2" />
       <div className="h-full flex items-center border-x border-gray-700">
         <Link
@@ -26,6 +27,7 @@ export const Toolbar = () => {
       <SeedInput className="hidden lg:flex" />
       <ResetButton className="hidden lg:flex" />
       <DownloadButton className="hidden lg:flex" />
+      <ShareButton className="hidden lg:flex" />
       <div className="grow h-8 border-y border-gray-700" />
       <div className="h-full hidden lg:flex items-center border-x border-gray-700">
         <FPSMeter height={32} />

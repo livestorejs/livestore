@@ -4,6 +4,7 @@ import { UserInput } from '@/components/layout/toolbar/user-input'
 import { ChevronUpIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
+import { ShareButton } from './share-button'
 
 export const MobileMenu = () => {
   return (
@@ -22,9 +23,13 @@ export const MobileMenu = () => {
         >
           <ReactAriaModal className="px-2 w-full border-t border-gray-700 bg-gray-950">
             <div className="flex flex-col items-stretch border-x border-gray-700">
+              <div className="text-sm text-gray-400 border-b border-gray-700 px-2 py-4">
+                Please use the desktop version to access all LiveStore tools!
+              </div>
               <UserInput />
               <SeedInput />
               <ResetButton />
+              <ShareButton />
             </div>
           </ReactAriaModal>
         </ModalOverlay>
