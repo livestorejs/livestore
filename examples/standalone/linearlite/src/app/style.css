@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-white text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-200 antialiased;
+}
+
+@font-face {
+  font-family: 'Inter UI';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('assets/fonts/inter-regular.woff2') format('woff2'),
+    url('assets/fonts/inter-regular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Inter UI';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src:
+    url('assets/fonts/inter-medium.woff2') format('woff2'),
+    url('assets/fonts/inter-medium.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Inter UI';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src:
+    url('assets/fonts/inter-semibold.woff2') format('woff2'),
+    url('assets/fonts/inter-semibold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Inter UI';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src:
+    url('assets/fonts/inter-extrabold.woff2') format('woff2'),
+    url('assets/fonts/inter-extrabold.woff') format('woff');
+}
+
+.modal {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+}
+
+#root,
+body,
+html {
+  height: 100%;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  @apply text-gray-400 dark:text-gray-500;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
