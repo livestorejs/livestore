@@ -14,10 +14,7 @@ export const SeedInput = ({ className }: { className?: string }) => {
   }
 
   return (
-    <div className={`lg:h-full flex items-center lg:border-r lg:border-neutral-700 ${className}`}>
-      <div className="h-8 border-y border-r border-neutral-700 whitespace-nowrap shrink-0 flex items-center px-2 text-sm text-neutral-400">
-        Seed<span className="hidden xl:inline"> DB</span>:
-      </div>
+    <div className={`lg:h-full flex items-center gap-px ${className}`}>
       <Input
         aria-label="Seed count"
         placeholder="123"
@@ -25,12 +22,12 @@ export const SeedInput = ({ className }: { className?: string }) => {
         type="number"
         value={count}
         onChange={(e) => setCount(Number(e.target.value))}
-        className="h-8 px-2 border-y !border-x-0 border-neutral-700 text-sm placeholder:text-neutral-500 text-neutral-300 grow w-16 bg-transparent focus:outline-none focus:ring-0 focus:border-neutral-700"
+        className="h-6 px-1.5 border-none rounded-l text-xs bg-neutral-800 placeholder:text-neutral-500 text-neutral-300 w-12 focus:outline-none focus:ring-0 focus:border-none hover:bg-neutral-700 focus:bg-neutral-700"
       />
       <Button
         aria-label="Seed database"
         onPress={onClick}
-        className="h-8 border-l pl-2 pr-2.5 border-y flex items-center gap-1 border-neutral-700 text-sm hover:bg-neutral-800 focus:outline-none text-neutral-400"
+        className="h-6 flex items-center gap-1 pl-1 pr-1.5 bg-neutral-800 rounded-r hover:bg-neutral-700 focus:outline-none focus:bg-neutral-700"
       >
         <PlusIcon className="size-3" />
         <span>Seed</span>

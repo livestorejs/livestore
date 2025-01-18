@@ -12,7 +12,7 @@ export const MobileMenu = () => {
     <ModalOverlay
       isOpen={showMenu}
       onOpenChange={setShowMenu}
-      className={`fixed inset-0 bg-black/10 dark:bg-black/20 flex items-stretch ${frontendState.showToolbar ? 'bottom-12' : ''}`}
+      className={`fixed inset-0 bg-black/10 dark:bg-black/20 flex items-stretch ${frontendState.showToolbar ? 'bottom-10' : ''}`}
       isDismissable
     >
       <ReactAriaModal className="border-r border-neutral-200 dark:border-neutral-700">

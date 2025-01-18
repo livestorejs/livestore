@@ -19,7 +19,7 @@ export const MobileMenu = () => {
           <ChevronUpIcon className="size-4" />
         </Button>
         <ModalOverlay
-          className="fixed inset-0 bottom-12 bg-black/10 dark:bg-black/20 flex flex-col justify-end"
+          className="fixed inset-0 bottom-10 bg-black/10 dark:bg-black/20 flex flex-col justify-end"
           isDismissable
         >
           <ReactAriaModal className="px-2 w-full border-t border-neutral-700 bg-neutral-950">

@@ -19,11 +19,12 @@ export const ShareButton = ({ className }: { className?: string }) => {
 
   return (
     <>
-      <div className={`lg:h-full flex items-center lg:border-r lg:border-neutral-700 ${className}`}>
+      <div className={`flex items-center gap-1 ${className}`}>
+        <span>Workspace:</span>
         <Button
           aria-label="Copy workspace URL"
           onPress={copyUrl}
-          className="h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center gap-1 border-neutral-700 text-sm hover:bg-neutral-800 focus:outline-none text-neutral-400 whitespace-nowrap"
+          className="h-6 px-1.5 flex items-center gap-1 bg-neutral-800 rounded hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none whitespace-nowrap"
         >
           {copied ? (
             <>
@@ -45,9 +46,9 @@ export const ShareButton = ({ className }: { className?: string }) => {
         <Button
           aria-label="Copy workspace URL"
           onPress={() => setShowQR(true)}
-          className="size-8 lg:border-y border-l flex items-center justify-center gap-1 border-neutral-700 text-sm hover:bg-neutral-800 focus:outline-none text-neutral-400"
+          className="size-6 flex items-center justify-center bg-neutral-800 rounded hover:bg-neutral-700 focus:outline-none focus:bg-neutral-800"
         >
-          <QrCodeIcon className="size-4" />
+          <QrCodeIcon className="size-3.5" />
         </Button>
       </div>
       <ModalOverlay

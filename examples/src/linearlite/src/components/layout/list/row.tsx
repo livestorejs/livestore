@@ -31,7 +31,7 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
     >
       <div className="flex items-center gap-px">
         <PriorityMenu priority={issue.priority} onPriorityChange={handleChangePriority} />
-        <div className="text-neutral-500 dark:text-neutral-400 px-1">{getIssueTag(issue.id)}</div>
+        <div className="text-neutral-500 dark:text-neutral-400 px-1 hidden lg:block">{getIssueTag(issue.id)}</div>
         <StatusMenu status={issue.status} onStatusChange={handleChangeStatus} />
         <div className="font-medium ml-2 shrink line-clamp-1">{issue.title}</div>
       </div>
