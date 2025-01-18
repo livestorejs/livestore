@@ -12,6 +12,7 @@ import { mutations, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { formatDate } from '@/utils/format-date'
+import { getIssueTag } from '@/utils/get-issue-tag'
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
 import { useRow, useStore } from '@livestore/react'
 import React from 'react'
@@ -50,7 +51,7 @@ export const Issue = () => {
             Issues
           </Button>
           <ChevronRightIcon className="size-3.5" />
-          <div className="text-gray-500 dark:text-gray-400">{id}</div>
+          <div className="text-gray-500 dark:text-gray-400">{getIssueTag(id)}</div>
         </div>
         <div className="flex items-center gap-px">
           <DeleteButton issueId={id} close={close} className="hidden lg:block" />
