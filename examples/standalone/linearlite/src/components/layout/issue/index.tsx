@@ -19,7 +19,7 @@ import { Button } from 'react-aria-components'
 import { useNavigate, useParams } from 'react-router-dom'
 
 export const Issue = () => {
-  const id = useParams().id ?? ''
+  const id = Number(useParams().id ?? 0)
   const navigate = useNavigate()
   const { store } = useStore()
   const [issue] = useRow(tables.issue, id)

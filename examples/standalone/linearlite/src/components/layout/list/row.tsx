@@ -23,7 +23,7 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
   return (
     <div
       key={issue.id}
-      id={issue.id}
+      id={issue.id.toString()}
       className="flex items-center gap-4 justify-between pr-4 pl-2 lg:pl-4 w-full text-sm border-b last:border-b-0 border-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-700"
       onClick={() => navigate(`/issue/${issue.id}`)}
       style={style}

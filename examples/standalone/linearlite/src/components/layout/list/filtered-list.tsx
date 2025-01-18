@@ -3,7 +3,7 @@ import React from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import { FixedSizeList } from 'react-window'
 
-export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: string[] }) => {
+export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly number[] }) => {
   return (
     <div className="grow">
       <AutoSizer>

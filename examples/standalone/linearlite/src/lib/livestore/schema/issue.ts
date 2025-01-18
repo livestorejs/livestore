@@ -5,7 +5,7 @@ import { DbSchema } from '@livestore/livestore'
 export const issue = DbSchema.table(
   'issue',
   {
-    id: DbSchema.text({ primaryKey: true }),
+    id: DbSchema.integer({ primaryKey: true }),
     title: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
     priority: DbSchema.text({ schema: Priority, default: 'none' }),

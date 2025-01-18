@@ -5,7 +5,6 @@ import { statusOptions } from '@/data/status-options'
 import { Issue, mutations, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { nanoid } from 'nanoid'
 
 export const seed = (store: Store) => {
   try {
@@ -41,7 +40,7 @@ function* createIssues(numTasks: number): Generator<Issue & { description: strin
   for (let i = 0; i < numTasks; i++) {
     const [title, description] = generateText()
     const issue = {
-      id: nanoid(10),
+      id: i + 1,
       creator: 'John Doe',
       title,
       created: now - i * 5 * ONE_DAY,

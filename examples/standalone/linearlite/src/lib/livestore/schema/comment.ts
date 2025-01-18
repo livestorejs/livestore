@@ -6,7 +6,7 @@ export const comment = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     body: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
-    issueId: DbSchema.text(),
+    issueId: DbSchema.integer(),
     created: DbSchema.integer(),
     deleted: DbSchema.integer({ nullable: true }),
   },

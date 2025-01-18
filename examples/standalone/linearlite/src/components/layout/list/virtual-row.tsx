@@ -5,9 +5,8 @@ import React, { memo, type CSSProperties } from 'react'
 import { areEqual } from 'react-window'
 
 export const VirtualRow = memo(
-  ({ data, index, style }: { data: readonly string[]; index: number; style: CSSProperties }) => {
+  ({ data, index, style }: { data: readonly number[]; index: number; style: CSSProperties }) => {
     const [issue] = useRow(tables.issue, data[index]!)
-
     return <Row key={`issue-${issue.id}`} issue={issue} style={style} />
   },
   areEqual,

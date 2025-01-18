@@ -8,7 +8,7 @@ import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
 
-export const CommentInput = ({ issueId, className }: { issueId: string; className?: string }) => {
+export const CommentInput = ({ issueId, className }: { issueId: number; className?: string }) => {
   // TODO move this into LiveStore
   const [commentDraft, setCommentDraft] = React.useState<string>('')
   const [frontendState] = useFrontendState()

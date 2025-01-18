@@ -17,7 +17,7 @@ const filteredIssueIds$ = queryDb(
 )
 
 export const Search = () => {
-  const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
+  const filteredIssueIds = useQuery(filteredIssueIds$)
   const [filterState] = useFilterState()
 
   return (

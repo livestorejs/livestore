@@ -1,32 +1,34 @@
+import { Icon } from '@/components/icons'
 import { BootStatus, QueryBuilder } from '@livestore/livestore'
 import React from 'react'
 import { FilterState, tables } from './schema'
 
 export const renderBootStatus = (bootStatus: BootStatus) => {
-  switch (bootStatus.stage) {
-    case 'loading':
-      return <div>Loading LiveStore...</div>
-    case 'migrating':
-      return (
+  return (
+    <div className="fixed inset-0 bg-white dark:bg-gray-900 flex flex-col items-center justify-center gap-4 text-sm">
+      <div className="flex items-center gap-3 text-xl font-bold">
+        <Icon name="livestore" className="size-7 mt-1" />
+        <span>LiveStore</span>
+      </div>
+      {bootStatus.stage === 'loading' && <div>Loading...</div>}
+      {bootStatus.stage === 'migrating' && (
         <div>
           Migrating tables ({bootStatus.progress.done}/{bootStatus.progress.total})
         </div>
-      )
-    case 'rehydrating':
-      return (
+      )}
+      {bootStatus.stage === 'rehydrating' && (
         <div>
           Rehydrating state ({bootStatus.progress.done}/{bootStatus.progress.total})
         </div>
-      )
-    case 'syncing':
-      return (
+      )}
+      {bootStatus.stage === 'syncing' && (
         <div>
           Syncing state ({bootStatus.progress.done}/{bootStatus.progress.total})
         </div>
-      )
-    case 'done':
-      return <div>LiveStore ready</div>
-  }
+      )}
+      {bootStatus.stage === 'done' && <div>Ready</div>}
+    </div>
+  )
 }
 
 export const filterStateToWhere = (filterState: FilterState) => {

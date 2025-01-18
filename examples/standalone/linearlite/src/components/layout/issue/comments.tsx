@@ -6,7 +6,7 @@ import { useScopedQuery } from '@livestore/react'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 
-export const Comments = ({ issueId }: { issueId: string }) => {
+export const Comments = ({ issueId }: { issueId: number }) => {
   const comments = useScopedQuery(
     () => queryDb(tables.comment.query.where('issueId', issueId).orderBy('created', 'desc')),
     [issueId],

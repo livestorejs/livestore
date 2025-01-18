@@ -1,8 +1,7 @@
 import { Avatar } from '@/components/common/avatar'
 import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
-import { mutations } from '@/lib/livestore/schema'
-import { Issue } from '@/types/issue'
+import { Issue, mutations } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
@@ -20,7 +19,7 @@ export const Card = memo(({ issue, style }: { issue: Issue; style: CSSProperties
     store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   return (
-    <div key={issue.id} id={issue.id} className="px-2 pb-2" style={style}>
+    <div key={issue.id} id={issue.id.toString()} className="px-2 pb-2" style={style}>
       <div
         className="p-2 w-full text-sm bg-white dark:bg-gray-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-gray-700/50 cursor-pointer h-full"
         onClick={() => navigate(`/issue/${issue.id}`)}

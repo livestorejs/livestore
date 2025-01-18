@@ -10,7 +10,6 @@ import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
-import { nanoid } from 'nanoid'
 import React from 'react'
 import { Button } from 'react-aria-components'
 
@@ -22,6 +21,14 @@ export const NewIssueModal = () => {
   const [status, setStatus] = React.useState<Status>('backlog')
   const [priority, setPriority] = React.useState<Priority>('none')
   const { store } = useStore()
+
+  const closeModal = () => {
+    setTitle('')
+    setDescription('')
+    setStatus('backlog')
+    setPriority('none')
+    setShowNewIssueModal(false)
+  }
 
   const createIssue = () => {
     if (!title) return
@@ -35,7 +42,8 @@ export const NewIssueModal = () => {
     const kanbanorder = generateKeyBetween(lastIssueKanbanorder, null)
     store.mutate(
       mutations.createIssueWithDescription({
-        id: nanoid(10),
+        // TODO getHighestIssueId
+        id: 1000,
         title,
         priority,
         status,
@@ -46,18 +54,11 @@ export const NewIssueModal = () => {
         description,
       }),
     )
-    setShowNewIssueModal(false)
+    closeModal()
   }
 
-  React.useEffect(() => {
-    setTitle('')
-    setDescription('')
-    setStatus('backlog')
-    setPriority('none')
-  }, [showNewIssueModal])
-
   return (
-    <Modal show={!!showNewIssueModal} setShow={setShowNewIssueModal}>
+    <Modal show={!!showNewIssueModal} setShow={closeModal}>
       <div className="p-2">
         <h2 className="px-2 py-3 leading-none text-2xs uppercase font-medium tracking-wide text-gray-400">New issue</h2>
         <TitleInput title={title} setTitle={setTitle} className="focus:!bg-transparent" autoFocus />

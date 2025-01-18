@@ -9,7 +9,7 @@ export const DeleteButton = ({
   close,
   className,
 }: {
-  issueId: string
+  issueId: number
   close: () => void
   className?: string
 }) => {
