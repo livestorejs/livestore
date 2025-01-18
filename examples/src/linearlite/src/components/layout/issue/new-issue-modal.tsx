@@ -19,14 +19,14 @@ export const NewIssueModal = () => {
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')
   const [status, setStatus] = React.useState<Status>('backlog')
-  const [priority, setPriority] = React.useState<Priority>('none')
+  const [priority, setPriority] = React.useState<Priority>(0)
   const { store } = useStore()
 
   const closeModal = () => {
     setTitle('')
     setDescription('')
     setStatus('backlog')
-    setPriority('none')
+    setPriority(0)
     setShowNewIssueModal(false)
   }
 

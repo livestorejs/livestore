@@ -51,7 +51,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
           {type !== 'status' && (
             <MenuSection key="priority" className="p-2">
               <Header className="p-2 text-2xs uppercase font-medium tracking-wide text-neutral-400">Priority</Header>
-              {Object.entries(priorityOptions).map(([priorityOption, { name, icon, style }]) => {
+              {priorityOptions.map(({ name, icon, style }, priorityOption) => {
                 const active = filterState.priority?.includes(priorityOption as Priority)
                 return (
                   <MenuItem

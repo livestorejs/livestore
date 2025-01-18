@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-export const Priority = Schema.Literal('none', 'urgent', 'high', 'low', 'medium').annotations({
+export const Priority = Schema.Literal(0, 1, 2, 3, 4).annotations({
   title: 'Priority',
 })
 

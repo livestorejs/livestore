@@ -24,7 +24,7 @@ export const PriorityMenu = ({
         setIsOpen(false)
         return
       }
-      Object.entries(priorityOptions).forEach(([priorityOption, { shortcut }]) => {
+      priorityOptions.forEach(({ shortcut }, priorityOption) => {
         if (e.key === shortcut) {
           onPriorityChange(priorityOption as Priority)
           setIsOpen(false)
@@ -41,17 +41,17 @@ export const PriorityMenu = ({
         className="group h-8 min-w-8 rounded-lg flex gap-1.5 px-2 items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800"
       >
         <Icon
-          name={priorityOptions[priority].icon as IconName}
-          className={`size-3.5 ${priority === 'urgent' ? 'text-red-400 group-hover:text-red-600 dark:group-hover:text-red-300' : priorityOptions[priority].style}`}
+          name={priorityOptions[priority]!.icon as IconName}
+          className={`size-3.5 ${priority === 4 ? 'text-red-400 group-hover:text-red-600 dark:group-hover:text-red-300' : priorityOptions[priority]!.style}`}
         />
-        {showLabel && <span>{priorityOptions[priority].name}</span>}
+        {showLabel && <span>{priorityOptions[priority]!.name}</span>}
       </Button>
       <Popover
         offset={0}
         className="w-48 ml-1 p-2 bg-white rounded-lg shadow-md border border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 text-sm leading-none"
       >
         <Menu className="focus:outline-none" {...keyboardProps}>
-          {Object.entries(priorityOptions).map(([priorityOption, { name, icon, style, shortcut }]) => (
+          {priorityOptions.map(({ name, icon, style, shortcut }, priorityOption) => (
             <MenuItem
               key={priorityOption}
               onAction={() => onPriorityChange(priorityOption as Priority)}

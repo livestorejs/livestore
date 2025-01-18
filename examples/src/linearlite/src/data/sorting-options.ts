@@ -1,5 +1,5 @@
 export const sortingOptions = {
-  priority: { name: 'Priority', shortcut: 'p', defaultDirection: 'asc' },
+  priority: { name: 'Priority', shortcut: 'p', defaultDirection: 'desc' },
   status: { name: 'Status', shortcut: 's', defaultDirection: 'asc' },
   created: { name: 'Created', shortcut: 'c', defaultDirection: 'desc' },
   modified: { name: 'Updated', shortcut: 'u', defaultDirection: 'desc' },
