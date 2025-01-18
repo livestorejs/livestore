@@ -38,7 +38,7 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 pb-4 rounded-lg shadow dark:shadow-none border border-transparent dark:border-gray-700/50 ${className}`}
+      className={`bg-white dark:bg-neutral-800 pb-4 rounded-lg shadow dark:shadow-none border border-transparent dark:border-neutral-700/50 ${className}`}
       {...keyboardProps}
     >
       <Editor
@@ -51,7 +51,7 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
       <Button
         aria-label="Submit comment"
         onPress={submitComment}
-        className="size-7 rounded-full text-gray-600 dark:text-gray-200 hover:text-gray-800 focus:text-gray-800 dark:hover:text-gray-100 dark:focus:text-gray-100 bg-white hover:bg-gray-100 focus:outline-none focus:bg-gray-100 shadow border border-gray-200 dark:border-gray-600 flex items-center justify-center ml-auto mr-4 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+        className="size-7 rounded-full text-neutral-600 dark:text-neutral-200 hover:text-neutral-800 focus:text-neutral-800 dark:hover:text-neutral-100 dark:focus:text-neutral-100 bg-white hover:bg-neutral-100 focus:outline-none focus:bg-neutral-100 shadow border border-neutral-200 dark:border-neutral-600 flex items-center justify-center ml-auto mr-4 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
       >
         <ArrowUpIcon className="size-4" />
       </Button>

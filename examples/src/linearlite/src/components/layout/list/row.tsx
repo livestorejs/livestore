@@ -25,18 +25,18 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
     <div
       key={issue.id}
       id={issue.id.toString()}
-      className="flex items-center gap-4 justify-between pr-4 pl-2 lg:pl-4 w-full text-sm border-b last:border-b-0 border-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 dark:border-gray-700"
+      className="flex items-center gap-4 justify-between pr-4 pl-2 lg:pl-4 w-full text-sm border-b last:border-b-0 border-neutral-200 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 dark:border-neutral-700"
       onClick={() => navigate(`/issue/${issue.id}`)}
       style={style}
     >
       <div className="flex items-center gap-px">
         <PriorityMenu priority={issue.priority} onPriorityChange={handleChangePriority} />
-        <div className="text-gray-500 dark:text-gray-400 px-1">{getIssueTag(issue.id)}</div>
+        <div className="text-neutral-500 dark:text-neutral-400 px-1">{getIssueTag(issue.id)}</div>
         <StatusMenu status={issue.status} onStatusChange={handleChangeStatus} />
         <div className="font-medium ml-2 shrink line-clamp-1">{issue.title}</div>
       </div>
       <div className="flex items-center gap-4">
-        <div className="hidden lg:block text-gray-500 dark:text-gray-400 text-xs">
+        <div className="hidden lg:block text-neutral-500 dark:text-neutral-400 text-xs">
           {formatDate(new Date(issue.created))}
         </div>
         <Avatar name={issue.creator} />

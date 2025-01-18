@@ -12,13 +12,13 @@ export const statusOptions = {
   backlog: {
     name: 'Backlog',
     icon: 'backlog',
-    style: 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200',
+    style: 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200',
     shortcut: '1',
   },
   todo: {
     name: 'Todo',
     icon: 'todo',
-    style: 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200',
+    style: 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200',
     shortcut: '2',
   },
   in_progress: {
@@ -36,7 +36,7 @@ export const statusOptions = {
   canceled: {
     name: 'Canceled',
     icon: 'canceled',
-    style: 'text-gray-500 group-hover:text-gray-700 dark:text-gray-300 dark:group-hover:text-gray-200',
+    style: 'text-neutral-500 group-hover:text-neutral-700 dark:text-neutral-300 dark:group-hover:text-neutral-200',
     shortcut: '5',
   },
 } satisfies Record<Status, StatusDetails>

@@ -24,7 +24,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
   const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
 
   return (
-    <div className="bg-gray-50 border border-gray-100 dark:bg-gray-800 dark:border-gray-700/50 rounded-lg w-64 lg:w-80 shrink-0 h-full flex flex-col">
+    <div className="bg-neutral-50 border border-neutral-100 dark:bg-neutral-800 dark:border-neutral-700/50 rounded-lg w-64 lg:w-80 shrink-0 h-full flex flex-col">
       <div className="flex items-center justify-between p-2 pl-4 gap-4">
         <div className="flex items-center gap-2">
           <Icon name={statusDetails.icon} className={`size-3.5 ${statusDetails.style}`} />

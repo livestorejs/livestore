@@ -12,15 +12,15 @@ export const StatusFilter = () => {
   if (!filterState.status) return null
 
   return (
-    <div className="text-xs text-gray-500 dark:text-gray-400 ml-2 border border-gray-300 dark:border-gray-600 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
-      <div className="px-2 border-r border-gray-200 dark:border-gray-700 h-full flex items-center gap-1">
-        <span className="font-medium text-gray-600 dark:text-gray-200">Status</span>
+    <div className="text-xs text-neutral-500 dark:text-neutral-400 ml-2 border border-neutral-300 dark:border-neutral-600 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
+      <div className="px-2 border-r border-neutral-200 dark:border-neutral-700 h-full flex items-center gap-1">
+        <span className="font-medium text-neutral-600 dark:text-neutral-200">Status</span>
         <span>{filterState.status.length > 1 ? 'is any of' : 'is'}</span>
       </div>
       <FilterMenu type="status">
-        <Button className="pl-5 pr-2 flex items-center h-full hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 gap-1.5">
+        <Button className="pl-5 pr-2 flex items-center h-full hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 gap-1.5">
           {filterState.status.map((status, index) => (
-            <div key={index} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-gray-900">
+            <div key={index} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-neutral-900">
               <Icon
                 name={statusOptions[status as Status].icon as IconName}
                 className={`h-full ${statusOptions[status as Status].style}`}
@@ -28,7 +28,7 @@ export const StatusFilter = () => {
             </div>
           ))}
           {filterState.status.length === 1 ? (
-            <span className="font-medium text-gray-600 dark:text-gray-200">
+            <span className="font-medium text-neutral-600 dark:text-neutral-200">
               {statusOptions[filterState.status[0] as Status].name}
             </span>
           ) : (
@@ -38,9 +38,9 @@ export const StatusFilter = () => {
       </FilterMenu>
       <Button
         onPress={() => setFilterState((state) => ({ ...state, status: undefined }))}
-        className="h-full flex items-center px-1 group hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+        className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
-        <XMarkIcon className="size-4 group-hover:text-gray-700 dark:group-hover:text-gray-200" />
+        <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />
       </Button>
     </div>
   )

@@ -30,7 +30,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
 
   return (
     <aside
-      className={`bg-white dark:bg-gray-900 w-64 shrink-0 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}
+      className={`bg-white dark:bg-neutral-900 w-64 shrink-0 overflow-y-auto flex flex-col justify-between p-2 pt-4 ${className}`}
     >
       <div>
         <div className="flex items-center justify-between pr-2">
@@ -40,7 +40,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
             <NewIssueButton />
           </div>
         </div>
-        <h2 className="p-2 pt-0 leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mt-8">
+        <h2 className="p-2 pt-0 leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400 mt-8">
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
@@ -52,7 +52,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
                 onClick()
                 setShowMenu(false)
               }}
-              className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-gray-800 dark:focus:bg-gray-800 hover:bg-gray-100 focus:bg-gray-100"
+              className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100"
             >
               <Icon className="size-4" />
               <span>{title}</span>

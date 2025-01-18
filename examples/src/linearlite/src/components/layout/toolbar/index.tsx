@@ -12,13 +12,13 @@ import { SyncToggle } from './sync-toggle'
 
 export const Toolbar = () => {
   return (
-    <div className="w-screen h-12 bg-gray-950 border-t border-gray-700 flex items-center">
-      <div className="h-8 border-y border-gray-700 w-2" />
-      <div className="h-full flex items-center border-x border-gray-700">
+    <div className="w-screen h-12 bg-neutral-950 border-t border-neutral-700 flex items-center">
+      <div className="h-8 border-y border-neutral-700 w-2" />
+      <div className="h-full flex items-center border-x border-neutral-700">
         <Link
           to="https://livestore.dev/"
           target="_blank"
-          className="flex items-center gap-2 text-sm font-bold text-gray-300 hover:bg-gray-800 px-2 border-y border-gray-700 h-8"
+          className="flex items-center gap-2 text-sm font-bold text-neutral-300 hover:bg-neutral-800 px-2 border-y border-neutral-700 h-8"
         >
           <Icon name="livestore" className="size-5 mt-1" />
           <span>LiveStore</span>
@@ -30,12 +30,12 @@ export const Toolbar = () => {
       <DownloadButton className="hidden lg:flex" />
       <ShareButton className="hidden lg:flex" />
       <SyncToggle className="hidden lg:flex" />
-      <div className="grow h-8 border-y border-gray-700" />
-      <div className="h-full hidden lg:flex items-center border-x border-gray-700">
+      <div className="grow h-8 border-y border-neutral-700" />
+      <div className="h-full hidden lg:flex items-center border-x border-neutral-700">
         <FPSMeter height={32} />
       </div>
       <MobileMenu />
-      <div className="h-8 border-y border-gray-700 w-2" />
+      <div className="h-8 border-y border-neutral-700 w-2" />
     </div>
   )
 }

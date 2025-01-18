@@ -10,11 +10,11 @@ export const DownloadButton = ({ className }: { className?: string }) => {
   }
 
   return (
-    <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 ${className}`}>
+    <div className={`lg:h-full flex items-center lg:border-r lg:border-neutral-700 ${className}`}>
       <Button
         aria-label="Download database"
         onPress={onClick}
-        className="h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center whitespace-nowrap gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none text-gray-400"
+        className="h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center whitespace-nowrap gap-1 border-neutral-700 text-sm hover:bg-neutral-800 focus:outline-none text-neutral-400"
       >
         <ArrowDownIcon className="size-3 shrink-0" />
         <span>

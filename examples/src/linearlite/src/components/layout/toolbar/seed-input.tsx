@@ -14,8 +14,8 @@ export const SeedInput = ({ className }: { className?: string }) => {
   }
 
   return (
-    <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 ${className}`}>
-      <div className="h-8 border-y border-r border-gray-700 whitespace-nowrap shrink-0 flex items-center px-2 text-sm text-gray-400">
+    <div className={`lg:h-full flex items-center lg:border-r lg:border-neutral-700 ${className}`}>
+      <div className="h-8 border-y border-r border-neutral-700 whitespace-nowrap shrink-0 flex items-center px-2 text-sm text-neutral-400">
         Seed<span className="hidden xl:inline"> DB</span>:
       </div>
       <Input
@@ -25,12 +25,12 @@ export const SeedInput = ({ className }: { className?: string }) => {
         type="number"
         value={count}
         onChange={(e) => setCount(Number(e.target.value))}
-        className="h-8 px-2 border-y !border-x-0 border-gray-700 text-sm placeholder:text-gray-500 text-gray-300 grow w-16 bg-transparent focus:outline-none focus:ring-0 focus:border-gray-700"
+        className="h-8 px-2 border-y !border-x-0 border-neutral-700 text-sm placeholder:text-neutral-500 text-neutral-300 grow w-16 bg-transparent focus:outline-none focus:ring-0 focus:border-neutral-700"
       />
       <Button
         aria-label="Seed database"
         onPress={onClick}
-        className="h-8 border-l pl-2 pr-2.5 border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none text-gray-400"
+        className="h-8 border-l pl-2 pr-2.5 border-y flex items-center gap-1 border-neutral-700 text-sm hover:bg-neutral-800 focus:outline-none text-neutral-400"
       >
         <PlusIcon className="size-3" />
         <span>Seed</span>

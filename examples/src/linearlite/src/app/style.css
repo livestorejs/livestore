@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply bg-white text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-200 antialiased;
+  @apply bg-white text-xs text-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 antialiased;
 }
 
 @font-face {
@@ -58,7 +58,7 @@ html {
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  @apply text-gray-400 dark:text-gray-500;
+  @apply text-neutral-400 dark:text-neutral-500;
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -72,6 +72,6 @@ input::-webkit-inner-spin-button {
 }
 
 /* Firefox */
-input[type=number] {
+input[type='number'] {
   -moz-appearance: textfield;
 }

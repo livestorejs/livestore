@@ -60,7 +60,9 @@ export const NewIssueModal = () => {
   return (
     <Modal show={!!showNewIssueModal} setShow={closeModal}>
       <div className="p-2">
-        <h2 className="px-2 py-3 leading-none text-2xs uppercase font-medium tracking-wide text-gray-400">New issue</h2>
+        <h2 className="px-2 py-3 leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400">
+          New issue
+        </h2>
         <TitleInput title={title} setTitle={setTitle} className="focus:!bg-transparent" autoFocus />
         <DescriptionInput
           description={description}
