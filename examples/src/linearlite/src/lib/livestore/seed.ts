@@ -2,21 +2,25 @@ import { type Store } from '@livestore/livestore'
 
 import { priorityOptions } from '@/data/priority-options'
 import { statusOptions } from '@/data/status-options'
-import { Issue, mutations, tables } from '@/lib/livestore/schema'
+import { Issue, mutations } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
+import { highestIssueId$, issueCount$ } from './queries'
 
-export const seed = (store: Store) => {
+export const seed = (store: Store, count?: number) => {
   try {
-    const urlParams = new URLSearchParams(window.location.search)
-    const seedParam = urlParams.get('seed')
-    if (seedParam == null) return
-    let count = parseInt(seedParam)
-    const existingCount = store.query(tables.issue.query.count().where({ deleted: null }))
+    if (!count) {
+      const urlParams = new URLSearchParams(window.location.search)
+      const seedParam = urlParams.get('seed')
+      if (seedParam == null) return
+      count = parseInt(seedParam)
+    }
+    const existingCount = store.query(issueCount$)
+    const [highestId] = store.query(highestIssueId$)
     if (existingCount >= count) return
     count -= existingCount
     console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')
-    store.mutate(...Array.from(createIssues(count)).map((_) => mutations.createIssueWithDescription(_)))
+    store.mutate(...Array.from(createIssues(count, highestId?.id)).map((_) => mutations.createIssueWithDescription(_)))
   } finally {
     const url = new URL(window.location.href)
     url.searchParams.delete('seed')
@@ -24,9 +28,9 @@ export const seed = (store: Store) => {
   }
 }
 
-function* createIssues(numTasks: number): Generator<Issue & { description: string }> {
+function* createIssues(numTasks: number, highestId?: number): Generator<Issue & { description: string }> {
+  if (!highestId) highestId = 0
   const getRandomItem = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)]!
-
   const generateText = () => {
     const action = getRandomItem(actionPhrases)
     const feature = getRandomItem(featurePhrases)
@@ -40,7 +44,7 @@ function* createIssues(numTasks: number): Generator<Issue & { description: strin
   for (let i = 0; i < numTasks; i++) {
     const [title, description] = generateText()
     const issue = {
-      id: i + 1,
+      id: (highestId += 1),
       creator: 'John Doe',
       title,
       created: now - (numTasks - i) * 5 * ONE_DAY,

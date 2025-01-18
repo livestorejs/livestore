@@ -56,7 +56,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       schema={schema}
       adapter={adapter}
       renderLoading={renderBootStatus}
-      boot={seed}
+      boot={(store) => seed(store)}
       batchUpdates={batchUpdates}
     >
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
