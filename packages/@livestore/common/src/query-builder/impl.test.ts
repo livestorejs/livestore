@@ -18,13 +18,23 @@ const todos = DbSchema.table(
   { deriveMutations: true },
 )
 
+const todos2 = DbSchema.table(
+  'todos2',
+  {
+    id: DbSchema.integer({ primaryKey: true }),
+    text: DbSchema.text({ default: '', nullable: false }),
+    status: DbSchema.text({ schema: Schema.Literal('active', 'completed') }),
+  },
+  { deriveMutations: true },
+)
+
 const comments = DbSchema.table('comments', {
   id: DbSchema.text({ primaryKey: true }),
   text: DbSchema.text({ default: '', nullable: false }),
   todoId: DbSchema.text({}),
 })
 
-const db = { todos: todos.query, comments: comments.query }
+const db = { todos: todos.query, todos2: todos2.query, comments: comments.query }
 
 describe('query builder', () => {
   describe('result schema', () => {
@@ -174,6 +184,17 @@ describe('query builder', () => {
             "123",
           ],
           "query": "SELECT * FROM 'todos' WHERE id = ?",
+        }
+      `)
+    })
+
+    it('should handle row queries with numbers', () => {
+      expect(db.todos2.row(123, { insertValues: { status: 'active' } }).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            123,
+          ],
+          "query": "SELECT * FROM 'todos2' WHERE id = ?",
         }
       `)
     })

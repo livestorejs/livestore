@@ -107,7 +107,7 @@ export const useRow: {
 
   // console.debug('useRow', tableName, id)
 
-  const idStr = id === SessionIdSymbol ? 'session' : id
+  const idVal = id === SessionIdSymbol ? 'session' : id
   const rowQuery = table.query.row as any
 
   type Query$ = LiveQuery<RowQuery.Result<TTableDef>, QueryInfo.Row>
@@ -116,11 +116,11 @@ export const useRow: {
       DbSchema.tableIsSingleton(table)
         ? (queryDb(rowQuery(), { reactivityGraph, otelContext }) as any as Query$)
         : (queryDb(rowQuery(id!, { insertValues: insertValues! }), { reactivityGraph, otelContext }) as any as Query$),
-    [idStr!, tableName],
+    [idVal!, tableName],
     {
       otel: {
-        spanName: `LiveStore:useRow:${tableName}${idStr === undefined ? '' : `:${idStr}`}`,
-        attributes: { id: idStr },
+        spanName: `LiveStore:useRow:${tableName}${idVal === undefined ? '' : `:${idVal}`}`,
+        attributes: { id: idVal },
       },
     },
   )
