@@ -17,8 +17,8 @@ const filteredIssueIds$ = queryDb(
 )
 
 export const List = () => {
-  const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id.toString())
-
+  const filteredIssueIds = useQuery(filteredIssueIds$).map((id) => id)
+  console.log(filteredIssueIds)
   return (
     <>
       <Filters filteredCount={filteredIssueIds.length} />

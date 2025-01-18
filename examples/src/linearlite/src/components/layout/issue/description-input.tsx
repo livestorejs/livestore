@@ -15,7 +15,7 @@ export const DescriptionInput = ({
   className?: string
 }) => {
   const { store } = useStore()
-  const [row] = useRow(tables.description, issue?.id ?? '')
+  const [row] = useRow(tables.description, issue?.id ?? 0)
   if (issue) description = row?.body
 
   const handleDescriptionChange = (body: string) => {
