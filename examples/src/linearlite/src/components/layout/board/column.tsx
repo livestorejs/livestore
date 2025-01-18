@@ -38,7 +38,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
             <FixedSizeList
               height={height}
               itemCount={filteredIssueIds.length}
-              itemSize={96}
+              itemSize={122}
               itemData={filteredIssueIds}
               overscanCount={10}
               width={width}
