@@ -7,11 +7,13 @@ export const DescriptionInput = ({
   issue,
   description,
   setDescription,
+  updateOnBlur,
   className,
 }: {
   issue?: Issue
   description?: string
   setDescription?: (description: string) => void
+  updateOnBlur?: boolean
   className?: string
 }) => {
   const { store } = useStore()
@@ -27,7 +29,8 @@ export const DescriptionInput = ({
     <Editor
       className={`px-2 py-px rounded-md focus:bg-gray-50 dark:focus:bg-gray-800 ${className}`}
       value={description ?? ''}
-      onChange={(value) => handleDescriptionChange(value)}
+      onBlur={updateOnBlur ? (value) => handleDescriptionChange(value) : undefined}
+      onChange={updateOnBlur ? undefined : (value) => handleDescriptionChange(value)}
       placeholder="Add description..."
     />
   )

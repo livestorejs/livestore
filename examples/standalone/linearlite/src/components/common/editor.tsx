@@ -11,12 +11,14 @@ import { Markdown } from 'tiptap-markdown'
 
 const Editor = ({
   value,
+  onBlur,
   onChange,
   className = '',
   placeholder,
 }: {
   value: string
-  onChange: (value: string) => void
+  onBlur?: (value: string) => void
+  onChange?: (value: string) => void
   className?: string
   placeholder?: string
 }) => {
@@ -30,10 +32,18 @@ const Editor = ({
       },
     },
     content: value || undefined,
-    onUpdate: ({ editor }) => {
-      markdownValue.current = editor.storage.markdown.getMarkdown()
-      onChange(markdownValue.current || '')
-    },
+    onBlur: onBlur
+      ? ({ editor }) => {
+          markdownValue.current = editor.storage.markdown.getMarkdown()
+          onBlur(markdownValue.current || '')
+        }
+      : undefined,
+    onUpdate: onChange
+      ? ({ editor }) => {
+          markdownValue.current = editor.storage.markdown.getMarkdown()
+          onChange(markdownValue.current || '')
+        }
+      : undefined,
   })
 
   if (placeholder) extensions.push(Placeholder.configure({ placeholder }))

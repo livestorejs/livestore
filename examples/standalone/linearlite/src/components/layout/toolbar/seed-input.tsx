@@ -1,16 +1,16 @@
+import { seed } from '@/lib/livestore/seed'
 import { PlusIcon } from '@heroicons/react/16/solid'
+import { useStore } from '@livestore/react'
 import React from 'react'
 import { Button, Input } from 'react-aria-components'
-import { useNavigate } from 'react-router-dom'
 
 export const SeedInput = ({ className }: { className?: string }) => {
-  const [seed, setSeed] = React.useState(50)
-  const navigate = useNavigate()
+  const [count, setCount] = React.useState(50)
+  const { store } = useStore()
 
   const onClick = () => {
-    if (seed === 0) return
-    navigate(`/?seed=${seed}`)
-    window.location.reload()
+    if (count === 0) return
+    seed(store, count)
   }
 
   return (
@@ -23,8 +23,8 @@ export const SeedInput = ({ className }: { className?: string }) => {
         placeholder="123"
         autoComplete="off"
         type="number"
-        value={seed}
-        onChange={(e) => setSeed(Number(e.target.value))}
+        value={count}
+        onChange={(e) => setCount(Number(e.target.value))}
         className="h-8 px-2 border-y !border-x-0 border-gray-700 text-sm placeholder:text-gray-500 text-gray-300 grow w-16 bg-transparent focus:outline-none focus:ring-0 focus:border-gray-700"
       />
       <Button

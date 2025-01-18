@@ -4,6 +4,7 @@ import { StatusMenu } from '@/components/common/status-menu'
 import { Issue, mutations } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
+import { getIssueTag } from '@/utils/get-issue-tag'
 import { useStore } from '@livestore/react'
 import type { CSSProperties } from 'react'
 import React, { memo } from 'react'
@@ -24,15 +25,15 @@ export const Card = memo(({ issue, style }: { issue: Issue; style: CSSProperties
         className="p-2 w-full text-sm bg-white dark:bg-gray-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-gray-700/50 cursor-pointer h-full"
         onClick={() => navigate(`/issue/${issue.id}`)}
       >
-        <div className="flex items-center gap-px">
-          {/* <PriorityMenu priority={issue.priority} onPriorityChange={handleChangePriority} /> */}
+        <div className="flex items-center justify-between pl-2 pt-1 pr-1 mb-0.5">
+          <div className="text-xs text-gray-500 dark:text-gray-400">{getIssueTag(issue.id)}</div>
+          <Avatar name={issue.creator} />
+        </div>
+        <div className="flex items-center gap-px mb-px">
           <StatusMenu status={issue.status} onStatusChange={handleChangeStatus} />
           <div className="font-medium grow line-clamp-1">{issue.title}</div>
         </div>
-        <div className="flex items-center justify-between pr-2 mt-1">
-          <PriorityMenu showLabel priority={issue.priority} onPriorityChange={handleChangePriority} />
-          <Avatar name={issue.creator} />
-        </div>
+        <PriorityMenu showLabel priority={issue.priority} onPriorityChange={handleChangePriority} />
       </div>
     </div>
   )
