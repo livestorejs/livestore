@@ -53,7 +53,7 @@ export const useRow: {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: string | SessionIdSymbol,
+    id: string | SessionIdSymbol | number,
     options?: UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
   ): UseRowResult<TTableDef>
   <
@@ -64,7 +64,7 @@ export const useRow: {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: string | SessionIdSymbol,
+    id: string | SessionIdSymbol | number,
     options: UseRowOptionsBase & RowQuery.RequiredColumnsOptions<TTableDef>,
   ): UseRowResult<TTableDef>
 } = <
@@ -74,13 +74,18 @@ export const useRow: {
   >,
 >(
   table: TTableDef,
-  idOrOptions?: string | SessionIdSymbol | UseRowOptionsBase,
+  idOrOptions?: string | SessionIdSymbol | number | UseRowOptionsBase,
   options_?: UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.sqliteDef
-  const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
+  const id =
+    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol || typeof idOrOptions === 'number'
+      ? idOrOptions
+      : undefined
   const options: (UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>) | undefined =
-    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
+    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol || typeof idOrOptions === 'number'
+      ? options_
+      : idOrOptions
   const { insertValues, reactivityGraph } = options ?? {}
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>

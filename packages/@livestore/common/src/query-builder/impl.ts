@@ -128,12 +128,12 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
       // eslint-disable-next-line prefer-rest-params
       const params = [...arguments]
 
-      let id: string
+      let id: string | number
 
       if (tableDef.options.isSingleton) {
         id = tableDef.sqliteDef.columns.id!.default.pipe(Option.getOrThrow)
       } else {
-        id = params[0] as string
+        id = params[0] as string | number
         if (id === undefined) {
           invalidQueryBuilder(`Id missing for row query on non-singleton table ${tableDef.sqliteDef.name}`)
         }

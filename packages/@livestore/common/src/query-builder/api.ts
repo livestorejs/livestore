@@ -35,7 +35,7 @@ export namespace QueryBuilderAst {
   export type RowQuery = {
     readonly _tag: 'RowQuery'
     readonly tableDef: DbSchema.TableDefBase
-    readonly id: string | SessionIdSymbol
+    readonly id: string | SessionIdSymbol | number
     readonly insertValues: Record<string, unknown>
   }
 
@@ -252,10 +252,10 @@ export namespace QueryBuilder {
         ? (_: 'Error: Need to enable deriveMutations to use row()') => any
         : TTableDef['options']['requiredInsertColumnNames'] extends never
           ? (
-              id: string | SessionIdSymbol,
+              id: string | SessionIdSymbol | number,
             ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
           : <TOptions extends RowQuery.RequiredColumnsOptions<TTableDef>>(
-              id: string | SessionIdSymbol,
+              id: string | SessionIdSymbol | number,
               opts: TOptions,
             ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
   }

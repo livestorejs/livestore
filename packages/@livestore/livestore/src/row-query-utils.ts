@@ -7,7 +7,7 @@ import type * as otel from '@opentelemetry/api'
 import type { LiveQuery, LiveQueryAny, QueryContext } from './live-queries/base-class.js'
 import { computed } from './live-queries/computed.js'
 
-export const rowQueryLabel = (table: DbSchema.TableDefBase, id: string | SessionIdSymbol | undefined) =>
+export const rowQueryLabel = (table: DbSchema.TableDefBase, id: string | SessionIdSymbol | number | undefined) =>
   `row:${table.sqliteDef.name}${id === undefined ? '' : id === SessionIdSymbol ? `:sessionId` : `:${id}`}`
 
 export const deriveColQuery: {
@@ -36,7 +36,7 @@ export const makeExecBeforeFirstRun =
     table,
     otelContext: otelContext_,
   }: {
-    id?: string | SessionIdSymbol
+    id?: string | SessionIdSymbol | number
     insertValues?: any
     table: DbSchema.TableDefBase
     otelContext: otel.Context | undefined
@@ -45,10 +45,10 @@ export const makeExecBeforeFirstRun =
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
 
     if (table.options.isSingleton === false) {
-      const idStr = id === SessionIdSymbol ? store.sessionId : id!
+      const idVal = id === SessionIdSymbol ? store.sessionId : id!
       const rowExists =
         store.syncDbWrapper.select(`SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`, {
-          bindValues: [idStr] as any as PreparedBindValues,
+          bindValues: [idVal] as any as PreparedBindValues,
         }).length === 1
 
       if (rowExists) return
