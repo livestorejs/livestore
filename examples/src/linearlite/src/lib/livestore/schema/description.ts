@@ -4,7 +4,7 @@ export const description = DbSchema.table(
   'description',
   {
     // TODO: id is also a foreign key to issue
-    id: DbSchema.text({ primaryKey: true }),
+    id: DbSchema.integer({ primaryKey: true }),
     body: DbSchema.text({ default: '' }),
     deleted: DbSchema.integer({ nullable: true }),
   },

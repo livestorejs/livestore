@@ -1,6 +1,5 @@
 import Editor from '@/components/common/editor'
-import { mutations, tables } from '@/lib/livestore/schema'
-import { Issue } from '@/types/issue'
+import { Issue, mutations, tables } from '@/lib/livestore/schema'
 import { useRow, useStore } from '@livestore/react'
 import React from 'react'
 

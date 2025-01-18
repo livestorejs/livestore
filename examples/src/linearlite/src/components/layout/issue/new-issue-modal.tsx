@@ -10,7 +10,6 @@ import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
-import { nanoid } from 'nanoid'
 import React from 'react'
 import { Button } from 'react-aria-components'
 
@@ -43,7 +42,8 @@ export const NewIssueModal = () => {
     const kanbanorder = generateKeyBetween(lastIssueKanbanorder, null)
     store.mutate(
       mutations.createIssueWithDescription({
-        id: nanoid(10),
+        // TODO getHighestIssueId
+        id: 1000,
         title,
         priority,
         status,
