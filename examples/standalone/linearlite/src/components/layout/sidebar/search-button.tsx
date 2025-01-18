@@ -16,7 +16,7 @@ export const SearchButton = () => {
         setFilterState((state) => ({ ...state, query: undefined }))
         setShowMenu(false)
       }}
-      className="rounded-lg size-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800"
+      className="rounded-lg size-8 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800"
     >
       <MagnifyingGlassIcon className="size-4" />
     </Link>

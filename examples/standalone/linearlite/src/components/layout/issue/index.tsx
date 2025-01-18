@@ -40,18 +40,18 @@ export const Issue = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-12 shrink-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-8 px-2 lg:pl-6">
+      <div className="h-12 shrink-0 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between gap-8 px-2 lg:pl-6">
         <div className="flex items-center gap-1 lg:gap-2 text-sm">
           <MenuButton className="lg:hidden" />
           <Button
             aria-label="Back to issues"
-            className="font-medium hover:text-gray-800 dark:hover:text-gray-100 focus:outline-none ml-2 lg:ml-0"
+            className="font-medium hover:text-neutral-800 dark:hover:text-neutral-100 focus:outline-none ml-2 lg:ml-0"
             onPress={close}
           >
             Issues
           </Button>
           <ChevronRightIcon className="size-3.5" />
-          <div className="text-gray-500 dark:text-gray-400">{getIssueTag(id)}</div>
+          <div className="text-neutral-500 dark:text-neutral-400">{getIssueTag(id)}</div>
         </div>
         <div className="flex items-center gap-px">
           <DeleteButton issueId={id} close={close} className="hidden lg:block" />
@@ -59,29 +59,33 @@ export const Issue = () => {
         </div>
       </div>
       <div className="flex flex-col lg:flex-row h-[calc(100%-3rem)]">
-        <div className="flex lg:hidden flex-wrap justify-between gap-2 p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex lg:hidden flex-wrap justify-between gap-2 p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-px">
             <StatusMenu showLabel status={issue.status} onStatusChange={handleChangeStatus} />
             <PriorityMenu showLabel priority={issue.priority} onPriorityChange={handleChangePriority} />
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-gray-500 dark:text-gray-400 text-xs">{formatDate(new Date(issue.created))}</div>
+            <div className="text-neutral-500 dark:text-neutral-400 text-xs">{formatDate(new Date(issue.created))}</div>
             <Avatar name={issue.creator} />
           </div>
         </div>
         <div className="grow overflow-y-auto">
-          <div className="p-4 lg:p-14 border-b border-gray-200 dark:border-gray-700">
+          <div className="p-4 lg:p-14 border-b border-neutral-200 dark:border-neutral-700">
             <TitleInput issue={issue} className="lg:mb-4" />
             <DescriptionInput issue={issue} />
           </div>
           <div className="p-4 lg:p-14">
-            <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mb-4">Comments</h2>
+            <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400 mb-4">
+              Comments
+            </h2>
             <CommentInput issueId={issue.id} />
             <Comments issueId={issue.id} />
           </div>
         </div>
-        <div className="hidden lg:block w-64 py-16 px-8 border-l border-gray-200 dark:border-gray-700 space-y-px">
-          <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-gray-400 mb-4">Properties</h2>
+        <div className="hidden lg:block w-64 py-16 px-8 border-l border-neutral-200 dark:border-neutral-700 space-y-px">
+          <h2 className="leading-none text-2xs uppercase font-medium tracking-wide text-neutral-400 mb-4">
+            Properties
+          </h2>
           <div className="flex items-center h-8">
             <div className="w-16 -mr-0.5 shrink-0">Creator:</div>
             <Avatar name={issue.creator} />

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 export const AboutModal = ({ show, setShow }: { show: boolean; setShow: (show: boolean) => void }) => {
   return (
     <Modal show={show} setShow={setShow} title="About LinearLite">
-      <div className="p-4 text-sm flex flex-col gap-2 text-gray-500">
+      <div className="p-4 text-sm flex flex-col gap-2 text-neutral-500">
         <p>
           LinearLite is an example of a collaboration application using a local-first approach, obviously inspired by{' '}
           <Link to="https://linear.app" target="_blank" className="underline text-orange-600">

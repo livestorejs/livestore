@@ -6,15 +6,17 @@ export const SyncToggle = ({ className }: { className?: string }) => {
   const [sync, setSync] = React.useState(false)
 
   return (
-    <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 text-sm text-gray-400 ${className}`}>
+    <div className={`flex items-center ${className}`}>
+      {/* TODO add disabled tooltip for now */}
       <Switch
         aria-label="Toggle sync/network"
         isSelected={sync}
         onChange={setSync}
-        className="group flex items-center gap-2 h-8 border-t lg:border-b w-full lg:w-auto border-gray-700 pl-1.5 pr-2.5 hover:bg-gray-800 focus:outline-none focus:bg-gray-800 cursor-pointer"
+        isDisabled={true} // TODO enable when sync is implemented
+        className="group flex h-6 items-center gap-2 bg-neutral-800 hover:bg-neutral-700 rounded pl-1 pr-1.5 focus:outline-none focus:bg-neutral-700 cursor-pointer"
       >
-        <div className="h-5 p-px w-8 bg-gray-700 border rounded-md border-gray-600 group-data-[selected]:bg-orange-500 group-data-[selected]:border-orange-500 transition-colors">
-          <span className="block size-4 bg-white rounded group-data-[selected]:translate-x-3 transition-transform border border-gray-100 group-data-[selected]:border-orange-100" />
+        <div className="h-4 p-px w-6 bg-neutral-600 rounded-full group-data-[selected]:bg-orange-500 transition-colors">
+          <span className="block size-3.5 bg-white rounded-full group-data-[selected]:translate-x-2 transition-transform" />
         </div>
         <span>
           Sync<span className="hidden xl:inline">/Network</span>

@@ -27,7 +27,7 @@ export const DescriptionInput = ({
 
   return (
     <Editor
-      className={`px-2 py-px rounded-md focus:bg-gray-50 dark:focus:bg-gray-800 ${className}`}
+      className={`px-2 py-px rounded-md focus:bg-neutral-50 dark:focus:bg-neutral-800 ${className}`}
       value={description ?? ''}
       onBlur={updateOnBlur ? (value) => handleDescriptionChange(value) : undefined}
       onChange={updateOnBlur ? undefined : (value) => handleDescriptionChange(value)}

@@ -15,7 +15,7 @@ export const BackButton = ({ close }: { close: () => void }) => {
     <Button
       aria-label="Back to issues"
       onPress={close}
-      className="rounded-lg size-8 shrink-0 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800"
+      className="rounded-lg size-8 shrink-0 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800"
     >
       <XMarkIcon className="size-5" />
     </Button>

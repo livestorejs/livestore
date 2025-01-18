@@ -19,11 +19,12 @@ export const ShareButton = ({ className }: { className?: string }) => {
 
   return (
     <>
-      <div className={`lg:h-full flex items-center lg:border-r lg:border-gray-700 ${className}`}>
+      <div className={`flex items-center gap-1 ${className}`}>
+        <span>Workspace:</span>
         <Button
           aria-label="Copy workspace URL"
           onPress={copyUrl}
-          className="h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none text-gray-400 whitespace-nowrap"
+          className="h-6 px-1.5 flex items-center gap-1 bg-neutral-800 rounded hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none whitespace-nowrap"
         >
           {copied ? (
             <>
@@ -45,9 +46,9 @@ export const ShareButton = ({ className }: { className?: string }) => {
         <Button
           aria-label="Copy workspace URL"
           onPress={() => setShowQR(true)}
-          className="size-8 lg:border-y border-l flex items-center justify-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none text-gray-400"
+          className="size-6 flex items-center justify-center bg-neutral-800 rounded hover:bg-neutral-700 focus:outline-none focus:bg-neutral-800"
         >
-          <QrCodeIcon className="size-4" />
+          <QrCodeIcon className="size-3.5" />
         </Button>
       </div>
       <ModalOverlay
@@ -56,7 +57,7 @@ export const ShareButton = ({ className }: { className?: string }) => {
         className="fixed inset-0 bottom-12 bg-black/10 dark:bg-black/20 flex items-start justify-center p-4 pt-16 lg:pt-32"
         isDismissable
       >
-        <ReactAriaModal className="relative bg-white rounded-xl shadow-lg border overflow-hidden border-gray-200 p-4">
+        <ReactAriaModal className="relative bg-white rounded-xl shadow-lg border overflow-hidden border-neutral-200 p-4">
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURI(window.location.href)}`}
             crossOrigin="anonymous"

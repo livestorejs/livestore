@@ -14,20 +14,20 @@ export const PriorityFilter = () => {
   if (!filterState.priority) return null
 
   return (
-    <div className="text-xs text-gray-500 ml-2 border border-gray-300 dark:border-gray-600 dark:text-gray-400 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
-      <div className="px-2 border-r border-gray-200 dark:border-gray-700 h-full flex items-center gap-1">
-        <span className="font-medium text-gray-600 dark:text-gray-200">Priority</span>
+    <div className="text-xs text-neutral-500 ml-2 border border-neutral-300 dark:border-neutral-600 dark:text-neutral-400 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
+      <div className="px-2 border-r border-neutral-200 dark:border-neutral-700 h-full flex items-center gap-1">
+        <span className="font-medium text-neutral-600 dark:text-neutral-200">Priority</span>
         <span>{filterState.priority.length > 1 ? 'is any of' : 'is'}</span>
       </div>
       <FilterMenu type="priority">
-        <Button className="px-2 flex items-center h-full hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 gap-1.5">
+        <Button className="px-2 flex items-center h-full hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 gap-1.5">
           {filterState.priority.length === 1 ? (
             <>
               <Icon
                 name={priorityOptions[filterState.priority[0] as Priority].icon as IconName}
                 className={`h-3.5 ${priorityOptions[filterState.priority[0] as Priority].style}`}
               />
-              <span className="font-medium text-gray-600 dark:text-gray-200">
+              <span className="font-medium text-neutral-600 dark:text-neutral-200">
                 {priorityOptions[filterState.priority[0] as Priority].name}
               </span>
             </>
@@ -38,9 +38,9 @@ export const PriorityFilter = () => {
       </FilterMenu>
       <Button
         onPress={() => setFilterState((state) => ({ ...state, priority: undefined }))}
-        className="h-full flex items-center px-1 group hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+        className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
-        <XMarkIcon className="size-4 group-hover:text-gray-700 dark:group-hover:text-gray-200" />
+        <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />
       </Button>
     </div>
   )
