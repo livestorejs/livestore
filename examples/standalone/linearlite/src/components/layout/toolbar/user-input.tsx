@@ -18,7 +18,7 @@ export const UserInput = ({ className }: { className?: string }) => {
         value={frontendState.user}
         onChange={(e) => setFrontendState({ ...frontendState, user: e.target.value })}
         onBlur={() => setFrontendState({ ...frontendState, user: frontendState.user || 'John Doe' })}
-        className="h-8 px-2 border-y-0 lg:border-y !border-x-0 border-gray-700 text-sm placeholder:text-gray-500 text-gray-300 grow lg:grow-0 lg:w-40 bg-transparent focus:outline-none focus:ring-0 focus:border-gray-700"
+        className="h-8 px-2 border-y-0 lg:border-y !border-x-0 border-gray-700 text-sm placeholder:text-gray-500 text-gray-300 grow lg:grow-0 lg:w-32 xl:w-40 bg-transparent focus:outline-none focus:ring-0 focus:border-gray-700"
       />
     </div>
   )

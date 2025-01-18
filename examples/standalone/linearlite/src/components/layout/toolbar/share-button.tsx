@@ -8,6 +8,7 @@ export const ShareButton = ({ className }: { className?: string }) => {
   const [copied, setCopied] = React.useState(false)
   const [showQR, setShowQR] = React.useState(false)
 
+  // TODO build sharable workspace feature
   const copyUrl = () => {
     navigator.clipboard.writeText(window.location.href)
     setCopied(true)
@@ -22,17 +23,22 @@ export const ShareButton = ({ className }: { className?: string }) => {
         <Button
           aria-label="Copy workspace URL"
           onPress={copyUrl}
-          className="h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none text-gray-400"
+          className="h-8 pl-2 pr-2.5 w-full lg:w-auto lg:border-y flex items-center gap-1 border-gray-700 text-sm hover:bg-gray-800 focus:outline-none text-gray-400 whitespace-nowrap"
         >
           {copied ? (
             <>
-              <CheckIcon className="size-3" />
-              <span>URL copied!</span>
+              <CheckIcon className="size-3 shrink-0" />
+              <span>
+                <span className="hidden xl:inline">URL copied!</span>
+                <span className="xl:hidden">Copied!</span>
+              </span>
             </>
           ) : (
             <>
-              <LinkIcon className="size-3" />
-              <span>Share workspace</span>
+              <LinkIcon className="size-3 shrink-0" />
+              <span>
+                Share<span className="hidden xl:inline"> workspace</span>
+              </span>
             </>
           )}
         </Button>
@@ -52,15 +58,11 @@ export const ShareButton = ({ className }: { className?: string }) => {
       >
         <ReactAriaModal className="relative bg-white rounded-xl shadow-lg border overflow-hidden border-gray-200 p-4">
           <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.href}`}
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURI(window.location.href)}`}
+            crossOrigin="anonymous"
             width="200"
             height="200"
           />
-          {window.location.href.startsWith('http://') && (
-            <div className="absolute inset-0 bg-white flex items-center justify-center p-8 text-sm text-center">
-              The QR Code API only works on secure connections (https).
-            </div>
-          )}
         </ReactAriaModal>
       </ModalOverlay>
     </>
