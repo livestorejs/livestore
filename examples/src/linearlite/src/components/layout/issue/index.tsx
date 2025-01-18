@@ -41,7 +41,7 @@ export const Issue = () => {
     <div className="flex flex-col h-full">
       <div className="h-12 shrink-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-8 px-2 lg:pl-6">
         <div className="flex items-center gap-1 lg:gap-2 text-sm">
-          <MenuButton />
+          <MenuButton className="lg:hidden" />
           <Button
             aria-label="Back to issues"
             className="font-medium hover:text-gray-800 dark:hover:text-gray-100 focus:outline-none ml-2 lg:ml-0"
