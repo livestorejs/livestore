@@ -5,6 +5,7 @@ import { ChevronUpIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Button, DialogTrigger, ModalOverlay, Modal as ReactAriaModal } from 'react-aria-components'
 import { ShareButton } from './share-button'
+import { SyncToggle } from './sync-toggle'
 
 export const MobileMenu = () => {
   return (
@@ -30,6 +31,7 @@ export const MobileMenu = () => {
               <SeedInput />
               <ResetButton />
               <ShareButton />
+              <SyncToggle />
             </div>
           </ReactAriaModal>
         </ModalOverlay>
