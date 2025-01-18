@@ -1,9 +1,4 @@
 import { MenuContext } from '@/app/contexts'
-import { BacklogIcon } from '@/components/icons/backlog'
-import { CanceledIcon } from '@/components/icons/canceled'
-import { DoneIcon } from '@/components/icons/done'
-import { InProgressIcon } from '@/components/icons/in-progress'
-import { TodoIcon } from '@/components/icons/todo'
 import { AboutMenu } from '@/components/layout/sidebar/about-menu'
 import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
 import { SearchButton } from '@/components/layout/sidebar/search-button'
@@ -24,41 +19,6 @@ export const Sidebar = ({ className }: { className?: string }) => {
       icon: Bars4Icon,
       href: '/',
       onClick: () => setFilterState((state) => ({ ...state, status: undefined })),
-    },
-    {
-      title: 'Backlog',
-      icon: BacklogIcon,
-      href: '/?status=backlog',
-      onClick: () => setFilterState((state) => ({ ...state, status: ['backlog'] })),
-      inset: true,
-    },
-    {
-      title: 'Todo',
-      icon: TodoIcon,
-      href: '/?status=todo',
-      onClick: () => setFilterState((state) => ({ ...state, status: ['todo'] })),
-      inset: true,
-    },
-    {
-      title: 'In Progress',
-      icon: InProgressIcon,
-      href: '/?status=in_progress',
-      onClick: () => setFilterState((state) => ({ ...state, status: ['in_progress'] })),
-      inset: true,
-    },
-    {
-      title: 'Done',
-      icon: DoneIcon,
-      href: '/?status=done',
-      onClick: () => setFilterState((state) => ({ ...state, status: ['done'] })),
-      inset: true,
-    },
-    {
-      title: 'Canceled',
-      icon: CanceledIcon,
-      href: '/?status=canceled',
-      onClick: () => setFilterState((state) => ({ ...state, status: ['canceled'] })),
-      inset: true,
     },
     {
       title: 'Board view',
@@ -84,7 +44,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
-          {navItems.map(({ title, icon: Icon, href, onClick, inset }, index) => (
+          {navItems.map(({ title, icon: Icon, href, onClick }, index) => (
             <Link
               key={index}
               to={href}
@@ -94,7 +54,7 @@ export const Sidebar = ({ className }: { className?: string }) => {
               }}
               className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-gray-800 dark:focus:bg-gray-800 hover:bg-gray-100 focus:bg-gray-100"
             >
-              <Icon className={`${inset ? 'size-3 ml-6 text-gray-400' : 'size-4'}`} />
+              <Icon className="size-4" />
               <span>{title}</span>
             </Link>
           ))}
