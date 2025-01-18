@@ -4,7 +4,7 @@ import { PriorityMenu } from '@/components/common/priority-menu'
 import { StatusMenu } from '@/components/common/status-menu'
 import { DescriptionInput } from '@/components/layout/issue/description-input'
 import { TitleInput } from '@/components/layout/issue/title-input'
-import { useFrontendState } from '@/lib/livestore/queries'
+import { highestIssueId$, useFrontendState } from '@/lib/livestore/queries'
 import { mutations, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
@@ -33,6 +33,7 @@ export const NewIssueModal = () => {
   const createIssue = () => {
     if (!title) return
     const date = Date.now()
+    const highestIssueId = store.query(highestIssueId$)[0]?.id ?? 0
     const lastIssueKanbanorder = store.query(
       tables.issue.query
         .select('kanbanorder', { pluck: true })
@@ -42,8 +43,7 @@ export const NewIssueModal = () => {
     const kanbanorder = generateKeyBetween(lastIssueKanbanorder, null)
     store.mutate(
       mutations.createIssueWithDescription({
-        // TODO getHighestIssueId
-        id: 1000,
+        id: highestIssueId + 1,
         title,
         priority,
         status,
