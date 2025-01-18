@@ -1,6 +1,5 @@
 import { MenuContext, NewIssueModalContext } from '@/app/contexts'
 import { schema } from '@/lib/livestore/schema'
-import { seed } from '@/lib/livestore/seed'
 import { renderBootStatus } from '@/lib/livestore/utils'
 import LiveStoreWorker from '@/lib/livestore/worker?worker'
 import { Status } from '@/types/status'
@@ -52,13 +51,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate])
 
   return (
-    <LiveStoreProvider
-      schema={schema}
-      adapter={adapter}
-      renderLoading={renderBootStatus}
-      boot={(store) => seed(store)}
-      batchUpdates={batchUpdates}
-    >
+    <LiveStoreProvider schema={schema} adapter={adapter} renderLoading={renderBootStatus} batchUpdates={batchUpdates}>
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
         <NewIssueModalContext.Provider value={{ showNewIssueModal, setShowNewIssueModal }}>
           {children}

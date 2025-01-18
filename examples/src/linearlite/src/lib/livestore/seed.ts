@@ -7,14 +7,8 @@ import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { highestIssueId$, issueCount$ } from './queries'
 
-export const seed = (store: Store, count?: number) => {
+export const seed = (store: Store, count: number) => {
   try {
-    if (!count) {
-      const urlParams = new URLSearchParams(window.location.search)
-      const seedParam = urlParams.get('seed')
-      if (seedParam == null) return
-      count = parseInt(seedParam)
-    }
     const existingCount = store.query(issueCount$)
     const [highestId] = store.query(highestIssueId$)
     if (existingCount >= count) return
