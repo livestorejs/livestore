@@ -2,7 +2,7 @@ import { Effect, Queue } from '@livestore/utils/effect'
 
 import { MutationEventEncodedWithDeferred } from '../sync/syncstate.js'
 import { getMutationEventsSince } from './mutationlog.js'
-import { LeaderThreadCtx, type PullQueueItem, type PullQueueSet } from './types.js'
+import { type PullQueueItem, type PullQueueSet } from './types.js'
 
 export const makePullQueueSet = Effect.gen(function* () {
   const set = new Set<Queue.Queue<PullQueueItem>>()
@@ -25,7 +25,7 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       const mutationEvents = yield* getMutationEventsSince(since)
 
-      // const { syncQueue } = yield* LeaderThreadCtx
+      // const { syncProcessor } = yield* LeaderThreadCtx
 
       // TODO remove backendHead
       yield* queue.offer({

@@ -1,7 +1,7 @@
 import type { Effect, HttpClient, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type { EventId } from '../adapter-types.js'
+import { EventId } from '../adapter-types.js'
 import type { MutationEvent } from '../schema/mutations.js'
 
 export interface SyncBackendOptionsBase {
@@ -56,6 +56,10 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
     Schema.TaggedStruct('ServerAhead', {
       minimumExpectedId: Schema.Number,
       providedId: Schema.Number,
+    }),
+    Schema.TaggedStruct('LeaderAhead', {
+      minimumExpectedId: EventId,
+      providedId: EventId,
     }),
   ),
 }) {}

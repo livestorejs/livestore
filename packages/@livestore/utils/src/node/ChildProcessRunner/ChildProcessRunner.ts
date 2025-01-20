@@ -44,7 +44,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
 
                 // TODO improve with Tim Smart
                 // eslint-disable-next-line unicorn/no-process-exit
-                setTimeout(() => process.exit(0), 300)
+                setTimeout(() => process.exit(0), 2000)
               }
             })
             port.on('messageerror', (cause) => {

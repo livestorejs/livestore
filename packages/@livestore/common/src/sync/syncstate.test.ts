@@ -31,6 +31,7 @@ class TestEvent extends MutationEventEncodedWithDeferred {
   // toString = () => this.toJSON()
 }
 
+const e_r_1 = new TestEvent({ global: -1, local: 1 }, ROOT_ID, 'a', true)
 const e_0_0 = new TestEvent({ global: 0, local: 0 }, ROOT_ID, 'a', false)
 const e_0_1 = new TestEvent({ global: 0, local: 1 }, e_0_0.id, 'a', true)
 const e_0_2 = new TestEvent({ global: 0, local: 2 }, e_0_1.id, 'a', true)
@@ -45,12 +46,21 @@ const isLocalEvent = (event: MutationEventEncodedWithDeferred) => (event as Test
 
 describe('syncstate', () => {
   describe('updateSyncState', () => {
-    const run = ({ syncState, update }: { syncState: SyncState.SyncState; update: typeof SyncState.Payload.Type }) =>
+    const run = ({
+      syncState,
+      update,
+      ignoreLocalEvents = false,
+    }: {
+      syncState: SyncState.SyncState
+      update: typeof SyncState.Payload.Type
+      ignoreLocalEvents?: boolean
+    }) =>
       SyncState.updateSyncState({
         syncState,
         payload: update,
         isLocalEvent,
         isEqualEvent,
+        ignoreLocalEvents,
       })
 
     describe('upstream-rebase', () => {
@@ -90,7 +100,17 @@ describe('syncstate', () => {
       })
     })
 
-    describe('advance', () => {
+    describe('upstream-advance: advance', () => {
+      it('should throw error if newEvents are not sorted in ascending order by eventId (local)', () => {
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        expect(() => run({ syncState, update: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_0] } })).toThrow()
+      })
+
+      it('should throw error if newEvents are not sorted in ascending order by eventId (global)', () => {
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        expect(() => run({ syncState, update: { _tag: 'upstream-advance', newEvents: [e_1_0, e_0_0] } })).toThrow()
+      })
+
       it('should acknowledge pending event when receiving matching event', () => {
         const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
         const result = run({ syncState, update: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
@@ -129,9 +149,45 @@ describe('syncstate', () => {
         expect(result.syncState.localHead).toMatchObject(e_1_1.id)
         expect(result.newEvents).toEqual([e_0_2, e_0_3, e_1_0, e_1_1])
       })
+
+      it('should ignore local events (incoming is subset of pending)', () => {
+        const syncState = { pending: [e_r_1, e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const result = run({
+          syncState,
+          update: { _tag: 'upstream-advance', newEvents: [e_0_0] },
+          ignoreLocalEvents: true,
+        })
+        expectAdvance(result)
+        expectEventArraysEqual(result.syncState.pending, [])
+        expectEventArraysEqual(result.syncState.rollbackTail, [e_r_1, e_0_0])
+        expect(result.syncState.upstreamHead).toBe(e_0_0.id)
+        expect(result.syncState.localHead).toMatchObject(e_0_0.id)
+        expect(result.newEvents).toEqual([])
+      })
+
+      it('should ignore local events (incoming goes beyond pending)', () => {
+        const syncState = {
+          pending: [e_r_1, e_0_0, e_0_1],
+          rollbackTail: [],
+          upstreamHead: ROOT_ID,
+          localHead: e_0_1.id,
+        }
+        const result = run({
+          syncState,
+          update: { _tag: 'upstream-advance', newEvents: [e_0_0, e_1_0] },
+          ignoreLocalEvents: true,
+        })
+
+        expectAdvance(result)
+        expectEventArraysEqual(result.syncState.pending, [])
+        expectEventArraysEqual(result.syncState.rollbackTail, [e_r_1, e_0_0, e_0_1, e_1_0])
+        expect(result.syncState.upstreamHead).toBe(e_1_0.id)
+        expect(result.syncState.localHead).toMatchObject(e_1_0.id)
+        expect(result.newEvents).toEqual([e_1_0])
+      })
     })
 
-    describe('rebase', () => {
+    describe('upstream-advance: rebase', () => {
       it('should rebase single local event to end', () => {
         const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
         const result = run({ syncState, update: { _tag: 'upstream-advance', newEvents: [e_0_1] } })

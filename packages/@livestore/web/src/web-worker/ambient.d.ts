@@ -34,4 +34,4 @@ interface ImportMeta {
 }
 
 // eslint-disable-next-line no-var
-declare var __opfsUtils: typeof OpfsUtils
+declare var __debugLiveStoreUtils: any

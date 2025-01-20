@@ -14,7 +14,7 @@ export interface PreparedStatement {
 }
 
 export type SynchronousDatabaseSession = {
-  changeset: () => Uint8Array
+  changeset: () => Uint8Array | undefined
   finish: () => void
 }
 
@@ -97,7 +97,7 @@ export const BootStatus = Schema.Union(
   Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('syncing'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('done') }),
-)
+).annotations({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
 
@@ -124,6 +124,7 @@ export type Coordinator = {
   export: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
 }
 
 /**
@@ -187,7 +188,7 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
 export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
   'LiveStore.IntentionalShutdownCause',
   {
-    reason: Schema.Literal('devtools-reset', 'devtools-import'),
+    reason: Schema.Literal('devtools-reset', 'devtools-import', 'manual'),
   },
 ) {}
 

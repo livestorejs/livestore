@@ -211,6 +211,7 @@ export const makeAdapter =
         export: Effect.sync(() => dbRef.current.syncDb.export()),
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+        shutdown: () => Effect.dieMessage('TODO implement shutdown'),
       } satisfies Coordinator
 
       if (devtoolsEnabled) {

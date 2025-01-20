@@ -22,9 +22,10 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
-import type { FileSystem, HttpClient, Scope } from '@livestore/utils/effect'
+import type { FileSystem, HttpClient } from '@livestore/utils/effect'
 import {
   Effect,
+  Exit,
   FetchHttpClient,
   Fiber,
   FiberSet,
@@ -32,6 +33,7 @@ import {
   Logger,
   LogLevel,
   Schema,
+  Scope,
   Stream,
   WorkerRunner,
 } from '@livestore/utils/effect'
@@ -47,7 +49,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   InitialMessage: (args) => makeLeaderThread(args),
   ExecuteBulk: ({ items }) =>
     Effect.andThen(LeaderThreadCtx, (_) =>
-      _.syncQueue.push(
+      _.syncProcessor.push(
         items
           // TODO handle txn
           .filter((_) => _._tag === 'mutate')
@@ -84,7 +86,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
       )[0]
 
       return result ? { global: result.idGlobal, local: result.idLocal } : ROOT_ID
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetCurrentMutationEventId')),
+    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetCurrentMutationEventId')),
   NetworkStatusStream: () =>
     Effect.gen(function* (_) {
       const ctx = yield* LeaderThreadCtx
@@ -107,19 +109,25 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   //       result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
   //     return cachedSnapshot ?? workerCtx.db.export()
-  //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
+  //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetRecreateSnapshot')),
   Shutdown: () =>
     Effect.gen(function* () {
-      const { db, dbLog, devtools } = yield* LeaderThreadCtx
-      yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
+      const { db, dbLog, devtools, scope } = yield* LeaderThreadCtx
+      yield* Effect.logDebug('[@livestore/node:worker] Shutdown')
 
       if (devtools.enabled) {
         yield* FiberSet.clear(devtools.connections)
       }
 
+      yield* Scope.close(scope, Exit.void)
+
       db.close()
       dbLog.close()
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
+
+      // Buy some time for Otel to flush
+      // TODO find a cleaner way to do this
+      yield* Effect.sleep(1000)
+    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:Shutdown')),
 }).pipe(
   Layer.provide(NodeWorkerRunner.layer),
   Layer.launch,
@@ -194,13 +202,13 @@ const makeLeaderThread = ({
       initialSyncOptions,
     }).pipe(Layer.memoize)
 
-    if (devtools.enabled === true) {
-      yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(
-        Effect.provide(leaderThreadLayer),
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
-    }
+    // if (devtools.enabled === true) {
+    //   yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(
+    //     Effect.provide(leaderThreadLayer),
+    //     Effect.tapCauseLogPretty,
+    //     Effect.forkScoped,
+    //   )
+    // }
 
     return leaderThreadLayer
   }).pipe(

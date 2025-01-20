@@ -36,7 +36,9 @@ import { bootDevtools } from './coordinator-devtools.js'
 const sqlite3Promise = loadSqlite3Wasm()
 
 if (isDevEnv()) {
-  globalThis.__opfsUtils = OpfsUtils
+  globalThis.__debugLiveStoreUtils = {
+    opfs: OpfsUtils,
+  }
 }
 
 type GlobalSyncBackend = LiveStoreGlobal extends { syncBackend: infer TSyncBackend } ? TSyncBackend : never
@@ -452,6 +454,8 @@ export const makeAdapter =
         ),
 
         networkStatus,
+
+        shutdown,
       } satisfies Coordinator
 
       const waitForDevtoolsWebBridgePort = ({ webBridgeId }: { webBridgeId: string }) =>

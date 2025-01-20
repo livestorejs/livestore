@@ -37,12 +37,12 @@ export const makeWebSocket = ({
           socket.onerror = (event) => reject(event)
         })
       },
-      catch: (error: any) => {
-        if (error.currentTarget != null && error.currentTarget instanceof globalThis.WebSocket) {
-          error.currentTarget.close(3000, `closing websocket connection due to error: ${error.toString()}`)
+      catch: (errorEvent: any) => {
+        if (errorEvent.currentTarget != null && errorEvent.currentTarget instanceof globalThis.WebSocket) {
+          errorEvent.currentTarget.close(3000, `closing websocket connection due to error: ${errorEvent.toString()}`)
         }
 
-        return new WebSocketError({ cause: error })
+        return new WebSocketError({ cause: errorEvent })
       },
     }).pipe(
       /**

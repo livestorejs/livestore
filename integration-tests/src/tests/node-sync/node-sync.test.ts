@@ -39,9 +39,9 @@ Vitest.describe('node-sync', { timeout: 10_000 }, () => {
         Effect.flatten,
       )
 
-      expect(result.length).toEqual(todoCount)
+      console.log('result', result)
 
-      // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
+      expect(result.length).toEqual(todoCount)
       yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
       yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())
     }).pipe(withCtx(test)),

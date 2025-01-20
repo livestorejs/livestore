@@ -75,7 +75,7 @@ Vitest.describe('sync', () => {
   // push first, then pull + latency in between (need to adjust the backend id accordingly)
   // pull first, then push + latency in between
   // In this test we're simulating a client leader that is behind the backend
-  Vitest.scopedLive.only('invalid push', (test) =>
+  Vitest.scopedLive('invalid push', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -95,17 +95,26 @@ Vitest.describe('sync', () => {
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
-      yield* SubscriptionRef.set(testContext.syncIsConnectedRef, true)
-
       const result = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
-
       expect(result).toEqual([{ id: '2', text: 't2', completed: 0 }])
 
-      yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
+      yield* SubscriptionRef.set(testContext.syncIsConnectedRef, true)
 
-      // expect(testContext.pushedMutationEvents.length).toEqual(1)
+      yield* Effect.sleep(30).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
+
+      expect(testContext.pushedMutationEvents.length).toEqual(1)
+
+      const rebasedResult = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
+      expect(rebasedResult).toEqual([
+        { id: '1', text: 't1', completed: 0 },
+        { id: '2', text: 't2', completed: 0 },
+      ])
     }).pipe(withCtx(test)),
   )
+
+  // TODO tests for
+  // - aborting local pushes
+  // - processHead works properly
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -204,7 +213,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       Effect.gen(function* () {
         const deferreds = yield* Effect.forEach(partialEvents, () => Deferred.make<void>())
 
-        yield* leaderThreadCtx.syncQueue.push(
+        yield* leaderThreadCtx.syncProcessor.push(
           partialEvents.map((partialEvent, index) => toEncodedMutationEvent(partialEvent, deferreds[index]!)),
         )
 

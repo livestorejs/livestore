@@ -5,6 +5,10 @@
 ## Running locally
 
 ```bash
-pnpm
+pnpm install
 pnpm dev
 ```
+
+## Dependencies
+
+- Needed for PWA (offline support): `workbox-window`, `vite-plugin-pwa`

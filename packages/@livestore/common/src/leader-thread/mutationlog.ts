@@ -26,7 +26,7 @@ export const getMutationEventsSince = (since: EventId) =>
       .filter((_) => compareEventIds(_.id, since) > 0)
   })
 
-export const getInitialCurrentMutationEventIdFromDb = (dbLog: SynchronousDatabase) => {
+export const getLocalHeadFromDb = (dbLog: SynchronousDatabase) => {
   const res = dbLog.select<{ idGlobal: number; idLocal: number }>(
     sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
   )[0]
@@ -34,5 +34,5 @@ export const getInitialCurrentMutationEventIdFromDb = (dbLog: SynchronousDatabas
   return res ? { global: res.idGlobal, local: res.idLocal } : ROOT_ID
 }
 
-export const getInitialBackendHeadFromDb = (dbLog: SynchronousDatabase) =>
+export const getBackendHeadFromDb = (dbLog: SynchronousDatabase) =>
   dbLog.select<{ head: number }>(sql`select head from ${SYNC_STATUS_TABLE}`)[0]?.head ?? ROOT_ID.global

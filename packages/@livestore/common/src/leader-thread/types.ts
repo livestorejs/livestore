@@ -103,11 +103,16 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     mutationEventSchema: MutationEventSchema<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
-    syncQueue: SyncQueue
-    initialSyncOptions: InitialSyncOptions
+    syncProcessor: SyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
+    scope: Scope.CloseableScope
   }
 >() {}
+
+export type InitialBlockingSyncContext = {
+  blockingDeferred: Deferred.Deferred<void> | undefined
+  update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
+}
 
 export type PullQueueItem = {
   // mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>
@@ -117,7 +122,7 @@ export type PullQueueItem = {
   remaining: number
 }
 
-export interface SyncQueue {
+export interface SyncProcessor {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
     batch: ReadonlyArray<MutationEventEncodedWithDeferred>,
@@ -126,16 +131,12 @@ export interface SyncQueue {
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
   boot: (args: {
     dbReady: Deferred.Deferred<void>
-  }) => Effect.Effect<
-    Deferred.Deferred<void> | undefined,
-    UnexpectedError,
-    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
-  >
+  }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
   state: SubscriptionRef.SubscriptionRef<{ online: boolean }>
   // backendHeadRef: { current: number }
 }
 
-// export interface SyncQueueItem {
+// export interface SyncProcessorItem {
 //   mutationEventEncoded: MutationEvent.AnyEncoded
 //   /** Used in scenarios where the pusher wants to know when the mutation has been applied to the read model */
 //   deferred?: Deferred.Deferred<void>

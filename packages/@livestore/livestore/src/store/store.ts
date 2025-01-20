@@ -1,6 +1,6 @@
 import type {
   ClientSession,
-  ClientSessionSyncQueue,
+  ClientSessionSyncProcessor,
   ParamsObject,
   PreparedBindValues,
   QueryBuilder,
@@ -9,11 +9,12 @@ import {
   getExecArgsFromMutation,
   getResultSchema,
   isQueryBuilder,
-  makeClientSessionSyncQueue,
+  makeClientSessionSyncProcessor,
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   ROOT_ID,
+  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
@@ -26,6 +27,7 @@ import {
 import { assertNever, isDevEnv, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
+  Cause,
   Data,
   Effect,
   FiberSet,
@@ -79,7 +81,7 @@ export class Store<
   // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
   private unsyncedMutationEvents
-  private syncQueue: ClientSessionSyncQueue
+  private syncProcessor: ClientSessionSyncProcessor
 
   // #region constructor
   private constructor({
@@ -108,7 +110,7 @@ export class Store<
     this.fiberSet = fiberSet
     this.runtime = runtime
 
-    this.syncQueue = makeClientSessionSyncQueue({
+    this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
       initialLeaderHead: clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync),
       initialBackendHead: ROOT_ID.global,
@@ -142,6 +144,9 @@ export class Store<
         }
 
         return { writeTables: writeTablesForEvent, sessionChangeset }
+      },
+      rollback: (changeset) => {
+        this.syncDbWrapper.rollback(changeset)
       },
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, QueryContext, RefreshReason>, null][]
@@ -228,7 +233,7 @@ export class Store<
       //   Effect.forkScoped,
       // )
 
-      yield* this.syncQueue.boot
+      yield* this.syncProcessor.boot
 
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
@@ -416,7 +421,7 @@ export class Store<
                 const otelContext = otel.trace.setSpan(otel.context.active(), span)
                 // 5
 
-                const applyMutations = () => this.syncQueue.push(mutationsEvents, { otelContext })
+                const applyMutations = () => this.syncProcessor.push(mutationsEvents, { otelContext })
 
                 if (mutationsEvents.length > 1) {
                   // TODO: what to do about coordinator transaction here?
@@ -577,6 +582,11 @@ export class Store<
 
   __devCurrentMutationEventId = () =>
     this.clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync)
+
+  __devShutdown = (cause?: Cause.Cause<UnexpectedError>) =>
+    this.clientSession.coordinator
+      .shutdown(cause ?? Cause.fail(UnexpectedError.make({ cause: 'Manual shutdown' })))
+      .pipe(Effect.runSync)
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
   toJSON = () => ({

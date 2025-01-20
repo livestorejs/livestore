@@ -254,6 +254,7 @@ export const makeNodeAdapter = ({
         lockStatus,
         sessionId,
         getMutationLogData: Effect.dieMessage('Not implemented'),
+        shutdown,
       } satisfies Coordinator
 
       if (devtoolsEnabled) {

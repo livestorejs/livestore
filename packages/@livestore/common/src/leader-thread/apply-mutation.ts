@@ -58,7 +58,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         session.finish()
         // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
         // TODO possibly write a null value instead of omitting the row
-        if (changeset.length > 0) {
+        if (changeset !== undefined && changeset.length > 0) {
           // TODO use prepared statements
           yield* execSql(
             db,
@@ -69,6 +69,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
                 idGlobal: mutationEventEncoded.id.global,
                 idLocal: mutationEventEncoded.id.local,
                 changeset,
+                debug: execArgsArr,
               },
             }),
           )

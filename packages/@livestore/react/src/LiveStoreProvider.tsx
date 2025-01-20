@@ -37,7 +37,7 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
     parentSpan: otel.Span,
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
-  otelOptions?: OtelOptions
+  otelOptions?: Partial<OtelOptions>
   renderLoading: (status: BootStatus) => ReactElement
   renderError?: (error: UnexpectedError | unknown) => ReactElement
   renderShutdown?: (cause: IntentionalShutdownCause | StoreAbort) => ReactElement

@@ -102,6 +102,8 @@ export const defineFacts = <
 ): TRecord => record
 
 export type DefineMutationOptions<TTo> = {
+  // TODO actually implement this
+  onError?: (error: any) => void
   historyId?: string
   /** Warning: This feature is not fully implemented yet */
   facts?: (

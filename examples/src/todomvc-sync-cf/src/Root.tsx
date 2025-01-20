@@ -10,6 +10,7 @@ import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
+import { makeTracer } from './otel.js'
 import { getAppId } from './util/app-id.js'
 
 const AppBody: React.FC = () => (
@@ -26,14 +27,16 @@ const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
-  // syncBackend: import.meta.env.VITE_LIVESTORE_SYNC_URL
-  //   ? {
-  //       type: 'cf',
-  //       url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
-  //       roomId: `todomvc_${appId}`,
-  //     }
-  //   : undefined,
+  syncBackend: import.meta.env.VITE_LIVESTORE_SYNC_URL
+    ? {
+        type: 'cf',
+        url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
+        roomId: `todomvc_${appId}`,
+      }
+    : undefined,
 })
+
+const otelTracer = makeTracer('todomvc-sync-cf-main')
 
 export const App: React.FC = () => (
   <LiveStoreProvider
@@ -42,6 +45,8 @@ export const App: React.FC = () => (
     adapter={adapter}
     batchUpdates={batchUpdates}
     storeId={appId}
+    otelOptions={{ tracer: otelTracer }}
+    disableDevtools
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

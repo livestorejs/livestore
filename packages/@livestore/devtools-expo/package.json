@@ -9,7 +9,7 @@
   "dependencies": {
     "@livestore/devtools-react": "workspace:*",
     "@livestore/node": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.3-dev.4",
+    "@livestore/wa-sqlite": "1.0.3-dev.7",
     "@livestore/web": "workspace:*",
     "vite": "^5.4.10",
     "ws": "^8.18.0"

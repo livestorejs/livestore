@@ -185,7 +185,7 @@ export const makeSynchronousDatabase = <
       return {
         changeset: () => {
           const res = sqlite3.session_changeset(sessionPointer)
-          return res.changeset
+          return res.changeset ?? undefined
         },
         finish: () => {
           sqlite3.session_delete(sessionPointer)

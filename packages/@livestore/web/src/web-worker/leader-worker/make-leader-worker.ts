@@ -11,21 +11,27 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv } from '@livestore/utils'
-import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
+import type { HttpClient, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
   Deferred,
   Effect,
+  Exit,
   FetchHttpClient,
   Fiber,
   FiberSet,
+  identity,
   Layer,
   Logger,
   LogLevel,
+  OtelTracer,
   Scheduler,
+  Scope,
   Stream,
+  TaskTracing,
   WorkerRunner,
 } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import { getAppDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.js'
@@ -37,14 +43,30 @@ export type WorkerOptions = {
   makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
+  otelOptions?: {
+    tracer: otel.Tracer
+  }
 }
 
 if (isDevEnv()) {
-  globalThis.__opfsUtils = OpfsUtils
+  globalThis.__debugLiveStoreUtils = {
+    opfs: OpfsUtils,
+    blobUrl: (buffer: Uint8Array) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+  }
 }
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerRunnerOuter(options).pipe(
+  makeWorkerEffect(options).pipe(Effect.runFork)
+}
+
+export const makeWorkerEffect = (options: WorkerOptions) => {
+  const TracingLive = options.otelOptions?.tracer
+    ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+        Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
+      )
+    : undefined
+
+  return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     Layer.launch,
     Effect.scoped,
@@ -52,8 +74,9 @@ export const makeWorker = (options: WorkerOptions) => {
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(Logger.pretty),
     Effect.provide(FetchHttpClient.layer),
+    TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)),
+    TracingLive ? Effect.provide(TracingLive) : identity,
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.runFork,
   )
 }
 
@@ -152,7 +175,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       ),
     ExecuteBulk: ({ items }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncQueue.push(
+        _.syncProcessor.push(
           items
             // TODO handle txn
             .filter((_) => _._tag === 'mutate')
@@ -189,15 +212,21 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       }).pipe(Stream.unwrap),
     Shutdown: () =>
       Effect.gen(function* () {
-        const { db, dbLog, devtools } = yield* LeaderThreadCtx
+        const { db, dbLog, devtools, scope } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
 
         if (devtools.enabled) {
           yield* FiberSet.clear(devtools.connections)
         }
 
+        yield* Scope.close(scope, Exit.void)
+
         db.close()
         dbLog.close()
+
+        // Buy some time for Otel to flush
+        // TODO find a cleaner way to do this
+        yield* Effect.sleep(1000)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
     // NOTE We're using a stream here to express a scoped effect over the worker boundary
     // so the code below can cause an interrupt on the worker client side

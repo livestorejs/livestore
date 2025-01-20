@@ -27,6 +27,6 @@ export const downloadURL = (data: string, fileName: string) => {
 
 export const exposeDebugUtils = () => {
   if (isDevEnv()) {
-    globalThis.__debugDownloadBlob = downloadBlob
+    globalThis.__debugLiveStoreUtils = { downloadBlob }
   }
 }

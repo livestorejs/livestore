@@ -11,6 +11,7 @@ import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
+import { makeTracer } from './otel.js'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -35,12 +36,15 @@ const adapter = makeAdapter({
   resetPersistence,
 })
 
+const otelTracer = makeTracer('todomvc-main')
+
 export const App: React.FC = () => (
   <LiveStoreProvider
     schema={schema}
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
     batchUpdates={batchUpdates}
+    otelOptions={{ tracer: otelTracer }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

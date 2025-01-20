@@ -76,7 +76,7 @@ export class SynchronousDatabaseWrapper {
     return result
   }
 
-  withChangeset<TRes>(callback: () => TRes): { result: TRes; changeset: Uint8Array } {
+  withChangeset<TRes>(callback: () => TRes): { result: TRes; changeset: Uint8Array | undefined } {
     const session = this.db.session()
     const result = callback()
     const changeset = session.changeset()
@@ -84,6 +84,11 @@ export class SynchronousDatabaseWrapper {
     session.finish()
 
     return { result, changeset }
+  }
+
+  rollback(changeset: Uint8Array) {
+    const invertedChangeset = this.db.makeChangeset(changeset).invert()
+    invertedChangeset.apply()
   }
 
   getTablesUsed(query: string) {

@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type { Deferred } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import { EventId } from '../adapter-types.js'
+import { compareEventIds, EventId } from '../adapter-types.js'
 
 /** Equivalent to mutationEventSchemaEncodedAny but with a meta field and some convenience methods */
 export class MutationEventEncodedWithDeferred extends Schema.Class<MutationEventEncodedWithDeferred>(
@@ -12,8 +12,9 @@ export class MutationEventEncodedWithDeferred extends Schema.Class<MutationEvent
   args: Schema.Any,
   id: EventId,
   parentId: EventId,
-  meta: Schema.optional(
+  meta: Schema.optionalWith(
     Schema.Any as Schema.Schema<{ deferred?: Deferred.Deferred<void>; sessionChangeset?: Uint8Array }>,
+    { default: () => ({}) },
   ),
 }) {
   toJSON = (): any => {
@@ -157,11 +158,13 @@ export const updateSyncState = ({
   payload,
   isLocalEvent,
   isEqualEvent,
+  ignoreLocalEvents = false,
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
   isLocalEvent: (event: MutationEventEncodedWithDeferred) => boolean
   isEqualEvent: (a: MutationEventEncodedWithDeferred, b: MutationEventEncodedWithDeferred) => boolean
+  ignoreLocalEvents?: boolean
 }): UpdateResult => {
   switch (payload._tag) {
     case 'upstream-rebase': {
@@ -203,20 +206,48 @@ export const updateSyncState = ({
         return { _tag: 'advance', syncState, newEvents: [] }
       }
 
-      const needsRebase = payload.newEvents.some((incomingEvent, i) => {
-        const pendingEvent = syncState.pending[i]
-        return pendingEvent && !isEqualEvent(incomingEvent, pendingEvent)
-      })
+      // Validate that newEvents are sorted in ascending order by eventId
+      for (let i = 1; i < payload.newEvents.length; i++) {
+        if (eventIdIsGreaterThan(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
+          throw new Error('Events must be sorted in ascending order by eventId')
+        }
+      }
 
       const newUpstreamHead = payload.newEvents.at(-1)!.id
 
-      if (needsRebase) {
-        const divergentPendingIndex = findDivergencePoint({
-          existingEvents: syncState.pending,
-          incomingEvents: payload.newEvents,
-          isEqualEvent,
+      const divergentPendingIndex = findDivergencePoint({
+        existingEvents: syncState.pending,
+        incomingEvents: payload.newEvents,
+        isEqualEvent,
+        isLocalEvent,
+        ignoreLocalEvents,
+      })
+
+      if (divergentPendingIndex === -1) {
+        const pendingEventIds = new Set(syncState.pending.map((e) => `${e.id.global},${e.id.local}`))
+        const newEvents = payload.newEvents.filter((e) => !pendingEventIds.has(`${e.id.global},${e.id.local}`))
+
+        const seenEventIds = new Set<string>()
+        const pendingAndNewEvents = [...syncState.pending, ...payload.newEvents].filter((event) => {
+          const eventIdStr = `${event.id.global},${event.id.local}`
+          if (seenEventIds.has(eventIdStr)) {
+            return false
+          }
+          seenEventIds.add(eventIdStr)
+          return true
         })
 
+        return {
+          _tag: 'advance',
+          syncState: {
+            pending: [],
+            rollbackTail: [...syncState.rollbackTail, ...pendingAndNewEvents],
+            upstreamHead: newUpstreamHead,
+            localHead: newUpstreamHead,
+          },
+          newEvents,
+        }
+      } else {
         const divergentPending = syncState.pending.slice(divergentPendingIndex)
         const rebasedPending = rebaseEvents({
           events: divergentPending,
@@ -228,6 +259,8 @@ export const updateSyncState = ({
           existingEvents: payload.newEvents,
           incomingEvents: syncState.pending,
           isEqualEvent,
+          isLocalEvent,
+          ignoreLocalEvents,
         })
 
         return {
@@ -240,19 +273,6 @@ export const updateSyncState = ({
           },
           newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
           eventsToRollback: [...syncState.rollbackTail, ...divergentPending],
-        }
-      } else {
-        const newEvents = payload.newEvents.slice(syncState.pending.length)
-
-        return {
-          _tag: 'advance',
-          syncState: {
-            pending: [],
-            rollbackTail: [...syncState.rollbackTail, ...payload.newEvents],
-            upstreamHead: newUpstreamHead,
-            localHead: newUpstreamHead,
-          },
-          newEvents,
         }
       }
     }
@@ -314,14 +334,35 @@ const findDivergencePoint = ({
   existingEvents,
   incomingEvents,
   isEqualEvent,
+  isLocalEvent,
+  ignoreLocalEvents,
 }: {
   existingEvents: ReadonlyArray<MutationEventEncodedWithDeferred>
   incomingEvents: ReadonlyArray<MutationEventEncodedWithDeferred>
   isEqualEvent: (a: MutationEventEncodedWithDeferred, b: MutationEventEncodedWithDeferred) => boolean
+  isLocalEvent: (event: MutationEventEncodedWithDeferred) => boolean
+  ignoreLocalEvents: boolean
 }): number => {
-  return existingEvents.findIndex((event, index) => {
+  if (ignoreLocalEvents) {
+    const filteredExistingEvents = existingEvents.filter((event) => !isLocalEvent(event))
+    const divergencePointWithoutLocalEvents = findDivergencePoint({
+      existingEvents: filteredExistingEvents,
+      incomingEvents,
+      isEqualEvent,
+      isLocalEvent,
+      ignoreLocalEvents: false,
+    })
+
+    if (divergencePointWithoutLocalEvents === -1) return -1
+
+    const divergencePointEvent = existingEvents[divergencePointWithoutLocalEvents]!
+    // Now find the divergence point in the original array
+    return existingEvents.findIndex((event) => isEqualEvent(event, divergencePointEvent))
+  }
+
+  return existingEvents.findIndex((existingEvent, index) => {
     const incomingEvent = incomingEvents[index]
-    return !incomingEvent || !isEqualEvent(event, incomingEvent)
+    return !incomingEvent || !isEqualEvent(existingEvent, incomingEvent)
   })
 }
 

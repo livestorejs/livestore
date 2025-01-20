@@ -74,6 +74,7 @@ export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as Schema from './Schema/index.js'
 export * as OtelTracer from '@effect/opentelemetry/Tracer'
 // export * as OtelResource from '@effect/opentelemetry/Resource'
+export * as TaskTracing from './TaskTracing.js'
 
 export {
   Transferable,

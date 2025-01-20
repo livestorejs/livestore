@@ -3,10 +3,12 @@ import './thread-polyfill.js'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
+import { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { Store } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeNodeAdapter } from '@livestore/node'
 import {
+  Cause,
   Context,
   Effect,
   FiberSet,
@@ -14,6 +16,7 @@ import {
   Logger,
   LogLevel,
   OtelTracer,
+  Scope,
   Stream,
   WorkerRunner,
 } from '@livestore/utils/effect'
@@ -29,7 +32,6 @@ class WorkerContext extends Context.Tag('WorkerContext')<
   WorkerContext,
   {
     store: Store<any, any>
-    fiberSet: FiberSet.FiberSet
   }
 >() {}
 
@@ -57,19 +59,21 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
 
       const store = yield* createStore({ adapter, fiberSet, schema, storeId, disableDevtools: true })
 
-      return Layer.succeed(WorkerContext, { store, fiberSet })
+      return Layer.succeed(WorkerContext, { store })
     }).pipe(
       Effect.orDie,
       Effect.annotateLogs({ clientId }),
       Effect.annotateSpans({ clientId }),
-      Effect.withSpan('@livestore/node-sync:test:initialize-worker'),
+      Effect.withSpan(`@livestore/node-sync:test:init-${clientId}`),
       Layer.unwrapScoped,
     ),
   // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
   TmpShutdown: () =>
     Effect.gen(function* () {
-      const { fiberSet } = yield* WorkerContext
-      yield* FiberSet.clear(fiberSet)
+      const { store } = yield* WorkerContext
+      yield* store.clientSession.coordinator.shutdown(Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
+
+      yield* Effect.sleep(500)
     }),
   CreateTodos: ({ count }) =>
     Effect.gen(function* () {
@@ -110,7 +114,7 @@ runner.pipe(
   // Layer.provide(PlatformNode.NodeWorkerRunner.layer),
   Layer.launch,
   // TODO this parent span is currently missing in the trace
-  Effect.withSpan('@livestore/node-sync:run-worker'),
+  Effect.withSpan(`@livestore/node-sync:run-worker-${clientId}`),
   Effect.provide(OtelLiveHttp({ serviceName, skipLogUrl: true })),
   Effect.scoped,
   Effect.tapCauseLogPretty,

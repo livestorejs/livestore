@@ -51,6 +51,7 @@ export const sessionChangesetMetaTable = table(
     // idGlobal: SqliteDsl.integer({ primaryKey: true }),
     // idLocal: SqliteDsl.integer({ primaryKey: true }),
     changeset: SqliteDsl.blob({}),
+    debug: SqliteDsl.json({ nullable: true }),
   },
   { disableAutomaticIdColumn: true },
 )

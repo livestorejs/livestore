@@ -1,5 +1,5 @@
-import type { HttpClient, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
+import type { HttpClient } from '@livestore/utils/effect'
+import { Deferred, Effect, FiberSet, Layer, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
 import { ROOT_ID, UnexpectedError } from '../adapter-types.js'
@@ -9,11 +9,11 @@ import { migrateTable } from '../schema-management/migrations.js'
 import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync.js'
 import { sql } from '../util.js'
 import { execSql } from './connection.js'
-import { makeSyncQueue } from './leader-sync-queue.js'
+import { makeLeaderSyncProcessor } from './leader-sync-processor.js'
 import { makeDevtoolsContext } from './leader-worker-devtools.js'
 import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
-import type { InitialSyncOptions, ShutdownState } from './types.js'
+import type { InitialBlockingSyncContext, InitialSyncOptions, ShutdownState } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const makeLeaderThreadLayer = ({
@@ -25,7 +25,7 @@ export const makeLeaderThreadLayer = ({
   db,
   dbLog,
   devtoolsEnabled,
-  initialSyncOptions,
+  initialSyncOptions = { _tag: 'Skip' },
 }: {
   storeId: string
   originId: string
@@ -38,39 +38,48 @@ export const makeLeaderThreadLayer = ({
   initialSyncOptions: InitialSyncOptions | undefined
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+    // TODO refactor shutdown handling so we don't need a manual scope
+    const scope = yield* Scope.make()
 
-    // TODO do more validation here than just checking the count of tables
-    // Either happens on initial boot or if schema changes
-    const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    const layer = yield* Effect.gen(function* () {
+      const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-    const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
+      // TODO do more validation here than just checking the count of tables
+      // Either happens on initial boot or if schema changes
+      const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
-    const syncQueue = yield* makeSyncQueue({ schema, dbMissing, dbLog })
+      const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
 
-    const ctx = {
-      schema,
-      bootStatusQueue,
-      storeId,
-      originId,
-      db,
-      dbLog,
-      devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
-      initialSyncOptions: initialSyncOptions ?? { _tag: 'Skip' },
-      makeSyncDb,
-      mutationEventSchema: makeMutationEventSchema(schema),
-      shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
-      syncBackend,
-      syncQueue,
-      connectedClientSessionPullQueues: yield* makePullQueueSet,
-    } satisfies typeof LeaderThreadCtx.Service
+      const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({ initialSyncOptions, bootStatusQueue })
 
-    // @ts-expect-error For debugging purposes
-    globalThis.__leaderThreadCtx = ctx
+      const syncProcessor = yield* makeLeaderSyncProcessor({ schema, dbMissing, dbLog, initialBlockingSyncContext })
 
-    const layer = Layer.succeed(LeaderThreadCtx, ctx)
+      const ctx = {
+        schema,
+        bootStatusQueue,
+        storeId,
+        originId,
+        db,
+        dbLog,
+        devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
+        makeSyncDb,
+        mutationEventSchema: makeMutationEventSchema(schema),
+        shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
+        syncBackend,
+        syncProcessor,
+        connectedClientSessionPullQueues: yield* makePullQueueSet,
+        scope,
+      } satisfies typeof LeaderThreadCtx.Service
 
-    yield* bootLeaderThread({ dbMissing }).pipe(Effect.provide(layer))
+      // @ts-expect-error For debugging purposes
+      globalThis.__leaderThreadCtx = ctx
+
+      const layer = Layer.succeed(LeaderThreadCtx, ctx)
+
+      yield* bootLeaderThread({ dbMissing, initialBlockingSyncContext }).pipe(Effect.provide(layer))
+
+      return layer
+    }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread'), Scope.extend(scope))
 
     return layer
   }).pipe(
@@ -79,21 +88,70 @@ export const makeLeaderThreadLayer = ({
     Layer.unwrapScoped,
   )
 
+const makeInitialBlockingSyncContext = ({
+  initialSyncOptions,
+  bootStatusQueue,
+}: {
+  initialSyncOptions: InitialSyncOptions
+  bootStatusQueue: Queue.Queue<BootStatus>
+}) =>
+  Effect.gen(function* () {
+    const ctx = {
+      isDone: false,
+      processedMutations: 0,
+      total: -1,
+    }
+
+    const blockingDeferred = initialSyncOptions._tag === 'Blocking' ? yield* Deferred.make<void>() : undefined
+
+    if (blockingDeferred !== undefined && initialSyncOptions._tag === 'Blocking') {
+      yield* Deferred.succeed(blockingDeferred, void 0).pipe(
+        Effect.delay(initialSyncOptions.timeout),
+        Effect.forkScoped,
+      )
+    }
+
+    return {
+      blockingDeferred,
+      update: ({ processed, remaining }) =>
+        Effect.gen(function* () {
+          if (ctx.isDone === true) return
+
+          if (ctx.total === -1) {
+            ctx.total = remaining + processed
+          }
+
+          ctx.processedMutations += processed
+          yield* Queue.offer(bootStatusQueue, {
+            stage: 'syncing',
+            progress: { done: ctx.processedMutations, total: ctx.total },
+          })
+
+          if (remaining === 0 && blockingDeferred !== undefined) {
+            yield* Deferred.succeed(blockingDeferred, void 0)
+            ctx.isDone = true
+          }
+        }),
+    } satisfies InitialBlockingSyncContext
+  })
+
 /**
  * Blocks until the leader thread has finished its initial setup.
  * It also starts various background processes (e.g. syncing)
  */
 const bootLeaderThread = ({
   dbMissing,
+  initialBlockingSyncContext,
 }: {
   dbMissing: boolean
+  initialBlockingSyncContext: InitialBlockingSyncContext
 }): Effect.Effect<
   void,
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbLog, bootStatusQueue, syncQueue } = yield* LeaderThreadCtx
+    const { dbLog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
 
     yield* migrateTable({
       db: dbLog,
@@ -122,7 +180,7 @@ const bootLeaderThread = ({
 
     // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
     // processing any incoming mutations
-    const waitForInitialSync = yield* syncQueue.boot({ dbReady })
+    yield* syncProcessor.boot({ dbReady })
 
     if (dbMissing) {
       yield* recreateDb
@@ -130,8 +188,8 @@ const bootLeaderThread = ({
 
     yield* Deferred.succeed(dbReady, void 0)
 
-    if (waitForInitialSync !== undefined) {
-      yield* waitForInitialSync
+    if (initialBlockingSyncContext.blockingDeferred !== undefined) {
+      yield* initialBlockingSyncContext.blockingDeferred
     }
 
     yield* Queue.offer(bootStatusQueue, { stage: 'done' })
