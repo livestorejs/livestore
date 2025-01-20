@@ -550,6 +550,18 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/web
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: 0.57.0
+        version: 0.57.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources':
+        specifier: 1.30.0
+        version: 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base':
+        specifier: 1.30.0
+        version: 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-web':
+        specifier: 1.30.0
+        version: 1.30.0(@opentelemetry/api@1.9.0)
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -751,6 +763,18 @@ importers:
       '@livestore/web':
         specifier: workspace:*
         version: link:../../../packages/@livestore/web
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: 0.57.0
+        version: 0.57.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources':
+        specifier: 1.30.0
+        version: 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base':
+        specifier: 1.30.0
+        version: 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-web':
+        specifier: 1.30.0
+        version: 1.30.0(@opentelemetry/api@1.9.0)
       '@overengineering/fps-meter':
         specifier: ^0.1.2
         version: 0.1.2(react@18.3.1)
@@ -1777,8 +1801,8 @@ importers:
         specifier: workspace:*
         version: link:../node
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.4
-        version: 1.0.3-dev.4
+        specifier: 1.0.3-dev.7
+        version: 1.0.3-dev.7
       '@livestore/web':
         specifier: workspace:*
         version: link:../web
@@ -2018,8 +2042,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.4
-        version: 1.0.3-dev.4
+        specifier: 1.0.3-dev.7
+        version: 1.0.3-dev.7
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.279
@@ -2079,7 +2103,7 @@ importers:
         version: 0.36.1(@effect/platform-node@0.68.1(@effect/platform@0.72.1(effect@3.12.1))(effect@3.12.1))(@effect/platform@0.72.1(effect@3.12.1))(effect@3.12.1)(ws@8.18.0)
       '@effect/opentelemetry':
         specifier: 0.42.1
-        version: 0.42.1(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(effect@3.12.1)
+        version: 0.42.1(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(effect@3.12.1)
       '@effect/platform':
         specifier: 0.72.1
         version: 0.72.1(effect@3.12.1)
@@ -4613,8 +4637,8 @@ packages:
   '@livestore/wa-sqlite@1.0.3-dev.2':
     resolution: {integrity: sha512-VEO1aSGE/OV+1tasmx6IhPQMuMs4cbXMKQvez/Z1F2d9FK3LF5RG4jlovEzfYN+rOsnzE9wZ1vf6j2zeCor9Tg==}
 
-  '@livestore/wa-sqlite@1.0.3-dev.4':
-    resolution: {integrity: sha512-hZCFK+F7hnQslE2EtbjidSH/WlEKJm8+JCU64UDCn0IjB0OJm2/Cs6UjAySic7xzQlmhSC0cM9F2VcW7Sglqdw==}
+  '@livestore/wa-sqlite@1.0.3-dev.7':
+    resolution: {integrity: sha512-eaKCPwzoGkRs4+Buwomx+p/rdAaZtQ50WKrKWux6uWW6ytYL8BlxHmc+F2TLivh2z+ImFB4SZIRlsyAKB2b0wA==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -5011,6 +5035,12 @@ packages:
 
   '@opentelemetry/sdk-trace-node@1.30.0':
     resolution: {integrity: sha512-MeXkXEdBs9xq1JSGTr/3P1lHBSUBaVmo1+UpoQhUpviPMzDXy0MNsdTC7KKI6/YcG74lTX6eqeNjlC1jV4Rstw==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      '@opentelemetry/api': '>=1.0.0 <1.10.0'
+
+  '@opentelemetry/sdk-trace-web@1.30.0':
+    resolution: {integrity: sha512-tSsPbaOQqmkfSkRkMnv1T8au2hwlv3v5ZUGmRwc7zIL1hokhZKg5qhqTsvrWvRENlZ7+J9+cXZFKIMNKHodyhQ==}
     engines: {node: '>=14'}
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
@@ -16556,7 +16586,7 @@ snapshots:
 
   '@effect/language-service@0.2.0': {}
 
-  '@effect/opentelemetry@0.42.1(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(effect@3.12.1)':
+  '@effect/opentelemetry@0.42.1(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(effect@3.12.1)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 1.30.0(@opentelemetry/api@1.9.0)
@@ -16566,6 +16596,7 @@ snapshots:
       '@opentelemetry/sdk-metrics': 1.30.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.30.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-node': 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-web': 1.30.0(@opentelemetry/api@1.9.0)
 
   '@effect/platform-browser@0.51.1(@effect/platform@0.72.1(effect@3.12.1))(effect@3.12.1)':
     dependencies:
@@ -18092,7 +18123,7 @@ snapshots:
 
   '@livestore/wa-sqlite@1.0.3-dev.2': {}
 
-  '@livestore/wa-sqlite@1.0.3-dev.4': {}
+  '@livestore/wa-sqlite@1.0.3-dev.7': {}
 
   '@lukeed/ms@2.0.2': {}
 
@@ -18766,6 +18797,13 @@ snapshots:
       '@opentelemetry/propagator-jaeger': 1.30.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.30.0(@opentelemetry/api@1.9.0)
       semver: 7.6.3
+
+  '@opentelemetry/sdk-trace-web@1.30.0(@opentelemetry/api@1.9.0)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/core': 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 1.30.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/semantic-conventions': 1.28.0
 
   '@opentelemetry/semantic-conventions@1.28.0': {}
 
