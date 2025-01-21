@@ -299,29 +299,24 @@ export const makeLeaderSyncProcessor = ({
           dbReady,
           initialBackendHead,
           isLocalEvent,
-          restartBackendPushing: Effect.gen(function* () {
-            yield* FiberHandle.clear(backendPushingFiberHandle)
-            // Reset the sync queue
-            yield* Queue.takeAll(syncBackendQueue)
-            const state = yield* Ref.get(stateRef)
-            if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+          restartBackendPushing: (filteredRebasedPending) =>
+            Effect.gen(function* () {
+              yield* FiberHandle.clear(backendPushingFiberHandle)
+              // Reset the sync queue
+              yield* Queue.takeAll(syncBackendQueue)
+              const state = yield* Ref.get(stateRef)
+              if (state._tag === 'init') return shouldNeverHappen('Not initialized')
 
-            const filteredPending = state.syncState.pending.filter((mutationEvent) => {
-              const mutationDef = schema.mutations.get(mutationEvent.mutation)!
-              return mutationDef.options.localOnly === false
-            })
+              // TODO use bucket queue to gurantee batching
+              yield* Queue.offerAll(syncBackendQueue, filteredRebasedPending)
 
-            // TODO use bucket queue to gurantee batching
-            yield* syncBackendQueue.offerAll(filteredPending)
-
-            yield* FiberHandle.run(
-              backendPushingFiberHandle,
-              backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
-            )
-          }),
+              yield* FiberHandle.run(
+                backendPushingFiberHandle,
+                backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
+              )
+            }),
           applyMutationItemsRef,
           stateRef,
-          syncBackendQueue,
           semaphore,
           span,
           initialBlockingSyncContext,
@@ -429,7 +424,6 @@ const backgroundBackendPulling = ({
   restartBackendPushing,
   span,
   stateRef,
-  syncBackendQueue,
   applyMutationItemsRef,
   semaphore,
   initialBlockingSyncContext,
@@ -437,16 +431,17 @@ const backgroundBackendPulling = ({
   dbReady: Deferred.Deferred<void>
   initialBackendHead: number
   isLocalEvent: (mutationEventEncoded: MutationEventEncodedWithDeferred) => boolean
-  restartBackendPushing: Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
+  restartBackendPushing: (
+    filteredRebasedPending: ReadonlyArray<MutationEventEncodedWithDeferred>,
+  ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
   span: otel.Span | undefined
   stateRef: Ref.Ref<ProcessorState>
-  syncBackendQueue: Queue.Queue<MutationEvent.AnyEncoded>
   applyMutationItemsRef: { current: ApplyMutationItems | undefined }
   semaphore: Effect.Semaphore
   initialBlockingSyncContext: InitialBlockingSyncContext
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, db, dbLog, connectedClientSessionPullQueues } = yield* LeaderThreadCtx
+    const { syncBackend, db, dbLog, connectedClientSessionPullQueues, schema } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -496,7 +491,11 @@ const backgroundBackendPulling = ({
             updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
           })
 
-          yield* restartBackendPushing
+          const filteredRebasedPending = updateResult.syncState.pending.filter((mutationEvent) => {
+            const mutationDef = schema.mutations.get(mutationEvent.mutation)!
+            return mutationDef.options.localOnly === false
+          })
+          yield* restartBackendPushing(filteredRebasedPending)
 
           if (updateResult.eventsToRollback.length > 0) {
             yield* rollback({ db, dbLog, eventIdsToRollback: updateResult.eventsToRollback.map((_) => _.id) })
@@ -511,8 +510,6 @@ const backgroundBackendPulling = ({
             },
             remaining,
           })
-
-          yield* Queue.offerAll(syncBackendQueue, updateResult.syncState.pending)
         } else {
           span?.addEvent('backend-pull:advance', {
             newEventsCount: newEvents.length,
