@@ -3,11 +3,11 @@ import process from 'node:process'
 
 import { WorkerError } from '@effect/platform/WorkerError'
 import * as Runner from '@effect/platform/WorkerRunner'
+import { FiberId } from 'effect'
 import * as Context from 'effect/Context'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
-import * as FiberId from 'effect/FiberId'
 import * as FiberSet from 'effect/FiberSet'
 import * as Layer from 'effect/Layer'
 import * as Runtime from 'effect/Runtime'
@@ -41,6 +41,13 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
               } else {
                 port.close()
                 Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
+                // FiberSet.clear(fiberSet).pipe(
+                //   Effect.tap(() => Deferred.done(fiberSet.deferred, Exit.void)),
+                //   // eslint-disable-next-line unicorn/no-process-exit
+                //   Effect.tap(() => Effect.sync(() => process.exit(0)).pipe(Effect.timeout(2000))),
+                //   Effect.tapErrorCause(Effect.logError),
+                //   runFork,
+                // )
 
                 // TODO improve with Tim Smart
                 // eslint-disable-next-line unicorn/no-process-exit

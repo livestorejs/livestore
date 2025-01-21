@@ -1,5 +1,5 @@
-import type { HttpClient } from '@livestore/utils/effect'
-import { Deferred, Effect, FiberSet, Layer, Queue, Scope, SubscriptionRef } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
+import { Deferred, Effect, FiberSet, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
 import { ROOT_ID, UnexpectedError } from '../adapter-types.js'
@@ -38,52 +38,45 @@ export const makeLeaderThreadLayer = ({
   initialSyncOptions: InitialSyncOptions | undefined
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    // TODO refactor shutdown handling so we don't need a manual scope
-    const scope = yield* Scope.make()
+    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-    const layer = yield* Effect.gen(function* () {
-      const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+    // TODO do more validation here than just checking the count of tables
+    // Either happens on initial boot or if schema changes
+    const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
-      // TODO do more validation here than just checking the count of tables
-      // Either happens on initial boot or if schema changes
-      const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
 
-      const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
+    const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({ initialSyncOptions, bootStatusQueue })
 
-      const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({ initialSyncOptions, bootStatusQueue })
+    const syncProcessor = yield* makeLeaderSyncProcessor({ schema, dbMissing, dbLog, initialBlockingSyncContext })
 
-      const syncProcessor = yield* makeLeaderSyncProcessor({ schema, dbMissing, dbLog, initialBlockingSyncContext })
+    const ctx = {
+      schema,
+      bootStatusQueue,
+      storeId,
+      originId,
+      db,
+      dbLog,
+      devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
+      makeSyncDb,
+      mutationEventSchema: makeMutationEventSchema(schema),
+      shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
+      syncBackend,
+      syncProcessor,
+      connectedClientSessionPullQueues: yield* makePullQueueSet,
+    } satisfies typeof LeaderThreadCtx.Service
 
-      const ctx = {
-        schema,
-        bootStatusQueue,
-        storeId,
-        originId,
-        db,
-        dbLog,
-        devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
-        makeSyncDb,
-        mutationEventSchema: makeMutationEventSchema(schema),
-        shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
-        syncBackend,
-        syncProcessor,
-        connectedClientSessionPullQueues: yield* makePullQueueSet,
-        scope,
-      } satisfies typeof LeaderThreadCtx.Service
+    // @ts-expect-error For debugging purposes
+    globalThis.__leaderThreadCtx = ctx
 
-      // @ts-expect-error For debugging purposes
-      globalThis.__leaderThreadCtx = ctx
+    const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
-      const layer = Layer.succeed(LeaderThreadCtx, ctx)
-
-      yield* bootLeaderThread({ dbMissing, initialBlockingSyncContext }).pipe(Effect.provide(layer))
-
-      return layer
-    }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread'), Scope.extend(scope))
+    yield* bootLeaderThread({ dbMissing, initialBlockingSyncContext }).pipe(Effect.provide(layer))
 
     return layer
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:boot'),
+    Effect.withSpanScoped('@livestore/common:leader-thread'),
     UnexpectedError.mapToUnexpectedError,
     Layer.unwrapScoped,
   )

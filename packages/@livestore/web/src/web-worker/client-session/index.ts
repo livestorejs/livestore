@@ -1,5 +1,5 @@
 import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
-import { Devtools, IntentionalShutdownCause, makeNextMutationEventIdPair, UnexpectedError } from '@livestore/common'
+import { Devtools, IntentionalShutdownCause, ROOT_ID, UnexpectedError } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
@@ -85,10 +85,6 @@ export const makeAdapter =
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
-
-      const executionBacklogQueue = yield* Queue.unbounded<WorkerSchema.ExecutionBacklogItem>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
-      )
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
 
@@ -314,11 +310,10 @@ export const makeAdapter =
       // TODO merge with snapshot req
       // NOTE this currently slows down the "happy path startup" path where the app is restored from the snapshot
       // We should figure out a way to also restore the initial mutation event id from the snapshot
-      const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
-
-      const localHeadRef = {
-        current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
-      }
+      const initialMutationEventId =
+        dataFromFile === undefined
+          ? ROOT_ID // TODO properly implement this
+          : yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
       const makeSyncDb = syncDbFactory({ sqlite3 })
       const syncDb = yield* makeSyncDb({ _tag: 'in-memory' })
@@ -334,57 +329,9 @@ export const makeAdapter =
         })
       }
 
-      // Continously take items from the backlog and execute them in the worker if there are any
-      yield* Effect.gen(function* () {
-        const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(Effect.map(Chunk.toReadonlyArray))
-
-        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.ExecuteBulk({ items })).pipe(
-          Effect.timeout(10_000),
-          Effect.tapErrorCause((cause) =>
-            Effect.logDebug('[@livestore/web:coordinator] executeBulkLoop error', cause, items),
-          ),
-        )
-
-        // NOTE we're waiting a little bit for more items to come in before executing the batch
-        yield* Effect.sleep(20)
-      }).pipe(
-        Effect.tapCauseLogPretty,
-        Effect.forever,
-        UnexpectedError.mapToUnexpectedError,
-        Effect.tapErrorCause(shutdown),
-        Effect.interruptible,
-        Effect.withSpan('@livestore/web:coordinator:executeBulkLoop'),
-        Effect.forkScoped,
-      )
-
-      const mutationEventSchema = makeMutationEventSchema(schema)
-
       const pullMutations = runInWorkerStream(
-        // TODO use last know upstream head as cursor instead of localHeadRef.current
-        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: localHeadRef.current }),
-      ).pipe(
-        // TODO handle rebase case
-        // Stream.tap(({ mutationEvents }) =>
-        //   Effect.forEach(mutationEvents, (mutationEventEncoded) =>
-        //     validateAndUpdateLocalHead({
-        //       localHeadRef,
-        //       mutationEventId: mutationEventEncoded.id,
-        //       debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
-        //     }),
-        //   ),
-        // ),
-        // Stream.mapEffect(
-        //   // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
-        //   Schema.decode(
-        //     Schema.Struct({
-        //       mutationEvents: Schema.Array(mutationEventSchema),
-        //       backendHead: Schema.Number,
-        //       remaining: Schema.Number,
-        //     }),
-        //   ),
-        // ),
-        Stream.orDie,
-      )
+        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
+      ).pipe(Stream.orDie)
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
@@ -415,42 +362,26 @@ export const makeAdapter =
           pull: pullMutations,
 
           push: (batch, { persisted }) =>
-            Effect.gen(function* () {
-              // TODO refactor with PushQueue
-              console.log('push', batch)
-              yield* Queue.offer(
-                executionBacklogQueue,
-                WorkerSchema.ExecutionBacklogItemMutate.make({ batch, persisted }),
-              )
-            }).pipe(
+            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+              Effect.timeout(10_000),
               UnexpectedError.mapToUnexpectedError,
               Effect.withSpan('@livestore/web:coordinator:push', {
                 attributes: { batchSize: batch.length },
               }),
             ),
 
-          // TODO synchronize event ids across threads
-          nextMutationEventIdPair: makeNextMutationEventIdPair(localHeadRef),
-
-          // TODO this needs to be specific to the current context
-          // getCurrentMutationEventId: runInWorker(new WorkerSchema.DedicatedWorkerInner.GetCurrentMutationEventId()).pipe(
-          //   Effect.timeout(10_000),
-          //   UnexpectedError.mapToUnexpectedError,
-          //   Effect.withSpan('@livestore/web:coordinator:getCurrentMutationEventId'),
-          // ),
-
-          getCurrentMutationEventId: Effect.gen(function* () {
-            // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
-            // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
-            // return { global, local }
-            return localHeadRef.current
-          }),
+          initialMutationEventId,
         },
 
         getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
           Effect.timeout(10_000),
           UnexpectedError.mapToUnexpectedError,
           Effect.withSpan('@livestore/web:coordinator:getMutationLogData'),
+        ),
+
+        getLeaderSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/web:coordinator:getLeaderSyncState'),
         ),
 
         networkStatus,

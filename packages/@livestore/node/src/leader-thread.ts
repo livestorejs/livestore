@@ -22,7 +22,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
-import type { FileSystem, HttpClient } from '@livestore/utils/effect'
+import type { FileSystem, HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Effect,
   Exit,
@@ -33,7 +33,6 @@ import {
   Logger,
   LogLevel,
   Schema,
-  Scope,
   Stream,
   WorkerRunner,
 } from '@livestore/utils/effect'
@@ -99,6 +98,11 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
         Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
       )
     }).pipe(Stream.unwrap),
+  GetLeaderSyncState: () =>
+    Effect.gen(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.syncProcessor.syncState
+    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetLeaderSyncState')),
   // GetRecreateSnapshot: () =>
   //   Effect.gen(function* () {
   //     const workerCtx = yield* LeaderThreadCtx
@@ -112,14 +116,12 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetRecreateSnapshot')),
   Shutdown: () =>
     Effect.gen(function* () {
-      const { db, dbLog, devtools, scope } = yield* LeaderThreadCtx
+      const { db, dbLog, devtools } = yield* LeaderThreadCtx
       yield* Effect.logDebug('[@livestore/node:worker] Shutdown')
 
       if (devtools.enabled) {
         yield* FiberSet.clear(devtools.connections)
       }
-
-      yield* Scope.close(scope, Exit.void)
 
       db.close()
       dbLog.close()

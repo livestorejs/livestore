@@ -3,7 +3,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
 import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
-import type { PayloadUpstream } from './sync/syncstate.js'
+import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
 
 export interface PreparedStatement {
@@ -101,6 +101,7 @@ export const BootStatus = Schema.Union(
 
 export type BootStatus = typeof BootStatus.Type
 
+// TODO refactor `Coordinator` to embrace more of the "leader semantics"
 export type Coordinator = {
   devtools: {
     enabled: boolean
@@ -116,13 +117,11 @@ export type Coordinator = {
       batch: ReadonlyArray<MutationEvent.AnyEncoded>,
       options: { persisted: boolean },
     ): Effect.Effect<void, UnexpectedError>
-    /** Can be called synchronously */
-    nextMutationEventIdPair: (opts: { localOnly: boolean }) => EventIdPair
-    /** Used to initially get the current mutation event id to use as `parentId` for the next mutation event */
-    getCurrentMutationEventId: Effect.Effect<EventId, UnexpectedError>
+    initialMutationEventId: EventId
   }
   export: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
+  getLeaderSyncState: Effect.Effect<SyncState, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
 }
@@ -163,6 +162,8 @@ export const compareEventIds = (a: EventId, b: EventId) => {
   }
   return a.local - b.local
 }
+
+export const eventIdsEqual = (a: EventId, b: EventId) => a.global === b.global && a.local === b.local
 
 export type EventIdPair = { id: EventId; parentId: EventId }
 

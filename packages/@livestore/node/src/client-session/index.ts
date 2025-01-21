@@ -6,13 +6,10 @@ import {
   type Coordinator,
   Devtools,
   type LockStatus,
-  makeNextMutationEventIdPair,
   type NetworkStatus,
   UnexpectedError,
 } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
-import { validateAndUpdateLocalHead } from '@livestore/common/leader-thread'
-import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -26,7 +23,11 @@ export interface NodeAdapterOptions {
   syncOptions?: WorkerSchema.SyncBackendOptions | undefined
   baseDirectory?: string
   devtools?: {
-    /** @default 4242 */
+    /**
+     * Where to run the devtools server (via Vite)
+     *
+     * @default 4242
+     */
     port: number
   }
   otel?: {
@@ -106,7 +107,6 @@ export const makeNodeAdapter = ({
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
       const makeSyncDb = yield* syncDbFactory({ sqlite3 })
-      const mutationEventSchema = makeMutationEventSchema(schema)
 
       // TODO consider bringing back happy-path initialisation boost
       // const fileData = yield* fs.readFile(dbFilePath).pipe(Effect.either)
@@ -178,10 +178,6 @@ export const makeNodeAdapter = ({
 
       const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
-      const localHeadRef = {
-        current: { global: initialMutationEventId.global, local: initialMutationEventId.local },
-      }
-
       const syncInMemoryDb = yield* makeSyncDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 
       yield* runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
@@ -195,29 +191,7 @@ export const makeNodeAdapter = ({
 
       const pullMutations = runInWorkerStream(
         new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
-      ).pipe(
-        // TODO handle rebase case in client session
-        // Stream.tap(({ mutationEvents }) =>
-        //   Effect.forEach(mutationEvents, (mutationEventEncoded) =>
-        //     validateAndUpdateLocalHead({
-        //       localHeadRef,
-        //       mutationEventId: mutationEventEncoded.id,
-        //       debugContext: { label: `client-session:pullMutations`, mutationEventEncoded },
-        //     }),
-        //   ),
-        // ),
-        // Stream.mapEffect(
-        //   // TODO get rid of this by using the actual app-defined mutation event schema in the worker schema
-        //   Schema.decode(
-        //     Schema.Struct({
-        //       mutationEvents: Schema.Array(mutationEventSchema),
-        //       backendHead: Schema.Number,
-        //       remaining: Schema.Number,
-        //     }),
-        //   ),
-        // ),
-        Stream.orDie,
-      )
+      ).pipe(Stream.orDie)
 
       const coordinator = {
         networkStatus,
@@ -237,13 +211,7 @@ export const makeNodeAdapter = ({
                 attributes: { batchSize: batch.length },
               }),
             ),
-          nextMutationEventIdPair: makeNextMutationEventIdPair(localHeadRef),
-          getCurrentMutationEventId: Effect.gen(function* () {
-            // const global = (yield* seqState.get).pipe(Option.getOrElse(() => 0))
-            // const local = (yield* seqLocalOnlyState.get).pipe(Option.getOrElse(() => 0))
-            // return { global, local }
-            return localHeadRef.current
-          }),
+          initialMutationEventId,
         },
         export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
           Effect.timeout(10_000),
@@ -254,6 +222,10 @@ export const makeNodeAdapter = ({
         lockStatus,
         sessionId,
         getMutationLogData: Effect.dieMessage('Not implemented'),
+        getLeaderSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.withSpan('@livestore/node:coordinator:getLeaderSyncState'),
+        ),
         shutdown,
       } satisfies Coordinator
 
@@ -272,4 +244,8 @@ export const makeNodeAdapter = ({
       }
 
       return { coordinator, syncDb: syncInMemoryDb }
-    }).pipe(Effect.withSpan('@livestore/node:adapter'), Effect.provide(NodeFileSystem.layer))) satisfies Adapter
+    }).pipe(
+      Effect.withSpan('@livestore/node:adapter'),
+      Effect.parallelFinalizers,
+      Effect.provide(NodeFileSystem.layer),
+    )) satisfies Adapter

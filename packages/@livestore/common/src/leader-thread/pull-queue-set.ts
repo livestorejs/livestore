@@ -25,24 +25,34 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       const mutationEvents = yield* getMutationEventsSince(since)
 
-      // const { syncProcessor } = yield* LeaderThreadCtx
-
-      // TODO remove backendHead
-      yield* queue.offer({
-        payload: {
-          _tag: 'upstream-advance',
-          newEvents: mutationEvents.map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent)),
-        },
-        remaining: 0,
-      })
+      if (mutationEvents.length > 0) {
+        const newEvents = mutationEvents.map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent))
+        yield* queue.offer({ payload: { _tag: 'upstream-advance', newEvents }, remaining: 0 })
+      }
 
       set.add(queue)
 
       return queue
     })
 
+  const offer: PullQueueSet['offer'] = (item) =>
+    Effect.gen(function* () {
+      // Short-circuit if the payload is an empty upstream advance
+      if (
+        item.payload._tag === 'upstream-advance' &&
+        item.payload.newEvents.length === 0 &&
+        item.payload.trimRollbackUntil === undefined
+      ) {
+        return
+      }
+
+      for (const queue of set) {
+        yield* Queue.offer(queue, item)
+      }
+    })
+
   return {
     makeQueue,
-    [Symbol.iterator]: () => set[Symbol.iterator](),
+    offer,
   }
 })

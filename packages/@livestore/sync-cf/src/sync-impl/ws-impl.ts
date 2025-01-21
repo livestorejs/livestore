@@ -53,7 +53,9 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
           return Stream.fromPubSub(incomingMessages).pipe(
             Stream.filter((_) => (_._tag === 'WSMessage.PullRes' ? _.requestId === requestId : true)),
             Stream.tap((_) =>
-              _._tag === 'WSMessage.Error' ? new InvalidPullError({ message: _.message }) : Effect.void,
+              _._tag === 'WSMessage.Error' && _.requestId === requestId
+                ? new InvalidPullError({ message: _.message })
+                : Effect.void,
             ),
             Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
             Stream.map((msg) =>
@@ -210,7 +212,7 @@ const connect = (wsUrl: string) =>
         yield* Queue.take(pongMessages).pipe(Effect.timeout(5000))
 
         yield* Effect.sleep(25_000)
-      }).pipe(Effect.withSpan('@livestore/sync-cf:connect:checkPingPong'))
+      }).pipe(Effect.withSpan('@livestore/sync-cf:connect:checkPingPong'), Effect.ignore)
 
       yield* waitUntilOnline.pipe(
         Effect.andThen(checkPingPong.pipe(Effect.forever)),

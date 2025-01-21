@@ -1,6 +1,5 @@
 export * from './connection.js'
 export * from './types.js'
-export * from './validateAndUpdateLocalHead.js'
 export * as ShutdownChannel from './shutdown-channel.js'
 export * from './leader-worker-devtools.js'
 export * from './make-leader-thread-layer.js'

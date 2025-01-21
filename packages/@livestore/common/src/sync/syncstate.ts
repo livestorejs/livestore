@@ -1,8 +1,8 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Deferred } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { compareEventIds, EventId } from '../adapter-types.js'
+import { EventId, eventIdsEqual } from '../adapter-types.js'
 
 /** Equivalent to mutationEventSchemaEncodedAny but with a meta field and some convenience methods */
 export class MutationEventEncodedWithDeferred extends Schema.Class<MutationEventEncodedWithDeferred>(
@@ -95,36 +95,34 @@ export interface SyncState {
   localHead: EventId
 }
 
+export const SyncState = Schema.Struct({
+  pending: Schema.Array(MutationEventEncodedWithDeferred),
+  rollbackTail: Schema.Array(MutationEventEncodedWithDeferred),
+  upstreamHead: EventId,
+  localHead: EventId,
+}).annotations({ title: 'SyncState' })
+
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Rollback until this event in the rollback tail (inclusive). Starting from the end of the rollback tail. */
   rollbackUntil: EventId,
   newEvents: Schema.Array(MutationEventEncodedWithDeferred),
+  /** Trim rollback tail up to this event (inclusive). */
+  trimRollbackUntil: Schema.optional(EventId),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
   newEvents: Schema.Array(MutationEventEncodedWithDeferred),
-}) {}
-
-export class PayloadUpstreamTrimRollbackTail extends Schema.TaggedStruct('upstream-trim-rollback-tail', {
-  newRollbackStart: EventId,
+  /** Trim rollback tail up to this event (inclusive). */
+  trimRollbackUntil: Schema.optional(EventId),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
   newEvents: Schema.Array(MutationEventEncodedWithDeferred),
 }) {}
 
-export class Payload extends Schema.Union(
-  PayloadUpstreamRebase,
-  PayloadUpstreamAdvance,
-  PayloadUpstreamTrimRollbackTail,
-  PayloadLocalPush,
-) {}
+export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
 
-export const PayloadUpstream = Schema.Union(
-  PayloadUpstreamRebase,
-  PayloadUpstreamAdvance,
-  PayloadUpstreamTrimRollbackTail,
-)
+export const PayloadUpstream = Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance)
 
 export type PayloadUpstream = typeof PayloadUpstream.Type
 
@@ -164,14 +162,25 @@ export const updateSyncState = ({
   payload: typeof Payload.Type
   isLocalEvent: (event: MutationEventEncodedWithDeferred) => boolean
   isEqualEvent: (a: MutationEventEncodedWithDeferred, b: MutationEventEncodedWithDeferred) => boolean
+  /** This is used in the leader which should ignore local events when receiving an upstream-advance payload */
   ignoreLocalEvents?: boolean
 }): UpdateResult => {
+  const trimRollbackTail = (
+    rollbackTail: ReadonlyArray<MutationEventEncodedWithDeferred>,
+  ): ReadonlyArray<MutationEventEncodedWithDeferred> => {
+    const trimRollbackUntil = payload._tag === 'local-push' ? undefined : payload.trimRollbackUntil
+    if (trimRollbackUntil === undefined) return rollbackTail
+    const index = rollbackTail.findIndex((event) => eventIdsEqual(event.id, trimRollbackUntil))
+    if (index === -1) return []
+    return rollbackTail.slice(index + 1)
+  }
+
   switch (payload._tag) {
     case 'upstream-rebase': {
       // Find the index of the rollback event in the rollback tail
-      const rollbackIndex = syncState.rollbackTail.findIndex((event) => event.id === payload.rollbackUntil)
+      const rollbackIndex = syncState.rollbackTail.findIndex((event) => eventIdsEqual(event.id, payload.rollbackUntil))
       if (rollbackIndex === -1) {
-        throw new Error(
+        return shouldNeverHappen(
           `Rollback event not found in rollback tail. Rollback until: [${payload.rollbackUntil.global},${payload.rollbackUntil.local}]. Rollback tail: [${syncState.rollbackTail.map((e) => e.toString()).join(', ')}]`,
         )
       }
@@ -192,9 +201,9 @@ export const updateSyncState = ({
         _tag: 'rebase',
         syncState: {
           pending: rebasedPending,
-          rollbackTail: [], // Reset rollback tail after rebase
+          rollbackTail: trimRollbackTail([...syncState.rollbackTail.slice(0, rollbackIndex), ...payload.newEvents]),
           upstreamHead: newUpstreamHead,
-          localHead: rebasedPending.at(-1)!.id,
+          localHead: rebasedPending.at(-1)?.id ?? newUpstreamHead,
         },
         newEvents: payload.newEvents,
         eventsToRollback,
@@ -203,13 +212,22 @@ export const updateSyncState = ({
 
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
-        return { _tag: 'advance', syncState, newEvents: [] }
+        return {
+          _tag: 'advance',
+          syncState: {
+            pending: syncState.pending,
+            rollbackTail: trimRollbackTail(syncState.rollbackTail),
+            upstreamHead: syncState.upstreamHead,
+            localHead: syncState.localHead,
+          },
+          newEvents: [],
+        }
       }
 
       // Validate that newEvents are sorted in ascending order by eventId
       for (let i = 1; i < payload.newEvents.length; i++) {
         if (eventIdIsGreaterThan(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
-          throw new Error('Events must be sorted in ascending order by eventId')
+          return shouldNeverHappen('Events must be sorted in ascending order by eventId')
         }
       }
 
@@ -227,8 +245,30 @@ export const updateSyncState = ({
         const pendingEventIds = new Set(syncState.pending.map((e) => `${e.id.global},${e.id.local}`))
         const newEvents = payload.newEvents.filter((e) => !pendingEventIds.has(`${e.id.global},${e.id.local}`))
 
+        // In the case where the incoming events are a subset of the pending events,
+        // we need to split the pending events into two groups:
+        // - pendingMatching: The pending events up to point where they match the incoming events
+        // - pendingRemaining: The pending events after the point where they match the incoming events
+        // The `localIndexOffset` is used to account for the local events that are being ignored
+        let localIndexOffset = 0
+        const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
+          syncState.pending,
+          (pendingEvent, index) => {
+            if (ignoreLocalEvents && isLocalEvent(pendingEvent)) {
+              localIndexOffset++
+              return false
+            }
+
+            const newEvent = payload.newEvents.at(index - localIndexOffset)
+            if (!newEvent) {
+              return true
+            }
+            return isEqualEvent(pendingEvent, newEvent) === false
+          },
+        )
+
         const seenEventIds = new Set<string>()
-        const pendingAndNewEvents = [...syncState.pending, ...payload.newEvents].filter((event) => {
+        const pendingAndNewEvents = [...pendingMatching, ...payload.newEvents].filter((event) => {
           const eventIdStr = `${event.id.global},${event.id.local}`
           if (seenEventIds.has(eventIdStr)) {
             return false
@@ -240,10 +280,10 @@ export const updateSyncState = ({
         return {
           _tag: 'advance',
           syncState: {
-            pending: [],
-            rollbackTail: [...syncState.rollbackTail, ...pendingAndNewEvents],
+            pending: pendingRemaining,
+            rollbackTail: trimRollbackTail([...syncState.rollbackTail, ...pendingAndNewEvents]),
             upstreamHead: newUpstreamHead,
-            localHead: newUpstreamHead,
+            localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
           },
           newEvents,
         }
@@ -267,7 +307,7 @@ export const updateSyncState = ({
           _tag: 'rebase',
           syncState: {
             pending: rebasedPending,
-            rollbackTail: [...syncState.rollbackTail, ...payload.newEvents],
+            rollbackTail: trimRollbackTail([...syncState.rollbackTail, ...payload.newEvents]),
             upstreamHead: newUpstreamHead,
             localHead: rebasedPending.at(-1)!.id,
           },
@@ -302,27 +342,27 @@ export const updateSyncState = ({
       }
     }
 
-    case 'upstream-trim-rollback-tail': {
-      // Find the index of the new rollback start in the rollback tail
-      const startIndex = syncState.rollbackTail.findIndex((event) => event.id === payload.newRollbackStart)
-      if (startIndex === -1) {
-        return shouldNeverHappen('New rollback start event not found in rollback tail')
-      }
+    // case 'upstream-trim-rollback-tail': {
+    //   // Find the index of the new rollback start in the rollback tail
+    //   const startIndex = syncState.rollbackTail.findIndex((event) => eventIdsEqual(event.id, payload.trimRollbackUntil))
+    //   if (startIndex === -1) {
+    //     return shouldNeverHappen('New rollback start event not found in rollback tail')
+    //   }
 
-      // Keep only the events from the start index onwards
-      const newRollbackTail = syncState.rollbackTail.slice(startIndex)
+    //   // Keep only the events from the start index onwards
+    //   const newRollbackTail = syncState.rollbackTail.slice(startIndex)
 
-      return {
-        _tag: 'advance',
-        syncState: {
-          pending: syncState.pending,
-          rollbackTail: newRollbackTail,
-          upstreamHead: syncState.upstreamHead,
-          localHead: syncState.localHead,
-        },
-        newEvents: [],
-      }
-    }
+    //   return {
+    //     _tag: 'advance',
+    //     syncState: {
+    //       pending: syncState.pending,
+    //       rollbackTail: newRollbackTail,
+    //       upstreamHead: syncState.upstreamHead,
+    //       localHead: syncState.localHead,
+    //     },
+    //     newEvents: [],
+    //   }
+    // }
   }
 }
 
@@ -355,14 +395,15 @@ const findDivergencePoint = ({
 
     if (divergencePointWithoutLocalEvents === -1) return -1
 
-    const divergencePointEvent = existingEvents[divergencePointWithoutLocalEvents]!
+    const divergencePointEventId = existingEvents[divergencePointWithoutLocalEvents]!.id
     // Now find the divergence point in the original array
-    return existingEvents.findIndex((event) => isEqualEvent(event, divergencePointEvent))
+    return existingEvents.findIndex((event) => eventIdsEqual(event.id, divergencePointEventId))
   }
 
   return existingEvents.findIndex((existingEvent, index) => {
     const incomingEvent = incomingEvents[index]
-    return !incomingEvent || !isEqualEvent(existingEvent, incomingEvent)
+    // return !incomingEvent || !isEqualEvent(existingEvent, incomingEvent)
+    return incomingEvent && !isEqualEvent(existingEvent, incomingEvent)
   })
 }
 

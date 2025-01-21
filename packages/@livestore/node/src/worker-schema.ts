@@ -1,4 +1,4 @@
-import { BootStatus, EventId, PayloadUpstream, UnexpectedError } from '@livestore/common'
+import { BootStatus, EventId, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
 import { InitialSyncOptions } from '@livestore/common/leader-thread'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -144,6 +144,12 @@ export namespace LeaderWorkerInner {
     },
   ) {}
 
+  export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
+    payload: {},
+    success: SyncState,
+    failure: UnexpectedError,
+  }) {}
+
   export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
     payload: {},
     success: Schema.Struct({
@@ -168,6 +174,7 @@ export namespace LeaderWorkerInner {
     // GetRecreateSnapshot,
     ExportMutationlog,
     GetCurrentMutationEventId,
+    GetLeaderSyncState,
     NetworkStatusStream,
     Shutdown,
   )

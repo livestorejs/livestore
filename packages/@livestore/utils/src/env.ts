@@ -25,3 +25,5 @@ export const isDevEnv = () => {
 
   return false
 }
+
+export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined

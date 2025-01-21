@@ -73,7 +73,9 @@ export const createStorePromise = async <
       Scope.extend(scope),
     )
   }).pipe(
-    Effect.withSpan('createStore'),
+    Effect.withSpan('createStore', {
+      attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
+    }),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
     Effect.provide(Logger.pretty),

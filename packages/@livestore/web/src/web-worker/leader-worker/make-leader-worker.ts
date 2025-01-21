@@ -3,6 +3,7 @@ import { MutationEventEncodedWithDeferred, ROOT_ID, sql, UnexpectedError } from 
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
+  getLocalHeadFromDb,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
   OuterWorkerCtx,
@@ -11,7 +12,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv } from '@livestore/utils'
-import type { HttpClient, WorkerError } from '@livestore/utils/effect'
+import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
   Deferred,
@@ -26,7 +27,6 @@ import {
   LogLevel,
   OtelTracer,
   Scheduler,
-  Scope,
   Stream,
   TaskTracing,
   WorkerRunner,
@@ -44,7 +44,7 @@ export type WorkerOptions = {
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
   otelOptions?: {
-    tracer: otel.Tracer
+    tracer?: otel.Tracer
   }
 }
 
@@ -173,31 +173,22 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
       ),
-    ExecuteBulk: ({ items }) =>
+    PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(
-          items
-            // TODO handle txn
-            .filter((_) => _._tag === 'mutate')
-            .flatMap((item) => item.batch)
-            .map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent)),
-        ),
-      ).pipe(
-        Effect.uninterruptible,
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/web:worker:ExecuteBulk'),
-      ),
+        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent))),
+      ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     GetCurrentMutationEventId: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        const result = workerCtx.dbLog.select<{ idGlobal: number; idLocal: number }>(
-          sql`SELECT idGlobal, idLocal FROM mutation_log ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
-        )[0]
-
-        return result ? { global: result.idGlobal, local: result.idLocal } : ROOT_ID
+        return getLocalHeadFromDb(workerCtx.dbLog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetCurrentMutationEventId')),
+    GetLeaderSyncState: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        return yield* workerCtx.syncProcessor.syncState
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetLeaderSyncState')),
     NetworkStatusStream: () =>
       Effect.gen(function* (_) {
         const ctx = yield* LeaderThreadCtx
@@ -212,14 +203,12 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       }).pipe(Stream.unwrap),
     Shutdown: () =>
       Effect.gen(function* () {
-        const { db, dbLog, devtools, scope } = yield* LeaderThreadCtx
+        const { db, dbLog, devtools } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
 
         if (devtools.enabled) {
           yield* FiberSet.clear(devtools.connections)
         }
-
-        yield* Scope.close(scope, Exit.void)
 
         db.close()
         dbLog.close()

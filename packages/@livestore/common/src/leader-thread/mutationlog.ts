@@ -36,3 +36,7 @@ export const getLocalHeadFromDb = (dbLog: SynchronousDatabase) => {
 
 export const getBackendHeadFromDb = (dbLog: SynchronousDatabase) =>
   dbLog.select<{ head: number }>(sql`select head from ${SYNC_STATUS_TABLE}`)[0]?.head ?? ROOT_ID.global
+
+// TODO use prepared statements
+export const updateBackendHead = (dbLog: SynchronousDatabase, head: EventId) =>
+  dbLog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head.global}`)

@@ -1,11 +1,5 @@
 import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
-import {
-  initializeSingletonTables,
-  makeNextMutationEventIdPair,
-  migrateDb,
-  ROOT_ID,
-  UnexpectedError,
-} from '@livestore/common'
+import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -43,20 +37,18 @@ export const makeInMemoryAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const currentMutationEventIdRef = { current: ROOT_ID }
-
       const coordinator = {
         devtools: { appHostId: 'in-memory', enabled: false },
         sessionId: `in-memory-${nanoid(6)}`,
         mutations: {
           pull: Stream.never,
           push: () => Effect.void,
-          nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
-          getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
+          initialMutationEventId: ROOT_ID,
         },
         lockStatus,
         export: Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.succeed(new Uint8Array()),
+        getLeaderSyncState: Effect.dieMessage('Not implemented'),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
       } satisfies Coordinator

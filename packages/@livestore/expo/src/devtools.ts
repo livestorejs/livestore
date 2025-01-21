@@ -242,26 +242,26 @@ export const bootDevtools = ({
             case 'LSD.RunMutationReq': {
               const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
-              const nextMutationEventIdPair = coordinator.mutations.nextMutationEventIdPair({
-                localOnly: mutationDef.options.localOnly,
-              })
+              // const nextMutationEventIdPair = coordinator.mutations.nextMutationEventIdPair({
+              //   localOnly: mutationDef.options.localOnly,
+              // })
 
-              const mutationEventEncoded = new MutationEventEncodedWithDeferred({
-                ...mutationEventEncoded_,
-                ...nextMutationEventIdPair,
-              })
+              // const mutationEventEncoded = new MutationEventEncodedWithDeferred({
+              //   ...mutationEventEncoded_,
+              //   // ...nextMutationEventIdPair,
+              // })
 
               // const mutationEventDecoded = yield* Schema.decode(mutationEventSchema)(mutationEventEncoded)
-              yield* Queue.offer(incomingSyncMutationsQueue, {
-                payload: { _tag: 'upstream-advance', newEvents: [mutationEventEncoded] },
-                remaining: 0,
-              })
+              // yield* Queue.offer(incomingSyncMutationsQueue, {
+              //   payload: { _tag: 'upstream-advance', newEvents: [mutationEventEncoded] },
+              //   remaining: 0,
+              // })
 
               // const mutationDef =
               //   schema.mutations.get(mutationEventEncoded.mutation) ??
               //   shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
 
-              yield* coordinator.mutations.push([mutationEventEncoded], { persisted })
+              // yield* coordinator.mutations.push([mutationEventEncoded], { persisted })
 
               yield* expoDevtoolsChannel.send(Devtools.RunMutationRes.make({ ...reqPayload }))
 

@@ -1,19 +1,19 @@
-import { BootStatus, EventId, PayloadUpstream, UnexpectedError } from '@livestore/common'
+import { BootStatus, EventId, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
 import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-  batch: Schema.Array(mutationEventSchemaEncodedAny),
-  persisted: Schema.Boolean,
-})
+// export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
+//   batch: Schema.Array(mutationEventSchemaEncodedAny),
+//   persisted: Schema.Boolean,
+// })
 
-export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
-  items: Schema.Union(ExecutionBacklogItemMutate),
-})
+// export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
+//   items: Schema.Union(ExecutionBacklogItemMutate),
+// })
 
-export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
+// export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
 
-export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
+// export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
 
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
@@ -82,12 +82,13 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', {
+  export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
     payload: {
-      items: Schema.Array(ExecutionBacklogItem),
+      batch: Schema.Array(mutationEventSchemaEncodedAny),
+      // items: Schema.Array(ExecutionBacklogItem),
     },
     success: Schema.Void,
-    failure: UnexpectedError,
+    failure: Schema.Union(UnexpectedError, InvalidPushError),
   }) {}
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
@@ -125,6 +126,12 @@ export namespace LeaderWorkerInner {
     },
   ) {}
 
+  export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
+    payload: {},
+    success: SyncState,
+    failure: UnexpectedError,
+  }) {}
+
   export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
     payload: {},
     success: Schema.Struct({
@@ -159,11 +166,12 @@ export namespace LeaderWorkerInner {
   export const Request = Schema.Union(
     InitialMessage,
     BootStatusStream,
-    ExecuteBulk,
+    PushToLeader,
     PullStream,
     Export,
     ExportMutationlog,
     GetCurrentMutationEventId,
+    GetLeaderSyncState,
     NetworkStatusStream,
     Shutdown,
     ConnectDevtoolsStream,
@@ -225,12 +233,13 @@ export namespace SharedWorker {
 
     // Proxied requests
     LeaderWorkerInner.BootStatusStream,
-    LeaderWorkerInner.ExecuteBulk,
+    LeaderWorkerInner.PushToLeader,
     LeaderWorkerInner.PullStream,
     LeaderWorkerInner.Export,
     // LeaderWorkerInner.GetRecreateSnapshot,
     LeaderWorkerInner.ExportMutationlog,
     LeaderWorkerInner.GetCurrentMutationEventId,
+    LeaderWorkerInner.GetLeaderSyncState,
     LeaderWorkerInner.NetworkStatusStream,
     LeaderWorkerInner.Shutdown,
     LeaderWorkerInner.ConnectDevtoolsStream,

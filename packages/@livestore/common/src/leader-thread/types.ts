@@ -6,6 +6,7 @@ import type {
   HttpClient,
   Option,
   Queue,
+  Ref,
   Scope,
   SubscriptionRef,
   WebChannel,
@@ -24,7 +25,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
-import type { MutationEventEncodedWithDeferred, PayloadUpstream } from '../sync/syncstate.js'
+import type { MutationEventEncodedWithDeferred, PayloadUpstream, SyncState } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -105,7 +106,6 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncBackend: SyncBackend | undefined
     syncProcessor: SyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
-    scope: Scope.CloseableScope
   }
 >() {}
 
@@ -132,7 +132,7 @@ export interface SyncProcessor {
   boot: (args: {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
-  state: SubscriptionRef.SubscriptionRef<{ online: boolean }>
+  syncState: Effect.Effect<SyncState, UnexpectedError>
   // backendHeadRef: { current: number }
 }
 
@@ -144,8 +144,9 @@ export interface SyncProcessor {
 
 // export type MutationEventWithDeferred = MutationEvent.AnyEncoded & { deferred?: Deferred.Deferred<void> }
 
-export interface PullQueueSet extends Iterable<Queue.Queue<PullQueueItem>> {
+export interface PullQueueSet {
   makeQueue: (
     since: EventId,
   ) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope | LeaderThreadCtx>
+  offer: (item: PullQueueItem) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
 }

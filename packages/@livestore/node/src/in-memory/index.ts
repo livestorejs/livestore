@@ -40,8 +40,6 @@ export const makeInMemoryAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const currentMutationEventIdRef = { current: ROOT_ID }
-
       const coordinator = {
         devtools: { appHostId: 'in-memory', enabled: false },
         sessionId: `in-memory-${nanoid(6)}`,
@@ -49,13 +47,13 @@ export const makeInMemoryAdapter =
         mutations: {
           pull: Stream.never,
           push: () => Effect.void,
-          nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
-          getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
+          initialMutationEventId: ROOT_ID,
         },
         export: Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.succeed(new Uint8Array()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
+        getLeaderSyncState: Effect.dieMessage('Not implemented'),
       } satisfies Coordinator
 
       return { coordinator, syncDb }

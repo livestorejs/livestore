@@ -1,4 +1,4 @@
-import { shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -35,11 +35,12 @@ export const makeClientSessionSyncProcessor = ({
   applyMutation,
   rollback,
   refreshTables,
+  span,
 }: {
   schema: LiveStoreSchema
   initialLeaderHead: EventId
   initialBackendHead: number
-  pushToLeader: Coordinator['mutations']['push']
+  pushToLeader: (batch: ReadonlyArray<MutationEvent.AnyEncoded>) => void
   pullFromLeader: Coordinator['mutations']['pull']
   applyMutation: (
     mutationEventDecoded: MutationEvent.PartialAny,
@@ -51,17 +52,18 @@ export const makeClientSessionSyncProcessor = ({
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
   rebaseBehaviour: 'auto-rebase' | 'manual-rebase'
+  span: otel.Span
 }): ClientSessionSyncProcessor => {
-  type LocalItem = {
-    // mutationEvent: MutationEvent.AnyEncoded
-    eventId: EventId
-    sessionChangeset: Uint8Array | undefined
-  }
+  // type LocalItem = {
+  //   // mutationEvent: MutationEvent.AnyEncoded
+  //   eventId: EventId
+  //   sessionChangeset: Uint8Array | undefined
+  // }
 
   const mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
   // TODO init from leader
-  const changesetItems: LocalItem[] = []
+  // const changesetItems: LocalItem[] = []
 
   // const nextMutationEventIdPair = makeNextMutationEventIdPair(localHeadRef)
 
@@ -92,37 +94,35 @@ export const makeClientSessionSyncProcessor = ({
       )
     })
 
-    const res = updateSyncState({
+    const updateResult = updateSyncState({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
       isLocalEvent,
       isEqualEvent,
     })
 
-    if (res._tag !== 'advance') {
-      return shouldNeverHappen(`Expected advance, got ${res._tag}`)
+    span.addEvent('local-push', {
+      batchSize: encodedMutationEvents.length,
+      updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+    })
+
+    if (updateResult._tag !== 'advance') {
+      return shouldNeverHappen(`Expected advance, got ${updateResult._tag}`)
     }
 
-    syncStateRef.current = res.syncState
+    syncStateRef.current = updateResult.syncState
 
     // TODO
     const writeTables = new Set<string>()
-    for (const mutationEvent of res.newEvents) {
+    for (const mutationEvent of updateResult.newEvents) {
       const res = applyMutation(mutationEvent, { otelContext, withChangeset: true })
       for (const table of res.writeTables) {
         writeTables.add(table)
       }
       mutationEvent.meta.sessionChangeset = res.sessionChangeset
-      // changesetItems.push({
-      //   eventId: mutationEvent.id,
-      //   sessionChangeset: res.sessionChangeset,
-      // })
     }
 
-    // TODO properly run effect in parent runtime
-
-    // TODO properly run effect in parent runtime
-    pushToLeader(encodedMutationEvents, { persisted: true }).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+    pushToLeader(encodedMutationEvents)
 
     return { writeTables }
   }
@@ -131,50 +131,54 @@ export const makeClientSessionSyncProcessor = ({
     yield* pullFromLeader.pipe(
       Stream.tap(({ payload, remaining }) =>
         Effect.gen(function* () {
-          // console.log('pulled: mutationEvents', { mutationEvents, localItems: changesetItems, backendHead })
+          // console.log('pulled payload from leader', { payload, remaining })
 
-          // backendHeadRef.current = backendHead
-
-          const res = updateSyncState({
+          const updateResult = updateSyncState({
             syncState: syncStateRef.current,
             payload,
             isLocalEvent,
             isEqualEvent,
           })
 
-          syncStateRef.current = res.syncState
+          syncStateRef.current = updateResult.syncState
 
-          // const filteredChunk: MutationEvent.AnyEncoded[] = []
-
-          if (res._tag === 'reject') {
+          if (updateResult._tag === 'reject') {
+            debugger
             throw new Error('TODO: implement reject in client-session-sync-queue for pull')
           }
 
-          if (res._tag === 'rebase') {
-            debugger
-            for (let i = res.eventsToRollback.length - 1; i >= 0; i--) {
-              const event = res.eventsToRollback[i]!
+          if (updateResult._tag === 'rebase') {
+            span.addEvent('pull:rebase', {
+              payloadTag: payload._tag,
+              payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+              newEventsCount: updateResult.newEvents.length,
+              rollbackCount: updateResult.eventsToRollback.length,
+              res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+            })
+
+            for (let i = updateResult.eventsToRollback.length - 1; i >= 0; i--) {
+              const event = updateResult.eventsToRollback[i]!
               if (event.meta.sessionChangeset) {
                 rollback(event.meta.sessionChangeset)
                 event.meta.sessionChangeset = undefined
               }
             }
+          } else {
+            span.addEvent('pull:advance', {
+              payloadTag: payload._tag,
+              payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+              newEventsCount: updateResult.newEvents.length,
+              res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+            })
           }
 
-          const mutationEvents = res.newEvents
-
-          if (mutationEvents.length === 0) return
-
-          console.log('pulled: mutationEvents', { mutationEvents })
-
-          // TODO
-          const needsChangeset = true
+          if (updateResult.newEvents.length === 0) return
 
           const writeTables = new Set<string>()
-          for (const mutationEvent of mutationEvents) {
+          for (const mutationEvent of updateResult.newEvents) {
             // TODO pass otelContext
             const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
-            const res = applyMutation(decodedMutationEvent, { otelContext: undefined, withChangeset: needsChangeset })
+            const res = applyMutation(decodedMutationEvent, { otelContext: undefined, withChangeset: true })
             for (const table of res.writeTables) {
               writeTables.add(table)
             }
@@ -182,11 +186,7 @@ export const makeClientSessionSyncProcessor = ({
             mutationEvent.meta.sessionChangeset = res.sessionChangeset
           }
 
-          // TODO add to localItems if `needsChangeset` is true
-
           refreshTables(writeTables)
-
-          // TODO
         }),
       ),
       Stream.runDrain,
@@ -199,6 +199,7 @@ export const makeClientSessionSyncProcessor = ({
     // push,
     push,
     boot,
+    syncStateRef,
   } satisfies ClientSessionSyncProcessor
 }
 
@@ -211,4 +212,6 @@ export interface ClientSessionSyncProcessor {
     writeTables: Set<string>
   }
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+
+  syncStateRef: { current: SyncState }
 }

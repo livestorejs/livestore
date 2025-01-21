@@ -1,9 +1,8 @@
-import type { Adapter, ClientSession, Coordinator, EventId, LockStatus, PreparedBindValues } from '@livestore/common'
+import type { Adapter, ClientSession, Coordinator, LockStatus, PreparedBindValues } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
   liveStoreStorageFormatVersion,
-  makeNextMutationEventIdPair,
   migrateDb,
   migrateTable,
   rehydrateFromMutationLog,
@@ -136,12 +135,10 @@ export const makeAdapter =
         ),
       )
 
-      const currentMutationEventIdRef = {
-        current: {
-          global: initialMutationEventIdData.idGlobal,
-          local: initialMutationEventIdData.idLocal,
-        },
-      } as { current: EventId }
+      const initialMutationEventId = {
+        global: initialMutationEventIdData.idGlobal,
+        local: initialMutationEventIdData.idLocal,
+      }
 
       let devtools: BootedDevtools | undefined
 
@@ -151,10 +148,8 @@ export const makeAdapter =
         // Expo doesn't support multiple client sessions, so we just use a fixed session id
         sessionId: 'expo',
         mutations: {
+          initialMutationEventId,
           pull: Stream.fromQueue(incomingSyncMutationsQueue),
-          // TODO implement proper event id generation using persistent cliendId
-          nextMutationEventIdPair: makeNextMutationEventIdPair(currentMutationEventIdRef),
-          getCurrentMutationEventId: Effect.sync(() => currentMutationEventIdRef.current),
           push: (batch, { persisted }): Effect.Effect<void, UnexpectedError> =>
             Effect.gen(function* () {
               for (const mutationEventEncoded of batch) {
@@ -211,6 +206,7 @@ export const makeAdapter =
         export: Effect.sync(() => dbRef.current.syncDb.export()),
         getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+        getLeaderSyncState: Effect.dieMessage('Not implemented'),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
       } satisfies Coordinator
 

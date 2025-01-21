@@ -1,4 +1,4 @@
-import { env, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -7,7 +7,6 @@ import {
   Exit,
   Fiber,
   FiberHandle,
-  FiberSet,
   Option,
   OtelTracer,
   Queue,
@@ -36,7 +35,7 @@ import { sql } from '../util.js'
 import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
-import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince } from './mutationlog.js'
+import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updateBackendHead } from './mutationlog.js'
 import type { InitialBlockingSyncContext, InitialSyncInfo, SyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -47,7 +46,6 @@ const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) 
   // TODO use schema equality here
   JSON.stringify(a.args) === JSON.stringify(b.args)
 
-const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined
 // const whenTraceVerbose = <T>(object: T) => TRACE_VERBOSE ? object : undefined
 
 /*
@@ -61,13 +59,11 @@ External events:
 The machine can be in the following states:
 - in-sync: fully synced with remote, now idling
 - applying-syncstate-advance (with pointer to current progress in case of rebase interrupt)
-- applying-syncstate-rebase (with pointer to current progress in case of interrupt)
-
 
 Transitions:
-- in-sync -> applying-syncstate-update
-- applying-syncstate-update -> in-sync
-- applying-syncstate-update -> applying-syncstate-update (need to interrupt previous operation)
+- in-sync -> applying-syncstate-advance
+- applying-syncstate-advance -> in-sync
+- applying-syncstate-advance -> applying-syncstate-advance (need to interrupt previous operation)
 
 Queuing vs interrupting behaviour:
 - Operations caused by pull can never be interrupted
@@ -109,23 +105,12 @@ type ProcessorStateApplyingSyncStateAdvance = {
   _tag: 'applying-syncstate-advance'
   origin: 'pull' | 'push'
   syncState: SyncState.SyncState
-  proccesHead: EventId
+  // TODO re-introduce this
+  // proccesHead: EventId
   fiber: Fiber.RuntimeFiber<void, UnexpectedError>
 }
 
-type ProcessorStateApplyingSyncStateRebase = {
-  _tag: 'applying-syncstate-rebase'
-  origin: 'pull'
-  syncState: SyncState.SyncState
-  proccesHead: EventId
-  fiber: Fiber.RuntimeFiber<void, UnexpectedError>
-}
-
-type ProcessorState =
-  | ProcessorStateInit
-  | ProcessorStateInSync
-  | ProcessorStateApplyingSyncStateAdvance
-  | ProcessorStateApplyingSyncStateRebase
+type ProcessorState = ProcessorStateInit | ProcessorStateInSync | ProcessorStateApplyingSyncStateAdvance
 
 /**
  * The general idea of the sync processor is to "follow the sync state"
@@ -183,51 +168,48 @@ export const makeLeaderSyncProcessor = ({
 
         if (state._tag === 'init') return shouldNeverHappen('Not initialized')
 
-        const res = SyncState.updateSyncState({
+        const updateResult = SyncState.updateSyncState({
           syncState: state.syncState,
           payload: { _tag: 'local-push', newEvents },
           isLocalEvent,
           isEqualEvent,
         })
 
-        if (res._tag === 'rebase') {
+        if (updateResult._tag === 'rebase') {
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
-        } else if (res._tag === 'reject') {
+        } else if (updateResult._tag === 'reject') {
           return yield* Effect.fail(
             InvalidPushError.make({
               reason: {
                 _tag: 'LeaderAhead',
-                minimumExpectedId: res.expectedMinimumId,
+                minimumExpectedId: updateResult.expectedMinimumId,
                 providedId: newEvents.at(0)!.id,
               },
             }),
           )
         }
 
-        const fiber = yield* applyMutationItemsRef.current!({ batchItems: res.newEvents }).pipe(Effect.fork)
+        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
 
         yield* Ref.set(stateRef, {
           _tag: 'applying-syncstate-advance',
           origin: 'push',
-          syncState: res.syncState,
-          proccesHead: newEvents.at(0)!.id,
+          syncState: updateResult.syncState,
           fiber,
         })
 
-        for (const queue of connectedClientSessionPullQueues) {
-          yield* Queue.offer(queue, {
-            payload: { _tag: 'upstream-advance', newEvents: res.newEvents },
-            remaining: 0,
-          })
-        }
+        yield* connectedClientSessionPullQueues.offer({
+          payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents },
+          remaining: 0,
+        })
 
         spanRef.current?.addEvent('local-push', {
           batchSize: newEvents.length,
-          res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
+          updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
         })
 
         // Don't sync localOnly mutations
-        const filteredBatch = res.newEvents.filter((mutationEventEncoded) => {
+        const filteredBatch = updateResult.newEvents.filter((mutationEventEncoded) => {
           const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
           return mutationDef.options.localOnly === false
         })
@@ -271,6 +253,13 @@ export const makeLeaderSyncProcessor = ({
         spanRef.current = span
 
         const initialBackendHead = dbMissing ? ROOT_ID.global : getBackendHeadFromDb(dbLog)
+        const initialLocalHead = dbMissing ? ROOT_ID : getLocalHeadFromDb(dbLog)
+
+        if (initialBackendHead > initialLocalHead.global) {
+          return shouldNeverHappen(
+            `During boot the backend head (${initialBackendHead}) should never be greater than the local head (${initialLocalHead.global})`,
+          )
+        }
 
         const pendingMutationEvents = yield* getMutationEventsSince({ global: initialBackendHead, local: 0 })
 
@@ -279,7 +268,7 @@ export const makeLeaderSyncProcessor = ({
           // On the leader we don't need a rollback tail beyond `pending` items
           rollbackTail: [],
           upstreamHead: { global: initialBackendHead, local: 0 },
-          localHead: dbMissing ? ROOT_ID : getLocalHeadFromDb(dbLog),
+          localHead: initialLocalHead,
         } as SyncState.SyncState
 
         /** State transitions need to happen atomically, so we use a Ref to track the state */
@@ -314,6 +303,17 @@ export const makeLeaderSyncProcessor = ({
             yield* FiberHandle.clear(backendPushingFiberHandle)
             // Reset the sync queue
             yield* Queue.takeAll(syncBackendQueue)
+            const state = yield* Ref.get(stateRef)
+            if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+
+            const filteredPending = state.syncState.pending.filter((mutationEvent) => {
+              const mutationDef = schema.mutations.get(mutationEvent.mutation)!
+              return mutationDef.options.localOnly === false
+            })
+
+            // TODO use bucket queue to gurantee batching
+            yield* syncBackendQueue.offerAll(filteredPending)
+
             yield* FiberHandle.run(
               backendPushingFiberHandle,
               backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
@@ -326,11 +326,26 @@ export const makeLeaderSyncProcessor = ({
           span,
           initialBlockingSyncContext,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-      }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
+      }).pipe(
+        // TODO remove timeout
+        // Effect.andThen(Effect.never),
+        // Effect.timeout(2000),
+        // Effect.orDie,
+        // Effect.withSpan('@livestore/common:leader-thread:syncing'),
+        // Effect.forkScoped,
+        Effect.withSpanScoped('@livestore/common:leader-thread:syncing'),
+      )
 
-    const state = yield* SubscriptionRef.make({ online: true })
-
-    return { push, pushPartial, boot, state } satisfies SyncProcessor
+    return {
+      push,
+      pushPartial,
+      boot,
+      syncState: Effect.gen(function* () {
+        const state = yield* Ref.get(stateRef)
+        if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+        return state.syncState
+      }),
+    } satisfies SyncProcessor
   })
 
 type ApplyMutationItems = (_: {
@@ -388,9 +403,10 @@ const makeApplyMutationItems = ({
             yield* Deferred.succeed(meta.deferred, void 0)
           }
 
-          if (i < batchItems.length - 1) {
-            yield* Ref.set(stateRef, { ...state, proccesHead: batchItems[i + 1]!.id })
-          }
+          // TODO re-introduce this
+          // if (i < batchItems.length - 1) {
+          //   yield* Ref.set(stateRef, { ...state, proccesHead: batchItems[i + 1]!.id })
+          // }
         }
 
         db.execute('COMMIT', undefined) // Commit the transaction
@@ -443,110 +459,92 @@ const backgroundBackendPulling = ({
         const state = yield* Ref.get(stateRef)
         if (state._tag === 'init') return shouldNeverHappen('Not initialized')
 
-        if (state._tag === 'applying-syncstate-rebase') {
-          // Wait until previous rebase is done
-          yield* semaphore.take(1)
-        }
-
         if (state._tag === 'applying-syncstate-advance') {
           if (state.origin === 'push') {
             yield* Fiber.interrupt(state.fiber)
             // In theory we should force-take the semaphore here, but as it's still taken,
             // it's already in the right state we want it to be in
           } else {
-            // Wait for previous pull advance to finish
+            // Wait for previous advance to finish
             yield* semaphore.take(1)
           }
         }
 
-        const res = SyncState.updateSyncState({
+        const trimRollbackUntil = newEvents.at(-1)!.id
+
+        const updateResult = SyncState.updateSyncState({
           syncState: state.syncState,
-          payload: { _tag: 'upstream-advance', newEvents },
+          payload: { _tag: 'upstream-advance', newEvents, trimRollbackUntil },
           isLocalEvent,
           isEqualEvent,
           ignoreLocalEvents: true,
         })
 
-        if (res._tag === 'reject') return shouldNeverHappen('The leader thread should never reject upstream advances')
+        if (updateResult._tag === 'reject') {
+          return shouldNeverHappen('The leader thread should never reject upstream advances')
+        }
 
-        const newBackendHead = newEvents.at(-1)!.id.global
+        const newBackendHead = newEvents.at(-1)!.id
 
-        // TODO use prepared statements
-        dbLog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${newBackendHead}`)
+        updateBackendHead(dbLog, newBackendHead)
 
-        if (res._tag === 'rebase') {
+        if (updateResult._tag === 'rebase') {
           span?.addEvent('backend-pull:rebase', {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
-            rollbackCount: res.eventsToRollback.length,
-            res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
+            rollbackCount: updateResult.eventsToRollback.length,
+            updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
           })
 
           yield* restartBackendPushing
 
-          if (res.eventsToRollback.length > 0) {
-            yield* rollback({ db, dbLog, eventIdsToRollback: res.eventsToRollback.map((_) => _.id) })
+          if (updateResult.eventsToRollback.length > 0) {
+            yield* rollback({ db, dbLog, eventIdsToRollback: updateResult.eventsToRollback.map((_) => _.id) })
           }
 
-          for (const queue of connectedClientSessionPullQueues) {
-            yield* Queue.offer(queue, {
-              payload: {
-                _tag: 'upstream-rebase',
-                newEvents: res.newEvents,
-                rollbackUntil: res.eventsToRollback.at(-1)!.id,
-              },
-              remaining,
-            })
-          }
-
-          const fiber = yield* applyMutationItemsRef.current!({ batchItems: res.newEvents }).pipe(Effect.fork)
-
-          yield* Ref.set(stateRef, {
-            // TODO get rid of `rebase` state in stateref
-            // _tag: 'applying-syncstate-rebase',
-            _tag: 'applying-syncstate-advance',
-            origin: 'pull',
-            syncState: res.syncState,
-            proccesHead: newEvents.at(0)!.id,
-            fiber,
+          yield* connectedClientSessionPullQueues.offer({
+            payload: {
+              _tag: 'upstream-rebase',
+              newEvents: updateResult.newEvents,
+              rollbackUntil: updateResult.eventsToRollback.at(-1)!.id,
+              trimRollbackUntil,
+            },
+            remaining,
           })
 
-          yield* Queue.offerAll(syncBackendQueue, res.syncState.pending)
+          yield* Queue.offerAll(syncBackendQueue, updateResult.syncState.pending)
         } else {
           span?.addEvent('backend-pull:advance', {
             newEventsCount: newEvents.length,
-            res: TRACE_VERBOSE ? JSON.stringify(res) : undefined,
+            updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
           })
 
-          const fiber = yield* applyMutationItemsRef.current!({ batchItems: res.newEvents }).pipe(Effect.fork)
-
-          yield* Ref.set(stateRef, {
-            _tag: 'applying-syncstate-advance',
-            origin: 'pull',
-            syncState: res.syncState,
-            proccesHead: newEvents.at(0)!.id,
-            fiber,
+          yield* connectedClientSessionPullQueues.offer({
+            payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents, trimRollbackUntil },
+            remaining,
           })
-
-          for (const queue of connectedClientSessionPullQueues) {
-            yield* Queue.offer(queue, {
-              payload: { _tag: 'upstream-advance', newEvents: res.newEvents },
-              remaining,
-            })
-          }
         }
+
+        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
+
+        yield* Ref.set(stateRef, {
+          _tag: 'applying-syncstate-advance',
+          origin: 'pull',
+          syncState: updateResult.syncState,
+          fiber,
+        })
       })
 
     yield* syncBackend.pull(cursorInfo).pipe(
       // TODO only take from queue while connected
       Stream.tap(({ batch, remaining }) =>
         Effect.gen(function* () {
-          yield* Effect.spanEvent('batch', {
-            attributes: {
-              batchSize: batch.length,
-              batch: TRACE_VERBOSE ? batch : undefined,
-            },
-          })
+          // yield* Effect.spanEvent('batch', {
+          //   attributes: {
+          //     batchSize: batch.length,
+          //     batch: TRACE_VERBOSE ? batch : undefined,
+          //   },
+          // })
 
           // Wait for the db to be initially created
           yield* dbReady

@@ -18,26 +18,14 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import {
-  isPartialMutationEvent,
   makeMutationEventSchemaMemo,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
   SESSION_CHANGESET_META_TABLE,
 } from '@livestore/common/schema'
-import { assertNever, isDevEnv, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import {
-  Cause,
-  Data,
-  Effect,
-  FiberSet,
-  Inspectable,
-  MutableHashMap,
-  Predicate,
-  Runtime,
-  Schema,
-  Stream,
-} from '@livestore/utils/effect'
+import { Cause, Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -110,12 +98,15 @@ export class Store<
     this.fiberSet = fiberSet
     this.runtime = runtime
 
+    const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
+
     this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
-      initialLeaderHead: clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync),
+      initialLeaderHead: clientSession.coordinator.mutations.initialMutationEventId,
       initialBackendHead: ROOT_ID.global,
       rebaseBehaviour: 'auto-rebase',
-      pushToLeader: clientSession.coordinator.mutations.push,
+      pushToLeader: (batch) =>
+        clientSession.coordinator.mutations.push(batch, { persisted: true }).pipe(this.runEffectFork),
       pullFromLeader: clientSession.coordinator.mutations.pull,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
         const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!
@@ -157,6 +148,7 @@ export class Store<
         }
         this.reactivityGraph.setRefs(tablesToUpdate)
       },
+      span: syncSpan,
     })
 
     // TODO refactor
@@ -245,8 +237,9 @@ export class Store<
           }
 
           // End the otel spans
-          otel.trace.getSpan(this.otel.mutationsSpanContext)!.end()
-          otel.trace.getSpan(this.otel.queriesSpanContext)!.end()
+          queriesSpan.end()
+          mutationsSpan.end()
+          syncSpan.end()
         }),
       )
 
@@ -568,20 +561,34 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
-  __devDownloadDb = (source: 'local' | 'leader' = 'local') =>
+  __devDownloadDb = (source: 'local' | 'leader' = 'local') => {
     Effect.gen(this, function* () {
       const data = source === 'local' ? this.syncDbWrapper.export() : yield* this.clientSession.coordinator.export
       downloadBlob(data, `livestore-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
+  }
 
-  __devDownloadMutationLogDb = () =>
+  __devDownloadMutationLogDb = () => {
     Effect.gen(this, function* () {
       const data = yield* this.clientSession.coordinator.getMutationLogData
       downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
+  }
 
-  __devCurrentMutationEventId = () =>
-    this.clientSession.coordinator.mutations.getCurrentMutationEventId.pipe(Effect.runSync)
+  __devHardReset = () => {
+    Effect.gen(this, function* () {
+      console.warn(`Not yet implemented`)
+    }).pipe(this.runEffectFork)
+  }
+
+  __devSyncStates = () => {
+    Effect.gen(this, function* () {
+      const session = this.syncProcessor.syncStateRef.current
+      console.log('Session sync state:', session)
+      const leader = yield* this.clientSession.coordinator.getLeaderSyncState
+      console.log('Leader sync state:', leader)
+    }).pipe(this.runEffectFork)
+  }
 
   __devShutdown = (cause?: Cause.Cause<UnexpectedError>) =>
     this.clientSession.coordinator
