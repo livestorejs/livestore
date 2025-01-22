@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { EventId } from '../adapter-types.js'
 import { ROOT_ID } from '../adapter-types.js'
+import { MutationEventEncodedWithMeta } from '../schema/MutationEvent.js'
 import * as SyncState from './syncstate.js'
-import { MutationEventEncodedWithMeta } from './syncstate.js'
 
 class TestEvent extends MutationEventEncodedWithMeta {
   constructor(

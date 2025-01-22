@@ -1,9 +1,10 @@
 import '@livestore/utils/node-vitest-polyfill'
 
 import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
-import { MutationEventEncodedWithMeta, nextEventIdPair, ROOT_ID, validatePushPayload } from '@livestore/common'
+import { ROOT_ID, validatePushPayload } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
+import { MutationEventEncodedWithMeta, nextEventIdPair } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Scope } from '@livestore/utils/effect'

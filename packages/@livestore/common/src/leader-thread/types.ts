@@ -24,8 +24,13 @@ import type {
   SynchronousDatabase,
   UnexpectedError,
 } from '../index.js'
-import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/mod.js'
-import type { MutationEventEncodedWithMeta, PayloadUpstream, SyncState } from '../sync/syncstate.js'
+import type {
+  LiveStoreSchema,
+  MutationEvent,
+  MutationEventEncodedWithMeta,
+  MutationEventSchema,
+} from '../schema/mod.js'
+import type { PayloadUpstream, SyncState } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {

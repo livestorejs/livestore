@@ -4,7 +4,6 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   MUTATION_LOG_META_TABLE,
-  MutationEventEncodedWithMeta,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
   UnexpectedError,

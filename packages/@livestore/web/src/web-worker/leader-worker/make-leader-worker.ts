@@ -1,5 +1,5 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
-import { MutationEventEncodedWithMeta, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -9,6 +9,7 @@ import {
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import { MutationEventEncodedWithMeta } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv } from '@livestore/utils'

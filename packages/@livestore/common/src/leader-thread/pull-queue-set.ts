@@ -1,6 +1,6 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
-import { MutationEventEncodedWithMeta } from '../sync/syncstate.js'
+import { MutationEventEncodedWithMeta } from '../schema/MutationEvent.js'
 import { getMutationEventsSince } from './mutationlog.js'
 import { type PullQueueItem, type PullQueueSet } from './types.js'
 

@@ -6,8 +6,9 @@ import * as otel from '@opentelemetry/api'
 import type { Coordinator, EventId, UnexpectedError } from '../adapter-types.js'
 import { type LiveStoreSchema, makeMutationEventSchemaMemo } from '../schema/mod.js'
 import type { MutationEvent } from '../schema/MutationEvent.js'
+import { MutationEventEncodedWithMeta, nextEventIdPair } from '../schema/MutationEvent.js'
 import type { SyncState } from './syncstate.js'
-import { MutationEventEncodedWithMeta, nextEventIdPair, updateSyncState } from './syncstate.js'
+import { updateSyncState } from './syncstate.js'
 
 const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) =>
   a.id.global === b.id.global &&

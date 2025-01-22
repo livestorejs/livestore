@@ -1,4 +1,5 @@
 import { memoizeByRef } from '@livestore/utils'
+import type { Deferred } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import { EventId } from '../adapter-types.js'
@@ -125,3 +126,52 @@ export const mutationEventSchemaDecodedAny = Schema.typeSchema(mutationEventSche
 export const mutationEventSchemaEncodedAny = Schema.encodedSchema(mutationEventSchemaAny).annotations({
   title: 'MutationEventSchema.EncodedAny',
 })
+
+/** Equivalent to mutationEventSchemaEncodedAny but with a meta field and some convenience methods */
+export class MutationEventEncodedWithMeta extends Schema.Class<MutationEventEncodedWithMeta>(
+  'MutationEventEncodedWithMeta',
+)({
+  mutation: Schema.String,
+  args: Schema.Any,
+  id: EventId,
+  parentId: EventId,
+  meta: Schema.optionalWith(
+    Schema.Any as Schema.Schema<{ deferred?: Deferred.Deferred<void>; sessionChangeset?: Uint8Array }>,
+    { default: () => ({}) },
+  ),
+}) {
+  toJSON = (): any => {
+    // Only used for logging/debugging
+    // - More readable way to print the id + parentId
+    // - not including `meta`
+    return {
+      id: `(${this.id.global},${this.id.local}) → (${this.parentId.global},${this.parentId.local})`,
+      mutation: this.mutation,
+      args: this.args,
+    }
+  }
+
+  rebase = (parentId: EventId, isLocal: boolean) =>
+    new MutationEventEncodedWithMeta({
+      ...this,
+      ...nextEventIdPair(this.id, isLocal),
+    })
+
+  isGreaterThan = (other: MutationEventEncodedWithMeta) => eventIdIsGreaterThan(this.id, other.id)
+}
+
+export const eventIdIsGreaterThan = (a: EventId, b: EventId) => {
+  return a.global > b.global || (a.global === b.global && a.local > b.local)
+}
+
+export const nextEventIdPair = (id: EventId, isLocal: boolean) => {
+  if (isLocal) {
+    return { id: { global: id.global, local: id.local + 1 }, parentId: id }
+  }
+
+  return {
+    id: { global: id.global + 1, local: 0 },
+    // NOTE we always point to `local: 0` for non-localOnly mutations
+    parentId: { global: id.global, local: 0 },
+  }
+}

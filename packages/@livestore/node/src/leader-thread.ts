@@ -10,7 +10,7 @@ if (process.execArgv.includes('--inspect')) {
 
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus } from '@livestore/common'
-import { Devtools, MutationEventEncodedWithMeta, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { Devtools, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { DevtoolsContext } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -19,6 +19,7 @@ import {
   makeLeaderThreadLayer,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import { MutationEventEncodedWithMeta } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
