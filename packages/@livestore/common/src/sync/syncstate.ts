@@ -5,8 +5,8 @@ import { ReadonlyArray, Schema } from '@livestore/utils/effect'
 import { EventId, eventIdsEqual } from '../adapter-types.js'
 
 /** Equivalent to mutationEventSchemaEncodedAny but with a meta field and some convenience methods */
-export class MutationEventEncodedWithDeferred extends Schema.Class<MutationEventEncodedWithDeferred>(
-  'MutationEventEncodedWithDeferred',
+export class MutationEventEncodedWithMeta extends Schema.Class<MutationEventEncodedWithMeta>(
+  'MutationEventEncodedWithMeta',
 )({
   mutation: Schema.String,
   args: Schema.Any,
@@ -29,12 +29,12 @@ export class MutationEventEncodedWithDeferred extends Schema.Class<MutationEvent
   }
 
   rebase = (parentId: EventId, isLocal: boolean) =>
-    new MutationEventEncodedWithDeferred({
+    new MutationEventEncodedWithMeta({
       ...this,
       ...nextEventIdPair(this.id, isLocal),
     })
 
-  isGreaterThan = (other: MutationEventEncodedWithDeferred) => eventIdIsGreaterThan(this.id, other.id)
+  isGreaterThan = (other: MutationEventEncodedWithMeta) => eventIdIsGreaterThan(this.id, other.id)
 }
 
 export const eventIdIsGreaterThan = (a: EventId, b: EventId) => {
@@ -89,15 +89,15 @@ export const nextEventIdPair = (id: EventId, isLocal: boolean) => {
  * handling cases such as upstream rebase, advance, local push, and rollback tail trimming.
  */
 export interface SyncState {
-  pending: ReadonlyArray<MutationEventEncodedWithDeferred>
-  rollbackTail: ReadonlyArray<MutationEventEncodedWithDeferred>
+  pending: ReadonlyArray<MutationEventEncodedWithMeta>
+  rollbackTail: ReadonlyArray<MutationEventEncodedWithMeta>
   upstreamHead: EventId
   localHead: EventId
 }
 
 export const SyncState = Schema.Struct({
-  pending: Schema.Array(MutationEventEncodedWithDeferred),
-  rollbackTail: Schema.Array(MutationEventEncodedWithDeferred),
+  pending: Schema.Array(MutationEventEncodedWithMeta),
+  rollbackTail: Schema.Array(MutationEventEncodedWithMeta),
   upstreamHead: EventId,
   localHead: EventId,
 }).annotations({ title: 'SyncState' })
@@ -105,19 +105,19 @@ export const SyncState = Schema.Struct({
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Rollback until this event in the rollback tail (inclusive). Starting from the end of the rollback tail. */
   rollbackUntil: EventId,
-  newEvents: Schema.Array(MutationEventEncodedWithDeferred),
+  newEvents: Schema.Array(MutationEventEncodedWithMeta),
   /** Trim rollback tail up to this event (inclusive). */
   trimRollbackUntil: Schema.optional(EventId),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(MutationEventEncodedWithDeferred),
+  newEvents: Schema.Array(MutationEventEncodedWithMeta),
   /** Trim rollback tail up to this event (inclusive). */
   trimRollbackUntil: Schema.optional(EventId),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(MutationEventEncodedWithDeferred),
+  newEvents: Schema.Array(MutationEventEncodedWithMeta),
 }) {}
 
 export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
@@ -130,15 +130,15 @@ export type UpdateResultAdvance = {
   _tag: 'advance'
   syncState: SyncState
   /** Events which weren't pending before the update */
-  newEvents: ReadonlyArray<MutationEventEncodedWithDeferred>
+  newEvents: ReadonlyArray<MutationEventEncodedWithMeta>
 }
 
 export type UpdateResultRebase = {
   _tag: 'rebase'
   syncState: SyncState
   /** Events which weren't pending before the update */
-  newEvents: ReadonlyArray<MutationEventEncodedWithDeferred>
-  eventsToRollback: ReadonlyArray<MutationEventEncodedWithDeferred>
+  newEvents: ReadonlyArray<MutationEventEncodedWithMeta>
+  eventsToRollback: ReadonlyArray<MutationEventEncodedWithMeta>
 }
 
 export type UpdateResultReject = {
@@ -160,14 +160,14 @@ export const updateSyncState = ({
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
-  isLocalEvent: (event: MutationEventEncodedWithDeferred) => boolean
-  isEqualEvent: (a: MutationEventEncodedWithDeferred, b: MutationEventEncodedWithDeferred) => boolean
+  isLocalEvent: (event: MutationEventEncodedWithMeta) => boolean
+  isEqualEvent: (a: MutationEventEncodedWithMeta, b: MutationEventEncodedWithMeta) => boolean
   /** This is used in the leader which should ignore local events when receiving an upstream-advance payload */
   ignoreLocalEvents?: boolean
 }): UpdateResult => {
   const trimRollbackTail = (
-    rollbackTail: ReadonlyArray<MutationEventEncodedWithDeferred>,
-  ): ReadonlyArray<MutationEventEncodedWithDeferred> => {
+    rollbackTail: ReadonlyArray<MutationEventEncodedWithMeta>,
+  ): ReadonlyArray<MutationEventEncodedWithMeta> => {
     const trimRollbackUntil = payload._tag === 'local-push' ? undefined : payload.trimRollbackUntil
     if (trimRollbackUntil === undefined) return rollbackTail
     const index = rollbackTail.findIndex((event) => eventIdsEqual(event.id, trimRollbackUntil))
@@ -377,10 +377,10 @@ const findDivergencePoint = ({
   isLocalEvent,
   ignoreLocalEvents,
 }: {
-  existingEvents: ReadonlyArray<MutationEventEncodedWithDeferred>
-  incomingEvents: ReadonlyArray<MutationEventEncodedWithDeferred>
-  isEqualEvent: (a: MutationEventEncodedWithDeferred, b: MutationEventEncodedWithDeferred) => boolean
-  isLocalEvent: (event: MutationEventEncodedWithDeferred) => boolean
+  existingEvents: ReadonlyArray<MutationEventEncodedWithMeta>
+  incomingEvents: ReadonlyArray<MutationEventEncodedWithMeta>
+  isEqualEvent: (a: MutationEventEncodedWithMeta, b: MutationEventEncodedWithMeta) => boolean
+  isLocalEvent: (event: MutationEventEncodedWithMeta) => boolean
   ignoreLocalEvents: boolean
 }): number => {
   if (ignoreLocalEvents) {
@@ -412,10 +412,10 @@ const rebaseEvents = ({
   baseEventId,
   isLocalEvent,
 }: {
-  events: ReadonlyArray<MutationEventEncodedWithDeferred>
+  events: ReadonlyArray<MutationEventEncodedWithMeta>
   baseEventId: EventId
-  isLocalEvent: (event: MutationEventEncodedWithDeferred) => boolean
-}): ReadonlyArray<MutationEventEncodedWithDeferred> => {
+  isLocalEvent: (event: MutationEventEncodedWithMeta) => boolean
+}): ReadonlyArray<MutationEventEncodedWithMeta> => {
   let prevEventId = baseEventId
   return events.map((event) => {
     const isLocal = isLocalEvent(event)

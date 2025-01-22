@@ -24,7 +24,7 @@ import { MUTATION_LOG_META_TABLE, mutationLogMetaTable, SESSION_CHANGESET_META_T
 import { updateRows } from '../sql-queries/index.js'
 import { InvalidPushError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
-import { MutationEventEncodedWithDeferred, nextEventIdPair } from '../sync/syncstate.js'
+import { MutationEventEncodedWithMeta, nextEventIdPair } from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -117,7 +117,7 @@ export const makeLeaderSyncProcessor = ({
 
     const semaphore = yield* Effect.makeSemaphore(1)
 
-    const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithDeferred) => {
+    const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithMeta) => {
       const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
       return mutationDef.options.localOnly
     }
@@ -125,7 +125,7 @@ export const makeLeaderSyncProcessor = ({
     const spanRef = { current: undefined as otel.Span | undefined }
     const applyMutationItemsRef = { current: undefined as ApplyMutationItems | undefined }
 
-    const push = (newEvents: ReadonlyArray<MutationEventEncodedWithDeferred>) =>
+    const push = (newEvents: ReadonlyArray<MutationEventEncodedWithMeta>) =>
       Effect.gen(function* () {
         // TODO validate batch
         if (newEvents.length === 0) return
@@ -210,7 +210,7 @@ export const makeLeaderSyncProcessor = ({
           schema.mutations.get(mutationEventEncoded_.mutation) ??
           shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
 
-        const mutationEventEncoded = new MutationEventEncodedWithDeferred({
+        const mutationEventEncoded = new MutationEventEncodedWithMeta({
           ...mutationEventEncoded_,
           ...nextEventIdPair(state.syncState.localHead, mutationDef.options.localOnly),
         })
@@ -236,7 +236,7 @@ export const makeLeaderSyncProcessor = ({
         const pendingMutationEvents = yield* getMutationEventsSince({ global: initialBackendHead, local: 0 })
 
         const initialSyncState = {
-          pending: pendingMutationEvents.map((_) => new MutationEventEncodedWithDeferred(_)),
+          pending: pendingMutationEvents.map((_) => new MutationEventEncodedWithMeta(_)),
           // On the leader we don't need a rollback tail beyond `pending` items
           rollbackTail: [],
           upstreamHead: { global: initialBackendHead, local: 0 },
@@ -307,7 +307,7 @@ export const makeLeaderSyncProcessor = ({
   })
 
 type ApplyMutationItems = (_: {
-  batchItems: ReadonlyArray<MutationEventEncodedWithDeferred>
+  batchItems: ReadonlyArray<MutationEventEncodedWithMeta>
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
@@ -393,9 +393,9 @@ const backgroundBackendPulling = ({
 }: {
   dbReady: Deferred.Deferred<void>
   initialBackendHead: number
-  isLocalEvent: (mutationEventEncoded: MutationEventEncodedWithDeferred) => boolean
+  isLocalEvent: (mutationEventEncoded: MutationEventEncodedWithMeta) => boolean
   restartBackendPushing: (
-    filteredRebasedPending: ReadonlyArray<MutationEventEncodedWithDeferred>,
+    filteredRebasedPending: ReadonlyArray<MutationEventEncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
   span: otel.Span | undefined
   stateRef: Ref.Ref<ProcessorState>
@@ -410,7 +410,7 @@ const backgroundBackendPulling = ({
 
     const cursorInfo = yield* getCursorInfo(initialBackendHead)
 
-    const onNewPullChunk = (newEvents: MutationEventEncodedWithDeferred[], remaining: number) =>
+    const onNewPullChunk = (newEvents: MutationEventEncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -516,7 +516,7 @@ const backgroundBackendPulling = ({
 
           // TODO pass in metadata
           yield* onNewPullChunk(
-            batch.map((_) => new MutationEventEncodedWithDeferred(_.mutationEventEncoded)),
+            batch.map((_) => new MutationEventEncodedWithMeta(_.mutationEventEncoded)),
             remaining,
           )
 

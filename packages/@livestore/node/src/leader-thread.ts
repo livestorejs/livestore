@@ -10,7 +10,7 @@ if (process.execArgv.includes('--inspect')) {
 
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus } from '@livestore/common'
-import { Devtools, MutationEventEncodedWithDeferred, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { Devtools, MutationEventEncodedWithMeta, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { DevtoolsContext } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -52,7 +52,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
         items
           // TODO handle txn
           .filter((_) => _._tag === 'mutate')
-          .map((item) => new MutationEventEncodedWithDeferred(item.mutationEventEncoded)),
+          .map((item) => new MutationEventEncodedWithMeta(item.mutationEventEncoded)),
       ),
     ).pipe(
       Effect.uninterruptible,

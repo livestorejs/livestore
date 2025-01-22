@@ -25,7 +25,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { LiveStoreSchema, MutationEvent, MutationEventSchema } from '../schema/index.js'
-import type { MutationEventEncodedWithDeferred, PayloadUpstream, SyncState } from '../sync/syncstate.js'
+import type { MutationEventEncodedWithMeta, PayloadUpstream, SyncState } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type DevtoolsContextEnabled = {
@@ -125,7 +125,7 @@ export type PullQueueItem = {
 export interface SyncProcessor {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
-    batch: ReadonlyArray<MutationEventEncodedWithDeferred>,
+    batch: ReadonlyArray<MutationEventEncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
 
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>

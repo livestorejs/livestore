@@ -7,13 +7,8 @@
 
 - Still todo:
   - Fix devtools for web + expo
-  - Get rid of `makeNextMutationEventIdPair` + `validateAndUpdateLocalHead`
   - Sync queue
-    - Refactor `MutationEventEncodedWithDeferred` to work better alongside `mutationEventSchemaEncodedAny`
-    - Implement in client session
-    - Refactor to state machine
-      - Expose `state` as a subscription ref
-    - Use synclog payload as sync items
+    - Refactor `MutationEventEncodedWithMeta` to work better alongside `mutationEventSchemaEncodedAny`
 
 - New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.

@@ -1,5 +1,5 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
-import { MutationEventEncodedWithDeferred, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { MutationEventEncodedWithMeta, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -175,7 +175,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       ),
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent))),
+        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEventEncodedWithMeta(mutationEvent))),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),

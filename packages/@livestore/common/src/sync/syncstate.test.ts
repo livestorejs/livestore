@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest'
 import type { EventId } from '../adapter-types.js'
 import { ROOT_ID } from '../adapter-types.js'
 import * as SyncState from './syncstate.js'
-import { MutationEventEncodedWithDeferred } from './syncstate.js'
+import { MutationEventEncodedWithMeta } from './syncstate.js'
 
-class TestEvent extends MutationEventEncodedWithDeferred {
+class TestEvent extends MutationEventEncodedWithMeta {
   constructor(
     public readonly id: EventId,
     public readonly parentId: EventId,
@@ -39,10 +39,10 @@ const e_0_3 = new TestEvent({ global: 0, local: 3 }, e_0_2.id, 'a', true)
 const e_1_0 = new TestEvent({ global: 1, local: 0 }, e_0_0.id, 'a', false)
 const e_1_1 = new TestEvent({ global: 1, local: 1 }, e_1_0.id, 'a', true)
 
-const isEqualEvent = (a: MutationEventEncodedWithDeferred, b: MutationEventEncodedWithDeferred) =>
+const isEqualEvent = (a: MutationEventEncodedWithMeta, b: MutationEventEncodedWithMeta) =>
   a.id.global === b.id.global && a.id.local === b.id.local && a.args === b.args
 
-const isLocalEvent = (event: MutationEventEncodedWithDeferred) => (event as TestEvent).isLocal
+const isLocalEvent = (event: MutationEventEncodedWithMeta) => (event as TestEvent).isLocal
 
 describe('syncstate', () => {
   describe('updateSyncState', () => {
@@ -416,8 +416,8 @@ describe('syncstate', () => {
 })
 
 const expectEventArraysEqual = (
-  actual: ReadonlyArray<MutationEventEncodedWithDeferred>,
-  expected: ReadonlyArray<MutationEventEncodedWithDeferred>,
+  actual: ReadonlyArray<MutationEventEncodedWithMeta>,
+  expected: ReadonlyArray<MutationEventEncodedWithMeta>,
 ) => {
   expect(actual.length).toBe(expected.length)
   actual.forEach((event, i) => {

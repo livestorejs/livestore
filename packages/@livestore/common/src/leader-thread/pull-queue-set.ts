@@ -1,6 +1,6 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
-import { MutationEventEncodedWithDeferred } from '../sync/syncstate.js'
+import { MutationEventEncodedWithMeta } from '../sync/syncstate.js'
 import { getMutationEventsSince } from './mutationlog.js'
 import { type PullQueueItem, type PullQueueSet } from './types.js'
 
@@ -26,7 +26,7 @@ export const makePullQueueSet = Effect.gen(function* () {
       const mutationEvents = yield* getMutationEventsSince(since)
 
       if (mutationEvents.length > 0) {
-        const newEvents = mutationEvents.map((mutationEvent) => new MutationEventEncodedWithDeferred(mutationEvent))
+        const newEvents = mutationEvents.map((mutationEvent) => new MutationEventEncodedWithMeta(mutationEvent))
         yield* queue.offer({ payload: { _tag: 'upstream-advance', newEvents }, remaining: 0 })
       }
 

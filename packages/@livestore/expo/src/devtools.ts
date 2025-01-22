@@ -4,7 +4,7 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   MUTATION_LOG_META_TABLE,
-  MutationEventEncodedWithDeferred,
+  MutationEventEncodedWithMeta,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
   UnexpectedError,
@@ -246,7 +246,7 @@ export const bootDevtools = ({
               //   localOnly: mutationDef.options.localOnly,
               // })
 
-              // const mutationEventEncoded = new MutationEventEncodedWithDeferred({
+              // const mutationEventEncoded = new MutationEventEncodedWithMeta({
               //   ...mutationEventEncoded_,
               //   // ...nextMutationEventIdPair,
               // })

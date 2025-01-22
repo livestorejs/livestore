@@ -7,7 +7,7 @@ import type { Coordinator, EventId, UnexpectedError } from '../adapter-types.js'
 import { type LiveStoreSchema, makeMutationEventSchemaMemo } from '../schema/index.js'
 import type { MutationEvent } from '../schema/mutations.js'
 import type { SyncState } from './syncstate.js'
-import { MutationEventEncodedWithDeferred, nextEventIdPair, updateSyncState } from './syncstate.js'
+import { MutationEventEncodedWithMeta, nextEventIdPair, updateSyncState } from './syncstate.js'
 
 const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) =>
   a.id.global === b.id.global &&
@@ -63,7 +63,7 @@ export const makeClientSessionSyncProcessor = ({
     } as SyncState,
   }
 
-  const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithDeferred) => {
+  const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithMeta) => {
     const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
     return mutationDef.options.localOnly
   }
@@ -76,7 +76,7 @@ export const makeClientSessionSyncProcessor = ({
       const mutationDef = schema.mutations.get(mutationEvent.mutation)!
       const nextIdPair = nextEventIdPair(baseEventId, mutationDef.options.localOnly)
       baseEventId = nextIdPair.id
-      return new MutationEventEncodedWithDeferred(
+      return new MutationEventEncodedWithMeta(
         Schema.encodeUnknownSync(mutationEventSchema)({ ...mutationEvent, ...nextIdPair }),
       )
     })
