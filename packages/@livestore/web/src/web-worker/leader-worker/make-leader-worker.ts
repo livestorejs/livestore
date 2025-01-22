@@ -1,5 +1,5 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
-import { ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { sql, UnexpectedError } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -9,7 +9,7 @@ import {
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEventEncodedWithMeta } from '@livestore/common/schema'
+import { EventId, MutationEvent } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv } from '@livestore/utils'
@@ -176,7 +176,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       ),
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEventEncodedWithMeta(mutationEvent))),
+        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),

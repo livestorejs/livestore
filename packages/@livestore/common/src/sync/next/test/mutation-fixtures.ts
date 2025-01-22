@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { type EventId, ROOT_ID } from '../../../adapter-types.js'
+import * as EventId from '../../../schema/EventId.js'
 import type { MutationDef } from '../../../schema/mutations.js'
 import { defineFacts, defineMutation } from '../../../schema/mutations.js'
 import { factsSnapshotForDag, getFactsGroupForMutationArgs } from '../facts.js'
@@ -138,9 +138,9 @@ export const toEventNodes = (
 ): HistoryDagNode[] => {
   const nodesAcc: HistoryDagNode[] = [rootEventNode]
 
-  let currentEventId: EventId = ROOT_ID
+  let currentEventId: EventId.EventId = EventId.ROOT
 
-  const getNextEventId = (mutationDef: MutationDef.Any): EventId => {
+  const getNextEventId = (mutationDef: MutationDef.Any): EventId.EventId => {
     if (mutationDef.options.localOnly) {
       return { global: currentEventId.global, local: currentEventId.local + 1 }
     }
@@ -219,7 +219,7 @@ export const toEventNodes = (
   return eventNodes
 }
 
-const getParentId = (eventId: EventId): EventId => {
+const getParentId = (eventId: EventId.EventId): EventId.EventId => {
   const globalParentId = eventId.global
   const localParentId = eventId.local - 1
 

@@ -1,10 +1,10 @@
 import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
-import { Devtools, IntentionalShutdownCause, ROOT_ID, UnexpectedError } from '@livestore/common'
+import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
-import { makeMutationEventSchema } from '@livestore/common/schema'
+import { EventId } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -312,7 +312,7 @@ export const makeAdapter =
       // We should figure out a way to also restore the initial mutation event id from the snapshot
       const initialMutationEventId =
         dataFromFile === undefined
-          ? ROOT_ID // TODO properly implement this
+          ? EventId.ROOT // TODO properly implement this
           : yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
       const makeSyncDb = syncDbFactory({ sqlite3 })

@@ -1,5 +1,5 @@
-import { makeColumnSpec, ROOT_ID } from '@livestore/common'
-import { DbSchema, type MutationEvent } from '@livestore/common/schema'
+import { makeColumnSpec } from '@livestore/common'
+import { DbSchema, EventId, type MutationEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
@@ -101,7 +101,7 @@ export class WebSocketServer extends DurableObject<Env> {
           case 'WSMessage.PushReq': {
             // TODO check whether we could use the Durable Object storage for this to speed up the lookup
             const latestEvent = yield* Effect.promise(() => this.storage.getLatestEvent())
-            const expectedParentId = latestEvent?.id ?? ROOT_ID
+            const expectedParentId = latestEvent?.id ?? EventId.ROOT
 
             let i = 0
             for (const mutationEventEncoded of decodedMessage.batch) {

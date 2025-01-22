@@ -1,5 +1,5 @@
-import type { ClientSession, EventId, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { ClientSession, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
+import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import type { FiberSet, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -61,7 +61,8 @@ export type StoreOptions<
   fiberSet: FiberSet.FiberSet
   runtime: Runtime.Runtime<Scope.Scope>
   batchUpdates: (runUpdates: () => void) => void
-  unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId, MutationEvent.ForSchema<TSchema>>
+  // TODO validate whether we still need this
+  unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId.EventId, MutationEvent.ForSchema<TSchema>>
 }
 
 export type RefreshReason =

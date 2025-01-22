@@ -15,9 +15,9 @@ import {
   replaceSessionIdSymbol,
   UnexpectedError,
 } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
-  makeMutationEventSchemaMemo,
+  MutationEvent,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
   SESSION_CHANGESET_META_TABLE,
@@ -149,7 +149,7 @@ export class Store<
       span: syncSpan,
     })
 
-    this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
+    this.__mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}

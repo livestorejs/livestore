@@ -1,4 +1,4 @@
-import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import { MutationEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
 export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
@@ -20,7 +20,7 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   requestId: Schema.String,
   events: Schema.Array(
     Schema.Struct({
-      mutationEventEncoded: mutationEventSchemaEncodedAny,
+      mutationEventEncoded: MutationEvent.EncodedAny,
       metadata: Schema.Option(SyncMetadata),
     }),
   ),
@@ -30,7 +30,7 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
 export type PullRes = typeof PullRes.Type
 
 export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  mutationEventEncoded: MutationEvent.EncodedAny,
   persisted: Schema.Boolean,
   metadata: Schema.Option(SyncMetadata),
 })
@@ -39,7 +39,7 @@ export type PushBroadcast = typeof PushBroadcast.Type
 
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
-  batch: Schema.Array(mutationEventSchemaEncodedAny),
+  batch: Schema.Array(MutationEvent.EncodedAny),
   persisted: Schema.Boolean,
 })
 

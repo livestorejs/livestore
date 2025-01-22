@@ -1,6 +1,6 @@
 import { notYetImplemented } from '@livestore/utils'
 
-import type { EventId } from '../../adapter-types.js'
+import type * as EventId from '../../schema/EventId.js'
 import type {
   FactsCallback,
   MutationEventFactInput,
@@ -11,7 +11,10 @@ import type {
 import { graphologyDag } from './graphology_.js'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.js'
 
-export const factsSnapshotForEvents = (events: HistoryDagNode[], endEventId: EventId): MutationEventFactsSnapshot => {
+export const factsSnapshotForEvents = (
+  events: HistoryDagNode[],
+  endEventId: EventId.EventId,
+): MutationEventFactsSnapshot => {
   const facts = new Map<string, any>()
 
   for (const event of events) {
@@ -25,7 +28,10 @@ export const factsSnapshotForEvents = (events: HistoryDagNode[], endEventId: Eve
   return facts
 }
 
-export const factsSnapshotForDag = (dag: HistoryDag, endEventId: EventId | undefined): MutationEventFactsSnapshot => {
+export const factsSnapshotForDag = (
+  dag: HistoryDag,
+  endEventId: EventId.EventId | undefined,
+): MutationEventFactsSnapshot => {
   const facts = new Map<string, any>()
 
   const orderedEventIdStrs = graphologyDag.topologicalSort(dag)
@@ -221,7 +227,7 @@ export const getFactsGroupForMutationArgs = ({
   return facts
 }
 
-export const compareEventIds = (a: EventId, b: EventId) => {
+export const compareEventIds = (a: EventId.EventId, b: EventId.EventId) => {
   if (a.global !== b.global) {
     return a.global - b.global
   }

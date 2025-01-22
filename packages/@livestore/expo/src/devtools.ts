@@ -10,7 +10,6 @@ import {
 } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { makeMutationEventSchema } from '@livestore/common/schema'
 import { makeExpoDevtoolsChannel } from '@livestore/devtools-expo-common/web-channel'
 import type { ParseResult, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
@@ -71,8 +70,6 @@ export const bootDevtools = ({
       Stream.runDrain,
       Effect.forkScoped,
     )
-
-    const mutationEventSchema = makeMutationEventSchema(schema)
 
     const getDatabaseName = (db: DbPairRef) =>
       db.current!.db.databasePath.slice(db.current!.db.databasePath.lastIndexOf('/') + 1)
@@ -245,7 +242,7 @@ export const bootDevtools = ({
               //   localOnly: mutationDef.options.localOnly,
               // })
 
-              // const mutationEventEncoded = new MutationEventEncodedWithMeta({
+              // const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
               //   ...mutationEventEncoded_,
               //   // ...nextMutationEventIdPair,
               // })

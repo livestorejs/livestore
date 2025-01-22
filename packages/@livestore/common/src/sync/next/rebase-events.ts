@@ -1,5 +1,5 @@
-import type { EventId } from '../../adapter-types.js'
-import type { MutationEvent } from '../../schema/MutationEvent.js'
+import type * as EventId from '../../schema/EventId.js'
+import type * as MutationEvent from '../../schema/MutationEvent.js'
 import type { MutationDef, MutationEventFactsSnapshot } from '../../schema/mutations.js'
 import {
   applyFactGroups,
@@ -89,8 +89,8 @@ export const rebaseEvents = ({
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        id: { global: headGlobalId + index + 1, local: 0 } satisfies EventId,
-        parentId: { global: headGlobalId + index, local: 0 } satisfies EventId,
+        id: { global: headGlobalId + index + 1, local: 0 } satisfies EventId.EventId,
+        parentId: { global: headGlobalId + index, local: 0 } satisfies EventId.EventId,
         mutation: event.mutation,
         args: event.args,
       }) satisfies MutationEvent.Any,

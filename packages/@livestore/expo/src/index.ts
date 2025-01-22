@@ -11,7 +11,7 @@ import {
 } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import type { MutationLogMetaRow } from '@livestore/common/schema'
-import { makeMutationEventSchema, MUTATION_LOG_META_TABLE, mutationLogMetaTable } from '@livestore/common/schema'
+import { MUTATION_LOG_META_TABLE, MutationEvent, mutationLogMetaTable } from '@livestore/common/schema'
 import { insertRowPrepared, makeBindValues } from '@livestore/common/sql-queries'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -108,7 +108,7 @@ export const makeAdapter =
           ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
           : new Set(['livestore.RawSql'])
 
-      const mutationEventSchema = makeMutationEventSchema(schema)
+      const mutationEventSchema = MutationEvent.makeMutationEventSchema(schema)
       const mutationDefSchemaHashMap = new Map(
         [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
       )

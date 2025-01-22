@@ -10,7 +10,7 @@ if (process.execArgv.includes('--inspect')) {
 
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus } from '@livestore/common'
-import { Devtools, ROOT_ID, sql, UnexpectedError } from '@livestore/common'
+import { Devtools, sql, UnexpectedError } from '@livestore/common'
 import type { DevtoolsContext } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -19,7 +19,7 @@ import {
   makeLeaderThreadLayer,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEventEncodedWithMeta } from '@livestore/common/schema'
+import { EventId, MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
@@ -53,7 +53,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
         items
           // TODO handle txn
           .filter((_) => _._tag === 'mutate')
-          .map((item) => new MutationEventEncodedWithMeta(item.mutationEventEncoded)),
+          .map((item) => new MutationEvent.EncodedWithMeta(item.mutationEventEncoded)),
       ),
     ).pipe(
       Effect.uninterruptible,
@@ -85,7 +85,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
         sql`SELECT idGlobal, idLocal FROM mutation_log ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
       )[0]
 
-      return result ? { global: result.idGlobal, local: result.idLocal } : ROOT_ID
+      return result ? { global: result.idGlobal, local: result.idLocal } : EventId.ROOT
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetCurrentMutationEventId')),
   NetworkStatusStream: () =>
     Effect.gen(function* (_) {

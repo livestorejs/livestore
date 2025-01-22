@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import { appConfig, todos } from './__tests__/fixture.js'
-import type { MutationEvent } from './schema/MutationEvent.js'
+import type * as MutationEvent from './schema/MutationEvent.js'
 
 describe('derived mutations', () => {
   test('todos', () => {

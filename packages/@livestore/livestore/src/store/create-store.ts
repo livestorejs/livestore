@@ -2,12 +2,11 @@ import type {
   Adapter,
   BootStatus,
   ClientSession,
-  EventId,
   IntentionalShutdownCause,
   StoreDevtoolsChannel,
 } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { makeNoopTracer } from '@livestore/utils'
 import {
   Cause,
@@ -180,7 +179,7 @@ export const createStore = <
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
       // TODO fill up with unsynced mutation events from the client session
-      const unsyncedMutationEvents = MutableHashMap.empty<EventId, MutationEvent.ForSchema<TSchema>>()
+      const unsyncedMutationEvents = MutableHashMap.empty<EventId.EventId, MutationEvent.ForSchema<TSchema>>()
 
       const store = Store.createStore<TGraphQLContext, TSchema>(
         {

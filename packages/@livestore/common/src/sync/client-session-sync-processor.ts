@@ -3,10 +3,10 @@ import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { Coordinator, EventId, UnexpectedError } from '../adapter-types.js'
-import { type LiveStoreSchema, makeMutationEventSchemaMemo } from '../schema/mod.js'
-import type { MutationEvent } from '../schema/MutationEvent.js'
-import { MutationEventEncodedWithMeta, nextEventIdPair } from '../schema/MutationEvent.js'
+import type { Coordinator, UnexpectedError } from '../adapter-types.js'
+import * as EventId from '../schema/EventId.js'
+import { type LiveStoreSchema } from '../schema/mod.js'
+import * as MutationEvent from '../schema/MutationEvent.js'
 import type { SyncState } from './syncstate.js'
 import { updateSyncState } from './syncstate.js'
 
@@ -37,7 +37,7 @@ export const makeClientSessionSyncProcessor = ({
   span,
 }: {
   schema: LiveStoreSchema
-  initialLeaderHead: EventId
+  initialLeaderHead: EventId.EventId
   pushToLeader: (batch: ReadonlyArray<MutationEvent.AnyEncoded>) => void
   pullFromLeader: Coordinator['mutations']['pull']
   applyMutation: (
@@ -52,7 +52,7 @@ export const makeClientSessionSyncProcessor = ({
   // rebaseBehaviour: 'auto-rebase' | 'manual-rebase'
   span: otel.Span
 }): ClientSessionSyncProcessor => {
-  const mutationEventSchema = makeMutationEventSchemaMemo(schema)
+  const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
   const syncStateRef = {
     current: {
@@ -64,7 +64,7 @@ export const makeClientSessionSyncProcessor = ({
     } as SyncState,
   }
 
-  const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithMeta) => {
+  const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
     const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
     return mutationDef.options.localOnly
   }
@@ -75,9 +75,9 @@ export const makeClientSessionSyncProcessor = ({
     let baseEventId = syncStateRef.current.localHead
     const encodedMutationEvents = batch.map((mutationEvent) => {
       const mutationDef = schema.mutations.get(mutationEvent.mutation)!
-      const nextIdPair = nextEventIdPair(baseEventId, mutationDef.options.localOnly)
+      const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.localOnly)
       baseEventId = nextIdPair.id
-      return new MutationEventEncodedWithMeta(
+      return new MutationEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(mutationEventSchema)({ ...mutationEvent, ...nextIdPair }),
       )
     })

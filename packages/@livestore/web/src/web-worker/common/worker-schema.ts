@@ -1,9 +1,9 @@
-import { BootStatus, EventId, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
-import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import { BootStatus, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
+import { EventId, MutationEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 // export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-//   batch: Schema.Array(mutationEventSchemaEncodedAny),
+//   batch: Schema.Array(EncodedAny),
 //   persisted: Schema.Boolean,
 // })
 
@@ -84,7 +84,7 @@ export namespace LeaderWorkerInner {
 
   export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
     payload: {
-      batch: Schema.Array(mutationEventSchemaEncodedAny),
+      batch: Schema.Array(MutationEvent.EncodedAny),
       // items: Schema.Array(ExecutionBacklogItem),
     },
     success: Schema.Void,
@@ -93,11 +93,11 @@ export namespace LeaderWorkerInner {
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {
-      cursor: EventId,
+      cursor: EventId.EventId,
     },
     success: Schema.Struct({
       // TODO use actual app-defined mutation event schema
-      // mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      // mutationEvents: Schema.Array(EncodedAny),
       // backendHead: Schema.Number,
       payload: PayloadUpstream,
       remaining: Schema.Number,
@@ -121,7 +121,7 @@ export namespace LeaderWorkerInner {
     'GetCurrentMutationEventId',
     {
       payload: {},
-      success: EventId,
+      success: EventId.EventId,
       failure: UnexpectedError,
     },
   ) {}

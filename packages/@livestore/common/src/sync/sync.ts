@@ -1,8 +1,8 @@
 import type { Effect, HttpClient, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import { EventId } from '../adapter-types.js'
-import type { MutationEvent } from '../schema/MutationEvent.js'
+import * as EventId from '../schema/EventId.js'
+import type * as MutationEvent from '../schema/MutationEvent.js'
 
 export interface SyncBackendOptionsBase {
   type: string
@@ -12,7 +12,7 @@ export interface SyncBackendOptionsBase {
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   pull: (
     args: Option.Option<{
-      cursor: EventId
+      cursor: EventId.EventId
       metadata: Option.Option<TSyncMetadata>
     }>,
   ) => Stream.Stream<
@@ -58,8 +58,8 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
       providedId: Schema.Number,
     }),
     Schema.TaggedStruct('LeaderAhead', {
-      minimumExpectedId: EventId,
-      providedId: EventId,
+      minimumExpectedId: EventId.EventId,
+      providedId: EventId.EventId,
     }),
   ),
 }) {}

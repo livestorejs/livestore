@@ -8,7 +8,7 @@
 - Still todo:
   - Fix devtools for web + expo
   - Sync queue
-    - Refactor `MutationEventEncodedWithMeta` to work better alongside `mutationEventSchemaEncodedAny`
+    - Refactor `MutationEventEncodedWithMeta` to work better alongside `EncodedAny`
 
 - New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.

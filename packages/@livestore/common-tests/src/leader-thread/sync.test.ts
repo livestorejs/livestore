@@ -1,10 +1,9 @@
 import '@livestore/utils/node-vitest-polyfill'
 
 import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
-import { ROOT_ID, validatePushPayload } from '@livestore/common'
+import { validatePushPayload } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import type { MutationEvent } from '@livestore/common/schema'
-import { MutationEventEncodedWithMeta, nextEventIdPair } from '@livestore/common/schema'
+import { EventId, MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Scope } from '@livestore/utils/effect'
@@ -83,7 +82,7 @@ Vitest.describe('sync', () => {
         testContext.encodeMutationEvent({
           ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
           id: { global: 0, local: 0 },
-          parentId: ROOT_ID,
+          parentId: EventId.ROOT,
         }),
       )
 
@@ -193,12 +192,12 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
     const encodeMutationEvent = Schema.encodeSync(leaderThreadCtx.mutationEventSchema)
 
-    const currentMutationEventId = { current: ROOT_ID }
+    const currentMutationEventId = { current: EventId.ROOT }
 
     const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) => {
-      const nextIdPair = nextEventIdPair(currentMutationEventId.current, false)
+      const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
       currentMutationEventId.current = nextIdPair.id
-      return new MutationEventEncodedWithMeta({
+      return new MutationEvent.EncodedWithMeta({
         ...encodeMutationEvent({ ...partialEvent, ...nextIdPair }),
         meta: { deferred },
       })

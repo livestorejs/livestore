@@ -1,15 +1,10 @@
 import { isDevEnv, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import {
-  type MigrationOptionsFromMutationLog,
-  ROOT_ID,
-  type SynchronousDatabase,
-  UnexpectedError,
-} from './adapter-types.js'
+import { type MigrationOptionsFromMutationLog, type SynchronousDatabase, UnexpectedError } from './adapter-types.js'
 import { getExecArgsFromMutation } from './mutation.js'
 import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/mod.js'
-import { MUTATION_LOG_META_TABLE } from './schema/mod.js'
+import { EventId, MUTATION_LOG_META_TABLE } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
@@ -102,9 +97,9 @@ LIMIT ${CHUNK_SIZE}
         const lastId = Chunk.isChunk(item)
           ? Chunk.last(item).pipe(
               Option.map((_) => ({ global: _.idGlobal, local: _.idLocal })),
-              Option.getOrElse(() => ROOT_ID),
+              Option.getOrElse(() => EventId.ROOT),
             )
-          : ROOT_ID
+          : EventId.ROOT
         const nextItem = Chunk.fromIterable(
           stmt.select<MutationLogMetaRow>({
             $idGlobal: lastId?.global,

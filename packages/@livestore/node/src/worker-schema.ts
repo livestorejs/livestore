@@ -1,6 +1,6 @@
-import { BootStatus, EventId, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
+import { BootStatus, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
 import { InitialSyncOptions } from '@livestore/common/leader-thread'
-import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import { EventId, MutationEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const WorkerArgv = Schema.parseJson(
@@ -12,7 +12,7 @@ export const WorkerArgv = Schema.parseJson(
 )
 
 export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  mutationEventEncoded: MutationEvent.EncodedAny,
   persisted: Schema.Boolean,
 })
 
@@ -98,10 +98,10 @@ export namespace LeaderWorkerInner {
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {
-      cursor: EventId,
+      cursor: EventId.EventId,
     },
     success: Schema.Struct({
-      // mutationEvents: Schema.Array(mutationEventSchemaEncodedAny),
+      // mutationEvents: Schema.Array(EncodedAny),
       // backendHead: Schema.Number,
       payload: PayloadUpstream,
       remaining: Schema.Number,
@@ -139,7 +139,7 @@ export namespace LeaderWorkerInner {
     'GetCurrentMutationEventId',
     {
       payload: {},
-      success: EventId,
+      success: EventId.EventId,
       failure: UnexpectedError,
     },
   ) {}

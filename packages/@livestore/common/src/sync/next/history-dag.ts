@@ -1,8 +1,8 @@
-import { type EventId } from '../../adapter-types.js'
+import type * as EventId from '../../schema/EventId.js'
 import { factsToString, validateFacts } from './facts.js'
 import { emptyHistoryDag, type HistoryDagNode, rootParentId } from './history-dag-common.js'
 
-export const eventIdToString = (eventId: EventId) =>
+export const eventIdToString = (eventId: EventId.EventId) =>
   eventId.local === 0 ? eventId.global.toString() : `${eventId.global}.${eventId.local}`
 
 export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skipFactsCheck: boolean }) => {

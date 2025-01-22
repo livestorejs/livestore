@@ -1,8 +1,8 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { EventId, eventIdsEqual } from '../adapter-types.js'
-import { eventIdIsGreaterThan, MutationEventEncodedWithMeta, nextEventIdPair } from '../schema/MutationEvent.js'
+import * as EventId from '../schema/EventId.js'
+import * as MutationEvent from '../schema/MutationEvent.js'
 
 /**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
@@ -40,35 +40,35 @@ import { eventIdIsGreaterThan, MutationEventEncodedWithMeta, nextEventIdPair } f
  * handling cases such as upstream rebase, advance, local push, and rollback tail trimming.
  */
 export interface SyncState {
-  pending: ReadonlyArray<MutationEventEncodedWithMeta>
-  rollbackTail: ReadonlyArray<MutationEventEncodedWithMeta>
-  upstreamHead: EventId
-  localHead: EventId
+  pending: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  rollbackTail: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  upstreamHead: EventId.EventId
+  localHead: EventId.EventId
 }
 
 export const SyncState = Schema.Struct({
-  pending: Schema.Array(MutationEventEncodedWithMeta),
-  rollbackTail: Schema.Array(MutationEventEncodedWithMeta),
-  upstreamHead: EventId,
-  localHead: EventId,
+  pending: Schema.Array(MutationEvent.EncodedWithMeta),
+  rollbackTail: Schema.Array(MutationEvent.EncodedWithMeta),
+  upstreamHead: EventId.EventId,
+  localHead: EventId.EventId,
 }).annotations({ title: 'SyncState' })
 
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Rollback until this event in the rollback tail (inclusive). Starting from the end of the rollback tail. */
-  rollbackUntil: EventId,
-  newEvents: Schema.Array(MutationEventEncodedWithMeta),
+  rollbackUntil: EventId.EventId,
+  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
   /** Trim rollback tail up to this event (inclusive). */
-  trimRollbackUntil: Schema.optional(EventId),
+  trimRollbackUntil: Schema.optional(EventId.EventId),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(MutationEventEncodedWithMeta),
+  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
   /** Trim rollback tail up to this event (inclusive). */
-  trimRollbackUntil: Schema.optional(EventId),
+  trimRollbackUntil: Schema.optional(EventId.EventId),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(MutationEventEncodedWithMeta),
+  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
 }) {}
 
 export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
@@ -81,15 +81,15 @@ export type UpdateResultAdvance = {
   _tag: 'advance'
   syncState: SyncState
   /** Events which weren't pending before the update */
-  newEvents: ReadonlyArray<MutationEventEncodedWithMeta>
+  newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
 }
 
 export type UpdateResultRebase = {
   _tag: 'rebase'
   syncState: SyncState
   /** Events which weren't pending before the update */
-  newEvents: ReadonlyArray<MutationEventEncodedWithMeta>
-  eventsToRollback: ReadonlyArray<MutationEventEncodedWithMeta>
+  newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  eventsToRollback: ReadonlyArray<MutationEvent.EncodedWithMeta>
 }
 
 export type UpdateResultReject = {
@@ -97,7 +97,7 @@ export type UpdateResultReject = {
   /** Previous syncState state */
   syncState: SyncState
   /** The minimum id that the new events must have */
-  expectedMinimumId: EventId
+  expectedMinimumId: EventId.EventId
 }
 
 export type UpdateResult = UpdateResultAdvance | UpdateResultRebase | UpdateResultReject
@@ -111,17 +111,17 @@ export const updateSyncState = ({
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
-  isLocalEvent: (event: MutationEventEncodedWithMeta) => boolean
-  isEqualEvent: (a: MutationEventEncodedWithMeta, b: MutationEventEncodedWithMeta) => boolean
+  isLocalEvent: (event: MutationEvent.EncodedWithMeta) => boolean
+  isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
   /** This is used in the leader which should ignore local events when receiving an upstream-advance payload */
   ignoreLocalEvents?: boolean
 }): UpdateResult => {
   const trimRollbackTail = (
-    rollbackTail: ReadonlyArray<MutationEventEncodedWithMeta>,
-  ): ReadonlyArray<MutationEventEncodedWithMeta> => {
+    rollbackTail: ReadonlyArray<MutationEvent.EncodedWithMeta>,
+  ): ReadonlyArray<MutationEvent.EncodedWithMeta> => {
     const trimRollbackUntil = payload._tag === 'local-push' ? undefined : payload.trimRollbackUntil
     if (trimRollbackUntil === undefined) return rollbackTail
-    const index = rollbackTail.findIndex((event) => eventIdsEqual(event.id, trimRollbackUntil))
+    const index = rollbackTail.findIndex((event) => EventId.isEqual(event.id, trimRollbackUntil))
     if (index === -1) return []
     return rollbackTail.slice(index + 1)
   }
@@ -129,7 +129,9 @@ export const updateSyncState = ({
   switch (payload._tag) {
     case 'upstream-rebase': {
       // Find the index of the rollback event in the rollback tail
-      const rollbackIndex = syncState.rollbackTail.findIndex((event) => eventIdsEqual(event.id, payload.rollbackUntil))
+      const rollbackIndex = syncState.rollbackTail.findIndex((event) =>
+        EventId.isEqual(event.id, payload.rollbackUntil),
+      )
       if (rollbackIndex === -1) {
         return shouldNeverHappen(
           `Rollback event not found in rollback tail. Rollback until: [${payload.rollbackUntil.global},${payload.rollbackUntil.local}]. Rollback tail: [${syncState.rollbackTail.map((e) => e.toString()).join(', ')}]`,
@@ -177,7 +179,7 @@ export const updateSyncState = ({
 
       // Validate that newEvents are sorted in ascending order by eventId
       for (let i = 1; i < payload.newEvents.length; i++) {
-        if (eventIdIsGreaterThan(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
+        if (EventId.isGreaterThan(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
           return shouldNeverHappen('Events must be sorted in ascending order by eventId')
         }
       }
@@ -274,10 +276,10 @@ export const updateSyncState = ({
       }
 
       const newEventsFirst = payload.newEvents.at(0)!
-      const invalidEventId = eventIdIsGreaterThan(newEventsFirst.id, syncState.localHead) === false
+      const invalidEventId = EventId.isGreaterThan(newEventsFirst.id, syncState.localHead) === false
 
       if (invalidEventId) {
-        const expectedMinimumId = nextEventIdPair(syncState.localHead, true).id
+        const expectedMinimumId = EventId.nextPair(syncState.localHead, true).id
         return { _tag: 'reject', syncState, expectedMinimumId }
       } else {
         return {
@@ -328,10 +330,10 @@ const findDivergencePoint = ({
   isLocalEvent,
   ignoreLocalEvents,
 }: {
-  existingEvents: ReadonlyArray<MutationEventEncodedWithMeta>
-  incomingEvents: ReadonlyArray<MutationEventEncodedWithMeta>
-  isEqualEvent: (a: MutationEventEncodedWithMeta, b: MutationEventEncodedWithMeta) => boolean
-  isLocalEvent: (event: MutationEventEncodedWithMeta) => boolean
+  existingEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  incomingEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
+  isLocalEvent: (event: MutationEvent.EncodedWithMeta) => boolean
   ignoreLocalEvents: boolean
 }): number => {
   if (ignoreLocalEvents) {
@@ -348,7 +350,7 @@ const findDivergencePoint = ({
 
     const divergencePointEventId = existingEvents[divergencePointWithoutLocalEvents]!.id
     // Now find the divergence point in the original array
-    return existingEvents.findIndex((event) => eventIdsEqual(event.id, divergencePointEventId))
+    return existingEvents.findIndex((event) => EventId.isEqual(event.id, divergencePointEventId))
   }
 
   return existingEvents.findIndex((existingEvent, index) => {
@@ -363,10 +365,10 @@ const rebaseEvents = ({
   baseEventId,
   isLocalEvent,
 }: {
-  events: ReadonlyArray<MutationEventEncodedWithMeta>
-  baseEventId: EventId
-  isLocalEvent: (event: MutationEventEncodedWithMeta) => boolean
-}): ReadonlyArray<MutationEventEncodedWithMeta> => {
+  events: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  baseEventId: EventId.EventId
+  isLocalEvent: (event: MutationEvent.EncodedWithMeta) => boolean
+}): ReadonlyArray<MutationEvent.EncodedWithMeta> => {
   let prevEventId = baseEventId
   return events.map((event) => {
     const isLocal = isLocalEvent(event)

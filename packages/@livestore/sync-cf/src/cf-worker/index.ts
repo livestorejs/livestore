@@ -1,7 +1,7 @@
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
 
-// import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+// import { EncodedAny } from '@livestore/common/schema'
 // import { Effect, HttpServer, Schema } from '@livestore/utils/effect'
 
 import type { Env } from './durable-object.js'

@@ -1,6 +1,7 @@
 import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
-import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
+import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
+import { EventId } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -41,7 +42,7 @@ export const makeInMemoryAdapter =
         mutations: {
           pull: Stream.never,
           push: () => Effect.void,
-          initialMutationEventId: ROOT_ID,
+          initialMutationEventId: EventId.ROOT,
         },
         export: Effect.dieMessage('Not implemented'),
         getMutationLogData: Effect.succeed(new Uint8Array()),

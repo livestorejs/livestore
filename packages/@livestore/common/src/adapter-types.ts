@@ -2,6 +2,7 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
+import type { EventId } from './schema/EventId.js'
 import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
@@ -139,35 +140,6 @@ export const SessionIdSymbol = Symbol.for('@livestore/session-id')
 export type SessionIdSymbol = typeof SessionIdSymbol
 
 export type LockStatus = 'has-lock' | 'no-lock'
-
-/**
- * LiveStore event id value consisting of a globally unique event sequence number
- * and a local sequence number.
- *
- * The local sequence number is only used for localOnly mutations and starts from 0 for each global sequence number.
- */
-export type EventId = { global: number; local: number }
-
-export const EventId = Schema.Struct({
-  global: Schema.Number,
-  local: Schema.Number,
-}).annotations({ title: 'LiveStore.EventId' })
-
-/**
- * Compare two event ids i.e. checks if the first event id is less than the second.
- */
-export const compareEventIds = (a: EventId, b: EventId) => {
-  if (a.global !== b.global) {
-    return a.global - b.global
-  }
-  return a.local - b.local
-}
-
-export const eventIdsEqual = (a: EventId, b: EventId) => a.global === b.global && a.local === b.local
-
-export type EventIdPair = { id: EventId; parentId: EventId }
-
-export const ROOT_ID = { global: -1, local: 0 } satisfies EventId
 
 export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('LiveStore.UnexpectedError', {
   cause: Schema.Defect,

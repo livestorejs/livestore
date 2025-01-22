@@ -1,6 +1,6 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
-import { MutationEventEncodedWithMeta } from '../schema/MutationEvent.js'
+import * as MutationEvent from '../schema/MutationEvent.js'
 import { getMutationEventsSince } from './mutationlog.js'
 import { type PullQueueItem, type PullQueueSet } from './types.js'
 
@@ -26,7 +26,7 @@ export const makePullQueueSet = Effect.gen(function* () {
       const mutationEvents = yield* getMutationEventsSince(since)
 
       if (mutationEvents.length > 0) {
-        const newEvents = mutationEvents.map((mutationEvent) => new MutationEventEncodedWithMeta(mutationEvent))
+        const newEvents = mutationEvents.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))
         yield* queue.offer({ payload: { _tag: 'upstream-advance', newEvents }, remaining: 0 })
       }
 

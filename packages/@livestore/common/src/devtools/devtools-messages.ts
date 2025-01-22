@@ -2,7 +2,7 @@ import { Schema, Transferable } from '@livestore/utils/effect'
 
 import { NetworkStatus } from '../adapter-types.js'
 import { DebugInfo } from '../debug-info.js'
-import { mutationEventSchemaEncodedAny } from '../schema/MutationEvent.js'
+import * as MutationEvent from '../schema/MutationEvent.js'
 import { PreparedBindValues } from '../util.js'
 import { liveStoreVersion as pkgVersion } from '../version.js'
 
@@ -69,12 +69,12 @@ export class DebugInfoRerunQueryReq extends LSDReqResMessage('LSD.DebugInfoRerun
 export class DebugInfoRerunQueryRes extends LSDReqResMessage('LSD.DebugInfoRerunQueryRes', {}) {}
 
 export class MutationBroadcast extends LSDMessage('LSD.MutationBroadcast', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  mutationEventEncoded: MutationEvent.EncodedAny,
   persisted: Schema.Boolean,
 }) {}
 
 export class RunMutationReq extends LSDReqResMessage('LSD.RunMutationReq', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny.pipe(Schema.omit('id', 'parentId')),
+  mutationEventEncoded: MutationEvent.EncodedAny.pipe(Schema.omit('id', 'parentId')),
   persisted: Schema.Boolean,
 }) {}
 
@@ -161,7 +161,7 @@ export class SyncingInfoRes extends LSDReqResMessage('LSD.SyncingInfoRes', {
 export class SyncHistorySubscribe extends LSDReqResMessage('LSD.SyncHistorySubscribe', {}) {}
 export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.SyncHistoryUnsubscribe', {}) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.SyncHistoryRes', {
-  mutationEventEncoded: mutationEventSchemaEncodedAny,
+  mutationEventEncoded: MutationEvent.EncodedAny,
   metadata: Schema.Option(Schema.JsonValue),
 }) {}
 

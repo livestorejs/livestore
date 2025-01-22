@@ -1,6 +1,7 @@
-import type { EventId, SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
+import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import { mutationEventSchemaEncodedAny } from '@livestore/common/schema'
+import type { EventId } from '@livestore/common/schema'
+import { MutationEvent } from '@livestore/common/schema'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -29,7 +30,7 @@ Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript
 const ResponseItem = Schema.Struct({
   /** Postgres path (e.g. "public.events/1") */
   key: Schema.optional(Schema.String),
-  value: Schema.optional(mutationEventSchemaEncodedAny),
+  value: Schema.optional(MutationEvent.EncodedAny),
   headers: Schema.Record({ key: Schema.String, value: Schema.Any }),
   offset: Schema.optional(Schema.String),
 })
@@ -45,7 +46,7 @@ export const syncBackend = {} as any
 
 export const ApiPushEventPayload = Schema.TaggedStruct('sync-electric.PushEvent', {
   roomId: Schema.String,
-  batch: Schema.Array(mutationEventSchemaEncodedAny),
+  batch: Schema.Array(MutationEvent.EncodedAny),
   persisted: Schema.Boolean,
 })
 
@@ -224,4 +225,4 @@ export const makeSyncBackend = ({
     } satisfies SyncBackend<SyncMetadata>
   })
 
-const eventIdToString = (eventId: EventId) => `${eventId.global}_${eventId.local}`
+const eventIdToString = (eventId: EventId.EventId) => `${eventId.global}_${eventId.local}`

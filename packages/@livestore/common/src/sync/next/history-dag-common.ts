@@ -1,4 +1,4 @@
-import { type EventId, ROOT_ID } from '../../adapter-types.js'
+import * as EventId from '../../schema/EventId.js'
 import type { MutationEventFactsGroup } from '../../schema/mutations.js'
 import { graphology } from './graphology_.js'
 
@@ -20,11 +20,11 @@ export const emptyHistoryDag = (): HistoryDag =>
   })
 
 // TODO consider making `ROOT_ID` parent to itself
-export const rootParentId = { global: ROOT_ID.global - 1, local: 0 } satisfies EventId
+export const rootParentId = { global: EventId.ROOT.global - 1, local: 0 } satisfies EventId.EventId
 
 export type HistoryDagNode = {
-  id: EventId
-  parentId: EventId
+  id: EventId.EventId
+  parentId: EventId.EventId
   mutation: string
   args: any
   /** Facts are being used for conflict detection and history compaction */
@@ -33,7 +33,7 @@ export type HistoryDagNode = {
 }
 
 export const rootEventNode: HistoryDagNode = {
-  id: ROOT_ID,
+  id: EventId.ROOT,
   parentId: rootParentId,
   // unused below
   mutation: '__Root__',

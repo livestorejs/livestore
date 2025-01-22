@@ -16,12 +16,17 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { EventId, SynchronousDatabase } from '../adapter-types.js'
-import { compareEventIds, ROOT_ID, UnexpectedError } from '../adapter-types.js'
+import type { SynchronousDatabase } from '../adapter-types.js'
+import { UnexpectedError } from '../adapter-types.js'
 import * as Devtools from '../devtools/index.js'
-import type { LiveStoreSchema, MutationEvent, SessionChangesetMetaRow } from '../schema/mod.js'
-import { MUTATION_LOG_META_TABLE, mutationLogMetaTable, SESSION_CHANGESET_META_TABLE } from '../schema/mod.js'
-import { MutationEventEncodedWithMeta, nextEventIdPair } from '../schema/MutationEvent.js'
+import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
+import {
+  EventId,
+  MUTATION_LOG_META_TABLE,
+  MutationEvent,
+  mutationLogMetaTable,
+  SESSION_CHANGESET_META_TABLE,
+} from '../schema/mod.js'
 import { updateRows } from '../sql-queries/index.js'
 import { InvalidPushError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
@@ -117,7 +122,7 @@ export const makeLeaderSyncProcessor = ({
 
     const semaphore = yield* Effect.makeSemaphore(1)
 
-    const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithMeta) => {
+    const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
       const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
       return mutationDef.options.localOnly
     }
@@ -125,7 +130,7 @@ export const makeLeaderSyncProcessor = ({
     const spanRef = { current: undefined as otel.Span | undefined }
     const applyMutationItemsRef = { current: undefined as ApplyMutationItems | undefined }
 
-    const push = (newEvents: ReadonlyArray<MutationEventEncodedWithMeta>) =>
+    const push = (newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>) =>
       Effect.gen(function* () {
         // TODO validate batch
         if (newEvents.length === 0) return
@@ -210,9 +215,9 @@ export const makeLeaderSyncProcessor = ({
           schema.mutations.get(mutationEventEncoded_.mutation) ??
           shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
 
-        const mutationEventEncoded = new MutationEventEncodedWithMeta({
+        const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
           ...mutationEventEncoded_,
-          ...nextEventIdPair(state.syncState.localHead, mutationDef.options.localOnly),
+          ...EventId.nextPair(state.syncState.localHead, mutationDef.options.localOnly),
         })
 
         yield* push([mutationEventEncoded])
@@ -224,8 +229,8 @@ export const makeLeaderSyncProcessor = ({
         const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
         spanRef.current = span
 
-        const initialBackendHead = dbMissing ? ROOT_ID.global : getBackendHeadFromDb(dbLog)
-        const initialLocalHead = dbMissing ? ROOT_ID : getLocalHeadFromDb(dbLog)
+        const initialBackendHead = dbMissing ? EventId.ROOT.global : getBackendHeadFromDb(dbLog)
+        const initialLocalHead = dbMissing ? EventId.ROOT : getLocalHeadFromDb(dbLog)
 
         if (initialBackendHead > initialLocalHead.global) {
           return shouldNeverHappen(
@@ -236,7 +241,7 @@ export const makeLeaderSyncProcessor = ({
         const pendingMutationEvents = yield* getMutationEventsSince({ global: initialBackendHead, local: 0 })
 
         const initialSyncState = {
-          pending: pendingMutationEvents.map((_) => new MutationEventEncodedWithMeta(_)),
+          pending: pendingMutationEvents.map((_) => new MutationEvent.EncodedWithMeta(_)),
           // On the leader we don't need a rollback tail beyond `pending` items
           rollbackTail: [],
           upstreamHead: { global: initialBackendHead, local: 0 },
@@ -307,7 +312,7 @@ export const makeLeaderSyncProcessor = ({
   })
 
 type ApplyMutationItems = (_: {
-  batchItems: ReadonlyArray<MutationEventEncodedWithMeta>
+  batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
@@ -393,9 +398,9 @@ const backgroundBackendPulling = ({
 }: {
   dbReady: Deferred.Deferred<void>
   initialBackendHead: number
-  isLocalEvent: (mutationEventEncoded: MutationEventEncodedWithMeta) => boolean
+  isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
-    filteredRebasedPending: ReadonlyArray<MutationEventEncodedWithMeta>,
+    filteredRebasedPending: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
   span: otel.Span | undefined
   stateRef: Ref.Ref<ProcessorState>
@@ -410,7 +415,7 @@ const backgroundBackendPulling = ({
 
     const cursorInfo = yield* getCursorInfo(initialBackendHead)
 
-    const onNewPullChunk = (newEvents: MutationEventEncodedWithMeta[], remaining: number) =>
+    const onNewPullChunk = (newEvents: MutationEvent.EncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -516,7 +521,7 @@ const backgroundBackendPulling = ({
 
           // TODO pass in metadata
           yield* onNewPullChunk(
-            batch.map((_) => new MutationEventEncodedWithMeta(_.mutationEventEncoded)),
+            batch.map((_) => new MutationEvent.EncodedWithMeta(_.mutationEventEncoded)),
             remaining,
           )
 
@@ -535,7 +540,7 @@ const rollback = ({
 }: {
   db: SynchronousDatabase
   dbLog: SynchronousDatabase
-  eventIdsToRollback: EventId[]
+  eventIdsToRollback: EventId.EventId[]
 }) =>
   Effect.gen(function* () {
     const rollbackEvents = db
@@ -543,7 +548,7 @@ const rollback = ({
         sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
       )
       .map((_) => ({ id: { global: _.idGlobal, local: _.idLocal }, changeset: _.changeset, debug: _.debug }))
-      .toSorted((a, b) => compareEventIds(a.id, b.id))
+      .toSorted((a, b) => EventId.compare(a.id, b.id))
 
     // Apply changesets in reverse order
     for (let i = rollbackEvents.length - 1; i >= 0; i--) {
@@ -570,7 +575,7 @@ const getCursorInfo = (remoteHead: number) =>
   Effect.gen(function* () {
     const { dbLog } = yield* LeaderThreadCtx
 
-    if (remoteHead === ROOT_ID.global) return Option.none()
+    if (remoteHead === EventId.ROOT.global) return Option.none()
 
     const MutationlogQuerySchema = Schema.Struct({
       syncMetadataJson: Schema.parseJson(Schema.Option(Schema.JsonValue)),

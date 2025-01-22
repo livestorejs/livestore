@@ -6,7 +6,6 @@ import type {
   HttpClient,
   Option,
   Queue,
-  Ref,
   Scope,
   SubscriptionRef,
   WebChannel,
@@ -16,7 +15,6 @@ import { Context, Schema } from '@livestore/utils/effect'
 import type {
   BootStatus,
   Devtools,
-  EventId,
   InvalidPushError,
   MakeSynchronousDatabase,
   PersistenceInfo,
@@ -24,12 +22,7 @@ import type {
   SynchronousDatabase,
   UnexpectedError,
 } from '../index.js'
-import type {
-  LiveStoreSchema,
-  MutationEvent,
-  MutationEventEncodedWithMeta,
-  MutationEventSchema,
-} from '../schema/mod.js'
+import type { EventId, LiveStoreSchema, MutationEvent } from '../schema/mod.js'
 import type { PayloadUpstream, SyncState } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
@@ -83,7 +76,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: EventId
+  cursor: EventId.EventId
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -106,7 +99,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
-    mutationEventSchema: MutationEventSchema<any>
+    mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: SyncProcessor
@@ -130,7 +123,7 @@ export type PullQueueItem = {
 export interface SyncProcessor {
   /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
-    batch: ReadonlyArray<MutationEventEncodedWithMeta>,
+    batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
 
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
@@ -151,7 +144,7 @@ export interface SyncProcessor {
 
 export interface PullQueueSet {
   makeQueue: (
-    since: EventId,
+    since: EventId.EventId,
   ) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope | LeaderThreadCtx>
   offer: (item: PullQueueItem) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
 }

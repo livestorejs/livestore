@@ -1,15 +1,14 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 import { describe, expect, it } from 'vitest'
 
-import type { EventId } from '../adapter-types.js'
-import { ROOT_ID } from '../adapter-types.js'
-import { MutationEventEncodedWithMeta } from '../schema/MutationEvent.js'
+import * as EventId from '../schema/EventId.js'
+import * as MutationEvent from '../schema/MutationEvent.js'
 import * as SyncState from './syncstate.js'
 
-class TestEvent extends MutationEventEncodedWithMeta {
+class TestEvent extends MutationEvent.EncodedWithMeta {
   constructor(
-    public readonly id: EventId,
-    public readonly parentId: EventId,
+    public readonly id: EventId.EventId,
+    public readonly parentId: EventId.EventId,
     public readonly payload: string,
     public readonly isLocal: boolean,
   ) {
@@ -22,7 +21,7 @@ class TestEvent extends MutationEventEncodedWithMeta {
     })
   }
 
-  rebase_ = (parentId: EventId) => {
+  rebase_ = (parentId: EventId.EventId) => {
     return this.rebase(parentId, this.isLocal)
   }
 
@@ -31,18 +30,18 @@ class TestEvent extends MutationEventEncodedWithMeta {
   // toString = () => this.toJSON()
 }
 
-const e_r_1 = new TestEvent({ global: -1, local: 1 }, ROOT_ID, 'a', true)
-const e_0_0 = new TestEvent({ global: 0, local: 0 }, ROOT_ID, 'a', false)
+const e_r_1 = new TestEvent({ global: -1, local: 1 }, EventId.ROOT, 'a', true)
+const e_0_0 = new TestEvent({ global: 0, local: 0 }, EventId.ROOT, 'a', false)
 const e_0_1 = new TestEvent({ global: 0, local: 1 }, e_0_0.id, 'a', true)
 const e_0_2 = new TestEvent({ global: 0, local: 2 }, e_0_1.id, 'a', true)
 const e_0_3 = new TestEvent({ global: 0, local: 3 }, e_0_2.id, 'a', true)
 const e_1_0 = new TestEvent({ global: 1, local: 0 }, e_0_0.id, 'a', false)
 const e_1_1 = new TestEvent({ global: 1, local: 1 }, e_1_0.id, 'a', true)
 
-const isEqualEvent = (a: MutationEventEncodedWithMeta, b: MutationEventEncodedWithMeta) =>
+const isEqualEvent = (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) =>
   a.id.global === b.id.global && a.id.local === b.id.local && a.args === b.args
 
-const isLocalEvent = (event: MutationEventEncodedWithMeta) => (event as TestEvent).isLocal
+const isLocalEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEvent).isLocal
 
 describe('syncstate', () => {
   describe('updateSyncState', () => {
@@ -63,7 +62,7 @@ describe('syncstate', () => {
           const syncState = {
             pending: [e_1_0],
             rollbackTail: [e_0_0, e_0_1],
-            upstreamHead: ROOT_ID,
+            upstreamHead: EventId.ROOT,
             localHead: e_1_0.id,
           }
           const e_0_0_e_1_0 = e_0_0.rebase_(e_1_0.id)
@@ -95,7 +94,7 @@ describe('syncstate', () => {
           const syncState = {
             pending: [e_1_0],
             rollbackTail: [e_0_0, e_0_1],
-            upstreamHead: ROOT_ID,
+            upstreamHead: EventId.ROOT,
             localHead: e_1_0.id,
           }
           const e_0_1_e_1_0 = e_0_1.rebase_(e_0_0.id)
@@ -123,7 +122,7 @@ describe('syncstate', () => {
         })
 
         it('should work for empty pending', () => {
-          const syncState = { pending: [], rollbackTail: [e_0_0], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+          const syncState = { pending: [], rollbackTail: [e_0_0], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
           const result = run({
             syncState,
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [e_1_0] },
@@ -137,7 +136,7 @@ describe('syncstate', () => {
         })
 
         it('should fail for empty rollback tail', () => {
-          const syncState = { pending: [], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+          const syncState = { pending: [], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
           expect(() =>
             run({
               syncState,
@@ -147,7 +146,7 @@ describe('syncstate', () => {
         })
 
         it('should work for empty incoming', () => {
-          const syncState = { pending: [], rollbackTail: [e_0_0], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+          const syncState = { pending: [], rollbackTail: [e_0_0], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
           const result = run({
             syncState,
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [] },
@@ -155,8 +154,8 @@ describe('syncstate', () => {
           expectRebase(result)
           expectEventArraysEqual(result.syncState.pending, [])
           expectEventArraysEqual(result.syncState.rollbackTail, [])
-          expect(result.syncState.upstreamHead).toBe(ROOT_ID)
-          expect(result.syncState.localHead).toMatchObject(ROOT_ID)
+          expect(result.syncState.upstreamHead).toBe(EventId.ROOT)
+          expect(result.syncState.localHead).toMatchObject(EventId.ROOT)
           expect(result.newEvents).toEqual([])
         })
       },
@@ -164,17 +163,17 @@ describe('syncstate', () => {
 
     describe('upstream-advance: advance', () => {
       it('should throw error if newEvents are not sorted in ascending order by eventId (local)', () => {
-        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
         expect(() => run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_0] } })).toThrow()
       })
 
       it('should throw error if newEvents are not sorted in ascending order by eventId (global)', () => {
-        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
         expect(() => run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0, e_0_0] } })).toThrow()
       })
 
       it('should acknowledge pending event when receiving matching event', () => {
-        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance(result)
@@ -186,7 +185,12 @@ describe('syncstate', () => {
       })
 
       it('should acknowledge partial pending event when receiving matching event', () => {
-        const syncState = { pending: [e_0_0, e_1_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_1_0.id }
+        const syncState = {
+          pending: [e_0_0, e_1_0],
+          rollbackTail: [],
+          upstreamHead: EventId.ROOT,
+          localHead: e_1_0.id,
+        }
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance(result)
@@ -198,7 +202,7 @@ describe('syncstate', () => {
       })
 
       it('should acknowledge pending event and add new event', () => {
-        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_1] } })
 
         expectAdvance(result)
@@ -225,7 +229,12 @@ describe('syncstate', () => {
       })
 
       it('should ignore local events (incoming is subset of pending)', () => {
-        const syncState = { pending: [e_r_1, e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = {
+          pending: [e_r_1, e_0_0],
+          rollbackTail: [],
+          upstreamHead: EventId.ROOT,
+          localHead: e_0_0.id,
+        }
         const result = run({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0] },
@@ -243,7 +252,7 @@ describe('syncstate', () => {
         const syncState = {
           pending: [e_r_1, e_0_0, e_1_0],
           rollbackTail: [],
-          upstreamHead: ROOT_ID,
+          upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         }
         const result = run({
@@ -263,7 +272,7 @@ describe('syncstate', () => {
         const syncState = {
           pending: [e_r_1, e_0_0, e_0_1],
           rollbackTail: [],
-          upstreamHead: ROOT_ID,
+          upstreamHead: EventId.ROOT,
           localHead: e_0_1.id,
         }
         const result = run({
@@ -283,7 +292,7 @@ describe('syncstate', () => {
 
     describe('upstream-advance: rebase', () => {
       it('should rebase single local event to end', () => {
-        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1] } })
 
         const e_0_0_e_0_2 = e_0_0.rebase_(e_0_1.id)
@@ -298,8 +307,8 @@ describe('syncstate', () => {
       })
 
       it('should rebase different event with same id (no rollback tail)', () => {
-        const e_0_0_b = new TestEvent({ global: 0, local: 0 }, ROOT_ID, '0_0_b', true)
-        const syncState = { pending: [e_0_0_b], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0_b.id }
+        const e_0_0_b = new TestEvent({ global: 0, local: 0 }, EventId.ROOT, '0_0_b', true)
+        const syncState = { pending: [e_0_0_b], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0_b.id }
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         const e_0_0_e_1_0 = e_0_0_b.rebase_(e_0_0.id)
@@ -318,7 +327,7 @@ describe('syncstate', () => {
         const syncState = {
           pending: [e_1_0_b],
           rollbackTail: [e_0_0, e_0_1],
-          upstreamHead: ROOT_ID,
+          upstreamHead: EventId.ROOT,
           localHead: e_1_0_b.id,
         }
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0] } })
@@ -334,7 +343,7 @@ describe('syncstate', () => {
       })
 
       it('should rebase single local event to end (more incoming events)', () => {
-        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
         const result = run({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] },
@@ -350,7 +359,12 @@ describe('syncstate', () => {
       })
 
       it('should only rebase divergent events when first event matches', () => {
-        const syncState = { pending: [e_0_0, e_0_1], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+        const syncState = {
+          pending: [e_0_0, e_0_1],
+          rollbackTail: [],
+          upstreamHead: EventId.ROOT,
+          localHead: e_0_0.id,
+        }
         const result = run({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_2, e_0_3, e_1_0] },
@@ -368,7 +382,12 @@ describe('syncstate', () => {
       })
 
       it('should rebase all local events when incoming chain starts differently', () => {
-        const syncState = { pending: [e_0_0, e_0_1], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_1.id }
+        const syncState = {
+          pending: [e_0_0, e_0_1],
+          rollbackTail: [],
+          upstreamHead: EventId.ROOT,
+          localHead: e_0_1.id,
+        }
         const result = run({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] },
@@ -389,13 +408,13 @@ describe('syncstate', () => {
       describe('local-push', () => {
         describe('advance', () => {
           it('should advance with new events', () => {
-            const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_0.id }
+            const syncState = { pending: [e_0_0], rollbackTail: [], upstreamHead: EventId.ROOT, localHead: e_0_0.id }
             const result = run({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2, e_0_3] } })
 
             expectAdvance(result)
             expectEventArraysEqual(result.syncState.pending, [e_0_0, e_0_1, e_0_2, e_0_3])
             expectEventArraysEqual(result.syncState.rollbackTail, [])
-            expect(result.syncState.upstreamHead).toBe(ROOT_ID)
+            expect(result.syncState.upstreamHead).toBe(EventId.ROOT)
             expect(result.syncState.localHead).toMatchObject(e_0_3.id)
             expectEventArraysEqual(result.newEvents, [e_0_1, e_0_2, e_0_3])
           })
@@ -403,7 +422,12 @@ describe('syncstate', () => {
 
         describe('reject', () => {
           it('should reject when new events are greater than pending events', () => {
-            const syncState = { pending: [e_0_0, e_0_1], rollbackTail: [], upstreamHead: ROOT_ID, localHead: e_0_1.id }
+            const syncState = {
+              pending: [e_0_0, e_0_1],
+              rollbackTail: [],
+              upstreamHead: EventId.ROOT,
+              localHead: e_0_1.id,
+            }
             const result = run({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2] } })
 
             expectReject(result)
@@ -416,8 +440,8 @@ describe('syncstate', () => {
 })
 
 const expectEventArraysEqual = (
-  actual: ReadonlyArray<MutationEventEncodedWithMeta>,
-  expected: ReadonlyArray<MutationEventEncodedWithMeta>,
+  actual: ReadonlyArray<MutationEvent.EncodedWithMeta>,
+  expected: ReadonlyArray<MutationEvent.EncodedWithMeta>,
 ) => {
   expect(actual.length).toBe(expected.length)
   actual.forEach((event, i) => {

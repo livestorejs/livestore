@@ -2,9 +2,9 @@ import type { HttpClient, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, FiberSet, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
-import { ROOT_ID, UnexpectedError } from '../adapter-types.js'
+import { UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { makeMutationEventSchema, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
+import { EventId, MutationEvent, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
 import { migrateTable } from '../schema-management/migrations.js'
 import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync.js'
 import { sql } from '../util.js'
@@ -59,7 +59,7 @@ export const makeLeaderThreadLayer = ({
       dbLog,
       devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
       makeSyncDb,
-      mutationEventSchema: makeMutationEventSchema(schema),
+      mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       syncBackend,
       syncProcessor,
@@ -164,7 +164,7 @@ const bootLeaderThread = ({
     yield* execSql(
       dbLog,
       sql`INSERT INTO ${SYNC_STATUS_TABLE} (head)
-          SELECT ${ROOT_ID.global}
+          SELECT ${EventId.ROOT.global}
           WHERE NOT EXISTS (SELECT 1 FROM ${SYNC_STATUS_TABLE})`,
       {},
     )
