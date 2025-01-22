@@ -100,10 +100,11 @@ export const makeClientSessionSyncProcessor = ({
 
     syncStateRef.current = updateResult.syncState
 
-    // TODO
     const writeTables = new Set<string>()
     for (const mutationEvent of updateResult.newEvents) {
-      const res = applyMutation(mutationEvent, { otelContext, withChangeset: true })
+      // TODO avoid encoding and decoding here again
+      const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
+      const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
       for (const table of res.writeTables) {
         writeTables.add(table)
       }

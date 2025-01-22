@@ -34,6 +34,9 @@ exports[`useRow > otel > should update the data based on component key > strictM
       },
     },
     {
+      "_name": "LiveStore:sync",
+    },
+    {
       "_name": "LiveStore:mutations",
       "children": [
         {
@@ -43,27 +46,16 @@ exports[`useRow > otel > should update the data based on component key > strictM
           },
           "children": [
             {
-              "_name": "LiveStore:processWrites",
+              "_name": "LiveStore:mutate:applyMutations",
               "attributes": {
                 "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutateWithoutRefresh",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.args": "{
-  "sql": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')"
-}",
-                    "livestore.mutation": "livestore.RawSql",
+                    "sql.query": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')",
-                      },
-                    },
-                  ],
                 },
               ],
             },
@@ -98,19 +90,24 @@ exports[`useRow > otel > should update the data based on component key > strictM
           },
           "children": [
             {
-              "_name": "LiveStore:mutateWithoutRefresh",
+              "_name": "LiveStore:mutate",
               "attributes": {
-                "livestore.args": "{
-  "id": "u1"
-}",
-                "livestore.mutation": "_Derived_Create_UserInfo",
+                "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "livestore.in-memory-db:execute",
+                  "_name": "LiveStore:mutate:applyMutations",
                   "attributes": {
-                    "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
+                    "livestore.mutateLabel": "mutate",
                   },
+                  "children": [
+                    {
+                      "_name": "livestore.in-memory-db:execute",
+                      "attributes": {
+                        "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
+                      },
+                    },
+                  ],
                 },
               ],
             },
@@ -230,6 +227,9 @@ exports[`useRow > otel > should update the data based on component key > strictM
       },
     },
     {
+      "_name": "LiveStore:sync",
+    },
+    {
       "_name": "LiveStore:mutations",
       "children": [
         {
@@ -239,27 +239,16 @@ exports[`useRow > otel > should update the data based on component key > strictM
           },
           "children": [
             {
-              "_name": "LiveStore:processWrites",
+              "_name": "LiveStore:mutate:applyMutations",
               "attributes": {
                 "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutateWithoutRefresh",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.args": "{
-  "sql": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')"
-}",
-                    "livestore.mutation": "livestore.RawSql",
+                    "sql.query": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')",
-                      },
-                    },
-                  ],
                 },
               ],
             },
@@ -294,19 +283,24 @@ exports[`useRow > otel > should update the data based on component key > strictM
           },
           "children": [
             {
-              "_name": "LiveStore:mutateWithoutRefresh",
+              "_name": "LiveStore:mutate",
               "attributes": {
-                "livestore.args": "{
-  "id": "u1"
-}",
-                "livestore.mutation": "_Derived_Create_UserInfo",
+                "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "livestore.in-memory-db:execute",
+                  "_name": "LiveStore:mutate:applyMutations",
                   "attributes": {
-                    "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
+                    "livestore.mutateLabel": "mutate",
                   },
+                  "children": [
+                    {
+                      "_name": "livestore.in-memory-db:execute",
+                      "attributes": {
+                        "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
+                      },
+                    },
+                  ],
                 },
               ],
             },

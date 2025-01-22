@@ -18,6 +18,9 @@ exports[`otel > otel 3`] = `
       },
     },
     {
+      "_name": "LiveStore:sync",
+    },
+    {
       "_name": "LiveStore:mutations",
       "children": [
         {
@@ -27,27 +30,16 @@ exports[`otel > otel 3`] = `
           },
           "children": [
             {
-              "_name": "LiveStore:processWrites",
+              "_name": "LiveStore:mutate:applyMutations",
               "attributes": {
                 "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutateWithoutRefresh",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.args": "{
-  "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"
-}",
-                    "livestore.mutation": "livestore.RawSql",
+                    "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-                      },
-                    },
-                  ],
                 },
               ],
             },
@@ -116,6 +108,9 @@ exports[`otel > with thunks 3`] = `
       },
     },
     {
+      "_name": "LiveStore:sync",
+    },
+    {
       "_name": "LiveStore:mutations",
       "children": [
         {
@@ -125,27 +120,16 @@ exports[`otel > with thunks 3`] = `
           },
           "children": [
             {
-              "_name": "LiveStore:processWrites",
+              "_name": "LiveStore:mutate:applyMutations",
               "attributes": {
                 "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutateWithoutRefresh",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.args": "{
-  "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"
-}",
-                    "livestore.mutation": "livestore.RawSql",
+                    "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-                      },
-                    },
-                  ],
                 },
               ],
             },
@@ -217,6 +201,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       },
     },
     {
+      "_name": "LiveStore:sync",
+    },
+    {
       "_name": "LiveStore:mutations",
       "children": [
         {
@@ -226,27 +213,16 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
           },
           "children": [
             {
-              "_name": "LiveStore:processWrites",
+              "_name": "LiveStore:mutate:applyMutations",
               "attributes": {
                 "livestore.mutateLabel": "mutate",
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutateWithoutRefresh",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.args": "{
-  "sql": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)"
-}",
-                    "livestore.mutation": "livestore.RawSql",
+                    "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-                      },
-                    },
-                  ],
                 },
               ],
             },

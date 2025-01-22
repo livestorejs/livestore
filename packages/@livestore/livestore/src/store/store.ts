@@ -208,20 +208,6 @@ export class Store<
     }
 
     Effect.gen(this, function* () {
-      // yield* this.clientSession.coordinator.mutations.pull.pipe(
-      //   Stream.tap(({ mutationEvents }) =>
-      //     Effect.sync(() => {
-      //       this.mutate(...mutationEvents)
-      //     }),
-      //   ),
-      //   Stream.runDrain,
-      //   Effect.forever, // In case the stream is closed (e.g. during leader re-election), we want to re-subscribe
-      //   Effect.interruptible,
-      //   Effect.withSpan('LiveStore:syncMutations'),
-      //   Effect.tapCauseLogPretty,
-      //   Effect.forkScoped,
-      // )
-
       yield* this.syncProcessor.boot
 
       yield* Effect.addFinalizer(() =>
@@ -234,9 +220,9 @@ export class Store<
           }
 
           // End the otel spans
-          queriesSpan.end()
-          mutationsSpan.end()
           syncSpan.end()
+          mutationsSpan.end()
+          queriesSpan.end()
         }),
       )
 

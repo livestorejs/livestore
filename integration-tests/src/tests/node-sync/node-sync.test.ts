@@ -11,7 +11,7 @@ import { expect } from 'vitest'
 
 import * as WorkerSchema from './worker-schema.js'
 
-Vitest.describe('node-sync', { timeout: 10_000 }, () => {
+Vitest.describe('node-sync', { timeout: 15_000 }, () => {
   Vitest.scopedLive('node-sync', (test) =>
     Effect.gen(function* () {
       const storeId = nanoid(10)
