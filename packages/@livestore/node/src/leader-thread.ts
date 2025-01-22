@@ -204,13 +204,13 @@ const makeLeaderThread = ({
       initialSyncOptions,
     }).pipe(Layer.memoize)
 
-    // if (devtools.enabled === true) {
-    //   yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(
-    //     Effect.provide(leaderThreadLayer),
-    //     Effect.tapCauseLogPretty,
-    //     Effect.forkScoped,
-    //   )
-    // }
+    if (devtools.enabled === true) {
+      yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(
+        Effect.provide(leaderThreadLayer),
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+    }
 
     return leaderThreadLayer
   }).pipe(

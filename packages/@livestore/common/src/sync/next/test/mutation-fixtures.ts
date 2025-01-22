@@ -4,8 +4,9 @@ import { type EventId, ROOT_ID } from '../../../adapter-types.js'
 import type { MutationDef } from '../../../schema/mutations.js'
 import { defineFacts, defineMutation } from '../../../schema/mutations.js'
 import { factsSnapshotForDag, getFactsGroupForMutationArgs } from '../facts.js'
-import type { HistoryDagNode } from '../history-dag.js'
-import { historyDagFromNodes, rootEventNode } from '../history-dag.js'
+import { historyDagFromNodes } from '../history-dag.js'
+import type { HistoryDagNode } from '../history-dag-common.js'
+import { rootEventNode } from '../history-dag-common.js'
 
 /** Used for conflict detection and event history compaction */
 export const facts = defineFacts({

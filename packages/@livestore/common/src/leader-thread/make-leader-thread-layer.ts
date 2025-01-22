@@ -3,8 +3,8 @@ import { Deferred, Effect, FiberSet, Layer, Queue, SubscriptionRef } from '@live
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
 import { ROOT_ID, UnexpectedError } from '../adapter-types.js'
-import type { LiveStoreSchema } from '../schema/index.js'
-import { makeMutationEventSchema, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/index.js'
+import type { LiveStoreSchema } from '../schema/mod.js'
+import { makeMutationEventSchema, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
 import { migrateTable } from '../schema-management/migrations.js'
 import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync.js'
 import { sql } from '../util.js'

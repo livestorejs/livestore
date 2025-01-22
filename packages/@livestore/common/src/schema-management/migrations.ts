@@ -3,7 +3,7 @@ import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
 import type { SynchronousDatabase } from '../adapter-types.js'
-import type { LiveStoreSchema } from '../schema/index.js'
+import type { LiveStoreSchema } from '../schema/mod.js'
 import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
 import {
   SCHEMA_META_TABLE,

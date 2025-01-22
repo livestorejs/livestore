@@ -1,5 +1,6 @@
 import type { EventId } from '../../adapter-types.js'
-import type { MutationDef, MutationEvent, MutationEventFactsSnapshot } from '../../schema/mutations.js'
+import type { MutationEvent } from '../../schema/MutationEvent.js'
+import type { MutationDef, MutationEventFactsSnapshot } from '../../schema/mutations.js'
 import {
   applyFactGroups,
   factsIntersect,
@@ -7,7 +8,7 @@ import {
   getFactsGroupForMutationArgs,
   validateFacts,
 } from './facts.js'
-import type { HistoryDagNode } from './history-dag.js'
+import type { HistoryDagNode } from './history-dag-common.js'
 
 export type RebaseEventWithConflict = HistoryDagNode & {
   conflictType: 'overlap' | 'missing-requirement'

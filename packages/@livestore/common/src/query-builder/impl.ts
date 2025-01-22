@@ -1,7 +1,7 @@
 import { Option, Predicate, Schema } from '@livestore/utils/effect'
 
 import type { QueryInfo } from '../query-info.js'
-import type { DbSchema } from '../schema/index.js'
+import type { DbSchema } from '../schema/mod.js'
 import type { QueryBuilder, QueryBuilderAst } from './api.js'
 import { QueryBuilderAstSymbol, TypeId } from './api.js'
 

@@ -1,3 +1,4 @@
+export * from './history-dag-common.js'
 export * from './history-dag.js'
 export * from './facts.js'
 export * from './compact-events.js'

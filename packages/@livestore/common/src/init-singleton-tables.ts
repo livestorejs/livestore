@@ -1,5 +1,5 @@
 import type { SynchronousDatabase } from './adapter-types.js'
-import type { LiveStoreSchema } from './schema/index.js'
+import type { LiveStoreSchema } from './schema/mod.js'
 import { getDefaultValuesEncoded } from './schema/schema-helpers.js'
 import { prepareBindValues, sql } from './util.js'
 

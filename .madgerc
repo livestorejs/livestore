@@ -2,9 +2,16 @@
   "excludeRegExp": [
     // NOTE there seems to be some kind of issue where it detects circular dependencies but there doesn't seem to be any
     "utils\/src\/effect",
-    "reactiveQueries/graphql"
+    "livestore\/src\/live-queries\/graphql",
+    "graphology",
+    "nanoid\/index.browser.ts"
   ],
-  "fileExtensions": ["ts", "tsx", "js", "jsx"],
+  "fileExtensions": [
+    "ts",
+    "tsx",
+    "js",
+    "jsx"
+  ],
   "detectiveOptions": {
     "ts": {
       "skipTypeImports": true

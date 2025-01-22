@@ -10,7 +10,7 @@ import {
   SESSION_CHANGESET_META_TABLE,
   sessionChangesetMetaTable,
 } from '../index.js'
-import type { LiveStoreSchema, MutationEvent } from '../schema/index.js'
+import type { LiveStoreSchema, MutationEvent } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import { LeaderThreadCtx } from './types.js'

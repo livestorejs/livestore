@@ -1,48 +1,6 @@
-import { type EventId, ROOT_ID } from '../../adapter-types.js'
-import type { MutationEventFactsGroup } from '../../schema/mutations.js'
+import { type EventId } from '../../adapter-types.js'
 import { factsToString, validateFacts } from './facts.js'
-import { graphology } from './graphology_.js'
-
-export const connectionTypeOptions = ['parent', 'facts'] as const
-export type ConnectionType = (typeof connectionTypeOptions)[number]
-
-/**
- * Eventlog represented as a multi-DAG including edges for
- * - total-order (parent) relationships
- * - dependency (requires/reads facts) relationships
- */
-export type HistoryDag = graphology.IGraph<HistoryDagNode, { type: ConnectionType }>
-
-export const emptyHistoryDag = (): HistoryDag =>
-  new graphology.Graph({
-    allowSelfLoops: false,
-    multi: true,
-    type: 'directed',
-  })
-
-// TODO consider making `ROOT_ID` parent to itself
-const rootParentId = { global: ROOT_ID.global - 1, local: 0 } satisfies EventId
-
-export type HistoryDagNode = {
-  id: EventId
-  parentId: EventId
-  mutation: string
-  args: any
-  /** Facts are being used for conflict detection and history compaction */
-  factsGroup: MutationEventFactsGroup
-  meta?: any
-}
-
-export const rootEventNode: HistoryDagNode = {
-  id: ROOT_ID,
-  parentId: rootParentId,
-  // unused below
-  mutation: '__Root__',
-  args: {},
-  factsGroup: { modifySet: new Map(), modifyUnset: new Map(), depRequire: new Map(), depRead: new Map() },
-}
-
-export const EMPTY_FACT_VALUE = Symbol('EMPTY_FACT_VALUE')
+import { emptyHistoryDag, type HistoryDagNode, rootParentId } from './history-dag-common.js'
 
 export const eventIdToString = (eventId: EventId) =>
   eventId.local === 0 ? eventId.global.toString() : `${eventId.global}.${eventId.local}`

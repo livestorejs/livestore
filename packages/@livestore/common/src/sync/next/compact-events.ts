@@ -1,7 +1,8 @@
 import { replacesFacts } from './facts.js'
 import { graphologyDag } from './graphology_.js'
-import type { HistoryDag } from './history-dag.js'
-import { emptyHistoryDag, eventIdToString } from './history-dag.js'
+import { eventIdToString } from './history-dag.js'
+import type { HistoryDag } from './history-dag-common.js'
+import { emptyHistoryDag } from './history-dag-common.js'
 
 /**
  * Idea:

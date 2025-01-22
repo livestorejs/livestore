@@ -1,7 +1,7 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.js'
-import type { LiveStoreSchema } from '../schema/index.js'
+import type { LiveStoreSchema } from '../schema/mod.js'
 import type { MutationDef } from '../schema/mutations.js'
 import type { MutationDefInfo, SchemaManager } from './common.js'
 

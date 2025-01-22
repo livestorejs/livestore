@@ -1,6 +1,6 @@
 import { Effect } from '@livestore/utils/effect'
 
-import type { MutationEvent } from '../schema/index.js'
+import type { MutationEvent } from '../schema/mod.js'
 import { InvalidPushError } from './sync.js'
 
 // TODO proper batch validation

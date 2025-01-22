@@ -3,7 +3,7 @@ import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
 import type { SessionIdSymbol } from '../adapter-types.js'
 import type { QueryInfo } from '../query-info.js'
-import type { DbSchema } from '../schema/index.js'
+import type { DbSchema } from '../schema/mod.js'
 import type { SqliteDsl } from '../schema/table-def.js'
 import type { SqlValue } from '../util.js'
 

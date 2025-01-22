@@ -16,8 +16,8 @@
       "default": "./dist/leader-thread/mod.js"
     },
     "./schema": {
-      "types": "./dist/schema/index.d.ts",
-      "default": "./dist/schema/index.js"
+      "types": "./dist/schema/mod.d.ts",
+      "default": "./dist/schema/mod.js"
     },
     "./sync/next": {
       "types": "./dist/sync/next/mod.d.ts",
@@ -32,7 +32,7 @@
   "typesVersions": {
     "*": {
       "schema": [
-        "./dist/schema/index.d.ts"
+        "./dist/schema/mod.d.ts"
       ],
       "sql-queries": [
         "./dist/sql-queries/index.d.ts"

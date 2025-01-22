@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FiberMap, FiberSet, Option, PubSub, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/index.js'
+import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 import type { DevtoolsContextEnabled, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'

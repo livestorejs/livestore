@@ -9,7 +9,7 @@ import type {
   MutationEventFactsSnapshot,
 } from '../../schema/mutations.js'
 import { graphologyDag } from './graphology_.js'
-import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag.js'
+import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.js'
 
 export const factsSnapshotForEvents = (events: HistoryDagNode[], endEventId: EventId): MutationEventFactsSnapshot => {
   const facts = new Map<string, any>()

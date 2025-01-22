@@ -4,8 +4,8 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import type { Coordinator, EventId, UnexpectedError } from '../adapter-types.js'
-import { type LiveStoreSchema, makeMutationEventSchemaMemo } from '../schema/index.js'
-import type { MutationEvent } from '../schema/mutations.js'
+import { type LiveStoreSchema, makeMutationEventSchemaMemo } from '../schema/mod.js'
+import type { MutationEvent } from '../schema/MutationEvent.js'
 import type { SyncState } from './syncstate.js'
 import { MutationEventEncodedWithMeta, nextEventIdPair, updateSyncState } from './syncstate.js'
 

@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
-import { DbSchema } from '../schema/index.js'
+import { DbSchema } from '../schema/mod.js'
 import { getResultSchema } from './impl.js'
 
 const todos = DbSchema.table(

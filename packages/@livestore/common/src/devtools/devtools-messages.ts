@@ -2,7 +2,7 @@ import { Schema, Transferable } from '@livestore/utils/effect'
 
 import { NetworkStatus } from '../adapter-types.js'
 import { DebugInfo } from '../debug-info.js'
-import { mutationEventSchemaEncodedAny } from '../schema/mutations.js'
+import { mutationEventSchemaEncodedAny } from '../schema/MutationEvent.js'
 import { PreparedBindValues } from '../util.js'
 import { liveStoreVersion as pkgVersion } from '../version.js'
 

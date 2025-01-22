@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { DbSchema, makeSchema } from '../schema/index.js'
+import { DbSchema, makeSchema } from '../schema/mod.js'
 
 export const todos = DbSchema.table(
   'todos',

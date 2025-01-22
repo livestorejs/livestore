@@ -11,7 +11,7 @@
     "deploy:examples:src": "bun scripts/deploy-examples.ts",
     "update-lockfile": "CI=1 pnpm install --lockfile-only",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
-    "circular": "madge --circular --no-spinner examples/*/src packages/*/*/src",
+    "circular": "madge --circular --no-spinner examples/src/*/src packages/*/*/src",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish --no-git-checks",

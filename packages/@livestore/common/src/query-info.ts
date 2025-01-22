@@ -1,5 +1,5 @@
 import type { SessionIdSymbol } from './adapter-types.js'
-import type { DbSchema } from './schema/index.js'
+import type { DbSchema } from './schema/mod.js'
 
 /**
  * Semantic information about a query with supported cases being:

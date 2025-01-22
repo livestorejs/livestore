@@ -15,11 +15,6 @@ import { systemTables } from './system-tables.js'
 import type { TableDef, TableDefBase } from './table-def.js'
 import { tableHasDerivedMutations } from './table-def.js'
 
-export * from './system-tables.js'
-export * as DbSchema from './table-def.js'
-export * from './mutations.js'
-export * from './schema-helpers.js'
-
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
 

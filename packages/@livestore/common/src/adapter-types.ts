@@ -2,7 +2,7 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
-import type { LiveStoreSchema, MutationEvent } from './schema/index.js'
+import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
 

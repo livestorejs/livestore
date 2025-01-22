@@ -2,8 +2,9 @@ import type { MutationEventFacts } from '@livestore/common/schema'
 import { describe, expect, it } from 'vitest'
 
 import { compactEvents } from '../compact-events.js'
-import type { HistoryDagNode } from '../history-dag.js'
-import { EMPTY_FACT_VALUE, historyDagFromNodes } from '../history-dag.js'
+import { historyDagFromNodes } from '../history-dag.js'
+import type { HistoryDagNode } from '../history-dag-common.js'
+import { EMPTY_FACT_VALUE } from '../history-dag-common.js'
 import { mutations, toEventNodes } from './mutation-fixtures.js'
 
 const customStringify = (value: any): string => {

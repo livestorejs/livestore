@@ -2,7 +2,7 @@ import type { Effect, HttpClient, Option, Stream, SubscriptionRef } from '@lives
 import { Schema } from '@livestore/utils/effect'
 
 import { EventId } from '../adapter-types.js'
-import type { MutationEvent } from '../schema/mutations.js'
+import type { MutationEvent } from '../schema/MutationEvent.js'
 
 export interface SyncBackendOptionsBase {
   type: string

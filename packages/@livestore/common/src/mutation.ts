@@ -1,7 +1,8 @@
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from './adapter-types.js'
-import type { MutationDef, MutationEvent } from './schema/mutations.js'
+import type { MutationEvent } from './schema/MutationEvent.js'
+import type { MutationDef } from './schema/mutations.js'
 import type { PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 

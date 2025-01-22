@@ -1,7 +1,7 @@
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import { type EventId, type SynchronousDatabase } from '../adapter-types.js'
-import { type MutationEvent } from '../schema/index.js'
+import { type MutationEvent } from '../schema/mod.js'
 import { LeaderThreadCtx } from './types.js'
 
 /**
