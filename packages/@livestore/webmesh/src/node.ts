@@ -1,4 +1,4 @@
-import { shouldNeverHappen } from '@livestore/utils'
+import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Duration, Effect, Fiber, PubSub, Queue, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 
@@ -165,7 +165,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             .map(([_, con]) => con.channel)
 
           // TODO if hops-depth=0, we should fail right away with no route found
-          if (hops.length === 0 && connectionsToForwardTo.length === 0) {
+          if (hops.length === 0 && connectionsToForwardTo.length === 0 && LS_DEV) {
             console.log(nodeName, 'no route found', packet._tag, 'TODO handle better')
             // TODO return a expected failure
           }

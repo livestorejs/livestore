@@ -38,18 +38,6 @@ import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updat
 import type { InitialBlockingSyncContext, InitialSyncInfo, SyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
-const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) =>
-  a.id.global === b.id.global &&
-  a.id.local === b.id.local &&
-  a.mutation === b.mutation &&
-  // TODO use schema equality here
-  JSON.stringify(a.args) === JSON.stringify(b.args)
-
-/*
-
-
-*/
-
 type ProcessorStateInit = {
   _tag: 'init'
 }
@@ -149,7 +137,7 @@ export const makeLeaderSyncProcessor = ({
           syncState: state.syncState,
           payload: { _tag: 'local-push', newEvents },
           isLocalEvent,
-          isEqualEvent,
+          isEqualEvent: MutationEvent.isEqualEncoded,
         })
 
         if (updateResult._tag === 'rebase') {
@@ -439,7 +427,7 @@ const backgroundBackendPulling = ({
           syncState: state.syncState,
           payload: { _tag: 'upstream-advance', newEvents, trimRollbackUntil },
           isLocalEvent,
-          isEqualEvent,
+          isEqualEvent: MutationEvent.isEqualEncoded,
           ignoreLocalEvents: true,
         })
 

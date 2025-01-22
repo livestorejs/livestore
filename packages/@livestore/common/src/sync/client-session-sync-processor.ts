@@ -10,13 +10,6 @@ import * as MutationEvent from '../schema/MutationEvent.js'
 import type { SyncState } from './syncstate.js'
 import { updateSyncState } from './syncstate.js'
 
-const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) =>
-  a.id.global === b.id.global &&
-  a.id.local === b.id.local &&
-  a.mutation === b.mutation &&
-  // TODO use schema equality here
-  JSON.stringify(a.args) === JSON.stringify(b.args)
-
 /**
  * Rebase behaviour:
  * - We continously pull mutations from the leader and apply them to the local store.
@@ -42,7 +35,7 @@ export const makeClientSessionSyncProcessor = ({
   pullFromLeader: Coordinator['mutations']['pull']
   applyMutation: (
     mutationEventDecoded: MutationEvent.PartialAny,
-    options: { otelContext: otel.Context | undefined; withChangeset: boolean },
+    options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
     writeTables: Set<string>
     sessionChangeset: Uint8Array | undefined
@@ -86,7 +79,7 @@ export const makeClientSessionSyncProcessor = ({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
       isLocalEvent,
-      isEqualEvent,
+      isEqualEvent: MutationEvent.isEqualEncoded,
     })
 
     span.addEvent('local-push', {
@@ -128,7 +121,7 @@ export const makeClientSessionSyncProcessor = ({
             syncState: syncStateRef.current,
             payload,
             isLocalEvent,
-            isEqualEvent,
+            isEqualEvent: MutationEvent.isEqualEncoded,
           })
 
           syncStateRef.current = updateResult.syncState

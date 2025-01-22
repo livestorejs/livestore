@@ -38,8 +38,7 @@ const e_0_3 = new TestEvent({ global: 0, local: 3 }, e_0_2.id, 'a', true)
 const e_1_0 = new TestEvent({ global: 1, local: 0 }, e_0_0.id, 'a', false)
 const e_1_1 = new TestEvent({ global: 1, local: 1 }, e_1_0.id, 'a', true)
 
-const isEqualEvent = (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) =>
-  a.id.global === b.id.global && a.id.local === b.id.local && a.args === b.args
+const isEqualEvent = MutationEvent.isEqualEncoded
 
 const isLocalEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEvent).isLocal
 

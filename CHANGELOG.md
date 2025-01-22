@@ -6,9 +6,13 @@
 ## 0.3.0
 
 - Still todo:
-  - Fix devtools for web + expo
-  - Sync queue
-    - Refactor `MutationEventEncodedWithMeta` to work better alongside `EncodedAny`
+  - Fix Otel / Effect shutdown behaviour
+    - Test should run faster and shutdown gracefully in `node-sync.test.ts`
+  - Devtools
+    - Fix: web
+    - Fix: Expo
+    - Node
+      - Fix: re-connecting
 
 - New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.

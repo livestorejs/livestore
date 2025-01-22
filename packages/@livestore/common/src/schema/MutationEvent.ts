@@ -152,3 +152,10 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
       ...EventId.nextPair(this.id, isLocal),
     })
 }
+
+export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
+  a.id.global === b.id.global &&
+  a.id.local === b.id.local &&
+  a.mutation === b.mutation &&
+  // TODO use schema equality here
+  JSON.stringify(a.args) === JSON.stringify(b.args)
