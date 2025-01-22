@@ -1,12 +1,11 @@
 import { shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+import * as otel from '@opentelemetry/api'
 
 import type { Coordinator, EventId, UnexpectedError } from '../adapter-types.js'
 import { type LiveStoreSchema, makeMutationEventSchemaMemo } from '../schema/index.js'
 import type { MutationEvent } from '../schema/mutations.js'
-import { makeNextMutationEventIdPair } from './next-mutation-event-id-pair.js'
 import type { SyncState } from './syncstate.js'
 import { MutationEventEncodedWithDeferred, nextEventIdPair, updateSyncState } from './syncstate.js'
 
@@ -29,7 +28,6 @@ const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) 
 export const makeClientSessionSyncProcessor = ({
   schema,
   initialLeaderHead,
-  initialBackendHead,
   pushToLeader,
   pullFromLeader,
   applyMutation,
@@ -39,7 +37,6 @@ export const makeClientSessionSyncProcessor = ({
 }: {
   schema: LiveStoreSchema
   initialLeaderHead: EventId
-  initialBackendHead: number
   pushToLeader: (batch: ReadonlyArray<MutationEvent.AnyEncoded>) => void
   pullFromLeader: Coordinator['mutations']['pull']
   applyMutation: (
@@ -51,27 +48,17 @@ export const makeClientSessionSyncProcessor = ({
   }
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
-  rebaseBehaviour: 'auto-rebase' | 'manual-rebase'
+  // rebaseBehaviour: 'auto-rebase' | 'manual-rebase'
   span: otel.Span
 }): ClientSessionSyncProcessor => {
-  // type LocalItem = {
-  //   // mutationEvent: MutationEvent.AnyEncoded
-  //   eventId: EventId
-  //   sessionChangeset: Uint8Array | undefined
-  // }
-
   const mutationEventSchema = makeMutationEventSchemaMemo(schema)
-
-  // TODO init from leader
-  // const changesetItems: LocalItem[] = []
-
-  // const nextMutationEventIdPair = makeNextMutationEventIdPair(localHeadRef)
 
   const syncStateRef = {
     current: {
       localHead: initialLeaderHead,
       upstreamHead: initialLeaderHead,
       pending: [],
+      // TODO init rollbackTail from leader to be ready for backend rebasing
       rollbackTail: [],
     } as SyncState,
   }
@@ -127,6 +114,8 @@ export const makeClientSessionSyncProcessor = ({
     return { writeTables }
   }
 
+  const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     yield* pullFromLeader.pipe(
       Stream.tap(({ payload, remaining }) =>
@@ -154,6 +143,7 @@ export const makeClientSessionSyncProcessor = ({
               newEventsCount: updateResult.newEvents.length,
               rollbackCount: updateResult.eventsToRollback.length,
               res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+              remaining,
             })
 
             for (let i = updateResult.eventsToRollback.length - 1; i >= 0; i--) {
@@ -169,6 +159,7 @@ export const makeClientSessionSyncProcessor = ({
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
               newEventsCount: updateResult.newEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+              remaining,
             })
           }
 
@@ -176,9 +167,8 @@ export const makeClientSessionSyncProcessor = ({
 
           const writeTables = new Set<string>()
           for (const mutationEvent of updateResult.newEvents) {
-            // TODO pass otelContext
             const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
-            const res = applyMutation(decodedMutationEvent, { otelContext: undefined, withChangeset: true })
+            const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
             for (const table of res.writeTables) {
               writeTables.add(table)
             }
@@ -196,7 +186,6 @@ export const makeClientSessionSyncProcessor = ({
   })
 
   return {
-    // push,
     push,
     boot,
     syncStateRef,
@@ -204,7 +193,6 @@ export const makeClientSessionSyncProcessor = ({
 }
 
 export interface ClientSessionSyncProcessor {
-  // push: (batch: SyncProcessorItem[]) => Effect.Effect<void, UnexpectedError>
   push: (
     batch: ReadonlyArray<MutationEvent.PartialAny>,
     options: { otelContext: otel.Context },

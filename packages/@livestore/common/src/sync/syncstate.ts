@@ -48,7 +48,7 @@ export const nextEventIdPair = (id: EventId, isLocal: boolean) => {
 
   return {
     id: { global: id.global + 1, local: 0 },
-    // NOTE we're always using `local: 0` for new global event ids
+    // NOTE we always point to `local: 0` for non-localOnly mutations
     parentId: { global: id.global, local: 0 },
   }
 }

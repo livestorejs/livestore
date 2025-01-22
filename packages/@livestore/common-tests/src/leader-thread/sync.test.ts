@@ -1,12 +1,7 @@
 import '@livestore/utils/node-vitest-polyfill'
 
 import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
-import {
-  makeNextMutationEventIdPair,
-  MutationEventEncodedWithDeferred,
-  ROOT_ID,
-  validatePushPayload,
-} from '@livestore/common'
+import { MutationEventEncodedWithDeferred, nextEventIdPair, ROOT_ID, validatePushPayload } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -198,16 +193,15 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     const encodeMutationEvent = Schema.encodeSync(leaderThreadCtx.mutationEventSchema)
 
     const currentMutationEventId = { current: ROOT_ID }
-    const nextMutationEventIdPair = makeNextMutationEventIdPair(currentMutationEventId)
 
-    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) =>
-      new MutationEventEncodedWithDeferred({
-        ...encodeMutationEvent({
-          ...partialEvent,
-          ...nextMutationEventIdPair({ localOnly: false }),
-        }),
+    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) => {
+      const nextIdPair = nextEventIdPair(currentMutationEventId.current, false)
+      currentMutationEventId.current = nextIdPair.id
+      return new MutationEventEncodedWithDeferred({
+        ...encodeMutationEvent({ ...partialEvent, ...nextIdPair }),
         meta: { deferred },
       })
+    }
 
     const mutate = (...partialEvents: MutationEvent.PartialAny[]) =>
       Effect.gen(function* () {

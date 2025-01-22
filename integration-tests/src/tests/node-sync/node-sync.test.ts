@@ -39,8 +39,6 @@ Vitest.describe('node-sync', { timeout: 10_000 }, () => {
         Effect.flatten,
       )
 
-      console.log('result', result)
-
       expect(result.length).toEqual(todoCount)
       yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
       yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())

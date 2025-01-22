@@ -1,7 +1,7 @@
 import { shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
-  Chunk,
+  BucketQueue,
   Deferred,
   Effect,
   Exit,
@@ -9,7 +9,6 @@ import {
   FiberHandle,
   Option,
   OtelTracer,
-  Queue,
   Ref,
   Schema,
   Stream,
@@ -21,12 +20,7 @@ import type { EventId, SynchronousDatabase } from '../adapter-types.js'
 import { compareEventIds, ROOT_ID, UnexpectedError } from '../adapter-types.js'
 import * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema, MutationEvent, SessionChangesetMetaRow } from '../schema/index.js'
-import {
-  MUTATION_LOG_META_TABLE,
-  mutationLogMetaTable,
-  SESSION_CHANGESET_META_TABLE,
-  SYNC_STATUS_TABLE,
-} from '../schema/index.js'
+import { MUTATION_LOG_META_TABLE, mutationLogMetaTable, SESSION_CHANGESET_META_TABLE } from '../schema/index.js'
 import { updateRows } from '../sql-queries/index.js'
 import { InvalidPushError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
@@ -46,49 +40,8 @@ const isEqualEvent = (a: MutationEvent.AnyEncoded, b: MutationEvent.AnyEncoded) 
   // TODO use schema equality here
   JSON.stringify(a.args) === JSON.stringify(b.args)
 
-// const whenTraceVerbose = <T>(object: T) => TRACE_VERBOSE ? object : undefined
-
 /*
-New implementation idea: Model the sync thing as a state machine.
 
-External events:
-- Mutation pushed from client session
-- Mutation pushed from devtools (via pushPartial)
-- Mutation pulled from sync backend
-
-The machine can be in the following states:
-- in-sync: fully synced with remote, now idling
-- applying-syncstate-advance (with pointer to current progress in case of rebase interrupt)
-
-Transitions:
-- in-sync -> applying-syncstate-advance
-- applying-syncstate-advance -> in-sync
-- applying-syncstate-advance -> applying-syncstate-advance (need to interrupt previous operation)
-
-Queuing vs interrupting behaviour:
-- Operations caused by pull can never be interrupted
-- Incoming pull can interrupt current push
-- Incoming pull needs to wait to previous pull to finish
-- Incoming push needs to wait to previous push to finish
-
-Backend pushing:
-- continously push to backend
-- only interrupted and restarted on rebase
-
-Open questions:
-- Which things can be done synchronously vs which are inherently async vs which need to be sliced up?
-  - Synchronous:
-    - Mutation pushed from client session
-    - non-interactive rebase
-    - rolling back and applying a short log of events (limit needs to be configurable)
-  - Asynchronous:
-    - interactive rebase
-  - with loading spinner: (only on main thread)
-    - rolling back + applying a long log of events
-    - interactive rebase
-- Which things are allowed concurrently vs which not?
-- Is there anything that's not interruptible?
-  - interactive rebase
 
 */
 
@@ -120,6 +73,30 @@ type ProcessorState = ProcessorStateInit | ProcessorStateInSync | ProcessorState
  * - pushing mutations to the sync backend
  *
  * In the leader sync processor, pulling always has precedence over pushing.
+ *
+ * External events:
+ * - Mutation pushed from client session
+ * - Mutation pushed from devtools (via pushPartial)
+ * - Mutation pulled from sync backend
+ *
+ * The machine can be in the following states:
+ * - in-sync: fully synced with remote, now idling
+ * - applying-syncstate-advance (with pointer to current progress in case of rebase interrupt)
+ *
+ * Transitions:
+ * - in-sync -> applying-syncstate-advance
+ * - applying-syncstate-advance -> in-sync
+ * - applying-syncstate-advance -> applying-syncstate-advance (need to interrupt previous operation)
+ *
+ * Queuing vs interrupting behaviour:
+ * - Operations caused by pull can never be interrupted
+ * - Incoming pull can interrupt current push
+ * - Incoming pull needs to wait to previous pull to finish
+ * - Incoming push needs to wait to previous push to finish
+ *
+ * Backend pushing:
+ * - continously push to backend
+ * - only interrupted and restarted on rebase
  */
 export const makeLeaderSyncProcessor = ({
   schema,
@@ -134,16 +111,11 @@ export const makeLeaderSyncProcessor = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
 }): Effect.Effect<SyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const syncBackendQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
-    )
+    const syncBackendQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()
 
-    /** State transitions need to happen atomically, so we use a Ref to track the state */
     const stateRef = yield* Ref.make<ProcessorState>({ _tag: 'init' })
 
     const semaphore = yield* Effect.makeSemaphore(1)
-
-    // const mutex = yield*
 
     const isLocalEvent = (mutationEventEncoded: MutationEventEncodedWithDeferred) => {
       const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
@@ -214,7 +186,7 @@ export const makeLeaderSyncProcessor = ({
           return mutationDef.options.localOnly === false
         })
 
-        yield* syncBackendQueue.offerAll(filteredBatch)
+        yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
 
         yield* fiber // Waiting for the mutation to be applied
       }).pipe(
@@ -285,7 +257,7 @@ export const makeLeaderSyncProcessor = ({
               return mutationDef.options.localOnly === false
             })
 
-          yield* syncBackendQueue.offerAll(filteredBatch)
+          yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
         }
 
         const backendPushingFiberHandle = yield* FiberHandle.make()
@@ -301,15 +273,14 @@ export const makeLeaderSyncProcessor = ({
           isLocalEvent,
           restartBackendPushing: (filteredRebasedPending) =>
             Effect.gen(function* () {
+              // Stop current pushing fiber
               yield* FiberHandle.clear(backendPushingFiberHandle)
+
               // Reset the sync queue
-              yield* Queue.takeAll(syncBackendQueue)
-              const state = yield* Ref.get(stateRef)
-              if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+              yield* BucketQueue.clear(syncBackendQueue)
+              yield* BucketQueue.offerAll(syncBackendQueue, filteredRebasedPending)
 
-              // TODO use bucket queue to gurantee batching
-              yield* Queue.offerAll(syncBackendQueue, filteredRebasedPending)
-
+              // Restart pushing fiber
               yield* FiberHandle.run(
                 backendPushingFiberHandle,
                 backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
@@ -321,15 +292,7 @@ export const makeLeaderSyncProcessor = ({
           span,
           initialBlockingSyncContext,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-      }).pipe(
-        // TODO remove timeout
-        // Effect.andThen(Effect.never),
-        // Effect.timeout(2000),
-        // Effect.orDie,
-        // Effect.withSpan('@livestore/common:leader-thread:syncing'),
-        // Effect.forkScoped,
-        Effect.withSpanScoped('@livestore/common:leader-thread:syncing'),
-      )
+      }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
     return {
       push,
@@ -505,7 +468,7 @@ const backgroundBackendPulling = ({
             payload: {
               _tag: 'upstream-rebase',
               newEvents: updateResult.newEvents,
-              rollbackUntil: updateResult.eventsToRollback.at(-1)!.id,
+              rollbackUntil: updateResult.eventsToRollback.at(0)!.id,
               trimRollbackUntil,
             },
             remaining,
@@ -631,7 +594,7 @@ const backgroundBackendPushing = ({
   span,
 }: {
   dbReady: Deferred.Deferred<void>
-  syncBackendQueue: Queue.Queue<MutationEvent.AnyEncoded>
+  syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.AnyEncoded>
   span: otel.Span | undefined
 }) =>
   Effect.gen(function* () {
@@ -644,7 +607,7 @@ const backgroundBackendPushing = ({
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
       // TODO make batch size configurable
-      const queueItems = yield* syncBackendQueue.takeBetween(1, 50).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueItems = yield* BucketQueue.takeBetween(syncBackendQueue, 1, 50)
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 

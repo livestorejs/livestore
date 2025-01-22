@@ -13,7 +13,6 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  ROOT_ID,
   UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
@@ -103,8 +102,7 @@ export class Store<
     this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
       initialLeaderHead: clientSession.coordinator.mutations.initialMutationEventId,
-      initialBackendHead: ROOT_ID.global,
-      rebaseBehaviour: 'auto-rebase',
+      // rebaseBehaviour: 'auto-rebase',
       pushToLeader: (batch) =>
         clientSession.coordinator.mutations.push(batch, { persisted: true }).pipe(this.runEffectFork),
       pullFromLeader: clientSession.coordinator.mutations.pull,
@@ -151,7 +149,6 @@ export class Store<
       span: syncSpan,
     })
 
-    // TODO refactor
     this.__mutationEventSchema = makeMutationEventSchemaMemo(schema)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs

@@ -7,6 +7,8 @@ export const make = <A>(): STM.STM<BucketQueue<A>> => TRef.make<A[]>([])
 export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
   TRef.update(self, (bucket) => Array.appendAll(bucket, elements))
 
+export const clear = <A>(self: BucketQueue<A>) => TRef.set(self, [])
+
 export const takeBetween = <A>(self: BucketQueue<A>, min: number, max: number) =>
   STM.gen(function* () {
     const bucket = yield* TRef.get(self)

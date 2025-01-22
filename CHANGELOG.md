@@ -26,6 +26,8 @@
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Improve Otel tracing integration
 - Fix: The query builder now correctly handles `IN` and `NOT IN` where operations
+- Examples:
+  - Added Otel to `todomvc` and `todomvc-sync-cf` example
 - Internal:
   - Node syncing integration tests
   - New devtools protocol via webmesh

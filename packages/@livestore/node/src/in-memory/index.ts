@@ -1,11 +1,5 @@
 import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
-import {
-  initializeSingletonTables,
-  makeNextMutationEventIdPair,
-  migrateDb,
-  ROOT_ID,
-  UnexpectedError,
-} from '@livestore/common'
+import { initializeSingletonTables, migrateDb, ROOT_ID, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
