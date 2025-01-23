@@ -79,14 +79,16 @@ export type PayloadUpstream = typeof PayloadUpstream.Type
 
 export type UpdateResultAdvance = {
   _tag: 'advance'
-  syncState: SyncState
+  newSyncState: SyncState
+  previousSyncState: SyncState
   /** Events which weren't pending before the update */
   newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
 }
 
 export type UpdateResultRebase = {
   _tag: 'rebase'
-  syncState: SyncState
+  newSyncState: SyncState
+  previousSyncState: SyncState
   /** Events which weren't pending before the update */
   newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
   eventsToRollback: ReadonlyArray<MutationEvent.EncodedWithMeta>
@@ -94,8 +96,7 @@ export type UpdateResultRebase = {
 
 export type UpdateResultReject = {
   _tag: 'reject'
-  /** Previous syncState state */
-  syncState: SyncState
+  previousSyncState: SyncState
   /** The minimum id that the new events must have */
   expectedMinimumId: EventId.EventId
 }
@@ -152,12 +153,13 @@ export const updateSyncState = ({
 
       return {
         _tag: 'rebase',
-        syncState: {
+        newSyncState: {
           pending: rebasedPending,
           rollbackTail: trimRollbackTail([...syncState.rollbackTail.slice(0, rollbackIndex), ...payload.newEvents]),
           upstreamHead: newUpstreamHead,
           localHead: rebasedPending.at(-1)?.id ?? newUpstreamHead,
         },
+        previousSyncState: syncState,
         newEvents: payload.newEvents,
         eventsToRollback,
       }
@@ -167,12 +169,13 @@ export const updateSyncState = ({
       if (payload.newEvents.length === 0) {
         return {
           _tag: 'advance',
-          syncState: {
+          newSyncState: {
             pending: syncState.pending,
             rollbackTail: trimRollbackTail(syncState.rollbackTail),
             upstreamHead: syncState.upstreamHead,
             localHead: syncState.localHead,
           },
+          previousSyncState: syncState,
           newEvents: [],
         }
       }
@@ -232,12 +235,13 @@ export const updateSyncState = ({
 
         return {
           _tag: 'advance',
-          syncState: {
+          newSyncState: {
             pending: pendingRemaining,
             rollbackTail: trimRollbackTail([...syncState.rollbackTail, ...pendingAndNewEvents]),
             upstreamHead: newUpstreamHead,
             localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
           },
+          previousSyncState: syncState,
           newEvents,
         }
       } else {
@@ -258,12 +262,13 @@ export const updateSyncState = ({
 
         return {
           _tag: 'rebase',
-          syncState: {
+          newSyncState: {
             pending: rebasedPending,
             rollbackTail: trimRollbackTail([...syncState.rollbackTail, ...payload.newEvents]),
             upstreamHead: newUpstreamHead,
             localHead: rebasedPending.at(-1)!.id,
           },
+          previousSyncState: syncState,
           newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
           eventsToRollback: [...syncState.rollbackTail, ...divergentPending],
         }
@@ -272,7 +277,7 @@ export const updateSyncState = ({
 
     case 'local-push': {
       if (payload.newEvents.length === 0) {
-        return { _tag: 'advance', syncState, newEvents: [] }
+        return { _tag: 'advance', newSyncState: syncState, previousSyncState: syncState, newEvents: [] }
       }
 
       const newEventsFirst = payload.newEvents.at(0)!
@@ -280,16 +285,17 @@ export const updateSyncState = ({
 
       if (invalidEventId) {
         const expectedMinimumId = EventId.nextPair(syncState.localHead, true).id
-        return { _tag: 'reject', syncState, expectedMinimumId }
+        return { _tag: 'reject', previousSyncState: syncState, expectedMinimumId }
       } else {
         return {
           _tag: 'advance',
-          syncState: {
+          newSyncState: {
             pending: [...syncState.pending, ...payload.newEvents],
             rollbackTail: syncState.rollbackTail,
             upstreamHead: syncState.upstreamHead,
             localHead: payload.newEvents.at(-1)!.id,
           },
+          previousSyncState: syncState,
           newEvents: payload.newEvents,
         }
       }

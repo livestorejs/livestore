@@ -8,6 +8,11 @@
 - Still todo:
   - Fix Otel / Effect shutdown behaviour
     - Test should run faster and shutdown gracefully in `node-sync.test.ts`
+  - Syncing
+    - Initial Electric sync implementation
+    - sync-cf: Get rid of broadcast events and embrace pull semantics
+    - Bring back `persisted` sync events or implement a replacement
+    - LeaderSyncProcessor: Batch pending pushes
   - Devtools
     - Fix: web
     - Fix: Expo

@@ -77,14 +77,14 @@ describe('syncstate', () => {
           })
           const e_1_0_e_2_0 = e_1_0.rebase_(e_0_0_e_1_0.id)
           expectRebase(result)
-          expectEventArraysEqual(result.syncState.pending, [e_1_0_e_2_0])
+          expectEventArraysEqual(result.newSyncState.pending, [e_1_0_e_2_0])
           if (trimRollbackUntil) {
-            expectEventArraysEqual(result.syncState.rollbackTail, [])
+            expectEventArraysEqual(result.newSyncState.rollbackTail, [])
           } else {
-            expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0_e_1_0, e_0_1_e_1_1])
+            expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0_e_1_0, e_0_1_e_1_1])
           }
-          expect(result.syncState.upstreamHead).toBe(e_0_1_e_1_1.id)
-          expect(result.syncState.localHead).toMatchObject(e_1_0_e_2_0.id)
+          expect(result.newSyncState.upstreamHead).toBe(e_0_1_e_1_1.id)
+          expect(result.newSyncState.localHead).toMatchObject(e_1_0_e_2_0.id)
           expectEventArraysEqual(result.newEvents, [e_0_0_e_1_0, e_0_1_e_1_1])
           expectEventArraysEqual(result.eventsToRollback, [e_0_0, e_0_1, e_1_0])
         })
@@ -108,14 +108,14 @@ describe('syncstate', () => {
           })
           const e_1_0_e_2_0 = e_1_0.rebase_(e_0_1_e_1_0.id)
           expectRebase(result)
-          expectEventArraysEqual(result.syncState.pending, [e_1_0_e_2_0])
+          expectEventArraysEqual(result.newSyncState.pending, [e_1_0_e_2_0])
           if (trimRollbackUntil) {
-            expectEventArraysEqual(result.syncState.rollbackTail, [e_0_1_e_1_0])
+            expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_1_e_1_0])
           } else {
-            expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0, e_0_1_e_1_0])
+            expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0, e_0_1_e_1_0])
           }
-          expect(result.syncState.upstreamHead).toBe(e_0_1_e_1_0.id)
-          expect(result.syncState.localHead).toMatchObject(e_1_0_e_2_0.id)
+          expect(result.newSyncState.upstreamHead).toBe(e_0_1_e_1_0.id)
+          expect(result.newSyncState.localHead).toMatchObject(e_1_0_e_2_0.id)
           expectEventArraysEqual(result.newEvents, [e_0_1_e_1_0])
           expectEventArraysEqual(result.eventsToRollback, [e_0_1, e_1_0])
         })
@@ -127,10 +127,10 @@ describe('syncstate', () => {
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [e_1_0] },
           })
           expectRebase(result)
-          expectEventArraysEqual(result.syncState.pending, [])
-          expectEventArraysEqual(result.syncState.rollbackTail, [e_1_0])
-          expect(result.syncState.upstreamHead).toBe(e_1_0.id)
-          expect(result.syncState.localHead).toMatchObject(e_1_0.id)
+          expectEventArraysEqual(result.newSyncState.pending, [])
+          expectEventArraysEqual(result.newSyncState.rollbackTail, [e_1_0])
+          expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
+          expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
           expect(result.newEvents).toEqual([e_1_0])
         })
 
@@ -151,10 +151,10 @@ describe('syncstate', () => {
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [] },
           })
           expectRebase(result)
-          expectEventArraysEqual(result.syncState.pending, [])
-          expectEventArraysEqual(result.syncState.rollbackTail, [])
-          expect(result.syncState.upstreamHead).toBe(EventId.ROOT)
-          expect(result.syncState.localHead).toMatchObject(EventId.ROOT)
+          expectEventArraysEqual(result.newSyncState.pending, [])
+          expectEventArraysEqual(result.newSyncState.rollbackTail, [])
+          expect(result.newSyncState.upstreamHead).toBe(EventId.ROOT)
+          expect(result.newSyncState.localHead).toMatchObject(EventId.ROOT)
           expect(result.newEvents).toEqual([])
         })
       },
@@ -176,10 +176,10 @@ describe('syncstate', () => {
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0])
-        expect(result.syncState.upstreamHead).toBe(e_0_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_0.id)
+        expectEventArraysEqual(result.newSyncState.pending, [])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0])
+        expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_0.id)
         expect(result.newEvents).toEqual([])
       })
 
@@ -193,10 +193,10 @@ describe('syncstate', () => {
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [e_1_0])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0])
-        expect(result.syncState.upstreamHead).toBe(e_0_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_1_0.id)
+        expectEventArraysEqual(result.newSyncState.pending, [e_1_0])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0])
+        expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
         expect(result.newEvents).toEqual([])
       })
 
@@ -205,10 +205,10 @@ describe('syncstate', () => {
         const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_1] } })
 
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0, e_0_1])
-        expect(result.syncState.upstreamHead).toBe(e_0_1.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_1.id)
+        expectEventArraysEqual(result.newSyncState.pending, [])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0, e_0_1])
+        expect(result.newSyncState.upstreamHead).toBe(e_0_1.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_1.id)
         expect(result.newEvents).toEqual([e_0_1])
       })
 
@@ -220,10 +220,10 @@ describe('syncstate', () => {
         })
 
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0, e_1_1])
-        expect(result.syncState.upstreamHead).toBe(e_1_1.id)
-        expect(result.syncState.localHead).toMatchObject(e_1_1.id)
+        expectEventArraysEqual(result.newSyncState.pending, [])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0, e_1_1])
+        expect(result.newSyncState.upstreamHead).toBe(e_1_1.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_1_1.id)
         expect(result.newEvents).toEqual([e_0_2, e_0_3, e_1_0, e_1_1])
       })
 
@@ -240,10 +240,10 @@ describe('syncstate', () => {
           ignoreLocalEvents: true,
         })
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_r_1, e_0_0])
-        expect(result.syncState.upstreamHead).toBe(e_0_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_0.id)
+        expectEventArraysEqual(result.newSyncState.pending, [])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_r_1, e_0_0])
+        expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_0.id)
         expect(result.newEvents).toEqual([])
       })
 
@@ -260,10 +260,10 @@ describe('syncstate', () => {
           ignoreLocalEvents: true,
         })
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [e_1_0])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_r_1, e_0_0])
-        expect(result.syncState.upstreamHead).toBe(e_0_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_1_0.id)
+        expectEventArraysEqual(result.newSyncState.pending, [e_1_0])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_r_1, e_0_0])
+        expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
         expect(result.newEvents).toEqual([])
       })
 
@@ -281,10 +281,10 @@ describe('syncstate', () => {
         })
 
         expectAdvance(result)
-        expectEventArraysEqual(result.syncState.pending, [])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_r_1, e_0_0, e_0_1, e_1_0])
-        expect(result.syncState.upstreamHead).toBe(e_1_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_1_0.id)
+        expectEventArraysEqual(result.newSyncState.pending, [])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_r_1, e_0_0, e_0_1, e_1_0])
+        expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
         expect(result.newEvents).toEqual([e_1_0])
       })
     })
@@ -297,10 +297,10 @@ describe('syncstate', () => {
         const e_0_0_e_0_2 = e_0_0.rebase_(e_0_1.id)
 
         expectRebase(result)
-        expectEventArraysEqual(result.syncState.pending, [e_0_0_e_0_2])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_1])
-        expect(result.syncState.upstreamHead).toBe(e_0_1.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_0_e_0_2.id)
+        expectEventArraysEqual(result.newSyncState.pending, [e_0_0_e_0_2])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_1])
+        expect(result.newSyncState.upstreamHead).toBe(e_0_1.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_0_e_0_2.id)
         expectEventArraysEqual(result.eventsToRollback, [e_0_0])
         expectEventArraysEqual(result.newEvents, [e_0_1, e_0_0_e_0_2])
       })
@@ -313,12 +313,12 @@ describe('syncstate', () => {
         const e_0_0_e_1_0 = e_0_0_b.rebase_(e_0_0.id)
 
         expectRebase(result)
-        expectEventArraysEqual(result.syncState.pending, [e_0_0_e_1_0])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0])
+        expectEventArraysEqual(result.newSyncState.pending, [e_0_0_e_1_0])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0])
         expectEventArraysEqual(result.newEvents, [e_0_0, e_0_0_e_1_0])
         expectEventArraysEqual(result.eventsToRollback, [e_0_0_b])
-        expect(result.syncState.upstreamHead).toBe(e_0_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_0_e_1_0.id)
+        expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_0_e_1_0.id)
       })
 
       it('should rebase different event with same id', () => {
@@ -333,12 +333,12 @@ describe('syncstate', () => {
         const e_1_0_e_2_0 = e_1_0_b.rebase_(e_1_0.id)
 
         expectRebase(result)
-        expectEventArraysEqual(result.syncState.pending, [e_1_0_e_2_0])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0, e_0_1, e_1_0])
+        expectEventArraysEqual(result.newSyncState.pending, [e_1_0_e_2_0])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0, e_0_1, e_1_0])
         expectEventArraysEqual(result.newEvents, [e_1_0, e_1_0_e_2_0])
         expectEventArraysEqual(result.eventsToRollback, [e_0_0, e_0_1, e_1_0_b])
-        expect(result.syncState.upstreamHead).toBe(e_1_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_1_0_e_2_0.id)
+        expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_1_0_e_2_0.id)
       })
 
       it('should rebase single local event to end (more incoming events)', () => {
@@ -351,10 +351,10 @@ describe('syncstate', () => {
         const e_0_0_e_2_0 = e_0_0.rebase_(e_1_0.id)
 
         expectRebase(result)
-        expectEventArraysEqual(result.syncState.pending, [e_0_0_e_2_0])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0])
-        expect(result.syncState.upstreamHead).toBe(e_1_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_0_e_2_0.id)
+        expectEventArraysEqual(result.newSyncState.pending, [e_0_0_e_2_0])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0])
+        expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_0_e_2_0.id)
       })
 
       it('should only rebase divergent events when first event matches', () => {
@@ -372,12 +372,12 @@ describe('syncstate', () => {
         const e_0_1_e_1_1 = e_0_1.rebase_(e_1_0.id)
 
         expectRebase(result)
-        expectEventArraysEqual(result.syncState.pending, [e_0_1_e_1_1])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_0, e_0_2, e_0_3, e_1_0])
+        expectEventArraysEqual(result.newSyncState.pending, [e_0_1_e_1_1])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0, e_0_2, e_0_3, e_1_0])
         expectEventArraysEqual(result.eventsToRollback, [e_0_1])
         expectEventArraysEqual(result.newEvents, [e_0_2, e_0_3, e_1_0, e_0_1_e_1_1])
-        expect(result.syncState.upstreamHead).toBe(e_1_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_1_e_1_1.id)
+        expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_1_e_1_1.id)
       })
 
       it('should rebase all local events when incoming chain starts differently', () => {
@@ -396,12 +396,12 @@ describe('syncstate', () => {
         const e_0_1_e_1_2 = e_0_1.rebase_(e_0_0_e_1_1.id)
 
         expectRebase(result)
-        expectEventArraysEqual(result.syncState.pending, [e_0_0_e_1_1, e_0_1_e_1_2])
-        expectEventArraysEqual(result.syncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0])
+        expectEventArraysEqual(result.newSyncState.pending, [e_0_0_e_1_1, e_0_1_e_1_2])
+        expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0])
         expectEventArraysEqual(result.newEvents, [e_0_1, e_0_2, e_0_3, e_1_0, e_0_0_e_1_1, e_0_1_e_1_2])
         expectEventArraysEqual(result.eventsToRollback, [e_0_0, e_0_1])
-        expect(result.syncState.upstreamHead).toBe(e_1_0.id)
-        expect(result.syncState.localHead).toMatchObject(e_0_1_e_1_2.id)
+        expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
+        expect(result.newSyncState.localHead).toMatchObject(e_0_1_e_1_2.id)
       })
 
       describe('local-push', () => {
@@ -411,10 +411,10 @@ describe('syncstate', () => {
             const result = run({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2, e_0_3] } })
 
             expectAdvance(result)
-            expectEventArraysEqual(result.syncState.pending, [e_0_0, e_0_1, e_0_2, e_0_3])
-            expectEventArraysEqual(result.syncState.rollbackTail, [])
-            expect(result.syncState.upstreamHead).toBe(EventId.ROOT)
-            expect(result.syncState.localHead).toMatchObject(e_0_3.id)
+            expectEventArraysEqual(result.newSyncState.pending, [e_0_0, e_0_1, e_0_2, e_0_3])
+            expectEventArraysEqual(result.newSyncState.rollbackTail, [])
+            expect(result.newSyncState.upstreamHead).toBe(EventId.ROOT)
+            expect(result.newSyncState.localHead).toMatchObject(e_0_3.id)
             expectEventArraysEqual(result.newEvents, [e_0_1, e_0_2, e_0_3])
           })
         })

@@ -30,7 +30,7 @@
         devShell = with pkgsUnstable; pkgsUnstable.mkShell {
 
           buildInputs = [
-            nodejs_22
+            nodejs_23
             corepack
             bun
             esbuild

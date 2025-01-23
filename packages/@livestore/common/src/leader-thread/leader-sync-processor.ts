@@ -118,20 +118,45 @@ export const makeLeaderSyncProcessor = ({
     const spanRef = { current: undefined as otel.Span | undefined }
     const applyMutationItemsRef = { current: undefined as ApplyMutationItems | undefined }
 
+    // TODO get rid of counters once Effect semaphore ordering is fixed
+    let counterRef = 0
+    let expectedCounter = 0
+
+    const waitForSyncState = (counter: number): Effect.Effect<ProcessorStateInSync> =>
+      Effect.gen(function* () {
+        // console.log('waitForSyncState: waiting for semaphore', counter)
+        yield* semaphore.take(1)
+        // NOTE this is a workaround to ensure the semaphore take-order is respected
+        // TODO this needs to be fixed upstream in Effect
+        if (counter !== expectedCounter) {
+          // console.log(
+          //   `waitForSyncState: counter mismatch (expected: ${expectedCounter}, got: ${counter}), releasing semaphore`,
+          // )
+          yield* semaphore.release(1)
+          yield* Effect.yieldNow()
+          // Retrying...
+          return yield* waitForSyncState(counter)
+        }
+        // console.log('waitForSyncState: took semaphore', counter)
+        const state = yield* Ref.get(stateRef)
+        if (state._tag !== 'in-sync') {
+          return shouldNeverHappen('Expected to be in-sync but got ' + state._tag)
+        }
+        expectedCounter = counter + 1
+        return state
+      }).pipe(Effect.withSpan(`@livestore/common:leader-thread:syncing:waitForSyncState(${counter})`))
+
     const push = (newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>) =>
       Effect.gen(function* () {
+        const counter = counterRef
+        counterRef++
         // TODO validate batch
         if (newEvents.length === 0) return
 
         const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
 
-        // Wait for the state to be in-sync
-        const state = yield* Ref.get(stateRef)
-        if (state._tag !== 'in-sync') {
-          yield* semaphore.take(1)
-        }
-
-        if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+        // TODO if there are multiple pending pushes, we should batch them together
+        const state = yield* waitForSyncState(counter)
 
         const updateResult = SyncState.updateSyncState({
           syncState: state.syncState,
@@ -154,14 +179,18 @@ export const makeLeaderSyncProcessor = ({
           )
         }
 
-        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
+        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents, counter }).pipe(
+          Effect.fork,
+        )
 
         yield* Ref.set(stateRef, {
           _tag: 'applying-syncstate-advance',
           origin: 'push',
-          syncState: updateResult.syncState,
+          syncState: updateResult.newSyncState,
           fiber,
         })
+
+        // console.log('setRef:applying-syncstate-advance after push', counter)
 
         yield* connectedClientSessionPullQueues.offer({
           payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents },
@@ -301,6 +330,7 @@ export const makeLeaderSyncProcessor = ({
 
 type ApplyMutationItems = (_: {
   batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  counter: number
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
@@ -317,10 +347,11 @@ const makeApplyMutationItems = ({
 
     const applyMutation = yield* makeApplyMutation
 
-    return ({ batchItems }) =>
+    return ({ batchItems, counter }) =>
       Effect.gen(function* () {
         const state = yield* Ref.get(stateRef)
         if (state._tag !== 'applying-syncstate-advance') {
+          // console.log('applyMutationItems: counter', counter)
           return shouldNeverHappen(`Expected to be applying-syncstate-advance but got ${state._tag}`)
         }
 
@@ -364,6 +395,7 @@ const makeApplyMutationItems = ({
         dbLog.execute('COMMIT', undefined) // Commit the transaction
 
         yield* Ref.set(stateRef, { _tag: 'in-sync', syncState: state.syncState })
+        // console.log('setRef:sync after applyMutationItems', counter)
         yield* semaphore.release(1)
       }).pipe(
         Effect.scoped,
@@ -410,6 +442,8 @@ const backgroundBackendPulling = ({
         const state = yield* Ref.get(stateRef)
         if (state._tag === 'init') return shouldNeverHappen('Not initialized')
 
+        // const counter = state.counter + 1
+
         if (state._tag === 'applying-syncstate-advance') {
           if (state.origin === 'push') {
             yield* Fiber.interrupt(state.fiber)
@@ -447,7 +481,7 @@ const backgroundBackendPulling = ({
             updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
           })
 
-          const filteredRebasedPending = updateResult.syncState.pending.filter((mutationEvent) => {
+          const filteredRebasedPending = updateResult.newSyncState.pending.filter((mutationEvent) => {
             const mutationDef = schema.mutations.get(mutationEvent.mutation)!
             return mutationDef.options.localOnly === false
           })
@@ -478,14 +512,18 @@ const backgroundBackendPulling = ({
           })
         }
 
-        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
+        const fiber = yield* applyMutationItemsRef.current!({
+          batchItems: updateResult.newEvents,
+          counter: -1,
+        }).pipe(Effect.fork)
 
         yield* Ref.set(stateRef, {
           _tag: 'applying-syncstate-advance',
           origin: 'pull',
-          syncState: updateResult.syncState,
+          syncState: updateResult.newSyncState,
           fiber,
         })
+        // console.log('setRef:applying-syncstate-advance after backgroundBackendPulling', -1)
       })
 
     yield* syncBackend.pull(cursorInfo).pipe(

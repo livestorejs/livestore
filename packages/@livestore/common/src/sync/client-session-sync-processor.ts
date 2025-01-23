@@ -1,4 +1,4 @@
-import { shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -91,7 +91,7 @@ export const makeClientSessionSyncProcessor = ({
       return shouldNeverHappen(`Expected advance, got ${updateResult._tag}`)
     }
 
-    syncStateRef.current = updateResult.syncState
+    syncStateRef.current = updateResult.newSyncState
 
     const writeTables = new Set<string>()
     for (const mutationEvent of updateResult.newEvents) {
@@ -124,12 +124,12 @@ export const makeClientSessionSyncProcessor = ({
             isEqualEvent: MutationEvent.isEqualEncoded,
           })
 
-          syncStateRef.current = updateResult.syncState
-
           if (updateResult._tag === 'reject') {
             debugger
             throw new Error('TODO: implement reject in client-session-sync-queue for pull')
           }
+
+          syncStateRef.current = updateResult.newSyncState
 
           if (updateResult._tag === 'rebase') {
             span.addEvent('pull:rebase', {
@@ -140,6 +140,13 @@ export const makeClientSessionSyncProcessor = ({
               res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
               remaining,
             })
+            if (LS_DEV) {
+              console.debug(
+                'pull:rebase: rollback',
+                updateResult.eventsToRollback.length,
+                ...updateResult.eventsToRollback.map((_) => _.toJSON()),
+              )
+            }
 
             for (let i = updateResult.eventsToRollback.length - 1; i >= 0; i--) {
               const event = updateResult.eventsToRollback[i]!

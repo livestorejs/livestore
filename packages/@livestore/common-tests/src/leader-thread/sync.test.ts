@@ -2,12 +2,14 @@ import '@livestore/utils/node-vitest-polyfill'
 
 import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
 import { validatePushPayload } from '@livestore/common'
+import type { PullQueueItem } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Scope } from '@livestore/utils/effect'
 import {
+  Chunk,
   Config,
   Context,
   Deferred,
@@ -104,6 +106,32 @@ Vitest.describe('sync', () => {
         { id: '1', text: 't1', completed: 0 },
         { id: '2', text: 't2', completed: 0 },
       ])
+
+      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
+      expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
+    }).pipe(withCtx(test)),
+  )
+
+  Vitest.scopedLive.only('many local pushes', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const numberOfPushes = 100
+
+      yield* Effect.forEach(
+        Array.from({ length: numberOfPushes }, (_, i) => i),
+        (i) =>
+          testContext.mutate(tables.todos.insert({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false })),
+        { concurrency: 'unbounded' },
+      ).pipe(Effect.withSpan(`@livestore/common-tests:sync:mutations(${numberOfPushes})`))
+
+      const result = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
+      expect(result.length).toEqual(numberOfPushes)
+
+      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
     }).pipe(withCtx(test)),
   )
 
@@ -120,6 +148,7 @@ class TestContext extends Context.Tag('TestContext')<
     syncPullQueue: Queue.Queue<MutationEvent.AnyEncoded>
     syncIsConnectedRef: SubscriptionRef.SubscriptionRef<boolean>
     encodeMutationEvent: (partialEvent: MutationEvent.Any) => MutationEvent.AnyEncoded
+    pullQueue: Queue.Queue<PullQueueItem>
     mutate: (
       ...partialEvents: MutationEvent.PartialAny[]
     ) => Effect.Effect<void, UnexpectedError | InvalidPushError, Scope.Scope | LeaderThreadCtx>
@@ -194,6 +223,8 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
     const currentMutationEventId = { current: EventId.ROOT }
 
+    const pullQueue = yield* leaderThreadCtx.connectedClientSessionPullQueues.makeQueue(EventId.ROOT)
+
     const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
       currentMutationEventId.current = nextIdPair.id
@@ -221,6 +252,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       syncPullQueue,
       syncIsConnectedRef,
       encodeMutationEvent,
+      pullQueue,
       mutate,
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))

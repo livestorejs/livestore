@@ -1,5 +1,5 @@
 import type { NetworkStatus, SyncBackend } from '@livestore/common'
-import { sql, UnexpectedError } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -9,7 +9,7 @@ import {
   OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventId, MutationEvent } from '@livestore/common/schema'
+import { MutationEvent } from '@livestore/common/schema'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv } from '@livestore/utils'
@@ -18,7 +18,6 @@ import {
   BrowserWorkerRunner,
   Deferred,
   Effect,
-  Exit,
   FetchHttpClient,
   Fiber,
   FiberSet,
