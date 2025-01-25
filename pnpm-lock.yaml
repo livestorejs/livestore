@@ -1848,6 +1848,18 @@ importers:
         specifier: workspace:*
         version: link:../webmesh
 
+  packages/@livestore/devtools-web-common:
+    dependencies:
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
+
   packages/@livestore/effect-playwright:
     dependencies:
       '@livestore/utils':
@@ -2155,12 +2167,18 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
+      '@livestore/devtools-web-common':
+        specifier: workspace:*
+        version: link:../devtools-web-common
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
