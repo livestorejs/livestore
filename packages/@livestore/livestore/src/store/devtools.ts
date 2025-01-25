@@ -160,8 +160,9 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.DebugInfoHistoryUnsubscribe': {
-          console.log('unsubscribing from debug info history')
-          debugInfoHistorySubscriptions.get(requestId)!()
+          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
+          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          debugInfoHistorySubscriptions.get(requestId)?.()
           debugInfoHistorySubscriptions.delete(requestId)
           break
         }
@@ -218,7 +219,9 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.LiveQueriesUnsubscribe': {
-          liveQueriesSubscriptions.get(requestId)!()
+          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
+          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          liveQueriesSubscriptions.get(requestId)?.()
           liveQueriesSubscriptions.delete(requestId)
           break
         }
