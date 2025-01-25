@@ -22,13 +22,13 @@ Vitest.describe('node-sync', { timeout: 15_000 }, () => {
         { concurrency: 'unbounded' },
       )
 
-      // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
-      yield* Effect.addFinalizer(() =>
-        Effect.gen(function* () {
-          yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
-          yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())
-        }).pipe(Effect.orDie),
-      )
+      // // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
+      // yield* Effect.addFinalizer(() =>
+      //   Effect.gen(function* () {
+      //     yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
+      //     yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())
+      //   }).pipe(Effect.orDie),
+      // )
 
       yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
 
@@ -40,8 +40,8 @@ Vitest.describe('node-sync', { timeout: 15_000 }, () => {
       )
 
       expect(result.length).toEqual(todoCount)
-      yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
-      yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())
+      // yield* clientA.executeEffect(WorkerSchema.TmpShutdown.make())
+      // yield* clientB.executeEffect(WorkerSchema.TmpShutdown.make())
     }).pipe(withCtx(test)),
   )
 })

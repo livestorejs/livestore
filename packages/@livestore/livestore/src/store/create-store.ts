@@ -8,8 +8,8 @@ import type {
 import { UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { LS_DEV, makeNoopTracer } from '@livestore/utils'
+import type { Cause } from '@livestore/utils/effect'
 import {
-  Cause,
   Context,
   Deferred,
   Duration,
@@ -69,10 +69,7 @@ export const createStorePromise = async <
       })
     }
 
-    return yield* FiberSet.make().pipe(
-      Effect.andThen((fiberSet) => createStore({ ...options, fiberSet })),
-      Scope.extend(scope),
-    )
+    return yield* createStore({ ...options }).pipe(Scope.extend(scope))
   }).pipe(
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
@@ -98,8 +95,7 @@ export const createStore = <
   batchUpdates,
   disableDevtools,
   onBootStatus,
-  fiberSet,
-}: CreateStoreOptions<TGraphQLContext, TSchema> & { fiberSet: FiberSet.FiberSet }): Effect.Effect<
+}: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<
   Store<TGraphQLContext, TSchema>,
   UnexpectedError,
   Scope.Scope
@@ -114,6 +110,8 @@ export const createStore = <
       ))
 
     const ctx = yield* Effect.context<never>()
+    const lifetimeScope = yield* Scope.make()
+    yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const OtelTracerLive = Layer.succeed(
       OtelTracer.OtelTracer,
@@ -148,30 +146,33 @@ export const createStore = <
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      // TODO close parent scope? (Needs refactor with Mike Arnaldi)
-      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => {
-        // debugger
-        return Effect.gen(function* () {
-          // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
-          const logCause =
-            Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
-              ? cause.toString()
-              : cause
-          yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
+      // // TODO close parent scope? (Needs refactor with Mike Arnaldi)
+      // const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => {
+      //   // debugger
+      //   return Effect.gen(function* () {
+      //     // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
+      //     const logCause =
+      //       Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
+      //         ? cause.toString()
+      //         : cause
+      //     yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
 
-          FiberSet.clear(fiberSet).pipe(
-            Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
-            Effect.timeout(Duration.seconds(1)),
-            Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
-            Effect.catchTag('TimeoutException', (err) =>
-              Effect.logError('Store shutdown timed out. Forcing shutdown.', err).pipe(
-                Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
-              ),
-            ),
-            Runtime.runFork(runtime),
-          )
-        }).pipe(Effect.withSpan('livestore:shutdown'))
-      }
+      //     FiberSet.clear(fiberSet).pipe(
+      //       Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
+      //       Effect.timeout(Duration.seconds(1)),
+      //       Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
+      //       Effect.catchTag('TimeoutException', (err) =>
+      //         Effect.logError('Store shutdown timed out. Forcing shutdown.', err).pipe(
+      //           Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
+      //         ),
+      //       ),
+      //       Runtime.runFork(runtime),
+      //     )
+      //   }).pipe(Effect.withSpan('livestore:shutdown'))
+      // }
+
+      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
+        Scope.close(lifetimeScope, Exit.failCause(cause))
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -194,7 +195,7 @@ export const createStore = <
           reactivityGraph,
           disableDevtools,
           unsyncedMutationEvents,
-          fiberSet,
+          lifetimeScope,
           runtime,
           // NOTE during boot we're not yet executing mutations in a batched context
           // but only set the provided `batchUpdates` function after boot
@@ -229,7 +230,7 @@ export const createStore = <
         //   ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
         //   : undefined,
       }),
-      LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+      // LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
       Effect.provide(TracingLive),
     )
   })

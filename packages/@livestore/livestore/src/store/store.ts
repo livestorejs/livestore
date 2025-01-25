@@ -23,10 +23,11 @@ import {
   SESSION_CHANGESET_META_TABLE,
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
+import type { ReadonlyArray, Scope } from '@livestore/utils/effect'
 import { Cause, Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema } from '@livestore/utils/effect'
+import { get } from '@livestore/utils/effect/SubscriptionRef.js'
 import * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
+import { type GraphQLSchema, subscribe } from 'graphql'
 
 import type { LiveQuery, QueryContext, ReactivityGraph } from '../live-queries/base-class.js'
 import type { Ref } from '../reactive.js'
@@ -35,6 +36,7 @@ import { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
+import { createStore } from './create-store.js'
 import type { BaseGraphQLContext, RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel } from './store-types.js'
 
 if (isDevEnv()) {
@@ -59,7 +61,7 @@ export class Store<
    */
   tableRefs: { [key: string]: Ref<null, QueryContext, RefreshReason> }
 
-  private fiberSet: FiberSet.FiberSet
+  //private fiberSet: FiberSet.FiberSet
   private runtime: Runtime.Runtime<Scope.Scope>
 
   /** RC-based set to see which queries are currently subscribed to */
@@ -69,6 +71,7 @@ export class Store<
   readonly __mutationEventSchema
   private unsyncedMutationEvents
   private syncProcessor: ClientSessionSyncProcessor
+  readonly lifetimeScope: Scope.Scope
 
   // #region constructor
   private constructor({
@@ -81,20 +84,20 @@ export class Store<
     batchUpdates,
     unsyncedMutationEvents,
     storeId,
-    fiberSet,
+    lifetimeScope,
     runtime,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     super()
 
     this.storeId = storeId
-
+    this.lifetimeScope = lifetimeScope
     this.unsyncedMutationEvents = unsyncedMutationEvents
 
     this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: clientSession.syncDb })
     this.clientSession = clientSession
     this.schema = schema
 
-    this.fiberSet = fiberSet
+    //this.fiberSet = fiberSet
     this.runtime = runtime
 
     const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
@@ -213,7 +216,6 @@ export class Store<
 
     Effect.gen(this, function* () {
       yield* this.syncProcessor.boot
-
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           // Remove all table refs from the reactivity graph
@@ -229,11 +231,8 @@ export class Store<
           queriesSpan.end()
         }),
       )
-
-      yield* Effect.never // to keep the scope alive and bind to the parent scope
-    }).pipe(Effect.scoped, Effect.withSpan('LiveStore:constructor'), this.runEffectFork)
+    }).pipe(this.runEffectFork)
   }
-  // #endregion constructor
 
   static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
     storeOptions: StoreOptions<TGraphQLContext, TSchema>,
@@ -588,8 +587,8 @@ export class Store<
     reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults: true }),
   })
 
-  private runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
-    effect.pipe(Effect.tapCauseLogPretty, FiberSet.run(this.fiberSet), Runtime.runFork(this.runtime))
+  private runEffectFork = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
+    effect.pipe(Effect.forkIn(this.lifetimeScope), Effect.tapCauseLogPretty, Runtime.runFork(this.runtime))
 
   private getMutateArgs = (
     firstMutationOrTxnFnOrOptions: any,

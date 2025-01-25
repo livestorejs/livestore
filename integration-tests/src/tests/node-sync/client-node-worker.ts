@@ -55,9 +55,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       })
       // const adapter = makeInMemoryAdapter()
 
-      const fiberSet = yield* FiberSet.make()
-
-      const store = yield* createStore({ adapter, fiberSet, schema, storeId, disableDevtools: true })
+      const store = yield* createStore({ adapter, schema, storeId, disableDevtools: true })
 
       return Layer.succeed(WorkerContext, { store })
     }).pipe(

@@ -79,9 +79,6 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         ? Effect.all({ schema: graphQLOptions_.schema, makeContext: Effect.succeed(graphQLOptions_.makeContext) })
         : Effect.succeed(undefined)
 
-      // TODO join fiber set and close tear down parent scope in case of error (Needs refactor with Mike A)
-      const fiberSet = yield* FiberSet.make()
-
       const store = yield* createStore({
         schema,
         storeId,
@@ -93,7 +90,6 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
         boot,
         adapter,
         disableDevtools,
-        fiberSet,
         onBootStatus,
         batchUpdates,
       })

@@ -14,17 +14,21 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
   setup({ scope, worker: childProcess }) {
     return Effect.flatMap(Deferred.make<void, WorkerError>(), (exitDeferred) => {
       childProcess.on('exit', () => {
+        console.log('child-process-exited')
         Deferred.unsafeDone(exitDeferred, Exit.void)
       })
       return Effect.as(
         Scope.addFinalizer(
           scope,
           Effect.suspend(() => {
-            childProcess.send([1])
-            return Deferred.await(exitDeferred)
+            return Effect.sync(() => childProcess.send([1])).pipe(
+              Effect.withSpan('send-graceful-shutdown'),
+              Effect.zipRight(Deferred.await(exitDeferred)),
+              Effect.withSpan('send-graceful-shutdown-wait-completed'),
+            )
           }).pipe(
             Effect.interruptible,
-            Effect.timeout(5000),
+            Effect.timeout(50_000_000),
             Effect.catchAllCause(() => Effect.sync(() => childProcess.kill())),
           ),
         ),

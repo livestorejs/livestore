@@ -8,7 +8,7 @@ import { makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
 import * as LiveStoreReact from './mod.js'
 
 describe('useQuery', () => {
-  it('simple', () =>
+  it('useQuery.simple', () =>
     Effect.gen(function* () {
       const { wrapper, store, makeRenderCount } = yield* makeTodoMvcReact()
 

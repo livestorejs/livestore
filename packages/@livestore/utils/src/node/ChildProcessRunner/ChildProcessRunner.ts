@@ -1,4 +1,5 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
+import * as fs from 'node:fs'
 import process from 'node:process'
 
 import { WorkerError } from '@effect/platform/WorkerError'
@@ -23,7 +24,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = {
         postMessage: (message: any) => process.send!(message),
         on: (event: string, handler: (message: any) => void) => process.on(event, handler),
-        close: () => {},
+        close: () => process.disconnect(),
       }
       const send = (_portId: number, message: O, _transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([1, message] /*, transfers as any*/))
@@ -50,8 +51,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
                 // )
 
                 // TODO improve with Tim Smart
-                // eslint-disable-next-line unicorn/no-process-exit
-                setTimeout(() => process.exit(0), 2000)
+
+                //setTimeout(() => process.exit(0), 2000)
               }
             })
             port.on('messageerror', (cause) => {

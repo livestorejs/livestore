@@ -236,7 +236,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
 
       yield* Effect.gen(function* () {
         const store = yield* createStore({
-          fiberSet,
           schema,
           storeId,
           graphQLOptions,

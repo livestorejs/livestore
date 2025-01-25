@@ -58,7 +58,7 @@ export type StoreOptions<
   otelOptions: OtelOptions
   reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
-  fiberSet: FiberSet.FiberSet
+  lifetimeScope: Scope.Scope
   runtime: Runtime.Runtime<Scope.Scope>
   batchUpdates: (runUpdates: () => void) => void
   // TODO validate whether we still need this

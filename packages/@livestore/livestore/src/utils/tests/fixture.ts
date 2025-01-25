@@ -55,8 +55,6 @@ export const makeTodoMvc = ({
   Effect.gen(function* () {
     const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
 
-    const fiberSet = yield* FiberSet.make()
-
     const store: Store<any, FixtureSchema> = yield* createStore({
       schema,
       storeId: 'default',
@@ -66,7 +64,6 @@ export const makeTodoMvc = ({
         tracer: otelTracer,
         rootSpanContext: otelContext,
       },
-      fiberSet,
     })
 
     return { store, reactivityGraph }
