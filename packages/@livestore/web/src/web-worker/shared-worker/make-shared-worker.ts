@@ -14,6 +14,7 @@ import {
   Layer,
   Logger,
   LogLevel,
+  ParseResult,
   Queue,
   Ref,
   Schema,
@@ -22,6 +23,7 @@ import {
   SubscriptionRef,
   TaskTracing,
   Worker,
+  WorkerError,
   WorkerRunner,
 } from '@livestore/utils/effect'
 
@@ -67,7 +69,14 @@ const makeWorkerRunner = Effect.gen(function* () {
         label: `@livestore/web:shared-worker:forwardRequest:${req._tag}`,
         duration: 500,
       }),
-      UnexpectedError.mapToUnexpectedError,
+      Effect.mapError((cause) =>
+        Schema.is(UnexpectedError)(cause)
+          ? cause
+          : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+            ? new UnexpectedError({ cause })
+            : cause,
+      ),
+      Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
       Effect.tapCauseLogPretty,
     ) as any
 
@@ -113,7 +122,13 @@ const makeWorkerRunner = Effect.gen(function* () {
       UnexpectedError.mapToUnexpectedError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
-      UnexpectedError.mapToUnexpectedErrorStream,
+      Stream.mapError((cause) =>
+        Schema.is(UnexpectedError)(cause)
+          ? cause
+          : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+            ? new UnexpectedError({ cause })
+            : cause,
+      ),
       // Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
     ) as any
 

@@ -46,7 +46,6 @@ export const App: React.FC = () => (
     batchUpdates={batchUpdates}
     storeId={appId}
     otelOptions={{ tracer: otelTracer }}
-    disableDevtools
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

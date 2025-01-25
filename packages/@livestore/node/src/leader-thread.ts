@@ -30,19 +30,10 @@ const argvOptions = Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   InitialMessage: (args) => makeLeaderThread(args),
-  ExecuteBulk: ({ items }) =>
+  PushToLeader: ({ batch }) =>
     Effect.andThen(LeaderThreadCtx, (_) =>
-      _.syncProcessor.push(
-        items
-          // TODO handle txn
-          .filter((_) => _._tag === 'mutate')
-          .map((item) => new MutationEvent.EncodedWithMeta(item.mutationEventEncoded)),
-      ),
-    ).pipe(
-      Effect.uninterruptible,
-      UnexpectedError.mapToUnexpectedError,
-      Effect.withSpan('@livestore/node:worker:ExecuteBulk'),
-    ),
+      _.syncProcessor.push(batch.map((item) => new MutationEvent.EncodedWithMeta(item))),
+    ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/node:worker:PushToLeader')),
   BootStatusStream: () =>
     Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
   PullStream: ({ cursor }) =>
@@ -240,7 +231,7 @@ const makeDevtoolsOptions = ({
         return {
           devtoolsWebChannel: yield* makeNodeDevtoolsChannel({
             nodeName: `app-coordinator-${appHostId}`,
-            target: 'devtools',
+            target: `devtools`,
             url: `ws://localhost:${devtoolsPort}`,
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),

@@ -13,7 +13,7 @@ export const prepareNodeDevtoolsBridge = ({
   storeId: string
 }): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const meshNode = yield* makeNodeDevtoolsConnectedMeshNode({ nodeName: 'devtools', url })
+    const meshNode = yield* makeNodeDevtoolsConnectedMeshNode({ nodeName: `devtools`, url })
 
     const sessionId = 'static'
     const appHostId = `${storeId}-${sessionId}`

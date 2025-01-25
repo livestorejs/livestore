@@ -149,8 +149,9 @@ export const createStore = <
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
       // TODO close parent scope? (Needs refactor with Mike Arnaldi)
-      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
-        Effect.gen(function* () {
+      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => {
+        // debugger
+        return Effect.gen(function* () {
           // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
           const logCause =
             Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
@@ -167,9 +168,10 @@ export const createStore = <
                 Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
               ),
             ),
-            Runtime.runFork(runtime), // NOTE we need to fork this separately otherwise it will also be interrupted
+            Runtime.runFork(runtime),
           )
         }).pipe(Effect.withSpan('livestore:shutdown'))
+      }
 
       const clientSession: ClientSession = yield* adapter({
         schema,

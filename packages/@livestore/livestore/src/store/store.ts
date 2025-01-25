@@ -104,7 +104,11 @@ export class Store<
       initialLeaderHead: clientSession.coordinator.mutations.initialMutationEventId,
       // rebaseBehaviour: 'auto-rebase',
       pushToLeader: (batch) =>
-        clientSession.coordinator.mutations.push(batch, { persisted: true }).pipe(this.runEffectFork),
+        clientSession.coordinator.mutations.push(batch, { persisted: true }).pipe(
+          // NOTE we don't want to shutdown in case of an invalid push error, since it will be retried
+          Effect.catchTag('InvalidPushError', Effect.ignoreLogged),
+          this.runEffectFork,
+        ),
       pullFromLeader: clientSession.coordinator.mutations.pull,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
         const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!

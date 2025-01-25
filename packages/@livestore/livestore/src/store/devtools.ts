@@ -177,7 +177,9 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ReactivityGraphUnsubscribe': {
-          reactivityGraphSubcriptions.get(requestId)!()
+          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
+          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          reactivityGraphSubcriptions.get(requestId)?.()
           break
         }
         case 'LSD.LiveQueriesSubscribe': {

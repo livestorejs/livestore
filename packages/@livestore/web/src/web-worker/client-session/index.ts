@@ -16,15 +16,16 @@ import {
   Effect,
   Exit,
   Fiber,
+  ParseResult,
   Queue,
   Schema,
   Stream,
   SubscriptionRef,
   WebLock,
   Worker,
+  WorkerError,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { makeMeshNode } from '@livestore/webmesh'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
@@ -243,8 +244,8 @@ export const makeAdapter =
 
       const runInWorker = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
         req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Effect.Effect<A, UnexpectedError, R>
+      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
+        ? Effect.Effect<A, UnexpectedError | E, R>
         : never =>
         Fiber.join(sharedWorkerFiber).pipe(
           Effect.flatMap((worker) => worker.executeEffect(req) as any),
@@ -256,7 +257,14 @@ export const makeAdapter =
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/web:coordinator:runInWorker:${req._tag}`),
-          UnexpectedError.mapToUnexpectedError,
+          Effect.mapError((cause) =>
+            Schema.is(UnexpectedError)(cause)
+              ? cause
+              : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+                ? new UnexpectedError({ cause })
+                : cause,
+          ),
+          Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
         ) as any
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorker.Request.Type>(
@@ -266,12 +274,16 @@ export const makeAdapter =
         : never =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-          return sharedWorker
-            .execute(req as any)
-            .pipe(
-              UnexpectedError.mapToUnexpectedErrorStream,
-              Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
-            )
+          return sharedWorker.execute(req as any).pipe(
+            Stream.mapError((cause) =>
+              Schema.is(UnexpectedError)(cause)
+                ? cause
+                : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+                  ? new UnexpectedError({ cause })
+                  : cause,
+            ),
+            Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
+          )
         }).pipe(Stream.unwrap) as any
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
@@ -363,8 +375,7 @@ export const makeAdapter =
 
           push: (batch, { persisted }) =>
             runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-              Effect.timeout(10_000),
-              UnexpectedError.mapToUnexpectedError,
+              // Effect.timeout(10_000),
               Effect.withSpan('@livestore/web:coordinator:push', {
                 attributes: { batchSize: batch.length },
               }),
@@ -400,7 +411,7 @@ export const makeAdapter =
           // TODO re-enable browser extension as well
           const storeDevtoolsChannel = yield* makeWebDevtoolsChannel({
             nodeName: `app-store-${storeId}-${appHostId}`,
-            target: 'devtools',
+            target: `devtools`,
             schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
             worker: sharedWorker,
             workerTargetName: 'shared-worker',

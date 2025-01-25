@@ -20,7 +20,11 @@ export const prepareWebDevtoolsBridge = ({
   appHostId: string
 }): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const meshNode = yield* makeWebDevtoolsConnectedMeshNode({ nodeName: 'devtools', target: workerTargetName, worker })
+    const meshNode = yield* makeWebDevtoolsConnectedMeshNode({
+      nodeName: `devtools`,
+      target: workerTargetName,
+      worker,
+    })
 
     // @ts-expect-error typing
     globalThis.__debugWebMeshNode = meshNode

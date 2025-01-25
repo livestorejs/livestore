@@ -20,8 +20,6 @@ import {
   BrowserWorkerRunner,
   Effect,
   FetchHttpClient,
-  Fiber,
-  FiberSet,
   identity,
   Layer,
   Logger,
@@ -133,7 +131,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
 
         const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, db, dbLog, storeId })
 
-        const layer = makeLeaderThreadLayer({
+        return makeLeaderThreadLayer({
           schema,
           storeId,
           originId,
@@ -148,10 +146,6 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           devtoolsOptions,
           initialSyncOptions,
         })
-
-        // yield* bootDevtools({}).pipe(Effect.provide(layer), Effect.tapCauseLogPretty, Effect.forkScoped)
-
-        return layer
       }).pipe(
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
@@ -175,6 +169,10 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
         return Stream.fromQueue(pullQueue)
       }).pipe(Stream.unwrapScoped),
+    PushToLeader: ({ batch }) =>
+      Effect.andThen(LeaderThreadCtx, (_) =>
+        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))),
+      ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
@@ -185,10 +183,6 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
       ),
-    PushToLeader: ({ batch }) =>
-      Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))),
-      ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     GetCurrentMutationEventId: () =>
@@ -229,48 +223,6 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // TODO find a cleaner way to do this
         yield* Effect.sleep(1000)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
-    // NOTE We're using a stream here to express a scoped effect over the worker boundary
-    // so the code below can cause an interrupt on the worker client side
-    // ConnectDevtoolsStream: ({ port, appHostId, isLeader }) =>
-    //   Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>(
-    //     (emit) =>
-    //       Effect.gen(function* () {
-    //         const leaderthreadCtx = yield* LeaderThreadCtx
-
-    //         if (leaderthreadCtx.devtools.enabled === false) {
-    //           return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
-    //         }
-
-    //         const storeMessagePortDeferred = yield* Deferred.make<MessagePort, UnexpectedError>()
-
-    //         const shutdownChannel = yield* makeShutdownChannel(leaderthreadCtx.storeId)
-
-    //         const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* leaderthreadCtx.devtools
-    //           .connect({
-    //             // @ts-expect-error TODO fix
-    //             coordinatorMessagePortOrChannel: port,
-    //             storeMessagePortDeferred,
-    //             disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
-    //             storeId: leaderthreadCtx.storeId,
-    //             appHostId,
-    //             isLeader,
-    //             persistenceInfo: {
-    //               db: leaderthreadCtx.db.metadata.persistenceInfo,
-    //               mutationLog: leaderthreadCtx.dbLog.metadata.persistenceInfo,
-    //             },
-    //             shutdownChannel,
-    //           })
-    //           .pipe(
-    //             Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
-    //             Effect.onInterrupt(() => Effect.promise(() => emit.end())),
-    //             FiberSet.run(leaderthreadCtx.devtools.connections),
-    //           )
-
-    //         const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
-
-    //         emit.single({ storeMessagePort })
-    //       }),
-    //   ).pipe(Stream.withSpan('@livestore/web:worker:ConnectDevtools')),
     'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
   })
 
@@ -298,7 +250,7 @@ const makeDevtoolsOptions = ({
         return {
           devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
             node,
-            target: 'devtools',
+            target: `devtools`,
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),
           shutdownChannel,

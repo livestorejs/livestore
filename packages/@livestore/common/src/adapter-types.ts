@@ -4,6 +4,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import type * as Devtools from './devtools/index.js'
 import type { EventId } from './schema/EventId.js'
 import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
+import type { InvalidPushError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
 
@@ -117,7 +118,7 @@ export type Coordinator = {
     push(
       batch: ReadonlyArray<MutationEvent.AnyEncoded>,
       options: { persisted: boolean },
-    ): Effect.Effect<void, UnexpectedError>
+    ): Effect.Effect<void, UnexpectedError | InvalidPushError>
     initialMutationEventId: EventId
   }
   export: Effect.Effect<Uint8Array, UnexpectedError>

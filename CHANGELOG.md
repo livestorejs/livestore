@@ -9,6 +9,7 @@
   - Fix Otel / Effect shutdown behaviour
     - Test should run faster and shutdown gracefully in `node-sync.test.ts`
   - Syncing
+    - Fix: client session sync processor needs to reset pending pushing after rebase
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
     - Bring back `persisted` sync events or implement a replacement

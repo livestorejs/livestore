@@ -57,6 +57,8 @@ export interface MeshNode {
 
   /**
    * Tries to broker a MessageChannel connection between the nodes, otherwise will proxy messages via hop-nodes
+   *
+   * For a channel to successfully open, both sides need to have a connection and call `makeChannel`
    */
   makeChannel: <MsgListen, MsgSend>(args: {
     target: MeshNodeName

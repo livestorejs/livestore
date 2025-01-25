@@ -13,7 +13,18 @@ import type { InitialSyncOptions } from '@livestore/common/leader-thread'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
-import { Chunk, Effect, Fiber, Queue, Schema, Stream, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import {
+  Chunk,
+  Effect,
+  Fiber,
+  ParseResult,
+  Queue,
+  Schema,
+  Stream,
+  SubscriptionRef,
+  Worker,
+  WorkerError,
+} from '@livestore/utils/effect'
 
 import * as WorkerSchema from '../worker-schema.js'
 
@@ -131,7 +142,14 @@ export const makeNodeAdapter = ({
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/node:coordinator:runInWorker:${req._tag}`),
-          UnexpectedError.mapToUnexpectedError,
+          Effect.mapError((cause) =>
+            Schema.is(UnexpectedError)(cause)
+              ? cause
+              : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+                ? new UnexpectedError({ cause })
+                : cause,
+          ),
+          Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
         ) as any
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInner.Request.Type>(
@@ -141,40 +159,17 @@ export const makeNodeAdapter = ({
         : never =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(leaderThreadFiber)
-          return sharedWorker
-            .execute(req as any)
-            .pipe(
-              UnexpectedError.mapToUnexpectedErrorStream,
-              Stream.withSpan(`@livestore/node:coordinator:runInWorkerStream:${req._tag}`),
-            )
+          return sharedWorker.execute(req as any).pipe(
+            Stream.mapError((cause) =>
+              Schema.is(UnexpectedError)(cause)
+                ? cause
+                : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+                  ? new UnexpectedError({ cause })
+                  : cause,
+            ),
+            Stream.withSpan(`@livestore/node:coordinator:runInWorkerStream:${req._tag}`),
+          )
         }).pipe(Stream.unwrap) as any
-
-      const executionBacklogQueue = yield* Queue.unbounded<WorkerSchema.ExecutionBacklogItem>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
-      )
-
-      // Continously take items from the backlog and execute them in the worker if there are any
-      yield* Effect.gen(function* () {
-        const items = yield* Queue.takeBetween(executionBacklogQueue, 1, 100).pipe(Effect.map(Chunk.toReadonlyArray))
-
-        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.ExecuteBulk({ items })).pipe(
-          Effect.timeout(10_000),
-          Effect.tapErrorCause((cause) =>
-            Effect.logDebug('[@livestore/node:coordinator] executeBulkLoop error', cause, items),
-          ),
-        )
-
-        // NOTE we're waiting a little bit for more items to come in before executing the batch
-        yield* Effect.sleep(20)
-      }).pipe(
-        Effect.tapCauseLogPretty,
-        Effect.forever,
-        UnexpectedError.mapToUnexpectedError,
-        Effect.interruptible,
-        Effect.withSpan('@livestore/node:coordinator:executeBulkLoop'),
-        Effect.tapErrorCause(shutdown),
-        Effect.forkScoped,
-      )
 
       const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
 
@@ -198,16 +193,9 @@ export const makeNodeAdapter = ({
         mutations: {
           pull: pullMutations,
           push: (batch, { persisted }) =>
-            Effect.gen(function* () {
-              yield* Queue.offerAll(
-                executionBacklogQueue,
-                batch.map((mutationEventEncoded) =>
-                  WorkerSchema.ExecutionBacklogItemMutate.make({ mutationEventEncoded, persisted }),
-                ),
-              )
-            }).pipe(
-              UnexpectedError.mapToUnexpectedError,
-              Effect.withSpan('@livestore/node:coordinator:mutate', {
+            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+              // Effect.timeout(10_000),
+              Effect.withSpan('@livestore/node:coordinator:push', {
                 attributes: { batchSize: batch.length },
               }),
             ),
@@ -233,7 +221,7 @@ export const makeNodeAdapter = ({
         yield* Effect.gen(function* () {
           const storeDevtoolsChannel = yield* makeNodeDevtoolsChannel({
             nodeName: `app-store-${appHostId}`,
-            target: 'devtools',
+            target: `devtools`,
             url: `ws://localhost:${devtoolsOptions.port}`,
             schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
           })

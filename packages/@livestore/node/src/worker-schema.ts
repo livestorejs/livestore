@@ -1,4 +1,4 @@
-import { BootStatus, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
+import { BootStatus, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
 import { InitialSyncOptions } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -11,18 +11,18 @@ export const WorkerArgv = Schema.parseJson(
   }),
 )
 
-export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-  mutationEventEncoded: MutationEvent.EncodedAny,
-  persisted: Schema.Boolean,
-})
+// export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
+//   mutationEventEncoded: MutationEvent.EncodedAny,
+//   persisted: Schema.Boolean,
+// })
 
-export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
-  items: Schema.Union(ExecutionBacklogItemMutate),
-})
+// export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
+//   items: Schema.Union(ExecutionBacklogItemMutate),
+// })
 
-export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
+// export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
 
-export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
+// export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
 
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
@@ -109,12 +109,13 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class ExecuteBulk extends Schema.TaggedRequest<ExecuteBulk>()('ExecuteBulk', {
+  export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
     payload: {
-      items: Schema.Array(ExecutionBacklogItem),
+      batch: Schema.Array(MutationEvent.EncodedAny),
+      // items: Schema.Array(ExecutionBacklogItem),
     },
     success: Schema.Void,
-    failure: UnexpectedError,
+    failure: Schema.Union(UnexpectedError, InvalidPushError),
   }) {}
 
   export class Export extends Schema.TaggedRequest<Export>()('Export', {
@@ -169,7 +170,7 @@ export namespace LeaderWorkerInner {
     InitialMessage,
     BootStatusStream,
     PullStream,
-    ExecuteBulk,
+    PushToLeader,
     Export,
     // GetRecreateSnapshot,
     ExportMutationlog,
