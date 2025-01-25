@@ -11,32 +11,15 @@ if (process.execArgv.includes('--inspect')) {
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus } from '@livestore/common'
 import { Devtools, sql, UnexpectedError } from '@livestore/common'
-import type { DevtoolsContext } from '@livestore/common/leader-thread'
-import {
-  configureConnection,
-  LeaderThreadCtx,
-  makeDevtoolsContext,
-  makeLeaderThreadLayer,
-} from '@livestore/common/leader-thread'
+import type { DevtoolsOptions, LeaderDatabase } from '@livestore/common/leader-thread'
+import { configureConnection, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import type { FileSystem, HttpClient, Scope } from '@livestore/utils/effect'
-import {
-  Effect,
-  Exit,
-  FetchHttpClient,
-  Fiber,
-  FiberSet,
-  Layer,
-  Logger,
-  LogLevel,
-  Schema,
-  Stream,
-  WorkerRunner,
-} from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, LogLevel, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'
 
 import { startDevtoolsServer } from './devtools/devtools-server.js'
@@ -117,12 +100,12 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetRecreateSnapshot')),
   Shutdown: () =>
     Effect.gen(function* () {
-      const { db, dbLog, devtools } = yield* LeaderThreadCtx
+      const { db, dbLog } = yield* LeaderThreadCtx
       yield* Effect.logDebug('[@livestore/node:worker] Shutdown')
 
-      if (devtools.enabled) {
-        yield* FiberSet.clear(devtools.connections)
-      }
+      // if (devtools.enabled) {
+      //   yield* FiberSet.clear(devtools.connections)
+      // }
 
       db.close()
       dbLog.close()
@@ -137,7 +120,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   Effect.scoped,
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: argvOptions.otel?.workerServiceName ?? 'livestore-node-leader-thread' }),
-  Effect.provide(Logger.pretty),
+  Effect.provide(Logger.prettyWithThread(argvOptions.otel?.workerServiceName ?? 'livestore-node-leader-thread')),
   Effect.provide(FetchHttpClient.layer),
   Effect.provide(NodeFileSystem.layer),
   Effect.provide(
@@ -190,9 +173,16 @@ const makeLeaderThread = ({
     // Might involve some async work, so we're running them concurrently
     const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
-    const devtools: DevtoolsContext = devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false }
+    const devtoolsOptions = yield* makeDevtoolsOptions({
+      devtoolsEnabled,
+      db,
+      dbLog,
+      storeId,
+      devtoolsPort,
+      schemaPath,
+    })
 
-    const leaderThreadLayer = yield* makeLeaderThreadLayer({
+    return makeLeaderThreadLayer({
       schema,
       storeId,
       originId,
@@ -201,19 +191,9 @@ const makeLeaderThread = ({
         makeSyncBackend === undefined || syncOptions === undefined ? undefined : makeSyncBackend(syncOptions),
       db,
       dbLog,
-      devtoolsEnabled,
+      devtoolsOptions,
       initialSyncOptions,
-    }).pipe(Layer.memoize)
-
-    if (devtools.enabled === true) {
-      yield* bootDevtools({ devtoolsPort, schemaPath }).pipe(
-        Effect.provide(leaderThreadLayer),
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
-    }
-
-    return leaderThreadLayer
+    })
   }).pipe(
     Effect.tapCauseLogPretty,
     UnexpectedError.mapToUnexpectedError,
@@ -223,51 +203,102 @@ const makeLeaderThread = ({
 
 const getAppDbFileName = (suffix: string) => `app${suffix}.db`
 
-const bootDevtools = ({ schemaPath, devtoolsPort }: { schemaPath: string; devtoolsPort: number }) =>
+const makeDevtoolsOptions = ({
+  devtoolsEnabled,
+  db,
+  dbLog,
+  storeId,
+  devtoolsPort,
+  schemaPath,
+}: {
+  devtoolsEnabled: boolean
+  db: LeaderDatabase
+  dbLog: LeaderDatabase
+  storeId: string
+  devtoolsPort: number
+  schemaPath: string
+}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const { storeId, db, dbLog, devtools } = yield* LeaderThreadCtx
-
-    if (devtools.enabled === false) {
-      return
+    if (devtoolsEnabled === false) {
+      return {
+        enabled: false,
+      }
     }
 
-    const shutdownChannel = yield* makeShutdownChannel(storeId)
+    return {
+      enabled: true,
+      makeContext: Effect.gen(function* () {
+        const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-    yield* startDevtoolsServer({ schemaPath, storeId, port: devtoolsPort }).pipe(
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+        yield* startDevtoolsServer({ schemaPath, storeId, port: devtoolsPort }).pipe(
+          Effect.tapCauseLogPretty,
+          Effect.forkScoped,
+        )
 
-    // TODO make this dynamic once we want to support multiple node instances
-    // (probably via RPC call from coordinator)
-    const sessionId = 'static'
-    const appHostId = `${storeId}-${sessionId}`
-    const isLeader = true
-
-    const coordinatorToDevtoolsChannel = yield* makeNodeDevtoolsChannel({
-      nodeName: `app-coordinator-${appHostId}`,
-      target: 'devtools',
-      url: `ws://localhost:${devtoolsPort}`,
-      schema: { listen: Devtools.MessageToAppHostCoordinator, send: Devtools.MessageFromAppHostCoordinator },
-    })
-
-    // TODO disconnect/reconnect based on channel status
-    const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* devtools
-      .connect({
-        coordinatorMessagePortOrChannel: coordinatorToDevtoolsChannel,
-        // storeMessagePortDeferred,
-        disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
-        storeId,
-        appHostId,
-        isLeader,
-        persistenceInfo: {
-          db: db.metadata.persistenceInfo,
-          mutationLog: dbLog.metadata.persistenceInfo,
-        },
-        shutdownChannel,
-      })
-      .pipe(
-        // TODO handle errors
-        FiberSet.run(devtools.connections),
-      )
+        const sessionId = 'static'
+        const appHostId = `${storeId}-${sessionId}`
+        return {
+          devtoolsWebChannel: yield* makeNodeDevtoolsChannel({
+            nodeName: `app-coordinator-${appHostId}`,
+            target: 'devtools',
+            url: `ws://localhost:${devtoolsPort}`,
+            schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
+          }),
+          shutdownChannel,
+          persistenceInfo: {
+            db: db.metadata.persistenceInfo,
+            mutationLog: dbLog.metadata.persistenceInfo,
+          },
+        }
+      }),
+    }
   })
+
+// const bootDevtools = ({ schemaPath, devtoolsPort }: { schemaPath: string; devtoolsPort: number }) =>
+//   Effect.gen(function* () {
+//     const { storeId, db, dbLog, devtools } = yield* LeaderThreadCtx
+
+//     if (devtools.enabled === false) {
+//       return
+//     }
+
+//     const shutdownChannel = yield* makeShutdownChannel(storeId)
+
+//     yield* startDevtoolsServer({ schemaPath, storeId, port: devtoolsPort }).pipe(
+//       Effect.tapCauseLogPretty,
+//       Effect.forkScoped,
+//     )
+
+//     // TODO make this dynamic once we want to support multiple node instances
+//     // (probably via RPC call from coordinator)
+//     const sessionId = 'static'
+//     const appHostId = `${storeId}-${sessionId}`
+//     const isLeader = true
+
+//     const coordinatorToDevtoolsChannel = yield* makeNodeDevtoolsChannel({
+//       nodeName: `app-coordinator-${appHostId}`,
+//       target: 'devtools',
+//       url: `ws://localhost:${devtoolsPort}`,
+//       schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
+//     })
+
+//     // TODO disconnect/reconnect based on channel status
+//     const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* devtools
+//       .connect({
+//         coordinatorMessagePortOrChannel: coordinatorToDevtoolsChannel,
+//         // storeMessagePortDeferred,
+//         disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
+//         storeId,
+//         appHostId,
+//         isLeader,
+//         persistenceInfo: {
+//           db: db.metadata.persistenceInfo,
+//           mutationLog: dbLog.metadata.persistenceInfo,
+//         },
+//         shutdownChannel,
+//       })
+//       .pipe(
+//         // TODO handle errors
+//         FiberSet.run(devtools.connections),
+//       )
+//   })

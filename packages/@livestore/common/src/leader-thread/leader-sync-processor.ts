@@ -122,6 +122,12 @@ export const makeLeaderSyncProcessor = ({
     let counterRef = 0
     let expectedCounter = 0
 
+    /*
+    TODO: refactor
+    - Pushes go directly into a Mailbox
+    - Have a worker fiber that takes from the mailbox (wouldn't need a semaphore)
+    */
+
     const waitForSyncState = (counter: number): Effect.Effect<ProcessorStateInSync> =>
       Effect.gen(function* () {
         // console.log('waitForSyncState: waiting for semaphore', counter)
@@ -129,9 +135,9 @@ export const makeLeaderSyncProcessor = ({
         // NOTE this is a workaround to ensure the semaphore take-order is respected
         // TODO this needs to be fixed upstream in Effect
         if (counter !== expectedCounter) {
-          // console.log(
-          //   `waitForSyncState: counter mismatch (expected: ${expectedCounter}, got: ${counter}), releasing semaphore`,
-          // )
+          console.log(
+            `waitForSyncState: counter mismatch (expected: ${expectedCounter}, got: ${counter}), releasing semaphore`,
+          )
           yield* semaphore.release(1)
           yield* Effect.yieldNow()
           // Retrying...
@@ -179,9 +185,7 @@ export const makeLeaderSyncProcessor = ({
           )
         }
 
-        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents, counter }).pipe(
-          Effect.fork,
-        )
+        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
 
         yield* Ref.set(stateRef, {
           _tag: 'applying-syncstate-advance',
@@ -330,7 +334,6 @@ export const makeLeaderSyncProcessor = ({
 
 type ApplyMutationItems = (_: {
   batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  counter: number
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
@@ -347,7 +350,7 @@ const makeApplyMutationItems = ({
 
     const applyMutation = yield* makeApplyMutation
 
-    return ({ batchItems, counter }) =>
+    return ({ batchItems }) =>
       Effect.gen(function* () {
         const state = yield* Ref.get(stateRef)
         if (state._tag !== 'applying-syncstate-advance') {
@@ -374,12 +377,12 @@ const makeApplyMutationItems = ({
           // persisted: item.persisted,
           yield* applyMutation(mutationEventEncoded, { persisted: true })
 
-          if (leaderThreadCtx.devtools.enabled) {
-            // TODO consider to refactor devtools to use syncing mechanism instead of devtools-specific broadcast channel
-            yield* leaderThreadCtx.devtools
-              .broadcast(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted: true, liveStoreVersion }))
-              .pipe(Effect.fork) // Forking right now as it otherwise slows down the processing
-          }
+          // if (leaderThreadCtx.devtools.enabled) {
+          //   // TODO consider to refactor devtools to use syncing mechanism instead of devtools-specific broadcast channel
+          //   yield* leaderThreadCtx.devtools
+          //     .broadcast(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted: true, liveStoreVersion }))
+          //     .pipe(Effect.fork) // Forking right now as it otherwise slows down the processing
+          // }
 
           if (meta?.deferred) {
             yield* Deferred.succeed(meta.deferred, void 0)
@@ -514,7 +517,6 @@ const backgroundBackendPulling = ({
 
         const fiber = yield* applyMutationItemsRef.current!({
           batchItems: updateResult.newEvents,
-          counter: -1,
         }).pipe(Effect.fork)
 
         yield* Ref.set(stateRef, {

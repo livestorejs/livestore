@@ -1,6 +1,17 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Duration, Effect, Fiber, PubSub, Queue, Schema, Stream, WebChannel } from '@livestore/utils/effect'
+import {
+  Cause,
+  Duration,
+  Effect,
+  Fiber,
+  Option,
+  PubSub,
+  Queue,
+  Schema,
+  Stream,
+  WebChannel,
+} from '@livestore/utils/effect'
 
 import { makeMessageChannel } from './channel/message-channel.js'
 import { makeProxyChannel } from './channel/proxy-channel.js'
@@ -15,6 +26,10 @@ export interface MeshNode {
   nodeName: MeshNodeName
 
   connectionKeys: Effect.Effect<Set<MeshNodeName>>
+
+  debug: {
+    printChannelQueues: () => void
+  }
 
   /**
    * Manually adds a connection to get connected to the network of nodes with an existing WebChannel.
@@ -345,5 +360,14 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
     const connectionKeys: MeshNode['connectionKeys'] = Effect.sync(() => new Set(connectionChannels.keys()))
 
-    return { nodeName, addConnection, removeConnection, makeChannel, connectionKeys } satisfies MeshNode
+    const debug: MeshNode['debug'] = {
+      printChannelQueues: () => {
+        console.log('Channels:', channelMap.size)
+        for (const [key, value] of channelMap) {
+          console.log(`${key}: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`, value.queue)
+        }
+      },
+    }
+
+    return { nodeName, addConnection, removeConnection, makeChannel, connectionKeys, debug } satisfies MeshNode
   }).pipe(Effect.withSpan(`makeMeshNode:${nodeName}`))

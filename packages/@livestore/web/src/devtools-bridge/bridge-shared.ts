@@ -10,21 +10,24 @@ export const makeShared = ({
   responsePubSub,
 }: {
   portForDevtoolsDeferred: Deferred.Deferred<MessagePort>
-  responsePubSub: PubSub.PubSub<Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore>
+  responsePubSub: PubSub.PubSub<Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession>
 }) =>
   Effect.gen(function* () {
     const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 
     const appHostStoreChannelDeferred =
       yield* Deferred.make<
-        WebChannel.WebChannel<typeof Devtools.MessageFromAppHostStore.Type, typeof Devtools.MessageToAppHostStore.Type>
+        WebChannel.WebChannel<
+          typeof Devtools.MessageFromAppClientSession.Type,
+          typeof Devtools.MessageToAppClientSession.Type
+        >
       >()
 
     const portForDevtools = yield* Deferred.await(portForDevtoolsDeferred)
 
     const appHostCoordinatorChannel = yield* WebChannel.messagePortChannel({
       port: portForDevtools,
-      schema: { listen: Devtools.MessageFromAppHostCoordinator, send: Devtools.MessageToAppHostCoordinator },
+      schema: { listen: Devtools.MessageFromAppLeader, send: Devtools.MessageToAppLeader },
     })
 
     yield* appHostCoordinatorChannel.listen.pipe(
@@ -32,41 +35,41 @@ export const makeShared = ({
       // Stream.tapLogWithLabel('appHostCoordinatorChannel.listen'),
       Stream.tap((msg) =>
         Effect.gen(function* () {
-          if (msg._tag === 'LSD.AppHostReady') {
-            const { appHostId, isLeader } = msg
-            yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
-          } else if (msg._tag === 'LSD.MessagePortForStoreReq') {
-            // Here we're "duplicating" the message port since we need one for the coordinator
-            // and one for the store
-            const storeMessageChannel = new MessageChannel()
+          // if (msg._tag === 'LSD.AppHostReady') {
+          // const { appHostId, isLeader } = msg
+          // yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
+          // } else if (msg._tag === 'LSD.MessagePortForStoreReq') {
+          // Here we're "duplicating" the message port since we need one for the coordinator
+          // and one for the store
+          const storeMessageChannel = new MessageChannel()
 
-            yield* sendToAppHost(
-              Devtools.MessagePortForStoreRes.make({
-                appHostId: msg.appHostId,
-                liveStoreVersion: msg.liveStoreVersion,
-                port: storeMessageChannel.port1,
-                requestId: msg.requestId,
-              }),
-            )
+          // yield* sendToAppHost(
+          //   Devtools.MessagePortForStoreRes.make({
+          //     // appHostId: msg.appHostId,
+          //     liveStoreVersion: msg.liveStoreVersion,
+          //     port: storeMessageChannel.port1,
+          //     requestId: msg.requestId,
+          //   }),
+          // )
 
-            const portForAppHostStoreChannel = yield* WebChannel.messagePortChannel({
-              port: storeMessageChannel.port2,
-              schema: { listen: Devtools.MessageFromAppHostStore, send: Devtools.MessageToAppHostStore },
-            })
+          //   const portForAppHostStoreChannel = yield* WebChannel.messagePortChannel({
+          //     port: storeMessageChannel.port2,
+          //     schema: { listen: Devtools.MessageFromAppClientSession, send: Devtools.MessageToAppClientSession },
+          //   })
 
-            yield* portForAppHostStoreChannel.listen.pipe(
-              Stream.flatten(),
-              Stream.tap((msg) => PubSub.publish(responsePubSub, msg)),
-              Stream.runDrain,
-              Effect.withSpan('portForStoreChannel.listen'),
-              Effect.tapCauseLogPretty,
-              Effect.forkScoped,
-            )
+          //   yield* portForAppHostStoreChannel.listen.pipe(
+          //     Stream.flatten(),
+          //     Stream.tap((msg) => PubSub.publish(responsePubSub, msg)),
+          //     Stream.runDrain,
+          //     Effect.withSpan('portForStoreChannel.listen'),
+          //     Effect.tapCauseLogPretty,
+          //     Effect.forkScoped,
+          //   )
 
-            yield* Deferred.succeed(appHostStoreChannelDeferred, portForAppHostStoreChannel)
-          } else {
-            yield* PubSub.publish(responsePubSub, msg)
-          }
+          //   yield* Deferred.succeed(appHostStoreChannelDeferred, portForAppHostStoreChannel)
+          // } else {
+          yield* PubSub.publish(responsePubSub, msg)
+          // }
         }),
       ),
       Stream.runDrain,
@@ -79,7 +82,7 @@ export const makeShared = ({
     const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
       Effect.gen(function* () {
         // console.log('bridge-shared: sendToAppHost', msg)
-        if (Schema.is(Devtools.MessageToAppHostCoordinator)(msg)) {
+        if (Schema.is(Devtools.MessageToAppLeader)(msg)) {
           yield* appHostCoordinatorChannel.send(msg)
         } else {
           // console.log('bridge-shared: sendToAppHostStore', msg)
@@ -88,7 +91,7 @@ export const makeShared = ({
         }
       }).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
 
-    yield* sendToAppHost(Devtools.DevtoolsReady.make({ liveStoreVersion }))
+    // yield* sendToAppHost(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
     const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 

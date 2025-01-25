@@ -1,138 +1,147 @@
-import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FiberMap, FiberSet, Option, PubSub, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
-import type { DevtoolsContextEnabled, PersistenceInfoPair } from './types.js'
+import type { DevtoolsContextEnabled, DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 type SendMessageToDevtools = (
-  message: Devtools.MessageFromAppHostCoordinator,
+  message: Devtools.MessageFromAppLeader,
   options?: {
     /** Send message even if not connected (e.g. for initial broadcast messages) */
     force: boolean
   },
 ) => Effect.Effect<void>
 
-export const makeDevtoolsContext = Effect.gen(function* () {
-  const broadcastCallbacks = new Set<DevtoolsContextEnabled['broadcast']>()
+// TODO bind scope to the webchannel lifetime
+export const bootDevtools = (options: DevtoolsOptions) =>
+  Effect.gen(function* () {
+    if (options.enabled === false) {
+      return
+    }
 
-  const connections = yield* FiberSet.make()
+    const { persistenceInfo, shutdownChannel, devtoolsWebChannel } = yield* options.makeContext
 
-  const connect: DevtoolsContextEnabled['connect'] = ({
-    coordinatorMessagePortOrChannel,
-    disconnect,
-    // storeMessagePortDeferred,
-    storeId,
-    appHostId,
-    isLeader,
-    persistenceInfo,
-    shutdownChannel,
-  }) =>
-    Effect.gen(function* () {
-      // const isConnected = yield* SubscriptionRef.make(false)
-      const isConnected = yield* SubscriptionRef.make(true)
+    const isConnected = yield* SubscriptionRef.make(true)
 
-      const incomingMessagesPubSub = yield* PubSub.unbounded<Devtools.MessageToAppHostCoordinator>().pipe(
-        Effect.acquireRelease(PubSub.shutdown),
-      )
+    const incomingMessagesPubSub = yield* PubSub.unbounded<Devtools.MessageToAppLeader>().pipe(
+      Effect.acquireRelease(PubSub.shutdown),
+    )
 
-      const incomingMessages = Stream.fromPubSub(incomingMessagesPubSub)
+    const incomingMessages = Stream.fromPubSub(incomingMessagesPubSub)
 
-      const outgoingMessagesQueue = yield* Queue.unbounded<Devtools.MessageFromAppHostCoordinator>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
-      )
+    const outgoingMessagesQueue = yield* Queue.unbounded<Devtools.MessageFromAppLeader>().pipe(
+      Effect.acquireRelease(Queue.shutdown),
+    )
 
-      const devtoolsCoordinatorChannel = coordinatorMessagePortOrChannel
-      // coordinatorMessagePortOrChannel instanceof MessagePort
-      //   ? yield* WebChannel.messagePortChannel({
-      //       port: coordinatorMessagePortOrChannel,
-      //       schema: { send: Devtools.MessageFromAppHostCoordinator, listen: Devtools.MessageToAppHostCoordinator },
-      //     })
-      //   : coordinatorMessagePortOrChannel
+    const devtoolsCoordinatorChannel = devtoolsWebChannel
+    // coordinatorMessagePortOrChannel instanceof MessagePort
+    //   ? yield* WebChannel.messagePortChannel({
+    //       port: coordinatorMessagePortOrChannel,
+    //       schema: { send: Devtools.MessageFromAppLeader, listen: Devtools.MessageToAppLeader },
+    //     })
+    //   : coordinatorMessagePortOrChannel
 
-      const sendMessage: SendMessageToDevtools = (message, options) =>
-        Effect.gen(function* () {
-          if (options?.force === true || (yield* isConnected)) {
-            yield* devtoolsCoordinatorChannel.send(message)
-          } else {
-            yield* Queue.offer(outgoingMessagesQueue, message)
-          }
-        }).pipe(
-          Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
-          Effect.interruptible,
-          Effect.ignoreLogged,
-        )
-
-      broadcastCallbacks.add((message) => sendMessage(message))
-
-      yield* devtoolsCoordinatorChannel.listen.pipe(
-        Stream.flatten(),
-        // Stream.tapLogWithLabel('@livestore/common:leader-thread:devtools:onPortMessage'),
-        Stream.tap((msg) =>
-          Effect.gen(function* () {
-            // yield* Effect.logDebug(`[@livestore/common:leader-thread:devtools] message from port: ${msg._tag}`, msg)
-            // if (msg._tag === 'LSD.MessagePortForStoreRes') {
-            //   yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
-            // } else {
-            yield* PubSub.publish(incomingMessagesPubSub, msg)
-            // }
-          }),
-        ),
-        Stream.runDrain,
-        Effect.withSpan(`@livestore/common:leader-thread:devtools:onPortMessage`),
+    const sendMessage: SendMessageToDevtools = (message, options) =>
+      Effect.gen(function* () {
+        if (options?.force === true || (yield* isConnected)) {
+          yield* devtoolsCoordinatorChannel.send(message)
+        } else {
+          yield* Queue.offer(outgoingMessagesQueue, message)
+        }
+      }).pipe(
+        Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
+        Effect.interruptible,
         Effect.ignoreLogged,
-        Effect.forkScoped,
       )
 
-      // yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), { force: true })
+    // broadcastCallbacks.add((message) => sendMessage(message))
 
-      // yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: nanoid() }), {
-      //   force: true,
-      // })
+    const { connectedClientSessionPullQueues, syncProcessor } = yield* LeaderThreadCtx
+    const { localHead } = yield* syncProcessor.syncState
 
-      yield* listenToDevtools({
-        incomingMessages,
-        sendMessage,
-        isConnected,
-        disconnect,
-        storeId,
-        appHostId,
-        isLeader,
-        persistenceInfo,
-        shutdownChannel,
-      })
-    }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:connect', { attributes: { appHostId } }))
+    // TODO close queue when devtools disconnects
+    const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(localHead)
 
-  const broadcast: DevtoolsContextEnabled['broadcast'] = (message) =>
-    Effect.gen(function* () {
-      for (const callback of broadcastCallbacks) {
-        yield* callback(message)
-      }
+    yield* Stream.fromQueue(pullQueue).pipe(
+      Stream.tap((msg) =>
+        Effect.gen(function* () {
+          if (msg.payload._tag === 'upstream-advance') {
+            for (const mutationEventEncoded of msg.payload.newEvents) {
+              yield* sendMessage(
+                Devtools.MutationBroadcast.make({
+                  mutationEventEncoded,
+                  persisted: true,
+                  liveStoreVersion,
+                }),
+              )
+            }
+          } else {
+            yield* Effect.logWarning('TODO implement rebases in devtools')
+          }
+        }),
+      ),
+      Stream.runDrain,
+      Effect.forkScoped,
+    )
+
+    yield* devtoolsCoordinatorChannel.listen.pipe(
+      Stream.flatten(),
+      // Stream.tapLogWithLabel('@livestore/common:leader-thread:devtools:onPortMessage'),
+      Stream.tap((msg) =>
+        Effect.gen(function* () {
+          // yield* Effect.logDebug(`[@livestore/common:leader-thread:devtools] message from port: ${msg._tag}`, msg)
+          // if (msg._tag === 'LSD.MessagePortForStoreRes') {
+          //   yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
+          // } else {
+          yield* PubSub.publish(incomingMessagesPubSub, msg)
+          // }
+        }),
+      ),
+      Stream.runDrain,
+      Effect.withSpan(`@livestore/common:leader-thread:devtools:onPortMessage`),
+      Effect.ignoreLogged,
+      Effect.forkScoped,
+    )
+
+    // yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), { force: true })
+
+    // yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: nanoid() }), {
+    //   force: true,
+    // })
+
+    yield* listenToDevtools({
+      incomingMessages,
+      sendMessage,
+      // isConnected,
+      // disconnect,
+      // storeId,
+      // appHostId,
+      // isLeader,
+      persistenceInfo,
+      shutdownChannel,
     })
-
-  return { enabled: true, connect, broadcast, connections } satisfies DevtoolsContextEnabled
-})
+  }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:boot'))
 
 const listenToDevtools = ({
   incomingMessages,
   sendMessage,
-  isConnected,
-  disconnect,
-  appHostId,
-  storeId,
-  isLeader,
+  // isConnected,
+  // disconnect,
+  // appHostId,
+  // storeId,
+  // isLeader,
   persistenceInfo,
   shutdownChannel,
 }: {
-  incomingMessages: Stream.Stream<Devtools.MessageToAppHostCoordinator>
+  incomingMessages: Stream.Stream<Devtools.MessageToAppLeader>
   sendMessage: SendMessageToDevtools
-  isConnected: SubscriptionRef.SubscriptionRef<boolean>
-  disconnect: Effect.Effect<void>
-  appHostId: string
-  storeId: string
-  isLeader: boolean
+  // isConnected: SubscriptionRef.SubscriptionRef<boolean>
+  // disconnect: Effect.Effect<void>
+  // appHostId: string
+  // storeId: string
+  // isLeader: boolean
   persistenceInfo: PersistenceInfoPair
   shutdownChannel: ShutdownChannel
 }) =>
@@ -148,27 +157,6 @@ const listenToDevtools = ({
         Effect.gen(function* () {
           // yield* Effect.logDebug('[@livestore/common:leader-thread:devtools] incomingMessage', decodedEvent)
 
-          if (decodedEvent._tag === 'LSD.DevtoolsReady') {
-            // if ((yield* isConnected) === false) {
-            //   yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
-            //     force: true,
-            //   })
-            // }
-            return
-          }
-
-          if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
-            // if (yield* isConnected) {
-            //   console.warn('devtools already connected')
-            //   return
-            // }
-
-            // yield* SubscriptionRef.set(isConnected, true)
-            return
-          }
-
-          if (decodedEvent.appHostId !== appHostId) return
-
           if (decodedEvent._tag === 'LSD.Disconnect') {
             // yield* SubscriptionRef.set(isConnected, false)
 
@@ -183,21 +171,21 @@ const listenToDevtools = ({
           }
 
           const { requestId } = decodedEvent
-          const reqPayload = { requestId, appHostId, liveStoreVersion }
+          const reqPayload = { requestId, liveStoreVersion }
 
           switch (decodedEvent._tag) {
             case 'LSD.Ping': {
               yield* sendMessage(Devtools.Pong.make({ ...reqPayload }))
               return
             }
-            case 'LSD.SnapshotReq': {
+            case 'LSD.Leader.SnapshotReq': {
               const snapshot = db.export()
 
               yield* sendMessage(Devtools.SnapshotRes.make({ snapshot, ...reqPayload }))
 
               return
             }
-            case 'LSD.LoadDatabaseFileReq': {
+            case 'LSD.Leader.LoadDatabaseFileReq': {
               const { data } = decodedEvent
 
               let tableNames: Set<string>
@@ -242,7 +230,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.ResetAllDataReq': {
+            case 'LSD.Leader.ResetAllDataReq': {
               const { mode } = decodedEvent
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
@@ -259,7 +247,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.DatabaseFileInfoReq': {
+            case 'LSD.Leader.DatabaseFileInfoReq': {
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
               const dbFileSize = db.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
               const mutationLogFileSize = dbLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
@@ -274,21 +262,21 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.MutationLogReq': {
+            case 'LSD.Leader.MutationLogReq': {
               const mutationLog = dbLog.export()
 
               yield* sendMessage(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
 
               return
             }
-            case 'LSD.RunMutationReq': {
+            case 'LSD.Leader.RunMutationReq': {
               yield* syncProcessor.pushPartial(decodedEvent.mutationEventEncoded)
 
               yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
 
               return
             }
-            case 'LSD.SyncHistorySubscribe': {
+            case 'LSD.Leader.SyncHistorySubscribe': {
               const { requestId } = decodedEvent
 
               if (syncBackend !== undefined) {
@@ -309,7 +297,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.SyncHistoryUnsubscribe': {
+            case 'LSD.Leader.SyncHistoryUnsubscribe': {
               const { requestId } = decodedEvent
               console.log('LSD.SyncHistoryUnsubscribe', requestId)
 
@@ -317,7 +305,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.SyncingInfoReq': {
+            case 'LSD.Leader.SyncingInfoReq': {
               const syncingInfo = Devtools.SyncingInfo.make({
                 enabled: syncBackend !== undefined,
                 metadata: {},
@@ -327,7 +315,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.NetworkStatusSubscribe': {
+            case 'LSD.Leader.NetworkStatusSubscribe': {
               if (syncBackend !== undefined) {
                 const { requestId } = decodedEvent
 
@@ -354,7 +342,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.NetworkStatusUnsubscribe': {
+            case 'LSD.Leader.NetworkStatusUnsubscribe': {
               const { requestId } = decodedEvent
 
               yield* FiberMap.remove(subscriptionFiberMap, requestId)

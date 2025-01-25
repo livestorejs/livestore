@@ -80,7 +80,7 @@ const withCtx =
     self.pipe(
       Effect.andThen(() => Effect.spanEvent('@livestore/node-sync:test:runner:end')),
       Effect.timeout(isCi ? 60_000 : 10_000),
-      Effect.provide(Logger.pretty),
+      Effect.provide(Logger.prettyWithThread('runner')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
       skipOtel ? identity : Effect.provide(otelLayer),

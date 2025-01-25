@@ -13,6 +13,7 @@ export type Options = {
    * Example: `./src/schema.ts`
    */
   schemaPath: string
+  // TODO consolidate with `Mode` in `@livestore/devtools-react/devtools-api.ts`
   /**
    * The mode of the devtools server.
    *

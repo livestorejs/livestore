@@ -8,12 +8,12 @@ import { makeExpoDevtoolsChannel } from '../web-channel/index.js'
 export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> = Effect.gen(
   function* () {
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
-      sendSchema: Schema.Union(Devtools.MessageToAppHostCoordinator, Devtools.MessageToAppHostStore),
-      listenSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
+      sendSchema: Schema.Union(Devtools.MessageToAppLeader, Devtools.MessageToAppClientSession),
+      listenSchema: Schema.Union(Devtools.MessageFromAppLeader, Devtools.MessageFromAppClientSession),
     })
 
     const responsePubSub = yield* PubSub.unbounded<
-      Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
+      Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession
     >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
     const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
@@ -23,12 +23,12 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
       // Stream.tapLogWithLabel('appHostCoordinatorChannel.listen'),
       Stream.tap((msg) =>
         Effect.gen(function* () {
-          if (msg._tag === 'LSD.AppHostReady') {
-            const { appHostId, isLeader } = msg
-            yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
-          } else {
-            yield* PubSub.publish(responsePubSub, msg)
-          }
+          // if (msg._tag === 'LSD.AppHostReady') {
+          //   // const { appHostId, isLeader } = msg
+          //   // yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
+          // } else {
+          yield* PubSub.publish(responsePubSub, msg)
+          // }
         }),
       ),
       Stream.runDrain,
@@ -37,7 +37,7 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
       Effect.forkScoped,
     )
 
-    yield* expoDevtoolsChannel.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
+    // yield* expoDevtoolsChannel.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
     const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 

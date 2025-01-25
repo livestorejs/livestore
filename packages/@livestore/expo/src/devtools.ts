@@ -50,8 +50,8 @@ export const bootDevtools = ({
     const isLeader = true
 
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
-      listenSchema: Schema.Union(Devtools.MessageToAppHostCoordinator, Devtools.MessageToAppHostStore),
-      sendSchema: Schema.Union(Devtools.MessageFromAppHostCoordinator, Devtools.MessageFromAppHostStore),
+      listenSchema: Schema.Union(Devtools.MessageToAppLeader, Devtools.MessageToAppClientSession),
+      sendSchema: Schema.Union(Devtools.MessageFromAppLeader, Devtools.MessageFromAppClientSession),
     })
 
     const isConnected = yield* SubscriptionRef.make(false)
@@ -61,7 +61,7 @@ export const bootDevtools = ({
      * which is expected by the `connectDevtoolsToStore` function.
      */
     const storeDevtoolsChannelProxy = yield* WebChannel.queueChannelProxy({
-      schema: { listen: Devtools.MessageToAppHostStore, send: Devtools.MessageFromAppHostStore },
+      schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
     })
 
     yield* storeDevtoolsChannelProxy.sendQueue.pipe(
@@ -78,33 +78,33 @@ export const bootDevtools = ({
       Stream.flatten(),
       Stream.tap((decodedEvent) =>
         Effect.gen(function* () {
-          if (Schema.is(Devtools.MessageToAppHostStore)(decodedEvent)) {
+          if (Schema.is(Devtools.MessageToAppClientSession)(decodedEvent)) {
             yield* storeDevtoolsChannelProxy.listenQueue.pipe(Queue.offer(decodedEvent))
             return
           }
 
-          if (decodedEvent._tag === 'LSD.DevtoolsReady') {
-            if ((yield* isConnected.get) === false) {
-              yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
-            }
+          // if (decodedEvent._tag === 'LSD.DevtoolsReady') {
+          //   if ((yield* isConnected.get) === false) {
+          //     // yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }))
+          //   }
 
-            return
-          }
+          //   return
+          // }
 
-          if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
-            if (yield* isConnected.get) {
-              console.warn('devtools already connected')
-              return
-            }
+          // if (decodedEvent._tag === 'LSD.DevtoolsConnected') {
+          //   if (yield* isConnected.get) {
+          //     console.warn('devtools already connected')
+          //     return
+          //   }
 
-            yield* connectDevtoolsToStore(storeDevtoolsChannelProxy.webChannel).pipe(
-              Effect.tapCauseLogPretty,
-              Effect.forkScoped,
-            )
+          //   yield* connectDevtoolsToStore(storeDevtoolsChannelProxy.webChannel).pipe(
+          //     Effect.tapCauseLogPretty,
+          //     Effect.forkScoped,
+          //   )
 
-            yield* SubscriptionRef.set(isConnected, true)
-            return
-          }
+          //   yield* SubscriptionRef.set(isConnected, true)
+          //   return
+          // }
 
           // if (decodedEvent._tag === 'LSD.Disconnect') {
           //   yield* SubscriptionRef.set(isConnected, false)
@@ -125,14 +125,14 @@ export const bootDevtools = ({
               yield* expoDevtoolsChannel.send(Devtools.Pong.make({ ...reqPayload }))
               return
             }
-            case 'LSD.SnapshotReq': {
+            case 'LSD.Leader.SnapshotReq': {
               const data = yield* coordinator.export
 
               yield* expoDevtoolsChannel.send(Devtools.SnapshotRes.make({ snapshot: data!, ...reqPayload }))
 
               return
             }
-            case 'LSD.LoadDatabaseFileReq': {
+            case 'LSD.Leader.LoadDatabaseFileReq': {
               const { data } = decodedEvent
 
               let tableNames: Set<string>
@@ -189,7 +189,7 @@ export const bootDevtools = ({
 
               return
             }
-            case 'LSD.ResetAllDataReq': {
+            case 'LSD.Leader.ResetAllDataReq': {
               const { mode } = decodedEvent
 
               dbRef.current!.db.closeSync()
@@ -206,7 +206,7 @@ export const bootDevtools = ({
 
               return
             }
-            case 'LSD.DatabaseFileInfoReq': {
+            case 'LSD.Leader.DatabaseFileInfoReq': {
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
               const dbFileSize = dbRef.current!.db.prepareSync(dbSizeQuery).executeSync<any>().getFirstSync()!
                 .size as number
@@ -228,14 +228,14 @@ export const bootDevtools = ({
 
               return
             }
-            case 'LSD.MutationLogReq': {
+            case 'LSD.Leader.MutationLogReq': {
               const mutationLog = yield* coordinator.getMutationLogData
 
               yield* expoDevtoolsChannel.send(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
 
               return
             }
-            case 'LSD.RunMutationReq': {
+            case 'LSD.Leader.RunMutationReq': {
               const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
               // const nextMutationEventIdPair = coordinator.mutations.nextMutationEventIdPair({
@@ -263,7 +263,7 @@ export const bootDevtools = ({
 
               return
             }
-            case 'LSD.SyncingInfoReq': {
+            case 'LSD.Leader.SyncingInfoReq': {
               const syncingInfo = Devtools.SyncingInfo.make({
                 enabled: false,
                 metadata: {},
@@ -280,7 +280,7 @@ export const bootDevtools = ({
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-    yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeader, liveStoreVersion }))
+    // yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeader, liveStoreVersion }))
 
     const onMutation = ({
       mutationEventEncoded,

@@ -1,4 +1,4 @@
-import type { HttpClient, Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope, WebChannel } from '@livestore/utils/effect'
 import { Deferred, Effect, FiberSet, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
@@ -10,10 +10,10 @@ import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync
 import { sql } from '../util.js'
 import { execSql } from './connection.js'
 import { makeLeaderSyncProcessor } from './leader-sync-processor.js'
-import { makeDevtoolsContext } from './leader-worker-devtools.js'
+import { bootDevtools } from './leader-worker-devtools.js'
 import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
-import type { InitialBlockingSyncContext, InitialSyncOptions, ShutdownState } from './types.js'
+import type { DevtoolsOptions, InitialBlockingSyncContext, InitialSyncOptions, ShutdownState } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const makeLeaderThreadLayer = ({
@@ -24,7 +24,7 @@ export const makeLeaderThreadLayer = ({
   makeSyncBackend,
   db,
   dbLog,
-  devtoolsEnabled,
+  devtoolsOptions,
   initialSyncOptions = { _tag: 'Skip' },
 }: {
   storeId: string
@@ -34,7 +34,7 @@ export const makeLeaderThreadLayer = ({
   makeSyncBackend: Effect.Effect<SyncBackend, UnexpectedError, Scope.Scope> | undefined
   db: SynchronousDatabase
   dbLog: SynchronousDatabase
-  devtoolsEnabled: boolean
+  devtoolsOptions: DevtoolsOptions
   initialSyncOptions: InitialSyncOptions | undefined
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
@@ -57,7 +57,6 @@ export const makeLeaderThreadLayer = ({
       originId,
       db,
       dbLog,
-      devtools: devtoolsEnabled ? yield* makeDevtoolsContext : { enabled: false },
       makeSyncDb,
       mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
@@ -71,7 +70,7 @@ export const makeLeaderThreadLayer = ({
 
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
-    yield* bootLeaderThread({ dbMissing, initialBlockingSyncContext }).pipe(Effect.provide(layer))
+    yield* bootLeaderThread({ dbMissing, initialBlockingSyncContext, devtoolsOptions }).pipe(Effect.provide(layer))
 
     return layer
   }).pipe(
@@ -135,9 +134,11 @@ const makeInitialBlockingSyncContext = ({
 const bootLeaderThread = ({
   dbMissing,
   initialBlockingSyncContext,
+  devtoolsOptions,
 }: {
   dbMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
+  devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   void,
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
@@ -186,4 +187,6 @@ const bootLeaderThread = ({
     }
 
     yield* Queue.offer(bootStatusQueue, { stage: 'done' })
+
+    yield* bootDevtools(devtoolsOptions).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
   })

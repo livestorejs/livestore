@@ -18,7 +18,19 @@ const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag
 
 const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {
+    ...fields,
+  })
+
+const LSDStoreChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
+  LSDMessage(tag, {
     appHostId,
+    ...fields,
+  })
+
+const LSDStoreReqResMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
+  LSDMessage(tag, {
+    appHostId,
+    requestId,
     ...fields,
   })
 
@@ -28,77 +40,79 @@ const LSDReqResMessage = <Tag extends string, Fields extends Schema.Struct.Field
     ...fields,
   })
 
-export class SnapshotReq extends LSDReqResMessage('LSD.SnapshotReq', {}) {}
+export class SnapshotReq extends LSDReqResMessage('LSD.Leader.SnapshotReq', {}) {}
 
-export class SnapshotRes extends LSDReqResMessage('LSD.SnapshotRes', {
+export class SnapshotRes extends LSDReqResMessage('LSD.Leader.SnapshotRes', {
   snapshot: Transferable.Uint8Array,
 }) {}
 
-export class LoadDatabaseFileReq extends LSDReqResMessage('LSD.LoadDatabaseFileReq', {
+export class LoadDatabaseFileReq extends LSDReqResMessage('LSD.Leader.LoadDatabaseFileReq', {
   data: Transferable.Uint8Array,
 }) {}
 
-export class LoadDatabaseFileRes extends LSDReqResMessage('LSD.LoadDatabaseFileRes', {
+export class LoadDatabaseFileRes extends LSDReqResMessage('LSD.Leader.LoadDatabaseFileRes', {
   status: Schema.Literal('ok', 'unsupported-file', 'unsupported-database'),
 }) {}
 
-export class DebugInfoReq extends LSDReqResMessage('LSD.DebugInfoReq', {}) {}
+export class DebugInfoReq extends LSDStoreReqResMessage('LSD.DebugInfoReq', {}) {}
 
-export class DebugInfoRes extends LSDReqResMessage('LSD.DebugInfoRes', {
+export class DebugInfoRes extends LSDStoreReqResMessage('LSD.DebugInfoRes', {
   debugInfo: DebugInfo,
 }) {}
 
-export class DebugInfoHistorySubscribe extends LSDReqResMessage('LSD.DebugInfoHistorySubscribe', {}) {}
+export class DebugInfoHistorySubscribe extends LSDStoreReqResMessage('LSD.DebugInfoHistorySubscribe', {}) {}
 
-export class DebugInfoHistoryRes extends LSDReqResMessage('LSD.DebugInfoHistoryRes', {
+export class DebugInfoHistoryRes extends LSDStoreReqResMessage('LSD.DebugInfoHistoryRes', {
   debugInfoHistory: Schema.Array(DebugInfo),
 }) {}
 
-export class DebugInfoHistoryUnsubscribe extends LSDReqResMessage('LSD.DebugInfoHistoryUnsubscribe', {}) {}
+export class DebugInfoHistoryUnsubscribe extends LSDStoreReqResMessage('LSD.DebugInfoHistoryUnsubscribe', {}) {}
 
-export class DebugInfoResetReq extends LSDReqResMessage('LSD.DebugInfoResetReq', {}) {}
+export class DebugInfoResetReq extends LSDStoreReqResMessage('LSD.DebugInfoResetReq', {}) {}
 
-export class DebugInfoResetRes extends LSDReqResMessage('LSD.DebugInfoResetRes', {}) {}
+export class DebugInfoResetRes extends LSDStoreReqResMessage('LSD.DebugInfoResetRes', {}) {}
 
-export class DebugInfoRerunQueryReq extends LSDReqResMessage('LSD.DebugInfoRerunQueryReq', {
+export class DebugInfoRerunQueryReq extends LSDStoreReqResMessage('LSD.DebugInfoRerunQueryReq', {
   queryStr: Schema.String,
   bindValues: Schema.UndefinedOr(PreparedBindValues),
   queriedTables: Schema.ReadonlySet(Schema.String),
 }) {}
 
-export class DebugInfoRerunQueryRes extends LSDReqResMessage('LSD.DebugInfoRerunQueryRes', {}) {}
+export class DebugInfoRerunQueryRes extends LSDStoreReqResMessage('LSD.DebugInfoRerunQueryRes', {}) {}
 
-export class MutationBroadcast extends LSDMessage('LSD.MutationBroadcast', {
+// TODO refactor this to use push/pull semantics
+export class MutationBroadcast extends LSDMessage('LSD.Leader.MutationBroadcast', {
   mutationEventEncoded: MutationEvent.EncodedAny,
   persisted: Schema.Boolean,
 }) {}
 
-export class RunMutationReq extends LSDReqResMessage('LSD.RunMutationReq', {
+// TODO refactor this to use push/pull semantics
+export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
   mutationEventEncoded: MutationEvent.EncodedAny.pipe(Schema.omit('id', 'parentId')),
   persisted: Schema.Boolean,
 }) {}
 
-export class RunMutationRes extends LSDReqResMessage('LSD.RunMutationRes', {}) {}
+export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}
 
-export class MutationLogReq extends LSDReqResMessage('LSD.MutationLogReq', {}) {}
+export class MutationLogReq extends LSDReqResMessage('LSD.Leader.MutationLogReq', {}) {}
 
-export class MutationLogRes extends LSDReqResMessage('LSD.MutationLogRes', {
+export class MutationLogRes extends LSDReqResMessage('LSD.Leader.MutationLogRes', {
   mutationLog: Transferable.Uint8Array,
 }) {}
 
-export class ReactivityGraphSubscribe extends LSDReqResMessage('LSD.ReactivityGraphSubscribe', {
+export class ReactivityGraphSubscribe extends LSDStoreReqResMessage('LSD.ReactivityGraphSubscribe', {
   includeResults: Schema.Boolean,
 }) {}
 
-export class ReactivityGraphUnsubscribe extends LSDReqResMessage('LSD.ReactivityGraphUnsubscribe', {}) {}
+export class ReactivityGraphUnsubscribe extends LSDStoreReqResMessage('LSD.ReactivityGraphUnsubscribe', {}) {}
 
-export class ReactivityGraphRes extends LSDReqResMessage('LSD.ReactivityGraphRes', {
+export class ReactivityGraphRes extends LSDStoreReqResMessage('LSD.ReactivityGraphRes', {
   reactivityGraph: Schema.Any,
 }) {}
 
-export class LiveQueriesSubscribe extends LSDReqResMessage('LSD.LiveQueriesSubscribe', {}) {}
+export class LiveQueriesSubscribe extends LSDStoreReqResMessage('LSD.LiveQueriesSubscribe', {}) {}
 
-export class LiveQueriesUnsubscribe extends LSDReqResMessage('LSD.LiveQueriesUnsubscribe', {}) {}
+export class LiveQueriesUnsubscribe extends LSDStoreReqResMessage('LSD.LiveQueriesUnsubscribe', {}) {}
 
 export class SerializedLiveQuery extends Schema.Struct({
   _tag: Schema.Literal('computed', 'db', 'graphql'),
@@ -112,95 +126,78 @@ export class SerializedLiveQuery extends Schema.Struct({
   ),
 }) {}
 
-export class LiveQueriesRes extends LSDReqResMessage('LSD.LiveQueriesRes', {
+export class LiveQueriesRes extends LSDStoreReqResMessage('LSD.LiveQueriesRes', {
   liveQueries: Schema.Array(SerializedLiveQuery),
 }) {}
 
-export class ResetAllDataReq extends LSDReqResMessage('LSD.ResetAllDataReq', {
+export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),
 }) {}
 
-export class ResetAllDataRes extends LSDReqResMessage('LSD.ResetAllDataRes', {}) {}
+export class ResetAllDataRes extends LSDReqResMessage('LSD.Leader.ResetAllDataRes', {}) {}
 
-export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.DatabaseFileInfoReq', {}) {}
+export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {}) {}
 
 export class DatabaseFileInfo extends Schema.Struct({
   fileSize: Schema.Number,
   persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
 }) {}
 
-export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.DatabaseFileInfoRes', {
+export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
   db: DatabaseFileInfo,
   mutationLog: DatabaseFileInfo,
 }) {}
 
-export class MessagePortForStoreReq extends LSDReqResMessage('LSD.MessagePortForStoreReq', {}) {}
+export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {}) {}
+export class NetworkStatusUnsubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusUnsubscribe', {}) {}
 
-export class MessagePortForStoreRes extends LSDReqResMessage('LSD.MessagePortForStoreRes', {
-  port: Transferable.MessagePort,
-}) {}
-
-export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.NetworkStatusSubscribe', {}) {}
-export class NetworkStatusUnsubscribe extends LSDReqResMessage('LSD.NetworkStatusUnsubscribe', {}) {}
-
-export class NetworkStatusRes extends LSDReqResMessage('LSD.NetworkStatusRes', {
+export class NetworkStatusRes extends LSDReqResMessage('LSD.Leader.NetworkStatusRes', {
   networkStatus: NetworkStatus,
 }) {}
 
-export class SyncingInfoReq extends LSDReqResMessage('LSD.SyncingInfoReq', {}) {}
+export class SyncingInfoReq extends LSDReqResMessage('LSD.Leader.SyncingInfoReq', {}) {}
 
 export class SyncingInfo extends Schema.Struct({
   enabled: Schema.Boolean,
   metadata: Schema.Record({ key: Schema.String, value: Schema.Any }),
 }) {}
 
-export class SyncingInfoRes extends LSDReqResMessage('LSD.SyncingInfoRes', {
+export class SyncingInfoRes extends LSDReqResMessage('LSD.Leader.SyncingInfoRes', {
   syncingInfo: SyncingInfo,
 }) {}
 
-export class SyncHistorySubscribe extends LSDReqResMessage('LSD.SyncHistorySubscribe', {}) {}
-export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.SyncHistoryUnsubscribe', {}) {}
-export class SyncHistoryRes extends LSDReqResMessage('LSD.SyncHistoryRes', {
+export class SyncHistorySubscribe extends LSDReqResMessage('LSD.Leader.SyncHistorySubscribe', {}) {}
+export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHistoryUnsubscribe', {}) {}
+export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
   mutationEventEncoded: MutationEvent.EncodedAny,
   metadata: Schema.Option(Schema.JsonValue),
 }) {}
 
-export class DevtoolsReady extends LSDMessage('LSD.DevtoolsReady', {}) {}
-
-export class DevtoolsConnected extends LSDChannelMessage('LSD.DevtoolsConnected', {}) {}
-
-export class AppHostReady extends LSDChannelMessage('LSD.AppHostReady', {
-  isLeader: Schema.Boolean,
-}) {}
-
-export class Disconnect extends LSDChannelMessage('LSD.Disconnect', {}) {}
+export class Disconnect extends LSDStoreChannelMessage('LSD.Disconnect', {}) {}
 
 export class Ping extends LSDReqResMessage('LSD.Ping', {}) {}
 
 export class Pong extends LSDReqResMessage('LSD.Pong', {}) {}
 
-export const MessageToAppHostCoordinator = Schema.Union(
+export const MessageToAppLeader = Schema.Union(
   SnapshotReq,
   LoadDatabaseFileReq,
   MutationLogReq,
   ResetAllDataReq,
-  MessagePortForStoreRes,
   NetworkStatusSubscribe,
   NetworkStatusUnsubscribe,
-  DevtoolsReady,
   Disconnect,
-  DevtoolsConnected,
   RunMutationReq,
   Ping,
   DatabaseFileInfoReq,
   SyncHistorySubscribe,
   SyncHistoryUnsubscribe,
   SyncingInfoReq,
-).annotations({ identifier: 'LSD.MessageToAppHostCoordinator' })
+).annotations({ identifier: 'LSD.MessageToAppLeader' })
 
-export type MessageToAppHostCoordinator = typeof MessageToAppHostCoordinator.Type
+export type MessageToAppLeader = typeof MessageToAppLeader.Type
 
-export const MessageToAppHostStore = Schema.Union(
+export const MessageToAppClientSession = Schema.Union(
   DebugInfoReq,
   DebugInfoHistorySubscribe,
   DebugInfoHistoryUnsubscribe,
@@ -211,31 +208,30 @@ export const MessageToAppHostStore = Schema.Union(
   LiveQueriesSubscribe,
   LiveQueriesUnsubscribe,
   Disconnect,
+  // TODO also introduce a ping/pong protocol for the client session <> devtools connection
   // Ping,
-).annotations({ identifier: 'LSD.MessageToAppHostStore' })
+).annotations({ identifier: 'LSD.MessageToAppClientSession' })
 
-export type MessageToAppHostStore = typeof MessageToAppHostStore.Type
+export type MessageToAppClientSession = typeof MessageToAppClientSession.Type
 
-export const MessageFromAppHostCoordinator = Schema.Union(
+export const MessageFromAppLeader = Schema.Union(
   SnapshotRes,
   LoadDatabaseFileRes,
   MutationLogRes,
   ResetAllDataRes,
-  MessagePortForStoreReq,
   Disconnect,
   MutationBroadcast,
-  AppHostReady,
   NetworkStatusRes,
   RunMutationRes,
   Pong,
   DatabaseFileInfoRes,
   SyncHistoryRes,
   SyncingInfoRes,
-).annotations({ identifier: 'LSD.MessageFromAppHostCoordinator' })
+).annotations({ identifier: 'LSD.MessageFromAppLeader' })
 
-export type MessageFromAppHostCoordinator = typeof MessageFromAppHostCoordinator.Type
+export type MessageFromAppLeader = typeof MessageFromAppLeader.Type
 
-export const MessageFromAppHostStore = Schema.Union(
+export const MessageFromAppClientSession = Schema.Union(
   DebugInfoRes,
   DebugInfoHistoryRes,
   DebugInfoResetRes,
@@ -244,6 +240,6 @@ export const MessageFromAppHostStore = Schema.Union(
   LiveQueriesRes,
   Disconnect,
   // Pong,
-).annotations({ identifier: 'LSD.MessageFromAppHostStore' })
+).annotations({ identifier: 'LSD.MessageFromAppClientSession' })
 
-export type MessageFromAppHostStore = typeof MessageFromAppHostStore.Type
+export type MessageFromAppClientSession = typeof MessageFromAppClientSession.Type

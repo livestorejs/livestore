@@ -60,8 +60,10 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/devtools-web-common": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {

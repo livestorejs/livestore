@@ -11,46 +11,46 @@ import { makeShutdownChannel } from '../common/shutdown-channel.js'
 export const bootDevtools = ({
   coordinator,
   storeId,
-  waitForDevtoolsWebBridgePort,
-  connectToDevtools,
+  // waitForDevtoolsWebBridgePort,
+  // connectToDevtools,
 }: {
   coordinator: Coordinator
   storeId: string
-  waitForDevtoolsWebBridgePort: (_: { webBridgeId: string }) => Effect.Effect<MessagePort, UnexpectedError>
-  connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+  // waitForDevtoolsWebBridgePort: (_: { webBridgeId: string }) => Effect.Effect<MessagePort, UnexpectedError>
+  // connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
   Effect.gen(function* () {
-    const webBridgeFiberHandle = yield* FiberHandle.make()
+    // const webBridgeFiberHandle = yield* FiberHandle.make()
 
-    // NOTE we're not using the existing coordinator `shutdownChannel` as we won't be able to listen to messages emitted by the same coordinator
-    const shutdownChannel = yield* makeShutdownChannel(storeId)
+    // // NOTE we're not using the existing coordinator `shutdownChannel` as we won't be able to listen to messages emitted by the same coordinator
+    // const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-    const connectWebBridge = FiberHandle.run(
-      webBridgeFiberHandle,
-      listenToWebBridge({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId }),
-    )
+    // const connectWebBridge = FiberHandle.run(
+    //   webBridgeFiberHandle,
+    //   listenToWebBridge({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId }),
+    // )
 
-    yield* connectWebBridge
+    // yield* connectWebBridge
 
-    // TODO Given we're listening to our own messages and given the leader will emit an initial
-    // `DedicatedWorkerDisconnectBroadcast`, this will re-run and we should avoid it
-    yield* shutdownChannel.listen.pipe(
-      Stream.flatten(),
-      Stream.filter(Schema.is(ShutdownChannel.DedicatedWorkerDisconnectBroadcast)),
-      Stream.tap(() => connectWebBridge),
-      Stream.runDrain,
-      Effect.ignoreLogged,
-      Effect.forkScoped,
-    )
+    // // TODO Given we're listening to our own messages and given the leader will emit an initial
+    // // `DedicatedWorkerDisconnectBroadcast`, this will re-run and we should avoid it
+    // yield* shutdownChannel.listen.pipe(
+    //   Stream.flatten(),
+    //   Stream.filter(Schema.is(ShutdownChannel.DedicatedWorkerDisconnectBroadcast)),
+    //   Stream.tap(() => connectWebBridge),
+    //   Stream.runDrain,
+    //   Effect.ignoreLogged,
+    //   Effect.forkScoped,
+    // )
 
-    yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
+    // yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
 
     if (isDevEnv()) {
       yield* Effect.log(
-        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}`,
+        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}&storeId=${storeId}`,
       )
     }
-  })
+  }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools:boot'))
 
 const listenToWebBridge = ({
   coordinator,

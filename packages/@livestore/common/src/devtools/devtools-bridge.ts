@@ -4,8 +4,8 @@ import type * as Devtools from './devtools-messages.js'
 
 export type PrepareDevtoolsBridge = {
   /** Messages coming from the app host (usually responses to requests) */
-  responsePubSub: PubSub.PubSub<Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore>
-  sendToAppHost: (msg: Devtools.MessageToAppHostCoordinator | Devtools.MessageToAppHostStore) => Effect.Effect<void>
+  responsePubSub: PubSub.PubSub<Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession>
+  sendToAppHost: (msg: Devtools.MessageToAppLeader | Devtools.MessageToAppClientSession) => Effect.Effect<void>
   appHostId: string
   copyToClipboard: (text: string) => Effect.Effect<void>
   sendEscapeKey?: Effect.Effect<void>

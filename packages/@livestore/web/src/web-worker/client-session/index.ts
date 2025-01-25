@@ -5,13 +5,13 @@ import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { EventId } from '@livestore/common/schema'
+import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   BrowserWorker,
   Cause,
-  Chunk,
   Deferred,
   Effect,
   Exit,
@@ -20,11 +20,11 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
-  WebChannel,
   WebLock,
   Worker,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+import { makeMeshNode } from '@livestore/webmesh'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
@@ -124,7 +124,7 @@ export const makeAdapter =
         Effect.forkScoped,
       )
 
-      const sharedWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
+      const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
       const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorker.Request.Type>({
         size: 1,
@@ -143,7 +143,7 @@ export const makeAdapter =
             },
           }),
       }).pipe(
-        Effect.provide(BrowserWorker.layer(() => sharedWorker)),
+        Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
         Effect.tapErrorCause(shutdown),
@@ -389,44 +389,25 @@ export const makeAdapter =
         shutdown,
       } satisfies Coordinator
 
-      const waitForDevtoolsWebBridgePort = ({ webBridgeId }: { webBridgeId: string }) =>
-        Effect.gen(function* () {
-          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-          const { port } = yield* sharedWorker.executeEffect(
-            WorkerSchema.SharedWorker.DevtoolsWebBridgeWaitForPort.make({ webBridgeId }),
-          )
-          return port
-        }).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/web:coordinator:devtools:waitForDevtoolsWebBridgePort'),
-        )
-
-      const connectToDevtools = (coordinatorMessagePort: MessagePort) =>
-        runInWorkerStream(
-          WorkerSchema.LeaderWorkerInner.ConnectDevtoolsStream.make({
-            port: coordinatorMessagePort,
-            appHostId: clientId,
-            isLeader: gotLocky,
-          }),
-        ).pipe(
-          Stream.tap(({ storeMessagePort }) =>
-            Effect.gen(function* () {
-              const storeDevtoolsChannel = yield* WebChannel.messagePortChannel({
-                port: storeMessagePort,
-                schema: { listen: Devtools.MessageToAppHostStore, send: Devtools.MessageFromAppHostStore },
-              })
-
-              yield* connectDevtoolsToStore(storeDevtoolsChannel)
-              // NOTE the `forkScoped` seems to be needed here since otherwise interruption doesn't work
-            }).pipe(Effect.forkScoped),
-          ),
-          Stream.runDrain,
-          Effect.interruptible,
-          Effect.withSpan('@livestore/web:coordinator:devtools:connect'),
-        )
-
       if (devtoolsEnabled) {
-        yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
+        // yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
+        yield* Effect.gen(function* () {
+          const appHostId = clientId
+          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
+
+          yield* bootDevtools({ coordinator, storeId })
+
+          // TODO re-enable browser extension as well
+          const storeDevtoolsChannel = yield* makeWebDevtoolsChannel({
+            nodeName: `app-store-${storeId}-${appHostId}`,
+            target: 'devtools',
+            schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
+            worker: sharedWorker,
+            workerTargetName: 'shared-worker',
+          })
+
+          yield* connectDevtoolsToStore(storeDevtoolsChannel)
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
       return { coordinator, syncDb }

@@ -217,8 +217,8 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
 }
 
 export type StoreDevtoolsChannel = WebChannel.WebChannel<
-  Devtools.MessageToAppHostStore,
-  Devtools.MessageFromAppHostStore
+  Devtools.MessageToAppClientSession,
+  Devtools.MessageFromAppClientSession
 >
 
 export type ConnectDevtoolsToStore = (

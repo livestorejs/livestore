@@ -120,7 +120,7 @@ runner.pipe(
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
-  Effect.provide(Logger.pretty),
+  Effect.provide(Logger.prettyWithThread(serviceName)),
   Logger.withMinimumLogLevel(LogLevel.Debug),
   Effect.runFork,
 )

@@ -1,6 +1,6 @@
 export { prepareBrowserExtensionDevtoolsBridge } from './browser-extension-bridge.js'
 export {
-  prepareWebDevtoolsBridge,
+  //   prepareWebDevtoolsBridge,
   type WebBridgeOptions,
   type WebBridgeInfo as WebBridgeChannelInfo,
 } from './web-bridge.js'

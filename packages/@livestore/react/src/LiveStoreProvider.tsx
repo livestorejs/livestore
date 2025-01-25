@@ -27,7 +27,7 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
    *
    * The `storeId` is also used for persistence.
    *
-   * Make sure to also provide `storeId` to `mountDevtools` in `_devtools.html`.
+   * Make sure to also configure `storeId` in LiveStore Devtools (e.g. in Vite plugin).
    *
    * @default 'default'
    */
@@ -115,6 +115,9 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   }
 
   globalThis.__debugLiveStore ??= {}
+  if (Object.keys(globalThis.__debugLiveStore).length === 0) {
+    globalThis.__debugLiveStore['_'] = storeCtx.store
+  }
   globalThis.__debugLiveStore[storeId] = storeCtx.store
 
   return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
@@ -272,7 +275,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       withSemaphore(storeId),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
-      Effect.provide(Logger.pretty),
+      Effect.provide(Logger.prettyWithThread('window')),
       Logger.withMinimumLogLevel(LogLevel.Debug),
       Effect.runFork,
     )

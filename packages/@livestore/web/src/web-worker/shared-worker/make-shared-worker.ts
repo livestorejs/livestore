@@ -1,5 +1,7 @@
 import { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
-import { isNotUndefined } from '@livestore/utils'
+import { connectViaWorker } from '@livestore/devtools-web-common/web-channel'
+import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
+import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
   BrowserWorker,
   BrowserWorkerRunner,
@@ -8,6 +10,7 @@ import {
   Effect,
   Exit,
   FetchHttpClient,
+  identity,
   Layer,
   Logger,
   LogLevel,
@@ -17,13 +20,21 @@ import {
   Scope,
   Stream,
   SubscriptionRef,
+  TaskTracing,
   Worker,
   WorkerRunner,
 } from '@livestore/utils/effect'
 
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
-import { makeDevtoolsWebBridge } from './shared-worker-devtools-web-bridge.js'
+
+if (isDevEnv()) {
+  globalThis.__debugLiveStoreUtils = {
+    blobUrl: (buffer: Uint8Array) => URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
+    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+  }
+}
 
 const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
@@ -124,7 +135,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     }
   })
 
-  const devtoolsWebBridge = yield* makeDevtoolsWebBridge
+  // const devtoolsWebBridge = yield* makeDevtoolsWebBridge
 
   const reset = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
@@ -134,7 +145,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     yield* Ref.set(initialMessagePayloadDeferredRef, initialMessagePayloadDeferred)
 
     yield* resetCurrentWorkerCtx
-    yield* devtoolsWebBridge.reset
+    // yield* devtoolsWebBridge.reset
   })
 
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorker.Request, {
@@ -166,6 +177,8 @@ const makeWorkerRunner = Effect.gen(function* () {
           yield* Deferred.succeed(initialMessagePayloadDeferred, message.payload)
         }
       }),
+    // Whenever the client session leader changes (and thus creates a new leader thread), the new client session leader
+    // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
     UpdateMessagePort: ({ port }) =>
       Effect.gen(function* () {
         const initialMessagePayload = yield* initialMessagePayloadDeferredRef.get.pipe(Effect.andThen(Deferred.await))
@@ -194,7 +207,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           Effect.forkIn(scope),
         )
 
-        Effect.gen(function* () {
+        yield* Effect.gen(function* () {
           const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
 
           yield* shutdownChannel.listen.pipe(
@@ -203,9 +216,18 @@ const makeWorkerRunner = Effect.gen(function* () {
             Stream.tap(() => reset),
             Stream.runDrain,
           )
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped, Scope.extend(scope), Effect.forkIn(scope))
+        }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
 
-        const worker = yield* Deferred.await(workerDeferred)
+        const worker = yield* workerDeferred
+
+        // Prepare the web mesh connection for leader worker to be able to connect to the devtools
+        const { node } = yield* WebMeshWorker.CacheService
+
+        yield* connectViaWorker({ node, worker, target: 'leader-worker' }).pipe(
+          Effect.tapCauseLogPretty,
+          Scope.extend(scope),
+          Effect.forkIn(scope),
+        )
 
         yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
       }).pipe(
@@ -226,9 +248,10 @@ const makeWorkerRunner = Effect.gen(function* () {
     GetCurrentMutationEventId: forwardRequest,
     NetworkStatusStream: forwardRequestStream,
     Shutdown: forwardRequest,
-    ConnectDevtoolsStream: forwardRequestStream,
 
-    ...devtoolsWebBridge.handlers,
+    'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
+
+    // ...devtoolsWebBridge.handlers,
   })
 }).pipe(Layer.unwrapScoped)
 
@@ -239,8 +262,12 @@ export const makeWorker = () => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.pretty),
+    Effect.provide(Logger.prettyWithThread(self.name)),
     Effect.provide(FetchHttpClient.layer),
+    Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: 'shared-worker' })),
+    LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+    // TODO remove type-cast (currently needed to silence a tsc bug)
+    (_) => _ as any as Effect.Effect<void, any>,
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runFork,
   )

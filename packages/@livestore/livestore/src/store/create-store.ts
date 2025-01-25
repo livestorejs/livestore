@@ -7,7 +7,7 @@ import type {
 } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { makeNoopTracer } from '@livestore/utils'
+import { LS_DEV, makeNoopTracer } from '@livestore/utils'
 import {
   Cause,
   Context,
@@ -16,6 +16,7 @@ import {
   Effect,
   Exit,
   FiberSet,
+  identity,
   Layer,
   Logger,
   LogLevel,
@@ -24,6 +25,7 @@ import {
   Queue,
   Runtime,
   Scope,
+  TaskTracing,
 } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
@@ -225,6 +227,7 @@ export const createStore = <
         //   ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
         //   : undefined,
       }),
+      LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
       Effect.provide(TracingLive),
     )
   })

@@ -42,7 +42,7 @@ export {
   TQueue,
   Option,
   LogLevel,
-  Logger,
+  // Logger,
   Config,
   Layer,
   STM,
@@ -63,6 +63,8 @@ export * as Stream from './Stream.js'
 export * as BucketQueue from './BucketQueue.js'
 
 export * as SubscriptionRef from './SubscriptionRef.js'
+
+export * as Logger from './Logger.js'
 
 export * as WebChannel from './WebChannel.js'
 export * as WebSocket from './WebSocket.js'

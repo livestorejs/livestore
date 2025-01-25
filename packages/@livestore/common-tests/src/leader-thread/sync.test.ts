@@ -212,7 +212,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     makeSyncBackend,
     db,
     dbLog,
-    devtoolsEnabled: false,
+    devtoolsOptions: { enabled: false },
     initialSyncOptions: { _tag: 'Skip' },
   })
 

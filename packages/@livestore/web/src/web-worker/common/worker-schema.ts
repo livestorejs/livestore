@@ -1,5 +1,6 @@
 import { BootStatus, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
+import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 // export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
@@ -147,22 +148,6 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  /**
-   * NOTE we're modeling this case as a stream since streams which only ever emits one value but stays open
-   * for the lifetime of the connection
-   */
-  export class ConnectDevtoolsStream extends Schema.TaggedRequest<ConnectDevtoolsStream>()('ConnectDevtoolsStream', {
-    payload: {
-      port: Transferable.MessagePort,
-      appHostId: Schema.String,
-      isLeader: Schema.Boolean,
-    },
-    success: Schema.Struct({
-      storeMessagePort: Transferable.MessagePort,
-    }),
-    failure: UnexpectedError,
-  }) {}
-
   export const Request = Schema.Union(
     InitialMessage,
     BootStatusStream,
@@ -174,7 +159,7 @@ export namespace LeaderWorkerInner {
     GetLeaderSyncState,
     NetworkStatusStream,
     Shutdown,
-    ConnectDevtoolsStream,
+    WebMeshWorker.Schema.CreateConnection,
   )
   export type Request = typeof Request.Type
 }
@@ -200,36 +185,9 @@ export namespace SharedWorker {
     failure: UnexpectedError,
   }) {}
 
-  export class DevtoolsWebBridgeWaitForPort extends Schema.TaggedRequest<DevtoolsWebBridgeWaitForPort>()(
-    'DevtoolsWebBridgeWaitForPort',
-    {
-      payload: {
-        webBridgeId: Schema.String,
-      },
-      success: Schema.Struct({
-        port: Transferable.MessagePort,
-      }),
-      failure: UnexpectedError,
-    },
-  ) {}
-
-  export class DevtoolsWebBridgeOfferPort extends Schema.TaggedRequest<DevtoolsWebBridgeOfferPort>()(
-    'DevtoolsWebBridgeOfferPort',
-    {
-      payload: {
-        port: Transferable.MessagePort,
-        webBridgeId: Schema.String,
-      },
-      success: Schema.Void,
-      failure: UnexpectedError,
-    },
-  ) {}
-
   export class Request extends Schema.Union(
     InitialMessage,
     UpdateMessagePort,
-    DevtoolsWebBridgeWaitForPort,
-    DevtoolsWebBridgeOfferPort,
 
     // Proxied requests
     LeaderWorkerInner.BootStatusStream,
@@ -242,6 +200,7 @@ export namespace SharedWorker {
     LeaderWorkerInner.GetLeaderSyncState,
     LeaderWorkerInner.NetworkStatusStream,
     LeaderWorkerInner.Shutdown,
-    LeaderWorkerInner.ConnectDevtoolsStream,
+
+    WebMeshWorker.Schema.CreateConnection,
   ) {}
 }

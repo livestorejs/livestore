@@ -34,7 +34,7 @@ export const connectDevtoolsToStore = ({
   storeDevtoolsChannel,
   store,
 }: {
-  storeDevtoolsChannel: WebChannel.WebChannel<Devtools.MessageToAppHostStore, Devtools.MessageFromAppHostStore>
+  storeDevtoolsChannel: WebChannel.WebChannel<Devtools.MessageToAppClientSession, Devtools.MessageFromAppClientSession>
   store: IStore
 }) =>
   Effect.gen(function* () {
@@ -52,10 +52,10 @@ export const connectDevtoolsToStore = ({
       }),
     )
 
-    const sendToDevtools = (message: Devtools.MessageFromAppHostStore) =>
+    const sendToDevtools = (message: Devtools.MessageFromAppClientSession) =>
       storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runFork)
 
-    const onMessage = (decodedMessage: typeof Devtools.MessageToAppHostStore.Type) => {
+    const onMessage = (decodedMessage: typeof Devtools.MessageToAppClientSession.Type) => {
       // console.debug('@livestore/livestore:store:devtools:onMessage', decodedMessage)
 
       if (decodedMessage.appHostId !== store.clientSession.coordinator.devtools.appHostId) {

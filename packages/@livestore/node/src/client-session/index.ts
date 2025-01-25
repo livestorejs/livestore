@@ -235,7 +235,7 @@ export const makeNodeAdapter = ({
             nodeName: `app-store-${appHostId}`,
             target: 'devtools',
             url: `ws://localhost:${devtoolsOptions.port}`,
-            schema: { listen: Devtools.MessageToAppHostStore, send: Devtools.MessageFromAppHostStore },
+            schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
           })
 
           // TODO handle disconnect/reconnect

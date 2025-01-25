@@ -35,14 +35,14 @@ export type DevtoolsContextEnabled = {
      * Used for the initial connection establishment.
      */
     coordinatorMessagePortOrChannel: // | MessagePort
-    WebChannel.WebChannel<Devtools.MessageToAppHostCoordinator, Devtools.MessageFromAppHostCoordinator>
+    WebChannel.WebChannel<Devtools.MessageToAppLeader, Devtools.MessageFromAppLeader>
     /** Deferred of port for messages between the devtools and the store */
     // storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
     /** Allows the devtools connection to interrupt itself */
     disconnect: Effect.Effect<void>
     storeId: string
-    appHostId: string
-    isLeader: boolean
+    // appHostId: string
+    // isLeader: boolean
     persistenceInfo: PersistenceInfoPair
     shutdownChannel: ShutdownChannel
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
@@ -52,7 +52,7 @@ export type DevtoolsContextEnabled = {
     message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
   ) => Effect.Effect<void>
 }
-export type DevtoolsContext = DevtoolsContextEnabled | { enabled: false }
+// export type DevtoolsContext = DevtoolsContextEnabled | { enabled: false }
 
 export type ShutdownState = 'running' | 'shutting-down'
 
@@ -87,6 +87,23 @@ export type InitialSyncInfo = Option.Option<{
 export type LeaderDatabase = SynchronousDatabase<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
 export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
 
+export type DevtoolsOptions =
+  | {
+      enabled: false
+    }
+  | {
+      enabled: true
+      makeContext: Effect.Effect<
+        {
+          devtoolsWebChannel: WebChannel.WebChannel<Devtools.MessageToAppLeader, Devtools.MessageFromAppLeader>
+          shutdownChannel: ShutdownChannel
+          persistenceInfo: PersistenceInfoPair
+        },
+        UnexpectedError,
+        Scope.Scope
+      >
+    }
+
 export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   LeaderThreadCtx,
   {
@@ -100,7 +117,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
-    devtools: DevtoolsContext
+    // devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: SyncProcessor
     connectedClientSessionPullQueues: PullQueueSet

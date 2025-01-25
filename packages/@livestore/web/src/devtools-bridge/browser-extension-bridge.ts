@@ -24,7 +24,7 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
   })
 
   const responsePubSub = yield* PubSub.unbounded<
-    Devtools.MessageFromAppHostCoordinator | Devtools.MessageFromAppHostStore
+    Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession
   >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
   const portForDevtoolsDeferred = yield* Deferred.make<MessagePort>()

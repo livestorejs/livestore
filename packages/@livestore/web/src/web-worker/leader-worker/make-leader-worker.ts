@@ -1,6 +1,6 @@
-import type { NetworkStatus, SyncBackend } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
-import type { InitialSyncOptions } from '@livestore/common/leader-thread'
+import type { NetworkStatus, SyncBackend, SynchronousDatabase } from '@livestore/common'
+import { Devtools, UnexpectedError } from '@livestore/common'
+import type { DevtoolsOptions, InitialSyncOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   getLocalHeadFromDb,
@@ -10,13 +10,14 @@ import {
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
+import { makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
+import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv } from '@livestore/utils'
+import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   BrowserWorkerRunner,
-  Deferred,
   Effect,
   FetchHttpClient,
   Fiber,
@@ -72,9 +73,9 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
-    Effect.provide(Logger.pretty),
+    Effect.provide(Logger.prettyWithThread(self.name)),
     Effect.provide(FetchHttpClient.layer),
-    TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)),
+    LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     TracingLive ? Effect.provide(TracingLive) : identity,
     Logger.withMinimumLogLevel(LogLevel.Debug),
   )
@@ -84,6 +85,7 @@ const makeWorkerRunnerOuter = (
   workerOptions: WorkerOptions,
 ): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | HttpClient.HttpClient> =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuter.InitialMessage, {
+    // Port coming from client session and forwarded via the shared worker
     InitialMessage: ({ port: incomingRequestsPort }) =>
       Effect.gen(function* () {
         const innerFiber = yield* makeWorkerRunnerInner(workerOptions).pipe(
@@ -93,8 +95,12 @@ const makeWorkerRunnerOuter = (
           Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
           Effect.annotateLogs({ thread: self.name }),
-          Effect.provide(Logger.pretty),
+          Effect.provide(Logger.prettyWithThread(self.name)),
+          Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: 'leader-worker' })),
           Logger.withMinimumLogLevel(LogLevel.Debug),
+          // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
+          // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
+          // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
           Effect.withScheduler(Scheduler.messageChannel()),
           // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
           Effect.withMaxOpsBeforeYield(4096),
@@ -125,7 +131,9 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // Might involve some async work, so we're running them concurrently
         const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
-        return makeLeaderThreadLayer({
+        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, db, dbLog, storeId })
+
+        const layer = makeLeaderThreadLayer({
           schema,
           storeId,
           originId,
@@ -137,9 +145,13 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
             makeSyncBackend === undefined || syncOptions === undefined ? undefined : makeSyncBackend(syncOptions),
           db,
           dbLog,
-          devtoolsEnabled,
+          devtoolsOptions,
           initialSyncOptions,
         })
+
+        // yield* bootDevtools({}).pipe(Effect.provide(layer), Effect.tapCauseLogPretty, Effect.forkScoped)
+
+        return layer
       }).pipe(
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
@@ -203,12 +215,12 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       }).pipe(Stream.unwrap),
     Shutdown: () =>
       Effect.gen(function* () {
-        const { db, dbLog, devtools } = yield* LeaderThreadCtx
+        const { db, dbLog } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
 
-        if (devtools.enabled) {
-          yield* FiberSet.clear(devtools.connections)
-        }
+        // if (devtools.enabled) {
+        //   yield* FiberSet.clear(devtools.connections)
+        // }
 
         db.close()
         dbLog.close()
@@ -219,44 +231,82 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
     // NOTE We're using a stream here to express a scoped effect over the worker boundary
     // so the code below can cause an interrupt on the worker client side
-    ConnectDevtoolsStream: ({ port, appHostId, isLeader }) =>
-      Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>(
-        (emit) =>
-          Effect.gen(function* () {
-            const leaderthreadCtx = yield* LeaderThreadCtx
+    // ConnectDevtoolsStream: ({ port, appHostId, isLeader }) =>
+    //   Stream.asyncScoped<{ storeMessagePort: MessagePort }, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>(
+    //     (emit) =>
+    //       Effect.gen(function* () {
+    //         const leaderthreadCtx = yield* LeaderThreadCtx
 
-            if (leaderthreadCtx.devtools.enabled === false) {
-              return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
-            }
+    //         if (leaderthreadCtx.devtools.enabled === false) {
+    //           return yield* new UnexpectedError({ cause: 'Devtools are disabled' })
+    //         }
 
-            const storeMessagePortDeferred = yield* Deferred.make<MessagePort, UnexpectedError>()
+    //         const storeMessagePortDeferred = yield* Deferred.make<MessagePort, UnexpectedError>()
 
-            const shutdownChannel = yield* makeShutdownChannel(leaderthreadCtx.storeId)
+    //         const shutdownChannel = yield* makeShutdownChannel(leaderthreadCtx.storeId)
 
-            const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* leaderthreadCtx.devtools
-              .connect({
-                // @ts-expect-error TODO fix
-                coordinatorMessagePortOrChannel: port,
-                storeMessagePortDeferred,
-                disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
-                storeId: leaderthreadCtx.storeId,
-                appHostId,
-                isLeader,
-                persistenceInfo: {
-                  db: leaderthreadCtx.db.metadata.persistenceInfo,
-                  mutationLog: leaderthreadCtx.dbLog.metadata.persistenceInfo,
-                },
-                shutdownChannel,
-              })
-              .pipe(
-                Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
-                Effect.onInterrupt(() => Effect.promise(() => emit.end())),
-                FiberSet.run(leaderthreadCtx.devtools.connections),
-              )
+    //         const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* leaderthreadCtx.devtools
+    //           .connect({
+    //             // @ts-expect-error TODO fix
+    //             coordinatorMessagePortOrChannel: port,
+    //             storeMessagePortDeferred,
+    //             disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
+    //             storeId: leaderthreadCtx.storeId,
+    //             appHostId,
+    //             isLeader,
+    //             persistenceInfo: {
+    //               db: leaderthreadCtx.db.metadata.persistenceInfo,
+    //               mutationLog: leaderthreadCtx.dbLog.metadata.persistenceInfo,
+    //             },
+    //             shutdownChannel,
+    //           })
+    //           .pipe(
+    //             Effect.tapError((cause) => Effect.promise(() => emit.fail(cause))),
+    //             Effect.onInterrupt(() => Effect.promise(() => emit.end())),
+    //             FiberSet.run(leaderthreadCtx.devtools.connections),
+    //           )
 
-            const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
+    //         const storeMessagePort = yield* Deferred.await(storeMessagePortDeferred)
 
-            emit.single({ storeMessagePort })
+    //         emit.single({ storeMessagePort })
+    //       }),
+    //   ).pipe(Stream.withSpan('@livestore/web:worker:ConnectDevtools')),
+    'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
+  })
+
+const makeDevtoolsOptions = ({
+  devtoolsEnabled,
+  db,
+  dbLog,
+  storeId,
+}: {
+  devtoolsEnabled: boolean
+  db: SynchronousDatabase
+  dbLog: SynchronousDatabase
+  storeId: string
+}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebMeshWorker.CacheService> =>
+  Effect.gen(function* () {
+    if (devtoolsEnabled === false) {
+      return { enabled: false }
+    }
+    const { node } = yield* WebMeshWorker.CacheService
+
+    return {
+      enabled: true,
+      makeContext: Effect.gen(function* () {
+        const shutdownChannel = yield* makeShutdownChannel(storeId)
+        return {
+          devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
+            node,
+            target: 'devtools',
+            schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),
-      ).pipe(Stream.withSpan('@livestore/web:worker:ConnectDevtools')),
+          shutdownChannel,
+          persistenceInfo: {
+            db: db.metadata.persistenceInfo,
+            mutationLog: dbLog.metadata.persistenceInfo,
+          },
+        }
+      }),
+    }
   })
