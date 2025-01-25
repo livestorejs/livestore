@@ -35,7 +35,7 @@ import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
 import type { BaseGraphQLContext, GraphQLOptions, OtelOptions } from './store-types.js'
 
-export type CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> = {
+export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> {
   schema: TSchema
   adapter: Adapter
   storeId: string
