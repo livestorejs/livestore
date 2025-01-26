@@ -1,5 +1,5 @@
-import { querySQL, sql } from '@livestore/livestore'
-import { query, row } from '@livestore/solid'
+import { queryDb, sql } from '@livestore/livestore'
+import { query } from '@livestore/solid'
 import { Schema } from 'effect'
 import type { Component } from 'solid-js'
 
@@ -9,13 +9,26 @@ import type { Filter } from '../types.js'
 
 const sessionId = store?.()?.sessionId ?? 'default'
 
-const incompleteCount$ = querySQL(sql`select count(*) as c from todos where completed = false and deleted is null`, {
+const incompleteCount$ = queryDb({
+  query: sql`select count(*) as c from todos where completed = false and deleted is null`,
   schema: Schema.Struct({ c: Schema.Number }).pipe(Schema.pluck('c'), Schema.Array, Schema.headOrElse()),
-  label: 'incompleteCount',
 })
 
 export const ActionBar: Component = () => {
-  const appRow = row(tables.app, sessionId)
+  const appRow = query(
+    queryDb(
+      tables.app.query
+        .where({
+          id: sessionId,
+        })
+        .first(),
+    ),
+    {
+      filter: 'all',
+      id: sessionId,
+      newTodoText: '',
+    },
+  )
   const incompleteCount = query(incompleteCount$, 0)
 
   const setFilter = (filter: Filter) => store()?.mutate(mutations.setFilter({ filter, sessionId }))

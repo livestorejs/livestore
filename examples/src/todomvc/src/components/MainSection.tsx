@@ -33,9 +33,17 @@ export const MainSection: React.FC = () => {
         {visibleTodos.map((todo) => (
           <li key={todo.id}>
             <div className="view">
-              <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+              <input
+                title="done"
+                type="checkbox"
+                className="toggle"
+                checked={todo.completed}
+                onChange={() => toggleTodo(todo)}
+              />
               <label>{todo.text}</label>
               <button
+                type="button"
+                title="delete"
                 className="destroy"
                 onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))}
               ></button>

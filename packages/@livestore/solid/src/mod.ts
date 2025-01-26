@@ -1,1 +1,1 @@
-export { getStore, query, row } from './store.js'
+export { getStore, query } from './store.js'

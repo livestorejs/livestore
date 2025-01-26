@@ -1,4 +1,5 @@
-import { row } from '@livestore/solid'
+import { queryDb } from '@livestore/livestore'
+import { query } from '@livestore/solid'
 import type { Component } from 'solid-js'
 
 import { mutations, tables } from '../schema/index.js'
@@ -7,7 +8,11 @@ import { store } from '../store.js'
 const sessionId = store()?.sessionId ?? 'default'
 
 export const Header: Component = () => {
-  const newRow = row(tables.app, sessionId)
+  const newRow = query(queryDb(tables.app.query.row(sessionId)), {
+    filter: 'all',
+    id: sessionId,
+    newTodoText: '',
+  })
 
   return (
     <header class="header">

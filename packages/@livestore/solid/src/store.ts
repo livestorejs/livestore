@@ -3,16 +3,14 @@ import type {
   BaseGraphQLContext,
   BootStatus,
   CreateStoreOptions,
-  DbSchema,
   GetResult,
   LiveQueryAny,
   LiveStoreContext as StoreContext_,
   LiveStoreContextRunning,
   LiveStoreSchema,
-  RowResult,
   Store,
 } from '@livestore/livestore'
-import { createStore, rowQuery, StoreAbort, StoreInterrupted } from '@livestore/livestore'
+import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
 import { Effect, FiberSet, Logger, LogLevel } from '@livestore/utils/effect'
 import type { Accessor } from 'solid-js'
 import { createEffect, createSignal, onCleanup } from 'solid-js'
@@ -180,27 +178,6 @@ export const query = <TQuery extends LiveQueryAny>(
   const [value, setValue] = createSignal(initialValue)
 
   const unsubscribe = storeToExport()?.subscribe(query$ as any, setValue)
-
-  onCleanup(() => {
-    unsubscribe?.()
-  })
-
-  return value
-}
-
-export const row = <
-  TTableDef extends DbSchema.TableDef<
-    DbSchema.DefaultSqliteTableDef,
-    boolean,
-    DbSchema.TableOptions & { isSingleton: false; deriveMutations: { enabled: true } }
-  >,
->(
-  table: TTableDef,
-  id: string,
-): Accessor<RowResult<TTableDef> | undefined> => {
-  const [value, setValue] = createSignal<RowResult<TTableDef>>()
-
-  const unsubscribe = rowQuery(table, id).subscribe(setValue)
 
   onCleanup(() => {
     unsubscribe?.()

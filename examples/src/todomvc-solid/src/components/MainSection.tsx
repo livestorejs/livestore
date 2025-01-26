@@ -1,6 +1,5 @@
-import { querySQL, rowQuery, sql } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 import { query } from '@livestore/solid'
-import { Schema } from 'effect'
 import { type Component, Index } from 'solid-js'
 
 import { mutations, tables, type Todo } from '../schema/index.js'
@@ -8,15 +7,16 @@ import { store } from '../store.jsx'
 
 const sessionId = store?.()?.sessionId ?? 'default'
 
-const filterClause$ = rowQuery(tables.app, sessionId, {
-  map: ({ filter }) => `where ${filter === 'all' ? '' : `completed = ${filter === 'completed'} and `}deleted is null`,
-  label: 'filterClause',
-})
-
-const visibleTodos$ = querySQL((get) => sql`select * from todos ${get(filterClause$)}`, {
-  schema: Schema.Array(tables.todos.schema),
-  label: 'visibleTodos',
-})
+const visibleTodos$ = queryDb(
+  (get) => {
+    const { filter } = get(queryDb(tables.app.query.row(sessionId)))
+    return tables.todos.query.where({
+      deleted: null,
+      completed: filter === 'all' ? undefined : filter === 'completed',
+    })
+  },
+  { label: 'visibleTodos' },
+)
 
 export const MainSection: Component = () => {
   const toggleTodo = ({ id, completed }: Todo) => {
