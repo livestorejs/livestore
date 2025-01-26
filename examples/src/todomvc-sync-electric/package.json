@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "workspace:*",
+    "@livestore/devtools-vite": "0.2.0",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-electric": "workspace:*",

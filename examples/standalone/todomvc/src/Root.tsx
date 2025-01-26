@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-global-this */
 import { LiveStoreProvider } from '@livestore/react'
 import { makeAdapter } from '@livestore/web'
 import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
@@ -10,6 +11,7 @@ import { Header } from './components/Header.js'
 import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
+import { makeTracer } from './otel.js'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -19,11 +21,22 @@ const AppBody: React.FC = () => (
   </section>
 )
 
+const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+
+if (resetPersistence) {
+  const searchParams = new URLSearchParams(window.location.search)
+  searchParams.delete('reset')
+  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
+}
+
 const adapter = makeAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
+  resetPersistence,
 })
+
+const otelTracer = makeTracer('todomvc-main')
 
 export const App: React.FC = () => (
   <LiveStoreProvider
@@ -31,6 +44,7 @@ export const App: React.FC = () => (
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
     batchUpdates={batchUpdates}
+    otelOptions={{ tracer: otelTracer }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
       <FPSMeter height={40} />

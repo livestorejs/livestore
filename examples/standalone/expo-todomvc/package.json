@@ -11,11 +11,11 @@
   "dependencies": {
     "@expo/vector-icons": "14.0.4",
     "@livestore/devtools-expo": "0.2.0",
-    "@livestore/expo": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/react": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "babel-preset-expo": "12.0.0-preview.6",
+    "@livestore/expo": "0.2.0",
+    "@livestore/livestore": "0.2.0",
+    "@livestore/react": "0.2.0",
+    "@livestore/utils": "0.2.0",
+    "babel-preset-expo": "12.0.4",
     "effect": "3.12.1",
     "expo": "52.0.18",
     "expo-asset": "11.0.0",
@@ -26,9 +26,9 @@
     "react-native": "0.76.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
+    "@babel/core": "^7.26.0",
     "@babel/plugin-syntax-import-attributes": "^7.26.0",
-    "@babel/runtime": "^7.26.0",
+    "@babel/runtime": "7.26.0",
     "@types/react": "~18.3.12",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "10.2.2",
