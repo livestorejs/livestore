@@ -1,0 +1,29 @@
+{
+  "name": "livestore-example-src-todomvc-solid",
+  "version": "0.0.0",
+  "description": "",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@livestore/livestore": "workspace:*",
+    "@livestore/solid": "workspace:*",
+    "@livestore/wa-sqlite": "1.0.1-dev.29",
+    "@livestore/web": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "effect": "3.10.12",
+    "solid-js": "^1.8.11",
+    "todomvc-app-css": "^2.4.3",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "solid-devtools": "^0.29.2",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11",
+    "vite-plugin-solid": "^2.8.2"
+  }
+}

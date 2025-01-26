@@ -1,0 +1,22 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "types": ["vite/client"],
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../packages/@livestore/livestore" },
+    { "path": "../../../packages/@livestore/solid" },
+    { "path": "../../../packages/@livestore/web" }
+  ]
+}

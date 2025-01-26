@@ -1524,6 +1524,49 @@ importers:
         specifier: ^0.20.5
         version: 0.20.5(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
+  examples/standalone/todomvc-solid:
+    dependencies:
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/livestore
+      '@livestore/solid':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/solid
+      '@livestore/wa-sqlite':
+        specifier: 1.0.1-dev.29
+        version: 1.0.1-dev.29
+      '@livestore/web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/web
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+      effect:
+        specifier: 3.10.12
+        version: 3.10.12
+      solid-js:
+        specifier: ^1.8.11
+        version: 1.9.3
+      todomvc-app-css:
+        specifier: ^2.4.3
+        version: 2.4.3
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+    devDependencies:
+      solid-devtools:
+        specifier: ^0.29.2
+        version: 0.29.3(solid-js@1.9.3)(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))
+      typescript:
+        specifier: ^5.3.3
+        version: 5.3.3
+      vite:
+        specifier: ^5.0.11
+        version: 5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0)
+      vite-plugin-solid:
+        specifier: ^2.8.2
+        version: 2.10.2(solid-js@1.9.3)(vite@5.4.10(@types/node@22.8.5)(lightningcss@1.27.0)(terser@5.36.0))
+
   examples/standalone/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
@@ -3850,7 +3893,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.21.7':
     resolution: {integrity: sha512-qF9E2eOiafvlcDhMb2nrQCv+Opa9yUDVmzvLMwUSE0zsbUf6GuhBlbrbzy0dYLnwI8CvwDfJkLPAOgJhuxJCLw==}
@@ -17736,8 +17779,8 @@ snapshots:
       strip-ansi: 7.1.0
       supports-color: 9.4.0
       terminal-link: 3.0.0
-      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.5.4)
-      typescript: 5.5.4
+      ts-node: 10.9.2(@types/node@22.8.5)(typescript@5.3.3)
+      typescript: 5.3.3
       uuid: 9.0.1
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -30042,7 +30085,6 @@ snapshots:
       typescript: 5.3.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
-    optional: true
 
   ts-node@10.9.2(@types/node@22.8.5)(typescript@5.5.4):
     dependencies:
