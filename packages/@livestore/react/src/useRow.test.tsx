@@ -262,14 +262,13 @@ describe('useRow', () => {
   describe('otel', () => {
     const exporter = new InMemorySpanExporter()
 
-    const provider = cachedProvider ?? new BasicTracerProvider()
+    const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
     cachedProvider = provider
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
     provider.register()
 
     const otelTracer = otel.trace.getTracer('test')
 
-    const span = otelTracer.startSpan('test')
+    const span = otelTracer.startSpan('test-root')
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     it('should update the data based on component key', async () => {

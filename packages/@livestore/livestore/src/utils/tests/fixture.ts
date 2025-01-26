@@ -1,7 +1,8 @@
+import { provideOtel } from '@livestore/common'
 import type { FromInputSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStore, DbSchema, globalReactivityGraph, makeReactivityGraph, makeSchema } from '@livestore/livestore'
-import { Effect, FiberSet } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 
@@ -55,19 +56,13 @@ export const makeTodoMvc = ({
   Effect.gen(function* () {
     const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
 
-    const fiberSet = yield* FiberSet.make()
-
     const store: Store<any, FixtureSchema> = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
       reactivityGraph,
-      otelOptions: {
-        tracer: otelTracer,
-        rootSpanContext: otelContext,
-      },
-      fiberSet,
+      debug: { instanceId: 'test' },
     })
 
     return { store, reactivityGraph }
-  })
+  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer: otelTracer }))

@@ -1,5 +1,4 @@
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
-import type * as OtelResource from '@effect/opentelemetry/Resource'
 import type * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
@@ -9,6 +8,7 @@ import { Config, Effect, Layer } from 'effect'
 import type { ParentSpan } from 'effect/Tracer'
 
 import { tapCauseLogPretty } from '../effect/Effect.js'
+import type { OtelTracer } from '../effect/index.js'
 
 // import { tapCauseLogPretty } from '../effect/Effect.js'
 
@@ -35,9 +35,7 @@ export const OtelLiveHttp = ({
   rootSpanName,
   skipLogUrl,
 }: { serviceName?: string; rootSpanName?: string; skipLogUrl?: boolean } = {}): Layer.Layer<
-  never,
-  // TODO bring back when fixed in Effect/otel
-  // OtelResource.Resource | ParentSpan,
+  OtelTracer.OtelTracer | ParentSpan,
   never,
   never
 > =>
@@ -76,7 +74,7 @@ export const OtelLiveHttp = ({
     })
 
     return RootSpanLive.pipe(Layer.provideMerge(OtelLive))
-  }).pipe(Layer.unwrapEffect)
+  }).pipe(Layer.unwrapEffect) as any
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
   getTracingBackendUrl(span).pipe(

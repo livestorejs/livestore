@@ -21,6 +21,7 @@ export const test = () =>
       bootStatusQueue,
       shutdown: () => Effect.void,
       connectDevtoolsToStore: () => Effect.void,
+      debugInstanceId: 'test',
     })
 
     // NOTE We can't use `Queue.takeAll` since sometimes it takes a bit longer for the updates to come in

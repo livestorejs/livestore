@@ -40,4 +40,4 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
 
       // return {}
     }).pipe(Effect.orDie),
-  ).pipe(Stream.withSpan(`webmesh:shared-worker:create-connection:${from}`))
+  ).pipe(Stream.withSpan(`@livestore/devtools-web-common:worker:create-connection:${from}`))

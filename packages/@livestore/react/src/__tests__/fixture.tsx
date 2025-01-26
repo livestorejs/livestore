@@ -1,7 +1,8 @@
+import { provideOtel } from '@livestore/common'
 import { DbSchema, makeSchema } from '@livestore/common/schema'
 import type { LiveStoreContextRunning } from '@livestore/livestore'
 import { createStore, globalReactivityGraph, makeReactivityGraph } from '@livestore/livestore'
-import { Effect, FiberSet } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
@@ -90,18 +91,12 @@ export const makeTodoMvcReact = ({
 
     const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
 
-    const fiberSet = yield* FiberSet.make()
-
     const store = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
       reactivityGraph,
-      otelOptions: {
-        tracer: otelTracer,
-        rootSpanContext: otelContext,
-      },
-      fiberSet,
+      debug: { instanceId: 'test' },
     })
 
     // TODO improve typing of `LiveStoreContext`
@@ -118,4 +113,4 @@ export const makeTodoMvcReact = ({
     )
 
     return { wrapper, store, reactivityGraph, makeRenderCount, strictMode }
-  })
+  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))

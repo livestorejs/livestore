@@ -103,7 +103,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
 
       // Buy some time for Otel to flush
       // TODO find a cleaner way to do this
-      yield* Effect.sleep(1000)
+      // yield* Effect.sleep(1000)
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:Shutdown')),
 }).pipe(
   Layer.provide(NodeWorkerRunner.layer),
@@ -244,52 +244,3 @@ const makeDevtoolsOptions = ({
       }),
     }
   })
-
-// const bootDevtools = ({ schemaPath, devtoolsPort }: { schemaPath: string; devtoolsPort: number }) =>
-//   Effect.gen(function* () {
-//     const { storeId, db, dbLog, devtools } = yield* LeaderThreadCtx
-
-//     if (devtools.enabled === false) {
-//       return
-//     }
-
-//     const shutdownChannel = yield* makeShutdownChannel(storeId)
-
-//     yield* startDevtoolsServer({ schemaPath, storeId, port: devtoolsPort }).pipe(
-//       Effect.tapCauseLogPretty,
-//       Effect.forkScoped,
-//     )
-
-//     // TODO make this dynamic once we want to support multiple node instances
-//     // (probably via RPC call from coordinator)
-//     const sessionId = 'static'
-//     const appHostId = `${storeId}-${sessionId}`
-//     const isLeader = true
-
-//     const coordinatorToDevtoolsChannel = yield* makeNodeDevtoolsChannel({
-//       nodeName: `app-coordinator-${appHostId}`,
-//       target: 'devtools',
-//       url: `ws://localhost:${devtoolsPort}`,
-//       schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
-//     })
-
-//     // TODO disconnect/reconnect based on channel status
-//     const fiber: Fiber.RuntimeFiber<void, UnexpectedError> = yield* devtools
-//       .connect({
-//         coordinatorMessagePortOrChannel: coordinatorToDevtoolsChannel,
-//         // storeMessagePortDeferred,
-//         disconnect: Effect.suspend(() => Fiber.interrupt(fiber)),
-//         storeId,
-//         appHostId,
-//         isLeader,
-//         persistenceInfo: {
-//           db: db.metadata.persistenceInfo,
-//           mutationLog: dbLog.metadata.persistenceInfo,
-//         },
-//         shutdownChannel,
-//       })
-//       .pipe(
-//         // TODO handle errors
-//         FiberSet.run(devtools.connections),
-//       )
-//   })

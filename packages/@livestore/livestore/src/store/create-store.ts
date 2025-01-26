@@ -5,19 +5,15 @@ import type {
   IntentionalShutdownCause,
   StoreDevtoolsChannel,
 } from '@livestore/common'
-import { UnexpectedError } from '@livestore/common'
+import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { LS_DEV, makeNoopTracer } from '@livestore/utils'
+import { LS_DEV } from '@livestore/utils'
+import type { Cause } from '@livestore/utils/effect'
 import {
-  Cause,
-  Context,
   Deferred,
-  Duration,
   Effect,
   Exit,
-  FiberSet,
   identity,
-  Layer,
   Logger,
   LogLevel,
   MutableHashMap,
@@ -27,13 +23,14 @@ import {
   Scope,
   TaskTracing,
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import { globalReactivityGraph } from '../global-state.js'
 import type { ReactivityGraph } from '../live-queries/base-class.js'
 import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
-import type { BaseGraphQLContext, GraphQLOptions, OtelOptions } from './store-types.js'
+import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, ShutdownDeferred } from './store-types.js'
 
 export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> {
   schema: TSchema
@@ -41,7 +38,6 @@ export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, 
   storeId: string
   reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
-  otelOptions?: Partial<OtelOptions>
   boot?: (
     store: Store<TGraphQLContext, TSchema>,
     parentSpan: otel.Span,
@@ -49,6 +45,10 @@ export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, 
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
+  shutdownDeferred?: ShutdownDeferred
+  debug?: {
+    instanceId?: string
+  }
 }
 
 /** Create a new LiveStore Store */
@@ -57,8 +57,12 @@ export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema,
 >({
   signal,
+  otelOptions,
   ...options
-}: CreateStoreOptions<TGraphQLContext, TSchema> & { signal?: AbortSignal }): Promise<Store<TGraphQLContext, TSchema>> =>
+}: CreateStoreOptions<TGraphQLContext, TSchema> & {
+  signal?: AbortSignal
+  otelOptions?: Partial<OtelOptions>
+}): Promise<Store<TGraphQLContext, TSchema>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
     const runtime = yield* Effect.runtime()
@@ -69,14 +73,12 @@ export const createStorePromise = async <
       })
     }
 
-    return yield* FiberSet.make().pipe(
-      Effect.andThen((fiberSet) => createStore({ ...options, fiberSet })),
-      Scope.extend(scope),
-    )
+    return yield* createStore({ ...options }).pipe(Scope.extend(scope))
   }).pipe(
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
     }),
+    provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
     Effect.provide(Logger.pretty),
@@ -92,40 +94,28 @@ export const createStore = <
   adapter,
   storeId,
   graphQLOptions,
-  otelOptions,
   boot,
   reactivityGraph = globalReactivityGraph,
   batchUpdates,
   disableDevtools,
   onBootStatus,
-  fiberSet,
-}: CreateStoreOptions<TGraphQLContext, TSchema> & { fiberSet: FiberSet.FiberSet }): Effect.Effect<
+  shutdownDeferred,
+  debug,
+}: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<
   Store<TGraphQLContext, TSchema>,
   UnexpectedError,
-  Scope.Scope
+  Scope.Scope | OtelTracer.OtelTracer
 > =>
   Effect.gen(function* () {
-    // const otelTracer = otelOptions?.tracer ?? makeNoopTracer()
-    const otelRootSpanContext =
-      otelOptions?.rootSpanContext ??
-      (yield* OtelTracer.currentOtelSpan.pipe(
-        Effect.map((span) => otel.trace.setSpan(otel.context.active(), span)),
-        Effect.catchAll(() => Effect.succeed(otel.context.active())),
-      ))
+    const lifetimeScope = yield* Scope.make()
 
-    const ctx = yield* Effect.context<never>()
+    yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
-    const OtelTracerLive = Layer.succeed(
-      OtelTracer.OtelTracer,
-      otelOptions?.tracer ?? Context.getOrElse(ctx, OtelTracer.OtelTracer, () => makeNoopTracer()),
-    )
-
-    const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
-      Layer.provideMerge(OtelTracerLive),
-    ) as any as Layer.Layer<OtelTracer.OtelTracer>
+    const debugInstanceId = debug?.instanceId ?? nanoid(10)
 
     return yield* Effect.gen(function* () {
       const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      const otelRootSpanContext = otel.trace.setSpan(otel.context.active(), span)
       const otelTracer = yield* OtelTracer.OtelTracer
 
       const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
@@ -142,36 +132,19 @@ export const createStore = <
 
       const connectDevtoolsToStore_ = (storeDevtoolsChannel: StoreDevtoolsChannel) =>
         Effect.gen(function* () {
-          const store = yield* Deferred.await(storeDeferred)
+          const store = yield* storeDeferred
           yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
         })
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      // TODO close parent scope? (Needs refactor with Mike Arnaldi)
-      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => {
-        // debugger
-        return Effect.gen(function* () {
-          // NOTE we're calling `cause.toString()` here to avoid triggering a `console.error` in the grouped log
-          const logCause =
-            Cause.isFailType(cause) && cause.error._tag === 'LiveStore.IntentionalShutdownCause'
-              ? cause.toString()
-              : cause
-          yield* Effect.logDebug(`Shutting down LiveStore`, logCause)
-
-          FiberSet.clear(fiberSet).pipe(
-            Effect.andThen(() => FiberSet.run(fiberSet, Effect.failCause(cause))),
-            Effect.timeout(Duration.seconds(1)),
-            Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown:clear-fiber-set', duration: 500 }),
-            Effect.catchTag('TimeoutException', (err) =>
-              Effect.logError('Store shutdown timed out. Forcing shutdown.', err).pipe(
-                Effect.andThen(FiberSet.run(fiberSet, Effect.failCause(cause))),
-              ),
-            ),
-            Runtime.runFork(runtime),
-          )
-        }).pipe(Effect.withSpan('livestore:shutdown'))
-      }
+      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
+        Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
+          Effect.tap(() => (shutdownDeferred ? Deferred.failCause(shutdownDeferred, cause) : Effect.void)),
+          Effect.tap(() => Effect.logDebug('LiveStore shutdown complete')),
+          Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
+          Effect.withSpan('livestore:shutdown'),
+        )
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -180,6 +153,7 @@ export const createStore = <
         bootStatusQueue,
         shutdown,
         connectDevtoolsToStore: connectDevtoolsToStore_,
+        debugInstanceId,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
       // TODO fill up with unsynced mutation events from the client session
@@ -194,7 +168,7 @@ export const createStore = <
           reactivityGraph,
           disableDevtools,
           unsyncedMutationEvents,
-          fiberSet,
+          lifetimeScope,
           runtime,
           // NOTE during boot we're not yet executing mutations in a batched context
           // but only set the provided `batchUpdates` function after boot
@@ -224,12 +198,9 @@ export const createStore = <
 
       return store
     }).pipe(
-      Effect.withSpan('createStore', {
-        // parent: otelOptions?.rootSpanContext
-        //   ? OtelTracer.makeExternalSpan(otel.trace.getSpanContext(otelOptions.rootSpanContext)!)
-        //   : undefined,
-      }),
+      Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
+      Effect.annotateLogs({ debugInstanceId, storeId }),
       LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-      Effect.provide(TracingLive),
+      Scope.extend(lifetimeScope),
     )
   })

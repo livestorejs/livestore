@@ -111,7 +111,7 @@ const makeWorkerRunnerOuter = (
 
 const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
-    InitialMessage: ({ storageOptions, storeId, originId, syncOptions, devtoolsEnabled }) =>
+    InitialMessage: ({ storageOptions, storeId, originId, syncOptions, devtoolsEnabled, debugInstanceId }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSyncDb = syncDbFactory({ sqlite3 })
@@ -151,6 +151,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         UnexpectedError.mapToUnexpectedError,
         Effect.withPerformanceMeasure('@livestore/web:worker:InitialMessage'),
         Effect.withSpan('@livestore/web:worker:InitialMessage'),
+        Effect.annotateSpans({ debugInstanceId }),
         Layer.unwrapScoped,
       ),
     // GetRecreateSnapshot: () =>

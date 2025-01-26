@@ -23,7 +23,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = {
         postMessage: (message: any) => process.send!(message),
         on: (event: string, handler: (message: any) => void) => process.on(event, handler),
-        close: () => {},
+        close: () => process.disconnect(),
       }
       const send = (_portId: number, message: O, _transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([1, message] /*, transfers as any*/))
@@ -39,19 +39,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
               if (message[0] === 0) {
                 FiberSet.unsafeAdd(fiberSet, runFork(restore(handler(0, message[1]))))
               } else {
-                port.close()
                 Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
-                // FiberSet.clear(fiberSet).pipe(
-                //   Effect.tap(() => Deferred.done(fiberSet.deferred, Exit.void)),
-                //   // eslint-disable-next-line unicorn/no-process-exit
-                //   Effect.tap(() => Effect.sync(() => process.exit(0)).pipe(Effect.timeout(2000))),
-                //   Effect.tapErrorCause(Effect.logError),
-                //   runFork,
-                // )
-
-                // TODO improve with Tim Smart
-                // eslint-disable-next-line unicorn/no-process-exit
-                setTimeout(() => process.exit(0), 2000)
+                port.close()
               }
             })
             port.on('messageerror', (cause) => {

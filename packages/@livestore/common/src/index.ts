@@ -14,6 +14,7 @@ export * from './bounded-collections.js'
 export * from './version.js'
 export * from './query-builder/mod.js'
 export * from './sync/syncstate.js'
+export * from './otel.js'
 
 declare global {
   interface LiveStoreGlobal {

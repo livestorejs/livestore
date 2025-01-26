@@ -113,7 +113,7 @@ Vitest.describe('sync', () => {
     }).pipe(withCtx(test)),
   )
 
-  Vitest.scopedLive.only('many local pushes', (test) =>
+  Vitest.scopedLive('many local pushes', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext

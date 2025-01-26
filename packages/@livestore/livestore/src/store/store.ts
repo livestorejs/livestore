@@ -4,16 +4,17 @@ import type {
   ParamsObject,
   PreparedBindValues,
   QueryBuilder,
+  UnexpectedError,
 } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   getResultSchema,
+  IntentionalShutdownCause,
   isQueryBuilder,
   makeClientSessionSyncProcessor,
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  UnexpectedError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
@@ -24,9 +25,9 @@ import {
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Data, Effect, FiberSet, Inspectable, MutableHashMap, Runtime, Schema } from '@livestore/utils/effect'
+import { Cause, Data, Effect, Inspectable, MutableHashMap, Runtime, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
+import { type GraphQLSchema } from 'graphql'
 
 import type { LiveQuery, QueryContext, ReactivityGraph } from '../live-queries/base-class.js'
 import type { Ref } from '../reactive.js'
@@ -59,7 +60,6 @@ export class Store<
    */
   tableRefs: { [key: string]: Ref<null, QueryContext, RefreshReason> }
 
-  private fiberSet: FiberSet.FiberSet
   private runtime: Runtime.Runtime<Scope.Scope>
 
   /** RC-based set to see which queries are currently subscribed to */
@@ -69,6 +69,7 @@ export class Store<
   readonly __mutationEventSchema
   private unsyncedMutationEvents
   private syncProcessor: ClientSessionSyncProcessor
+  readonly lifetimeScope: Scope.Scope
 
   // #region constructor
   private constructor({
@@ -81,20 +82,19 @@ export class Store<
     batchUpdates,
     unsyncedMutationEvents,
     storeId,
-    fiberSet,
+    lifetimeScope,
     runtime,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     super()
 
     this.storeId = storeId
-
     this.unsyncedMutationEvents = unsyncedMutationEvents
 
     this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: clientSession.syncDb })
     this.clientSession = clientSession
     this.schema = schema
 
-    this.fiberSet = fiberSet
+    this.lifetimeScope = lifetimeScope
     this.runtime = runtime
 
     const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
@@ -212,8 +212,6 @@ export class Store<
     }
 
     Effect.gen(this, function* () {
-      yield* this.syncProcessor.boot
-
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           // Remove all table refs from the reactivity graph
@@ -230,8 +228,8 @@ export class Store<
         }),
       )
 
-      yield* Effect.never // to keep the scope alive and bind to the parent scope
-    }).pipe(Effect.scoped, Effect.withSpan('LiveStore:constructor'), this.runEffectFork)
+      yield* this.syncProcessor.boot
+    }).pipe(this.runEffectFork)
   }
   // #endregion constructor
 
@@ -577,10 +575,11 @@ export class Store<
     }).pipe(this.runEffectFork)
   }
 
-  __devShutdown = (cause?: Cause.Cause<UnexpectedError>) =>
+  __devShutdown = (cause?: Cause.Cause<UnexpectedError>) => {
     this.clientSession.coordinator
-      .shutdown(cause ?? Cause.fail(UnexpectedError.make({ cause: 'Manual shutdown' })))
-      .pipe(Effect.runSync)
+      .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
+      .pipe(Effect.tapCauseLogPretty, Effect.provide(this.runtime), Effect.runFork)
+  }
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path
   toJSON = () => ({
@@ -588,8 +587,8 @@ export class Store<
     reactivityGraph: this.reactivityGraph.getSnapshot({ includeResults: true }),
   })
 
-  private runEffectFork = <A, E>(effect: Effect.Effect<A, E, never>) =>
-    effect.pipe(Effect.tapCauseLogPretty, FiberSet.run(this.fiberSet), Runtime.runFork(this.runtime))
+  private runEffectFork = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
+    effect.pipe(Effect.forkIn(this.lifetimeScope), Effect.tapCauseLogPretty, Runtime.runFork(this.runtime))
 
   private getMutateArgs = (
     firstMutationOrTxnFnOrOptions: any,

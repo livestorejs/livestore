@@ -230,6 +230,7 @@ export type Adapter = (opts: {
   schema: LiveStoreSchema
   storeId: string
   devtoolsEnabled: boolean
+  debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore

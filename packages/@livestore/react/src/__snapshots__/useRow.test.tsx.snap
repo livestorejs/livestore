@@ -2,7 +2,11 @@
 
 exports[`useRow > otel > should update the data based on component key > strictMode=false 1`] = `
 {
-  "_name": "test",
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
   "children": [
     {
       "_name": "livestore.in-memory-db:execute",
@@ -16,6 +20,9 @@ exports[`useRow > otel > should update the data based on component key > strictM
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "LiveStore:createStore",
     },
     {
       "_name": "sql-in-memory-select",
@@ -195,7 +202,11 @@ exports[`useRow > otel > should update the data based on component key > strictM
 
 exports[`useRow > otel > should update the data based on component key > strictMode=true 1`] = `
 {
-  "_name": "test",
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
   "children": [
     {
       "_name": "livestore.in-memory-db:execute",
@@ -209,6 +220,9 @@ exports[`useRow > otel > should update the data based on component key > strictM
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "LiveStore:createStore",
     },
     {
       "_name": "sql-in-memory-select",

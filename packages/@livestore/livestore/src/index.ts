@@ -9,7 +9,7 @@ export type {
 } from './store/store-types.js'
 
 export type { LiveStoreContextRunning } from './effect/LiveStore.js'
-export { StoreAbort, StoreInterrupted, type LiveStoreContext } from './store/store-types.js'
+export { StoreAbort, StoreInterrupted, type LiveStoreContext, type ShutdownDeferred } from './store/store-types.js'
 
 export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 

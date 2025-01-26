@@ -74,6 +74,8 @@ describe('LiveStoreProvider', () => {
     await waitFor(() => screen.getByText('LiveStore Shutdown due to abort signal'))
   })
 
+  // TODO test aborting during boot
+
   it('error during boot', async () => {
     let appRenderCount = 0
 

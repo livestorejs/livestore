@@ -25,11 +25,4 @@ export class StreamTodos extends Schema.TaggedRequest<StreamTodos>()('StreamTodo
   failure: Schema.Never,
 }) {}
 
-// Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
-export class TmpShutdown extends Schema.TaggedRequest<TmpShutdown>()('TmpShutdown', {
-  payload: {},
-  success: Schema.Void,
-  failure: Schema.Never,
-}) {}
-
-export class Request extends Schema.Union(InitialMessage, CreateTodos, StreamTodos, TmpShutdown) {}
+export class Request extends Schema.Union(InitialMessage, CreateTodos, StreamTodos) {}

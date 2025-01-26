@@ -6,19 +6,15 @@
 ## 0.3.0
 
 - Still todo:
-  - Fix Otel / Effect shutdown behaviour
-    - Test should run faster and shutdown gracefully in `node-sync.test.ts`
   - Syncing
     - Fix: client session sync processor needs to reset pending pushing after rebase
+    - LeaderSyncProcessor: Batch pending pushes by using queue
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
     - Bring back `persisted` sync events or implement a replacement
-    - LeaderSyncProcessor: Batch pending pushes
   - Devtools
-    - Fix: web
     - Fix: Expo
-    - Node
-      - Fix: re-connecting
+    - Fix: Support multiple leader <> devtools connections
 
 - New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.

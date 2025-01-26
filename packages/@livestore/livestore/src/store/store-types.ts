@@ -1,6 +1,6 @@
 import type { ClientSession, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import type { FiberSet, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
+import type { Deferred, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
@@ -24,6 +24,11 @@ export type LiveStoreContext =
 
 export class StoreAbort extends Schema.TaggedError<StoreAbort>()('LiveStore.StoreAbort', {}) {}
 export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {}) {}
+
+export type ShutdownDeferred = Deferred.Deferred<
+  void,
+  UnexpectedError | IntentionalShutdownCause | StoreInterrupted | StoreAbort
+>
 
 export type LiveStoreContextRunning = {
   stage: 'running'
@@ -58,7 +63,7 @@ export type StoreOptions<
   otelOptions: OtelOptions
   reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
-  fiberSet: FiberSet.FiberSet
+  lifetimeScope: Scope.Scope
   runtime: Runtime.Runtime<Scope.Scope>
   batchUpdates: (runUpdates: () => void) => void
   // TODO validate whether we still need this

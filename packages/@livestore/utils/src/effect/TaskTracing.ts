@@ -1,3 +1,4 @@
+import { Predicate } from 'effect'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
 import { pipe } from 'effect/Function'
@@ -6,7 +7,11 @@ import * as Tracer from 'effect/Tracer'
 
 export const withAsyncTaggingTracing =
   (makeTrace: (name: string) => { run: (fn: any) => any }) =>
-  <A, E, R>(fa: Effect.Effect<A, E, R>) => {
+  <A, E, R>(eff: Effect.Effect<A, E, R>) => {
+    if (Predicate.hasProperty(console, 'createTask') === false) {
+      return eff
+    }
+
     const makeTracer = Effect.gen(function* () {
       const oldTracer = yield* Effect.tracer
       return Tracer.make({
@@ -34,5 +39,5 @@ export const withAsyncTaggingTracing =
 
     const withTracerLayer = pipe(makeTracer, Effect.map(Layer.setTracer), Layer.unwrapEffect)
 
-    return Effect.provide(fa, withTracerLayer)
+    return Effect.provide(eff, withTracerLayer)
   }

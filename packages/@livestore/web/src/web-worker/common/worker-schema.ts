@@ -72,6 +72,7 @@ export namespace LeaderWorkerInner {
       devtoolsEnabled: Schema.Boolean,
       storeId: Schema.String,
       originId: Schema.String,
+      debugInstanceId: Schema.String,
     },
     success: Schema.Void,
     failure: UnexpectedError,

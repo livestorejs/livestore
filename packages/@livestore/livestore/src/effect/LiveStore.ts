@@ -1,8 +1,8 @@
 import type { Adapter, BootStatus, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { Cause, Scope } from '@livestore/utils/effect'
-import { Context, Deferred, Duration, Effect, FiberSet, Layer, OtelTracer, pipe } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
+import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
+import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import { createStore } from '../store/create-store.js'
@@ -71,29 +71,17 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
 > =>
   pipe(
     Effect.gen(function* () {
-      const otelRootSpanContext = otel.context.active()
-
-      const otelTracer = yield* OtelTracer.OtelTracer
-
       const graphQLOptions = yield* graphQLOptions_
         ? Effect.all({ schema: graphQLOptions_.schema, makeContext: Effect.succeed(graphQLOptions_.makeContext) })
         : Effect.succeed(undefined)
-
-      // TODO join fiber set and close tear down parent scope in case of error (Needs refactor with Mike A)
-      const fiberSet = yield* FiberSet.make()
 
       const store = yield* createStore({
         schema,
         storeId,
         graphQLOptions,
-        otelOptions: {
-          tracer: otelTracer,
-          rootSpanContext: otelRootSpanContext,
-        },
         boot,
         adapter,
         disableDevtools,
-        fiberSet,
         onBootStatus,
         batchUpdates,
       })

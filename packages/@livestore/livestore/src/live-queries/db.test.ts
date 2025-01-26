@@ -20,6 +20,7 @@ describe('otel', () => {
   const makeQuery = Effect.gen(function* () {
     const exporter = new InMemorySpanExporter()
 
+    // const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
     const provider = cachedProvider ?? new BasicTracerProvider()
     cachedProvider = provider
     provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
@@ -27,7 +28,7 @@ describe('otel', () => {
 
     const otelTracer = otel.trace.getTracer('test')
 
-    const span = otelTracer.startSpan('test')
+    const span = otelTracer.startSpan('test-root')
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
     const { store } = yield* makeTodoMvc({ otelTracer, otelContext })

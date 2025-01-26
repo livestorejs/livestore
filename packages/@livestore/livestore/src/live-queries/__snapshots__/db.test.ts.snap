@@ -2,7 +2,11 @@
 
 exports[`otel > otel 3`] = `
 {
-  "_name": "test",
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
   "children": [
     {
       "_name": "livestore.in-memory-db:execute",
@@ -16,6 +20,9 @@ exports[`otel > otel 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "LiveStore:createStore",
     },
     {
       "_name": "LiveStore:sync",
@@ -92,7 +99,11 @@ exports[`otel > otel 3`] = `
 
 exports[`otel > with thunks 3`] = `
 {
-  "_name": "test",
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
   "children": [
     {
       "_name": "livestore.in-memory-db:execute",
@@ -106,6 +117,9 @@ exports[`otel > with thunks 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "LiveStore:createStore",
     },
     {
       "_name": "LiveStore:sync",
@@ -185,7 +199,11 @@ exports[`otel > with thunks 3`] = `
 
 exports[`otel > with thunks with query builder and without labels 3`] = `
 {
-  "_name": "test",
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
   "children": [
     {
       "_name": "livestore.in-memory-db:execute",
@@ -199,6 +217,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "LiveStore:createStore",
     },
     {
       "_name": "LiveStore:sync",

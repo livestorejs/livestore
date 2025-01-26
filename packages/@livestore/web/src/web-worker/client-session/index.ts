@@ -79,7 +79,7 @@ export type WebAdapterOptions = {
 
 export const makeAdapter =
   (options: WebAdapterOptions): Adapter =>
-  ({ schema, storeId, devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
+  ({ schema, storeId, devtoolsEnabled, debugInstanceId, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       yield* ensureBrowserRequirements
 
@@ -140,6 +140,7 @@ export const makeAdapter =
                 originId,
                 syncOptions: options.syncBackend as SyncBackendOptionsBase | undefined,
                 devtoolsEnabled,
+                debugInstanceId,
               }),
             },
           }),
@@ -418,7 +419,7 @@ export const makeAdapter =
           })
 
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools'), Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
       return { coordinator, syncDb }

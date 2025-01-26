@@ -3,23 +3,10 @@ import './thread-polyfill.js'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
-import { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { Store } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeNodeAdapter } from '@livestore/node'
-import {
-  Cause,
-  Context,
-  Effect,
-  FiberSet,
-  Layer,
-  Logger,
-  LogLevel,
-  OtelTracer,
-  Scope,
-  Stream,
-  WorkerRunner,
-} from '@livestore/utils/effect'
+import { Context, Effect, Layer, Logger, LogLevel, OtelTracer, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
@@ -55,9 +42,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       })
       // const adapter = makeInMemoryAdapter()
 
-      const fiberSet = yield* FiberSet.make()
-
-      const store = yield* createStore({ adapter, fiberSet, schema, storeId, disableDevtools: true })
+      const store = yield* createStore({ adapter, schema, storeId, disableDevtools: true })
 
       return Layer.succeed(WorkerContext, { store })
     }).pipe(
@@ -67,14 +52,6 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       Effect.withSpan(`@livestore/node-sync:test:init-${clientId}`),
       Layer.unwrapScoped,
     ),
-  // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
-  TmpShutdown: () =>
-    Effect.gen(function* () {
-      const { store } = yield* WorkerContext
-      yield* store.clientSession.coordinator.shutdown(Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
-
-      yield* Effect.sleep(500)
-    }),
   CreateTodos: ({ count }) =>
     Effect.gen(function* () {
       // TODO check sync connection status

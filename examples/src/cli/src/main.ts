@@ -7,8 +7,7 @@ import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeNodeAdapter } from '@livestore/node'
-import { Effect, FiberSet, Layer, Logger, LogLevel } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
+import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
 // import { schema, tables } from './schema.js'
@@ -47,8 +46,7 @@ const live = Cli.Command.make(
         },
       })
 
-      const fiberSet = yield* FiberSet.make()
-      const store = yield* createStore({ adapter, fiberSet, schema, storeId, disableDevtools: !enableDevtools })
+      const _store = yield* createStore({ adapter, schema, storeId, disableDevtools: !enableDevtools })
 
       const firstTable = schema.tables.values().next().value as DbSchema.TableDef
 
@@ -65,9 +63,6 @@ const live = Cli.Command.make(
       //   // console.log('res', res)
       //   store.mutate(tables.todo.insert({ id: nanoid(), title: prompt }))
       // }
-
-      // Get rid of this once fixed https://github.com/Effect-TS/effect/issues/4215
-      yield* Effect.addFinalizer(() => FiberSet.clear(fiberSet))
 
       yield* Effect.never
       // yield* Effect.sleep(400)
