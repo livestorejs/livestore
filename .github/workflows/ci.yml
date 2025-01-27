@@ -18,6 +18,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
       - run: pnpm install
       - run: pnpm lint:check
 
@@ -31,6 +32,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts
       - run: pnpm test
@@ -60,6 +62,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts
       - name: Configure NPM authentication
@@ -80,6 +83,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
       - run: pnpm install
       - run: pnpm generate:examples:standalone
 
@@ -93,6 +97,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts
       - run: pnpm build:examples:src
@@ -113,6 +118,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
+        timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts # Needed for starlight-typedoc
       - run: pnpm build

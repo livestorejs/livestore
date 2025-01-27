@@ -2,7 +2,6 @@ import type {
   Deferred,
   Effect,
   Fiber,
-  FiberSet,
   HttpClient,
   Option,
   Queue,
@@ -25,34 +24,6 @@ import type {
 import type { EventId, LiveStoreSchema, MutationEvent } from '../schema/mod.js'
 import type { PayloadUpstream, SyncState } from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
-
-export type DevtoolsContextEnabled = {
-  enabled: true
-  /** NOTE it's possible that multiple devtools instances are connected to the same coordinator */
-  connect: (options: {
-    /**
-     * Port for messages between the devtools to the coordinator.
-     * Used for the initial connection establishment.
-     */
-    coordinatorMessagePortOrChannel: // | MessagePort
-    WebChannel.WebChannel<Devtools.MessageToAppLeader, Devtools.MessageFromAppLeader>
-    /** Deferred of port for messages between the devtools and the store */
-    // storeMessagePortDeferred: Deferred.Deferred<MessagePort, UnexpectedError>
-    /** Allows the devtools connection to interrupt itself */
-    disconnect: Effect.Effect<void>
-    storeId: string
-    // appHostId: string
-    // isLeader: boolean
-    persistenceInfo: PersistenceInfoPair
-    shutdownChannel: ShutdownChannel
-  }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
-  connections: FiberSet.FiberSet
-  // TODO consider to refactor to use existing syncing mechanism instead of devtools-specific broadcast channel
-  broadcast: (
-    message: typeof Devtools.NetworkStatusRes.Type | typeof Devtools.MutationBroadcast.Type,
-  ) => Effect.Effect<void>
-}
-// export type DevtoolsContext = DevtoolsContextEnabled | { enabled: false }
 
 export type ShutdownState = 'running' | 'shutting-down'
 
@@ -138,8 +109,8 @@ export type PullQueueItem = {
 }
 
 export interface SyncProcessor {
-  /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
   push: (
+    /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
 
@@ -148,16 +119,7 @@ export interface SyncProcessor {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
   syncState: Effect.Effect<SyncState, UnexpectedError>
-  // backendHeadRef: { current: number }
 }
-
-// export interface SyncProcessorItem {
-//   mutationEventEncoded: MutationEvent.AnyEncoded
-//   /** Used in scenarios where the pusher wants to know when the mutation has been applied to the read model */
-//   deferred?: Deferred.Deferred<void>
-// }
-
-// export type MutationEventWithDeferred = MutationEvent.AnyEncoded & { deferred?: Deferred.Deferred<void> }
 
 export interface PullQueueSet {
   makeQueue: (

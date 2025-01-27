@@ -14,11 +14,9 @@ import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-cha
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import {
-  Chunk,
   Effect,
   Fiber,
   ParseResult,
-  Queue,
   Schema,
   Stream,
   SubscriptionRef,

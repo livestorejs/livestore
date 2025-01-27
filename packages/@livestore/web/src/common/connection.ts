@@ -1,5 +1,5 @@
 import type { PreparedBindValues, SynchronousDatabase } from '@livestore/common'
-import { prepareBindValues, sql, SqliteError } from '@livestore/common'
+import { prepareBindValues, SqliteError } from '@livestore/common'
 import type { BindValues } from '@livestore/common/sql-queries'
 import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'

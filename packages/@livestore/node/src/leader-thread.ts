@@ -10,7 +10,7 @@ if (process.execArgv.includes('--inspect')) {
 
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus } from '@livestore/common'
-import { Devtools, sql, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreStorageFormatVersion, sql, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderDatabase } from '@livestore/common/leader-thread'
 import { configureConnection, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -156,7 +156,8 @@ const makeLeaderThread = ({
       makeSyncDb({
         _tag: 'fs',
         directory: path.join(baseDirectory ?? '', storeId),
-        fileName: kind === 'app' ? getAppDbFileName(schemaHashSuffix) : 'mutationlog.db',
+        fileName:
+          kind === 'app' ? getAppDbFileName(schemaHashSuffix) : `mutationlog@${liveStoreStorageFormatVersion}.db`,
         // TODO enable WAL for nodejs
         configureDb: (db) => configureConnection(db, { fkEnabled: true }),
       }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
@@ -192,7 +193,7 @@ const makeLeaderThread = ({
     Layer.unwrapScoped,
   )
 
-const getAppDbFileName = (suffix: string) => `app${suffix}.db`
+const getAppDbFileName = (suffix: string) => `app${suffix}@${liveStoreStorageFormatVersion}.db`
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,

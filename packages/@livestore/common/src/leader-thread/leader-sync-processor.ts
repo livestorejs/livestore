@@ -18,7 +18,6 @@ import type * as otel from '@opentelemetry/api'
 
 import type { SynchronousDatabase } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
-import * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
@@ -31,7 +30,6 @@ import { updateRows } from '../sql-queries/index.js'
 import { InvalidPushError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
-import { liveStoreVersion } from '../version.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
 import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updateBackendHead } from './mutationlog.js'
@@ -376,13 +374,6 @@ const makeApplyMutationItems = ({
 
           yield* applyMutation(mutationEventEncoded)
 
-          // if (leaderThreadCtx.devtools.enabled) {
-          //   // TODO consider to refactor devtools to use syncing mechanism instead of devtools-specific broadcast channel
-          //   yield* leaderThreadCtx.devtools
-          //     .broadcast(Devtools.MutationBroadcast.make({ mutationEventEncoded,  liveStoreVersion }))
-          //     .pipe(Effect.fork) // Forking right now as it otherwise slows down the processing
-          // }
-
           if (meta?.deferred) {
             yield* Deferred.succeed(meta.deferred, void 0)
           }
@@ -546,7 +537,6 @@ const backgroundBackendPulling = ({
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
-          // TODO pass in metadata
           yield* onNewPullChunk(
             batch.map((_) => new MutationEvent.EncodedWithMeta(_.mutationEventEncoded)),
             remaining,

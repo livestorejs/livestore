@@ -1,4 +1,4 @@
-import type { ParseResult, Scope } from 'effect'
+import type { Scope } from 'effect'
 import { Deferred, Effect, Either, Option, Predicate, Queue } from 'effect'
 
 import * as Schema from './Schema/index.js'

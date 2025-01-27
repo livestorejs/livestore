@@ -11,4 +11,4 @@ export const liveStoreVersion = '0.2.0' as const
  * While LiveStore is in alpha, this might happen more frequently.
  * In the future, LiveStore will provide a migration path for older database files to avoid the impression of data loss.
  */
-export const liveStoreStorageFormatVersion = 2
+export const liveStoreStorageFormatVersion = 3
