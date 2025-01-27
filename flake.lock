@@ -64,7 +64,7 @@
         "type": "github"
       }
     },
-    "playwright": {
+    "playwright-web-flake": {
       "inputs": {
         "flake-utils": "flake-utils_2",
         "nixpkgs": "nixpkgs"
@@ -72,22 +72,21 @@
       "locked": {
         "lastModified": 1734009196,
         "narHash": "sha256-SuRbOfPfpfKOzyWh2NzPjMEd1tACcwFstgnyo3KGvII=",
-        "owner": "pietdevries94",
-        "repo": "playwright-web-flake",
         "rev": "e9b8178bde33be9fdd166d08abb230befdd71b61",
-        "type": "github"
+        "revCount": 49,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/pietdevries94/playwright-web-flake/1.49.1/0193bb03-11fe-78d5-9482-79b6b2d186f5/source.tar.gz"
       },
       "original": {
-        "owner": "pietdevries94",
-        "repo": "playwright-web-flake",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/pietdevries94/playwright-web-flake/1.49.1.tar.gz"
       }
     },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgsUnstable": "nixpkgsUnstable",
-        "playwright": "playwright"
+        "playwright-web-flake": "playwright-web-flake"
       }
     },
     "systems": {

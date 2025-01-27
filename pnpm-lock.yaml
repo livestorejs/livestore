@@ -11,18 +11,22 @@ overrides:
   react-native: 0.76.5
   '@livestore/common': workspace:*
   '@livestore/db-schema': workspace:*
+  '@livestore/devtools-expo': workspace:*
+  '@livestore/devtools-expo-common': workspace:*
+  '@livestore/devtools-node-common': workspace:*
+  '@livestore/devtools-web-common': workspace:*
   '@livestore/expo': workspace:*
   '@livestore/livestore': workspace:*
+  '@livestore/node': workspace:*
   '@livestore/react': workspace:*
+  '@livestore/sqlite-wasm': workspace:*
   '@livestore/sync-cf': workspace:*
   '@livestore/sync-electric': workspace:*
   '@livestore/utils': workspace:*
-  '@livestore/sqlite-wasm': workspace:*
   '@livestore/web': workspace:*
-  '@livestore/devtools-expo': workspace:*
-  '@livestore/devtools-expo-common': workspace:*
-  '@livestore/devtools-react': 0.2.0
-  '@livestore/devtools-vite': 0.2.0
+  '@livestore/webmesh': workspace:*
+  '@livestore/devtools-react': 0.3.0-dev.4
+  '@livestore/devtools-vite': 0.3.0-dev.4
 
 patchedDependencies:
   graphology@0.26.0-alpha1:
@@ -301,16 +305,16 @@ importers:
         version: 3.12.1
       expo:
         specifier: 52.0.9
-        version: 52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+        version: 52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       expo-asset:
         specifier: 11.0.0
-        version: 11.0.0(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+        version: 11.0.0(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       expo-crypto:
         specifier: 14.0.1
-        version: 14.0.1(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))
+        version: 14.0.1(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))
       expo-sqlite:
         specifier: 15.0.3
-        version: 15.0.3(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+        version: 15.0.3(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       expo-status-bar:
         specifier: 2.0.0
         version: 2.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
@@ -352,8 +356,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -536,8 +540,8 @@ importers:
   examples/src/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -612,8 +616,8 @@ importers:
   examples/src/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -682,8 +686,8 @@ importers:
   examples/src/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -746,8 +750,8 @@ importers:
   examples/src/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -828,8 +832,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1101,16 +1105,16 @@ importers:
         version: 3.12.1
       expo:
         specifier: 52.0.9
-        version: 52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+        version: 52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       expo-asset:
         specifier: 11.0.0
-        version: 11.0.0(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+        version: 11.0.0(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       expo-crypto:
         specifier: 14.0.1
-        version: 14.0.1(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))
+        version: 14.0.1(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))
       expo-sqlite:
         specifier: 15.0.3
-        version: 15.0.3(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.9.0)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
+        version: 15.0.3(expo@52.0.9(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@expo/metro-runtime@4.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@16.8.1)(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       expo-status-bar:
         specifier: 2.0.0
         version: 2.0.0(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
@@ -1152,8 +1156,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1336,8 +1340,8 @@ importers:
   examples/standalone/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1412,8 +1416,8 @@ importers:
   examples/standalone/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1482,8 +1486,8 @@ importers:
   examples/standalone/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1546,8 +1550,8 @@ importers:
   examples/standalone/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1628,8 +1632,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1819,8 +1823,8 @@ importers:
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/devtools-react':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/node':
         specifier: workspace:*
         version: link:../node
@@ -1971,8 +1975,8 @@ importers:
         specifier: workspace:*
         version: link:../devtools-node-common
       '@livestore/devtools-react':
-        specifier: 0.2.0
-        version: 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+        specifier: 0.3.0-dev.4
+        version: 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -4664,14 +4668,14 @@ packages:
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
 
-  '@livestore/devtools-react@0.2.0':
-    resolution: {integrity: sha512-hQEzCxdx/5xt1VvmRxY0xYuyWhSaSPzAmg2fL/TLiLuBcTA8G6BWx//ZvJod2KPGAzc55fbBV/YOsdq1M/GLvw==}
+  '@livestore/devtools-react@0.3.0-dev.4':
+    resolution: {integrity: sha512-OqAQHiu67+IMhWP5dds9fFEjKPVIKDPx86ltVVG3Nzvn0/tlKnTln58Aih5KdgOLm5WS5JCDkC27dusZlO5PDA==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: 18.3.1
 
-  '@livestore/devtools-vite@0.2.0':
-    resolution: {integrity: sha512-LCj0pa8IcTkwpcxDskCNFnsJrI40EKl5ilN9Adu7cguDrloirNY0DpD5zKAr9AE+ugxa5zgXnlBI1ndNl8zwnw==}
+  '@livestore/devtools-vite@0.3.0-dev.4':
+    resolution: {integrity: sha512-qT7afEsWJ3900+tion3UOlUP9zFbxLPZ+cPtjJYkJ/29nBeU08msU35u6h+H+JXehALJZewkvsS446wK3Iz79Q==}
 
   '@livestore/wa-sqlite@1.0.1-dev.29':
     resolution: {integrity: sha512-9hDwwNrLFQIy4eBZttZmSdYGqGAZb/1UF1CB0a4GXVr6H4i1EGTZ/HKprHOV41pqPBZgJBujvxGHwk12BKglxA==}
@@ -18121,14 +18125,14 @@ snapshots:
 
   '@jspm/core@2.1.0': {}
 
-  '@livestore/devtools-react@0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-react@0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 18.3.1
 
-  '@livestore/devtools-vite@0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
+  '@livestore/devtools-vite@0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)':
     dependencies:
-      '@livestore/devtools-react': 0.2.0(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
+      '@livestore/devtools-react': 0.3.0-dev.4(@livestore/livestore@packages+@livestore+livestore)(react@18.3.1)
       '@livestore/web': link:packages/@livestore/web
     transitivePeerDependencies:
       - '@livestore/livestore'
