@@ -105,13 +105,6 @@ export type StoreOtel = {
 export type StoreMutateOptions = {
   label?: string
   skipRefresh?: boolean
-  /**
-   * When set to `false` the mutation won't be persisted in the mutation log and sync server (but still synced).
-   * This can be useful e.g. for fine-granular update events (e.g. position updates during drag & drop)
-   *
-   * @default true
-   */
-  persisted?: boolean
   spanLinks?: otel.Link[]
   otelContext?: otel.Context
 }

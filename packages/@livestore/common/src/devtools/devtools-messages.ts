@@ -83,13 +83,11 @@ export class DebugInfoRerunQueryRes extends LSDStoreReqResMessage('LSD.DebugInfo
 // TODO refactor this to use push/pull semantics
 export class MutationBroadcast extends LSDMessage('LSD.Leader.MutationBroadcast', {
   mutationEventEncoded: MutationEvent.EncodedAny,
-  persisted: Schema.Boolean,
 }) {}
 
 // TODO refactor this to use push/pull semantics
 export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
   mutationEventEncoded: MutationEvent.EncodedAny.pipe(Schema.omit('id', 'parentId')),
-  persisted: Schema.Boolean,
 }) {}
 
 export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}

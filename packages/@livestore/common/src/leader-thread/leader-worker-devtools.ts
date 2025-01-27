@@ -72,7 +72,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
               yield* sendMessage(
                 Devtools.MutationBroadcast.make({
                   mutationEventEncoded,
-                  persisted: true,
+
                   liveStoreVersion,
                 }),
               )

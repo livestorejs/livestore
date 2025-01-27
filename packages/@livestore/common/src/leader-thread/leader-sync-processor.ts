@@ -374,13 +374,12 @@ const makeApplyMutationItems = ({
         for (let i = 0; i < batchItems.length; i++) {
           const { meta, ...mutationEventEncoded } = batchItems[i]!
 
-          // persisted: item.persisted,
-          yield* applyMutation(mutationEventEncoded, { persisted: true })
+          yield* applyMutation(mutationEventEncoded)
 
           // if (leaderThreadCtx.devtools.enabled) {
           //   // TODO consider to refactor devtools to use syncing mechanism instead of devtools-specific broadcast channel
           //   yield* leaderThreadCtx.devtools
-          //     .broadcast(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted: true, liveStoreVersion }))
+          //     .broadcast(Devtools.MutationBroadcast.make({ mutationEventEncoded,  liveStoreVersion }))
           //     .pipe(Effect.fork) // Forking right now as it otherwise slows down the processing
           // }
 
@@ -650,7 +649,7 @@ const backgroundBackendPushing = ({
       })
 
       // TODO handle push errors (should only happen during concurrent pull+push)
-      const pushResult = yield* syncBackend.push(queueItems, true).pipe(Effect.either)
+      const pushResult = yield* syncBackend.push(queueItems).pipe(Effect.either)
 
       if (pushResult._tag === 'Left') {
         span?.addEvent('backend-push-error', { error: pushResult.left.toString() })

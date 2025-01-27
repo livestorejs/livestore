@@ -16,11 +16,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true })
   }
 
-  if (parsedPayload.persisted) {
-    await db.createEvents(parsedPayload.batch)
-  } else {
-    console.warn(`Electric sync backend doesn't yet support unpersisted events`)
-  }
+  await db.createEvents(parsedPayload.batch)
 
   await db.disconnect()
 

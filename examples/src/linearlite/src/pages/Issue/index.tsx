@@ -35,8 +35,7 @@ export const IssuePage = () => {
   const handlePriorityChange = (priority: PriorityType) =>
     store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
 
-  const handleTitleChange = (title: string, { inProgress }: { inProgress: boolean }) =>
-    store.mutate({ persisted: inProgress === false }, mutations.updateIssueTitle({ id: issue.id, title }))
+  const handleTitleChange = (title: string) => store.mutate(mutations.updateIssueTitle({ id: issue.id, title }))
 
   const handleDescriptionChange = (body: string) => store.mutate(mutations.updateDescription({ id: issue.id, body }))
 
@@ -139,8 +138,8 @@ export const IssuePage = () => {
               className="w-full px-3 py-1 text-lg font-semibold placeholder-gray-400 border-transparent rounded "
               placeholder="Issue title"
               value={issue.title}
-              onChange={(e) => handleTitleChange(e.target.value, { inProgress: true })}
-              onBlur={(e) => handleTitleChange(e.target.value, { inProgress: false })}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              onBlur={(e) => handleTitleChange(e.target.value)}
             />
 
             <Editor

@@ -115,10 +115,7 @@ export type Coordinator = {
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   mutations: {
     pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
-    push(
-      batch: ReadonlyArray<MutationEvent.AnyEncoded>,
-      options: { persisted: boolean },
-    ): Effect.Effect<void, UnexpectedError | InvalidPushError>
+    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | InvalidPushError>
     initialMutationEventId: EventId
   }
   export: Effect.Effect<Uint8Array, UnexpectedError>

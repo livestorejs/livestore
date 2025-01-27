@@ -31,7 +31,6 @@ export type PullRes = typeof PullRes.Type
 
 export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
   mutationEventEncoded: MutationEvent.EncodedAny,
-  persisted: Schema.Boolean,
   metadata: Schema.Option(SyncMetadata),
 })
 
@@ -40,7 +39,6 @@ export type PushBroadcast = typeof PushBroadcast.Type
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
   batch: Schema.Array(MutationEvent.EncodedAny),
-  persisted: Schema.Boolean,
 })
 
 export type PushReq = typeof PushReq.Type

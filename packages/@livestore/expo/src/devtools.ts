@@ -21,10 +21,8 @@ import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
 export type BootedDevtools = {
   onMutation: ({
     mutationEventEncoded,
-    persisted,
   }: {
     mutationEventEncoded: MutationEvent.AnyEncoded
-    persisted: boolean
   }) => Effect.Effect<void, UnexpectedError, never>
 }
 
@@ -236,7 +234,7 @@ export const bootDevtools = ({
               return
             }
             case 'LSD.Leader.RunMutationReq': {
-              const { mutationEventEncoded: mutationEventEncoded_, persisted } = decodedEvent
+              const { mutationEventEncoded: mutationEventEncoded_ } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
               // const nextMutationEventIdPair = coordinator.mutations.nextMutationEventIdPair({
               //   localOnly: mutationDef.options.localOnly,
@@ -257,7 +255,7 @@ export const bootDevtools = ({
               //   schema.mutations.get(mutationEventEncoded.mutation) ??
               //   shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
 
-              // yield* coordinator.mutations.push([mutationEventEncoded], { persisted })
+              // yield* coordinator.mutations.push([mutationEventEncoded])
 
               yield* expoDevtoolsChannel.send(Devtools.RunMutationRes.make({ ...reqPayload }))
 
@@ -282,15 +280,9 @@ export const bootDevtools = ({
     )
     // yield* expoDevtoolsChannel.send(Devtools.AppHostReady.make({ appHostId, isLeader, liveStoreVersion }))
 
-    const onMutation = ({
-      mutationEventEncoded,
-      persisted,
-    }: {
-      mutationEventEncoded: MutationEvent.AnyEncoded
-      persisted: boolean
-    }) =>
+    const onMutation = ({ mutationEventEncoded }: { mutationEventEncoded: MutationEvent.AnyEncoded }) =>
       expoDevtoolsChannel
-        .send(Devtools.MutationBroadcast.make({ mutationEventEncoded, persisted, liveStoreVersion }))
+        .send(Devtools.MutationBroadcast.make({ mutationEventEncoded, liveStoreVersion }))
         .pipe(UnexpectedError.mapToUnexpectedError)
 
     return {

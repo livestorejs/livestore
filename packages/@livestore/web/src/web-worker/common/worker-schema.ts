@@ -3,19 +3,6 @@ import { EventId, MutationEvent } from '@livestore/common/schema'
 import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-// export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-//   batch: Schema.Array(EncodedAny),
-//   persisted: Schema.Boolean,
-// })
-
-// export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
-//   items: Schema.Union(ExecutionBacklogItemMutate),
-// })
-
-// export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
-
-// export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
-
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
   /**

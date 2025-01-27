@@ -122,9 +122,7 @@ export class WebSocketServer extends DurableObject<Env> {
               const createdAt = new Date().toISOString()
 
               // NOTE we're currently not blocking on this to allow broadcasting right away
-              const storePromise = decodedMessage.persisted
-                ? this.storage.appendEvent(mutationEventEncoded, createdAt)
-                : Promise.resolve()
+              const storePromise = this.storage.appendEvent(mutationEventEncoded, createdAt)
 
               ws.send(
                 encodeOutgoingMessage(
@@ -141,7 +139,6 @@ export class WebSocketServer extends DurableObject<Env> {
                   // TODO refactor to batch api
                   WSMessage.PushBroadcast.make({
                     mutationEventEncoded,
-                    persisted: decodedMessage.persisted,
                     metadata: Option.some({ createdAt }),
                   }),
                 )

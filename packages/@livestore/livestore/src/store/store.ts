@@ -104,7 +104,7 @@ export class Store<
       initialLeaderHead: clientSession.coordinator.mutations.initialMutationEventId,
       // rebaseBehaviour: 'auto-rebase',
       pushToLeader: (batch) =>
-        clientSession.coordinator.mutations.push(batch, { persisted: true }).pipe(
+        clientSession.coordinator.mutations.push(batch).pipe(
           // NOTE we don't want to shutdown in case of an invalid push error, since it will be retried
           Effect.catchTag('InvalidPushError', Effect.ignoreLogged),
           this.runEffectFork,
@@ -370,8 +370,6 @@ export class Store<
 
     const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
-    // const wasSyncMessage = options?.wasSyncMessage ?? false
-    // const persisted = options?.persisted ?? true
 
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
     mutationsSpan.addEvent('mutate')
@@ -606,7 +604,6 @@ export class Store<
     } else if (
       firstMutationOrTxnFnOrOptions?.label !== undefined ||
       firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstMutationOrTxnFnOrOptions?.persisted !== undefined ||
       firstMutationOrTxnFnOrOptions?.otelContext !== undefined ||
       firstMutationOrTxnFnOrOptions?.spanLinks !== undefined
     ) {

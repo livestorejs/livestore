@@ -60,12 +60,11 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
             Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
             Stream.map((msg) =>
               msg._tag === 'WSMessage.PushBroadcast'
-                ? { batch: [pick(msg, ['mutationEventEncoded', 'metadata', 'persisted'])], remaining: 0 }
+                ? { batch: [pick(msg, ['mutationEventEncoded', 'metadata'])], remaining: 0 }
                 : {
                     batch: msg.events.map(({ mutationEventEncoded, metadata }) => ({
                       mutationEventEncoded,
                       metadata,
-                      persisted: true,
                     })),
                     remaining: msg.remaining,
                   },
@@ -73,7 +72,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
           )
         }).pipe(Stream.unwrap),
 
-      push: (batch, persisted) =>
+      push: (batch) =>
         Effect.gen(function* () {
           const ready = yield* Deferred.make<void, InvalidPushError>()
           const requestId = nanoid()
@@ -95,7 +94,7 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
             Effect.fork,
           )
 
-          yield* send(WSMessage.PushReq.make({ batch, requestId, persisted }))
+          yield* send(WSMessage.PushReq.make({ batch, requestId }))
 
           yield* ready
 

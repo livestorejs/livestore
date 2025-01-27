@@ -62,9 +62,7 @@ Vitest.describe('sync', () => {
         { id: '2', text: 't2', completed: 0 },
       ])
 
-      yield* Effect.sleep(30).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
-
-      expect(testContext.pushedMutationEvents.length).toEqual(2)
+      yield* SubscriptionRef.waitUntil(testContext.pushedMutationEventsSRef, (events) => events.length === 2)
     }).pipe(withCtx(test)),
   )
 
@@ -99,7 +97,7 @@ Vitest.describe('sync', () => {
 
       yield* Effect.sleep(30).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
-      expect(testContext.pushedMutationEvents.length).toEqual(1)
+      yield* SubscriptionRef.waitUntil(testContext.pushedMutationEventsSRef, (events) => events.length === 1)
 
       const rebasedResult = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
       expect(rebasedResult).toEqual([
@@ -143,7 +141,7 @@ Vitest.describe('sync', () => {
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
-    pushedMutationEvents: MutationEvent.AnyEncoded[]
+    pushedMutationEventsSRef: SubscriptionRef.SubscriptionRef<MutationEvent.AnyEncoded[]>
     syncEventIdRef: { current: number }
     syncPullQueue: Queue.Queue<MutationEvent.AnyEncoded>
     syncIsConnectedRef: SubscriptionRef.SubscriptionRef<boolean>
@@ -169,7 +167,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
   const syncEventIdRef = { current: -1 }
   const syncPullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>()
-  const pushedMutationEvents: MutationEvent.AnyEncoded[] = []
+  const pushedMutationEventsSRef = yield* SubscriptionRef.make<MutationEvent.AnyEncoded[]>([])
   const syncIsConnectedRef = yield* SubscriptionRef.make(true)
 
   const makeSyncBackend = Effect.gen(function* () {
@@ -183,7 +181,6 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
             batch: [...chunk].map((mutationEventEncoded) => ({
               mutationEventEncoded,
               metadata: Option.none(),
-              persisted: true,
             })),
             remaining: 0,
           })),
@@ -195,7 +192,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
           yield* Effect.sleep(10).pipe(Effect.withSpan('mock-sync-backend:push:sleep')) // Simulate network latency
 
-          pushedMutationEvents.push(...batch)
+          yield* SubscriptionRef.update(pushedMutationEventsSRef, (events) => [...events, ...batch])
 
           syncEventIdRef.current = batch.at(-1)!.id.global
 
@@ -247,7 +244,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       }).pipe(Effect.provide(FetchHttpClient.layer))
 
     return Layer.succeed(TestContext, {
-      pushedMutationEvents,
+      pushedMutationEventsSRef,
       syncEventIdRef,
       syncPullQueue,
       syncIsConnectedRef,

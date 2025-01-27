@@ -17,9 +17,6 @@ import { LeaderThreadCtx } from './types.js'
 
 export type ApplyMutation = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
-  options: {
-    persisted: boolean
-  },
 ) => Effect.Effect<void, SqliteError | UnexpectedError>
 
 export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> = Effect.gen(
@@ -34,7 +31,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
       [...leaderThreadCtx.schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
-    return (mutationEventEncoded, { persisted }) =>
+    return (mutationEventEncoded) =>
       Effect.gen(function* () {
         const { mutationEventSchema, schema, db, dbLog } = leaderThreadCtx
         const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
@@ -79,7 +76,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
         // write to mutation_log
         const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
-        if (persisted && excludeFromMutationLog === false) {
+        if (excludeFromMutationLog === false) {
           yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap)
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
@@ -89,7 +86,6 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
           attributes: {
             mutationName: mutationEventEncoded.mutation,
             mutationId: mutationEventEncoded.id,
-            persisted,
             'span.label': mutationEventEncoded.mutation,
           },
         }),

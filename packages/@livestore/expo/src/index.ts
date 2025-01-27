@@ -150,7 +150,7 @@ export const makeAdapter =
         mutations: {
           initialMutationEventId,
           pull: Stream.fromQueue(incomingSyncMutationsQueue),
-          push: (batch, { persisted }): Effect.Effect<void, UnexpectedError> =>
+          push: (batch): Effect.Effect<void, UnexpectedError> =>
             Effect.gen(function* () {
               for (const mutationEventEncoded of batch) {
                 if (migrationOptions.strategy !== 'from-mutation-log') return
@@ -163,7 +163,6 @@ export const makeAdapter =
 
                 // write to mutation_log
                 if (
-                  persisted === true &&
                   mutationLogExclude.has(mutation) === false &&
                   execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
                 ) {
@@ -199,7 +198,7 @@ export const makeAdapter =
                   //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
                 }
 
-                yield* devtools?.onMutation({ mutationEventEncoded, persisted }) ?? Effect.void
+                yield* devtools?.onMutation({ mutationEventEncoded }) ?? Effect.void
               }
             }),
         },

@@ -374,7 +374,7 @@ export const makeAdapter =
         mutations: {
           pull: pullMutations,
 
-          push: (batch, { persisted }) =>
+          push: (batch) =>
             runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
               // Effect.timeout(10_000),
               Effect.withSpan('@livestore/web:coordinator:push', {

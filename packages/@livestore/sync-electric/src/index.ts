@@ -47,7 +47,6 @@ export const syncBackend = {} as any
 export const ApiPushEventPayload = Schema.TaggedStruct('sync-electric.PushEvent', {
   roomId: Schema.String,
   batch: Schema.Array(MutationEvent.EncodedAny),
-  persisted: Schema.Boolean,
 })
 
 export const ApiInitRoomPayload = Schema.TaggedStruct('sync-electric.InitRoom', {
@@ -148,7 +147,6 @@ export const makeSyncBackend = ({
               id: item.value!.id,
               parentId: item.value!.parentId,
             },
-            persisted: true,
           }))
 
         // // TODO implement proper `remaining` handling
@@ -186,7 +184,7 @@ export const makeSyncBackend = ({
           Stream.map((chunk) => ({ batch: [...chunk], remaining: 0 })),
         ),
 
-      push: (batch, persisted) =>
+      push: (batch) =>
         Effect.gen(function* () {
           const deferreds: Deferred.Deferred<SyncMetadata>[] = []
           for (const mutationEventEncoded of batch) {
@@ -197,7 +195,7 @@ export const makeSyncBackend = ({
 
           const resp = yield* HttpClientRequest.schemaBodyJson(ApiPushEventPayload)(
             HttpClientRequest.post(pushEventEndpoint),
-            ApiPushEventPayload.make({ roomId, batch, persisted }),
+            ApiPushEventPayload.make({ roomId, batch }),
           ).pipe(
             Effect.andThen(HttpClient.execute),
             Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),

@@ -20,7 +20,6 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
       batch: ReadonlyArray<{
         mutationEventEncoded: MutationEvent.AnyEncoded
         metadata: Option.Option<TSyncMetadata>
-        persisted: boolean
       }>
       remaining: number
     },
@@ -35,7 +34,6 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * - event ids must be in ascending order
      * */
     batch: ReadonlyArray<MutationEvent.AnyEncoded>,
-    persisted: boolean,
   ) => Effect.Effect<
     {
       /** Indexes are relative to `batch` */

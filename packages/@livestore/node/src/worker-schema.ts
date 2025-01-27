@@ -11,19 +11,6 @@ export const WorkerArgv = Schema.parseJson(
   }),
 )
 
-// export const ExecutionBacklogItemMutate = Schema.TaggedStruct('mutate', {
-//   mutationEventEncoded: MutationEvent.EncodedAny,
-//   persisted: Schema.Boolean,
-// })
-
-// export const ExecutionBacklogItemTxn = Schema.TaggedStruct('txn', {
-//   items: Schema.Union(ExecutionBacklogItemMutate),
-// })
-
-// export const ExecutionBacklogItem = Schema.Union(ExecutionBacklogItemMutate, ExecutionBacklogItemTxn)
-
-// export type ExecutionBacklogItem = typeof ExecutionBacklogItem.Type
-
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
   /**

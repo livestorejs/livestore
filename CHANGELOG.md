@@ -11,7 +11,6 @@
     - LeaderSyncProcessor: Batch pending pushes by using queue
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
-    - Bring back `persisted` sync events or implement a replacement
   - Devtools
     - Fix: Expo
     - Fix: Support multiple leader <> devtools connections
@@ -25,6 +24,7 @@
 - Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
+- Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Improve Otel tracing integration
 - Fix: The query builder now correctly handles `IN` and `NOT IN` where operations
 - Examples:

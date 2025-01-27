@@ -57,7 +57,7 @@ export const makeNodeAdapter = ({
   otel: otelOptions,
   initialSyncOptions,
 }: NodeAdapterOptions): Adapter =>
-  (({ schema, storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore }) =>
+  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
         isConnected: true,
@@ -192,7 +192,7 @@ export const makeNodeAdapter = ({
         networkStatus,
         mutations: {
           pull: pullMutations,
-          push: (batch, { persisted }) =>
+          push: (batch) =>
             runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
               // Effect.timeout(10_000),
               Effect.withSpan('@livestore/node:coordinator:push', {
