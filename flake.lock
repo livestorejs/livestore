@@ -38,14 +38,18 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 0,
-        "narHash": "sha256-u+rxA79a0lyhG+u+oPBRtTDtzz8kvkc9a6SWSt9ekVc=",
-        "path": "/nix/store/0283cbhm47kd3lr9zmc5fvdrx9qkav8s-source",
-        "type": "path"
+        "lastModified": 1737885640,
+        "narHash": "sha256-GFzPxJzTd1rPIVD4IW+GwJlyGwBDV1Tj5FLYwDQQ9sM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "4e96537f163fad24ed9eb317798a79afc85b51b7",
+        "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
-        "type": "indirect"
+        "owner": "NixOS",
+        "ref": "nixos-24.11",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "nixpkgsUnstable": {
@@ -67,24 +71,28 @@
     "playwright-web-flake": {
       "inputs": {
         "flake-utils": "flake-utils_2",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
-        "lastModified": 1734009196,
-        "narHash": "sha256-SuRbOfPfpfKOzyWh2NzPjMEd1tACcwFstgnyo3KGvII=",
-        "rev": "e9b8178bde33be9fdd166d08abb230befdd71b61",
-        "revCount": 49,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/pietdevries94/playwright-web-flake/1.49.1/0193bb03-11fe-78d5-9482-79b6b2d186f5/source.tar.gz"
+        "lastModified": 1737678423,
+        "narHash": "sha256-b5LCB/KoYaB6Kvvr9gJTkkFNyvaKjCa0FNkkJHoCalA=",
+        "owner": "pietdevries94",
+        "repo": "playwright-web-flake",
+        "rev": "3cfd441ee784320cd4f29499701f25ff89775912",
+        "type": "github"
       },
       "original": {
-        "type": "tarball",
-        "url": "https://flakehub.com/f/pietdevries94/playwright-web-flake/1.49.1.tar.gz"
+        "owner": "pietdevries94",
+        "repo": "playwright-web-flake",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
         "nixpkgsUnstable": "nixpkgsUnstable",
         "playwright-web-flake": "playwright-web-flake"
       }

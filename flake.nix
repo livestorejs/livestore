@@ -1,5 +1,6 @@
 {
   inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     playwright-web-flake = {
@@ -8,7 +9,7 @@
     };
   };
 
-  outputs = { self, nixpkgsUnstable, flake-utils, playwright-web-flake }:
+  outputs = { self, nixpkgs, nixpkgsUnstable, flake-utils, playwright-web-flake }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlay = final: prev: {
@@ -27,7 +28,6 @@
 
         packages = {
           find-free-port = pkgsUnstable.callPackage ./nix/find-free-port.nix { };
-          # playwright-driver2 = pkgsUnstable.callPackage ./nix/playwright.nix { };
         };
 
         devShell = with pkgsUnstable; pkgsUnstable.mkShell {
@@ -48,8 +48,6 @@
             ])
           ];
 
-          # See version https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/web/playwright/driver.nix#L33
-          # PLAYWRIGHT_BROWSERS_PATH = self.packages.${system}.playwright-driver2.browsers;
           PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
         };
 
