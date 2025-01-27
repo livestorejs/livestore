@@ -55,7 +55,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
   GetCurrentMutationEventId: () =>
     Effect.gen(function* () {
       const workerCtx = yield* LeaderThreadCtx
-      const result = workerCtx.dbLog.select<{ idGlobal: number; idLocal: number }>(
+      const result = workerCtx.dbLog.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
         sql`SELECT idGlobal, idLocal FROM mutation_log ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
       )[0]
 

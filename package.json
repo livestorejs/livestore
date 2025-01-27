@@ -64,7 +64,7 @@
     "eslint-plugin-unicorn": "56.0.0",
     "madge": "^6.1.0",
     "netlify-cli": "^17.37.2",
-    "playwright": "1.49.1",
+    "playwright": "1.50.0",
     "prettier": "3.3.3",
     "prettier-plugin-packagejson": "2.5.3",
     "typescript": "5.7.2"

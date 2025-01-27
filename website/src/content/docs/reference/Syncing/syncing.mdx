@@ -4,24 +4,27 @@ sidebar:
   order: 10
 ---
 
-import { Card } from '@astrojs/starlight/components'
+## How it works
 
-<Card icon="warning">
-LiveStore's syncing implementation is undergoing a major rewrite. See [this PR](https://github.com/livestorejs/livestore/issues/195) for more details.
-</Card>
+LiveStore is based on [the idea of event-sourcing](/reference/Concepts/event-sourcing) which means it syncs mutation events across clients (via a central sync backend) and then applies the events to the local SQLite database. The syncing mechanism is similar to how Git works in that regard that it's based on a "push/pull" model. Upstream events always need to be pulled before a client can push its own mutation events to preserve a [global total order of events](https://medium.com/baseds/ordering-distributed-events-29c1dd9d1eff). Local pending events which haven't been pushed yet need to be rebased on top of the latest upstream events before they can be pushed.
 
-## Prior notes
 
-### Design decisions / trade-offs
+## Mutation events
 
-- LiveStore is based on the idea of event-sourcing
-- It's similar to how Git works.
-- Each client needs to first pull the latest events from the backend before it can push its own mutation events.
-- To sync across devices, there is assumed to be a central "backend" that acts as the global authority.
-  - It determines the total order of events (causality)
-- Each client initialy chooses a random `clientId` as its globally unique ID
-  - LiveStore uses a 6-char nanoid
-	- In the unlikely event of a collision which is detected by the server the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
+A mutation event consists of the following data:
+- `id`: event id
+- `parentId`: parent event id
+- `mutation`: mutation name (refers to a mutation definition in the schema)
+- `args`: mutation arguments (encoded using the mutation's schema definition, usually JSON)
+
+### Event ids
+
+- Event ids: sequence integers
+  - local event id to sync across client sessions
+
+## Sync backend
+
+The sync backend acts as the global authority and determines the total order of events ("causality"). It's responsible for storing and querying mutation events and for notifying clients when new events are available.
 
 ### Requirements for sync backend
 
@@ -29,15 +32,49 @@ LiveStore's syncing implementation is undergoing a major rewrite. See [this PR](
 - Ideally provides a "reactivity" mechanism to notify clients when new mutation events are available (e.g. via WebSocket, HTTP long-polling, etc).
   - Alternatively, the client can periodically query for new events which is less efficient.
 
+## Clients
+
+- Each client initialy chooses a random `clientId` as its globally unique ID
+  - LiveStore uses a 6-char nanoid
+	- In the unlikely event of a collision which is detected by the server the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
+
 ### Local syncing across client sessions
 
 - For adapters which support multiple client sessions (e.g. web), LiveStore also supports local syncing across client sessions (e.g. across browser tabs or worker threads).
 - LiveStore does this by electing a leader thread which is responsible for syncing and persiting data locally.
 
+## Auth (Authentication & Authorization)
+
+- TODO
+  - Provide basic example
+  - Encryption
+
+## Advanced
+
 ### Rebasing
 
 ### Merge conflicts
 
+- Merge conflict handling isn't implemented yet (see [this issue](https://github.com/livestorejs/livestore/issues/253)).
+- Merge conflict detection and resolution will be based on the upcoming [facts system functionality](https://github.com/livestorejs/livestore/issues/254).
+
 ### Compaction
 
+- Compaction isn't implemented yet (see [this issue](https://github.com/livestorejs/livestore/issues/136))
+- Compaction will be based on the upcoming [facts system functionality](https://github.com/livestorejs/livestore/issues/254).
+
 ### Partitioning
+
+- Currently LiveStore assumes a 1:1 mapping between a mutation event log and a SQLite database.
+- In the future, LiveStore aims to support multiple mutation logs (see [this issue](https://github.com/livestorejs/livestore/issues/255)).
+
+
+## Design decisions / trade-offs
+
+- Require a central sync backend to enforce a global total order of events.
+  - This means LiveStore can't be used in a fully decentralized/P2P manner.
+- Do rebasing on the client side (instead of on the sync backend). This allows the user to have more control over the rebase process.
+
+## Further reading
+
+- Distributed Systems lecture series by Martin Kleppmann: [YouTube playlist](https://www.youtube.com/playlist?list=PLeKd45zvjcDFUEv_ohr_HdUFe97RItdiB) / [lecture notes](https://www.cl.cam.ac.uk/teaching/2122/ConcDisSys/dist-sys-notes.pdf)

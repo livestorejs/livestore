@@ -9,6 +9,7 @@ import {
   FiberHandle,
   Option,
   OtelTracer,
+  ReadonlyArray,
   Ref,
   Schema,
   Stream,
@@ -102,7 +103,7 @@ export const makeLeaderSyncProcessor = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
 }): Effect.Effect<SyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const syncBackendQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()
+    const syncBackendQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
 
     const stateRef = yield* Ref.make<ProcessorState>({ _tag: 'init' })
 
@@ -257,13 +258,16 @@ export const makeLeaderSyncProcessor = ({
           )
         }
 
-        const pendingMutationEvents = yield* getMutationEventsSince({ global: initialBackendHead, local: 0 })
+        const pendingMutationEvents = yield* getMutationEventsSince({
+          global: initialBackendHead,
+          local: EventId.localDefault,
+        }).pipe(Effect.map(ReadonlyArray.map((_) => new MutationEvent.EncodedWithMeta(_))))
 
         const initialSyncState = {
-          pending: pendingMutationEvents.map((_) => new MutationEvent.EncodedWithMeta(_)),
+          pending: pendingMutationEvents,
           // On the leader we don't need a rollback tail beyond `pending` items
           rollbackTail: [],
-          upstreamHead: { global: initialBackendHead, local: 0 },
+          upstreamHead: { global: initialBackendHead, local: EventId.localDefault },
           localHead: initialLocalHead,
         } as SyncState.SyncState
 
@@ -410,7 +414,7 @@ const backgroundBackendPulling = ({
   initialBlockingSyncContext,
 }: {
   dbReady: Deferred.Deferred<void>
-  initialBackendHead: number
+  initialBackendHead: EventId.GlobalEventId
   isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<MutationEvent.EncodedWithMeta>,
@@ -538,7 +542,7 @@ const backgroundBackendPulling = ({
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
           yield* onNewPullChunk(
-            batch.map((_) => new MutationEvent.EncodedWithMeta(_.mutationEventEncoded)),
+            batch.map((_) => MutationEvent.EncodedWithMeta.fromGlobal(_.mutationEventEncoded)),
             remaining,
           )
 
@@ -588,7 +592,7 @@ const rollback = ({
     }),
   )
 
-const getCursorInfo = (remoteHead: number) =>
+const getCursorInfo = (remoteHead: EventId.GlobalEventId) =>
   Effect.gen(function* () {
     const { dbLog } = yield* LeaderThreadCtx
 
@@ -605,7 +609,7 @@ const getCursorInfo = (remoteHead: number) =>
     ).pipe(Effect.andThen(Schema.decode(MutationlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
 
     return Option.some({
-      cursor: { global: remoteHead, local: 0 },
+      cursor: { global: remoteHead, local: EventId.localDefault },
       metadata: syncMetadataOption,
     }) satisfies InitialSyncInfo
   }).pipe(Effect.withSpan('@livestore/common:leader-thread:syncing:getCursorInfo', { attributes: { remoteHead } }))
@@ -616,7 +620,7 @@ const backgroundBackendPushing = ({
   span,
 }: {
   dbReady: Deferred.Deferred<void>
-  syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.AnyEncoded>
+  syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
   span: otel.Span | undefined
 }) =>
   Effect.gen(function* () {
@@ -639,7 +643,7 @@ const backgroundBackendPushing = ({
       })
 
       // TODO handle push errors (should only happen during concurrent pull+push)
-      const pushResult = yield* syncBackend.push(queueItems).pipe(Effect.either)
+      const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
 
       if (pushResult._tag === 'Left') {
         span?.addEvent('backend-push-error', { error: pushResult.left.toString() })

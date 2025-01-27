@@ -9,18 +9,23 @@
   - Syncing
     - Fix: client session sync processor needs to reset pending pushing after rebase
     - LeaderSyncProcessor: Batch pending pushes by using queue
+    - Sync backends: Remove local id from sync backend
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
   - Devtools
+    - Fix: When resetting the database but keeping the eventlog
+      - the app doesn't show a shutdown screen
+      - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
     - Fix: Expo
     - Fix: Support multiple leader <> devtools connections
 
+- New syncing implementation
+  - See [Syncing docs page](https://livestore.dev/reference/syncing/syncing/) for more details
+  - `sync-cf` backend: More reliable websocket connection handling
+  - Configurable sync semantics when app starts (either skip initial sync or block with timeout)
 - New: Node adapter (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
-- New syncing implementation
-  - `sync-cf` backend: More reliable websocket connection handling
-  - Configurable initial sync semantics (skip or block with timeout)
 - Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.

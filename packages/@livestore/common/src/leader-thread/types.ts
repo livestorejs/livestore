@@ -22,7 +22,7 @@ import type {
   UnexpectedError,
 } from '../index.js'
 import type { EventId, LiveStoreSchema, MutationEvent } from '../schema/mod.js'
-import type { PayloadUpstream, SyncState } from '../sync/syncstate.js'
+import type * as SyncState from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type ShutdownState = 'running' | 'shutting-down'
@@ -101,10 +101,7 @@ export type InitialBlockingSyncContext = {
 }
 
 export type PullQueueItem = {
-  // mutationEvents: ReadonlyArray<MutationEvent.AnyEncoded>
-  // backendHead: number
-  payload: PayloadUpstream
-  // TODO move `remaining` into `PayloadUpstream`
+  payload: SyncState.PayloadUpstream
   remaining: number
 }
 
@@ -118,7 +115,7 @@ export interface SyncProcessor {
   boot: (args: {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
-  syncState: Effect.Effect<SyncState, UnexpectedError>
+  syncState: Effect.Effect<SyncState.SyncState, UnexpectedError>
 }
 
 export interface PullQueueSet {

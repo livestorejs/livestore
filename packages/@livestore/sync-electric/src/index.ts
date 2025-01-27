@@ -30,7 +30,7 @@ Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript
 const ResponseItem = Schema.Struct({
   /** Postgres path (e.g. "public.events/1") */
   key: Schema.optional(Schema.String),
-  value: Schema.optional(MutationEvent.EncodedAny),
+  value: Schema.optional(MutationEvent.AnyEncodedGlobal),
   headers: Schema.Record({ key: Schema.String, value: Schema.Any }),
   offset: Schema.optional(Schema.String),
 })
@@ -46,7 +46,7 @@ export const syncBackend = {} as any
 
 export const ApiPushEventPayload = Schema.TaggedStruct('sync-electric.PushEvent', {
   roomId: Schema.String,
-  batch: Schema.Array(MutationEvent.EncodedAny),
+  batch: Schema.Array(MutationEvent.AnyEncodedGlobal),
 })
 
 export const ApiInitRoomPayload = Schema.TaggedStruct('sync-electric.InitRoom', {
@@ -105,7 +105,7 @@ export const makeSyncBackend = ({
     ).pipe(Effect.andThen(HttpClient.execute))
 
     // TODO check whether we still need this
-    const pendingPushDeferredMap = new Map<string, Deferred.Deferred<SyncMetadata>>()
+    const pendingPushDeferredMap = new Map<EventId.GlobalEventId, Deferred.Deferred<SyncMetadata>>()
 
     const pull = (args: Option.Option<SyncMetadata>) =>
       Effect.gen(function* () {
@@ -157,11 +157,11 @@ export const makeSyncBackend = ({
         // }
 
         const [newItems, pendingPushItems] = Chunk.fromIterable(items).pipe(
-          Chunk.partition((item) => pendingPushDeferredMap.has(eventIdToString(item.mutationEventEncoded.id))),
+          Chunk.partition((item) => pendingPushDeferredMap.has(item.mutationEventEncoded.id)),
         )
 
         for (const item of pendingPushItems) {
-          const deferred = pendingPushDeferredMap.get(eventIdToString(item.mutationEventEncoded.id))!
+          const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)!
           yield* Deferred.succeed(deferred, Option.getOrThrow(item.metadata))
         }
 
@@ -189,7 +189,7 @@ export const makeSyncBackend = ({
           const deferreds: Deferred.Deferred<SyncMetadata>[] = []
           for (const mutationEventEncoded of batch) {
             const deferred = yield* Deferred.make<SyncMetadata>()
-            pendingPushDeferredMap.set(eventIdToString(mutationEventEncoded.id), deferred)
+            pendingPushDeferredMap.set(mutationEventEncoded.id, deferred)
             deferreds.push(deferred)
           }
 
@@ -214,7 +214,7 @@ export const makeSyncBackend = ({
           )
 
           for (const mutationEventEncoded of batch) {
-            pendingPushDeferredMap.delete(eventIdToString(mutationEventEncoded.id))
+            pendingPushDeferredMap.delete(mutationEventEncoded.id)
           }
 
           return { metadata }
@@ -222,5 +222,3 @@ export const makeSyncBackend = ({
       isConnected,
     } satisfies SyncBackend<SyncMetadata>
   })
-
-const eventIdToString = (eventId: EventId.EventId) => `${eventId.global}_${eventId.local}`

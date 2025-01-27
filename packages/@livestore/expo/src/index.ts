@@ -11,7 +11,7 @@ import {
 } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import type { MutationLogMetaRow } from '@livestore/common/schema'
-import { MUTATION_LOG_META_TABLE, MutationEvent, mutationLogMetaTable } from '@livestore/common/schema'
+import { EventId, MUTATION_LOG_META_TABLE, MutationEvent, mutationLogMetaTable } from '@livestore/common/schema'
 import { insertRowPrepared, makeBindValues } from '@livestore/common/sql-queries'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -125,20 +125,20 @@ export const makeAdapter =
 
       const initialMutationEventIdSchema = mutationLogMetaTable.schema.pipe(
         Schema.pick('idGlobal', 'idLocal'),
+        Schema.transform(EventId.EventId, {
+          encode: (_) => ({ idGlobal: _.global, idLocal: _.local }),
+          decode: (_) => EventId.make({ global: _.idGlobal, local: _.idLocal }),
+          strict: false,
+        }),
         Schema.Array,
-        Schema.headOrElse(() => ({ idGlobal: 0, idLocal: 0 })),
+        Schema.headOrElse(() => EventId.make({ global: 0, local: 0 })),
       )
 
-      const initialMutationEventIdData = yield* Schema.decode(initialMutationEventIdSchema)(
+      const initialMutationEventId = yield* Schema.decode(initialMutationEventIdSchema)(
         dbLogRef.current.syncDb.select(
           sql`SELECT idGlobal, idLocal FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
         ),
       )
-
-      const initialMutationEventId = {
-        global: initialMutationEventIdData.idGlobal,
-        local: initialMutationEventIdData.idLocal,
-      }
 
       let devtools: BootedDevtools | undefined
 

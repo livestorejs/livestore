@@ -75,7 +75,7 @@ export type RefreshReason =
   | {
       _tag: 'mutate'
       /** The mutations that were applied */
-      mutations: ReadonlyArray<MutationEvent.Any | MutationEvent.PartialAny>
+      mutations: ReadonlyArray<MutationEvent.AnyDecoded | MutationEvent.PartialAny>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>

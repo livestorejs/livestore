@@ -18,7 +18,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   ) => Stream.Stream<
     {
       batch: ReadonlyArray<{
-        mutationEventEncoded: MutationEvent.AnyEncoded
+        mutationEventEncoded: MutationEvent.AnyEncodedGlobal
         metadata: Option.Option<TSyncMetadata>
       }>
       remaining: number
@@ -33,7 +33,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * - Number of events: 1-100
      * - event ids must be in ascending order
      * */
-    batch: ReadonlyArray<MutationEvent.AnyEncoded>,
+    batch: ReadonlyArray<MutationEvent.AnyEncodedGlobal>,
   ) => Effect.Effect<
     {
       /** Indexes are relative to `batch` */
@@ -46,6 +46,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
 }
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {}) {}
+
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
   reason: Schema.Union(
     Schema.TaggedStruct('Unexpected', {
@@ -61,6 +62,7 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
     }),
   ),
 }) {}
+
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
   message: Schema.String,
 }) {}

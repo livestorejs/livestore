@@ -1,4 +1,4 @@
-import type * as EventId from '../../schema/EventId.js'
+import * as EventId from '../../schema/EventId.js'
 import type * as MutationEvent from '../../schema/MutationEvent.js'
 import type { MutationDef, MutationEventFactsSnapshot } from '../../schema/mutations.js'
 import {
@@ -48,7 +48,7 @@ export const rebaseEvents = ({
   newRemoteEvents: HistoryDagNode[]
   rebaseFn: RebaseFn
   currentFactsSnapshot: MutationEventFactsSnapshot
-}): MutationEvent.Any[] => {
+}): ReadonlyArray<MutationEvent.AnyDecoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(
     newRemoteEvents.map((event) => event.factsGroup),
@@ -89,10 +89,10 @@ export const rebaseEvents = ({
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        id: { global: headGlobalId + index + 1, local: 0 } satisfies EventId.EventId,
-        parentId: { global: headGlobalId + index, local: 0 } satisfies EventId.EventId,
+        id: EventId.make({ global: headGlobalId + index + 1, local: EventId.localDefault }),
+        parentId: EventId.make({ global: headGlobalId + index, local: EventId.localDefault }),
         mutation: event.mutation,
         args: event.args,
-      }) satisfies MutationEvent.Any,
+      }) satisfies MutationEvent.AnyDecoded,
   )
 }

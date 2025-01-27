@@ -21,17 +21,24 @@ const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMess
 
 // NOTE actual table name is determined at runtime by `WebSocketServer.dbName`
 export const mutationLogTable = DbSchema.table('__unused', {
-  idGlobal: DbSchema.integer({ primaryKey: true }),
-  parentIdGlobal: DbSchema.integer({}),
+  id: DbSchema.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
+  parentId: DbSchema.integer({ schema: EventId.GlobalEventId }),
   mutation: DbSchema.text({}),
   args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
-  /** ISO date format */
+  /** ISO date format. Currently only used for debugging purposes. */
   createdAt: DbSchema.text({}),
 })
 
+/**
+ * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
+ *
+ * Changing this version number will lead to a "soft reset".
+ */
+const PERSISTENCE_FORMAT_VERSION = 2
+
 // Durable Object
 export class WebSocketServer extends DurableObject<Env> {
-  dbName = `mutation_log_${this.ctx.id.toString()}`
+  dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${this.ctx.id.toString()}`
   storage = makeStorage(this.ctx, this.env, this.dbName)
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -101,13 +108,13 @@ export class WebSocketServer extends DurableObject<Env> {
           case 'WSMessage.PushReq': {
             // TODO check whether we could use the Durable Object storage for this to speed up the lookup
             const latestEvent = yield* Effect.promise(() => this.storage.getLatestEvent())
-            const expectedParentId = latestEvent?.id ?? EventId.ROOT
+            const expectedParentId = latestEvent?.id ?? EventId.ROOT.global
 
             let i = 0
             for (const mutationEventEncoded of decodedMessage.batch) {
-              if (mutationEventEncoded.parentId.global !== expectedParentId.global + i) {
+              if (mutationEventEncoded.parentId !== expectedParentId + i) {
                 const err = WSMessage.Error.make({
-                  message: `Invalid parent id. Received ${mutationEventEncoded.parentId.global} but expected ${expectedParentId.global}`,
+                  message: `Invalid parent id. Received ${mutationEventEncoded.parentId} but expected ${expectedParentId}`,
                   requestId,
                 })
 
@@ -124,11 +131,7 @@ export class WebSocketServer extends DurableObject<Env> {
               // NOTE we're currently not blocking on this to allow broadcasting right away
               const storePromise = this.storage.appendEvent(mutationEventEncoded, createdAt)
 
-              ws.send(
-                encodeOutgoingMessage(
-                  WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id.global, requestId }),
-                ),
-              )
+              ws.send(encodeOutgoingMessage(WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id, requestId })))
 
               // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
 
@@ -206,50 +209,41 @@ export class WebSocketServer extends DurableObject<Env> {
 }
 
 const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
-  const getLatestEvent = async (): Promise<MutationEvent.Any | undefined> => {
-    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY idGlobal DESC LIMIT 1`).all()
+  const getLatestEvent = async (): Promise<MutationEvent.AnyEncodedGlobal | undefined> => {
+    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY id DESC LIMIT 1`).all()
     if (rawEvents.error) {
       throw new Error(rawEvents.error)
     }
-    const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results).map((e) => ({
-      ...e,
-      // TODO remove local ids
-      id: { global: e.idGlobal, local: 0 },
-      parentId: { global: e.parentIdGlobal, local: 0 },
-    }))
+    const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results)
+
     return events[0]
   }
 
   const getEvents = async (
     cursor: number | undefined,
   ): Promise<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncoded; metadata: Option.Option<SyncMetadata> }>
+    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>
   > => {
-    const whereClause = cursor === undefined ? '' : `WHERE idGlobal > ${cursor}`
-    const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY idGlobal ASC`
+    const whereClause = cursor === undefined ? '' : `WHERE id > ${cursor}`
+    const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
     // TODO handle case where `cursor` was not found
     const rawEvents = await env.DB.prepare(sql).all()
     if (rawEvents.error) {
       throw new Error(rawEvents.error)
     }
     const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results).map(
-      ({ createdAt, ...e }) => ({
-        mutationEventEncoded: {
-          ...e,
-          // TODO remove local ids
-          id: { global: e.idGlobal, local: 0 },
-          parentId: { global: e.parentIdGlobal, local: 0 },
-        },
+      ({ createdAt, ...mutationEventEncoded }) => ({
+        mutationEventEncoded,
         metadata: Option.some({ createdAt }),
       }),
     )
     return events
   }
 
-  const appendEvent = async (event: MutationEvent.Any, createdAt: string) => {
-    const sql = `INSERT INTO ${dbName} (idGlobal, parentIdGlobal, args, mutation, createdAt) VALUES (?, ?, ?, ?, ?)`
+  const appendEvent = async (event: MutationEvent.AnyEncodedGlobal, createdAt: string) => {
+    const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt) VALUES (?, ?, ?, ?, ?)`
     await env.DB.prepare(sql)
-      .bind(event.id.global, event.parentId.global, JSON.stringify(event.args), event.mutation, createdAt)
+      .bind(event.id, event.parentId, JSON.stringify(event.args), event.mutation, createdAt)
       .run()
   }
 

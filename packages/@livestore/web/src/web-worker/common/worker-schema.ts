@@ -73,8 +73,7 @@ export namespace LeaderWorkerInner {
 
   export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
     payload: {
-      batch: Schema.Array(MutationEvent.EncodedAny),
-      // items: Schema.Array(ExecutionBacklogItem),
+      batch: Schema.Array(MutationEvent.AnyEncoded),
     },
     success: Schema.Void,
     failure: Schema.Union(UnexpectedError, InvalidPushError),

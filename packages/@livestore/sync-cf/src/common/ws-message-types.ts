@@ -20,7 +20,7 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   requestId: Schema.String,
   events: Schema.Array(
     Schema.Struct({
-      mutationEventEncoded: MutationEvent.EncodedAny,
+      mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
       metadata: Schema.Option(SyncMetadata),
     }),
   ),
@@ -30,7 +30,7 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
 export type PullRes = typeof PullRes.Type
 
 export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
-  mutationEventEncoded: MutationEvent.EncodedAny,
+  mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
   metadata: Schema.Option(SyncMetadata),
 })
 
@@ -38,7 +38,7 @@ export type PushBroadcast = typeof PushBroadcast.Type
 
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
-  batch: Schema.Array(MutationEvent.EncodedAny),
+  batch: Schema.Array(MutationEvent.AnyEncodedGlobal),
 })
 
 export type PushReq = typeof PushReq.Type

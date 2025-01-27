@@ -20,7 +20,7 @@ export const emptyHistoryDag = (): HistoryDag =>
   })
 
 // TODO consider making `ROOT_ID` parent to itself
-export const rootParentId = { global: EventId.ROOT.global - 1, local: 0 } satisfies EventId.EventId
+export const rootParentId = EventId.make({ global: EventId.ROOT.global - 1, local: EventId.localDefault })
 
 export type HistoryDagNode = {
   id: EventId.EventId

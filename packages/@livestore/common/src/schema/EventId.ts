@@ -1,4 +1,14 @@
-import { Schema } from '@livestore/utils/effect'
+import { Brand, Schema } from '@livestore/utils/effect'
+
+export type LocalEventId = Brand.Branded<number, 'LocalEventId'>
+export const localEventId = Brand.nominal<LocalEventId>()
+export const LocalEventId = Schema.fromBrand(localEventId)(Schema.Int)
+
+export type GlobalEventId = Brand.Branded<number, 'GlobalEventId'>
+export const globalEventId = Brand.nominal<GlobalEventId>()
+export const GlobalEventId = Schema.fromBrand(globalEventId)(Schema.Int)
+
+export const localDefault = 0 as any as LocalEventId
 
 /**
  * LiveStore event id value consisting of a globally unique event sequence number
@@ -6,11 +16,11 @@ import { Schema } from '@livestore/utils/effect'
  *
  * The local sequence number is only used for localOnly mutations and starts from 0 for each global sequence number.
  */
-export type EventId = { global: number; local: number }
+export type EventId = { global: GlobalEventId; local: LocalEventId }
 
 export const EventId = Schema.Struct({
-  global: Schema.Number,
-  local: Schema.Number,
+  global: GlobalEventId,
+  local: LocalEventId,
 }).annotations({ title: 'LiveStore.EventId' })
 
 /**
@@ -27,20 +37,24 @@ export const isEqual = (a: EventId, b: EventId) => a.global === b.global && a.lo
 
 export type EventIdPair = { id: EventId; parentId: EventId }
 
-export const ROOT = { global: -1, local: 0 } satisfies EventId
+export const ROOT = { global: -1 as any as GlobalEventId, local: localDefault } satisfies EventId
 
 export const isGreaterThan = (a: EventId, b: EventId) => {
   return a.global > b.global || (a.global === b.global && a.local > b.local)
 }
 
-export const nextPair = (id: EventId, isLocal: boolean) => {
+export const make = (id: EventId | typeof EventId.Encoded): EventId => {
+  return Schema.is(EventId)(id) ? id : Schema.decodeSync(EventId)(id)
+}
+
+export const nextPair = (id: EventId, isLocal: boolean): EventIdPair => {
   if (isLocal) {
-    return { id: { global: id.global, local: id.local + 1 }, parentId: id }
+    return { id: { global: id.global, local: (id.local + 1) as any as LocalEventId }, parentId: id }
   }
 
   return {
-    id: { global: id.global + 1, local: 0 },
+    id: { global: (id.global + 1) as any as GlobalEventId, local: localDefault },
     // NOTE we always point to `local: 0` for non-localOnly mutations
-    parentId: { global: id.global, local: 0 },
+    parentId: { global: id.global, local: localDefault },
   }
 }

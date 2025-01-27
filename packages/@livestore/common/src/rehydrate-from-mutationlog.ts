@@ -58,7 +58,7 @@ This likely means the schema has changed in an incompatible way.
           parentId: { global: row.parentIdGlobal, local: row.parentIdLocal },
           mutation: row.mutation,
           args: argsDecoded,
-        } satisfies MutationEvent.Any
+        } satisfies MutationEvent.AnyDecoded
 
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 

@@ -77,13 +77,15 @@ Vitest.describe('sync', () => {
 
       yield* SubscriptionRef.set(testContext.syncIsConnectedRef, false)
 
-      testContext.syncEventIdRef.current = 0
+      testContext.syncEventIdRef.current = EventId.globalEventId(0)
       yield* testContext.syncPullQueue.offer(
-        testContext.encodeMutationEvent({
-          ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
-          id: { global: 0, local: 0 },
-          parentId: EventId.ROOT,
-        }),
+        testContext
+          .encodeMutationEvent({
+            ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
+            id: EventId.make({ global: 0, local: 0 }),
+            parentId: EventId.ROOT,
+          })
+          .toGlobal(),
       )
 
       yield* testContext.mutate(tables.todos.insert({ id: '2', text: 't2', completed: false }))
@@ -141,11 +143,11 @@ Vitest.describe('sync', () => {
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
-    pushedMutationEventsSRef: SubscriptionRef.SubscriptionRef<MutationEvent.AnyEncoded[]>
-    syncEventIdRef: { current: number }
-    syncPullQueue: Queue.Queue<MutationEvent.AnyEncoded>
+    pushedMutationEventsSRef: SubscriptionRef.SubscriptionRef<MutationEvent.AnyEncodedGlobal[]>
+    syncEventIdRef: { current: EventId.GlobalEventId }
+    syncPullQueue: Queue.Queue<MutationEvent.AnyEncodedGlobal>
     syncIsConnectedRef: SubscriptionRef.SubscriptionRef<boolean>
-    encodeMutationEvent: (partialEvent: MutationEvent.Any) => MutationEvent.AnyEncoded
+    encodeMutationEvent: (event: MutationEvent.AnyDecoded) => MutationEvent.EncodedWithMeta
     pullQueue: Queue.Queue<PullQueueItem>
     mutate: (
       ...partialEvents: MutationEvent.PartialAny[]
@@ -165,9 +167,9 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
   const db = yield* makeSyncDb({ _tag: 'in-memory' })
   const dbLog = yield* makeSyncDb({ _tag: 'in-memory' })
 
-  const syncEventIdRef = { current: -1 }
-  const syncPullQueue = yield* Queue.unbounded<MutationEvent.AnyEncoded>()
-  const pushedMutationEventsSRef = yield* SubscriptionRef.make<MutationEvent.AnyEncoded[]>([])
+  const syncEventIdRef = { current: EventId.ROOT.global }
+  const syncPullQueue = yield* Queue.unbounded<MutationEvent.AnyEncodedGlobal>()
+  const pushedMutationEventsSRef = yield* SubscriptionRef.make<MutationEvent.AnyEncodedGlobal[]>([])
   const syncIsConnectedRef = yield* SubscriptionRef.make(true)
 
   const makeSyncBackend = Effect.gen(function* () {
@@ -194,7 +196,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
           yield* SubscriptionRef.update(pushedMutationEventsSRef, (events) => [...events, ...batch])
 
-          syncEventIdRef.current = batch.at(-1)!.id.global
+          syncEventIdRef.current = batch.at(-1)!.id
 
           return { metadata: Array.from({ length: batch.length }, () => Option.none()) }
         }).pipe(Effect.withSpan('mock-sync-backend:push'), semaphore.withPermits(1)),
@@ -216,7 +218,11 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
   const testContextLayer = Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
 
-    const encodeMutationEvent = Schema.encodeSync(leaderThreadCtx.mutationEventSchema)
+    const encodeMutationEvent = ({ meta, ...event }: typeof MutationEvent.EncodedWithMeta.Encoded) =>
+      new MutationEvent.EncodedWithMeta({
+        ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)(event),
+        meta,
+      })
 
     const currentMutationEventId = { current: EventId.ROOT }
 
@@ -225,10 +231,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
       currentMutationEventId.current = nextIdPair.id
-      return new MutationEvent.EncodedWithMeta({
-        ...encodeMutationEvent({ ...partialEvent, ...nextIdPair }),
-        meta: { deferred },
-      })
+      return encodeMutationEvent({ ...partialEvent, ...nextIdPair, meta: { deferred } })
     }
 
     const mutate = (...partialEvents: MutationEvent.PartialAny[]) =>

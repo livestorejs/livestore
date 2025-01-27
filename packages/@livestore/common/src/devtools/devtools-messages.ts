@@ -82,12 +82,12 @@ export class DebugInfoRerunQueryRes extends LSDStoreReqResMessage('LSD.DebugInfo
 
 // TODO refactor this to use push/pull semantics
 export class MutationBroadcast extends LSDMessage('LSD.Leader.MutationBroadcast', {
-  mutationEventEncoded: MutationEvent.EncodedAny,
+  mutationEventEncoded: MutationEvent.AnyEncoded,
 }) {}
 
 // TODO refactor this to use push/pull semantics
 export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
-  mutationEventEncoded: MutationEvent.EncodedAny.pipe(Schema.omit('id', 'parentId')),
+  mutationEventEncoded: MutationEvent.AnyEncoded.pipe(Schema.omit('id', 'parentId')),
 }) {}
 
 export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}
@@ -167,7 +167,7 @@ export class SyncingInfoRes extends LSDReqResMessage('LSD.Leader.SyncingInfoRes'
 export class SyncHistorySubscribe extends LSDReqResMessage('LSD.Leader.SyncHistorySubscribe', {}) {}
 export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHistoryUnsubscribe', {}) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
-  mutationEventEncoded: MutationEvent.EncodedAny,
+  mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
   metadata: Schema.Option(Schema.JsonValue),
 }) {}
 

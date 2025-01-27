@@ -14,7 +14,8 @@ export const makeDb = (roomId: string) => {
   const migrate = () =>
     sql`
     CREATE TABLE IF NOT EXISTS ${sql(tableName)} (
-			id TEXT PRIMARY KEY,
+			id INTEGER PRIMARY KEY,
+      parentId INTEGER,
 			mutation TEXT NOT NULL,
 			args JSONB NOT NULL
     );
@@ -22,7 +23,7 @@ export const makeDb = (roomId: string) => {
   // -- schema_hash INTEGER NOT NULL,
   // -- created_at TEXT NOT NULL
 
-  const createEvents = async (events: ReadonlyArray<MutationEvent.AnyEncoded>) => {
+  const createEvents = async (events: ReadonlyArray<MutationEvent.AnyEncodedGlobal>) => {
     await sql`INSERT INTO ${sql(tableName)} ${sql(events)}`
   }
 

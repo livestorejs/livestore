@@ -12,6 +12,12 @@ sidebar:
 
 ## Areas for contribution
 
+### Help wanted for ...
+
+- SQLite WASM build maintainer (e.g. keeping it up to date with upstream SQLite and wa-sqlite versions)
+- Examples maintainer (e.g. keeping dependencies & best practices up to date)
+- Svelte integration maintainer (e.g. keeping it up to date with upstream Svelte and svelte-kit versions)
+
 ### In scope and encouraged
 
 - Documentation improvements

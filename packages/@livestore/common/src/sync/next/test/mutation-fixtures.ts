@@ -140,16 +140,9 @@ export const toEventNodes = (
 
   let currentEventId: EventId.EventId = EventId.ROOT
 
-  const getNextEventId = (mutationDef: MutationDef.Any): EventId.EventId => {
-    if (mutationDef.options.localOnly) {
-      return { global: currentEventId.global, local: currentEventId.local + 1 }
-    }
-    return { global: currentEventId.global + 1, local: 0 }
-  }
-
   const eventNodes = partialEvents.map((partialEvent) => {
     const mutationDef = mutationDefs[partialEvent.mutation]!
-    const eventId = getNextEventId(mutationDef)
+    const eventId = EventId.nextPair(currentEventId, mutationDef.options.localOnly).id
     currentEventId = eventId
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)
@@ -224,8 +217,8 @@ const getParentId = (eventId: EventId.EventId): EventId.EventId => {
   const localParentId = eventId.local - 1
 
   if (localParentId < 0) {
-    return { global: globalParentId - 1, local: 0 }
+    return EventId.make({ global: globalParentId - 1, local: EventId.localDefault })
   }
 
-  return { global: globalParentId, local: localParentId }
+  return EventId.make({ global: globalParentId, local: localParentId })
 }

@@ -1,6 +1,7 @@
 import { type SqliteAst as __SqliteAst, SqliteDsl } from '@livestore/db-schema'
 import { Schema } from '@livestore/utils/effect'
 
+import * as EventId from './EventId.js'
 import type { FromTable } from './table-def.js'
 import { table } from './table-def.js'
 
@@ -46,8 +47,8 @@ export const sessionChangesetMetaTable = table(
   SESSION_CHANGESET_META_TABLE,
   {
     // TODO bring back primary key
-    idGlobal: SqliteDsl.integer({}),
-    idLocal: SqliteDsl.integer({}),
+    idGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
+    idLocal: SqliteDsl.integer({ schema: EventId.LocalEventId }),
     // idGlobal: SqliteDsl.integer({ primaryKey: true }),
     // idLocal: SqliteDsl.integer({ primaryKey: true }),
     changeset: SqliteDsl.blob({}),
@@ -70,16 +71,22 @@ export const MUTATION_LOG_META_TABLE = 'mutation_log'
 export const mutationLogMetaTable = table(
   MUTATION_LOG_META_TABLE,
   {
-    idGlobal: SqliteDsl.integer({ primaryKey: true }),
-    idLocal: SqliteDsl.integer({ primaryKey: true }),
-    parentIdGlobal: SqliteDsl.integer({}),
-    parentIdLocal: SqliteDsl.integer({}),
+    idGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
+    idLocal: SqliteDsl.integer({ primaryKey: true, schema: EventId.LocalEventId }),
+    parentIdGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
+    parentIdLocal: SqliteDsl.integer({ schema: EventId.LocalEventId }),
     mutation: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     schemaHash: SqliteDsl.integer({}),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
-  { disableAutomaticIdColumn: true, indexes: [] },
+  {
+    disableAutomaticIdColumn: true,
+    indexes: [
+      { columns: ['idGlobal'], name: 'idx_idGlobal' },
+      { columns: ['idGlobal', 'idLocal'], name: 'idx_idGlobal_idLocal' },
+    ],
+  },
 )
 
 export type MutationLogMetaRow = FromTable.RowDecoded<typeof mutationLogMetaTable>
