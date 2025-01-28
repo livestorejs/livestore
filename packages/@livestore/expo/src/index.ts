@@ -1,4 +1,4 @@
-import type { Adapter, ClientSession, Coordinator, LockStatus, PreparedBindValues } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus, PreparedBindValues } from '@livestore/common'
 import {
   getExecArgsFromMutation,
   initializeSingletonTables,
@@ -142,78 +142,82 @@ export const makeAdapter =
 
       let devtools: BootedDevtools | undefined
 
-      const coordinator = {
+      const clientSession = {
         devtools: { appHostId: 'expo', enabled: false },
         lockStatus,
         // Expo doesn't support multiple client sessions, so we just use a fixed session id
         sessionId: 'expo',
-        mutations: {
-          initialMutationEventId,
-          pull: Stream.fromQueue(incomingSyncMutationsQueue),
-          push: (batch): Effect.Effect<void, UnexpectedError> =>
-            Effect.gen(function* () {
-              for (const mutationEventEncoded of batch) {
-                if (migrationOptions.strategy !== 'from-mutation-log') return
+        leaderThread: {
+          mutations: {
+            initialMutationEventId,
+            pull: Stream.fromQueue(incomingSyncMutationsQueue),
+            push: (batch): Effect.Effect<void, UnexpectedError> =>
+              Effect.gen(function* () {
+                for (const mutationEventEncoded of batch) {
+                  if (migrationOptions.strategy !== 'from-mutation-log') return
 
-                const mutation = mutationEventEncoded.mutation
-                const mutationDef = schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
-                const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+                  const mutation = mutationEventEncoded.mutation
+                  const mutationDef =
+                    schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
+                  const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
-                const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+                  const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
 
-                // write to mutation_log
-                if (
-                  mutationLogExclude.has(mutation) === false &&
-                  execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
-                ) {
-                  const mutationDefSchemaHash =
-                    mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
+                  // write to mutation_log
+                  if (
+                    mutationLogExclude.has(mutation) === false &&
+                    execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
+                  ) {
+                    const mutationDefSchemaHash =
+                      mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
 
-                  const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
-                  const mutationLogRowValues = {
-                    idGlobal: mutationEventEncoded.id.global,
-                    idLocal: mutationEventEncoded.id.local,
-                    mutation: mutationEventEncoded.mutation,
-                    argsJson,
-                    schemaHash: mutationDefSchemaHash,
-                    syncMetadataJson: Option.none(),
-                    parentIdGlobal: mutationEventEncoded.parentId.global,
-                    parentIdLocal: mutationEventEncoded.parentId.local,
-                  } satisfies MutationLogMetaRow
+                    const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
+                    const mutationLogRowValues = {
+                      idGlobal: mutationEventEncoded.id.global,
+                      idLocal: mutationEventEncoded.id.local,
+                      mutation: mutationEventEncoded.mutation,
+                      argsJson,
+                      schemaHash: mutationDefSchemaHash,
+                      syncMetadataJson: Option.none(),
+                      parentIdGlobal: mutationEventEncoded.parentId.global,
+                      parentIdLocal: mutationEventEncoded.parentId.local,
+                    } satisfies MutationLogMetaRow
 
-                  try {
-                    newMutationLogStmt.execute(
-                      makeBindValues({
-                        columns: mutationLogMetaTable.sqliteDef.columns,
-                        values: mutationLogRowValues,
-                        variablePrefix: '$',
-                      }) as PreparedBindValues,
-                    )
-                  } catch (e) {
-                    console.error('Error writing to mutation_log', e, mutationLogRowValues)
-                    debugger
-                    throw e
+                    try {
+                      newMutationLogStmt.execute(
+                        makeBindValues({
+                          columns: mutationLogMetaTable.sqliteDef.columns,
+                          values: mutationLogRowValues,
+                          variablePrefix: '$',
+                        }) as PreparedBindValues,
+                      )
+                    } catch (e) {
+                      console.error('Error writing to mutation_log', e, mutationLogRowValues)
+                      debugger
+                      throw e
+                    }
+                  } else {
+                    //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
                   }
-                } else {
-                  //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-                }
 
-                yield* devtools?.onMutation({ mutationEventEncoded }) ?? Effect.void
-              }
-            }),
+                  yield* devtools?.onMutation({ mutationEventEncoded }) ?? Effect.void
+                }
+              }),
+          },
+          export: Effect.sync(() => dbRef.current.syncDb.export()),
+          getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
+          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+          sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
+          getSyncState: Effect.dieMessage('Not implemented'),
         },
-        export: Effect.sync(() => dbRef.current.syncDb.export()),
-        getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
-        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
-        getLeaderSyncState: Effect.dieMessage('Not implemented'),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
-        devtoolsMessageForLeader: () => Effect.dieMessage('Not implemented'),
-      } satisfies Coordinator
+        syncDb: dbRef.current.syncDb,
+      } satisfies ClientSession
 
       if (devtoolsEnabled) {
         devtools = yield* bootDevtools({
           connectDevtoolsToStore,
-          coordinator,
+          clientSession,
           schema,
           dbRef,
           dbLogRef,
@@ -225,7 +229,7 @@ export const makeAdapter =
         )
       }
 
-      return { syncDb: dbRef.current.syncDb, coordinator } satisfies ClientSession
+      return clientSession
     }).pipe(
       Effect.mapError((cause) => (cause._tag === 'LiveStore.UnexpectedError' ? cause : new UnexpectedError({ cause }))),
       Effect.tapCauseLogPretty,

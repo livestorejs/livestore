@@ -3,7 +3,7 @@ import * as WT from 'node:worker_threads'
 import { NodeFileSystem, NodeWorker } from '@effect/platform-node'
 import {
   type Adapter,
-  type Coordinator,
+  type ClientSession,
   Devtools,
   type LockStatus,
   type NetworkStatus,
@@ -136,10 +136,10 @@ export const makeNodeAdapter = ({
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
           Effect.logWarnIfTakesLongerThan({
-            label: `@livestore/node:coordinator:runInWorker:${req._tag}`,
+            label: `@livestore/node:client-session:runInWorker:${req._tag}`,
             duration: 2000,
           }),
-          Effect.withSpan(`@livestore/node:coordinator:runInWorker:${req._tag}`),
+          Effect.withSpan(`@livestore/node:client-session:runInWorker:${req._tag}`),
           Effect.mapError((cause) =>
             Schema.is(UnexpectedError)(cause)
               ? cause
@@ -165,7 +165,7 @@ export const makeNodeAdapter = ({
                   ? new UnexpectedError({ cause })
                   : cause,
             ),
-            Stream.withSpan(`@livestore/node:coordinator:runInWorkerStream:${req._tag}`),
+            Stream.withSpan(`@livestore/node:client-session:runInWorkerStream:${req._tag}`),
           )
         }).pipe(Stream.unwrap) as any
 
@@ -177,7 +177,7 @@ export const makeNodeAdapter = ({
         Effect.tap((res) => syncInMemoryDb.import(res)),
         Effect.timeout(10_000),
         UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/node:coordinator:export'),
+        Effect.withSpan('@livestore/node:client-session:export'),
       )
 
       const appHostId = `${storeId}-${sessionId}`
@@ -186,39 +186,42 @@ export const makeNodeAdapter = ({
         new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
       ).pipe(Stream.orDie)
 
-      const coordinator = {
-        networkStatus,
-        mutations: {
-          pull: pullMutations,
-          push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-              // Effect.timeout(10_000),
-              Effect.withSpan('@livestore/node:coordinator:push', {
-                attributes: { batchSize: batch.length },
-              }),
+      const clientSession = {
+        leaderThread: {
+          networkStatus,
+          mutations: {
+            pull: pullMutations,
+            push: (batch) =>
+              runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+                // Effect.timeout(10_000),
+                Effect.withSpan('@livestore/node:client-session:push', {
+                  attributes: { batchSize: batch.length },
+                }),
+              ),
+            initialMutationEventId,
+          },
+          export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
+            Effect.timeout(10_000),
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/node:client-session:export'),
+          ),
+          getMutationLogData: Effect.dieMessage('Not implemented'),
+          getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/node:client-session:getLeaderSyncState'),
+          ),
+          sendDevtoolsMessage: (message) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+              UnexpectedError.mapToUnexpectedError,
+              Effect.withSpan('@livestore/node:client-session:devtoolsMessageForLeader'),
             ),
-          initialMutationEventId,
         },
-        export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
-          Effect.timeout(10_000),
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/node:coordinator:export'),
-        ),
         devtools: { appHostId, enabled: devtoolsEnabled },
         lockStatus,
         sessionId,
-        getMutationLogData: Effect.dieMessage('Not implemented'),
-        getLeaderSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/node:coordinator:getLeaderSyncState'),
-        ),
         shutdown,
-        devtoolsMessageForLeader: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/node:coordinator:devtoolsMessageForLeader'),
-          ),
-      } satisfies Coordinator
+        syncDb: syncInMemoryDb,
+      } satisfies ClientSession
 
       if (devtoolsEnabled) {
         yield* Effect.gen(function* () {
@@ -234,7 +237,7 @@ export const makeNodeAdapter = ({
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      return { coordinator, syncDb: syncInMemoryDb }
+      return clientSession
     }).pipe(
       Effect.withSpan('@livestore/node:adapter'),
       Effect.parallelFinalizers,

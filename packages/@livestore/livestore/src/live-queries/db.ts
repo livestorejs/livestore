@@ -279,7 +279,7 @@ export class LiveStoreDbQuery<
             }
 
             if (bindValues !== undefined) {
-              replaceSessionIdSymbol(bindValues, store.clientSession.coordinator.sessionId)
+              replaceSessionIdSymbol(bindValues, store.clientSession.sessionId)
             }
 
             // Establish a reactive dependency on the tables used in the query

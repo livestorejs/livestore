@@ -14,7 +14,7 @@ sidebar:
 - Client session
   - Store
   - Reactivity graph
-  - Coordinator
+- Leader thread
 - SQLite database
   - In-memory SQLite database within the client session thread (usually main thread)
     - Used by the reactivity graph

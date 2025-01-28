@@ -237,7 +237,7 @@ const makeDevtoolsOptions = ({
         const appHostId = `${storeId}-${sessionId}`
         return {
           devtoolsWebChannel: yield* makeNodeDevtoolsChannel({
-            nodeName: `app-coordinator-${appHostId}`,
+            nodeName: `app-leader-${appHostId}`,
             target: `devtools`,
             url: `ws://localhost:${devtoolsPort}`,
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },

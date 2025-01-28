@@ -1,4 +1,4 @@
-import type { ConnectDevtoolsToStore, Coordinator } from '@livestore/common'
+import type { ClientSession, ConnectDevtoolsToStore } from '@livestore/common'
 import {
   Devtools,
   IntentionalShutdownCause,
@@ -28,7 +28,7 @@ export type BootedDevtools = {
 
 export const bootDevtools = ({
   connectDevtoolsToStore,
-  coordinator,
+  clientSession,
   schema,
   shutdown,
   dbRef,
@@ -36,7 +36,7 @@ export const bootDevtools = ({
   incomingSyncMutationsQueue,
 }: {
   connectDevtoolsToStore: ConnectDevtoolsToStore
-  coordinator: Coordinator
+  clientSession: ClientSession
   schema: LiveStoreSchema
   dbRef: DbPairRef
   dbLogRef: DbPairRef
@@ -124,7 +124,7 @@ export const bootDevtools = ({
               return
             }
             case 'LSD.Leader.SnapshotReq': {
-              const data = yield* coordinator.export
+              const data = yield* clientSession.leaderThread.export
 
               yield* expoDevtoolsChannel.send(Devtools.SnapshotRes.make({ snapshot: data!, ...reqPayload }))
 
@@ -227,7 +227,7 @@ export const bootDevtools = ({
               return
             }
             case 'LSD.Leader.MutationLogReq': {
-              const mutationLog = yield* coordinator.getMutationLogData
+              const mutationLog = yield* clientSession.leaderThread.getMutationLogData
 
               yield* expoDevtoolsChannel.send(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
 
@@ -236,7 +236,7 @@ export const bootDevtools = ({
             case 'LSD.Leader.RunMutationReq': {
               const { mutationEventEncoded: mutationEventEncoded_ } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
-              // const nextMutationEventIdPair = coordinator.mutations.nextMutationEventIdPair({
+              // const nextMutationEventIdPair = clientSession.mutations.nextMutationEventIdPair({
               //   localOnly: mutationDef.options.localOnly,
               // })
 
@@ -255,7 +255,7 @@ export const bootDevtools = ({
               //   schema.mutations.get(mutationEventEncoded.mutation) ??
               //   shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded.mutation}`)
 
-              // yield* coordinator.mutations.push([mutationEventEncoded])
+              // yield* clientSession.mutations.push([mutationEventEncoded])
 
               yield* expoDevtoolsChannel.send(Devtools.RunMutationRes.make({ ...reqPayload }))
 

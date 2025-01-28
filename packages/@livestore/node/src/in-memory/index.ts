@@ -1,4 +1,4 @@
-import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
 import { EventId } from '@livestore/common/schema'
@@ -9,7 +9,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 
 // TODO unify in-memory adapter with other in-memory adapter implementations
 
-/** NOTE: This coordinator is currently only used for testing */
+/** NOTE: This adapter is currently only used for testing */
 export const makeInMemoryAdapter =
   (initialData?: Uint8Array): Adapter =>
   ({
@@ -35,22 +35,25 @@ export const makeInMemoryAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const coordinator = {
+      const clientSession = {
+        syncDb,
         devtools: { appHostId: 'in-memory', enabled: false },
         sessionId: `in-memory-${nanoid(6)}`,
         lockStatus,
-        mutations: {
-          pull: Stream.never,
-          push: () => Effect.void,
-          initialMutationEventId: EventId.ROOT,
+        leaderThread: {
+          mutations: {
+            pull: Stream.never,
+            push: () => Effect.void,
+            initialMutationEventId: EventId.ROOT,
+          },
+          export: Effect.dieMessage('Not implemented'),
+          getMutationLogData: Effect.succeed(new Uint8Array()),
+          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+          getSyncState: Effect.dieMessage('Not implemented'),
+          sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
         },
-        export: Effect.dieMessage('Not implemented'),
-        getMutationLogData: Effect.succeed(new Uint8Array()),
-        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
-        getLeaderSyncState: Effect.dieMessage('Not implemented'),
-        devtoolsMessageForLeader: () => Effect.dieMessage('Not implemented'),
-      } satisfies Coordinator
+      } satisfies ClientSession
 
-      return { coordinator, syncDb }
+      return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError)

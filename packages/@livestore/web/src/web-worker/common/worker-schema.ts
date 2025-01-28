@@ -161,13 +161,13 @@ export namespace LeaderWorkerInner {
 }
 
 export namespace SharedWorker {
-  export class InitialMessagePayloadFromCoordinator extends Schema.TaggedStruct('FromCoordinator', {
+  export class InitialMessagePayloadFromClientSession extends Schema.TaggedStruct('FromClientSession', {
     initialMessage: LeaderWorkerInner.InitialMessage,
   }) {}
 
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
-      payload: Schema.Union(InitialMessagePayloadFromCoordinator, Schema.TaggedStruct('FromWebBridge', {})),
+      payload: Schema.Union(InitialMessagePayloadFromClientSession, Schema.TaggedStruct('FromWebBridge', {})),
     },
     success: Schema.Void,
     failure: UnexpectedError,

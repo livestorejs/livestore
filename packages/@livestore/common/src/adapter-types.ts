@@ -29,8 +29,30 @@ export type SynchronousDatabaseChangeset = {
 export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
-  /** The coordinator is responsible for persisting the database, syncing etc */
-  coordinator: Coordinator
+  devtools: {
+    enabled: boolean
+    // TODO incorporate sessionId and rethink appHostId
+    appHostId: string
+  }
+  sessionId: string
+  /** Status info whether current session is leader or not */
+  lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  leaderThread: ClientSessionLeaderThreadProxy
+}
+
+export type ClientSessionLeaderThreadProxy = {
+  mutations: {
+    pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
+    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | InvalidPushError>
+    initialMutationEventId: EventId
+  }
+  export: Effect.Effect<Uint8Array, UnexpectedError>
+  getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
+  getSyncState: Effect.Effect<SyncState, UnexpectedError>
+  networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
+  /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
+  sendDevtoolsMessage: (message: Devtools.MessageToAppLeader) => Effect.Effect<void, UnexpectedError>
 }
 
 export type SynchronousDatabase<TReq = any, TMetadata extends TReq = TReq> = {
@@ -102,30 +124,6 @@ export const BootStatus = Schema.Union(
 ).annotations({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
-
-// TODO refactor `Coordinator` to embrace more of the "leader semantics"
-export type Coordinator = {
-  devtools: {
-    enabled: boolean
-    // TODO incorporate sessionId and rethink appHostId
-    appHostId: string
-  }
-  sessionId: string
-  // TODO is exposing the lock status really needed (or only relevant for web adapter?)
-  lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  mutations: {
-    pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
-    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | InvalidPushError>
-    initialMutationEventId: EventId
-  }
-  export: Effect.Effect<Uint8Array, UnexpectedError>
-  getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
-  getLeaderSyncState: Effect.Effect<SyncState, UnexpectedError>
-  networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
-  /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
-  devtoolsMessageForLeader: (message: Devtools.MessageToAppLeader) => Effect.Effect<void, UnexpectedError>
-}
 
 /**
  * Can be used in queries to refer to the current session id.

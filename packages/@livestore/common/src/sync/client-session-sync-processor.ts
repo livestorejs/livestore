@@ -3,7 +3,7 @@ import type { Scope } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { Coordinator, UnexpectedError } from '../adapter-types.js'
+import type { ClientSessionLeaderThreadProxy, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
 import { type LiveStoreSchema } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
@@ -32,7 +32,7 @@ export const makeClientSessionSyncProcessor = ({
   schema: LiveStoreSchema
   initialLeaderHead: EventId.EventId
   pushToLeader: (batch: ReadonlyArray<MutationEvent.AnyEncoded>) => void
-  pullFromLeader: Coordinator['mutations']['pull']
+  pullFromLeader: ClientSessionLeaderThreadProxy['mutations']['pull']
   applyMutation: (
     mutationEventDecoded: MutationEvent.PartialAny,
     options: { otelContext: otel.Context; withChangeset: boolean },

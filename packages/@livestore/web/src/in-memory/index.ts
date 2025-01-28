@@ -1,4 +1,4 @@
-import type { Adapter, Coordinator, LockStatus } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
 import { EventId } from '@livestore/common/schema'
@@ -12,7 +12,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
 
-/** NOTE: This coordinator is currently only used for testing */
+/** NOTE: This adapter is currently only used for testing */
 export const makeInMemoryAdapter =
   (initialData?: Uint8Array): Adapter =>
   ({
@@ -38,22 +38,25 @@ export const makeInMemoryAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const coordinator = {
+      const clientSession = {
+        syncDb,
         devtools: { appHostId: 'in-memory', enabled: false },
         sessionId: `in-memory-${nanoid(6)}`,
-        mutations: {
-          pull: Stream.never,
-          push: () => Effect.void,
-          initialMutationEventId: EventId.ROOT,
+        leaderThread: {
+          mutations: {
+            pull: Stream.never,
+            push: () => Effect.void,
+            initialMutationEventId: EventId.ROOT,
+          },
+          export: Effect.dieMessage('Not implemented'),
+          getMutationLogData: Effect.succeed(new Uint8Array()),
+          getSyncState: Effect.dieMessage('Not implemented'),
+          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+          sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
         },
         lockStatus,
-        export: Effect.dieMessage('Not implemented'),
-        getMutationLogData: Effect.succeed(new Uint8Array()),
-        getLeaderSyncState: Effect.dieMessage('Not implemented'),
-        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
-        devtoolsMessageForLeader: () => Effect.dieMessage('Not implemented'),
-      } satisfies Coordinator
+      } satisfies ClientSession
 
-      return { coordinator, syncDb }
+      return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError)

@@ -1,4 +1,4 @@
-import type { Coordinator, UnexpectedError } from '@livestore/common'
+import type { ClientSession, UnexpectedError } from '@livestore/common'
 import { Devtools } from '@livestore/common'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { isDevEnv } from '@livestore/utils'
@@ -9,12 +9,12 @@ import { nanoid } from '@livestore/utils/nanoid'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 
 export const bootDevtools = ({
-  coordinator,
+  clientSession,
   storeId,
   // waitForDevtoolsWebBridgePort,
   // connectToDevtools,
 }: {
-  coordinator: Coordinator
+  clientSession: ClientSession
   storeId: string
   // waitForDevtoolsWebBridgePort: (_: { webBridgeId: string }) => Effect.Effect<MessagePort, UnexpectedError>
   // connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
@@ -47,27 +47,27 @@ export const bootDevtools = ({
 
     if (isDevEnv()) {
       yield* Effect.log(
-        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${coordinator.devtools.appHostId}&storeId=${storeId}`,
+        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${clientSession.devtools.appHostId}&storeId=${storeId}`,
       )
     }
   }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools:boot'))
 
 const listenToWebBridge = ({
-  coordinator,
+  clientSession,
   storeId,
   waitForDevtoolsWebBridgePort,
   connectToDevtools,
 }: {
-  coordinator: Coordinator
+  clientSession: ClientSession
   storeId: string
   waitForDevtoolsWebBridgePort: (_: { webBridgeId: string }) => Effect.Effect<MessagePort, UnexpectedError>
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
   Effect.gen(function* () {
-    const appHostId = coordinator.devtools.appHostId
+    const appHostId = clientSession.devtools.appHostId
     const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
 
-    const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
+    const isLeader = yield* clientSession.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
     yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ appHostId, isLeader }))
 
     const runtime = yield* Effect.runtime()
@@ -96,7 +96,7 @@ const listenToWebBridge = ({
             Effect.forkScoped,
           )
 
-          const isLeader = yield* coordinator.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
+          const isLeader = yield* clientSession.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
           yield* webBridgeBroadcastChannel.send(
             Devtools.WebBridge.ConnectToDevtools.make({ appHostId, isLeader, devtoolsId, webBridgeId, storeId }),
           )
@@ -111,15 +111,13 @@ const listenToWebBridge = ({
   }).pipe(Effect.scoped)
 
 const listenToBrowserExtensionBridge = ({
-  coordinator,
+  appHostId,
   connectToDevtools,
 }: {
-  coordinator: Coordinator
+  appHostId: string
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
   Effect.gen(function* () {
-    const appHostId = coordinator.devtools.appHostId
-
     const windowChannel = yield* WebChannel.windowChannel({
       window,
       schema: {

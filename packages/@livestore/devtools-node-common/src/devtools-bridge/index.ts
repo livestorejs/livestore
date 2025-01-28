@@ -28,7 +28,7 @@ export const prepareNodeDevtoolsBridge = ({
 
     const nodeDevtoolsChannelCoordinator = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
-      target: `app-coordinator-${appHostId}`,
+      target: `app-leader-${appHostId}`,
       schema: { listen: Devtools.MessageFromAppLeader, send: Devtools.MessageToAppLeader },
     })
 

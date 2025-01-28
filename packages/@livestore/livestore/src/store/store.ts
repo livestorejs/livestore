@@ -104,15 +104,15 @@ export class Store<
 
     this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
-      initialLeaderHead: clientSession.coordinator.mutations.initialMutationEventId,
+      initialLeaderHead: clientSession.leaderThread.mutations.initialMutationEventId,
       // rebaseBehaviour: 'auto-rebase',
       pushToLeader: (batch) =>
-        clientSession.coordinator.mutations.push(batch).pipe(
+        clientSession.leaderThread.mutations.push(batch).pipe(
           // NOTE we don't want to shutdown in case of an invalid push error, since it will be retried
           Effect.catchTag('InvalidPushError', Effect.ignoreLogged),
           this.runEffectFork,
         ),
-      pullFromLeader: clientSession.coordinator.mutations.pull,
+      pullFromLeader: clientSession.leaderThread.mutations.pull,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
         const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!
         const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
@@ -207,11 +207,7 @@ export class Store<
 
     if (graphQLOptions) {
       this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(
-        this.syncDbWrapper,
-        this.otel.tracer,
-        clientSession.coordinator.sessionId,
-      )
+      this.graphQLContext = graphQLOptions.makeContext(this.syncDbWrapper, this.otel.tracer, clientSession.sessionId)
     }
 
     Effect.gen(this, function* () {
@@ -251,7 +247,7 @@ export class Store<
   }
 
   get sessionId(): string {
-    return this.clientSession.coordinator.sessionId
+    return this.clientSession.sessionId
   }
 
   /**
@@ -366,7 +362,7 @@ export class Store<
     const { mutationsEvents, options } = this.getMutateArgs(firstMutationOrTxnFnOrOptions, restMutations)
 
     for (const mutationEvent of mutationsEvents) {
-      replaceSessionIdSymbol(mutationEvent.args, this.clientSession.coordinator.sessionId)
+      replaceSessionIdSymbol(mutationEvent.args, this.clientSession.sessionId)
     }
 
     if (mutationsEvents.length === 0) return
@@ -403,7 +399,7 @@ export class Store<
                 const applyMutations = () => this.syncProcessor.push(mutationsEvents, { otelContext })
 
                 if (mutationsEvents.length > 1) {
-                  // TODO: what to do about coordinator transaction here?
+                  // TODO: what to do about leader transaction here?
                   return this.syncDbWrapper.txn(applyMutations)
                 } else {
                   return applyMutations()
@@ -467,79 +463,6 @@ export class Store<
     )
   }
 
-  // #region mutateWithoutRefresh
-  /**
-   * Apply a mutation to the store.
-   * Returns the tables that were affected by the event.
-   * This is an internal method that doesn't trigger a refresh;
-   * the caller must refresh queries after calling this method.
-   */
-  // private mutateWithoutRefresh = (
-  //   mutationEventDecoded: MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>,
-  //   options: {
-  //     otelContext: otel.Context
-  //   },
-  // ): { writeTables: ReadonlySet<string>; durationMs: number } => {
-  //   // const mutationDef =
-  //   //   this.schema.mutations.get(mutationEventDecoded.mutation) ??
-  //   //   shouldNeverHappen(`Unknown mutation type: ${mutationEventDecoded.mutation}`)
-
-  //   // // const mutationEventDecoded: MutationEvent.ForSchema<TSchema> = isPartialMutationEvent(mutationEventDecoded_)
-  //   // //   ? { ...mutationEventDecoded_, ...nextMutationEventId() }
-  //   // //   : mutationEventDecoded_
-
-  //   // // NOTE we also need this temporary workaround here since some code-paths use `mutateWithoutRefresh` directly
-  //   // // e.g. the row-query functionality
-  //   // if (Predicate.hasProperty(mutationEventDecoded, 'id')) {
-  //   //   if (MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id))) {
-  //   //     // NOTE this data should never be used
-  //   //     return { writeTables: new Set(), durationMs: 0 }
-  //   //   } else {
-  //   //     MutableHashMap.set(this.unsyncedMutationEvents, Data.struct(mutationEventDecoded.id), mutationEventDecoded)
-  //   //   }
-  //   // }
-
-  //   const { otelContext } = options
-
-  //   return this.otel.tracer.startActiveSpan(
-  //     'LiveStore:mutateWithoutRefresh',
-  //     {
-  //       attributes: {
-  //         'livestore.mutation': mutationEventDecoded.mutation,
-  //         // TODO(performance) add flag to disable this
-  //         'livestore.args': JSON.stringify(mutationEventDecoded.args, null, 2),
-  //       },
-  //     },
-  //     otelContext,
-  //     (span) => {
-  //       const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-  //       const allWriteTables = new Set<string>()
-  //       let durationMsTotal = 0
-
-  //       replaceSessionIdSymbol(mutationEventDecoded.args, this.clientSession.coordinator.sessionId)
-
-  //       const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-  //       for (const {
-  //         statementSql,
-  //         bindValues,
-  //         writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
-  //       } of execArgsArr) {
-  //         const { durationMs } = this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
-
-  //         durationMsTotal += durationMs
-  //         writeTables.forEach((table) => allWriteTables.add(table))
-  //       }
-
-  //       span.end()
-
-  //       return { writeTables: allWriteTables, durationMs: durationMsTotal }
-  //     },
-  //   )
-  // }
-  // #endregion mutateWithoutRefresh
-
   private makeTableRef = (tableName: string) =>
     this.reactivityGraph.makeRef(null, {
       equal: () => false,
@@ -549,21 +472,21 @@ export class Store<
 
   __devDownloadDb = (source: 'local' | 'leader' = 'local') => {
     Effect.gen(this, function* () {
-      const data = source === 'local' ? this.syncDbWrapper.export() : yield* this.clientSession.coordinator.export
+      const data = source === 'local' ? this.syncDbWrapper.export() : yield* this.clientSession.leaderThread.export
       downloadBlob(data, `livestore-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
   }
 
   __devDownloadMutationLogDb = () => {
     Effect.gen(this, function* () {
-      const data = yield* this.clientSession.coordinator.getMutationLogData
+      const data = yield* this.clientSession.leaderThread.getMutationLogData
       downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
   }
 
   __devHardReset = (mode: 'all-data' | 'only-app-db' = 'all-data') => {
     Effect.gen(this, function* () {
-      yield* this.clientSession.coordinator.devtoolsMessageForLeader(
+      yield* this.clientSession.leaderThread.sendDevtoolsMessage(
         Devtools.ResetAllDataReq.make({ liveStoreVersion, mode, requestId: nanoid() }),
       )
     }).pipe(this.runEffectFork)
@@ -573,13 +496,13 @@ export class Store<
     Effect.gen(this, function* () {
       const session = this.syncProcessor.syncStateRef.current
       console.log('Session sync state:', session)
-      const leader = yield* this.clientSession.coordinator.getLeaderSyncState
+      const leader = yield* this.clientSession.leaderThread.getSyncState
       console.log('Leader sync state:', leader)
     }).pipe(this.runEffectFork)
   }
 
   __devShutdown = (cause?: Cause.Cause<UnexpectedError>) => {
-    this.clientSession.coordinator
+    this.clientSession
       .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
       .pipe(Effect.tapCauseLogPretty, Effect.provide(this.runtime), Effect.runFork)
   }

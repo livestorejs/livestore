@@ -48,7 +48,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   >(undefined)
 
   const initialMessagePayloadDeferredRef = yield* Deferred.make<
-    typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromCoordinator.Type
+    typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromClientSession.Type
   >().pipe(Effect.andThen(Ref.make))
 
   const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
@@ -156,7 +156,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     yield* Effect.logDebug('reset')
 
     const initialMessagePayloadDeferred =
-      yield* Deferred.make<typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromCoordinator.Type>()
+      yield* Deferred.make<typeof WorkerSchema.SharedWorker.InitialMessagePayloadFromClientSession.Type>()
     yield* Ref.set(initialMessagePayloadDeferredRef, initialMessagePayloadDeferred)
 
     yield* resetCurrentWorkerCtx

@@ -38,7 +38,7 @@ export const connectDevtoolsToStore = ({
   store: IStore
 }) =>
   Effect.gen(function* () {
-    const appHostId = store.clientSession.coordinator.devtools.appHostId
+    const appHostId = store.clientSession.devtools.appHostId
 
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
@@ -58,7 +58,7 @@ export const connectDevtoolsToStore = ({
     const onMessage = (decodedMessage: typeof Devtools.MessageToAppClientSession.Type) => {
       // console.debug('@livestore/livestore:store:devtools:onMessage', decodedMessage)
 
-      if (decodedMessage.appHostId !== store.clientSession.coordinator.devtools.appHostId) {
+      if (decodedMessage.appHostId !== store.clientSession.devtools.appHostId) {
         // console.log(`Unknown message`, event)
         return
       }

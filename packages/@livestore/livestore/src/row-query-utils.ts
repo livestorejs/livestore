@@ -61,6 +61,5 @@ export const makeExecBeforeFirstRun =
 
       // NOTE It's important that we only mutate and don't refresh here, as this function is called during a render
       store.mutate({ otelContext, skipRefresh: true }, table.insert({ id, ...insertValues }))
-      // store.mutateWithoutRefresh(table.insert({ id, ...insertValues }), { otelContext, coordinatorMode: 'default' })
     }
   }

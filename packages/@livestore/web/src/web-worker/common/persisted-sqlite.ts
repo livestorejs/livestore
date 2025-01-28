@@ -9,7 +9,7 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
   cause: Schema.Defect,
 }) {}
 
-export const readPersistedAppDbFromCoordinator = ({
+export const readPersistedAppDbFromClientSession = ({
   storageOptions,
   storeId,
   schemaHashSuffix,
@@ -54,7 +54,7 @@ export const readPersistedAppDbFromCoordinator = ({
 
       if (dbFileRes !== undefined) {
         const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
-        // console.debug('readPersistedAppDbFromCoordinator', data.byteLength, data)
+        // console.debug('readPersistedAppDbFromClientSession', data.byteLength, data)
 
         // Given the SAH pool always eagerly creates files with empty non-header data,
         // we want to return undefined if the file exists but is empty
@@ -68,12 +68,12 @@ export const readPersistedAppDbFromCoordinator = ({
       return undefined
     })
   }).pipe(
-    Effect.logWarnIfTakesLongerThan({ duration: 1000, label: '@livestore/web:readPersistedAppDbFromCoordinator' }),
-    Effect.withPerformanceMeasure('@livestore/web:readPersistedAppDbFromCoordinator'),
-    Effect.withSpan('@livestore/web:readPersistedAppDbFromCoordinator'),
+    Effect.logWarnIfTakesLongerThan({ duration: 1000, label: '@livestore/web:readPersistedAppDbFromClientSession' }),
+    Effect.withPerformanceMeasure('@livestore/web:readPersistedAppDbFromClientSession'),
+    Effect.withSpan('@livestore/web:readPersistedAppDbFromClientSession'),
   )
 
-export const resetPersistedDataFromCoordinator = ({
+export const resetPersistedDataFromClientSession = ({
   storageOptions,
   storeId,
 }: {
@@ -83,7 +83,7 @@ export const resetPersistedDataFromCoordinator = ({
   Effect.gen(function* () {
     const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* opfsDeleteAbs(directory)
-  }).pipe(Effect.withSpan('@livestore/web:resetPersistedDataFromCoordinator'))
+  }).pipe(Effect.withSpan('@livestore/web:resetPersistedDataFromClientSession'))
 
 const opfsDeleteAbs = (absPath: string) =>
   Effect.promise(async () => {

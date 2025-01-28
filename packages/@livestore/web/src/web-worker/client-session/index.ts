@@ -1,4 +1,4 @@
-import type { Adapter, Coordinator, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
@@ -28,10 +28,10 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 
 import * as OpfsUtils from '../../opfs-utils.js'
-import { readPersistedAppDbFromCoordinator, resetPersistedDataFromCoordinator } from '../common/persisted-sqlite.js'
+import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
-import { bootDevtools } from './coordinator-devtools.js'
+import { bootDevtools } from './client-session-devtools.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -94,7 +94,7 @@ export const makeAdapter =
       const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
       if (options.resetPersistence === true) {
-        yield* resetPersistedDataFromCoordinator({ storageOptions, storeId })
+        yield* resetPersistedDataFromClientSession({ storageOptions, storeId })
       }
 
       // Note on fast-path booting:
@@ -103,7 +103,7 @@ export const makeAdapter =
       // we usually speeds up the boot process by a lot.
       // We need to be extra careful though to not run into any race conditions or inconsistencies.
       // TODO also verify persisted data
-      const dataFromFile = yield* readPersistedAppDbFromCoordinator({
+      const dataFromFile = yield* readPersistedAppDbFromClientSession({
         storageOptions,
         storeId,
         schemaHashSuffix,
@@ -133,7 +133,7 @@ export const makeAdapter =
         initialMessage: () =>
           new WorkerSchema.SharedWorker.InitialMessage({
             payload: {
-              _tag: 'FromCoordinator',
+              _tag: 'FromClientSession',
               initialMessage: new WorkerSchema.LeaderWorkerInner.InitialMessage({
                 storageOptions,
                 storeId,
@@ -149,7 +149,7 @@ export const makeAdapter =
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
         Effect.tapErrorCause(shutdown),
-        Effect.withSpan('@livestore/web:coordinator:setupSharedWorker'),
+        Effect.withSpan('@livestore/web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
 
@@ -163,11 +163,11 @@ export const makeAdapter =
 
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
+          `[@livestore/web:client-session] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
         )
 
         yield* Effect.addFinalizer(() =>
-          Effect.logDebug(`[@livestore/web:coordinator] Releasing lock for '${LIVESTORE_TAB_LOCK}'`),
+          Effect.logDebug(`[@livestore/web:client-session] Releasing lock for '${LIVESTORE_TAB_LOCK}'`),
         )
 
         yield* SubscriptionRef.set(lockStatus, 'has-lock')
@@ -184,7 +184,7 @@ export const makeAdapter =
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
           Effect.tapErrorCause(shutdown),
-          Effect.withSpan('@livestore/web:coordinator:setupDedicatedWorker'),
+          Effect.withSpan('@livestore/web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
         )
@@ -198,7 +198,7 @@ export const makeAdapter =
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
-            // console.log('[@livestore/web:coordinator] Shutting down leader worker')
+            // console.log('[@livestore/web:client-session] Shutting down leader worker')
 
             // We first try to gracefully shutdown the leader worker and then forcefully terminate it
             yield* Effect.raceFirst(
@@ -207,7 +207,9 @@ export const makeAdapter =
                 .pipe(Effect.andThen(() => worker.terminate())),
 
               Effect.sync(() => {
-                console.warn('[@livestore/web:coordinator] Worker did not gracefully shutdown in time, terminating it')
+                console.warn(
+                  '[@livestore/web:client-session] Worker did not gracefully shutdown in time, terminating it',
+                )
                 worker.terminate()
               }).pipe(
                 // Seems like we still need to wait a bit for the worker to terminate
@@ -216,17 +218,17 @@ export const makeAdapter =
               ),
             )
 
-            // yield* Effect.logDebug('[@livestore/web:coordinator] coordinator shutdown. worker terminated')
-          }).pipe(Effect.withSpan('@livestore/web:coordinator:lock:shutdown'), Effect.ignoreLogged),
+            // yield* Effect.logDebug('[@livestore/web:client-session] client-session shutdown. worker terminated')
+          }).pipe(Effect.withSpan('@livestore/web:client-session:lock:shutdown'), Effect.ignoreLogged),
         )
 
         yield* Effect.never
-      }).pipe(Effect.withSpan('@livestore/web:coordinator:lock'))
+      }).pipe(Effect.withSpan('@livestore/web:client-session:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
       if (gotLocky === false) {
         yield* Effect.logDebug(
-          `[@livestore/web:coordinator] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
+          `[@livestore/web:client-session] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
         )
 
         // TODO find a cleaner implementation for the lock handling as we don't make use of the deferred properly right now
@@ -254,10 +256,10 @@ export const makeAdapter =
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
           Effect.logWarnIfTakesLongerThan({
-            label: `@livestore/web:coordinator:runInWorker:${req._tag}`,
+            label: `@livestore/web:client-session:runInWorker:${req._tag}`,
             duration: 2000,
           }),
-          Effect.withSpan(`@livestore/web:coordinator:runInWorker:${req._tag}`),
+          Effect.withSpan(`@livestore/web:client-session:runInWorker:${req._tag}`),
           Effect.mapError((cause) =>
             Schema.is(UnexpectedError)(cause)
               ? cause
@@ -283,7 +285,7 @@ export const makeAdapter =
                   ? new UnexpectedError({ cause })
                   : cause,
             ),
-            Stream.withSpan(`@livestore/web:coordinator:runInWorkerStream:${req._tag}`),
+            Stream.withSpan(`@livestore/web:client-session:runInWorkerStream:${req._tag}`),
           )
         }).pipe(Stream.unwrap) as any
 
@@ -349,9 +351,9 @@ export const makeAdapter =
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
           if (Exit.isFailure(ex) && Exit.isInterrupted(ex) === false) {
-            yield* Effect.logError('[@livestore/web:coordinator] coordinator shutdown', ex.cause)
+            yield* Effect.logError('[@livestore/web:client-session] client-session shutdown', ex.cause)
           } else {
-            yield* Effect.logWarning('[@livestore/web:coordinator] coordinator shutdown', gotLocky, ex)
+            yield* Effect.logWarning('[@livestore/web:client-session] client-session shutdown', gotLocky, ex)
           }
 
           if (gotLocky) {
@@ -360,60 +362,63 @@ export const makeAdapter =
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
-      const coordinator = {
+      const clientSession = {
+        syncDb,
         devtools: { enabled: devtoolsEnabled, appHostId: clientId },
         lockStatus,
         sessionId,
 
-        export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
-          Effect.timeout(10_000),
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/web:coordinator:export'),
-        ),
+        leaderThread: {
+          export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
+            Effect.timeout(10_000),
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/web:client-session:export'),
+          ),
 
-        mutations: {
-          pull: pullMutations,
+          mutations: {
+            pull: pullMutations,
 
-          push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-              // Effect.timeout(10_000),
-              Effect.withSpan('@livestore/web:coordinator:push', {
-                attributes: { batchSize: batch.length },
-              }),
+            push: (batch) =>
+              runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+                // Effect.timeout(10_000),
+                Effect.withSpan('@livestore/web:client-session:push', {
+                  attributes: { batchSize: batch.length },
+                }),
+              ),
+
+            initialMutationEventId,
+          },
+
+          getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
+            Effect.timeout(10_000),
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/web:client-session:getMutationLogData'),
+          ),
+
+          getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/web:client-session:getLeaderSyncState'),
+          ),
+
+          networkStatus,
+
+          sendDevtoolsMessage: (message) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+              UnexpectedError.mapToUnexpectedError,
+              Effect.withSpan('@livestore/web:client-session:devtoolsMessageForLeader'),
             ),
-
-          initialMutationEventId,
         },
 
-        getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
-          Effect.timeout(10_000),
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/web:coordinator:getMutationLogData'),
-        ),
-
-        getLeaderSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/web:coordinator:getLeaderSyncState'),
-        ),
-
-        networkStatus,
-
         shutdown,
-
-        devtoolsMessageForLeader: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
-            UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/web:coordinator:devtoolsMessageForLeader'),
-          ),
-      } satisfies Coordinator
+      } satisfies ClientSession
 
       if (devtoolsEnabled) {
-        // yield* bootDevtools({ coordinator, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
+        // yield* bootDevtools({ client-session, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
         yield* Effect.gen(function* () {
           const appHostId = clientId
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
 
-          yield* bootDevtools({ coordinator, storeId })
+          yield* bootDevtools({ clientSession, storeId })
 
           // TODO re-enable browser extension as well
           const storeDevtoolsChannel = yield* makeWebDevtoolsChannel({
@@ -425,10 +430,10 @@ export const makeAdapter =
           })
 
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
-        }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools'), Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(Effect.withSpan('@livestore/web:client-session:devtools'), Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      return { coordinator, syncDb }
+      return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
 // NOTE for `local` storage we could also use the mutationlog db to store the data

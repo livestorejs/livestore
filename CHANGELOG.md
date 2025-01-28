@@ -34,10 +34,13 @@
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
 - Improve Otel tracing integration
 - Fix: The query builder now correctly handles `IN` and `NOT IN` where operations
+- Fix: Devtools data browser now more clearly highlights selected table #239
+- Fix: LiveStore crashes when using reserved keywords as a column name (“from”) #245
 - Examples:
   - Added Otel to `todomvc` and `todomvc-sync-cf` example
 - Internal:
   - Node syncing integration tests
+  - Got rid of the coordinator abstraction in favour of a clear separation between leader and client sessions
   - New devtools protocol via webmesh
     - Should improve reliability of devtools connection (particularly during app reloads)
   - Large refactoring to share more code between adapters
