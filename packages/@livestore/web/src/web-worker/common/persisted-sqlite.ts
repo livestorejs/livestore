@@ -1,4 +1,5 @@
 import { liveStoreStorageFormatVersion } from '@livestore/common'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
 import { Effect, Schema } from '@livestore/utils/effect'
 
@@ -12,11 +13,11 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
 export const readPersistedAppDbFromClientSession = ({
   storageOptions,
   storeId,
-  schemaHashSuffix,
+  schema,
 }: {
   storageOptions: WorkerSchema.StorageType
   storeId: string
-  schemaHashSuffix: string
+  schema: LiveStoreSchema
 }) =>
   Effect.gen(function* () {
     return yield* Effect.promise(async () => {
@@ -47,7 +48,7 @@ export const readPersistedAppDbFromClientSession = ({
 
       const fileResults = await Promise.all(files.map(tryGetDbFile))
 
-      const appDbFileName = '/' + getAppDbFileName(schemaHashSuffix)
+      const appDbFileName = '/' + getAppDbFileName(schema)
 
       const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
       // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
@@ -124,4 +125,7 @@ export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) 
   return `${directory}@${liveStoreStorageFormatVersion}`
 }
 
-export const getAppDbFileName = (suffix: string) => `app${suffix}.db`
+export const getAppDbFileName = (schema: LiveStoreSchema) => {
+  const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
+  return `app${schemaHashSuffix}.db`
+}

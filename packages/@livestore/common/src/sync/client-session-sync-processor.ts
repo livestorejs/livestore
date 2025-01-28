@@ -34,7 +34,7 @@ export const makeClientSessionSyncProcessor = ({
   pushToLeader: (batch: ReadonlyArray<MutationEvent.AnyEncoded>) => void
   pullFromLeader: ClientSessionLeaderThreadProxy['mutations']['pull']
   applyMutation: (
-    mutationEventDecoded: MutationEvent.PartialAny,
+    mutationEventDecoded: MutationEvent.PartialAnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
     writeTables: Set<string>
@@ -196,7 +196,7 @@ export const makeClientSessionSyncProcessor = ({
 
 export interface ClientSessionSyncProcessor {
   push: (
-    batch: ReadonlyArray<MutationEvent.PartialAny>,
+    batch: ReadonlyArray<MutationEvent.PartialAnyDecoded>,
     options: { otelContext: otel.Context },
   ) => {
     writeTables: Set<string>

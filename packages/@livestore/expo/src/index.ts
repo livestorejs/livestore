@@ -74,13 +74,14 @@ export const makeAdapter =
 
         switch (migrationOptions.strategy) {
           case 'from-mutation-log': {
-            yield* rehydrateFromMutationLog({
-              db: dbRef.current.syncDb,
-              logDb: dbLogRef.current.syncDb,
-              schema,
-              migrationOptions,
-              onProgress: () => Effect.void,
-            })
+            // TODO bring back
+            // yield* rehydrateFromMutationLog({
+            //   db: dbRef.current.syncDb,
+            //   logDb: dbLogRef.current.syncDb,
+            //   schema,
+            //   migrationOptions,
+            //   onProgress: () => Effect.void,
+            // })
 
             break
           }
@@ -160,9 +161,11 @@ export const makeAdapter =
                   const mutation = mutationEventEncoded.mutation
                   const mutationDef =
                     schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
-                  const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
 
-                  const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+                  const execArgsArr = getExecArgsFromMutation({
+                    mutationDef,
+                    mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
+                  })
 
                   // write to mutation_log
                   if (

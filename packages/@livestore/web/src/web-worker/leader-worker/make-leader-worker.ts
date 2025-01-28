@@ -113,15 +113,13 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSyncDb = syncDbFactory({ sqlite3 })
 
-        const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
-
         const makeDb = (kind: 'app' | 'mutationlog') =>
           makeSyncDb({
             _tag: 'opfs',
             opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
-            fileName: kind === 'app' ? getAppDbFileName(schemaHashSuffix) : 'mutationlog.db',
+            fileName: kind === 'app' ? getAppDbFileName(schema) : 'mutationlog.db',
             configureDb: (db) => configureConnection(db, { fkEnabled: true }),
-          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
+          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Might involve some async work, so we're running them concurrently
         const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
@@ -209,19 +207,11 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
       }).pipe(Stream.unwrap),
     Shutdown: () =>
       Effect.gen(function* () {
-        const { db, dbLog } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/web:worker] Shutdown')
-
-        // if (devtools.enabled) {
-        //   yield* FiberSet.clear(devtools.connections)
-        // }
-
-        db.close()
-        dbLog.close()
 
         // Buy some time for Otel to flush
         // TODO find a cleaner way to do this
-        yield* Effect.sleep(1000)
+        yield* Effect.sleep(300)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(

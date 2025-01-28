@@ -27,6 +27,8 @@ export const makeSynchronousDatabase = <
   const preparedStmts: PreparedStatement[] = []
   const { dbPointer } = metadata
 
+  let isClosed = false
+
   const syncDb: SynchronousDatabase<TMetadata> = {
     _tag: 'SynchronousDatabase',
     metadata,
@@ -148,10 +150,15 @@ export const makeSynchronousDatabase = <
       // }
     },
     close: () => {
+      if (isClosed) {
+        return
+      }
+
       for (const stmt of preparedStmts) {
         stmt.finalize()
       }
       sqlite3.close(dbPointer)
+      isClosed = true
     },
     import: (source) => {
       // https://www.sqlite.org/c3ref/c_deserialize_freeonclose.html

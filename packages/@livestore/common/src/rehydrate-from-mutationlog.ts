@@ -1,8 +1,8 @@
-import { isDevEnv, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type MigrationOptionsFromMutationLog, type SynchronousDatabase, UnexpectedError } from './adapter-types.js'
-import { getExecArgsFromMutation } from './mutation.js'
+import { makeApplyMutation } from './leader-thread/apply-mutation.js'
 import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/mod.js'
 import { EventId, MUTATION_LOG_META_TABLE } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
@@ -10,7 +10,8 @@ import { sql } from './util.js'
 
 export const rehydrateFromMutationLog = ({
   logDb,
-  db,
+  // TODO re-use this db when bringing back the boot in-memory db implementation
+  // db,
   schema,
   migrationOptions,
   onProgress,
@@ -28,6 +29,8 @@ export const rehydrateFromMutationLog = ({
 
     const hashMutation = memoizeByRef((mutation: MutationDef.Any) => Schema.hash(mutation.schema))
 
+    const applyMutation = yield* makeApplyMutation
+
     const processMutation = (row: MutationLogMetaRow) =>
       Effect.gen(function* () {
         const mutationDef = schema.mutations.get(row.mutation) ?? shouldNeverHappen(`Unknown mutation ${row.mutation}`)
@@ -40,7 +43,10 @@ export const rehydrateFromMutationLog = ({
           )
         }
 
-        const argsDecoded = yield* Schema.decodeUnknown(Schema.parseJson(mutationDef.schema))(row.argsJson).pipe(
+        const args = JSON.parse(row.argsJson)
+
+        // Checking whether the schema has changed in an incompatible way
+        yield* Schema.decodeUnknown(mutationDef.schema)(args).pipe(
           Effect.mapError((cause) =>
             UnexpectedError.make({
               cause,
@@ -53,28 +59,14 @@ This likely means the schema has changed in an incompatible way.
           ),
         )
 
-        const mutationEventDecoded = {
+        const mutationEventEncoded = {
           id: { global: row.idGlobal, local: row.idLocal },
           parentId: { global: row.parentIdGlobal, local: row.parentIdLocal },
           mutation: row.mutation,
-          args: argsDecoded,
-        } satisfies MutationEvent.AnyDecoded
+          args,
+        } satisfies MutationEvent.AnyEncoded
 
-        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
-
-        const makeExecuteOptions = (statementSql: string, bindValues: any) => ({
-          onRowsChanged: (rowsChanged: number) => {
-            if (rowsChanged === 0 && migrationOptions.logging?.excludeAffectedRows?.(statementSql) !== true) {
-              console.warn(`Mutation "${mutationDef.name}" did not affect any rows:`, statementSql, bindValues)
-            }
-          },
-        })
-
-        for (const { statementSql, bindValues } of execArgsArr) {
-          // TODO cache prepared statements for mutations
-          db.execute(statementSql, bindValues, isDevEnv() ? makeExecuteOptions(statementSql, bindValues) : undefined)
-          // console.log(`Re-executed mutation ${mutationSql}`, bindValues)
-        }
+        yield* applyMutation(mutationEventEncoded, { skipMutationLog: true })
       }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromMutationLog:processMutation`))
 
     const CHUNK_SIZE = 100

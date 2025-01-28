@@ -49,12 +49,13 @@ export const sessionChangesetMetaTable = table(
     // TODO bring back primary key
     idGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
     idLocal: SqliteDsl.integer({ schema: EventId.LocalEventId }),
-    // idGlobal: SqliteDsl.integer({ primaryKey: true }),
-    // idLocal: SqliteDsl.integer({ primaryKey: true }),
-    changeset: SqliteDsl.blob({}),
+    changeset: SqliteDsl.blob({ nullable: true }),
     debug: SqliteDsl.json({ nullable: true }),
   },
-  { disableAutomaticIdColumn: true },
+  {
+    disableAutomaticIdColumn: true,
+    indexes: [{ columns: ['idGlobal', 'idLocal'], name: 'idx_session_changeset_id' }],
+  },
 )
 
 export type SessionChangesetMetaRow = FromTable.RowDecoded<typeof sessionChangesetMetaTable>
@@ -84,7 +85,7 @@ export const mutationLogMetaTable = table(
     disableAutomaticIdColumn: true,
     indexes: [
       { columns: ['idGlobal'], name: 'idx_idGlobal' },
-      { columns: ['idGlobal', 'idLocal'], name: 'idx_idGlobal_idLocal' },
+      { columns: ['idGlobal', 'idLocal'], name: 'idx_mutationlog_id' },
     ],
   },
 )

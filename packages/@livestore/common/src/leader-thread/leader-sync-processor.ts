@@ -509,9 +509,9 @@ const backgroundBackendPulling = ({
           })
         }
 
-        const fiber = yield* applyMutationItemsRef.current!({
-          batchItems: updateResult.newEvents,
-        }).pipe(Effect.fork)
+        trimChangesetRows(db, newBackendHead)
+
+        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
 
         yield* Ref.set(stateRef, {
           _tag: 'applying-syncstate-advance',
@@ -519,7 +519,6 @@ const backgroundBackendPulling = ({
           syncState: updateResult.newSyncState,
           fiber,
         })
-        // console.log('setRef:applying-syncstate-advance after backgroundBackendPulling', -1)
       })
 
     yield* syncBackend.pull(cursorInfo).pipe(
@@ -574,7 +573,9 @@ const rollback = ({
     // Apply changesets in reverse order
     for (let i = rollbackEvents.length - 1; i >= 0; i--) {
       const { changeset } = rollbackEvents[i]!
-      db.makeChangeset(changeset).invert().apply()
+      if (changeset !== null) {
+        db.makeChangeset(changeset).invert().apply()
+      }
     }
 
     // Delete the changeset rows
@@ -668,3 +669,9 @@ const backgroundBackendPushing = ({
       }
     }
   }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:leader-thread:syncing:backend-pushing'))
+
+const trimChangesetRows = (db: SynchronousDatabase, newHead: EventId.EventId) => {
+  // Since we're using the session changeset rows to query for the current head,
+  // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
+  db.execute(sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE idGlobal < ${newHead.global}`)
+}

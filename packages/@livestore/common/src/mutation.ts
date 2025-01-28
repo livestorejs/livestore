@@ -8,10 +8,19 @@ import { prepareBindValues } from './util.js'
 
 export const getExecArgsFromMutation = ({
   mutationDef,
-  mutationEventDecoded,
+  mutationEvent,
 }: {
   mutationDef: MutationDef.Any
-  mutationEventDecoded: MutationEvent.AnyDecoded | MutationEvent.PartialAny
+  /** Both encoded and decoded mutation events are supported to reduce the number of times we need to decode/encode */
+  mutationEvent:
+    | {
+        decoded: MutationEvent.AnyDecoded | MutationEvent.PartialAnyDecoded
+        encoded: undefined
+      }
+    | {
+        decoded: undefined
+        encoded: MutationEvent.AnyEncoded | MutationEvent.PartialAnyEncoded
+      }
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
@@ -23,7 +32,9 @@ export const getExecArgsFromMutation = ({
 
   switch (typeof mutationDef.sql) {
     case 'function': {
-      const res = mutationDef.sql(mutationEventDecoded.args)
+      const mutationArgsDecoded =
+        mutationEvent.decoded?.args ?? Schema.decodeUnknownSync(mutationDef.schema)(mutationEvent.encoded!.args)
+      const res = mutationDef.sql(mutationArgsDecoded)
       statementRes = Array.isArray(res) ? res : [res]
       break
     }
@@ -40,10 +51,9 @@ export const getExecArgsFromMutation = ({
   return statementRes.map((statementRes) => {
     const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
 
-    const bindValues =
-      typeof statementRes === 'string'
-        ? Schema.encodeUnknownSync(mutationDef.schema)(mutationEventDecoded.args)
-        : statementRes.bindValues
+    const mutationArgsEncoded =
+      mutationEvent.encoded?.args ?? Schema.encodeUnknownSync(mutationDef.schema)(mutationEvent.decoded!.args)
+    const bindValues = typeof statementRes === 'string' ? mutationArgsEncoded : statementRes.bindValues
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
 

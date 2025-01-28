@@ -24,7 +24,9 @@ export const recreateDb: Effect.Effect<
 
   // NOTE to speed up the operations below, we're creating a temporary in-memory database
   // and later we'll overwrite the persisted database with the new data
-  const tmpSyncDb = yield* makeSyncDb({ _tag: 'in-memory' })
+  // TODO bring back this optimization
+  // const tmpSyncDb = yield* makeSyncDb({ _tag: 'in-memory' })
+  const tmpSyncDb = db
   yield* configureConnection(tmpSyncDb, { fkEnabled: true })
 
   const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
@@ -91,17 +93,19 @@ export const recreateDb: Effect.Effect<
     }
   }
 
+  // TODO bring back
   // Import the temporary in-memory database into the persistent database
-  yield* Effect.sync(() => db.import(tmpSyncDb)).pipe(
-    Effect.withSpan('@livestore/common:leader-thread:recreateDb:import'),
-  )
+  // yield* Effect.sync(() => db.import(tmpSyncDb)).pipe(
+  //   Effect.withSpan('@livestore/common:leader-thread:recreateDb:import'),
+  // )
 
   // TODO maybe bring back re-using this initial snapshot to avoid calling `.export()` again
   // We've disabled this for now as it made the code too complex, as we often run syncing right after
   // so the snapshot is no longer up to date
   // const snapshotFromTmpDb = tmpSyncDb.export()
 
-  tmpSyncDb.close()
+  // TODO bring back
+  // tmpSyncDb.close()
 }).pipe(
   Effect.scoped, // NOTE we're closing the scope here so finalizers are called when the effect is done
   Effect.withSpan('@livestore/common:leader-thread:recreateDb'),

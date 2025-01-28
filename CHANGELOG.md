@@ -6,12 +6,16 @@
 ## 0.3.0
 
 - Still todo:
+  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - Syncing
-    - Fix: client session sync processor needs to reset pending pushing after rebase
+    - ClientSessionSyncProcessor:
+      - Fix: push pending boot mutations
+      - Fix: needs to reset pending pushing after rebase
     - LeaderSyncProcessor: Batch pending pushes by using queue
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
   - Devtools
+    - Introduce real-time sync heads view
     - Fix: When resetting the database but keeping the eventlog
       - the app doesn't show a shutdown screen
       - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")

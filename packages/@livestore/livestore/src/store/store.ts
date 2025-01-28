@@ -115,7 +115,10 @@ export class Store<
       pullFromLeader: clientSession.leaderThread.mutations.pull,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
         const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!
-        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+        const execArgsArr = getExecArgsFromMutation({
+          mutationDef,
+          mutationEvent: { decoded: mutationEventDecoded, encoded: undefined },
+        })
 
         const writeTablesForEvent = new Set<string>()
 

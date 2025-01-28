@@ -4,7 +4,7 @@ import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
-import { EventId } from '@livestore/common/schema'
+import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
 import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -91,8 +91,6 @@ export const makeAdapter =
 
       const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
 
-      const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
-
       if (options.resetPersistence === true) {
         yield* resetPersistedDataFromClientSession({ storageOptions, storeId })
       }
@@ -103,11 +101,7 @@ export const makeAdapter =
       // we usually speeds up the boot process by a lot.
       // We need to be extra careful though to not run into any race conditions or inconsistencies.
       // TODO also verify persisted data
-      const dataFromFile = yield* readPersistedAppDbFromClientSession({
-        storageOptions,
-        storeId,
-        schemaHashSuffix,
-      })
+      const dataFromFile = yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
 
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = getPersistedId(`clientId:${storeId}`, 'local')
@@ -324,14 +318,6 @@ export const makeAdapter =
       // re-exporting the db
       const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.Export()))
 
-      // TODO merge with snapshot req
-      // NOTE this currently slows down the "happy path startup" path where the app is restored from the snapshot
-      // We should figure out a way to also restore the initial mutation event id from the snapshot
-      const initialMutationEventId =
-        dataFromFile === undefined
-          ? EventId.ROOT // TODO properly implement this
-          : yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
-
       const makeSyncDb = syncDbFactory({ sqlite3 })
       const syncDb = yield* makeSyncDb({ _tag: 'in-memory' })
 
@@ -346,9 +332,15 @@ export const makeAdapter =
         })
       }
 
-      const pullMutations = runInWorkerStream(
-        new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
-      ).pipe(Stream.orDie)
+      const mutationHead = syncDb.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
+        `select idGlobal, idLocal from ${SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idLocal desc limit 1`,
+      )[0]
+
+      const initialMutationEventId = mutationHead
+        ? EventId.make({ global: mutationHead.idGlobal, local: mutationHead.idLocal })
+        : EventId.ROOT
+
+      // console.debug('[@livestore/web:client-session] initialMutationEventId', initialMutationEventId)
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
@@ -379,7 +371,9 @@ export const makeAdapter =
           ),
 
           mutations: {
-            pull: pullMutations,
+            pull: runInWorkerStream(
+              new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
+            ).pipe(Stream.orDie),
 
             push: (batch) =>
               runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(

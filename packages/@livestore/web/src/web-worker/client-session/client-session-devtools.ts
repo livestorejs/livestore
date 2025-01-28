@@ -51,7 +51,7 @@ export const bootDevtools = ({
       searchParams.set('sessionId', clientSession.sessionId)
       searchParams.set('storeId', storeId)
       yield* Effect.log(
-        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?${searchParams.toString()}`,
+        `[@livestore/web] Devtools ready on ${location.origin}/_devtools.html?${searchParams.toString()}`,
       )
     }
   }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools:boot'))

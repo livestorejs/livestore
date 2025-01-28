@@ -17,6 +17,10 @@ import { LeaderThreadCtx } from './types.js'
 
 export type ApplyMutation = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
+  options?: {
+    /** Needed for rehydrateFromMutationLog */
+    skipMutationLog?: boolean
+  },
 ) => Effect.Effect<void, SqliteError | UnexpectedError>
 
 export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> = Effect.gen(
@@ -31,15 +35,27 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
       [...leaderThreadCtx.schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
-    return (mutationEventEncoded) =>
+    return (mutationEventEncoded, options) =>
       Effect.gen(function* () {
-        const { mutationEventSchema, schema, db, dbLog } = leaderThreadCtx
-        const mutationEventDecoded = Schema.decodeUnknownSync(mutationEventSchema)(mutationEventEncoded)
+        const { schema, db, dbLog } = leaderThreadCtx
+        const skipMutationLog = options?.skipMutationLog ?? false
 
-        const mutationName = mutationEventDecoded.mutation
+        const mutationName = mutationEventEncoded.mutation
         const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
-        const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+        const execArgsArr = getExecArgsFromMutation({
+          mutationDef,
+          mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
+        })
+
+        // NOTE we might want to bring this back if we want to debug no-op mutations
+        // const makeExecuteOptions = (statementSql: string, bindValues: any) => ({
+        //   onRowsChanged: (rowsChanged: number) => {
+        //     if (rowsChanged === 0) {
+        //       console.warn(`Mutation "${mutationDef.name}" did not affect any rows:`, statementSql, bindValues)
+        //     }
+        //   },
+        // })
 
         // console.group('[@livestore/common:leader-thread:applyMutation]', { mutationName })
 
@@ -53,30 +69,28 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
         const changeset = session.changeset()
         session.finish()
-        // NOTE for no-op mutations (e.g. if the state didn't change) the changeset will be empty
-        // TODO possibly write a null value instead of omitting the row
-        if (changeset !== undefined && changeset.length > 0) {
-          // TODO use prepared statements
-          yield* execSql(
-            db,
-            ...insertRow({
-              tableName: SESSION_CHANGESET_META_TABLE,
-              columns: sessionChangesetMetaTable.sqliteDef.columns,
-              values: {
-                idGlobal: mutationEventEncoded.id.global,
-                idLocal: mutationEventEncoded.id.local,
-                changeset,
-                debug: execArgsArr,
-              },
-            }),
-          )
-        }
+
+        // TODO use prepared statements
+        yield* execSql(
+          db,
+          ...insertRow({
+            tableName: SESSION_CHANGESET_META_TABLE,
+            columns: sessionChangesetMetaTable.sqliteDef.columns,
+            values: {
+              idGlobal: mutationEventEncoded.id.global,
+              idLocal: mutationEventEncoded.id.local,
+              // NOTE the changeset will be empty (i.e. null) for no-op mutations
+              changeset: changeset ?? null,
+              debug: execArgsArr,
+            },
+          }),
+        )
 
         // console.groupEnd()
 
         // write to mutation_log
-        const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventDecoded)
-        if (excludeFromMutationLog === false) {
+        const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
+        if (skipMutationLog === false && excludeFromMutationLog === false) {
           yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap)
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
@@ -132,11 +146,14 @@ const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) 
       ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
       : new Set(['livestore.RawSql'])
 
-  return (mutationName: string, mutationEventDecoded: MutationEvent.AnyDecoded): boolean => {
+  return (mutationName: string, mutationEventEncoded: MutationEvent.AnyEncoded): boolean => {
     if (mutationLogExclude.has(mutationName)) return true
 
     const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
-    const execArgsArr = getExecArgsFromMutation({ mutationDef, mutationEventDecoded })
+    const execArgsArr = getExecArgsFromMutation({
+      mutationDef,
+      mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
+    })
 
     return execArgsArr.some((_) => _.statementSql.includes('__livestore'))
   }

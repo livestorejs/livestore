@@ -19,13 +19,13 @@ export type RebaseInput = {
   newRemoteEvents: RebaseEventWithConflict[]
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
-    rebasedLocalEvents: MutationEvent.PartialAny[]
+    rebasedLocalEvents: MutationEvent.PartialAnyDecoded[]
     mutationDefs: Record<string, MutationDef.Any>
   }) => FactValidationResult
 }
 
 export type RebaseOutput = {
-  rebasedLocalEvents: MutationEvent.PartialAny[]
+  rebasedLocalEvents: MutationEvent.PartialAnyDecoded[]
 }
 
 export type RebaseFn = (input: RebaseInput) => RebaseOutput

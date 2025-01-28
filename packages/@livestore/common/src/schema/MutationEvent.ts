@@ -54,7 +54,7 @@ export const AnyEncodedGlobal = Schema.Struct({
 }).annotations({ title: 'MutationEvent.AnyEncodedGlobal' })
 export type AnyEncodedGlobal = typeof AnyEncodedGlobal.Type
 
-export type PartialAny = MutationEventPartial<MutationDef.Any>
+export type PartialAnyDecoded = MutationEventPartial<MutationDef.Any>
 export type PartialAnyEncoded = MutationEventPartialEncoded<MutationDef.Any>
 
 export type PartialForSchema<TSchema extends LiveStoreSchema> = {
@@ -65,8 +65,9 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
   [K in keyof TSchema['_MutationDefMapType']]: MutationEvent<TSchema['_MutationDefMapType'][K]>
 }[keyof TSchema['_MutationDefMapType']]
 
-export const isPartialMutationEvent = (mutationEvent: AnyDecoded | PartialAny): mutationEvent is PartialAny =>
-  'id' in mutationEvent === false && 'parentId' in mutationEvent === false
+export const isPartialMutationEvent = (
+  mutationEvent: AnyDecoded | PartialAnyDecoded,
+): mutationEvent is PartialAnyDecoded => 'id' in mutationEvent === false && 'parentId' in mutationEvent === false
 
 export type ForMutationDefRecord<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
   {

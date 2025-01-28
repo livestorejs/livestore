@@ -151,7 +151,7 @@ class TestContext extends Context.Tag('TestContext')<
     encodeMutationEvent: (event: MutationEvent.AnyDecoded) => MutationEvent.EncodedWithMeta
     pullQueue: Queue.Queue<PullQueueItem>
     mutate: (
-      ...partialEvents: MutationEvent.PartialAny[]
+      ...partialEvents: MutationEvent.PartialAnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | InvalidPushError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
@@ -231,13 +231,16 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
     const pullQueue = yield* leaderThreadCtx.connectedClientSessionPullQueues.makeQueue(EventId.ROOT)
 
-    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAny, deferred: Deferred.Deferred<void>) => {
+    const toEncodedMutationEvent = (
+      partialEvent: MutationEvent.PartialAnyDecoded,
+      deferred: Deferred.Deferred<void>,
+    ) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
       currentMutationEventId.current = nextIdPair.id
       return encodeMutationEvent({ ...partialEvent, ...nextIdPair, meta: { deferred } })
     }
 
-    const mutate = (...partialEvents: MutationEvent.PartialAny[]) =>
+    const mutate = (...partialEvents: MutationEvent.PartialAnyDecoded[]) =>
       Effect.gen(function* () {
         const deferreds = yield* Effect.forEach(partialEvents, () => Deferred.make<void>())
 
