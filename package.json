@@ -68,7 +68,7 @@
     "prettier-plugin-packagejson": "2.5.3",
     "typescript": "5.7.2"
   },
-  "packageManager": "pnpm@9.9.0",
+  "packageManager": "pnpm@9.15.4",
   "pnpm": {
     "patchedDependencies": {
       "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"

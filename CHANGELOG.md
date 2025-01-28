@@ -9,7 +9,6 @@
   - Syncing
     - Fix: client session sync processor needs to reset pending pushing after rebase
     - LeaderSyncProcessor: Batch pending pushes by using queue
-    - Sync backends: Remove local id from sync backend
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
   - Devtools
