@@ -265,6 +265,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     GetCurrentMutationEventId: forwardRequest,
     NetworkStatusStream: forwardRequestStream,
     Shutdown: forwardRequest,
+    ExtraDevtoolsMessage: forwardRequest,
 
     'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
 

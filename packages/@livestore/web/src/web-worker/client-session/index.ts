@@ -399,6 +399,12 @@ export const makeAdapter =
         networkStatus,
 
         shutdown,
+
+        devtoolsMessageForLeader: (message) =>
+          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/web:coordinator:devtoolsMessageForLeader'),
+          ),
       } satisfies Coordinator
 
       if (devtoolsEnabled) {

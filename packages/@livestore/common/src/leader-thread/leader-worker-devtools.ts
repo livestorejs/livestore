@@ -1,18 +1,11 @@
-import { Effect, FiberMap, Option, PubSub, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
-import type { ShutdownChannel } from './shutdown-channel.js'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
-type SendMessageToDevtools = (
-  message: Devtools.MessageFromAppLeader,
-  options?: {
-    /** Send message even if not connected (e.g. for initial broadcast messages) */
-    force: boolean
-  },
-) => Effect.Effect<void>
+type SendMessageToDevtools = (message: Devtools.MessageFromAppLeader) => Effect.Effect<void>
 
 // TODO bind scope to the webchannel lifetime
 export const bootDevtools = (options: DevtoolsOptions) =>
@@ -21,44 +14,24 @@ export const bootDevtools = (options: DevtoolsOptions) =>
       return
     }
 
-    const { persistenceInfo, shutdownChannel, devtoolsWebChannel } = yield* options.makeContext
+    const { connectedClientSessionPullQueues, syncProcessor, extraIncomingMessagesQueue } = yield* LeaderThreadCtx
 
-    const isConnected = yield* SubscriptionRef.make(true)
+    yield* listenToDevtools({
+      incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
+      sendMessage: () => Effect.void,
+    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const incomingMessagesPubSub = yield* PubSub.unbounded<Devtools.MessageToAppLeader>().pipe(
-      Effect.acquireRelease(PubSub.shutdown),
-    )
+    const { persistenceInfo, devtoolsWebChannel } = yield* options.makeContext
 
-    const incomingMessages = Stream.fromPubSub(incomingMessagesPubSub)
+    const sendMessage: SendMessageToDevtools = (message) =>
+      devtoolsWebChannel
+        .send(message)
+        .pipe(
+          Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
+          Effect.interruptible,
+          Effect.ignoreLogged,
+        )
 
-    const outgoingMessagesQueue = yield* Queue.unbounded<Devtools.MessageFromAppLeader>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
-    )
-
-    const devtoolsCoordinatorChannel = devtoolsWebChannel
-    // coordinatorMessagePortOrChannel instanceof MessagePort
-    //   ? yield* WebChannel.messagePortChannel({
-    //       port: coordinatorMessagePortOrChannel,
-    //       schema: { send: Devtools.MessageFromAppLeader, listen: Devtools.MessageToAppLeader },
-    //     })
-    //   : coordinatorMessagePortOrChannel
-
-    const sendMessage: SendMessageToDevtools = (message, options) =>
-      Effect.gen(function* () {
-        if (options?.force === true || (yield* isConnected)) {
-          yield* devtoolsCoordinatorChannel.send(message)
-        } else {
-          yield* Queue.offer(outgoingMessagesQueue, message)
-        }
-      }).pipe(
-        Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
-        Effect.interruptible,
-        Effect.ignoreLogged,
-      )
-
-    // broadcastCallbacks.add((message) => sendMessage(message))
-
-    const { connectedClientSessionPullQueues, syncProcessor } = yield* LeaderThreadCtx
     const { localHead } = yield* syncProcessor.syncState
 
     // TODO close queue when devtools disconnects
@@ -69,13 +42,8 @@ export const bootDevtools = (options: DevtoolsOptions) =>
         Effect.gen(function* () {
           if (msg.payload._tag === 'upstream-advance') {
             for (const mutationEventEncoded of msg.payload.newEvents) {
-              yield* sendMessage(
-                Devtools.MutationBroadcast.make({
-                  mutationEventEncoded,
-
-                  liveStoreVersion,
-                }),
-              )
+              // TODO refactor with push semantics
+              yield* sendMessage(Devtools.MutationBroadcast.make({ mutationEventEncoded, liveStoreVersion }))
             }
           } else {
             yield* Effect.logWarning('TODO implement rebases in devtools')
@@ -86,68 +54,25 @@ export const bootDevtools = (options: DevtoolsOptions) =>
       Effect.forkScoped,
     )
 
-    yield* devtoolsCoordinatorChannel.listen.pipe(
-      Stream.flatten(),
-      // Stream.tapLogWithLabel('@livestore/common:leader-thread:devtools:onPortMessage'),
-      Stream.tap((msg) =>
-        Effect.gen(function* () {
-          // yield* Effect.logDebug(`[@livestore/common:leader-thread:devtools] message from port: ${msg._tag}`, msg)
-          // if (msg._tag === 'LSD.MessagePortForStoreRes') {
-          //   yield* Deferred.succeed(storeMessagePortDeferred, msg.port)
-          // } else {
-          yield* PubSub.publish(incomingMessagesPubSub, msg)
-          // }
-        }),
-      ),
-      Stream.runDrain,
-      Effect.withSpan(`@livestore/common:leader-thread:devtools:onPortMessage`),
-      Effect.ignoreLogged,
-      Effect.forkScoped,
-    )
-
-    // yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), { force: true })
-
-    // yield* sendMessage(Devtools.MessagePortForStoreReq.make({ appHostId, liveStoreVersion, requestId: nanoid() }), {
-    //   force: true,
-    // })
-
     yield* listenToDevtools({
-      incomingMessages,
+      incomingMessages: devtoolsWebChannel.listen.pipe(Stream.flatten(), Stream.orDie),
       sendMessage,
-      // isConnected,
-      // disconnect,
-      // storeId,
-      // appHostId,
-      // isLeader,
       persistenceInfo,
-      shutdownChannel,
-    })
+    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
   }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:boot'))
 
 const listenToDevtools = ({
   incomingMessages,
   sendMessage,
-  // isConnected,
-  // disconnect,
-  // appHostId,
-  // storeId,
-  // isLeader,
   persistenceInfo,
-  shutdownChannel,
 }: {
   incomingMessages: Stream.Stream<Devtools.MessageToAppLeader>
   sendMessage: SendMessageToDevtools
-  // isConnected: SubscriptionRef.SubscriptionRef<boolean>
-  // disconnect: Effect.Effect<void>
-  // appHostId: string
-  // storeId: string
-  // isLeader: boolean
-  persistenceInfo: PersistenceInfoPair
-  shutdownChannel: ShutdownChannel
+  persistenceInfo?: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
-    const innerWorkerCtx = yield* LeaderThreadCtx
-    const { syncBackend, makeSyncDb, db, dbLog, shutdownStateSubRef, syncProcessor } = innerWorkerCtx
+    const { syncBackend, makeSyncDb, db, dbLog, shutdownStateSubRef, shutdownChannel, syncProcessor } =
+      yield* LeaderThreadCtx
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
@@ -158,15 +83,6 @@ const listenToDevtools = ({
           // yield* Effect.logDebug('[@livestore/common:leader-thread:devtools] incomingMessage', decodedEvent)
 
           if (decodedEvent._tag === 'LSD.Disconnect') {
-            // yield* SubscriptionRef.set(isConnected, false)
-
-            // yield* disconnect
-
-            // TODO is there a better place for this?
-            // yield* sendMessage(Devtools.AppHostReady.make({ appHostId, liveStoreVersion, isLeader }), {
-            //   force: true,
-            // })
-
             return
           }
 
@@ -226,7 +142,7 @@ const listenToDevtools = ({
 
               yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'ok' }))
 
-              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
+              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' })) ?? Effect.void
 
               return
             }
@@ -243,11 +159,16 @@ const listenToDevtools = ({
 
               yield* sendMessage(Devtools.ResetAllDataRes.make({ ...reqPayload }))
 
-              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' }))
+              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' })) ?? Effect.void
 
               return
             }
             case 'LSD.Leader.DatabaseFileInfoReq': {
+              if (persistenceInfo === undefined) {
+                console.log('[@livestore/common:leader-thread:devtools] persistenceInfo is required for this request')
+                return
+              }
+
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
               const dbFileSize = db.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
               const mutationLogFileSize = dbLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size

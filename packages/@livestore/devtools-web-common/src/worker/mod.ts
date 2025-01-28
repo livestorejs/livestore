@@ -1,3 +1,4 @@
+import { LS_DEV } from '@livestore/utils'
 import { Context, Effect, Layer, Stream, WebChannel } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
@@ -29,7 +30,10 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
       const messagePortChannel = yield* WebChannel.messagePortChannel({ port, schema: WebmeshSchema.Packet })
 
       yield* node.addConnection({ target: from, connectionChannel: messagePortChannel, replaceIfExists: true })
-      yield* Effect.logDebug(`@livestore/devtools-web-common: accepted connection: ${node.nodeName} ← ${from}`)
+
+      if (LS_DEV) {
+        yield* Effect.logDebug(`@livestore/devtools-web-common: accepted connection: ${node.nodeName} ← ${from}`)
+      }
 
       emit.single({})
 

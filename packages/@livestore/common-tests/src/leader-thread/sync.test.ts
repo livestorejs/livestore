@@ -23,6 +23,7 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
+  WebChannel,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
@@ -171,6 +172,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
   const syncPullQueue = yield* Queue.unbounded<MutationEvent.AnyEncodedGlobal>()
   const pushedMutationEventsSRef = yield* SubscriptionRef.make<MutationEvent.AnyEncodedGlobal[]>([])
   const syncIsConnectedRef = yield* SubscriptionRef.make(true)
+  const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
 
   const makeSyncBackend = Effect.gen(function* () {
     const semaphore = yield* Effect.makeSemaphore(1)
@@ -213,6 +215,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     dbLog,
     devtoolsOptions: { enabled: false },
     initialSyncOptions: { _tag: 'Skip' },
+    shutdownChannel,
   })
 
   const testContextLayer = Effect.gen(function* () {

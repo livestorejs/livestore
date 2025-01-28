@@ -213,6 +213,11 @@ export const makeNodeAdapter = ({
           Effect.withSpan('@livestore/node:coordinator:getLeaderSyncState'),
         ),
         shutdown,
+        devtoolsMessageForLeader: (message) =>
+          runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
+            UnexpectedError.mapToUnexpectedError,
+            Effect.withSpan('@livestore/node:coordinator:devtoolsMessageForLeader'),
+          ),
       } satisfies Coordinator
 
       if (devtoolsEnabled) {

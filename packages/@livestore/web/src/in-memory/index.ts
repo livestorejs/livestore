@@ -52,6 +52,7 @@ export const makeInMemoryAdapter =
         getLeaderSyncState: Effect.dieMessage('Not implemented'),
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
+        devtoolsMessageForLeader: () => Effect.dieMessage('Not implemented'),
       } satisfies Coordinator
 
       return { coordinator, syncDb }

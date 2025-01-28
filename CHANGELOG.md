@@ -18,6 +18,7 @@
       - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
     - Fix: Expo
     - Fix: Support multiple leader <> devtools connections
+      - Refactor according to ARCHITECTURE.md
 
 - New syncing implementation
   - See [Syncing docs page](https://livestore.dev/reference/syncing/syncing/) for more details

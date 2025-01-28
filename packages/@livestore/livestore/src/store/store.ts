@@ -7,10 +7,12 @@ import type {
   UnexpectedError,
 } from '@livestore/common'
 import {
+  Devtools,
   getExecArgsFromMutation,
   getResultSchema,
   IntentionalShutdownCause,
   isQueryBuilder,
+  liveStoreVersion,
   makeClientSessionSyncProcessor,
   prepareBindValues,
   QueryBuilderAstSymbol,
@@ -26,6 +28,7 @@ import {
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Data, Effect, Inspectable, MutableHashMap, Runtime, Schema } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 import { type GraphQLSchema } from 'graphql'
 
@@ -558,9 +561,11 @@ export class Store<
     }).pipe(this.runEffectFork)
   }
 
-  __devHardReset = () => {
+  __devHardReset = (mode: 'all-data' | 'only-app-db' = 'all-data') => {
     Effect.gen(this, function* () {
-      console.warn(`Not yet implemented`)
+      yield* this.clientSession.coordinator.devtoolsMessageForLeader(
+        Devtools.ResetAllDataReq.make({ liveStoreVersion, mode, requestId: nanoid() }),
+      )
     }).pipe(this.runEffectFork)
   }
 

@@ -28,7 +28,7 @@ export interface MeshNode {
   connectionKeys: Effect.Effect<Set<MeshNodeName>>
 
   debug: {
-    printChannelQueues: () => void
+    print: () => void
   }
 
   /**
@@ -105,7 +105,19 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
     //   Effect.acquireRelease(Queue.shutdown),
     // )
 
-    const channelMap = new Map<ChannelKey, { queue: Queue.Queue<MessageQueueItem | ProxyQueueItem> }>()
+    const channelMap = new Map<
+      ChannelKey,
+      {
+        queue: Queue.Queue<MessageQueueItem | ProxyQueueItem>
+        /** This reference is only kept for debugging purposes */
+        debugInfo:
+          | {
+              channel: WebChannel.WebChannel<any, any>
+              target: MeshNodeName
+            }
+          | undefined
+      }
+    >()
 
     const checkTransferableConnections = (packet: typeof MeshSchema.MessageChannelPacket.Type) => {
       if (
@@ -188,6 +200,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           }
 
           const packetToSend = { ...packet, hops }
+          // console.debug(nodeName, 'sendPacket:forwarding', packetToSend)
 
           yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(packetToSend), { concurrency: 'unbounded' })
         }
@@ -235,7 +248,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
                   const queue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
                     Effect.acquireRelease(Queue.shutdown),
                   )
-                  channelMap.set(channelKey, { queue })
+                  channelMap.set(channelKey, { queue, debugInfo: undefined })
                 }
 
                 const queue = channelMap.get(channelKey)!.queue
@@ -321,7 +334,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           const queue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
             Effect.acquireRelease(Queue.shutdown),
           )
-          channelMap.set(channelKey, { queue })
+          channelMap.set(channelKey, { queue, debugInfo: undefined })
         }
 
         const queue = channelMap.get(channelKey)!.queue as Queue.Queue<any>
@@ -332,7 +345,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           // console.debug(nodeName, 'message mode', modeRef.current)
 
           // NOTE already retries internally when transferables are required
-          return yield* makeMessageChannel({
+          const channel = yield* makeMessageChannel({
             nodeName,
             queue,
             newConnectionAvailablePubSub,
@@ -342,8 +355,12 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             sendPacket,
             checkTransferableConnections,
           })
+
+          channelMap.set(channelKey, { queue, debugInfo: { channel, target } })
+
+          return channel
         } else {
-          return yield* makeProxyChannel({
+          const channel = yield* makeProxyChannel({
             nodeName,
             newConnectionAvailablePubSub,
             target,
@@ -352,6 +369,10 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             queue,
             sendPacket,
           })
+
+          channelMap.set(channelKey, { queue, debugInfo: { channel, target } })
+
+          return channel
         }
       }).pipe(
         Effect.withSpanScoped(`makeChannel:${nodeName}→${target}(${channelName})`, {
@@ -363,10 +384,22 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
     const connectionKeys: MeshNode['connectionKeys'] = Effect.sync(() => new Set(connectionChannels.keys()))
 
     const debug: MeshNode['debug'] = {
-      printChannelQueues: () => {
+      print: () => {
+        console.log('Connections:', connectionChannels.size)
+        for (const [key, value] of connectionChannels) {
+          console.log(`  ${key}: supportsTransferables=${value.channel.supportsTransferables}`)
+        }
+
         console.log('Channels:', channelMap.size)
         for (const [key, value] of channelMap) {
-          console.log(`${key}: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`, value.queue)
+          console.log(
+            `  ${key}: \n`,
+            `    Queue: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`,
+            value.queue,
+            '\n',
+            `    Channel: target=${value.debugInfo?.target} supportsTransferables=${value.debugInfo?.channel.supportsTransferables}`,
+            value.debugInfo?.channel,
+          )
         }
       },
     }

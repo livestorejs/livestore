@@ -1,8 +1,9 @@
-import type { HttpClient, Scope, WebChannel } from '@livestore/utils/effect'
-import { Deferred, Effect, FiberSet, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
+import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
+import type * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { EventId, MutationEvent, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
 import { migrateTable } from '../schema-management/migrations.js'
@@ -13,6 +14,7 @@ import { makeLeaderSyncProcessor } from './leader-sync-processor.js'
 import { bootDevtools } from './leader-worker-devtools.js'
 import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
+import type { ShutdownChannel } from './shutdown-channel.js'
 import type { DevtoolsOptions, InitialBlockingSyncContext, InitialSyncOptions, ShutdownState } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -26,6 +28,7 @@ export const makeLeaderThreadLayer = ({
   dbLog,
   devtoolsOptions,
   initialSyncOptions = { _tag: 'Skip' },
+  shutdownChannel,
 }: {
   storeId: string
   originId: string
@@ -36,6 +39,7 @@ export const makeLeaderThreadLayer = ({
   dbLog: SynchronousDatabase
   devtoolsOptions: DevtoolsOptions
   initialSyncOptions: InitialSyncOptions | undefined
+  shutdownChannel: ShutdownChannel
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
@@ -50,6 +54,10 @@ export const makeLeaderThreadLayer = ({
 
     const syncProcessor = yield* makeLeaderSyncProcessor({ schema, dbMissing, dbLog, initialBlockingSyncContext })
 
+    const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.MessageToAppLeader>().pipe(
+      Effect.acquireRelease(Queue.shutdown),
+    )
+
     const ctx = {
       schema,
       bootStatusQueue,
@@ -60,9 +68,11 @@ export const makeLeaderThreadLayer = ({
       makeSyncDb,
       mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
+      shutdownChannel,
       syncBackend,
       syncProcessor,
       connectedClientSessionPullQueues: yield* makePullQueueSet,
+      extraIncomingMessagesQueue,
     } satisfies typeof LeaderThreadCtx.Service
 
     // @ts-expect-error For debugging purposes

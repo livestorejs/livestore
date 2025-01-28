@@ -1,4 +1,5 @@
 import { UnexpectedError } from '@livestore/common'
+import { LS_DEV } from '@livestore/utils'
 import type { Scope, Worker } from '@livestore/utils/effect'
 import { Deferred, Effect, Stream, WebChannel } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
@@ -94,5 +95,7 @@ export const connectViaWorker = ({
 
     yield* node.addConnection({ target, connectionChannel: sharedWorkerConnection, replaceIfExists: true })
 
-    yield* Effect.logDebug(`@livestore/devtools-web-common: initiated connection: ${node.nodeName} → ${target}`)
+    if (LS_DEV) {
+      yield* Effect.logDebug(`@livestore/devtools-web-common: initiated connection: ${node.nodeName} → ${target}`)
+    }
   }).pipe(UnexpectedError.mapToUnexpectedError)

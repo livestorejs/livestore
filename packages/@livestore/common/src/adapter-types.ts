@@ -123,6 +123,8 @@ export type Coordinator = {
   getLeaderSyncState: Effect.Effect<SyncState, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
+  devtoolsMessageForLeader: (message: Devtools.MessageToAppLeader) => Effect.Effect<void, UnexpectedError>
 }
 
 /**

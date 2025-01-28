@@ -105,6 +105,11 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
       // TODO find a cleaner way to do this
       // yield* Effect.sleep(1000)
     }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:Shutdown')),
+  ExtraDevtoolsMessage: ({ message }) =>
+    Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+      UnexpectedError.mapToUnexpectedError,
+      Effect.withSpan('@livestore/node:worker:ExtraDevtoolsMessage'),
+    ),
 }).pipe(
   Layer.provide(NodeWorkerRunner.layer),
   Layer.launch,
@@ -174,6 +179,8 @@ const makeLeaderThread = ({
       schemaPath,
     })
 
+    const shutdownChannel = yield* makeShutdownChannel(storeId)
+
     return makeLeaderThreadLayer({
       schema,
       storeId,
@@ -185,6 +192,7 @@ const makeLeaderThread = ({
       dbLog,
       devtoolsOptions,
       initialSyncOptions,
+      shutdownChannel,
     })
   }).pipe(
     Effect.tapCauseLogPretty,
@@ -220,8 +228,6 @@ const makeDevtoolsOptions = ({
     return {
       enabled: true,
       makeContext: Effect.gen(function* () {
-        const shutdownChannel = yield* makeShutdownChannel(storeId)
-
         yield* startDevtoolsServer({ schemaPath, storeId, port: devtoolsPort }).pipe(
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -236,7 +242,6 @@ const makeDevtoolsOptions = ({
             url: `ws://localhost:${devtoolsPort}`,
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),
-          shutdownChannel,
           persistenceInfo: {
             db: db.metadata.persistenceInfo,
             mutationLog: dbLog.metadata.persistenceInfo,

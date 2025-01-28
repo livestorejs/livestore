@@ -1,4 +1,4 @@
-import { BootStatus, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
+import { BootStatus, Devtools, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -135,6 +135,14 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
+  export class ExtraDevtoolsMessage extends Schema.TaggedRequest<ExtraDevtoolsMessage>()('ExtraDevtoolsMessage', {
+    payload: {
+      message: Devtools.MessageToAppLeader,
+    },
+    success: Schema.Void,
+    failure: UnexpectedError,
+  }) {}
+
   export const Request = Schema.Union(
     InitialMessage,
     BootStatusStream,
@@ -146,6 +154,7 @@ export namespace LeaderWorkerInner {
     GetLeaderSyncState,
     NetworkStatusStream,
     Shutdown,
+    ExtraDevtoolsMessage,
     WebMeshWorker.Schema.CreateConnection,
   )
   export type Request = typeof Request.Type
@@ -187,6 +196,7 @@ export namespace SharedWorker {
     LeaderWorkerInner.GetLeaderSyncState,
     LeaderWorkerInner.NetworkStatusStream,
     LeaderWorkerInner.Shutdown,
+    LeaderWorkerInner.ExtraDevtoolsMessage,
 
     WebMeshWorker.Schema.CreateConnection,
   ) {}

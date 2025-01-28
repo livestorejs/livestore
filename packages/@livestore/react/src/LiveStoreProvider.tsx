@@ -284,6 +284,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
+        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', cause)),
         Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreAbort', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),

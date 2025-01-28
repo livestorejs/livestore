@@ -1,5 +1,4 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
 import * as EventId from '../schema/EventId.js'
@@ -14,8 +13,8 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
     public readonly isLocal: boolean,
   ) {
     super({
-      id: Schema.is(EventId.EventId)(id) ? id : Schema.decodeSync(EventId.EventId)(id),
-      parentId: Schema.is(EventId.EventId)(parentId) ? parentId : Schema.decodeSync(EventId.EventId)(parentId),
+      id: EventId.make(id),
+      parentId: EventId.make(parentId),
       mutation: 'a',
       args: payload,
       meta: {},

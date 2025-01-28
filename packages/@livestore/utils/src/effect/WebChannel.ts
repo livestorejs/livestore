@@ -9,6 +9,21 @@ export * from './WebChannel/broadcastChannelWithAck.js'
 
 export * from './WebChannel/common.js'
 
+export const noopChannel = <MsgListen, MsgSend>(): Effect.Effect<WebChannel<MsgListen, MsgSend>> =>
+  Effect.gen(function* () {
+    return {
+      [WebChannelSymbol]: WebChannelSymbol,
+      send: () => Effect.void,
+      listen: Stream.never,
+      closedDeferred: yield* Deferred.make<void>(),
+      schema: {
+        listen: Schema.Any,
+        send: Schema.Any,
+      } as any,
+      supportsTransferables: false,
+    }
+  })
+
 export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   channelName,
   schema: inputSchema,

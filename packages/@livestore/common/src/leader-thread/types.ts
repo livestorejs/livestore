@@ -67,7 +67,6 @@ export type DevtoolsOptions =
       makeContext: Effect.Effect<
         {
           devtoolsWebChannel: WebChannel.WebChannel<Devtools.MessageToAppLeader, Devtools.MessageFromAppLeader>
-          shutdownChannel: ShutdownChannel
           persistenceInfo: PersistenceInfoPair
         },
         UnexpectedError,
@@ -87,11 +86,14 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
+    shutdownChannel: ShutdownChannel
     mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
     // devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: SyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
+    /** e.g. used for `store.__dev` APIs */
+    extraIncomingMessagesQueue: Queue.Queue<Devtools.MessageToAppLeader>
   }
 >() {}
 

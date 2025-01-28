@@ -207,6 +207,7 @@ export const makeAdapter =
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         getLeaderSyncState: Effect.dieMessage('Not implemented'),
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
+        devtoolsMessageForLeader: () => Effect.dieMessage('Not implemented'),
       } satisfies Coordinator
 
       if (devtoolsEnabled) {

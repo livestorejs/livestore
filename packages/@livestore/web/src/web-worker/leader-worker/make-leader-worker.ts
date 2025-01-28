@@ -75,6 +75,12 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.provide(FetchHttpClient.layer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     TracingLive ? Effect.provide(TracingLive) : identity,
+    // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
+    // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
+    // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
+    Effect.withScheduler(Scheduler.messageChannel()),
+    // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
+    Effect.withMaxOpsBeforeYield(4096),
     Logger.withMinimumLogLevel(LogLevel.Debug),
   )
 }
@@ -92,16 +98,7 @@ const makeWorkerRunnerOuter = (
           Effect.scoped,
           Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
-          Effect.annotateLogs({ thread: self.name }),
-          Effect.provide(Logger.prettyWithThread(self.name)),
           Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: 'leader-worker' })),
-          Logger.withMinimumLogLevel(LogLevel.Debug),
-          // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
-          // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
-          // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
-          Effect.withScheduler(Scheduler.messageChannel()),
-          // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
-          Effect.withMaxOpsBeforeYield(4096),
           Effect.forkScoped,
         )
 
@@ -129,7 +126,8 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // Might involve some async work, so we're running them concurrently
         const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
-        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, db, dbLog, storeId })
+        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, db, dbLog })
+        const shutdownChannel = yield* makeShutdownChannel(storeId)
 
         return makeLeaderThreadLayer({
           schema,
@@ -145,6 +143,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           dbLog,
           devtoolsOptions,
           initialSyncOptions,
+          shutdownChannel,
         })
       }).pipe(
         Effect.tapCauseLogPretty,
@@ -224,6 +223,11 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         // TODO find a cleaner way to do this
         yield* Effect.sleep(1000)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:Shutdown')),
+    ExtraDevtoolsMessage: ({ message }) =>
+      Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+        UnexpectedError.mapToUnexpectedError,
+        Effect.withSpan('@livestore/web:worker:ExtraDevtoolsMessage'),
+      ),
     'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
   })
 
@@ -231,12 +235,10 @@ const makeDevtoolsOptions = ({
   devtoolsEnabled,
   db,
   dbLog,
-  storeId,
 }: {
   devtoolsEnabled: boolean
   db: SynchronousDatabase
   dbLog: SynchronousDatabase
-  storeId: string
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebMeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {
@@ -247,14 +249,12 @@ const makeDevtoolsOptions = ({
     return {
       enabled: true,
       makeContext: Effect.gen(function* () {
-        const shutdownChannel = yield* makeShutdownChannel(storeId)
         return {
           devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
             node,
             target: `devtools`,
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),
-          shutdownChannel,
           persistenceInfo: {
             db: db.metadata.persistenceInfo,
             mutationLog: dbLog.metadata.persistenceInfo,

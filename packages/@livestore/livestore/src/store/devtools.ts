@@ -64,7 +64,7 @@ export const connectDevtoolsToStore = ({
       }
 
       if (decodedMessage._tag === 'LSD.Disconnect') {
-        console.error('TODO handle disconnect properly in store')
+        // console.error('TODO handle disconnect properly in store')
         return
       }
 
