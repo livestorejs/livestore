@@ -239,8 +239,9 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         // Prepare the web mesh connection for leader worker to be able to connect to the devtools
         const { node } = yield* WebMeshWorker.CacheService
+        const { storeId, clientId } = initialMessagePayload.initialMessage
 
-        yield* connectViaWorker({ node, worker, target: 'leader-worker' }).pipe(
+        yield* connectViaWorker({ node, worker, target: `leader-${storeId}-${clientId}` }).pipe(
           Effect.tapCauseLogPretty,
           Scope.extend(scope),
           Effect.forkIn(scope),

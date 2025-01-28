@@ -11,13 +11,15 @@ export const prepareWebDevtoolsBridge = ({
   worker,
   workerTargetName,
   storeId,
-  appHostId,
+  clientId,
+  sessionId,
 }: {
   worker: Worker.SerializedWorkerPool<typeof WorkerSchema.Request.Type>
   /** Usually `shared-worker` */
   workerTargetName: string
   storeId: string
-  appHostId: string
+  clientId: string
+  sessionId: string
 }): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
   Effect.gen(function* () {
     const meshNode = yield* makeWebDevtoolsConnectedMeshNode({
@@ -35,13 +37,13 @@ export const prepareWebDevtoolsBridge = ({
     // TODO maybe we need a temporary channel to create a unique bridge channel e..g see appHostInfoDeferred below
     const webDevtoolsChannelStore = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
-      target: `app-store-${storeId}-${appHostId}`,
+      target: `client-session-${storeId}-${clientId}-${sessionId}`,
       schema: { listen: Devtools.MessageFromAppClientSession, send: Devtools.MessageToAppClientSession },
     })
 
     const webDevtoolsChannelCoordinator = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
-      target: 'leader-worker',
+      target: `leader-${storeId}-${clientId}`,
       schema: { listen: Devtools.MessageFromAppLeader, send: Devtools.MessageToAppLeader },
     })
 
@@ -85,14 +87,18 @@ export const prepareWebDevtoolsBridge = ({
 
     // TODO improve disconnect handling
     yield* Deferred.await(webDevtoolsChannelCoordinator.closedDeferred).pipe(
-      Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
+      Effect.tap(() =>
+        PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
+      ),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
 
     // TODO improve disconnect handling
     yield* Deferred.await(webDevtoolsChannelStore.closedDeferred).pipe(
-      Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
+      Effect.tap(() =>
+        PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
+      ),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
@@ -117,7 +123,8 @@ export const prepareWebDevtoolsBridge = ({
     return {
       responsePubSub,
       sendToAppHost,
-      appHostId,
+      clientId,
+      sessionId,
       copyToClipboard,
       isLeader,
     } satisfies Devtools.PrepareDevtoolsBridge

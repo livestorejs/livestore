@@ -43,7 +43,7 @@ export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
 export namespace LeaderWorkerOuter {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
-    payload: { port: Transferable.MessagePort },
+    payload: { port: Transferable.MessagePort, storeId: Schema.String, clientId: Schema.String },
     success: Schema.Void,
     failure: UnexpectedError,
   }) {}
@@ -58,7 +58,7 @@ export namespace LeaderWorkerInner {
       syncOptions: Schema.optional(SyncBackendOptions),
       devtoolsEnabled: Schema.Boolean,
       storeId: Schema.String,
-      originId: Schema.String,
+      clientId: Schema.String,
       debugInstanceId: Schema.String,
     },
     success: Schema.Void,

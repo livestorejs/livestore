@@ -7,7 +7,8 @@ import { PreparedBindValues } from '../util.js'
 import { liveStoreVersion as pkgVersion } from '../version.js'
 
 const requestId = Schema.String
-const appHostId = Schema.String
+const clientId = Schema.String
+const sessionId = Schema.String
 const liveStoreVersion = Schema.Literal(pkgVersion)
 
 const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
@@ -23,13 +24,15 @@ const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fiel
 
 const LSDStoreChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {
-    appHostId,
+    clientId,
+    sessionId,
     ...fields,
   })
 
 const LSDStoreReqResMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {
-    appHostId,
+    clientId,
+    sessionId,
     requestId,
     ...fields,
   })

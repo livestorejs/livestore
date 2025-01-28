@@ -68,7 +68,7 @@ export namespace LeaderWorkerInner {
       devtoolsEnabled: Schema.Boolean,
       devtoolsPort: Schema.Number,
       storeId: Schema.String,
-      originId: Schema.String,
+      clientId: Schema.String,
       makeSyncBackendUrl: Schema.optional(Schema.String),
       baseDirectory: Schema.optional(Schema.String),
       initialSyncOptions: InitialSyncOptions,

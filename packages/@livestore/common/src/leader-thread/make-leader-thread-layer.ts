@@ -21,7 +21,7 @@ import { LeaderThreadCtx } from './types.js'
 export const makeLeaderThreadLayer = ({
   schema,
   storeId,
-  originId,
+  clientId,
   makeSyncDb,
   makeSyncBackend,
   db,
@@ -31,7 +31,7 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
 }: {
   storeId: string
-  originId: string
+  clientId: string
   schema: LiveStoreSchema
   makeSyncDb: MakeSynchronousDatabase
   makeSyncBackend: Effect.Effect<SyncBackend, UnexpectedError, Scope.Scope> | undefined
@@ -62,7 +62,7 @@ export const makeLeaderThreadLayer = ({
       schema,
       bootStatusQueue,
       storeId,
-      originId,
+      clientId,
       db,
       dbLog,
       makeSyncDb,

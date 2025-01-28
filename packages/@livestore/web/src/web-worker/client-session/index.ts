@@ -109,9 +109,10 @@ export const makeAdapter =
         schemaHashSuffix,
       })
 
-      const originId = getPersistedId(`originId:${storeId}`, 'local')
+      // The same across all client sessions (i.e. tabs, windows)
+      const clientId = getPersistedId(`clientId:${storeId}`, 'local')
+      // Unique per client session (i.e. tab, window)
       const sessionId = getPersistedId(`sessionId:${storeId}`, 'session')
-      const clientId = `${originId}${sessionId}`
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -137,7 +138,7 @@ export const makeAdapter =
               initialMessage: new WorkerSchema.LeaderWorkerInner.InitialMessage({
                 storageOptions,
                 storeId,
-                originId,
+                clientId,
                 syncOptions: options.syncBackend as SyncBackendOptionsBase | undefined,
                 devtoolsEnabled,
                 debugInstanceId,
@@ -179,7 +180,8 @@ export const makeAdapter =
         const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
         yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuter.Request>({
-          initialMessage: () => new WorkerSchema.LeaderWorkerOuter.InitialMessage({ port: mc.port1 }),
+          initialMessage: () =>
+            new WorkerSchema.LeaderWorkerOuter.InitialMessage({ port: mc.port1, storeId, clientId }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
@@ -364,8 +366,9 @@ export const makeAdapter =
 
       const clientSession = {
         syncDb,
-        devtools: { enabled: devtoolsEnabled, appHostId: clientId },
+        devtools: { enabled: devtoolsEnabled },
         lockStatus,
+        clientId,
         sessionId,
 
         leaderThread: {
@@ -415,14 +418,13 @@ export const makeAdapter =
       if (devtoolsEnabled) {
         // yield* bootDevtools({ client-session, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
         yield* Effect.gen(function* () {
-          const appHostId = clientId
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
 
           yield* bootDevtools({ clientSession, storeId })
 
           // TODO re-enable browser extension as well
           const storeDevtoolsChannel = yield* makeWebDevtoolsChannel({
-            nodeName: `app-store-${storeId}-${appHostId}`,
+            nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
             target: `devtools`,
             schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
             worker: sharedWorker,
@@ -449,7 +451,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
           ? localStorage
           : shouldNeverHappen(`[@livestore/web] Invalid storage type: ${storageType}`)
 
-  // in case of a worker, we need the appHostId of the parent window, to keep the app host id consistent
+  // in case of a worker, we need the id of the parent window, to keep the id consistent
   // we also need to handle the case where there are multiple workers being spawned by the same window
   if (storage === undefined) {
     return makeId()

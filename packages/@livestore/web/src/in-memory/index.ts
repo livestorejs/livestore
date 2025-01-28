@@ -40,8 +40,9 @@ export const makeInMemoryAdapter =
 
       const clientSession = {
         syncDb,
-        devtools: { appHostId: 'in-memory', enabled: false },
-        sessionId: `in-memory-${nanoid(6)}`,
+        devtools: { enabled: false },
+        clientId: 'in-memory',
+        sessionId: nanoid(6),
         leaderThread: {
           mutations: {
             pull: Stream.never,

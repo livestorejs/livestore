@@ -79,7 +79,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   {
     schema: LiveStoreSchema
     storeId: string
-    originId: string
+    clientId: string
     makeSyncDb: MakeSynchronousDatabase
     db: LeaderDatabase
     dbLog: LeaderDatabase

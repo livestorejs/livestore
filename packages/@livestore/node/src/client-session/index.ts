@@ -69,6 +69,11 @@ export const makeNodeAdapter = ({
         argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ otel: otelOptions })],
       })
 
+      // TODO make this dynamic
+      const clientId = 'static'
+      // TODO make this dynamic and actually support multiple sessions
+      const sessionId = 'static'
+
       const leaderThreadFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInner.Request.Type>({
         size: 1,
         concurrency: 100,
@@ -77,7 +82,7 @@ export const makeNodeAdapter = ({
             schemaPath,
             // storageOptions,
             storeId,
-            originId: 'todo',
+            clientId,
             makeSyncBackendUrl,
             syncOptions,
             baseDirectory,
@@ -111,8 +116,6 @@ export const makeNodeAdapter = ({
           ).pipe(Effect.exit) // The disconnect is to prevent the interrupt to bubble out
         }).pipe(Effect.withSpan('@livestore/node:adapter:shutdown'), Effect.tapCauseLogPretty, Effect.orDie),
       )
-
-      const sessionId = 'static'
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
       const makeSyncDb = yield* syncDbFactory({ sqlite3 })
@@ -180,8 +183,6 @@ export const makeNodeAdapter = ({
         Effect.withSpan('@livestore/node:client-session:export'),
       )
 
-      const appHostId = `${storeId}-${sessionId}`
-
       const pullMutations = runInWorkerStream(
         new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
       ).pipe(Stream.orDie)
@@ -216,8 +217,9 @@ export const makeNodeAdapter = ({
               Effect.withSpan('@livestore/node:client-session:devtoolsMessageForLeader'),
             ),
         },
-        devtools: { appHostId, enabled: devtoolsEnabled },
+        devtools: { enabled: devtoolsEnabled },
         lockStatus,
+        clientId,
         sessionId,
         shutdown,
         syncDb: syncInMemoryDb,
@@ -226,7 +228,7 @@ export const makeNodeAdapter = ({
       if (devtoolsEnabled) {
         yield* Effect.gen(function* () {
           const storeDevtoolsChannel = yield* makeNodeDevtoolsChannel({
-            nodeName: `app-store-${appHostId}`,
+            nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
             target: `devtools`,
             url: `ws://localhost:${devtoolsOptions.port}`,
             schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },

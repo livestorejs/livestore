@@ -208,7 +208,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
   const leaderContextLayer = makeLeaderThreadLayer({
     schema,
     storeId,
-    originId,
+    clientId: 'test',
     makeSyncDb,
     makeSyncBackend,
     db,

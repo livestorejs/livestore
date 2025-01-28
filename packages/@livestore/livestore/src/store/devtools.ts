@@ -38,11 +38,11 @@ export const connectDevtoolsToStore = ({
   store: IStore
 }) =>
   Effect.gen(function* () {
-    const appHostId = store.clientSession.devtools.appHostId
-
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
+
+    const { clientId, sessionId } = store.clientSession
 
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
@@ -58,7 +58,7 @@ export const connectDevtoolsToStore = ({
     const onMessage = (decodedMessage: typeof Devtools.MessageToAppClientSession.Type) => {
       // console.debug('@livestore/livestore:store:devtools:onMessage', decodedMessage)
 
-      if (decodedMessage.appHostId !== store.clientSession.devtools.appHostId) {
+      if (decodedMessage.clientId !== clientId || decodedMessage.sessionId !== sessionId) {
         // console.log(`Unknown message`, event)
         return
       }
@@ -85,7 +85,8 @@ export const connectDevtoolsToStore = ({
                   Devtools.ReactivityGraphRes.make({
                     reactivityGraph: store.reactivityGraph.getSnapshot({ includeResults }),
                     requestId,
-                    appHostId,
+                    clientId,
+                    sessionId,
                     liveStoreVersion,
                   }),
                 ),
@@ -108,7 +109,8 @@ export const connectDevtoolsToStore = ({
             Devtools.DebugInfoRes.make({
               debugInfo: store.syncDbWrapper.debugInfo,
               requestId,
-              appHostId,
+              clientId,
+              sessionId,
               liveStoreVersion,
             }),
           )
@@ -133,7 +135,8 @@ export const connectDevtoolsToStore = ({
                 Devtools.DebugInfoHistoryRes.make({
                   debugInfoHistory: buffer,
                   requestId,
-                  appHostId,
+                  clientId,
+                  sessionId,
                   liveStoreVersion,
                 }),
               )
@@ -168,13 +171,13 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.DebugInfoResetReq': {
           store.syncDbWrapper.debugInfo.slowQueries.clear()
-          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, appHostId, liveStoreVersion }))
+          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }
         case 'LSD.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
           store.syncDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
-          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, appHostId, liveStoreVersion }))
+          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }
         case 'LSD.ReactivityGraphUnsubscribe': {
@@ -203,7 +206,8 @@ export const connectDevtoolsToStore = ({
                     })),
                     requestId,
                     liveStoreVersion,
-                    appHostId,
+                    clientId,
+                    sessionId,
                   }),
                 ),
               { timeout: 500 },

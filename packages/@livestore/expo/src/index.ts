@@ -143,9 +143,10 @@ export const makeAdapter =
       let devtools: BootedDevtools | undefined
 
       const clientSession = {
-        devtools: { appHostId: 'expo', enabled: false },
+        devtools: { enabled: false },
         lockStatus,
         // Expo doesn't support multiple client sessions, so we just use a fixed session id
+        clientId: 'expo',
         sessionId: 'expo',
         leaderThread: {
           mutations: {

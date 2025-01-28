@@ -29,15 +29,13 @@ export type SynchronousDatabaseChangeset = {
 export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
-  devtools: {
-    enabled: boolean
-    // TODO incorporate sessionId and rethink appHostId
-    appHostId: string
-  }
+  devtools: { enabled: boolean }
+  clientId: string
   sessionId: string
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
 }
 

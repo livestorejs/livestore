@@ -46,8 +46,12 @@ export const bootDevtools = ({
     // yield* listenToBrowserExtensionBridge({ coordinator, connectToDevtools })
 
     if (isDevEnv()) {
+      const searchParams = new URLSearchParams()
+      searchParams.set('clientId', clientSession.clientId)
+      searchParams.set('sessionId', clientSession.sessionId)
+      searchParams.set('storeId', storeId)
       yield* Effect.log(
-        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?appHostId=${clientSession.devtools.appHostId}&storeId=${storeId}`,
+        `[@livestore/web] Devtools ready on port ${location.origin}/_devtools.html?${searchParams.toString()}`,
       )
     }
   }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools:boot'))
@@ -64,48 +68,48 @@ const listenToWebBridge = ({
   connectToDevtools: (coordinatorMessagePort: MessagePort) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 }) =>
   Effect.gen(function* () {
-    const appHostId = clientSession.devtools.appHostId
+    // const appHostId = clientSession.devtools.appHostId
     const webBridgeBroadcastChannel = yield* Devtools.WebBridge.makeBroadcastChannel()
 
-    const isLeader = yield* clientSession.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
-    yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ appHostId, isLeader }))
+    // const isLeader = yield* clientSession.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
+    // yield* webBridgeBroadcastChannel.send(Devtools.WebBridge.AppHostReady.make({ appHostId, isLeader }))
 
     const runtime = yield* Effect.runtime()
 
-    window.addEventListener('beforeunload', () =>
-      webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
-        .pipe(Runtime.runFork(runtime)),
-    )
+    // window.addEventListener('beforeunload', () =>
+    //   webBridgeBroadcastChannel
+    //     .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
+    //     .pipe(Runtime.runFork(runtime)),
+    // )
 
-    yield* Effect.addFinalizer(() =>
-      webBridgeBroadcastChannel
-        .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
-        .pipe(Effect.ignoreLogged),
-    )
+    // yield* Effect.addFinalizer(() =>
+    //   webBridgeBroadcastChannel
+    //     .send(Devtools.WebBridge.AppHostWillDisconnect.make({ appHostId }))
+    //     .pipe(Effect.ignoreLogged),
+    // )
 
-    yield* webBridgeBroadcastChannel.listen.pipe(
-      Stream.flatten(),
-      Stream.filter(Schema.is(Devtools.WebBridge.DevtoolsReady)),
-      Stream.tap(({ devtoolsId }) =>
-        Effect.gen(function* () {
-          const webBridgeId = nanoid()
-          yield* waitForDevtoolsWebBridgePort({ webBridgeId }).pipe(
-            Effect.andThen(connectToDevtools),
-            Effect.tapCauseLogPretty,
-            Effect.forkScoped,
-          )
+    // yield* webBridgeBroadcastChannel.listen.pipe(
+    //   Stream.flatten(),
+    //   Stream.filter(Schema.is(Devtools.WebBridge.DevtoolsReady)),
+    //   Stream.tap(({ devtoolsId }) =>
+    //     Effect.gen(function* () {
+    //       const webBridgeId = nanoid()
+    //       yield* waitForDevtoolsWebBridgePort({ webBridgeId }).pipe(
+    //         Effect.andThen(connectToDevtools),
+    //         Effect.tapCauseLogPretty,
+    //         Effect.forkScoped,
+    //       )
 
-          const isLeader = yield* clientSession.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
-          yield* webBridgeBroadcastChannel.send(
-            Devtools.WebBridge.ConnectToDevtools.make({ appHostId, isLeader, devtoolsId, webBridgeId, storeId }),
-          )
-        }),
-      ),
-      Stream.runDrain,
-      Effect.ignoreLogged,
-      Effect.forkScoped,
-    )
+    //       const isLeader = yield* clientSession.lockStatus.get.pipe(Effect.map((_) => _ === 'has-lock'))
+    //       yield* webBridgeBroadcastChannel.send(
+    //         Devtools.WebBridge.ConnectToDevtools.make({ appHostId, isLeader, devtoolsId, webBridgeId, storeId }),
+    //       )
+    //     }),
+    //   ),
+    //   Stream.runDrain,
+    //   Effect.ignoreLogged,
+    //   Effect.forkScoped,
+    // )
 
     yield* Effect.never
   }).pipe(Effect.scoped)

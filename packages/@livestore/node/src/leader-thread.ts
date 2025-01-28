@@ -132,7 +132,7 @@ WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
 const makeLeaderThread = ({
   schemaPath,
   storeId,
-  originId,
+  clientId,
   syncOptions,
   makeSyncBackendUrl,
   baseDirectory,
@@ -175,6 +175,7 @@ const makeLeaderThread = ({
       db,
       dbLog,
       storeId,
+      clientId,
       devtoolsPort,
       schemaPath,
     })
@@ -184,7 +185,7 @@ const makeLeaderThread = ({
     return makeLeaderThreadLayer({
       schema,
       storeId,
-      originId,
+      clientId,
       makeSyncDb,
       makeSyncBackend:
         makeSyncBackend === undefined || syncOptions === undefined ? undefined : makeSyncBackend(syncOptions),
@@ -208,6 +209,7 @@ const makeDevtoolsOptions = ({
   db,
   dbLog,
   storeId,
+  clientId,
   devtoolsPort,
   schemaPath,
 }: {
@@ -215,6 +217,7 @@ const makeDevtoolsOptions = ({
   db: LeaderDatabase
   dbLog: LeaderDatabase
   storeId: string
+  clientId: string
   devtoolsPort: number
   schemaPath: string
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
@@ -233,11 +236,9 @@ const makeDevtoolsOptions = ({
           Effect.forkScoped,
         )
 
-        const sessionId = 'static'
-        const appHostId = `${storeId}-${sessionId}`
         return {
           devtoolsWebChannel: yield* makeNodeDevtoolsChannel({
-            nodeName: `app-leader-${appHostId}`,
+            nodeName: `leader-${storeId}-${clientId}`,
             target: `devtools`,
             url: `ws://localhost:${devtoolsPort}`,
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },

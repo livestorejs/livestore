@@ -39,28 +39,29 @@ export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBr
 
     // yield* expoDevtoolsChannel.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
-    const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
+    // const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 
-    yield* Deferred.await(expoDevtoolsChannel.closedDeferred).pipe(
-      Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // yield* Deferred.await(expoDevtoolsChannel.closedDeferred).pipe(
+    //   Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
+    //   Effect.tapCauseLogPretty,
+    //   Effect.forkScoped,
+    // )
 
-    const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
-      expoDevtoolsChannel.send(msg).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
+    // const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
+    //   expoDevtoolsChannel.send(msg).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
 
-    const copyToClipboard = (text: string) =>
-      Effect.sync(() => {
-        navigator.clipboard.writeText(text)
-      })
+    // const copyToClipboard = (text: string) =>
+    //   Effect.sync(() => {
+    //     navigator.clipboard.writeText(text)
+    //   })
 
-    return {
-      responsePubSub,
-      sendToAppHost,
-      appHostId,
-      copyToClipboard,
-      isLeader,
-    } satisfies Devtools.PrepareDevtoolsBridge
+    // return {
+    //   responsePubSub,
+    //   sendToAppHost,
+    //   appHostId,
+    //   copyToClipboard,
+    //   isLeader,
+    // } satisfies Devtools.PrepareDevtoolsBridge
+    return yield* Effect.dieMessage('Not implemented')
   },
 ).pipe(Effect.orDie)

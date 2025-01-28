@@ -90,7 +90,7 @@ const makeWorkerRunnerOuter = (
 ): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | HttpClient.HttpClient> =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuter.InitialMessage, {
     // Port coming from client session and forwarded via the shared worker
-    InitialMessage: ({ port: incomingRequestsPort }) =>
+    InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
       Effect.gen(function* () {
         const innerFiber = yield* makeWorkerRunnerInner(workerOptions).pipe(
           Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
@@ -98,7 +98,7 @@ const makeWorkerRunnerOuter = (
           Effect.scoped,
           Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
-          Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: 'leader-worker' })),
+          Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: `leader-${storeId}-${clientId}` })),
           Effect.forkScoped,
         )
 
@@ -108,7 +108,7 @@ const makeWorkerRunnerOuter = (
 
 const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
-    InitialMessage: ({ storageOptions, storeId, originId, syncOptions, devtoolsEnabled, debugInstanceId }) =>
+    InitialMessage: ({ storageOptions, storeId, clientId, syncOptions, devtoolsEnabled, debugInstanceId }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSyncDb = syncDbFactory({ sqlite3 })
@@ -132,7 +132,7 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
         return makeLeaderThreadLayer({
           schema,
           storeId,
-          originId,
+          clientId,
           makeSyncDb,
           // TODO handle cases where options are provided but makeSyncBackend is not provided
           // TODO handle cases where makeSyncBackend is provided but options are not

@@ -4,31 +4,32 @@ import { Deferred, Effect, PubSub, Schema, Stream } from '@livestore/utils/effec
 
 import { makeChannelForConnectedMeshNode, makeNodeDevtoolsConnectedMeshNode } from '../web-channel/index.js'
 
-// TODO use a unique bridgeId for each connection (similar to web bridge)
 export const prepareNodeDevtoolsBridge = ({
   url,
   storeId,
+  clientId,
+  sessionId,
 }: {
   url: string
   storeId: string
+  clientId: string
+  sessionId: string
 }): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
   Effect.gen(function* () {
     const meshNode = yield* makeNodeDevtoolsConnectedMeshNode({ nodeName: `devtools`, url })
 
-    const sessionId = 'static'
-    const appHostId = `${storeId}-${sessionId}`
     const isLeader = true // For now we only support a single node instance, which always is the leader
 
     // TODO maybe we need a temporary channel to create a unique bridge channel e..g see appHostInfoDeferred below
     const nodeDevtoolsChannelStore = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
-      target: `app-store-${appHostId}`,
+      target: `client-session-${storeId}-${clientId}-${sessionId}`,
       schema: { listen: Devtools.MessageFromAppClientSession, send: Devtools.MessageToAppClientSession },
     })
 
     const nodeDevtoolsChannelCoordinator = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
-      target: `app-leader-${appHostId}`,
+      target: `leader-${storeId}-${clientId}`,
       schema: { listen: Devtools.MessageFromAppLeader, send: Devtools.MessageToAppLeader },
     })
 
@@ -72,14 +73,18 @@ export const prepareNodeDevtoolsBridge = ({
 
     // TODO improve disconnect handling
     yield* Deferred.await(nodeDevtoolsChannelCoordinator.closedDeferred).pipe(
-      Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
+      Effect.tap(() =>
+        PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
+      ),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
 
     // TODO improve disconnect handling
     yield* Deferred.await(nodeDevtoolsChannelStore.closedDeferred).pipe(
-      Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
+      Effect.tap(() =>
+        PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
+      ),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
@@ -104,7 +109,8 @@ export const prepareNodeDevtoolsBridge = ({
     return {
       responsePubSub,
       sendToAppHost,
-      appHostId,
+      clientId,
+      sessionId,
       copyToClipboard,
       isLeader,
     } satisfies Devtools.PrepareDevtoolsBridge
