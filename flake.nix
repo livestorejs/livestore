@@ -1,7 +1,9 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
-    nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Revert once fixed https://discourse.nixos.org/t/icu-symbol-not-found-with-node-and-bun/58566/3
+    nixpkgsUnstable.url = "github:NixOS/nixpkgs?ref=staging-next";
     flake-utils.url = "github:numtide/flake-utils";
     playwright-web-flake = {
       url = "github:pietdevries94/playwright-web-flake";
@@ -15,13 +17,17 @@
         overlay = final: prev: {
           inherit (playwright-web-flake.packages.${system}) playwright-driver;
         };
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ overlay ];
+        };
         pkgsUnstable = import nixpkgsUnstable {
           inherit system;
           overlays = [ overlay ];
         };
-        corepack = pkgsUnstable.runCommand "corepack-enable" {} ''
+        corepack = pkgs.runCommand "corepack-enable" {} ''
           mkdir -p $out/bin
-          ${pkgsUnstable.nodejs_22}/bin/corepack enable --install-directory $out/bin
+          ${pkgs.nodejs_23}/bin/corepack enable --install-directory $out/bin
         '';
       in
       {
@@ -30,13 +36,13 @@
           find-free-port = pkgsUnstable.callPackage ./nix/find-free-port.nix { };
         };
 
-        devShell = with pkgsUnstable; pkgsUnstable.mkShell {
+        devShell = with pkgs; pkgs.mkShell {
 
           buildInputs = [
-            nodejs_23
+            pkgsUnstable.nodejs_23
             corepack
-            bun
-            esbuild
+            pkgsUnstable.bun
+            pkgsUnstable.esbuild
             watchman
             caddy
             

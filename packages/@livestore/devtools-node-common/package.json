@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-node-common",
-  "version": "0.3.0-dev.4",
+  "version": "0.3.0-dev.5",
   "type": "module",
   "exports": {
     "./web-channel": {

@@ -45,8 +45,8 @@
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@livestore/devtools-react": "0.3.0-dev.4",
-    "@livestore/devtools-vite": "0.3.0-dev.4"
+    "@livestore/devtools-react": "0.3.0-dev.5",
+    "@livestore/devtools-vite": "0.3.0-dev.5"
   },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",
