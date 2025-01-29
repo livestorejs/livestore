@@ -2,6 +2,7 @@
   "name": "@livestore/expo",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -9,9 +10,6 @@
     }
   },
   "types": "./dist/index.d.ts",
-  "scripts": {
-    "test": "echo No tests yet"
-  },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/devtools-expo-common": "workspace:*",
@@ -28,5 +26,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
   }
 }

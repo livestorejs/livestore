@@ -2,6 +2,7 @@
   "name": "@livestore/devtools-node-common",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     "./web-channel": {
       "types": "./dist/web-channel/index.d.ts",
@@ -12,9 +13,6 @@
       "default": "./dist/devtools-bridge/index.js"
     }
   },
-  "scripts": {
-    "test": "echo No tests yet"
-  },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
@@ -23,5 +21,8 @@
   "devDependencies": {},
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
   }
 }

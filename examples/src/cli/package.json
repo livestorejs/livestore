@@ -1,16 +1,16 @@
 {
   "name": "livestore-example-src-cli",
-  "private": true,
   "type": "module",
-  "scripts": {},
+  "private": true,
   "dependencies": {
-    "@livestore/livestore": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
-    "@livestore/utils": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/node": "workspace:*"
+    "@livestore/livestore": "workspace:*",
+    "@livestore/node": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.7.2"
-  }
+  },
+  "scripts": {}
 }

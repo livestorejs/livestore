@@ -2,22 +2,12 @@
   "name": "@livestore/sync-cf",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/sync-impl/index.d.ts",
       "default": "./dist/sync-impl/index.js"
     }
-  },
-  "files": [
-    "dist",
-    "src",
-    "package.json",
-    "README.md"
-  ],
-  "scripts": {
-    "dev": "wrangler dev --inspector-port 9230",
-    "deploy": "wrangler publish",
-    "test": "echo 'No tests yet'"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -27,7 +17,18 @@
     "@cloudflare/workers-types": "4.20241022.0",
     "wrangler": "^3.84.0"
   },
+  "files": [
+    "dist",
+    "src",
+    "package.json",
+    "README.md"
+  ],
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "deploy": "wrangler publish",
+    "dev": "wrangler dev --inspector-port 9230",
+    "test": "echo 'No tests yet'"
   }
 }

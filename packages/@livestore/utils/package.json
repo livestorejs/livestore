@@ -1,10 +1,10 @@
 {
   "name": "@livestore/utils",
   "version": "0.3.0-dev.5",
+  "type": "module",
   "sideEffects": [
     "./dist/global.js"
   ],
-  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -13,13 +13,13 @@
     "./cuid": {
       "types": "./dist/cuid/cuid.node.d.ts",
       "node": "./dist/cuid/cuid.node.js",
-      "react-native": "./dist/cuid/cuid.browser.js",
-      "browser": "./dist/cuid/cuid.browser.js"
+      "browser": "./dist/cuid/cuid.browser.js",
+      "react-native": "./dist/cuid/cuid.browser.js"
     },
     "./nanoid": {
       "types": "./dist/nanoid/index.d.ts",
-      "react-native": "./dist/nanoid/index.browser.js",
-      "default": "./dist/nanoid/index.js"
+      "default": "./dist/nanoid/index.js",
+      "react-native": "./dist/nanoid/index.browser.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
@@ -38,7 +38,6 @@
       "default": "./dist/node-vitest/polyfill.js"
     }
   },
-  "react-native": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
@@ -62,26 +61,11 @@
       ]
     }
   },
-  "scripts": {
-    "test": "vitest"
-  },
   "dependencies": {
     "@livestore/db-schema": "workspace:*",
     "msgpackr": "^1.11.2",
     "nanoid": "^5.0.7",
     "pretty-bytes": "^6.1.1"
-  },
-  "peerDependencies": {
-    "@effect/cli": "^0.50.2",
-    "@effect/experimental": "^0.36.1",
-    "@effect/opentelemetry": "^0.42.1",
-    "@effect/platform": "^0.72.1",
-    "@effect/platform-browser": "^0.51.1",
-    "@effect/platform-bun": "^0.52.1",
-    "@effect/platform-node": "^0.68.1",
-    "@effect/vitest": "^0.16.1",
-    "@opentelemetry/api": "^1.9.0",
-    "effect": "^3.11.7"
   },
   "devDependencies": {
     "@effect/cli": "^0.51.1",
@@ -103,7 +87,23 @@
     "effect": "3.12.1",
     "vitest": "^2.1.4"
   },
+  "peerDependencies": {
+    "@effect/cli": "^0.51.1",
+    "@effect/experimental": "^0.36.1",
+    "@effect/opentelemetry": "^0.42.1",
+    "@effect/platform": "^0.72.1",
+    "@effect/platform-browser": "^0.51.1",
+    "@effect/platform-bun": "^0.52.1",
+    "@effect/platform-node": "^0.68.1",
+    "@effect/vitest": "^0.16.1",
+    "@opentelemetry/api": "^1.9.0",
+    "effect": "^3.11.7"
+  },
   "publishConfig": {
     "access": "public"
+  },
+  "react-native": "./dist/index.js",
+  "scripts": {
+    "test": "vitest"
   }
 }

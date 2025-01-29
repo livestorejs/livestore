@@ -1,14 +1,11 @@
 --- package.json
 +++ package.json
-@@ -1,5 +1,5 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-expo-todomvc",
 +  "name": "livestore-example-standalone-expo-todomvc",
    "version": "1.0.0",
-   "main": "./src/AppEntry.ts",
-   "scripts": {
-@@ -10,11 +10,11 @@
-   },
+   "private": true,
    "dependencies": {
      "@expo/vector-icons": "14.0.4",
 -    "@livestore/devtools-expo": "workspace:*",

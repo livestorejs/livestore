@@ -1,12 +1,7 @@
 {
   "name": "livestore-example-standalone-todomvc-custom-elements",
-  "private": true,
   "type": "module",
-  "scripts": {
-    "build": "vite build",
-    "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "vite"
-  },
+  "private": true,
   "dependencies": {
     "@livestore/devtools-vite": "0.3.0-dev.5",
     "@livestore/livestore": "0.3.0-dev.5",
@@ -32,5 +27,10 @@
     "typescript": "5.7.2",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5"
+  },
+  "scripts": {
+    "build": "vite build",
+    "build:analyze": "VITE_ANALYZE=1 run build",
+    "dev": "vite"
   }
 }

@@ -28,10 +28,6 @@
       ]
     }
   },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest"
-  },
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
     "@livestore/common": "workspace:*",
@@ -57,5 +53,9 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
   }
 }

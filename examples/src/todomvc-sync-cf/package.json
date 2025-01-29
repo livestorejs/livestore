@@ -1,13 +1,7 @@
 {
   "name": "livestore-example-src-todomvc-sync-cf",
-  "private": true,
   "type": "module",
-  "scripts": {
-    "build": "vite build",
-    "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "vite --force",
-    "preview": "vite preview"
-  },
+  "private": true,
   "dependencies": {
     "@livestore/devtools-vite": "0.3.0-dev.5",
     "@livestore/livestore": "workspace:*",
@@ -15,11 +9,11 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/wa-sqlite": "1.0.1-dev.29",
     "@livestore/web": "workspace:*",
-    "@overengineering/fps-meter": "^0.1.2",
     "@opentelemetry/exporter-trace-otlp-http": "0.57.0",
+    "@opentelemetry/resources": "1.30.0",
     "@opentelemetry/sdk-trace-base": "1.30.0",
     "@opentelemetry/sdk-trace-web": "1.30.0",
-    "@opentelemetry/resources": "1.30.0",
+    "@overengineering/fps-meter": "^0.1.2",
     "effect": "3.12.1",
     "react": "18.3.1",
     "react-dom": "^18.3.1",
@@ -36,5 +30,11 @@
     "typescript": "5.7.2",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5"
+  },
+  "scripts": {
+    "build": "vite build",
+    "build:analyze": "VITE_ANALYZE=1 run build",
+    "dev": "vite --force",
+    "preview": "vite preview"
   }
 }

@@ -2,6 +2,7 @@
   "name": "@livestore/node",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,9 +20,6 @@
         "./dist/devtools/mod.d.ts"
       ]
     }
-  },
-  "scripts": {
-    "test": "echo No tests yet"
   },
   "dependencies": {
     "@effect/platform-node": "^0.66.2",
@@ -46,5 +44,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
   }
 }

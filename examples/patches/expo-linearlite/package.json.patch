@@ -1,14 +1,11 @@
 --- package.json
 +++ package.json
-@@ -1,5 +1,5 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-expo-linearlite",
 +  "name": "livestore-example-standalone-expo-linearlite",
-   "main": "expo-router/entry",
    "version": "1.0.0",
    "private": true,
-@@ -11,11 +11,11 @@
-   },
    "dependencies": {
      "@expo/vector-icons": "^14.0.2",
 -    "@livestore/devtools-expo": "workspace:*",

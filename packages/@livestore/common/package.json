@@ -2,6 +2,7 @@
   "name": "@livestore/common",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -48,13 +49,10 @@
       ]
     }
   },
-  "scripts": {
-    "test": "vitest"
-  },
   "dependencies": {
+    "@livestore/db-schema": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "@livestore/db-schema": "workspace:*",
     "graphology": "0.26.0-alpha1",
     "graphology-dag": "0.4.1",
     "graphology-types": "0.24.7"
@@ -64,5 +62,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "vitest"
   }
 }

@@ -2,6 +2,7 @@
   "name": "@livestore/web",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -55,15 +56,12 @@
       ]
     }
   },
-  "scripts": {
-    "test": "echo No tests yet"
-  },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/devtools-web-common": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
@@ -72,5 +70,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
   }
 }

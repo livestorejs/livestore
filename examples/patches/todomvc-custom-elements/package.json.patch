@@ -1,14 +1,11 @@
 --- package.json
 +++ package.json
-@@ -1,5 +1,5 @@
+@@ -1,13 +1,13 @@
  {
 -  "name": "livestore-example-src-todomvc-custom-elements",
 +  "name": "livestore-example-standalone-todomvc-custom-elements",
-   "private": true,
    "type": "module",
-   "scripts": {
-@@ -9,10 +9,10 @@
-   },
+   "private": true,
    "dependencies": {
      "@livestore/devtools-vite": "0.3.0-dev.5",
 -    "@livestore/livestore": "workspace:*",

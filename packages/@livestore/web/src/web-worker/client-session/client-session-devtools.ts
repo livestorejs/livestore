@@ -50,9 +50,16 @@ export const bootDevtools = ({
       searchParams.set('clientId', clientSession.clientId)
       searchParams.set('sessionId', clientSession.sessionId)
       searchParams.set('storeId', storeId)
-      yield* Effect.log(
-        `[@livestore/web] Devtools ready on ${location.origin}/_devtools.html?${searchParams.toString()}`,
-      )
+      const url = `${location.origin}/_devtools.html?${searchParams.toString()}`
+
+      // Check whether devtools are available and then log the URL
+      const response = yield* Effect.promise(() => fetch(url))
+      if (response.ok) {
+        const text = yield* Effect.promise(() => response.text())
+        if (text.includes('<meta name="livestore-devtools" content="true" />')) {
+          yield* Effect.log(`[@livestore/web] Devtools ready on ${url}`)
+        }
+      }
     }
   }).pipe(Effect.withSpan('@livestore/web:coordinator:devtools:boot'))
 

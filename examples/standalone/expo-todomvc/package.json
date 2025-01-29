@@ -1,13 +1,7 @@
 {
   "name": "livestore-example-standalone-expo-todomvc",
   "version": "1.0.0",
-  "main": "./src/AppEntry.ts",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --clear --android",
-    "ios": "expo start --clear --ios",
-    "web": "expo start --web"
-  },
+  "private": true,
   "dependencies": {
     "@expo/vector-icons": "14.0.4",
     "@livestore/devtools-expo": "0.3.0-dev.5",
@@ -34,5 +28,11 @@
     "eas-cli": "10.2.2",
     "typescript": "5.7.2"
   },
-  "private": true
+  "main": "./src/AppEntry.ts",
+  "scripts": {
+    "android": "expo start --clear --android",
+    "ios": "expo start --clear --ios",
+    "start": "expo start",
+    "web": "expo start --web"
+  }
 }

@@ -1,14 +1,11 @@
 --- package.json
 +++ package.json
-@@ -1,5 +1,5 @@
+@@ -1,13 +1,13 @@
  {
 -  "name": "livestore-example-src-todomvc",
 +  "name": "livestore-example-standalone-todomvc",
-   "private": true,
    "type": "module",
-   "scripts": {
-@@ -10,10 +10,10 @@
-   },
+   "private": true,
    "dependencies": {
      "@livestore/devtools-vite": "0.3.0-dev.5",
 -    "@livestore/livestore": "workspace:*",
@@ -19,6 +16,6 @@
 +    "@livestore/react": "0.3.0-dev.5",
 +    "@livestore/wa-sqlite": "1.0.3-dev.2",
 +    "@livestore/web": "0.3.0-dev.5",
-     "@overengineering/fps-meter": "^0.1.2",
      "@opentelemetry/exporter-trace-otlp-http": "0.57.0",
+     "@opentelemetry/resources": "1.30.0",
      "@opentelemetry/sdk-trace-base": "1.30.0",

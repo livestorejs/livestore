@@ -2,6 +2,7 @@
   "name": "@livestore/react",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/mod.d.ts",
@@ -19,10 +20,6 @@
         "./dist/experimental/mod.d.ts"
       ]
     }
-  },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest && REACT_STRICT_MODE=1 vitest"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -50,5 +47,9 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest && REACT_STRICT_MODE=1 vitest"
   }
 }

@@ -1,14 +1,7 @@
 {
   "name": "livestore-example-src-todomvc-sync-electric",
-  "private": true,
   "type": "module",
-  "scripts": {
-    "build": "echo 'No builds supported for this example yet'",
-    "build_": "remix vite:build",
-    "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "remix vite:dev --force",
-    "preview": "remix vite:preview"
-  },
+  "private": true,
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/devtools-vite": "0.3.0-dev.5",
@@ -41,5 +34,12 @@
     "typescript": "5.7.2",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5"
+  },
+  "scripts": {
+    "build": "echo 'No builds supported for this example yet'",
+    "build_": "remix vite:build",
+    "build:analyze": "VITE_ANALYZE=1 run build",
+    "dev": "remix vite:dev --force",
+    "preview": "remix vite:preview"
   }
 }

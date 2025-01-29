@@ -1,15 +1,11 @@
 --- package.json
 +++ package.json
-@@ -1,5 +1,5 @@
+@@ -1,15 +1,15 @@
  {
 -  "name": "livestore-example-src-todomvc-sync-electric",
 +  "name": "livestore-example-standalone-todomvc-sync-electric",
-   "private": true,
    "type": "module",
-   "scripts": {
-@@ -10,13 +10,13 @@
-     "preview": "remix vite:preview"
-   },
+   "private": true,
    "dependencies": {
 -    "@livestore/common": "workspace:*",
 +    "@livestore/common": "0.3.0-dev.5",

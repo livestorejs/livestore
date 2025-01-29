@@ -2,6 +2,7 @@
   "name": "@livestore/webmesh",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/mod.d.ts",
@@ -13,19 +14,19 @@
     }
   },
   "types": "./dist/mod.d.ts",
-  "scripts": {
-    "test": "vitest"
-  },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "vitest": "^2.1.4",
-    "@types/ws": "8.5.12"
+    "@types/ws": "8.5.12",
+    "vitest": "^2.1.4"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "vitest"
   }
 }

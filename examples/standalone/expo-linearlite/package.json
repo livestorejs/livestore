@@ -1,14 +1,7 @@
 {
   "name": "livestore-example-standalone-expo-linearlite",
-  "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --clear --android",
-    "ios": "expo start --clear --ios",
-    "lint": "expo lint"
-  },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
     "@livestore/devtools-expo": "0.3.0-dev.5",
@@ -65,7 +58,14 @@
     "react-test-renderer": "18.2.0",
     "typescript": "5.7.2"
   },
+  "main": "expo-router/entry",
   "resolutions": {
     "@react-navigation/native": "7.0.0"
+  },
+  "scripts": {
+    "android": "expo start --clear --android",
+    "ios": "expo start --clear --ios",
+    "lint": "expo lint",
+    "start": "expo start"
   }
 }

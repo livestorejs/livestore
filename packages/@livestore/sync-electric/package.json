@@ -2,14 +2,12 @@
   "name": "@livestore/sync-electric",
   "version": "0.3.0-dev.5",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
-  },
-  "scripts": {
-    "test": "echo 'No tests yet'"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -18,5 +16,8 @@
   "devDependencies": {},
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo 'No tests yet'"
   }
 }

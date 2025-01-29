@@ -3,14 +3,15 @@ import type { Scope } from '@livestore/utils/effect'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteError, SynchronousDatabase, UnexpectedError } from '../index.js'
+import { getExecArgsFromMutation } from '../mutation.js'
 import {
-  getExecArgsFromMutation,
+  type LiveStoreSchema,
   MUTATION_LOG_META_TABLE,
+  type MutationEvent,
   mutationLogMetaTable,
   SESSION_CHANGESET_META_TABLE,
   sessionChangesetMetaTable,
-} from '../index.js'
-import type { LiveStoreSchema, MutationEvent } from '../schema/mod.js'
+} from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import { LeaderThreadCtx } from './types.js'

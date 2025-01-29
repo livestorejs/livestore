@@ -11,9 +11,9 @@ import type {
   Store,
 } from '@livestore/livestore'
 import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
-import { errorToString } from '@livestore/utils'
+import { errorToString, LS_DEV } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
-import { Deferred, Effect, Exit, Logger, LogLevel, Schema, Scope } from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, identity, Logger, LogLevel, Schema, Scope, TaskTracing } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
@@ -297,8 +297,10 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       // shutdown before a new one is created - especially when shutdown logic is async. You can't trust `React.useEffect`.
       // Thank you to Mattia Manzati for this idea.
       withSemaphore(storeId),
-      Effect.tapCauseLogPretty,
+      Effect.withSpan('@livestore/react:useCreateStore'),
+      LS_DEV ? TaskTracing.withAsyncTaggingTracing((name: string) => (console as any).createTask(name)) : identity,
       provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
+      Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread: 'window' }),
       Effect.provide(Logger.prettyWithThread('window')),
       Logger.withMinimumLogLevel(LogLevel.Debug),

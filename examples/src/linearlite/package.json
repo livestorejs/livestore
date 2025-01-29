@@ -1,15 +1,7 @@
 {
   "name": "livestore-example-src-linearlite",
   "version": "0.0.1",
-  "license": "Apache-2.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite --force",
-    "build": "vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "vite": "vite"
-  },
   "dependencies": {
     "@firefox-devtools/react-contextmenu": "^5.1.1",
     "@headlessui/react": "^2.2.0",
@@ -75,5 +67,12 @@
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5",
     "vite-plugin-svgr": "^4.2.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --force",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "vite": "vite"
   }
 }

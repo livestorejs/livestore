@@ -3,16 +3,16 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
-  "scripts": {
-    "test": "vitest"
-  },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
+    "@livestore/node": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/node": "workspace:*"
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.4"
+  },
+  "scripts": {
+    "test": "vitest"
   }
 }

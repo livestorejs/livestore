@@ -1,11 +1,8 @@
 {
   "name": "@livestore/devtools-expo",
   "version": "0.3.0-dev.5",
-  "main": "./dist/index.cjs",
+  "sideEffects": false,
   "types": "./dist/index.d.cts",
-  "scripts": {
-    "test": "echo No tests yet"
-  },
   "dependencies": {
     "@livestore/devtools-react": "0.3.0-dev.5",
     "@livestore/node": "workspace:*",
@@ -19,10 +16,14 @@
     "@types/ws": "8.5.12",
     "expo": "52.0.18"
   },
+  "main": "./dist/index.cjs",
   "peerDependencies": {
     "expo": "52.0.18"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "echo No tests yet"
   }
 }
