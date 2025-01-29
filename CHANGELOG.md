@@ -50,6 +50,7 @@
   - Embraced git-style push/pull semantics to sync mutations across the system
   - Upgrade to TypeScript 5.7
 - Upgraded dependencies
+  - Now supports React 19
   - `effect` (needs to be 3.12.0 or higher)
   - `@livestore/wa-sqlite` (needs to be 1.0.3-dev.4)
 

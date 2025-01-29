@@ -28,7 +28,7 @@ export const useQuery = <TQuery extends LiveQueryAny>(query: TQuery): GetResult<
 export const useQueryRef = <TQuery extends LiveQueryAny>(
   query$: TQuery,
   parentOtelContext?: otel.Context,
-): React.MutableRefObject<GetResult<TQuery>> => {
+): React.RefObject<GetResult<TQuery>> => {
   const { store } = useStore()
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)

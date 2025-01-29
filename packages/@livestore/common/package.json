@@ -55,7 +55,7 @@
     "@opentelemetry/api": "1.9.0",
     "graphology": "0.26.0-alpha1",
     "graphology-dag": "0.4.1",
-    "graphology-types": "0.24.7"
+    "graphology-types": "0.24.8"
   },
   "devDependencies": {
     "vitest": "^2.1.4"

@@ -48,7 +48,7 @@ export const useScopedQuery = <TResult>(makeQuery: () => LiveQuery<TResult>, key
 export const useScopedQueryRef = <TResult>(
   makeQuery: () => LiveQuery<TResult>,
   key: DepKey,
-): React.MutableRefObject<TResult> => {
+): React.RefObject<TResult> => {
   const { query$ } = useMakeScopedQuery(makeQuery, key)
 
   return useQueryRef(query$)
@@ -71,7 +71,7 @@ export const useMakeScopedQuery = <TResult, TQueryInfo extends QueryInfo>(
     () => (Array.isArray(key) ? key.join('-') : key) + '-' + store.reactivityGraph.id + '-' + makeQuery.toString(),
     [key, makeQuery, store.reactivityGraph.id],
   )
-  const fullKeyRef = React.useRef<string>()
+  const fullKeyRef = React.useRef<string | undefined>(undefined)
 
   const { query$, otelContext } = React.useMemo(() => {
     if (fullKeyRef.current !== undefined && fullKeyRef.current !== fullKey) {
@@ -107,6 +107,7 @@ export const useMakeScopedQuery = <TResult, TQueryInfo extends QueryInfo>(
     )
 
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
+    // console.debug('useScopedQuery:startSpan', fullKey, spanName)
 
     const query$ = makeQuery(otelContext)
 

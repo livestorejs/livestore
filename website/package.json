@@ -5,9 +5,9 @@
   "private": true,
   "dependencies": {
     "@astrojs/check": "0.9.4",
-    "@astrojs/starlight": "0.30.5",
+    "@astrojs/starlight": "0.31.1",
     "@astrojs/starlight-tailwind": "3.0.0",
-    "@astrojs/tailwind": "5.1.4",
+    "@astrojs/tailwind": "5.1.5",
     "astro": "5.1.10",
     "sharp": "0.33.5",
     "starlight-typedoc": "0.18.0",

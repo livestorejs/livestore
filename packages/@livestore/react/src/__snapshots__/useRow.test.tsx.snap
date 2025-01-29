@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`useRow > otel > should update the data based on component key > strictMode=false 1`] = `
+exports[`useRow > otel > should update the data based on component key strictMode={ strictMode: false } 1`] = `
 {
   "_name": "createStore",
   "attributes": {
@@ -200,7 +200,7 @@ exports[`useRow > otel > should update the data based on component key > strictM
 }
 `;
 
-exports[`useRow > otel > should update the data based on component key > strictMode=true 1`] = `
+exports[`useRow > otel > should update the data based on component key strictMode={ strictMode: true } 1`] = `
 {
   "_name": "createStore",
   "attributes": {
@@ -341,13 +341,6 @@ exports[`useRow > otel > should update the data based on component key > strictM
                       },
                     },
                   ],
-                },
-                {
-                  "_name": "LiveStore.subscribe",
-                  "attributes": {
-                    "label": "db(row:UserInfo:u1)",
-                    "queryLabel": "db(row:UserInfo:u1)",
-                  },
                 },
                 {
                   "_name": "LiveStore.subscribe",

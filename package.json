@@ -2,12 +2,6 @@
   "name": "@local/root",
   "version": "0.0.0",
   "private": true,
-  "#resolutions": {
-    "esbuild": "Needed for CF Wrangler",
-    "react": "React 19 isn't supported by Expo yet. TODO Upgrade to React 19 once Expo supports it.",
-    "@livestore/*": "Needed to force PNPM to install local packages",
-    "expo*": "Avoid duplicate expo packages"
-  },
   "devDependencies": {
     "@effect/language-service": "^0.2.0",
     "@typescript-eslint/eslint-plugin": "^8.12.2",
@@ -23,7 +17,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unicorn": "^56.0.0",
     "madge": "^6.1.0",
-    "netlify-cli": "^17.37.2",
+    "netlify-cli": "^18.0.3",
     "prettier": "^3.3.3",
     "prettier-plugin-packagejson": "^2.5.3",
     "syncpack": "^13.0.0",
@@ -54,6 +48,9 @@
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
     "@livestore/webmesh": "workspace:*"
+  },
+  "resolutions#": {
+    "@livestore/*": "Needed to force PNPM to install local packages"
   },
   "scripts": {
     "build": "pnpm run build:ts",

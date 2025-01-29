@@ -57,7 +57,9 @@ export const bootDevtools = ({
       if (response.ok) {
         const text = yield* Effect.promise(() => response.text())
         if (text.includes('<meta name="livestore-devtools" content="true" />')) {
-          yield* Effect.log(`[@livestore/web] Devtools ready on ${url}`)
+          // NOTE the trailing `&` is intentional to avoid Chrome opening the URL in the sources pane
+          // as the browser already fetched it
+          yield* Effect.log(`[@livestore/web] Devtools ready on ${url}&`)
         }
       }
     }

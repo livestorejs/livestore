@@ -1,6 +1,10 @@
 // @ts-check
+import fs from 'node:fs'
+import path from 'node:path'
+import url from 'node:url'
 
 /*
+Semver calculator: https://semver.npmjs.com
 Semver cheat sheet: https://devhints.io/semver
 
 Ranges:
@@ -11,6 +15,16 @@ Ranges:
 ^1.2	  is >=1.2.0 <2.0.0	  (like ^1.2.0)
 ~1.2	  is >=1.2.0 <1.3.0	  (like ~1.2.0)
 */
+
+// const __dirname = import.meta.dirname // use this once supported broadly
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+
+const localPackages = fs
+  .readdirSync(path.join(__dirname, './packages/@livestore'))
+  .filter(
+    (dir) => fs.statSync(path.join(__dirname, './packages/@livestore', dir)).isDirectory() && dir !== 'common-tests',
+  )
+  .map((dir) => `@livestore/${dir}`)
 
 /** @type {import("syncpack").RcFile} */
 const config = {
@@ -38,22 +52,11 @@ const config = {
   versionGroups: [
     {
       label: 'use workspace protocol for local packages',
-      dependencies: ['$LOCAL'],
+      dependencies: [...localPackages],
       dependencyTypes: ['!local'],
       packages: ['!livestore-example-standalone-**'],
       pinVersion: 'workspace:*',
     },
-    // {
-    //   label: 'Force same Effect package versions',
-    //   dependencies: ['effect'],
-    //   dependencyTypes: ['local', 'dev', 'peer'],
-    // },
-    // {
-    //   label: 'Force same Effect package versions',
-    //   dependencies: ['@effect/**'],
-    //   dependencyTypes: ['local', 'dev', 'peer'],
-
-    // },
   ],
 }
 

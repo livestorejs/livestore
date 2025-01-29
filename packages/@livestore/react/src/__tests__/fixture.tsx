@@ -66,7 +66,7 @@ export const makeTodoMvcReact = ({
   otelTracer,
   otelContext,
   useGlobalReactivityGraph = true,
-  strictMode = process.env.REACT_STRICT_MODE !== undefined,
+  strictMode,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
@@ -112,5 +112,5 @@ export const makeTodoMvcReact = ({
       </MaybeStrictMode>
     )
 
-    return { wrapper, store, reactivityGraph, makeRenderCount, strictMode }
+    return { wrapper, store, reactivityGraph, makeRenderCount }
   }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))

@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vitest'
 import { AppComponentSchema, AppRouterSchema, makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
 import * as LiveStoreReact from './mod.js'
 
+// const strictMode = process.env.REACT_STRICT_MODE !== undefined
+
 // NOTE running tests concurrently doesn't work with the default global db graph
 describe('useRow', () => {
   it('should update the data based on component key', () =>
@@ -257,87 +259,86 @@ describe('useRow', () => {
       unmount()
     }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
 
-  let cachedProvider: BasicTracerProvider | undefined
-
   describe('otel', () => {
-    const exporter = new InMemorySpanExporter()
-
-    const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
-    cachedProvider = provider
+    const provider = new BasicTracerProvider({})
     provider.register()
 
-    const otelTracer = otel.trace.getTracer('test')
+    it.each([{ strictMode: true }, { strictMode: false }])(
+      'should update the data based on component key strictMode=%s',
+      async ({ strictMode }) => {
+        const exporter = new InMemorySpanExporter()
 
-    const span = otelTracer.startSpan('test-root')
-    const otelContext = otel.trace.setSpan(otel.context.active(), span)
+        // const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
+        provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
 
-    it('should update the data based on component key', async () => {
-      const { strictMode } = await Effect.gen(function* () {
-        const { wrapper, store, reactivityGraph, makeRenderCount, strictMode } = yield* makeTodoMvcReact({
-          useGlobalReactivityGraph: false,
-          otelContext,
-          otelTracer,
-        })
+        const otelTracer = otel.trace.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
 
-        const renderCount = makeRenderCount()
+        const span = otelTracer.startSpan('test-root')
+        const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const { result, rerender, unmount } = renderHook(
-          (userId: string) => {
-            renderCount.inc()
+        await Effect.gen(function* () {
+          const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
+            useGlobalReactivityGraph: false,
+            otelContext,
+            otelTracer,
+            strictMode,
+          })
 
-            const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
-            return { state, setState }
-          },
-          { wrapper, initialProps: 'u1' },
-        )
+          const renderCount = makeRenderCount()
 
-        expect(result.current.state.id).toBe('u1')
-        expect(result.current.state.username).toBe('')
-        expect(renderCount.val).toBe(1)
+          const { result, rerender, unmount } = renderHook(
+            (userId: string) => {
+              renderCount.inc()
 
-        React.act(() =>
-          store.mutate(
-            LiveStore.rawSqlMutation({
-              sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
-            }),
-          ),
-        )
+              const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
+              return { state, setState }
+            },
+            { wrapper, initialProps: 'u1' },
+          )
 
-        rerender('u2')
+          expect(result.current.state.id).toBe('u1')
+          expect(result.current.state.username).toBe('')
+          expect(renderCount.val).toBe(1)
 
-        expect(result.current.state.id).toBe('u2')
-        expect(result.current.state.username).toBe('username_u2')
-        expect(renderCount.val).toBe(2)
+          React.act(() =>
+            store.mutate(
+              LiveStore.rawSqlMutation({
+                sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
+              }),
+            ),
+          )
 
-        unmount()
-        span.end()
+          rerender('u2')
 
-        return { strictMode }
-      }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+          expect(result.current.state.id).toBe('u2')
+          expect(result.current.state.username).toBe('username_u2')
+          expect(renderCount.val).toBe(2)
 
-      const mapAttributes = (attributes: otel.Attributes) => {
-        return ReadonlyRecord.map(attributes, (val, key) => {
-          if (key === 'stackInfo') {
-            const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
-            // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
-            stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper')) {
-                _.name = 'renderHook.wrapper'
-              }
-              _.filePath = '__REPLACED_FOR_SNAPSHOT__'
-            })
-            return JSON.stringify(stackInfo)
-          }
-          return val
-        })
-      }
+          unmount()
+          span.end()
 
-      // TODO improve testing setup so "obsolete" warning is avoided
-      if (strictMode) {
-        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot('strictMode=true')
-      } else {
-        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot('strictMode=false')
-      }
-    })
+          return { strictMode }
+        }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+
+        const mapAttributes = (attributes: otel.Attributes) => {
+          return ReadonlyRecord.map(attributes, (val, key) => {
+            if (key === 'stackInfo') {
+              const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
+              // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
+              stackInfo.frames.forEach((_) => {
+                if (_.name.includes('renderHook.wrapper')) {
+                  _.name = 'renderHook.wrapper'
+                }
+                _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+              })
+              return JSON.stringify(stackInfo)
+            }
+            return val
+          })
+        }
+
+        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
+      },
+    )
   })
 })

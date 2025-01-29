@@ -92,7 +92,7 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   batchUpdates,
   disableDevtools,
   signal,
-}: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): JSX.Element => {
+}: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): React.ReactElement => {
   const storeCtx = useCreateStore({
     storeId,
     schema,

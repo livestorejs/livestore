@@ -120,7 +120,7 @@ export const useRow: {
     },
   )
 
-  const query$Ref = useQueryRef(query$, otelContext) as React.MutableRefObject<RowQuery.Result<TTableDef>>
+  const query$Ref = useQueryRef(query$, otelContext) as React.RefObject<RowQuery.Result<TTableDef>>
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {
     if (table.options.isSingleColumn) {

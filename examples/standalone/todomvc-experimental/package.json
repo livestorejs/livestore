@@ -10,22 +10,22 @@
     "@livestore/wa-sqlite": "1.0.3-dev.7",
     "@livestore/web": "0.3.0-dev.5",
     "@overengineering/fps-meter": "0.1.2",
-    "effect": "3.12.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "effect": "3.12.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3",
-    "uuid": "11.0.2",
+    "uuid": "11.0.5",
     "workbox-window": "7.3.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.3",
     "rollup-plugin-visualizer": "^5.12.0",
     "typescript": "^5.7.2",
-    "vite": "^5.4.10",
-    "vite-plugin-pwa": "^0.20.5"
+    "vite": "^6.0.11",
+    "vite-plugin-pwa": "^0.21.1"
   },
   "scripts": {
     "build": "vite build",

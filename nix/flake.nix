@@ -33,7 +33,7 @@
       {
 
         packages = {
-          find-free-port = pkgsUnstable.callPackage ./nix/find-free-port.nix { };
+          find-free-port = pkgsUnstable.callPackage ./find-free-port.nix { };
         };
 
         devShell = with pkgs; pkgs.mkShell {
