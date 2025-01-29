@@ -1,5 +1,6 @@
 {
   "name": "@local/root",
+  "version": "0.0.0",
   "private": true,
   "#resolutions": {
     "esbuild": "Needed for CF Wrangler",
@@ -12,21 +13,21 @@
     "@typescript-eslint/eslint-plugin": "^8.12.2",
     "@typescript-eslint/parser": "^8.12.2",
     "eslint": "^8.57.0",
-    "eslint-config-prettier": "9.1.0",
-    "eslint-plugin-import": "2.31.0",
-    "eslint-plugin-only-warn": "1.1.0",
-    "eslint-plugin-prefer-arrow": "1.2.3",
-    "eslint-plugin-prettier": "5.2.1",
-    "eslint-plugin-react": "7.37.2",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-only-warn": "^1.1.0",
+    "eslint-plugin-prefer-arrow": "^1.2.3",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
-    "eslint-plugin-simple-import-sort": "12.1.1",
-    "eslint-plugin-unicorn": "56.0.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-unicorn": "^56.0.0",
     "madge": "^6.1.0",
     "netlify-cli": "^17.37.2",
     "prettier": "^3.3.3",
-    "prettier-plugin-packagejson": "2.5.3",
+    "prettier-plugin-packagejson": "^2.5.3",
     "syncpack": "^13.0.0",
-    "typescript": "5.7.2"
+    "typescript": "^5.7.2"
   },
   "packageManager": "pnpm@9.15.4",
   "pnpm": {
@@ -52,11 +53,7 @@
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "expo": "52.0.18",
-    "expo-sqlite": "15.0.3",
-    "react": "18.3.1",
-    "react-native": "0.76.5"
+    "@livestore/webmesh": "workspace:*"
   },
   "scripts": {
     "build": "pnpm run build:ts",
@@ -68,7 +65,7 @@
     "deploy:examples:src": "bun scripts/deploy-examples.ts",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "generate:examples:standalone": "bun scripts/generate-examples.ts sync --direction src-to-standalone",
-    "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0",
+    "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0 && syncpack lint",
     "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
     "release:dev": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version prerelease --preid=dev --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish  --tag dev --no-git-checks",
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish --no-git-checks",

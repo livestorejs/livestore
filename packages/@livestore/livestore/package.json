@@ -29,22 +29,22 @@
     }
   },
   "dependencies": {
-    "@graphql-typed-document-node/core": "^3.2.0",
+    "@graphql-typed-document-node/core": "3.2.0",
     "@livestore/common": "workspace:*",
     "@livestore/db-schema": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0"
+    "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
     "@livestore/web": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "1.30.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
     "jsdom": "^25.0.1",
-    "typescript": "5.7.2",
+    "typescript": "^5.7.2",
     "vite": "^5.4.10",
     "vitest": "^2.1.4"
   },
   "peerDependencies": {
-    "graphql": "16.x"
+    "graphql": "~16.0"
   },
   "peerDependenciesMeta": {
     "graphql": {

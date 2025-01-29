@@ -22,7 +22,7 @@
     }
   },
   "dependencies": {
-    "@effect/platform-node": "^0.68.1",
+    "@effect/platform-node": "0.68.1",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-node-common": "workspace:*",
     "@livestore/devtools-react": "0.3.0-dev.5",
@@ -30,16 +30,16 @@
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",
     "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api": "1.9.0",
     "@opentelemetry/otlp-exporter-base": "0.57.0",
-    "vite": "^5.4.10",
-    "ws": "^8.18.0"
+    "vite": "5.4.10",
+    "ws": "8.18.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-node-resolve": "^15.3.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "@types/ws": "8.5.12",
+    "@types/ws": "^8.5.12",
     "rollup": "^4.27.4"
   },
   "publishConfig": {

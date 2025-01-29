@@ -52,7 +52,7 @@
   "dependencies": {
     "@livestore/db-schema": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api": "1.9.0",
     "graphology": "0.26.0-alpha1",
     "graphology-dag": "0.4.1",
     "graphology-types": "0.24.7"

@@ -14,7 +14,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20241022.0",
+    "@cloudflare/workers-types": "^4.20241022.0",
     "wrangler": "^3.84.0"
   },
   "files": [

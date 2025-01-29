@@ -13,7 +13,7 @@
 -    "@livestore/utils": "workspace:*",
 +    "@livestore/livestore": "0.3.0-dev.5",
 +    "@livestore/utils": "0.3.0-dev.5",
-     "@livestore/wa-sqlite": "1.0.3-dev.2",
+     "@livestore/wa-sqlite": "1.0.3-dev.7",
 -    "@livestore/web": "workspace:*",
 +    "@livestore/web": "0.3.0-dev.5",
      "effect": "3.12.1",
