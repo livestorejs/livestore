@@ -1,9 +1,10 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,16 +1,16 @@
  {
 -  "name": "livestore-example-src-todomvc-sync-electric",
 +  "name": "livestore-example-standalone-todomvc-sync-electric",
+   "version": "0.0.0",
    "type": "module",
    "private": true,
    "dependencies": {
@@ -13,12 +14,11 @@
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/react": "workspace:*",
 -    "@livestore/sync-electric": "workspace:*",
--    "@livestore/wa-sqlite": "1.0.1-dev.29",
--    "@livestore/web": "workspace:*",
 +    "@livestore/livestore": "0.3.0-dev.5",
 +    "@livestore/react": "0.3.0-dev.5",
 +    "@livestore/sync-electric": "0.3.0-dev.5",
-+    "@livestore/wa-sqlite": "1.0.3-dev.2",
+     "@livestore/wa-sqlite": "1.0.3-dev.2",
+-    "@livestore/web": "workspace:*",
 +    "@livestore/web": "0.3.0-dev.5",
      "@overengineering/fps-meter": "^0.1.2",
      "@remix-run/node": "^2.11.2",

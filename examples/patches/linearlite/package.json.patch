@@ -4,7 +4,7 @@
  {
 -  "name": "livestore-example-src-linearlite",
 +  "name": "livestore-example-standalone-linearlite",
-   "version": "0.0.1",
+   "version": "0.0.0",
    "type": "module",
    "dependencies": {
      "@firefox-devtools/react-contextmenu": "^5.1.1",

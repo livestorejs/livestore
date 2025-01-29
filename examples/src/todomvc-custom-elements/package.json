@@ -1,12 +1,13 @@
 {
   "name": "livestore-example-src-todomvc-custom-elements",
+  "version": "0.0.0",
   "type": "module",
   "private": true,
   "dependencies": {
     "@livestore/devtools-vite": "0.3.0-dev.5",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.1-dev.29",
+    "@livestore/wa-sqlite": "1.0.3-dev.2",
     "@livestore/web": "workspace:*",
     "effect": "3.12.1",
     "react": "18.3.1",

@@ -12,10 +12,10 @@
     "babel-preset-expo": "12.0.4",
     "effect": "3.12.1",
     "expo": "52.0.18",
-    "expo-asset": "11.0.0",
-    "expo-crypto": "14.0.1",
+    "expo-asset": "~11.0.1",
+    "expo-crypto": "~14.0.1",
     "expo-sqlite": "15.0.3",
-    "expo-status-bar": "2.0.0",
+    "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
     "react-native": "0.76.5"
   },
@@ -23,7 +23,7 @@
     "@babel/core": "^7.26.0",
     "@babel/plugin-syntax-import-attributes": "^7.26.0",
     "@babel/runtime": "7.26.0",
-    "@types/react": "~18.3.12",
+    "@types/react": "^18.3.12",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "10.2.2",
     "typescript": "5.7.2"

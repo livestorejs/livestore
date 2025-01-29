@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@expo/vector-icons": "^14.0.2",
+    "@expo/vector-icons": "14.0.4",
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
@@ -33,7 +33,7 @@
     "lucide-react-native": "^0.446.0",
     "nativewind": "^4.1.10",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react-dom": "^18.3.1",
     "react-native": "0.76.5",
     "react-native-css-interop": "^0.1.9",
     "react-native-gesture-handler": "~2.20.2",
@@ -42,14 +42,14 @@
     "react-native-screens": "^4.0.0",
     "react-native-svg": "15.8.0",
     "react-native-web": "~0.19.13",
-    "tailwindcss": "^3.4.13"
+    "tailwindcss": "^3.4.14"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/plugin-syntax-import-attributes": "^7.24.7",
-    "@babel/runtime": "^7.25.6",
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-syntax-import-attributes": "^7.26.0",
+    "@babel/runtime": "7.26.0",
     "@faker-js/faker": "^9.0.3",
-    "@types/react": "~18.3.12",
+    "@types/react": "^18.3.12",
     "@types/react-test-renderer": "^18.0.7",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eslint-config-expo": "^8.0.1",
@@ -60,7 +60,7 @@
   },
   "main": "expo-router/entry",
   "resolutions": {
-    "@react-navigation/native": "7.0.0"
+    "@react-navigation/native": "^7.0.0"
   },
   "scripts": {
     "android": "expo start --clear --android",

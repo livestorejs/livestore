@@ -7,7 +7,7 @@
    "version": "1.0.0",
    "private": true,
    "dependencies": {
-     "@expo/vector-icons": "^14.0.2",
+     "@expo/vector-icons": "14.0.4",
 -    "@livestore/devtools-expo": "workspace:*",
 -    "@livestore/expo": "workspace:*",
 -    "@livestore/livestore": "workspace:*",

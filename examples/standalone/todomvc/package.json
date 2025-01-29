@@ -1,5 +1,6 @@
 {
   "name": "livestore-example-standalone-todomvc",
+  "version": "0.0.0",
   "type": "module",
   "private": true,
   "dependencies": {

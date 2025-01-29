@@ -17,7 +17,7 @@
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
-    "expo-file-system": "^17.0.1",
+    "expo-file-system": "*",
     "expo-sqlite": "15.0.3"
   },
   "peerDependencies": {
