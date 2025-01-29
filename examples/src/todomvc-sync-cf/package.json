@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/devtools-vite": "0.3.0-dev.5",
+    "@livestore/devtools-vite": "0.3.0-dev.6",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",

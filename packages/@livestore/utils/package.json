@@ -1,6 +1,6 @@
 {
   "name": "@livestore/utils",
-  "version": "0.3.0-dev.5",
+  "version": "0.3.0-dev.6",
   "type": "module",
   "sideEffects": [
     "./dist/global.js"
@@ -18,8 +18,8 @@
     },
     "./nanoid": {
       "types": "./dist/nanoid/index.d.ts",
-      "default": "./dist/nanoid/index.js",
-      "react-native": "./dist/nanoid/index.browser.js"
+      "react-native": "./dist/nanoid/index.browser.js",
+      "default": "./dist/nanoid/index.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",

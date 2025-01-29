@@ -29,6 +29,18 @@ const localPackages = fs
 /** @type {import("syncpack").RcFile} */
 const config = {
   sortFirst: ['name', 'version', 'type', 'sideEffects', 'private', 'exports', 'types', 'typesVersions'],
+  sortExports: [
+    'types',
+    'node-addons',
+    'node',
+    'browser',
+    'react-native',
+    'import',
+    'require',
+    'development',
+    'production',
+    'default',
+  ],
   semverGroups: [
     {
       label: 'default all to exact version for prod deps',
