@@ -4,11 +4,11 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
 
-import { WSMessage } from '../common/index.js'
+import { WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface Env {
-  WEBSOCKET_SERVER: DurableObjectNamespace<WebSocketServer>
+  WEBSOCKET_SERVER: DurableObjectNamespace
   DB: D1Database
   ADMIN_SECRET: string
 }
@@ -34,177 +34,199 @@ export const mutationLogTable = DbSchema.table('__unused', {
  *
  * Changing this version number will lead to a "soft reset".
  */
-const PERSISTENCE_FORMAT_VERSION = 2
+export const PERSISTENCE_FORMAT_VERSION = 2
 
-// Durable Object
-export class WebSocketServer extends DurableObject<Env> {
-  dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${this.ctx.id.toString()}`
-  storage = makeStorage(this.ctx, this.env, this.dbName)
+export type MakeDurableObjectClassOptions = {
+  onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
+  onPull?: (message: WSMessage.PullReq) => Effect.Effect<void> | Promise<void>
+}
 
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env)
-  }
+export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) => {
+  new (ctx: DurableObjectState, env: Env): DurableObject<Env>
+}
 
-  fetch = async (_request: Request) =>
-    Effect.gen(this, function* () {
-      const { 0: client, 1: server } = new WebSocketPair()
+export const makeDurableObject: MakeDurableObjectClass = (options) => {
+  return class WebSocketServerBase extends DurableObject<Env> {
+    dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${this.ctx.id.toString()}`
+    storage = makeStorage(this.ctx, this.env, this.dbName)
 
-      // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
+    constructor(ctx: DurableObjectState, env: Env) {
+      super(ctx, env)
+    }
 
-      this.ctx.acceptWebSocket(server)
+    fetch = async (_request: Request) =>
+      Effect.gen(this, function* () {
+        const { 0: client, 1: server } = new WebSocketPair()
 
-      this.ctx.setWebSocketAutoResponse(
-        new WebSocketRequestResponsePair(
-          encodeIncomingMessage(WSMessage.Ping.make({ requestId: 'ping' })),
-          encodeOutgoingMessage(WSMessage.Pong.make({ requestId: 'ping' })),
-        ),
-      )
+        // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
 
-      const colSpec = makeColumnSpec(mutationLogTable.sqliteDef.ast)
-      this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${this.dbName} (${colSpec}) strict`)
+        this.ctx.acceptWebSocket(server)
 
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      })
-    }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+        this.ctx.setWebSocketAutoResponse(
+          new WebSocketRequestResponsePair(
+            encodeIncomingMessage(WSMessage.Ping.make({ requestId: 'ping' })),
+            encodeOutgoingMessage(WSMessage.Pong.make({ requestId: 'ping' })),
+          ),
+        )
 
-  webSocketMessage = (ws: WebSocketClient, message: ArrayBuffer | string) =>
-    Effect.gen(this, function* () {
-      const decodedMessageRes = decodeIncomingMessage(message)
+        const colSpec = makeColumnSpec(mutationLogTable.sqliteDef.ast)
+        this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${this.dbName} (${colSpec}) strict`)
 
-      if (decodedMessageRes._tag === 'Left') {
-        console.error('Invalid message received', decodedMessageRes.left)
-        return
-      }
+        return new Response(null, {
+          status: 101,
+          webSocket: client,
+        })
+      }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
 
-      const decodedMessage = decodedMessageRes.right
-      const requestId = decodedMessage.requestId
+    webSocketMessage = (ws: WebSocketClient, message: ArrayBuffer | string) =>
+      Effect.gen(this, function* () {
+        const decodedMessageRes = decodeIncomingMessage(message)
 
-      try {
-        switch (decodedMessage._tag) {
-          case 'WSMessage.PullReq': {
-            const cursor = decodedMessage.cursor
-            const CHUNK_SIZE = 100
+        if (decodedMessageRes._tag === 'Left') {
+          console.error('Invalid message received', decodedMessageRes.left)
+          return
+        }
 
-            // TODO use streaming
-            const remainingEvents = [...(yield* Effect.promise(() => this.storage.getEvents(cursor)))]
+        const decodedMessage = decodedMessageRes.right
+        const requestId = decodedMessage.requestId
 
-            // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
-            while (true) {
-              const events = remainingEvents.splice(0, CHUNK_SIZE)
-
-              ws.send(
-                encodeOutgoingMessage(WSMessage.PullRes.make({ events, remaining: remainingEvents.length, requestId })),
-              )
-
-              if (remainingEvents.length === 0) {
-                break
-              }
-            }
-
-            break
-          }
-          case 'WSMessage.PushReq': {
-            // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-            const latestEvent = yield* Effect.promise(() => this.storage.getLatestEvent())
-            const expectedParentId = latestEvent?.id ?? EventId.ROOT.global
-
-            let i = 0
-            for (const mutationEventEncoded of decodedMessage.batch) {
-              if (mutationEventEncoded.parentId !== expectedParentId + i) {
-                const err = WSMessage.Error.make({
-                  message: `Invalid parent id. Received ${mutationEventEncoded.parentId} but expected ${expectedParentId}`,
-                  requestId,
-                })
-
-                yield* Effect.fail(err).pipe(Effect.ignoreLogged)
-
-                ws.send(encodeOutgoingMessage(err))
-                return
+        try {
+          switch (decodedMessage._tag) {
+            case 'WSMessage.PullReq': {
+              if (options?.onPull) {
+                yield* Effect.tryAll(() => options.onPull!(decodedMessage))
               }
 
-              // TODO handle clientId unique conflict
+              const cursor = decodedMessage.cursor
+              const CHUNK_SIZE = 100
 
-              const createdAt = new Date().toISOString()
+              // TODO use streaming
+              const remainingEvents = [...(yield* Effect.promise(() => this.storage.getEvents(cursor)))]
 
-              // NOTE we're currently not blocking on this to allow broadcasting right away
-              const storePromise = this.storage.appendEvent(mutationEventEncoded, createdAt)
+              // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
+              while (true) {
+                const events = remainingEvents.splice(0, CHUNK_SIZE)
 
-              ws.send(encodeOutgoingMessage(WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id, requestId })))
-
-              // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
-
-              const connectedClients = this.ctx.getWebSockets()
-
-              if (connectedClients.length > 0) {
-                const broadcastMessage = encodeOutgoingMessage(
-                  // TODO refactor to batch api
-                  WSMessage.PushBroadcast.make({
-                    mutationEventEncoded,
-                    metadata: Option.some({ createdAt }),
-                  }),
+                ws.send(
+                  encodeOutgoingMessage(
+                    WSMessage.PullRes.make({ events, remaining: remainingEvents.length, requestId }),
+                  ),
                 )
 
-                for (const conn of connectedClients) {
-                  console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
-                  // if (conn !== ws) {
-                  conn.send(broadcastMessage)
-                  // }
+                if (remainingEvents.length === 0) {
+                  break
                 }
               }
 
-              yield* Effect.promise(() => storePromise)
-
-              i++
+              break
             }
+            case 'WSMessage.PushReq': {
+              if (options?.onPush) {
+                yield* Effect.tryAll(() => options.onPush!(decodedMessage))
+              }
 
-            break
-          }
-          case 'WSMessage.AdminResetRoomReq': {
-            if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
-              return
+              // TODO check whether we could use the Durable Object storage for this to speed up the lookup
+              const latestEvent = yield* Effect.promise(() => this.storage.getLatestEvent())
+              const expectedParentId = latestEvent?.id ?? EventId.ROOT.global
+
+              let i = 0
+              for (const mutationEventEncoded of decodedMessage.batch) {
+                if (mutationEventEncoded.parentId !== expectedParentId + i) {
+                  const err = WSMessage.Error.make({
+                    message: `Invalid parent id. Received ${mutationEventEncoded.parentId} but expected ${expectedParentId}`,
+                    requestId,
+                  })
+
+                  yield* Effect.fail(err).pipe(Effect.ignoreLogged)
+
+                  ws.send(encodeOutgoingMessage(err))
+                  return
+                }
+
+                // TODO handle clientId unique conflict
+
+                const createdAt = new Date().toISOString()
+
+                // NOTE we're currently not blocking on this to allow broadcasting right away
+                const storePromise = this.storage.appendEvent(mutationEventEncoded, createdAt)
+
+                ws.send(
+                  encodeOutgoingMessage(WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id, requestId })),
+                )
+
+                // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
+
+                const connectedClients = this.ctx.getWebSockets()
+
+                if (connectedClients.length > 0) {
+                  const broadcastMessage = encodeOutgoingMessage(
+                    // TODO refactor to batch api
+                    WSMessage.PushBroadcast.make({
+                      mutationEventEncoded,
+                      metadata: Option.some({ createdAt }),
+                    }),
+                  )
+
+                  for (const conn of connectedClients) {
+                    console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
+                    // if (conn !== ws) {
+                    conn.send(broadcastMessage)
+                    // }
+                  }
+                }
+
+                yield* Effect.promise(() => storePromise)
+
+                i++
+              }
+
+              break
             }
+            case 'WSMessage.AdminResetRoomReq': {
+              if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
+                ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+                return
+              }
 
-            yield* Effect.promise(() => this.storage.resetRoom())
-            ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
+              yield* Effect.promise(() => this.storage.resetRoom())
+              ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
 
-            break
-          }
-          case 'WSMessage.AdminInfoReq': {
-            if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
-              ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
-              return
+              break
             }
+            case 'WSMessage.AdminInfoReq': {
+              if (decodedMessage.adminSecret !== this.env.ADMIN_SECRET) {
+                ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: 'Invalid admin secret', requestId })))
+                return
+              }
 
-            ws.send(
-              encodeOutgoingMessage(
-                WSMessage.AdminInfoRes.make({ requestId, info: { durableObjectId: this.ctx.id.toString() } }),
-              ),
-            )
+              ws.send(
+                encodeOutgoingMessage(
+                  WSMessage.AdminInfoRes.make({ requestId, info: { durableObjectId: this.ctx.id.toString() } }),
+                ),
+              )
 
-            break
+              break
+            }
+            default: {
+              console.error('unsupported message', decodedMessage)
+              return shouldNeverHappen()
+            }
           }
-          default: {
-            console.error('unsupported message', decodedMessage)
-            return shouldNeverHappen()
-          }
+        } catch (error: any) {
+          ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: error.message, requestId })))
         }
-      } catch (error: any) {
-        ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: error.message, requestId })))
-      }
-    }).pipe(
-      Effect.withSpan('@livestore/sync-cf:durable-object:webSocketMessage'),
-      Effect.tapCauseLogPretty,
-      Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.provide(Logger.pretty),
-      Effect.runPromise,
-    )
+      }).pipe(
+        Effect.withSpan('@livestore/sync-cf:durable-object:webSocketMessage'),
+        Effect.tapCauseLogPretty,
+        Logger.withMinimumLogLevel(LogLevel.Debug),
+        Effect.provide(Logger.pretty),
+        Effect.runPromise,
+      )
 
-  webSocketClose = async (ws: WebSocketClient, code: number, _reason: string, _wasClean: boolean) => {
-    // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
-    ws.close(code, 'Durable Object is closing WebSocket')
+    webSocketClose = async (ws: WebSocketClient, code: number, _reason: string, _wasClean: boolean) => {
+      // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
+      ws.close(code, 'Durable Object is closing WebSocket')
+    }
   }
 }
 

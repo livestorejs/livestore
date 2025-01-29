@@ -5,8 +5,12 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/sync-impl/index.d.ts",
-      "default": "./dist/sync-impl/index.js"
+      "types": "./dist/sync-impl/mod.d.ts",
+      "default": "./dist/sync-impl/mod.js"
+    },
+    "./cf-worker": {
+      "types": "./dist/cf-worker/mod.d.ts",
+      "default": "./dist/cf-worker/mod.js"
     }
   },
   "dependencies": {
@@ -14,8 +18,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241022.0",
-    "wrangler": "^3.84.0"
+    "@cloudflare/workers-types": "^4.20241022.0"
   },
   "files": [
     "dist",
@@ -27,8 +30,6 @@
     "access": "public"
   },
   "scripts": {
-    "deploy": "wrangler publish",
-    "dev": "wrangler dev --inspector-port 9230",
     "test": "echo 'No tests yet'"
   }
 }

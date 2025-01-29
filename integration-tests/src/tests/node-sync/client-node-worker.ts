@@ -33,7 +33,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         baseDirectory: path.resolve(process.cwd(), 'tmp', clientId),
         syncOptions: {
           type: 'cf',
-          url: 'ws://localhost:8787/websocket',
+          url: 'ws://localhost:8888/websocket',
           roomId: `todomvc_${storeId}`,
         },
         otel: {

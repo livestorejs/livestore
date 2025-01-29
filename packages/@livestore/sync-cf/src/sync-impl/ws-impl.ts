@@ -18,7 +18,7 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { WSMessage } from '../common/index.js'
+import { WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface WsSyncOptions extends SyncBackendOptionsBase {
@@ -127,8 +127,8 @@ const connect = (wsUrl: string) =>
           `Sending message: ${message._tag}`,
           message._tag === 'WSMessage.PushReq'
             ? {
-                id: message.batch[0]!.id.global,
-                parentId: message.batch[0]!.parentId.global,
+                id: message.batch[0]!.id,
+                parentId: message.batch[0]!.parentId,
                 batchLength: message.batch.length,
               }
             : message._tag === 'WSMessage.PullReq'

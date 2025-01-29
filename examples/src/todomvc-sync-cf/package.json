@@ -30,12 +30,16 @@
     "rollup-plugin-visualizer": "^5.12.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^0.21.1",
+    "wrangler": "^3.106.0"
   },
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "vite --force",
-    "preview": "vite preview"
+    "dev": "pnpm run dev:vite & pnpm run dev:wrangler",
+    "dev:vite": "vite --force",
+    "dev:wrangler": "wrangler dev --inspector-port 9230",
+    "preview": "vite preview",
+    "wrangler:deploy": "wrangler publish"
   }
 }

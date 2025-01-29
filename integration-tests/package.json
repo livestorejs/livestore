@@ -17,11 +17,12 @@
     "@playwright/test": "^1.50.0",
     "@types/node": "^22.10.5",
     "vite": "^6.0.11",
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.4",
+    "wrangler": "^3.106.0"
   },
   "scripts": {
     "test": "pnpm test:unit & pnpm test:todomvc & pnpm test:node-sync",
-    "test:node-sync": "vitest --poolOptions.threads.singleThread=true src/tests/node-sync/node-sync.test.ts",
+    "test:node-sync": "vitest src/tests/node-sync/node-sync.test.ts",
     "test:todomvc": "PLAYWRIGHT_SUITE=todomvc DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='PORT=$DEV_SERVER_PORT pnpm --filter livestore-example-src-todomvc dev' playwright test src/tests/playwright/todomvc.play.ts",
     "test:unit": "PLAYWRIGHT_SUITE=unit DEV_SERVER_PORT=$(find-free-port) DEV_SERVER_COMMAND='pnpm vite dev' playwright test src/tests/playwright/unit-tests.play.ts"
   }

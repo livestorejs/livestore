@@ -1,6 +1,6 @@
 // @ts-check
 
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 // Needed for OPFS Sqlite to work
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
@@ -16,6 +16,9 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 
 // https://vitejs.dev/config
 export default defineConfig({
+  test: {
+    setupFiles: ['./src/cf-sync-fixtures/vitest-sync-setup.ts'],
+  },
   server: {
     port: process.env.DEV_SERVER_PORT ? Number(process.env.DEV_SERVER_PORT) : 61_001,
     headers: credentiallessHeaders,
