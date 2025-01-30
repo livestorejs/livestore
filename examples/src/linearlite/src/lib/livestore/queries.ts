@@ -3,6 +3,7 @@ import { queryDb, SessionIdSymbol } from '@livestore/livestore'
 import { useRow } from '@livestore/react'
 
 export const useFilterState = () => useRow(tables.filterState, SessionIdSymbol)
+export const useScrollState = () => useRow(tables.scrollState, SessionIdSymbol)
 export const useFrontendState = () => useRow(tables.frontendState, 'default')
 
 export const issueCount$ = queryDb(tables.issue.query.count().where({ deleted: null }), { label: 'global.issueCount' })
