@@ -1,12 +1,23 @@
-import type { Effect, HttpClient, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { Effect, HttpClient, Option, Scope, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
+import type { UnexpectedError } from '../adapter-types.js'
+import type { InitialSyncOptions } from '../leader-thread/types.js'
 import * as EventId from '../schema/EventId.js'
 import type * as MutationEvent from '../schema/MutationEvent.js'
 
-export interface SyncBackendOptionsBase {
-  type: string
-  [key: string]: Schema.JsonValue
+/**
+ * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.
+ */
+export type MakeBackendArgs = {
+  storeId: string
+  clientId: string
+}
+
+export type SyncOptions = {
+  makeBackend: (args: MakeBackendArgs) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
+  /** @default { _tag: 'Skip' } */
+  initialSyncOptions?: InitialSyncOptions
 }
 
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {

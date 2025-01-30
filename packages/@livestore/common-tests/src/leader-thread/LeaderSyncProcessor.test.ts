@@ -1,7 +1,6 @@
 import '@livestore/utils/node-vitest-polyfill'
 
-import type { InvalidPushError, MakeSynchronousDatabase, SyncBackend, UnexpectedError } from '@livestore/common'
-import { validatePushPayload } from '@livestore/common'
+import type { InvalidPushError, MakeSynchronousDatabase, UnexpectedError } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
@@ -18,17 +17,17 @@ import {
   identity,
   Layer,
   Logger,
-  Option,
   Queue,
   Schema,
   Stream,
-  SubscriptionRef,
   WebChannel,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
 import { expect } from 'vitest'
 
+import type { MockSyncBackend } from '../mock-sync-backend.js'
+import { makeMockSyncBackend } from '../mock-sync-backend.js'
 import { schema, tables } from './fixture.js'
 
 /*
@@ -45,7 +44,7 @@ TODO:
 - make connected state settable
 */
 
-Vitest.describe('sync', () => {
+Vitest.describe('LeaderSyncProcessor', () => {
   Vitest.scopedLive('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -63,7 +62,7 @@ Vitest.describe('sync', () => {
         { id: '2', text: 't2', completed: 0 },
       ])
 
-      yield* SubscriptionRef.waitUntil(testContext.pushedMutationEventsSRef, (events) => events.length === 2)
+      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withCtx(test)),
   )
 
@@ -76,10 +75,9 @@ Vitest.describe('sync', () => {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
-      yield* SubscriptionRef.set(testContext.syncIsConnectedRef, false)
+      yield* testContext.mockSyncBackend.disconnect
 
-      testContext.syncEventIdRef.current = EventId.globalEventId(0)
-      yield* testContext.syncPullQueue.offer(
+      yield* testContext.mockSyncBackend.advance(
         testContext
           .encodeMutationEvent({
             ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
@@ -96,11 +94,10 @@ Vitest.describe('sync', () => {
       const result = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
       expect(result).toEqual([{ id: '2', text: 't2', completed: 0 }])
 
-      yield* SubscriptionRef.set(testContext.syncIsConnectedRef, true)
+      // This will cause a rebase given mismatch: local insert(id: '2') vs remote insert(id: '1')
+      yield* testContext.mockSyncBackend.connect
 
-      yield* Effect.sleep(30).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
-
-      yield* SubscriptionRef.waitUntil(testContext.pushedMutationEventsSRef, (events) => events.length === 1)
+      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
 
       const rebasedResult = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
       expect(rebasedResult).toEqual([
@@ -144,10 +141,7 @@ Vitest.describe('sync', () => {
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
-    pushedMutationEventsSRef: SubscriptionRef.SubscriptionRef<MutationEvent.AnyEncodedGlobal[]>
-    syncEventIdRef: { current: EventId.GlobalEventId }
-    syncPullQueue: Queue.Queue<MutationEvent.AnyEncodedGlobal>
-    syncIsConnectedRef: SubscriptionRef.SubscriptionRef<boolean>
+    mockSyncBackend: MockSyncBackend
     encodeMutationEvent: (event: MutationEvent.AnyDecoded) => MutationEvent.EncodedWithMeta
     pullQueue: Queue.Queue<PullQueueItem>
     mutate: (
@@ -157,64 +151,28 @@ class TestContext extends Context.Tag('TestContext')<
 >() {}
 
 const LeaderThreadCtxLive = Effect.gen(function* () {
+  const mockSyncBackend = yield* makeMockSyncBackend
+
   const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
     Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
   )
 
   const makeSyncDb = (yield* syncDbFactory({ sqlite3 })) as MakeSynchronousDatabase
-  const storeId = 'test'
-  const originId = 'test'
 
   const db = yield* makeSyncDb({ _tag: 'in-memory' })
   const dbLog = yield* makeSyncDb({ _tag: 'in-memory' })
 
-  const syncEventIdRef = { current: EventId.ROOT.global }
-  const syncPullQueue = yield* Queue.unbounded<MutationEvent.AnyEncodedGlobal>()
-  const pushedMutationEventsSRef = yield* SubscriptionRef.make<MutationEvent.AnyEncodedGlobal[]>([])
-  const syncIsConnectedRef = yield* SubscriptionRef.make(true)
   const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
-
-  const makeSyncBackend = Effect.gen(function* () {
-    const semaphore = yield* Effect.makeSemaphore(1)
-    return {
-      isConnected: syncIsConnectedRef,
-      pull: () =>
-        Stream.fromQueue(syncPullQueue).pipe(
-          Stream.chunks,
-          Stream.map((chunk) => ({
-            batch: [...chunk].map((mutationEventEncoded) => ({
-              mutationEventEncoded,
-              metadata: Option.none(),
-            })),
-            remaining: 0,
-          })),
-          Stream.withSpan('mock-sync-backend:pull'),
-        ),
-      push: (batch) =>
-        Effect.gen(function* () {
-          yield* validatePushPayload(batch, syncEventIdRef.current)
-
-          yield* Effect.sleep(10).pipe(Effect.withSpan('mock-sync-backend:push:sleep')) // Simulate network latency
-
-          yield* SubscriptionRef.update(pushedMutationEventsSRef, (events) => [...events, ...batch])
-
-          syncEventIdRef.current = batch.at(-1)!.id
-
-          return { metadata: Array.from({ length: batch.length }, () => Option.none()) }
-        }).pipe(Effect.withSpan('mock-sync-backend:push'), semaphore.withPermits(1)),
-    } satisfies SyncBackend
-  })
 
   const leaderContextLayer = makeLeaderThreadLayer({
     schema,
-    storeId,
+    storeId: 'test',
     clientId: 'test',
     makeSyncDb,
-    makeSyncBackend,
+    syncOptions: { makeBackend: () => mockSyncBackend.makeSyncBackend },
     db,
     dbLog,
     devtoolsOptions: { enabled: false },
-    initialSyncOptions: { _tag: 'Skip' },
     shutdownChannel,
   })
 
@@ -253,10 +211,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
       }).pipe(Effect.provide(FetchHttpClient.layer))
 
     return Layer.succeed(TestContext, {
-      pushedMutationEventsSRef,
-      syncEventIdRef,
-      syncPullQueue,
-      syncIsConnectedRef,
+      mockSyncBackend,
       encodeMutationEvent,
       pullQueue,
       mutate,

@@ -34,7 +34,7 @@ import { sql } from '../util.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
 import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updateBackendHead } from './mutationlog.js'
-import type { InitialBlockingSyncContext, InitialSyncInfo, SyncProcessor } from './types.js'
+import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 type ProcessorStateInit = {
@@ -101,7 +101,7 @@ export const makeLeaderSyncProcessor = ({
   dbMissing: boolean
   dbLog: SynchronousDatabase
   initialBlockingSyncContext: InitialBlockingSyncContext
-}): Effect.Effect<SyncProcessor, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
 
@@ -226,7 +226,7 @@ export const makeLeaderSyncProcessor = ({
         }),
       )
 
-    const pushPartial: SyncProcessor['pushPartial'] = (mutationEventEncoded_) =>
+    const pushPartial: LeaderSyncProcessor['pushPartial'] = (mutationEventEncoded_) =>
       Effect.gen(function* () {
         const state = yield* Ref.get(stateRef)
         if (state._tag === 'init') return shouldNeverHappen('Not initialized')
@@ -244,7 +244,7 @@ export const makeLeaderSyncProcessor = ({
       }).pipe(Effect.catchTag('InvalidPushError', Effect.orDie))
 
     // Starts various background loops
-    const boot: SyncProcessor['boot'] = ({ dbReady }) =>
+    const boot: LeaderSyncProcessor['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
         const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
         spanRef.current = span
@@ -331,7 +331,7 @@ export const makeLeaderSyncProcessor = ({
         if (state._tag === 'init') return shouldNeverHappen('Not initialized')
         return state.syncState
       }),
-    } satisfies SyncProcessor
+    } satisfies LeaderSyncProcessor
   })
 
 type ApplyMutationItems = (_: {
@@ -396,7 +396,9 @@ const makeApplyMutationItems = ({
         yield* semaphore.release(1)
       }).pipe(
         Effect.scoped,
-        Effect.withSpan('@livestore/common:leader-thread:syncing:applyMutationItems'),
+        Effect.withSpan('@livestore/common:leader-thread:syncing:applyMutationItems', {
+          attributes: { count: batchItems.length },
+        }),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
       )
@@ -648,7 +650,7 @@ const backgroundBackendPushing = ({
 
       if (pushResult._tag === 'Left') {
         span?.addEvent('backend-push-error', { error: pushResult.left.toString() })
-        // wait for interrupt and restarting of pushing
+        // wait for interrupt caused by background pulling which will then restart pushing
         return yield* Effect.never
       }
 

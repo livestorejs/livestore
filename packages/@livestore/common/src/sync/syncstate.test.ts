@@ -131,7 +131,7 @@ describe('syncstate', () => {
           expectEventArraysEqual(result.newSyncState.rollbackTail, [e_1_0])
           expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
           expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
-          expect(result.newEvents).toEqual([e_1_0])
+          expect(result.newEvents).toStrictEqual([e_1_0])
         })
 
         it('should fail for empty rollback tail', () => {
@@ -155,7 +155,7 @@ describe('syncstate', () => {
           expectEventArraysEqual(result.newSyncState.rollbackTail, [])
           expect(result.newSyncState.upstreamHead).toBe(EventId.ROOT)
           expect(result.newSyncState.localHead).toMatchObject(EventId.ROOT)
-          expect(result.newEvents).toEqual([])
+          expect(result.newEvents).toStrictEqual([])
         })
       },
     )
@@ -180,7 +180,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0])
         expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_0_0.id)
-        expect(result.newEvents).toEqual([])
+        expect(result.newEvents).toStrictEqual([])
       })
 
       it('should acknowledge partial pending event when receiving matching event', () => {
@@ -197,7 +197,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0])
         expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
-        expect(result.newEvents).toEqual([])
+        expect(result.newEvents).toStrictEqual([])
       })
 
       it('should acknowledge pending event and add new event', () => {
@@ -209,7 +209,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_0, e_0_1])
         expect(result.newSyncState.upstreamHead).toBe(e_0_1.id)
         expect(result.newSyncState.localHead).toMatchObject(e_0_1.id)
-        expect(result.newEvents).toEqual([e_0_1])
+        expect(result.newEvents).toStrictEqual([e_0_1])
       })
 
       it('should acknowledge pending event and add multiple new events', () => {
@@ -224,7 +224,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_0_1, e_0_2, e_0_3, e_1_0, e_1_1])
         expect(result.newSyncState.upstreamHead).toBe(e_1_1.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_1.id)
-        expect(result.newEvents).toEqual([e_0_2, e_0_3, e_1_0, e_1_1])
+        expect(result.newEvents).toStrictEqual([e_0_2, e_0_3, e_1_0, e_1_1])
       })
 
       it('should ignore local events (incoming is subset of pending)', () => {
@@ -244,7 +244,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_r_1, e_0_0])
         expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_0_0.id)
-        expect(result.newEvents).toEqual([])
+        expect(result.newEvents).toStrictEqual([])
       })
 
       it('should ignore local events (incoming is subset of pending case 2)', () => {
@@ -264,7 +264,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_r_1, e_0_0])
         expect(result.newSyncState.upstreamHead).toBe(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
-        expect(result.newEvents).toEqual([])
+        expect(result.newEvents).toStrictEqual([])
       })
 
       it('should ignore local events (incoming goes beyond pending)', () => {
@@ -285,7 +285,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.rollbackTail, [e_r_1, e_0_0, e_0_1, e_1_0])
         expect(result.newSyncState.upstreamHead).toBe(e_1_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
-        expect(result.newEvents).toEqual([e_1_0])
+        expect(result.newEvents).toStrictEqual([e_1_0])
       })
     })
 
@@ -444,10 +444,10 @@ const expectEventArraysEqual = (
 ) => {
   expect(actual.length).toBe(expected.length)
   actual.forEach((event, i) => {
-    expect(event.id).toEqual(expected[i]!.id)
-    expect(event.parentId).toEqual(expected[i]!.parentId)
-    expect(event.mutation).toEqual(expected[i]!.mutation)
-    expect(event.args).toEqual(expected[i]!.args)
+    expect(event.id).toStrictEqual(expected[i]!.id)
+    expect(event.parentId).toStrictEqual(expected[i]!.parentId)
+    expect(event.mutation).toStrictEqual(expected[i]!.mutation)
+    expect(event.args).toStrictEqual(expected[i]!.args)
   })
 }
 

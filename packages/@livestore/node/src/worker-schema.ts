@@ -1,13 +1,12 @@
 import { BootStatus, Devtools, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
-import { InitialSyncOptions } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const WorkerArgv = Schema.parseJson(
   Schema.Struct({
-    otel: Schema.Struct({
-      workerServiceName: Schema.String.pipe(Schema.optional),
-    }).pipe(Schema.optional),
+    clientId: Schema.String,
+    storeId: Schema.String,
+    sessionId: Schema.String,
   }),
 )
 
@@ -62,16 +61,14 @@ export namespace LeaderWorkerOuter {
 export namespace LeaderWorkerInner {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
-      // storageOptions: StorageType,
-      schemaPath: Schema.String,
-      syncOptions: Schema.optional(SyncBackendOptions),
-      devtoolsEnabled: Schema.Boolean,
-      devtoolsPort: Schema.Number,
       storeId: Schema.String,
       clientId: Schema.String,
-      makeSyncBackendUrl: Schema.optional(Schema.String),
       baseDirectory: Schema.optional(Schema.String),
-      initialSyncOptions: InitialSyncOptions,
+      schemaPath: Schema.String,
+      devtools: Schema.Struct({
+        port: Schema.Number,
+        enabled: Schema.Boolean,
+      }),
     },
     success: Schema.Void,
     failure: UnexpectedError,

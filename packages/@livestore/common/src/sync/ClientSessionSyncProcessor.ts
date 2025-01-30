@@ -42,7 +42,6 @@ export const makeClientSessionSyncProcessor = ({
   }
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
-  // rebaseBehaviour: 'auto-rebase' | 'manual-rebase'
   span: otel.Span
 }): ClientSessionSyncProcessor => {
   const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)

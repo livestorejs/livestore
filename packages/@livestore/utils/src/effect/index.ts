@@ -54,6 +54,7 @@ export {
   GlobalValue,
   Match,
   TestServices,
+  Mailbox,
 } from 'effect'
 
 export { dual } from 'effect/Function'

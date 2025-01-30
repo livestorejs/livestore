@@ -105,7 +105,6 @@ export class Store<
     this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
       initialLeaderHead: clientSession.leaderThread.mutations.initialMutationEventId,
-      // rebaseBehaviour: 'auto-rebase',
       pushToLeader: (batch) =>
         clientSession.leaderThread.mutations.push(batch).pipe(
           // NOTE we don't want to shutdown in case of an invalid push error, since it will be retried

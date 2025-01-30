@@ -6,6 +6,14 @@
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
-  "references": [{ "path": "../common" }, { "path": "../utils" }, { "path": "../sqlite-wasm" }, { "path": "../node" }]
+  "include": [
+    "./src"
+  ],
+  "references": [
+    { "path": "../common" },
+    { "path": "../utils" },
+    { "path": "../sqlite-wasm" },
+    { "path": "../node" },
+    { "path": "../livestore" },
+  ]
 }

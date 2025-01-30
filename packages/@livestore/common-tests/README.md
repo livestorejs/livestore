@@ -1,0 +1,1 @@
+This package is only needed to avoid circular dependencies between `@livestore/common` and `@livestore/node`. Ideally we'd keep all tests in `@livestore/common`.

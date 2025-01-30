@@ -39,13 +39,6 @@ if (import.meta.env.DEV && window.location.pathname.includes('_devtools.html')) 
   const appId = getAppId()
   const adapter = makeAdapter({
     storage: { type: 'opfs' },
-    syncBackend: {
-      type: 'electric',
-      // electricHost: 'http://localhost:3000',
-      electricHost: 'https://electric.livestore.localhost',
-      roomId: `todomvc_${appId}`,
-      pushEventEndpoint: '/api/electric',
-    },
     worker: LiveStoreWorker,
     sharedWorker: LiveStoreSharedWorker,
   })

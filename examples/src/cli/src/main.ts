@@ -10,8 +10,6 @@ import { makeNodeAdapter } from '@livestore/node'
 import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
-// import { schema, tables } from './schema.js'
-
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
 const baseDirectoryOption = Cli.Options.text('directory').pipe(Cli.Options.withDefault(''))
 const schemaPathOption = Cli.Options.text('schema-path')
@@ -29,32 +27,25 @@ const live = Cli.Command.make(
   },
   ({ baseDirectory, storeId, schemaPath, enableDevtools }) =>
     Effect.gen(function* () {
-      // const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-      // const schemaPath = new URL('./schema.js', import.meta.url).toString()
-      console.log('schemaPath', schemaPath)
       const relativeSchemaPath = path.isAbsolute(schemaPath) ? schemaPath : path.resolve(process.cwd(), schemaPath)
-      console.log('relativeSchemaPath', relativeSchemaPath)
+      // console.log('relativeSchemaPath', relativeSchemaPath)
       const schema: LiveStoreSchema = yield* Effect.promise(() => import(relativeSchemaPath).then((m) => m.schema))
+
       const adapter = makeNodeAdapter({
         schemaPath: relativeSchemaPath,
+        workerUrl: new URL('./livestore.worker.js', import.meta.url),
         baseDirectory,
-        makeSyncBackendUrl: import.meta.resolve('@livestore/sync-cf'),
-        syncOptions: {
-          type: 'cf',
-          url: 'ws://localhost:8787/websocket',
-          roomId: `todomvc_${storeId}`,
-        },
       })
 
-      const _store = yield* createStore({ adapter, schema, storeId, disableDevtools: !enableDevtools })
+      const store = yield* createStore({ adapter, schema, storeId, disableDevtools: !enableDevtools })
 
       const firstTable = schema.tables.values().next().value as DbSchema.TableDef
 
       const queries$ = queryDb(firstTable.query.orderBy('id', 'desc').limit(10))
       const runtime = yield* Effect.runtime<never>()
 
-      queries$.subscribe((query) => {
-        Effect.log('query', query).pipe(Effect.provide(runtime), Effect.runSync)
+      store.subscribe(queries$, (result) => {
+        Effect.log('query', result).pipe(Effect.provide(runtime), Effect.runSync)
       })
 
       // while (true) {

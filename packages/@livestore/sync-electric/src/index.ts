@@ -1,4 +1,4 @@
-import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
+import type { SyncBackend } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { EventId } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
@@ -57,8 +57,7 @@ export const ApiPayload = Schema.Union(ApiPushEventPayload, ApiInitRoomPayload)
 
 export const syncBackendOptions = <TOptions extends SyncBackendOptions>(options: TOptions) => options
 
-export interface SyncBackendOptions extends SyncBackendOptionsBase {
-  type: 'electric'
+export interface SyncBackendOptions {
   /**
    * The host of the Electric server
    *
@@ -73,14 +72,6 @@ export interface SyncBackendOptions extends SyncBackendOptionsBase {
    * @example "https://api.myapp.com/push-event"
    */
   pushEventEndpoint: string
-}
-
-interface LiveStoreGlobalElectric {
-  syncBackend: SyncBackendOptions
-}
-
-declare global {
-  interface LiveStoreGlobal extends LiveStoreGlobalElectric {}
 }
 
 type SyncMetadata = {

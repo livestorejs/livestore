@@ -90,7 +90,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
     // devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
-    syncProcessor: SyncProcessor
+    syncProcessor: LeaderSyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
     /** e.g. used for `store.__dev` APIs */
     extraIncomingMessagesQueue: Queue.Queue<Devtools.MessageToAppLeader>
@@ -107,7 +107,7 @@ export type PullQueueItem = {
   remaining: number
 }
 
-export interface SyncProcessor {
+export interface LeaderSyncProcessor {
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,

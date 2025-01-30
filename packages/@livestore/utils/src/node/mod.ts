@@ -8,7 +8,8 @@ import { Config, Effect, Layer } from 'effect'
 import type { ParentSpan } from 'effect/Tracer'
 
 import { tapCauseLogPretty } from '../effect/Effect.js'
-import type { OtelTracer } from '../effect/index.js'
+import { OtelTracer } from '../effect/index.js'
+import { makeNoopTracer } from '../NoopTracer.js'
 
 // import { tapCauseLogPretty } from '../effect/Effect.js'
 
@@ -29,6 +30,16 @@ export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.js'
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)
 
 // export const OtelLiveHttp = (args: any): Layer.Layer<never> => Layer.empty
+
+export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
+  const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
+
+  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    Layer.provideMerge(OtelTracerLive),
+  ) as any as Layer.Layer<OtelTracer.OtelTracer>
+
+  return TracingLive
+})
 
 export const OtelLiveHttp = ({
   serviceName,

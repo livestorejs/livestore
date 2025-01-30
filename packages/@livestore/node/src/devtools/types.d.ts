@@ -23,6 +23,8 @@ export type Options = {
     | {
         _tag: 'node'
         storeId: string
+        clientId: string
+        sessionId: string
         url: string
       }
     | {

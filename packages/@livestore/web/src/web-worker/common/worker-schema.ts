@@ -55,7 +55,6 @@ export namespace LeaderWorkerInner {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
       storageOptions: StorageType,
-      syncOptions: Schema.optional(SyncBackendOptions),
       devtoolsEnabled: Schema.Boolean,
       storeId: Schema.String,
       clientId: Schema.String,

@@ -7,11 +7,11 @@ import type * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { EventId, MutationEvent, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
 import { migrateTable } from '../schema-management/migrations.js'
-import type { InvalidPullError, IsOfflineError, SyncBackend } from '../sync/sync.js'
+import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
 import { execSql } from './connection.js'
-import { makeLeaderSyncProcessor } from './leader-sync-processor.js'
 import { bootDevtools } from './leader-worker-devtools.js'
+import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
 import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
@@ -23,22 +23,20 @@ export const makeLeaderThreadLayer = ({
   storeId,
   clientId,
   makeSyncDb,
-  makeSyncBackend,
+  syncOptions,
   db,
   dbLog,
   devtoolsOptions,
-  initialSyncOptions = { _tag: 'Skip' },
   shutdownChannel,
 }: {
   storeId: string
   clientId: string
   schema: LiveStoreSchema
   makeSyncDb: MakeSynchronousDatabase
-  makeSyncBackend: Effect.Effect<SyncBackend, UnexpectedError, Scope.Scope> | undefined
+  syncOptions: SyncOptions | undefined
   db: SynchronousDatabase
   dbLog: SynchronousDatabase
   devtoolsOptions: DevtoolsOptions
-  initialSyncOptions: InitialSyncOptions | undefined
   shutdownChannel: ShutdownChannel
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
@@ -48,9 +46,12 @@ export const makeLeaderThreadLayer = ({
     // Either happens on initial boot or if schema changes
     const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
-    const syncBackend = makeSyncBackend === undefined ? undefined : yield* makeSyncBackend
+    const syncBackend = syncOptions === undefined ? undefined : yield* syncOptions.makeBackend({ storeId, clientId })
 
-    const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({ initialSyncOptions, bootStatusQueue })
+    const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({
+      initialSyncOptions: syncOptions?.initialSyncOptions ?? { _tag: 'Skip' },
+      bootStatusQueue,
+    })
 
     const syncProcessor = yield* makeLeaderSyncProcessor({ schema, dbMissing, dbLog, initialBlockingSyncContext })
 

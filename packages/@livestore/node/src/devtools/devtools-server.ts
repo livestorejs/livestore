@@ -15,10 +15,14 @@ import { makeViteServer } from './vite-dev-server.js'
 export const startDevtoolsServer = ({
   schemaPath,
   storeId,
+  clientId,
+  sessionId,
   port,
 }: {
   schemaPath: string
   storeId: string
+  clientId: string
+  sessionId: string
   port: number
 }): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
@@ -40,7 +44,7 @@ export const startDevtoolsServer = ({
 
     const viteServer = yield* Effect.promise(() =>
       makeViteServer({
-        mode: { _tag: 'node', storeId, url: `ws://localhost:${port}` },
+        mode: { _tag: 'node', storeId, clientId, sessionId, url: `ws://localhost:${port}` },
         schemaPath: path.resolve(process.cwd(), schemaPath),
         viteConfig: (viteConfig) => {
           viteConfig.server ??= {}

@@ -1,6 +1,5 @@
 import './thread-polyfill.js'
 
-import { createRequire } from 'node:module'
 import path from 'node:path'
 
 import type { Store } from '@livestore/livestore'
@@ -12,8 +11,6 @@ import { ChildProcessRunner, OtelLiveHttp, PlatformNode } from '@livestore/utils
 
 import { schema, tables } from './schema.js'
 import * as WorkerSchema from './worker-schema.js'
-
-const moduleResolve = createRequire(import.meta.url).resolve
 
 class WorkerContext extends Context.Tag('WorkerContext')<
   WorkerContext,
@@ -27,18 +24,9 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
     Effect.gen(function* () {
       const adapter = makeNodeAdapter({
         schemaPath: new URL('./schema.js', import.meta.url).toString(),
-        // TODO bring back when fixed https://github.com/vitest-dev/vitest/issues/6953
-        // makeSyncBackendUrl: import.meta.resolve('@livestore/sync-cf'),
-        makeSyncBackendUrl: moduleResolve('@livestore/sync-cf'),
+        workerUrl: new URL('./livestore.worker.js', import.meta.url),
         baseDirectory: path.resolve(process.cwd(), 'tmp', clientId),
-        syncOptions: {
-          type: 'cf',
-          url: 'ws://localhost:8888/websocket',
-          roomId: `todomvc_${storeId}`,
-        },
-        otel: {
-          workerServiceName: `node-sync-test:livestore-leader-${clientId}`,
-        },
+        clientId,
       })
       // const adapter = makeInMemoryAdapter()
 

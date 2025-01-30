@@ -1,6 +1,6 @@
-import type { NetworkStatus, SyncBackend, SynchronousDatabase } from '@livestore/common'
+import type { NetworkStatus, SynchronousDatabase, SyncOptions } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
-import type { DevtoolsOptions, InitialSyncOptions } from '@livestore/common/leader-thread'
+import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   getLocalHeadFromDb,
@@ -39,9 +39,7 @@ import * as WorkerSchema from '../common/worker-schema.js'
 
 export type WorkerOptions = {
   schema: LiveStoreSchema
-  makeSyncBackend?: (initProps: any) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
-  /** @default { _tag: 'Skip' } */
-  initialSyncOptions?: InitialSyncOptions
+  sync?: SyncOptions
   otelOptions?: {
     tracer?: otel.Tracer
   }
@@ -106,9 +104,9 @@ const makeWorkerRunnerOuter = (
       }).pipe(Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
   })
 
-const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: WorkerOptions) =>
+const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
-    InitialMessage: ({ storageOptions, storeId, clientId, syncOptions, devtoolsEnabled, debugInstanceId }) =>
+    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSyncDb = syncDbFactory({ sqlite3 })
@@ -132,15 +130,10 @@ const makeWorkerRunnerInner = ({ schema, makeSyncBackend, initialSyncOptions }: 
           storeId,
           clientId,
           makeSyncDb,
-          // TODO handle cases where options are provided but makeSyncBackend is not provided
-          // TODO handle cases where makeSyncBackend is provided but options are not
-          // TODO handle cases where backend and options don't match
-          makeSyncBackend:
-            makeSyncBackend === undefined || syncOptions === undefined ? undefined : makeSyncBackend(syncOptions),
+          syncOptions,
           db,
           dbLog,
           devtoolsOptions,
-          initialSyncOptions,
           shutdownChannel,
         })
       }).pipe(

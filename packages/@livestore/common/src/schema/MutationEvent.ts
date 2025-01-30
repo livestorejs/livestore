@@ -127,7 +127,7 @@ export const makeMutationEventPartialSchema = <TSchema extends LiveStoreSchema>(
         args: def.schema,
       }),
     ),
-  ).annotations({ title: 'MutationEventSchemaPartial' }) as any
+  ).annotations({ title: 'MutationEventPartial' }) as any
 
 export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 
@@ -156,7 +156,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   rebase = (parentId: EventId.EventId, isLocal: boolean) =>
     new EncodedWithMeta({
       ...this,
-      ...EventId.nextPair(this.id, isLocal),
+      ...EventId.nextPair(parentId, isLocal),
     })
 
   static fromGlobal = (mutationEvent: AnyEncodedGlobal) =>

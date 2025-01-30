@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 
-import type { SyncBackend, SyncBackendOptionsBase } from '@livestore/common'
+import type { SyncBackend } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import { pick } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
@@ -21,18 +21,9 @@ import { nanoid } from '@livestore/utils/nanoid'
 import { WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
 
-export interface WsSyncOptions extends SyncBackendOptionsBase {
-  type: 'cf'
+export interface WsSyncOptions {
   url: string
   roomId: string
-}
-
-interface LiveStoreGlobalCf {
-  syncBackend: WsSyncOptions
-}
-
-declare global {
-  interface LiveStoreGlobal extends LiveStoreGlobalCf {}
 }
 
 export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>

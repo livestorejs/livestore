@@ -1,4 +1,4 @@
-import type { Adapter, ClientSession, LockStatus, NetworkStatus, SyncBackendOptionsBase } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus, NetworkStatus } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
@@ -42,8 +42,6 @@ if (isDevEnv()) {
   }
 }
 
-type GlobalSyncBackend = LiveStoreGlobal extends { syncBackend: infer TSyncBackend } ? TSyncBackend : never
-
 export type WebAdapterOptions = {
   worker: ((options: { name: string }) => globalThis.Worker) | (new (options: { name: string }) => globalThis.Worker)
   /**
@@ -67,7 +65,6 @@ export type WebAdapterOptions = {
    * Specifies where to persist data for this adapter
    */
   storage: WorkerSchema.StorageTypeEncoded
-  syncBackend?: GlobalSyncBackend
   /**
    * Warning: This will reset both the app and mutationlog database.
    * This should only be used during development.
@@ -133,7 +130,6 @@ export const makeAdapter =
                 storageOptions,
                 storeId,
                 clientId,
-                syncOptions: options.syncBackend as SyncBackendOptionsBase | undefined,
                 devtoolsEnabled,
                 debugInstanceId,
               }),
@@ -287,17 +283,15 @@ export const makeAdapter =
 
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
 
-      if (options.syncBackend !== undefined) {
-        yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.NetworkStatusStream()).pipe(
-          Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
-          Stream.runDrain,
-          Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
-          Effect.tapErrorCause(shutdown),
-          Effect.interruptible,
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped,
-        )
-      }
+      yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.NetworkStatusStream()).pipe(
+        Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
+        Stream.runDrain,
+        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+        Effect.tapErrorCause(shutdown),
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
