@@ -29,7 +29,7 @@ const adapter = makeAdapter({
 export const Provider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = React.useState(false)
-  const [showNewIssueModal, setShowNewIssueModal] = React.useState<Status | boolean>(false)
+  const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,7 +37,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
       if (element.classList.contains('input')) return
       if (e.key === 'c') {
         if (!element.classList.contains('input')) {
-          setShowNewIssueModal(true)
+          setNewIssueModalStatus(0)
           e.preventDefault()
         }
       }
@@ -53,7 +53,7 @@ export const Provider = ({ children }: { children: React.ReactNode }) => {
   return (
     <LiveStoreProvider schema={schema} adapter={adapter} renderLoading={renderBootStatus} batchUpdates={batchUpdates}>
       <MenuContext.Provider value={{ showMenu, setShowMenu }}>
-        <NewIssueModalContext.Provider value={{ showNewIssueModal, setShowNewIssueModal }}>
+        <NewIssueModalContext.Provider value={{ newIssueModalStatus, setNewIssueModalStatus }}>
           {children}
         </NewIssueModalContext.Provider>
       </MenuContext.Provider>

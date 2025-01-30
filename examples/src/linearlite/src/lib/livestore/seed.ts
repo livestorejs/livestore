@@ -54,7 +54,7 @@ function* createIssues(numTasks: number, highestId?: number): Generator<Issue & 
 }
 
 export const priorities = priorityOptions.map((_, index) => index) as Priority[]
-export const statuses = Object.keys(statusOptions) as Status[]
+export const statuses = statusOptions.map((_, index) => index) as Status[]
 const actionPhrases = [
   'Implement',
   'Develop',

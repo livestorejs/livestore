@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-export const Status = Schema.Literal('backlog', 'todo', 'in_progress', 'done', 'canceled').annotations({
+export const Status = Schema.Literal(0, 1, 2, 3, 4).annotations({
   title: 'Status',
 })
 

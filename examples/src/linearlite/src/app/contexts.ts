@@ -6,8 +6,8 @@ interface MenuContextInterface {
   setShowMenu: (show: boolean) => void
 }
 interface NewIssueModalContextInterface {
-  showNewIssueModal: Status | boolean
-  setShowNewIssueModal: (status: Status | boolean) => void
+  newIssueModalStatus: Status | boolean
+  setNewIssueModalStatus: (status: Status | false) => void
 }
 
 export const MenuContext = React.createContext(null as MenuContextInterface | null)

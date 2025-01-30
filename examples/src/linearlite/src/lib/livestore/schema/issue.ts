@@ -9,7 +9,7 @@ export const issue = DbSchema.table(
     title: DbSchema.text({ default: '' }),
     creator: DbSchema.text({ default: '' }),
     priority: DbSchema.integer({ schema: Priority, default: 0 }),
-    status: DbSchema.text({ schema: Status, default: 'todo' }),
+    status: DbSchema.integer({ schema: Status, default: 0 }),
     created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
     deleted: DbSchema.integer({ nullable: true }),
     modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),

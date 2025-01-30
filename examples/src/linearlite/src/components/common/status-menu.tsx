@@ -24,7 +24,7 @@ export const StatusMenu = ({
         setIsOpen(false)
         return
       }
-      Object.entries(statusOptions).forEach(([statusOption, { shortcut }]) => {
+      statusOptions.forEach(({ shortcut }, statusOption) => {
         if (e.key === shortcut) {
           onStatusChange(statusOption as Status)
           setIsOpen(false)
@@ -40,15 +40,15 @@ export const StatusMenu = ({
         aria-label="Select status"
         className="group h-8 min-w-8 rounded-lg flex gap-1.5 px-2 items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800"
       >
-        <Icon name={statusOptions[status].icon as IconName} className={`size-3.5 ${statusOptions[status].style}`} />
-        {showLabel && <span>{statusOptions[status].name}</span>}
+        <Icon name={statusOptions[status]!.icon as IconName} className={`size-3.5 ${statusOptions[status]!.style}`} />
+        {showLabel && <span>{statusOptions[status]!.name}</span>}
       </Button>
       <Popover
         offset={0}
         className="w-48 ml-1 p-2 bg-white dark:bg-neutral-800 rounded-lg shadow-md border border-neutral-200 dark:border-neutral-700 text-sm leading-none"
       >
         <Menu className="focus:outline-none" {...keyboardProps}>
-          {Object.entries(statusOptions).map(([statusOption, { name, icon, style, shortcut }]) => (
+          {statusOptions.map(({ name, icon, style, shortcut }, statusOption) => (
             <MenuItem
               key={statusOption}
               onAction={() => onStatusChange(statusOption as Status)}
