@@ -2,7 +2,8 @@ import { Icon } from '@/components/icons'
 import { VirtualCard } from '@/components/layout/board/virtual-card'
 import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
 import { StatusDetails } from '@/data/status-options'
-import { filterState$ } from '@/lib/livestore/queries'
+import { useDebounce } from '@/hooks/useDebounce'
+import { filterState$, useScrollState } from '@/lib/livestore/queries'
 import { tables } from '@/lib/livestore/schema'
 import { filterStateToWhere } from '@/lib/livestore/utils'
 import { Status } from '@/types/status'
@@ -10,9 +11,14 @@ import { queryDb } from '@livestore/livestore'
 import { useQuery } from '@livestore/react'
 import React from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
-import { FixedSizeList } from 'react-window'
+import { FixedSizeList, ListOnScrollProps } from 'react-window'
 
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
+  const [scrollState, setScrollState] = useScrollState()
+  const onScroll = useDebounce((props: ListOnScrollProps) => {
+    setScrollState((scrollState) => ({ ...scrollState, [statusDetails.id]: props.scrollOffset }))
+  }, 100)
+
   const filteredIssueIds$ = queryDb(
     (get) =>
       tables.issue.query
@@ -42,6 +48,8 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
               itemData={filteredIssueIds}
               overscanCount={10}
               width={width}
+              onScroll={onScroll}
+              initialScrollOffset={scrollState[statusDetails.id] ?? 0}
             >
               {VirtualCard}
             </FixedSizeList>

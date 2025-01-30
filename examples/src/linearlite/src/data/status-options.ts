@@ -1,8 +1,10 @@
 import { IconName } from '@/components/icons'
 
+export type StatusId = 'backlog' | 'todo' | 'in_progress' | 'done' | 'canceled'
+
 export type StatusDetails = {
   name: string
-  id: string
+  id: StatusId
   icon: IconName
   style: string
   shortcut: string
