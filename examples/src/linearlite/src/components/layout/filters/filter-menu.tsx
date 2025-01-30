@@ -27,7 +27,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
           {type !== 'priority' && (
             <MenuSection key="status" className="p-2">
               <Header className="p-2 text-2xs uppercase font-medium tracking-wide text-neutral-400">Status</Header>
-              {Object.entries(statusOptions).map(([statusOption, { name, icon, style }]) => {
+              {statusOptions.map(({ name, icon, style }, statusOption) => {
                 const active = filterState.status?.includes(statusOption as Status)
                 return (
                   <MenuItem
