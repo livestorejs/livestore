@@ -34,7 +34,7 @@ export const Filters = ({
         <Header
           totalCount={totalCount}
           filteredCount={filteredCount}
-          heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0] as Status].name : 'Issues'}
+          heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0] as Status]!.name : 'Issues'}
         />
       )}
       <div className="h-12 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm px-4 gap-8">
