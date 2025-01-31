@@ -27,6 +27,7 @@
     "@types/react-dom": "^19.0.3",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.3",
+    "concurrently": "^9.1.2",
     "rollup-plugin-visualizer": "^5.12.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",
@@ -36,7 +37,7 @@
   "scripts": {
     "build": "vite build",
     "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "pnpm run dev:vite & pnpm run dev:wrangler",
+    "dev": "concurrently \"pnpm run dev:vite\" \"pnpm run dev:wrangler\"",
     "dev:vite": "vite --force",
     "dev:wrangler": "wrangler dev --inspector-port 9230",
     "preview": "vite preview",
