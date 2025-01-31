@@ -8,8 +8,8 @@ makeWorker({
   sync: {
     makeBackend: ({ storeId }) =>
       makeSyncBackend({
+        storeId,
         electricHost: 'http://localhost:3000',
-        roomId: `todomvc_${storeId}`,
         pushEventEndpoint: '/api/electric',
       }),
   },

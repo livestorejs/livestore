@@ -3,7 +3,7 @@ import MenuIcon from '../assets/icons/menu.svg?react'
 // import LiveStoreIcon from '../assets/images/logo.svg?react'
 import BacklogIcon from '../assets/icons/circle-dot.svg?react'
 import classnames from 'classnames'
-import { RefObject, useRef, useState, useContext } from 'react'
+import { useRef, useState, useContext } from 'react'
 import { BsPencilSquare as AddIcon } from 'react-icons/bs'
 import { BsSearch as SearchIcon } from 'react-icons/bs'
 import { BsFillGrid3X3GapFill as BoardIcon } from 'react-icons/bs'
@@ -20,7 +20,7 @@ import React from 'react'
 import { MenuContext } from '../context/MenuContext'
 
 export const LeftMenu = () => {
-  const ref = useRef<HTMLDivElement>() as RefObject<HTMLDivElement>
+  const ref = useRef<HTMLDivElement | null>(null)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showAboutModal, setShowAboutModal] = useState(false)
   const [showIssueModal, setShowIssueModal] = useState(false)

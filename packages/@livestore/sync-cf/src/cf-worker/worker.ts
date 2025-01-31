@@ -9,15 +9,13 @@ export const makeWorker = (): CFWorker => {
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
       const searchParams = url.searchParams
-      const roomId = searchParams.get('room')
+      const storeId = searchParams.get('storeId')
 
-      if (roomId === null) {
-        return new Response('Room ID is required', { status: 400 })
+      if (storeId === null) {
+        return new Response('storeId search param is required', { status: 400 })
       }
 
-      // This example will refer to the same Durable Object instance,
-      // since the name "foo" is hardcoded.
-      const id = env.WEBSOCKET_SERVER.idFromName(roomId)
+      const id = env.WEBSOCKET_SERVER.idFromName(storeId)
       const durableObject = env.WEBSOCKET_SERVER.get(id)
 
       if (url.pathname.endsWith('/websocket')) {

@@ -7,11 +7,7 @@ const argv = getWorkerArgs()
 
 makeWorkerEffect({
   sync: {
-    makeBackend: ({ storeId }) =>
-      makeWsSync({
-        url: 'ws://localhost:8888/websocket',
-        roomId: `todomvc_${storeId}`,
-      }),
+    makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8888/websocket', storeId }),
   },
 }).pipe(
   Effect.provide(OtelLiveHttp({ serviceName: `node-sync-test:livestore-leader-${argv.clientId}`, skipLogUrl: true })),

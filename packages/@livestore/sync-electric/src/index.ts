@@ -45,12 +45,12 @@ const ResponseHeaders = Schema.Struct({
 export const syncBackend = {} as any
 
 export const ApiPushEventPayload = Schema.TaggedStruct('sync-electric.PushEvent', {
-  roomId: Schema.String,
+  storeId: Schema.String,
   batch: Schema.Array(MutationEvent.AnyEncodedGlobal),
 })
 
 export const ApiInitRoomPayload = Schema.TaggedStruct('sync-electric.InitRoom', {
-  roomId: Schema.String,
+  storeId: Schema.String,
 })
 
 export const ApiPayload = Schema.Union(ApiPushEventPayload, ApiInitRoomPayload)
@@ -64,7 +64,7 @@ export interface SyncBackendOptions {
    * @example "https://localhost:3000"
    */
   electricHost: string
-  roomId: string
+  storeId: string
   /**
    * The POST endpoint to push events to
    *
@@ -82,17 +82,17 @@ type SyncMetadata = {
 
 export const makeSyncBackend = ({
   electricHost,
-  roomId,
+  storeId,
   pushEventEndpoint,
 }: SyncBackendOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const endpointUrl = `${electricHost}/v1/shape/events_${roomId}`
+    const endpointUrl = `${electricHost}/v1/shape/events_${storeId}`
 
     const isConnected = yield* SubscriptionRef.make(true)
 
     const initRoom = HttpClientRequest.schemaBodyJson(ApiInitRoomPayload)(
       HttpClientRequest.post(pushEventEndpoint),
-      ApiInitRoomPayload.make({ roomId }),
+      ApiInitRoomPayload.make({ storeId }),
     ).pipe(Effect.andThen(HttpClient.execute))
 
     // TODO check whether we still need this
@@ -186,7 +186,7 @@ export const makeSyncBackend = ({
 
           const resp = yield* HttpClientRequest.schemaBodyJson(ApiPushEventPayload)(
             HttpClientRequest.post(pushEventEndpoint),
-            ApiPushEventPayload.make({ roomId, batch }),
+            ApiPushEventPayload.make({ storeId, batch }),
           ).pipe(
             Effect.andThen(HttpClient.execute),
             Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),

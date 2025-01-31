@@ -58,9 +58,6 @@ Vitest.describe('Store', () => {
         schema,
       ) as TODO as Schema.Schema<MutationEvent.PartialAnyEncoded>
       const encode = Schema.encodeSync(mutationEventSchema)
-      // const encoded = encode(tables.todos.insert({ id: '1', text: 't1', completed: false }))
-
-      // yield* mockSyncBackend.connect
 
       const store = yield* makeStore
 
@@ -96,7 +93,7 @@ const TestContextLive = Layer.scoped(
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend
 
-    const adapter = makeInMemoryAdapter({ syncOptions: { makeBackend: () => mockSyncBackend.makeSyncBackend } })
+    const adapter = makeInMemoryAdapter({ sync: { makeBackend: () => mockSyncBackend.makeSyncBackend } })
     const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test' })
 
     return { makeStore, mockSyncBackend }

@@ -2,10 +2,13 @@ import { Schema } from '@livestore/utils/effect'
 
 import { tables } from './schema.js'
 
+export const AdapterType = Schema.Literal('in-memory', 'file')
+
 export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
   payload: {
     storeId: Schema.String,
     clientId: Schema.String,
+    adapterType: AdapterType,
   },
   success: Schema.Void,
   failure: Schema.Never,

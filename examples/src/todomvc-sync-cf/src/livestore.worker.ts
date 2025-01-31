@@ -7,11 +7,7 @@ import { makeTracer } from './otel.js'
 makeWorker({
   schema,
   sync: {
-    makeBackend: ({ storeId }) =>
-      makeWsSync({
-        url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
-        roomId: `todomvc_${storeId}`,
-      }),
+    makeBackend: ({ storeId }) => makeWsSync({ url: import.meta.env.VITE_LIVESTORE_SYNC_URL, storeId }),
   },
   otelOptions: { tracer: makeTracer('todomvc-sync-cf-worker') },
 })

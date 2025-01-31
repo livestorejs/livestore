@@ -47,15 +47,20 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   return class WebSocketServerBase extends DurableObject<Env> {
-    dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${this.ctx.id.toString()}`
-    storage = makeStorage(this.ctx, this.env, this.dbName)
+    storage: SyncStorage | undefined = undefined
 
     constructor(ctx: DurableObjectState, env: Env) {
       super(ctx, env)
     }
 
-    fetch = async (_request: Request) =>
+    fetch = async (request: Request) =>
       Effect.gen(this, function* () {
+        if (this.storage === undefined) {
+          const storeId = getStoreId(request)
+          const dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
+          this.storage = makeStorage(this.ctx, this.env, dbName)
+        }
+
         const { 0: client, 1: server } = new WebSocketPair()
 
         // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
@@ -70,7 +75,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         )
 
         const colSpec = makeColumnSpec(mutationLogTable.sqliteDef.ast)
-        this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${this.dbName} (${colSpec}) strict`)
+        this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${this.storage.dbName} (${colSpec}) strict`)
 
         return new Response(null, {
           status: 101,
@@ -90,6 +95,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         const decodedMessage = decodedMessageRes.right
         const requestId = decodedMessage.requestId
 
+        const storage = this.storage
+
+        if (storage === undefined) {
+          throw new Error('storage not initialized')
+        }
+
         try {
           switch (decodedMessage._tag) {
             case 'WSMessage.PullReq': {
@@ -101,7 +112,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const CHUNK_SIZE = 100
 
               // TODO use streaming
-              const remainingEvents = [...(yield* Effect.promise(() => this.storage.getEvents(cursor)))]
+              const remainingEvents = [...(yield* Effect.promise(() => storage.getEvents(cursor)))]
 
               // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
               while (true) {
@@ -126,7 +137,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               }
 
               // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-              const latestEvent = yield* Effect.promise(() => this.storage.getLatestEvent())
+              const latestEvent = yield* Effect.promise(() => storage.getLatestEvent())
               const expectedParentId = latestEvent?.id ?? EventId.ROOT.global
 
               let i = 0
@@ -148,7 +159,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 const createdAt = new Date().toISOString()
 
                 // NOTE we're currently not blocking on this to allow broadcasting right away
-                const storePromise = this.storage.appendEvent(mutationEventEncoded, createdAt)
+                const storePromise = storage.appendEvent(mutationEventEncoded, createdAt)
 
                 ws.send(
                   encodeOutgoingMessage(WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id, requestId })),
@@ -188,7 +199,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 return
               }
 
-              yield* Effect.promise(() => this.storage.resetRoom())
+              yield* Effect.promise(() => storage.resetRoom())
               ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
 
               break
@@ -230,7 +241,19 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
   }
 }
 
-const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
+type SyncStorage = {
+  dbName: string
+  getLatestEvent: () => Promise<MutationEvent.AnyEncodedGlobal | undefined>
+  getEvents: (
+    cursor: number | undefined,
+  ) => Promise<
+    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>
+  >
+  appendEvent: (event: MutationEvent.AnyEncodedGlobal, createdAt: string) => Promise<void>
+  resetRoom: () => Promise<void>
+}
+
+const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string): SyncStorage => {
   const getLatestEvent = async (): Promise<MutationEvent.AnyEncodedGlobal | undefined> => {
     const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY id DESC LIMIT 1`).all()
     if (rawEvents.error) {
@@ -273,5 +296,17 @@ const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string) => {
     await ctx.storage.deleteAll()
   }
 
-  return { getLatestEvent, getEvents, appendEvent, resetRoom }
+  return { dbName, getLatestEvent, getEvents, appendEvent, resetRoom }
 }
+
+const getStoreId = (request: Request) => {
+  const url = new URL(request.url)
+  const searchParams = url.searchParams
+  const storeId = searchParams.get('storeId')
+  if (storeId === null) {
+    throw new Error('storeId search param is required')
+  }
+  return storeId
+}
+
+const toValidTableName = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_')

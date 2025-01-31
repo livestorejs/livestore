@@ -154,6 +154,8 @@ export const makeClientSessionSyncProcessor = ({
                 event.meta.sessionChangeset = undefined
               }
             }
+
+            pushToLeader(updateResult.newSyncState.pending)
           } else {
             span.addEvent('pull:advance', {
               payloadTag: payload._tag,

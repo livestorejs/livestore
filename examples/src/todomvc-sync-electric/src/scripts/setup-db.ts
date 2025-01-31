@@ -1,12 +1,12 @@
 import { makeDb } from '../server/db.js'
 
 const main = async () => {
-  const roomId = process.argv[2]
-  if (!roomId) {
+  const storeId = process.argv[2]
+  if (!storeId) {
     throw new Error('Room ID is required. Pass it as the first argument.')
   }
 
-  const db = makeDb(roomId)
+  const db = makeDb(storeId)
 
   await db.migrate()
   console.log('Database migrated')

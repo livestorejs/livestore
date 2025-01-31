@@ -23,12 +23,13 @@ import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface WsSyncOptions {
   url: string
-  roomId: string
+  storeId: string
 }
 
 export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const wsUrl = `${options.url}/websocket?room=${options.roomId}`
+    // TODO also allow for auth scenarios
+    const wsUrl = `${options.url}/websocket?storeId=${options.storeId}`
 
     const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
 

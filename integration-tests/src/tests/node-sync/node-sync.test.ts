@@ -11,30 +11,45 @@ import { expect } from 'vitest'
 import * as WorkerSchema from './worker-schema.js'
 
 Vitest.describe('node-sync', { timeout: 15_000 }, () => {
-  Vitest.scopedLive('node-sync', (test) =>
-    Effect.gen(function* () {
-      const storeId = nanoid(10)
-      const todoCount = 4
+  Vitest.scopedLive.prop(
+    'node-sync',
+    [WorkerSchema.AdapterType],
+    ([adapterType], test) =>
+      Effect.gen(function* () {
+        const storeId = nanoid(10)
+        const todoCount = 4
 
-      const [clientA, clientB] = yield* Effect.all(
-        [makeWorker({ clientId: 'client-a', storeId }), makeWorker({ clientId: 'client-b', storeId })],
-        { concurrency: 'unbounded' },
-      )
+        const [clientA, clientB] = yield* Effect.all(
+          [
+            makeWorker({ clientId: 'client-a', storeId, adapterType }),
+            makeWorker({ clientId: 'client-b', storeId, adapterType }),
+          ],
+          { concurrency: 'unbounded' },
+        )
 
-      yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
+        yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
 
-      const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
-        Stream.filter((_) => _.length === todoCount),
-        Stream.runHead,
-        Effect.flatten,
-      )
+        const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+          Stream.filter((_) => _.length === todoCount),
+          Stream.runHead,
+          Effect.flatten,
+        )
 
-      expect(result.length).toEqual(todoCount)
-    }).pipe(withCtx(test)),
+        expect(result.length).toEqual(todoCount)
+      }).pipe(withCtx(test)),
+    { fastCheck: { numRuns: 2 } },
   )
 })
 
-const makeWorker = ({ clientId, storeId }: { clientId: string; storeId: string }) =>
+const makeWorker = ({
+  clientId,
+  storeId,
+  adapterType,
+}: {
+  clientId: string
+  storeId: string
+  adapterType: typeof WorkerSchema.AdapterType.Type
+}) =>
   Effect.gen(function* () {
     const nodeChildProcess = ChildProcess.fork(
       new URL('../../../dist/tests/node-sync/client-node-worker.js', import.meta.url),
@@ -45,7 +60,7 @@ const makeWorker = ({ clientId, storeId }: { clientId: string; storeId: string }
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
-      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId }),
+      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType }),
     }).pipe(
       Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
       Effect.tapCauseLogPretty,

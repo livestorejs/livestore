@@ -9,7 +9,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const payload = await request.json()
   const parsedPayload = Schema.decodeUnknownSync(ApiPayload)(payload)
 
-  const db = makeDb(parsedPayload.roomId)
+  const db = makeDb(parsedPayload.storeId)
 
   if (parsedPayload._tag === 'sync-electric.InitRoom') {
     await db.migrate()

@@ -1,8 +1,8 @@
 import type { MutationEvent } from '@livestore/livestore'
 import postgres from 'postgres'
 
-export const makeDb = (roomId: string) => {
-  const tableName = `events_${roomId}`
+export const makeDb = (storeId: string) => {
+  const tableName = `events_${storeId}`
 
   const sql = postgres({
     database: 'electric',

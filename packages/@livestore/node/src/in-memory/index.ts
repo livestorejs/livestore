@@ -18,14 +18,19 @@ import { nanoid } from '@livestore/utils/nanoid'
 // TODO unify in-memory adapter with other in-memory adapter implementations
 
 export interface InMemoryAdapterOptions {
-  syncOptions?: SyncOptions
+  sync?: SyncOptions
+  /**
+   * @default 'in-memory'
+   */
+  clientId?: string
 }
 
 /** NOTE: This adapter is currently only used for testing */
 export const makeInMemoryAdapter =
-  ({ syncOptions }: InMemoryAdapterOptions): Adapter =>
+  ({ sync: syncOptions, clientId = 'in-memory' }: InMemoryAdapterOptions): Adapter =>
   ({
     schema,
+    storeId,
     // devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore
   }) =>
     Effect.gen(function* () {
@@ -36,8 +41,6 @@ export const makeInMemoryAdapter =
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
-      const storeId = 'in-memory'
-      const clientId = 'in-memory'
       const sessionId = nanoid(6)
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({

@@ -3,4 +3,14 @@ import { makeWorker } from '@livestore/web/worker'
 
 import { schema } from './livestore/schema.js'
 
-makeWorker({ schema, makeSyncBackend })
+makeWorker({
+  schema,
+  sync: {
+    makeBackend: ({ storeId }) =>
+      makeSyncBackend({
+        storeId,
+        electricHost: 'http://localhost:3000',
+        pushEventEndpoint: '/api/electric',
+      }),
+  },
+})

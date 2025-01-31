@@ -41,7 +41,7 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 // export const SyncBackendOptionsWebsocket = Schema.Struct({
 //   type: Schema.Literal('websocket'),
 //   url: Schema.String,
-//   roomId: Schema.String,
+//   storeId: Schema.String,
 // })
 
 // export const SyncBackendOptions = Schema.Union(SyncBackendOptionsWebsocket)
