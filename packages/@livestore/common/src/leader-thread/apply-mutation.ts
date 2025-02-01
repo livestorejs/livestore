@@ -101,7 +101,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
           attributes: {
             mutationName: mutationEventEncoded.mutation,
             mutationId: mutationEventEncoded.id,
-            'span.label': mutationEventEncoded.mutation,
+            'span.label': `(${mutationEventEncoded.id.global},${mutationEventEncoded.id.local}) ${mutationEventEncoded.mutation}`,
           },
         }),
         // Effect.logDuration('@livestore/common:leader-thread:applyMutation'),

@@ -20,3 +20,5 @@ export const takeBetween = <A>(self: BucketQueue<A>, min: number, max: number) =
       return elements
     }
   })
+
+export const takeAll = <A>(self: BucketQueue<A>) => TRef.get(self)
