@@ -76,7 +76,8 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
-    Effect.withScheduler(Scheduler.messageChannel()),
+    // TODO bring back when ordering bug is fixed
+    // Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
     Effect.withMaxOpsBeforeYield(4096),
     Logger.withMinimumLogLevel(LogLevel.Debug),
@@ -159,10 +160,14 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
         const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
         return Stream.fromQueue(pullQueue)
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(
+        Stream.unwrapScoped,
+        // For debugging purposes
+        // Stream.tapLogWithLabel('@livestore/web:worker:PullStream'),
+      ),
     PushToLeader: ({ batch }) =>
-      Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))),
+      Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
+        syncProcessor.push(batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(

@@ -10,7 +10,6 @@
   - Syncing
     - ClientSessionSyncProcessor:
       - Fix: push pending boot mutations
-    - LeaderSyncProcessor: Batch pending pushes by using queue
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
   - Devtools

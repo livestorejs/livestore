@@ -1,18 +1,17 @@
-import { shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { isNotUndefined, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   BucketQueue,
   Deferred,
   Effect,
   Exit,
-  Fiber,
   FiberHandle,
   Option,
   OtelTracer,
   ReadonlyArray,
-  Ref,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -37,58 +36,28 @@ import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updat
 import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
-type ProcessorStateInit = {
-  _tag: 'init'
-}
-
-type ProcessorStateInSync = {
-  _tag: 'in-sync'
-  syncState: SyncState.SyncState
-}
-
-type ProcessorStateApplyingSyncStateAdvance = {
-  _tag: 'applying-syncstate-advance'
-  origin: 'pull' | 'push'
-  syncState: SyncState.SyncState
-  // TODO re-introduce this
-  // proccesHead: EventId
-  fiber: Fiber.RuntimeFiber<void, UnexpectedError>
-}
-
-type ProcessorState = ProcessorStateInit | ProcessorStateInSync | ProcessorStateApplyingSyncStateAdvance
-
 /**
- * The general idea of the sync processor is to "follow the sync state"
- * and apply/rollback mutations as needed to the read model and mutation log.
- * The leader sync processor is also responsible for
- * - broadcasting mutations to client sessions via the pull queues.
- * - pushing mutations to the sync backend
+ * The LeaderSyncProcessor manages synchronization of mutations between
+ * the local state and the sync backend, ensuring efficient and orderly processing.
  *
- * In the leader sync processor, pulling always has precedence over pushing.
+ * In the LeaderSyncProcessor, pulling always has precedence over pushing.
  *
- * External events:
- * - Mutation pushed from client session
- * - Mutation pushed from devtools (via pushPartial)
- * - Mutation pulled from sync backend
+ * Responsibilities:
+ * - Queueing incoming local mutations in a localPushMailbox.
+ * - Broadcasting mutations to client sessions via pull queues.
+ * - Pushing mutations to the sync backend.
  *
- * The machine can be in the following states:
- * - in-sync: fully synced with remote, now idling
- * - applying-syncstate-advance (with pointer to current progress in case of rebase interrupt)
+ * Notes:
  *
- * Transitions:
- * - in-sync -> applying-syncstate-advance
- * - applying-syncstate-advance -> in-sync
- * - applying-syncstate-advance -> applying-syncstate-advance (need to interrupt previous operation)
+ * local push processing:
+ * - localPushMailbox:
+ *   - Maintains events in ascending order.
+ *   - Uses `Deferred` objects to resolve/reject events based on application success.
+ * - Processes events from the mailbox, applying mutations in batches.
+ * - Controlled by a `Latch` to manage execution flow.
+ * - The latch closes on pull receipt and re-opens post-pull completion.
+ * - Processes up to `maxBatchSize` events per cycle.
  *
- * Queuing vs interrupting behaviour:
- * - Operations caused by pull can never be interrupted
- * - Incoming pull can interrupt current push
- * - Incoming pull needs to wait to previous pull to finish
- * - Incoming push needs to wait to previous push to finish
- *
- * Backend pushing:
- * - continously push to backend
- * - only interrupted and restarted on rebase
  */
 export const makeLeaderSyncProcessor = ({
   schema,
@@ -105,9 +74,7 @@ export const makeLeaderSyncProcessor = ({
   Effect.gen(function* () {
     const syncBackendQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
 
-    const stateRef = yield* Ref.make<ProcessorState>({ _tag: 'init' })
-
-    const semaphore = yield* Effect.makeSemaphore(1)
+    const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
     const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
       const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
@@ -115,105 +82,35 @@ export const makeLeaderSyncProcessor = ({
     }
 
     const spanRef = { current: undefined as otel.Span | undefined }
-    const applyMutationItemsRef = { current: undefined as ApplyMutationItems | undefined }
 
-    // TODO get rid of counters once Effect semaphore ordering is fixed
-    let counterRef = 0
-    let expectedCounter = 0
+    const localPushesQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
+    const localPushesLatch = yield* Effect.makeLatch(true)
+    const pullLatch = yield* Effect.makeLatch(true)
 
-    /*
-    TODO: refactor
-    - Pushes go directly into a Mailbox
-    - Have a worker fiber that takes from the mailbox (wouldn't need a semaphore)
-    */
-
-    const waitForSyncState = (counter: number): Effect.Effect<ProcessorStateInSync> =>
+    const push: LeaderSyncProcessor['push'] = (newEvents, options) =>
       Effect.gen(function* () {
-        // console.log('waitForSyncState: waiting for semaphore', counter)
-        yield* semaphore.take(1)
-        // NOTE this is a workaround to ensure the semaphore take-order is respected
-        // TODO this needs to be fixed upstream in Effect
-        if (counter !== expectedCounter) {
-          console.log(
-            `waitForSyncState: counter mismatch (expected: ${expectedCounter}, got: ${counter}), releasing semaphore`,
-          )
-          yield* semaphore.release(1)
-          yield* Effect.yieldNow()
-          // Retrying...
-          return yield* waitForSyncState(counter)
-        }
-        // console.log('waitForSyncState: took semaphore', counter)
-        const state = yield* Ref.get(stateRef)
-        if (state._tag !== 'in-sync') {
-          return shouldNeverHappen('Expected to be in-sync but got ' + state._tag)
-        }
-        expectedCounter = counter + 1
-        return state
-      }).pipe(Effect.withSpan(`@livestore/common:leader-thread:syncing:waitForSyncState(${counter})`))
-
-    const push = (newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>) =>
-      Effect.gen(function* () {
-        const counter = counterRef
-        counterRef++
         // TODO validate batch
         if (newEvents.length === 0) return
 
-        const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
+        const waitForProcessing = options?.waitForProcessing ?? false
 
-        // TODO if there are multiple pending pushes, we should batch them together
-        const state = yield* waitForSyncState(counter)
+        const deferreds = waitForProcessing
+          ? yield* Effect.forEach(newEvents, () => Deferred.make<void, InvalidPushError>())
+          : newEvents.map((_) => undefined)
 
-        const updateResult = SyncState.updateSyncState({
-          syncState: state.syncState,
-          payload: { _tag: 'local-push', newEvents },
-          isLocalEvent,
-          isEqualEvent: MutationEvent.isEqualEncoded,
-        })
-
-        if (updateResult._tag === 'rebase') {
-          return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
-        } else if (updateResult._tag === 'reject') {
-          return yield* Effect.fail(
-            InvalidPushError.make({
-              reason: {
-                _tag: 'LeaderAhead',
-                minimumExpectedId: updateResult.expectedMinimumId,
-                providedId: newEvents.at(0)!.id,
-              },
+        // TODO validate batch ordering
+        const mappedEvents = newEvents.map(
+          (mutationEventEncoded, i) =>
+            new MutationEvent.EncodedWithMeta({
+              ...mutationEventEncoded,
+              meta: { deferred: deferreds[i] },
             }),
-          )
+        )
+        yield* BucketQueue.offerAll(localPushesQueue, mappedEvents)
+
+        if (waitForProcessing) {
+          yield* Effect.all(deferreds as ReadonlyArray<Deferred.Deferred<void, InvalidPushError>>)
         }
-
-        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
-
-        yield* Ref.set(stateRef, {
-          _tag: 'applying-syncstate-advance',
-          origin: 'push',
-          syncState: updateResult.newSyncState,
-          fiber,
-        })
-
-        // console.log('setRef:applying-syncstate-advance after push', counter)
-
-        yield* connectedClientSessionPullQueues.offer({
-          payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents },
-          remaining: 0,
-        })
-
-        spanRef.current?.addEvent('local-push', {
-          batchSize: newEvents.length,
-          updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
-        })
-
-        // Don't sync localOnly mutations
-        const filteredBatch = updateResult.newEvents.filter((mutationEventEncoded) => {
-          const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
-          return mutationDef.options.localOnly === false
-        })
-
-        yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
-
-        yield* fiber // Waiting for the mutation to be applied
       }).pipe(
         Effect.withSpan('@livestore/common:leader-thread:syncing:local-push', {
           attributes: {
@@ -228,8 +125,8 @@ export const makeLeaderSyncProcessor = ({
 
     const pushPartial: LeaderSyncProcessor['pushPartial'] = (mutationEventEncoded_) =>
       Effect.gen(function* () {
-        const state = yield* Ref.get(stateRef)
-        if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+        const syncState = yield* syncStateSref
+        if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
         const mutationDef =
           schema.mutations.get(mutationEventEncoded_.mutation) ??
@@ -237,7 +134,7 @@ export const makeLeaderSyncProcessor = ({
 
         const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
           ...mutationEventEncoded_,
-          ...EventId.nextPair(state.syncState.localHead, mutationDef.options.localOnly),
+          ...EventId.nextPair(syncState.localHead, mutationDef.options.localOnly),
         })
 
         yield* push([mutationEventEncoded])
@@ -272,9 +169,7 @@ export const makeLeaderSyncProcessor = ({
         } as SyncState.SyncState
 
         /** State transitions need to happen atomically, so we use a Ref to track the state */
-        yield* Ref.set(stateRef, { _tag: 'in-sync', syncState: initialSyncState })
-
-        applyMutationItemsRef.current = yield* makeApplyMutationItems({ stateRef, semaphore })
+        yield* SubscriptionRef.set(syncStateSref, initialSyncState)
 
         // Rehydrate sync queue
         if (pendingMutationEvents.length > 0) {
@@ -287,6 +182,17 @@ export const makeLeaderSyncProcessor = ({
 
           yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
         }
+
+        yield* backgroundApplyLocalPushes({
+          localPushesLatch,
+          localPushesQueue,
+          pullLatch,
+          syncStateSref,
+          syncBackendQueue,
+          schema,
+          isLocalEvent,
+          span,
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
         const backendPushingFiberHandle = yield* FiberHandle.make()
 
@@ -314,9 +220,9 @@ export const makeLeaderSyncProcessor = ({
                 backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
               )
             }),
-          applyMutationItemsRef,
-          stateRef,
-          semaphore,
+          syncStateSref,
+          localPushesLatch,
+          pullLatch,
           span,
           initialBlockingSyncContext,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
@@ -326,12 +232,122 @@ export const makeLeaderSyncProcessor = ({
       push,
       pushPartial,
       boot,
-      syncState: Effect.gen(function* () {
-        const state = yield* Ref.get(stateRef)
-        if (state._tag === 'init') return shouldNeverHappen('Not initialized')
-        return state.syncState
+      syncState: Subscribable.make({
+        get: Effect.gen(function* () {
+          const syncState = yield* syncStateSref
+          if (syncState === undefined) return shouldNeverHappen('Not initialized')
+          return syncState
+        }),
+        changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
       }),
     } satisfies LeaderSyncProcessor
+  })
+
+const backgroundApplyLocalPushes = ({
+  localPushesLatch,
+  localPushesQueue,
+  pullLatch,
+  syncStateSref,
+  syncBackendQueue,
+  schema,
+  isLocalEvent,
+  span,
+}: {
+  pullLatch: Effect.Latch
+  localPushesLatch: Effect.Latch
+  localPushesQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
+  syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
+  syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
+  schema: LiveStoreSchema
+  isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
+  span: otel.Span | undefined
+}) =>
+  Effect.gen(function* () {
+    const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
+
+    const applyMutationItems = yield* makeApplyMutationItems
+
+    while (true) {
+      // TODO make this configurable
+      const newEvents = yield* BucketQueue.takeBetween(localPushesQueue, 1, 10)
+
+      // Wait for the backend pulling to finish
+      yield* localPushesLatch.await
+
+      // Prevent the backend pulling from starting until this local push is finished
+      yield* pullLatch.close
+
+      const syncState = yield* syncStateSref
+      if (syncState === undefined) return shouldNeverHappen('Not initialized')
+
+      const updateResult = SyncState.updateSyncState({
+        syncState,
+        payload: { _tag: 'local-push', newEvents },
+        isLocalEvent,
+        isEqualEvent: MutationEvent.isEqualEncoded,
+      })
+
+      if (updateResult._tag === 'rebase') {
+        return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
+      } else if (updateResult._tag === 'reject') {
+        span?.addEvent('local-push:reject', {
+          batchSize: newEvents.length,
+          updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+        })
+
+        const providedId = newEvents.at(0)!.id
+        const remainingEvents = yield* BucketQueue.takeAll(localPushesQueue)
+        const allEvents = [...newEvents, ...remainingEvents]
+        yield* Effect.forEach(allEvents, (mutationEventEncoded) =>
+          mutationEventEncoded.meta.deferred
+            ? Deferred.fail(
+                mutationEventEncoded.meta.deferred,
+                InvalidPushError.make({
+                  // TODO improve error handling so it differentiates between a push being rejected
+                  // because of itself or because of another push
+                  reason: {
+                    _tag: 'LeaderAhead',
+                    minimumExpectedId: updateResult.expectedMinimumId,
+                    providedId,
+                  },
+                }),
+              )
+            : Effect.void,
+        )
+
+        // Allow the backend pulling to start
+        yield* pullLatch.open
+
+        // In this case we're skipping state update and down/upstream processing
+        // We've cleared the local push queue and are now waiting for new local pushes / backend pulls
+        continue
+      }
+
+      yield* SubscriptionRef.set(syncStateSref, updateResult.newSyncState)
+
+      yield* connectedClientSessionPullQueues.offer({
+        payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents },
+        remaining: 0,
+      })
+
+      span?.addEvent('local-push', {
+        batchSize: newEvents.length,
+        updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+      })
+
+      // Don't sync localOnly mutations
+      const filteredBatch = updateResult.newEvents.filter((mutationEventEncoded) => {
+        const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
+        return mutationDef.options.localOnly === false
+      })
+
+      yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
+
+      yield* applyMutationItems({ batchItems: newEvents })
+
+      // Allow the backend pulling to start
+      yield* pullLatch.open
+    }
   })
 
 type ApplyMutationItems = (_: {
@@ -339,13 +355,7 @@ type ApplyMutationItems = (_: {
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
-const makeApplyMutationItems = ({
-  stateRef,
-  semaphore,
-}: {
-  stateRef: Ref.Ref<ProcessorState>
-  semaphore: Effect.Semaphore
-}): Effect.Effect<ApplyMutationItems, UnexpectedError, LeaderThreadCtx | Scope.Scope> =>
+const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError, LeaderThreadCtx | Scope.Scope> =
   Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
     const { db, dbLog } = leaderThreadCtx
@@ -354,12 +364,6 @@ const makeApplyMutationItems = ({
 
     return ({ batchItems }) =>
       Effect.gen(function* () {
-        const state = yield* Ref.get(stateRef)
-        if (state._tag !== 'applying-syncstate-advance') {
-          // console.log('applyMutationItems: counter', counter)
-          return shouldNeverHappen(`Expected to be applying-syncstate-advance but got ${state._tag}`)
-        }
-
         db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
         dbLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
@@ -381,20 +385,12 @@ const makeApplyMutationItems = ({
           if (meta?.deferred) {
             yield* Deferred.succeed(meta.deferred, void 0)
           }
-
-          // TODO re-introduce this
-          // if (i < batchItems.length - 1) {
-          //   yield* Ref.set(stateRef, { ...state, proccesHead: batchItems[i + 1]!.id })
-          // }
         }
 
         db.execute('COMMIT', undefined) // Commit the transaction
         dbLog.execute('COMMIT', undefined) // Commit the transaction
-
-        yield* Ref.set(stateRef, { _tag: 'in-sync', syncState: state.syncState })
-        // console.log('setRef:sync after applyMutationItems', counter)
-        yield* semaphore.release(1)
       }).pipe(
+        Effect.uninterruptible,
         Effect.scoped,
         Effect.withSpan('@livestore/common:leader-thread:syncing:applyMutationItems', {
           attributes: { count: batchItems.length },
@@ -410,9 +406,9 @@ const backgroundBackendPulling = ({
   isLocalEvent,
   restartBackendPushing,
   span,
-  stateRef,
-  applyMutationItemsRef,
-  semaphore,
+  syncStateSref,
+  localPushesLatch,
+  pullLatch,
   initialBlockingSyncContext,
 }: {
   dbReady: Deferred.Deferred<void>
@@ -422,9 +418,9 @@ const backgroundBackendPulling = ({
     filteredRebasedPending: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
   span: otel.Span | undefined
-  stateRef: Ref.Ref<ProcessorState>
-  applyMutationItemsRef: { current: ApplyMutationItems | undefined }
-  semaphore: Effect.Semaphore
+  syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
+  localPushesLatch: Effect.Latch
+  pullLatch: Effect.Latch
   initialBlockingSyncContext: InitialBlockingSyncContext
 }) =>
   Effect.gen(function* () {
@@ -434,30 +430,25 @@ const backgroundBackendPulling = ({
 
     const cursorInfo = yield* getCursorInfo(initialBackendHead)
 
+    const applyMutationItems = yield* makeApplyMutationItems
+
     const onNewPullChunk = (newEvents: MutationEvent.EncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
-        const state = yield* Ref.get(stateRef)
-        if (state._tag === 'init') return shouldNeverHappen('Not initialized')
+        // Prevent more local pushes from being processed until this pull is finished
+        yield* localPushesLatch.close
 
-        // const counter = state.counter + 1
+        // Wait for pending local pushes to finish
+        yield* pullLatch.await
 
-        if (state._tag === 'applying-syncstate-advance') {
-          if (state.origin === 'push') {
-            yield* Fiber.interrupt(state.fiber)
-            // In theory we should force-take the semaphore here, but as it's still taken,
-            // it's already in the right state we want it to be in
-          } else {
-            // Wait for previous advance to finish
-            yield* semaphore.take(1)
-          }
-        }
+        const syncState = yield* syncStateSref
+        if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
         const trimRollbackUntil = newEvents.at(-1)!.id
 
         const updateResult = SyncState.updateSyncState({
-          syncState: state.syncState,
+          syncState,
           payload: { _tag: 'upstream-advance', newEvents, trimRollbackUntil },
           isLocalEvent,
           isEqualEvent: MutationEvent.isEqualEncoded,
@@ -513,14 +504,14 @@ const backgroundBackendPulling = ({
 
         trimChangesetRows(db, newBackendHead)
 
-        const fiber = yield* applyMutationItemsRef.current!({ batchItems: updateResult.newEvents }).pipe(Effect.fork)
+        yield* applyMutationItems({ batchItems: updateResult.newEvents })
 
-        yield* Ref.set(stateRef, {
-          _tag: 'applying-syncstate-advance',
-          origin: 'pull',
-          syncState: updateResult.newSyncState,
-          fiber,
-        })
+        yield* SubscriptionRef.set(syncStateSref, updateResult.newSyncState)
+
+        if (remaining === 0) {
+          // Allow local pushes to be processed again
+          yield* localPushesLatch.open
+        }
       })
 
     yield* syncBackend.pull(cursorInfo).pipe(

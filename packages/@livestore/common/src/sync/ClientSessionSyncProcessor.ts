@@ -103,6 +103,7 @@ export const makeClientSessionSyncProcessor = ({
       mutationEvent.meta.sessionChangeset = res.sessionChangeset
     }
 
+    // console.debug('pushToLeader', encodedMutationEvents.length, ...encodedMutationEvents.map((_) => _.toJSON()))
     pushToLeader(encodedMutationEvents)
 
     return { writeTables }

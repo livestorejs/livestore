@@ -370,6 +370,7 @@ export const makeAdapter =
             ).pipe(Stream.orDie),
 
             push: (batch) =>
+              // TODO event batching to reduce number of messages
               runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
                 // Effect.timeout(10_000),
                 Effect.withSpan('@livestore/web:client-session:push', {

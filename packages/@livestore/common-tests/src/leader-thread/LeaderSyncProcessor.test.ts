@@ -11,7 +11,6 @@ import {
   Chunk,
   Config,
   Context,
-  Deferred,
   Effect,
   FetchHttpClient,
   identity,
@@ -50,9 +49,14 @@ Vitest.describe('LeaderSyncProcessor', () => {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
-      yield* testContext.mutate(
+      yield* testContext.localPush(
         tables.todos.insert({ id: '1', text: 't1', completed: false }),
         tables.todos.insert({ id: '2', text: 't2', completed: false }),
+      )
+
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === 1),
+        Stream.runDrain,
       )
 
       const result = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
@@ -87,7 +91,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
           .toGlobal(),
       )
 
-      yield* testContext.mutate(tables.todos.insert({ id: '2', text: 't2', completed: false }))
+      yield* testContext.localPush(tables.todos.insert({ id: '2', text: 't2', completed: false }))
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
@@ -121,15 +125,50 @@ Vitest.describe('LeaderSyncProcessor', () => {
       yield* Effect.forEach(
         Array.from({ length: numberOfPushes }, (_, i) => i),
         (i) =>
-          testContext.mutate(tables.todos.insert({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false })),
+          testContext.localPush(
+            tables.todos.insert({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
+          ),
         { concurrency: 'unbounded' },
       ).pipe(Effect.withSpan(`@livestore/common-tests:sync:mutations(${numberOfPushes})`))
+
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === numberOfPushes - 1),
+        Stream.runDrain,
+      )
 
       const result = leaderThreadCtx.db.select(tables.todos.query.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
+    }).pipe(withCtx(test)),
+  )
+
+  Vitest.scopedLive('concurrent pushes', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      for (let i = 0; i < 5; i++) {
+        yield* testContext.mockSyncBackend
+          .advance(
+            testContext
+              .encodeMutationEvent({
+                ...tables.todos.insert({ id: `backend_${i}`, text: '', completed: false }),
+                id: EventId.make({ global: i, local: 0 }),
+                parentId: EventId.make({ global: i - 1, local: 0 }),
+              })
+              .toGlobal(),
+          )
+          .pipe(Effect.fork)
+      }
+
+      for (let i = 0; i < 5; i++) {
+        yield* testContext
+          .localPush(tables.todos.insert({ id: `local_${i}`, text: '', completed: false }))
+          .pipe(Effect.tapCauseLogPretty, Effect.exit)
+      }
+
+      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withCtx(test)),
   )
 
@@ -144,7 +183,7 @@ class TestContext extends Context.Tag('TestContext')<
     mockSyncBackend: MockSyncBackend
     encodeMutationEvent: (event: MutationEvent.AnyDecoded) => MutationEvent.EncodedWithMeta
     pullQueue: Queue.Queue<PullQueueItem>
-    mutate: (
+    localPush: (
       ...partialEvents: MutationEvent.PartialAnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | InvalidPushError, Scope.Scope | LeaderThreadCtx>
   }
@@ -159,21 +198,16 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
   const makeSyncDb = (yield* syncDbFactory({ sqlite3 })) as MakeSynchronousDatabase
 
-  const db = yield* makeSyncDb({ _tag: 'in-memory' })
-  const dbLog = yield* makeSyncDb({ _tag: 'in-memory' })
-
-  const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
-
   const leaderContextLayer = makeLeaderThreadLayer({
     schema,
     storeId: 'test',
     clientId: 'test',
     makeSyncDb,
     syncOptions: { makeBackend: () => mockSyncBackend.makeSyncBackend },
-    db,
-    dbLog,
+    db: yield* makeSyncDb({ _tag: 'in-memory' }),
+    dbLog: yield* makeSyncDb({ _tag: 'in-memory' }),
     devtoolsOptions: { enabled: false },
-    shutdownChannel,
+    shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
   })
 
   const testContextLayer = Effect.gen(function* () {
@@ -189,32 +223,20 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
     const pullQueue = yield* leaderThreadCtx.connectedClientSessionPullQueues.makeQueue(EventId.ROOT)
 
-    const toEncodedMutationEvent = (
-      partialEvent: MutationEvent.PartialAnyDecoded,
-      deferred: Deferred.Deferred<void>,
-    ) => {
+    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAnyDecoded) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
       currentMutationEventId.current = nextIdPair.id
-      return encodeMutationEvent({ ...partialEvent, ...nextIdPair, meta: { deferred } })
+      return encodeMutationEvent({ ...partialEvent, ...nextIdPair })
     }
 
-    const mutate = (...partialEvents: MutationEvent.PartialAnyDecoded[]) =>
-      Effect.gen(function* () {
-        const deferreds = yield* Effect.forEach(partialEvents, () => Deferred.make<void>())
-
-        yield* leaderThreadCtx.syncProcessor.push(
-          partialEvents.map((partialEvent, index) => toEncodedMutationEvent(partialEvent, deferreds[index]!)),
-        )
-
-        // This ensures that the mutation execution queue is processed
-        yield* Effect.all(deferreds, { concurrency: 'unbounded' })
-      }).pipe(Effect.provide(FetchHttpClient.layer))
+    const localPush = (...partialEvents: MutationEvent.PartialAnyDecoded[]) =>
+      leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedMutationEvent(partialEvent)))
 
     return Layer.succeed(TestContext, {
       mockSyncBackend,
       encodeMutationEvent,
       pullQueue,
-      mutate,
+      localPush,
     })
   }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
 

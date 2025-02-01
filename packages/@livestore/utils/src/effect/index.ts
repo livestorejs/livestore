@@ -49,6 +49,7 @@ export {
   TRef,
   Channel,
   Predicate,
+  // Subscribable,
   pipe,
   identity,
   GlobalValue,
@@ -64,6 +65,7 @@ export * as Stream from './Stream.js'
 export * as BucketQueue from './BucketQueue.js'
 
 export * as SubscriptionRef from './SubscriptionRef.js'
+export * as Subscribable from './Subscribable.js'
 
 export * as Logger from './Logger.js'
 

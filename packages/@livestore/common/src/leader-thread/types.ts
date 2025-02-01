@@ -6,6 +6,7 @@ import type {
   Option,
   Queue,
   Scope,
+  Subscribable,
   SubscriptionRef,
   WebChannel,
 } from '@livestore/utils/effect'
@@ -111,13 +112,20 @@ export interface LeaderSyncProcessor {
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
-  ) => Effect.Effect<void, UnexpectedError | InvalidPushError, HttpClient.HttpClient | LeaderThreadCtx>
+    options?: {
+      /**
+       * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
+       * @default false
+       */
+      waitForProcessing?: boolean
+    },
+  ) => Effect.Effect<void, InvalidPushError>
 
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
   boot: (args: {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
-  syncState: Effect.Effect<SyncState.SyncState, UnexpectedError>
+  syncState: Subscribable.Subscribable<SyncState.SyncState>
 }
 
 export interface PullQueueSet {
