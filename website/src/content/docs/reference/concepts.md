@@ -14,11 +14,13 @@ sidebar:
 - Client session
   - Store
   - Reactivity graph
+  - Responsible for leader election
 - Leader thread
+  - Responsible for syncing and persisting of data
 - SQLite database
   - In-memory SQLite database within the client session thread (usually main thread)
     - Used by the reactivity graph
-  - Persisted SQLite database (usually running in a background thread/web worker)
+  - Persisted SQLite database (usually running on the leader thread)
   - Fully derived from the mutation eventlog
 - Live queries
   - Db queries `queryDb()`
@@ -32,6 +34,12 @@ sidebar:
   - A central server that is responsible for syncing the mutation eventlog between clients
 - Framework integration
   - A framework integration is a package that provides a way to integrate LiveStore with a framework (e.g. React, Solid, Svelte, etc.)
+
+### Implementation details
+
+- Sync processor
+  - LeaderSyncProcessor
+  - ClientSessionSyncProcessor
 
 ## Architecture diagram
 

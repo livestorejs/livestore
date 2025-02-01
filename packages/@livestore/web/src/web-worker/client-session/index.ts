@@ -4,6 +4,7 @@ import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/web/internal-shared-worker?sharedworker'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
+import type { MutationEvent } from '@livestore/common/schema'
 import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
 import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
 import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
@@ -11,6 +12,7 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   BrowserWorker,
+  BucketQueue,
   Cause,
   Deferred,
   Effect,
@@ -350,6 +352,17 @@ export const makeAdapter =
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
+      const pushQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()
+
+      yield* Effect.gen(function* () {
+        const batch = yield* BucketQueue.takeBetween(pushQueue, 1, 100)
+        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+          Effect.withSpan('@livestore/web:client-session:pushToLeader', {
+            attributes: { batchSize: batch.length },
+          }),
+        )
+      }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
+
       const clientSession = {
         syncDb,
         devtools: { enabled: devtoolsEnabled },
@@ -369,14 +382,10 @@ export const makeAdapter =
               new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
             ).pipe(Stream.orDie),
 
-            push: (batch) =>
-              // TODO event batching to reduce number of messages
-              runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-                // Effect.timeout(10_000),
-                Effect.withSpan('@livestore/web:client-session:push', {
-                  attributes: { batchSize: batch.length },
-                }),
-              ),
+            // NOTE instead of sending the worker message right away, we're batching the events in order to
+            // - maintain a consistent order of events
+            // - improve efficiency by reducing the number of messages
+            push: (batch) => BucketQueue.offerAll(pushQueue, batch),
 
             initialMutationEventId,
           },

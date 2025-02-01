@@ -76,8 +76,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
-    // TODO bring back when ordering bug is fixed
-    // Effect.withScheduler(Scheduler.messageChannel()),
+    Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
     Effect.withMaxOpsBeforeYield(4096),
     Logger.withMinimumLogLevel(LogLevel.Debug),

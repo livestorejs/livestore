@@ -7,8 +7,7 @@ import type { ClientSessionLeaderThreadProxy, UnexpectedError } from '../adapter
 import * as EventId from '../schema/EventId.js'
 import { type LiveStoreSchema } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
-import type { SyncState } from './syncstate.js'
-import { updateSyncState } from './syncstate.js'
+import { SyncState, updateSyncState } from './syncstate.js'
 
 /**
  * Rebase behaviour:
@@ -47,13 +46,13 @@ export const makeClientSessionSyncProcessor = ({
   const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
   const syncStateRef = {
-    current: {
+    current: new SyncState({
       localHead: initialLeaderHead,
       upstreamHead: initialLeaderHead,
       pending: [],
       // TODO init rollbackTail from leader to be ready for backend rebasing
       rollbackTail: [],
-    } as SyncState,
+    }),
   }
 
   const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {

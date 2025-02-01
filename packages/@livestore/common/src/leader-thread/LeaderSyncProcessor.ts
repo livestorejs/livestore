@@ -160,13 +160,13 @@ export const makeLeaderSyncProcessor = ({
           local: EventId.localDefault,
         }).pipe(Effect.map(ReadonlyArray.map((_) => new MutationEvent.EncodedWithMeta(_))))
 
-        const initialSyncState = {
+        const initialSyncState = new SyncState.SyncState({
           pending: pendingMutationEvents,
           // On the leader we don't need a rollback tail beyond `pending` items
           rollbackTail: [],
           upstreamHead: { global: initialBackendHead, local: EventId.localDefault },
           localHead: initialLocalHead,
-        } as SyncState.SyncState
+        })
 
         /** State transitions need to happen atomically, so we use a Ref to track the state */
         yield* SubscriptionRef.set(syncStateSref, initialSyncState)

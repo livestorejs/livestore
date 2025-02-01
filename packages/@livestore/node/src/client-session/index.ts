@@ -11,11 +11,13 @@ import type {
   NetworkStatus,
 } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
+import type { MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { syncDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Cause } from '@livestore/utils/effect'
 import {
+  BucketQueue,
   Effect,
   Fiber,
   ParseResult,
@@ -230,19 +232,27 @@ const makeLeaderThread = ({
       timestampMs: Date.now(),
     })
 
+    const pushQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()
+
+    yield* Effect.gen(function* () {
+      const batch = yield* BucketQueue.takeBetween(pushQueue, 1, 100)
+      yield* runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+        Effect.withSpan('@livestore/node:client-session:pushToLeader', {
+          attributes: { batchSize: batch.length },
+        }),
+      )
+    }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
+
     const leaderThread = {
       networkStatus,
       mutations: {
         pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId })).pipe(
           Stream.orDie,
         ),
-        push: (batch) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-            // Effect.timeout(10_000),
-            Effect.withSpan('@livestore/node:client-session:push', {
-              attributes: { batchSize: batch.length },
-            }),
-          ),
+        // NOTE instead of sending the worker message right away, we're batching the events in order to
+        // - maintain a consistent order of events
+        // - improve efficiency by reducing the number of messages
+        push: (batch) => BucketQueue.offerAll(pushQueue, batch),
         initialMutationEventId,
       },
       export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(

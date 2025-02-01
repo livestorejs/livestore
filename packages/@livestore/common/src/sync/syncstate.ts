@@ -39,19 +39,21 @@ import * as MutationEvent from '../schema/MutationEvent.js'
  * The `updateSyncState` function processes updates to the sync state based on incoming payloads,
  * handling cases such as upstream rebase, advance, local push, and rollback tail trimming.
  */
-export interface SyncState {
-  pending: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  rollbackTail: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  upstreamHead: EventId.EventId
-  localHead: EventId.EventId
-}
-
-export const SyncState = Schema.Struct({
+export class SyncState extends Schema.Class<SyncState>('SyncState')({
   pending: Schema.Array(MutationEvent.EncodedWithMeta),
   rollbackTail: Schema.Array(MutationEvent.EncodedWithMeta),
   upstreamHead: EventId.EventId,
   localHead: EventId.EventId,
-}).annotations({ title: 'SyncState' })
+}) {
+  toJSON = (): any => {
+    return {
+      pending: this.pending.map((e) => e.toJSON()),
+      rollbackTail: this.rollbackTail.map((e) => e.toJSON()),
+      upstreamHead: `(${this.upstreamHead.global},${this.upstreamHead.local})`,
+      localHead: `(${this.localHead.global},${this.localHead.local})`,
+    }
+  }
+}
 
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Rollback until this event in the rollback tail (inclusive). Starting from the end of the rollback tail. */
@@ -153,12 +155,12 @@ export const updateSyncState = ({
 
       return {
         _tag: 'rebase',
-        newSyncState: {
+        newSyncState: new SyncState({
           pending: rebasedPending,
           rollbackTail: trimRollbackTail([...syncState.rollbackTail.slice(0, rollbackIndex), ...payload.newEvents]),
           upstreamHead: newUpstreamHead,
           localHead: rebasedPending.at(-1)?.id ?? newUpstreamHead,
-        },
+        }),
         previousSyncState: syncState,
         newEvents: payload.newEvents,
         eventsToRollback,
@@ -169,12 +171,12 @@ export const updateSyncState = ({
       if (payload.newEvents.length === 0) {
         return {
           _tag: 'advance',
-          newSyncState: {
+          newSyncState: new SyncState({
             pending: syncState.pending,
             rollbackTail: trimRollbackTail(syncState.rollbackTail),
             upstreamHead: syncState.upstreamHead,
             localHead: syncState.localHead,
-          },
+          }),
           previousSyncState: syncState,
           newEvents: [],
         }
@@ -235,12 +237,12 @@ export const updateSyncState = ({
 
         return {
           _tag: 'advance',
-          newSyncState: {
+          newSyncState: new SyncState({
             pending: pendingRemaining,
             rollbackTail: trimRollbackTail([...syncState.rollbackTail, ...pendingAndNewEvents]),
             upstreamHead: newUpstreamHead,
             localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
-          },
+          }),
           previousSyncState: syncState,
           newEvents,
         }
@@ -262,12 +264,12 @@ export const updateSyncState = ({
 
         return {
           _tag: 'rebase',
-          newSyncState: {
+          newSyncState: new SyncState({
             pending: rebasedPending,
             rollbackTail: trimRollbackTail([...syncState.rollbackTail, ...payload.newEvents]),
             upstreamHead: newUpstreamHead,
             localHead: rebasedPending.at(-1)!.id,
-          },
+          }),
           previousSyncState: syncState,
           newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
           eventsToRollback: [...syncState.rollbackTail, ...divergentPending],
@@ -289,12 +291,12 @@ export const updateSyncState = ({
       } else {
         return {
           _tag: 'advance',
-          newSyncState: {
+          newSyncState: new SyncState({
             pending: [...syncState.pending, ...payload.newEvents],
             rollbackTail: syncState.rollbackTail,
             upstreamHead: syncState.upstreamHead,
             localHead: payload.newEvents.at(-1)!.id,
-          },
+          }),
           previousSyncState: syncState,
           newEvents: payload.newEvents,
         }
