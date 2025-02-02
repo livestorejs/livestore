@@ -166,7 +166,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
       ),
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
-        syncProcessor.push(batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))),
+        syncProcessor.push(
+          batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent)),
+          // We'll wait in order to keep back pressure on the client session
+          { waitForProcessing: true },
+        ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(

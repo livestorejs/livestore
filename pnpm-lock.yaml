@@ -1842,6 +1842,9 @@ importers:
       '@livestore/node':
         specifier: workspace:*
         version: link:../node
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7

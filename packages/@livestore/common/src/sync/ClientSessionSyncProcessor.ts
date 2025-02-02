@@ -183,6 +183,7 @@ export const makeClientSessionSyncProcessor = ({
         }),
       ),
       Stream.runDrain,
+      Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )

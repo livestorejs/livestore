@@ -9,7 +9,11 @@ export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
 
 export const clear = <A>(self: BucketQueue<A>) => TRef.set(self, [])
 
-export const takeBetween = <A>(self: BucketQueue<A>, min: number, max: number) =>
+export const takeBetween = <A>(
+  self: BucketQueue<A>,
+  min: number,
+  max: number,
+): STM.STM<ReadonlyArray<A>, never, never> =>
   STM.gen(function* () {
     const bucket = yield* TRef.get(self)
     if (bucket.length < min) {

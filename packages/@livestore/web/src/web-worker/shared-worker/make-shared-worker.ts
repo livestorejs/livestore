@@ -114,6 +114,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       yield* workerStream.pipe(
         Stream.tap((_) => Queue.offer(queue, _)),
         Stream.runDrain,
+        Effect.interruptible,
         Effect.forkIn(scope),
       )
 
@@ -138,7 +139,10 @@ const makeWorkerRunner = Effect.gen(function* () {
       // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
       yield* SubscriptionRef.set(leaderWorkerContextSubRef, undefined)
 
+      yield* Effect.yieldNow()
+
       yield* Scope.close(prevWorker.scope, Exit.void).pipe(
+        // TODO there still seem to be scenarios where it takes longer than 1 second which is leading to problems
         Effect.timeout(Duration.seconds(1)),
         Effect.logWarnIfTakesLongerThan({
           label: '@livestore/web:shared-worker:close-previous-worker',
@@ -148,7 +152,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         Effect.ignoreLogged,
       )
     }
-  })
+  }).pipe(Effect.withSpan('@livestore/web:shared-worker:resetCurrentWorkerCtx'))
 
   // const devtoolsWebBridge = yield* makeDevtoolsWebBridge
 
@@ -268,6 +272,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     Shutdown: forwardRequest,
     ExtraDevtoolsMessage: forwardRequest,
 
+    // Accept devtools connections (from leader and client sessions)
     'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
 
     // ...devtoolsWebBridge.handlers,

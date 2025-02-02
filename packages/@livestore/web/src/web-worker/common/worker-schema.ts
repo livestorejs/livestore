@@ -45,6 +45,7 @@ export namespace LeaderWorkerOuter {
   export class Request extends Schema.Union(InitialMessage) {}
 }
 
+// TODO unify this code with schema from node adapter
 export namespace LeaderWorkerInner {
   export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
     payload: {
@@ -77,9 +78,6 @@ export namespace LeaderWorkerInner {
       cursor: EventId.EventId,
     },
     success: Schema.Struct({
-      // TODO use actual app-defined mutation event schema
-      // mutationEvents: Schema.Array(EncodedAny),
-      // backendHead: Schema.Number,
       payload: PayloadUpstream,
       remaining: Schema.Number,
     }),

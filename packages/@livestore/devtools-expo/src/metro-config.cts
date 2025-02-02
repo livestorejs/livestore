@@ -1,5 +1,8 @@
 import type * as http from 'node:http'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
+const { Effect_ } = require('@livestore/utils/effect')
+import type { Effect } from '@livestore/utils/effect' with { 'resolution-mode': 'import' }
 import type { MetroConfig } from 'expo/metro-config'
 
 import type { Middleware, Options } from './types.js'
@@ -36,7 +39,7 @@ const makeLiveStoreDevtoolsMiddleware = (options: Options) => {
   // TODO Once Expo supports proper ESM, we can make this a static import
   // const viteServerPromise = makeViteServer(options)
   const viteServerPromise = import('@livestore/node/devtools').then(({ makeViteServer }) =>
-    makeViteServer({ ...options, mode: { _tag: 'expo' } }),
+    makeViteServer({ ...options, mode: { _tag: 'expo' } }).pipe(Effect_.runPromise as typeof Effect.runPromise),
   )
 
   const middleware = async (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => {

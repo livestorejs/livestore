@@ -36,6 +36,11 @@ import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updat
 import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
+type PushQueueItem = [
+  mutationEvent: MutationEvent.EncodedWithMeta,
+  deferred: Deferred.Deferred<void, InvalidPushError> | undefined,
+]
+
 /**
  * The LeaderSyncProcessor manages synchronization of mutations between
  * the local state and the sync backend, ensuring efficient and orderly processing.
@@ -83,7 +88,7 @@ export const makeLeaderSyncProcessor = ({
 
     const spanRef = { current: undefined as otel.Span | undefined }
 
-    const localPushesQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
+    const localPushesQueue = yield* BucketQueue.make<PushQueueItem>()
     const localPushesLatch = yield* Effect.makeLatch(true)
     const pullLatch = yield* Effect.makeLatch(true)
 
@@ -94,22 +99,19 @@ export const makeLeaderSyncProcessor = ({
 
         const waitForProcessing = options?.waitForProcessing ?? false
 
-        const deferreds = waitForProcessing
-          ? yield* Effect.forEach(newEvents, () => Deferred.make<void, InvalidPushError>())
-          : newEvents.map((_) => undefined)
-
-        // TODO validate batch ordering
-        const mappedEvents = newEvents.map(
-          (mutationEventEncoded, i) =>
-            new MutationEvent.EncodedWithMeta({
-              ...mutationEventEncoded,
-              meta: { deferred: deferreds[i] },
-            }),
-        )
-        yield* BucketQueue.offerAll(localPushesQueue, mappedEvents)
-
         if (waitForProcessing) {
-          yield* Effect.all(deferreds as ReadonlyArray<Deferred.Deferred<void, InvalidPushError>>)
+          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, InvalidPushError>())
+
+          const items = newEvents.map(
+            (mutationEventEncoded, i) => [mutationEventEncoded, deferreds[i]] as PushQueueItem,
+          )
+
+          yield* BucketQueue.offerAll(localPushesQueue, items)
+
+          yield* Effect.all(deferreds)
+        } else {
+          const items = newEvents.map((mutationEventEncoded) => [mutationEventEncoded, undefined] as PushQueueItem)
+          yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
         Effect.withSpan('@livestore/common:leader-thread:syncing:local-push', {
@@ -255,7 +257,7 @@ const backgroundApplyLocalPushes = ({
 }: {
   pullLatch: Effect.Latch
   localPushesLatch: Effect.Latch
-  localPushesQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
+  localPushesQueue: BucketQueue.BucketQueue<PushQueueItem>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
   schema: LiveStoreSchema
@@ -268,8 +270,9 @@ const backgroundApplyLocalPushes = ({
     const applyMutationItems = yield* makeApplyMutationItems
 
     while (true) {
-      // TODO make this configurable
-      const newEvents = yield* BucketQueue.takeBetween(localPushesQueue, 1, 10)
+      // TODO make batch size configurable
+      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, 10)
+      const [newEvents, deferreds] = ReadonlyArray.unzip(batchItems)
 
       // Wait for the backend pulling to finish
       yield* localPushesLatch.await
@@ -297,22 +300,20 @@ const backgroundApplyLocalPushes = ({
 
         const providedId = newEvents.at(0)!.id
         const remainingEvents = yield* BucketQueue.takeAll(localPushesQueue)
-        const allEvents = [...newEvents, ...remainingEvents]
-        yield* Effect.forEach(allEvents, (mutationEventEncoded) =>
-          mutationEventEncoded.meta.deferred
-            ? Deferred.fail(
-                mutationEventEncoded.meta.deferred,
-                InvalidPushError.make({
-                  // TODO improve error handling so it differentiates between a push being rejected
-                  // because of itself or because of another push
-                  reason: {
-                    _tag: 'LeaderAhead',
-                    minimumExpectedId: updateResult.expectedMinimumId,
-                    providedId,
-                  },
-                }),
-              )
-            : Effect.void,
+        const allDeferreds = [...deferreds, ...remainingEvents.map(([_, deferred]) => deferred)].filter(isNotUndefined)
+        yield* Effect.forEach(allDeferreds, (deferred) =>
+          Deferred.fail(
+            deferred,
+            InvalidPushError.make({
+              // TODO improve error handling so it differentiates between a push being rejected
+              // because of itself or because of another push
+              reason: {
+                _tag: 'LeaderAhead',
+                minimumExpectedId: updateResult.expectedMinimumId,
+                providedId,
+              },
+            }),
+          ),
         )
 
         // Allow the backend pulling to start
@@ -343,7 +344,7 @@ const backgroundApplyLocalPushes = ({
 
       yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
 
-      yield* applyMutationItems({ batchItems: newEvents })
+      yield* applyMutationItems({ batchItems: newEvents, deferreds })
 
       // Allow the backend pulling to start
       yield* pullLatch.open
@@ -352,6 +353,8 @@ const backgroundApplyLocalPushes = ({
 
 type ApplyMutationItems = (_: {
   batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  /** Indexes are aligned with `batchItems` */
+  deferreds: ReadonlyArray<Deferred.Deferred<void, InvalidPushError> | undefined> | undefined
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
@@ -362,7 +365,7 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
 
     const applyMutation = yield* makeApplyMutation
 
-    return ({ batchItems }) =>
+    return ({ batchItems, deferreds }) =>
       Effect.gen(function* () {
         db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
         dbLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
@@ -378,12 +381,10 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
         )
 
         for (let i = 0; i < batchItems.length; i++) {
-          const { meta, ...mutationEventEncoded } = batchItems[i]!
+          yield* applyMutation(batchItems[i]!)
 
-          yield* applyMutation(mutationEventEncoded)
-
-          if (meta?.deferred) {
-            yield* Deferred.succeed(meta.deferred, void 0)
+          if (deferreds?.[i] !== undefined) {
+            yield* Deferred.succeed(deferreds[i]!, void 0)
           }
         }
 
@@ -504,7 +505,7 @@ const backgroundBackendPulling = ({
 
         trimChangesetRows(db, newBackendHead)
 
-        yield* applyMutationItems({ batchItems: updateResult.newEvents })
+        yield* applyMutationItems({ batchItems: updateResult.newEvents, deferreds: undefined })
 
         yield* SubscriptionRef.set(syncStateSref, updateResult.newSyncState)
 

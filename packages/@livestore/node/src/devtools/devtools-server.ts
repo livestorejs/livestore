@@ -1,6 +1,7 @@
 import http from 'node:http'
 import path from 'node:path'
 
+import { UnexpectedError } from '@livestore/common'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
 import { makeWebSocketServer } from '@livestore/webmesh/websocket-server'
@@ -24,7 +25,7 @@ export const startDevtoolsServer = ({
   clientId: string
   sessionId: string
   port: number
-}): Effect.Effect<void, never, Scope.Scope> =>
+}): Effect.Effect<void, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const httpServer = http.createServer()
     const webSocketServer = yield* makeWebSocketServer({ relayNodeName: 'ws' })
@@ -38,30 +39,41 @@ export const startDevtoolsServer = ({
       })
     })
 
-    httpServer.listen(port, () => {
-      console.log(`LiveStore devtools are available at http://localhost:${port}/livestore-devtools`)
-    })
+    const startServer = (port: number) =>
+      Effect.async<void, UnexpectedError>((cb) => {
+        httpServer.on('error', (err: any) => {
+          cb(UnexpectedError.make({ cause: err }))
+        })
 
-    const viteServer = yield* Effect.promise(() =>
-      makeViteServer({
-        mode: { _tag: 'node', storeId, clientId, sessionId, url: `ws://localhost:${port}` },
-        schemaPath: path.resolve(process.cwd(), schemaPath),
-        viteConfig: (viteConfig) => {
-          viteConfig.server ??= {}
-          viteConfig.server.fs ??= {}
+        httpServer.listen(port, () => {
+          cb(Effect.succeed(undefined))
+        })
+      })
 
-          // TODO move this into the example code
-          // Point to Overtone monorepo root
-          viteConfig.server.fs.allow ??= []
-          viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
+    yield* startServer(port)
 
-          viteConfig.optimizeDeps ??= {}
-          viteConfig.optimizeDeps.force = true
-
-          return viteConfig
-        },
-      }),
+    yield* Effect.logDebug(
+      `[@livestore/node:devtools] LiveStore devtools are available at http://localhost:${port}/livestore-devtools`,
     )
+
+    const viteServer = yield* makeViteServer({
+      mode: { _tag: 'node', storeId, clientId, sessionId, url: `ws://localhost:${port}` },
+      schemaPath: path.resolve(process.cwd(), schemaPath),
+      viteConfig: (viteConfig) => {
+        viteConfig.server ??= {}
+        viteConfig.server.fs ??= {}
+
+        // TODO move this into the example code
+        // Point to Overtone monorepo root
+        viteConfig.server.fs.allow ??= []
+        viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
+
+        viteConfig.optimizeDeps ??= {}
+        viteConfig.optimizeDeps.force = true
+
+        return viteConfig
+      },
+    })
 
     yield* Effect.addFinalizer(() => Effect.promise(() => viteServer.close()))
 

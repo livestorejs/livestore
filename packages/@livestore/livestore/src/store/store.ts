@@ -497,9 +497,9 @@ export class Store<
   __devSyncStates = () => {
     Effect.gen(this, function* () {
       const session = this.syncProcessor.syncStateRef.current
-      console.log('Session sync state:', session)
+      console.log('Session sync state:', session.toJSON())
       const leader = yield* this.clientSession.leaderThread.getSyncState
-      console.log('Leader sync state:', leader)
+      console.log('Leader sync state:', leader.toJSON())
     }).pipe(this.runEffectFork)
   }
 

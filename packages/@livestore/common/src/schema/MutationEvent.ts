@@ -1,8 +1,6 @@
 import { memoizeByRef } from '@livestore/utils'
-import type { Deferred } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type { InvalidPushError } from '../sync/sync.js'
 import * as EventId from './EventId.js'
 import type { MutationDef, MutationDefRecord } from './mutations.js'
 import type { LiveStoreSchema } from './schema.js'
@@ -138,9 +136,9 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   args: Schema.Any,
   id: EventId.EventId,
   parentId: EventId.EventId,
+  // TODO get rid of `meta` again by cleaning up the usage implementations
   meta: Schema.optionalWith(
     Schema.Any as Schema.Schema<{
-      deferred?: Deferred.Deferred<void, InvalidPushError>
       sessionChangeset?: Uint8Array
     }>,
     { default: () => ({}) },

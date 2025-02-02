@@ -2,51 +2,56 @@ import * as http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { UnexpectedError } from '@livestore/common'
+import { Effect } from '@livestore/utils/effect'
 import * as Vite from 'vite'
 
 import type { Options } from './types.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-export const makeViteServer = async (options: Options): Promise<Vite.ViteDevServer> => {
-  const hmrPort = await getFreePort()
+export const makeViteServer = (options: Options): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
+  Effect.gen(function* () {
+    const hmrPort = yield* getFreePort
 
-  const cwd = process.cwd()
+    const cwd = process.cwd()
 
-  const defaultViteConfig = Vite.defineConfig({
-    server: {
-      middlewareMode: true,
-      hmr: {
-        port: hmrPort,
+    const defaultViteConfig = Vite.defineConfig({
+      server: {
+        middlewareMode: true,
+        hmr: {
+          port: hmrPort,
+        },
+        fs: {
+          // Adds `node_modules` so we can import `@livestore/wa-sqlite` for WASM to work
+          allow: [path.resolve(__dirname, '..', '..')],
+        },
       },
-      fs: {
-        // Adds `node_modules` so we can import `@livestore/wa-sqlite` for WASM to work
-        allow: [path.resolve(__dirname, '..', '..')],
+      resolve: {
+        alias: {
+          '@schema': path.resolve(cwd, options.schemaPath),
+        },
       },
-    },
-    resolve: {
-      alias: {
-        '@schema': path.resolve(cwd, options.schemaPath),
+      appType: 'spa',
+      optimizeDeps: {
+        // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
+        exclude: ['@livestore/wa-sqlite'],
       },
-    },
-    appType: 'spa',
-    optimizeDeps: {
-      // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-      exclude: ['@livestore/wa-sqlite'],
-    },
-    root: __dirname,
-    base: '/livestore-devtools/',
-    plugins: [virtualHtmlPlugin(options.mode)],
-    clearScreen: false,
-    logLevel: 'silent',
-  })
+      root: __dirname,
+      base: '/livestore-devtools/',
+      plugins: [virtualHtmlPlugin(options.mode)],
+      clearScreen: false,
+      logLevel: 'silent',
+    })
 
-  const viteConfig = options.viteConfig?.(defaultViteConfig) ?? defaultViteConfig
+    const viteConfig = options.viteConfig?.(defaultViteConfig) ?? defaultViteConfig
 
-  const viteServer = Vite.createServer(viteConfig)
+    const viteServer = yield* Effect.promise(() => Vite.createServer(viteConfig)).pipe(
+      UnexpectedError.mapToUnexpectedError,
+    )
 
-  return viteServer
-}
+    return viteServer
+  }).pipe(Effect.withSpan('@livestore/node:devtools:makeViteServer'))
 
 // TODO unify this with `@livestore/devtools-vite/plugin.ts`
 const virtualHtmlPlugin = (mode: Options['mode']): Vite.Plugin => ({
@@ -95,25 +100,23 @@ mountDevtools({
   },
 })
 
-const getFreePort = (): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer()
+export const getFreePort = Effect.async<number, UnexpectedError>((cb) => {
+  const server = http.createServer()
 
-    // Listen on port 0 to get an available port
-    server.listen(0, () => {
-      const address = server.address()
+  // Listen on port 0 to get an available port
+  server.listen(0, () => {
+    const address = server.address()
 
-      if (address && typeof address === 'object') {
-        const port = address.port
-        server.close(() => resolve(port))
-      } else {
-        server.close(() => reject(new Error('Failed to get a free port')))
-      }
-    })
-
-    // Error handling in case the server encounters an error
-    server.on('error', (err) => {
-      server.close(() => reject(err))
-    })
+    if (address && typeof address === 'object') {
+      const port = address.port
+      server.close(() => cb(Effect.succeed(port)))
+    } else {
+      server.close(() => cb(UnexpectedError.make({ cause: 'Failed to get a free port' })))
+    }
   })
-}
+
+  // Error handling in case the server encounters an error
+  server.on('error', (err) => {
+    server.close(() => cb(UnexpectedError.make({ cause: err })))
+  })
+})

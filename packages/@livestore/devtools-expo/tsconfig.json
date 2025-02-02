@@ -9,6 +9,7 @@
   "include": ["./src", "src/types.d.ts"],
   "references": [
     { "path": "../web" },
-    { "path": "../node" }
+    { "path": "../node" },
+    { "path": "../utils" },
   ]
 }

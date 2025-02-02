@@ -6,14 +6,10 @@
 ## 0.3.0
 
 - Still todo:
-  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - Syncing
-    - ClientSessionSyncProcessor:
-      - Fix: push pending boot mutations
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
-  - Node adapter
-    - Shouldn't fail when two adapters clash with the devtools port
   - Devtools
     - Allow pausing sync (both in client and leader separately)
     - Introduce real-time sync heads view

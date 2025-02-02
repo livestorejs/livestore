@@ -8,6 +8,7 @@ sidebar:
 ## Goals
 
 - Fast, synchronous, transactional, and reactive state management
+- Global state is eventually consistent
 - Persistent storage
 - Syncing
 - Convenient schema migrations

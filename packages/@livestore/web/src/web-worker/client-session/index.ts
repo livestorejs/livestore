@@ -154,6 +154,13 @@ export const makeAdapter =
       let gotLocky = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK)
       const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky ? 'has-lock' : 'no-lock')
 
+      // Ideally we can come up with a simpler implementation that doesn't require this
+      const waitForSharedWorkerInitialized = yield* Deferred.make<void>()
+      if (gotLocky === false) {
+        // Don't need to wait if we're not the leader
+        yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
+      }
+
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
           `[@livestore/web:client-session] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
@@ -189,6 +196,8 @@ export const makeAdapter =
         yield* sharedWorker
           .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
           .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
+
+        yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
@@ -245,6 +254,8 @@ export const makeAdapter =
         ? Effect.Effect<A, UnexpectedError | E, R>
         : never =>
         Fiber.join(sharedWorkerFiber).pipe(
+          // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
+          Effect.tap(() => waitForSharedWorkerInitialized),
           Effect.flatMap((worker) => worker.executeEffect(req) as any),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
