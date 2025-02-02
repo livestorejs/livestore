@@ -1,6 +1,6 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.3.0-dev.9",
+  "version": "0.3.0-dev.10",
   "type": "module",
   "sideEffects": false,
   "exports": {

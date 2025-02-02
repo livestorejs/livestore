@@ -1,10 +1,10 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.3.0-dev.9",
+  "version": "0.3.0-dev.10",
   "sideEffects": false,
   "types": "./dist/index.d.cts",
   "dependencies": {
-    "@livestore/devtools-react": "0.3.0-dev.9",
+    "@livestore/devtools-react": "0.3.0-dev.10",
     "@livestore/node": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.7",
