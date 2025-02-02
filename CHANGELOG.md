@@ -12,7 +12,10 @@
       - Fix: push pending boot mutations
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
+  - Node adapter
+    - Shouldn't fail when two adapters clash with the devtools port
   - Devtools
+    - Allow pausing sync (both in client and leader separately)
     - Introduce real-time sync heads view
     - Sometimes gets stuck on initial open (should wait for full connection first)
     - Fix: When resetting the database but keeping the eventlog
