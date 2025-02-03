@@ -16,7 +16,7 @@ export const SearchBar = () => {
   })
 
   return (
-    <div className="h-12 relative border-b border-neutral-200 dark:border-neutral-700 flex items-center text-sm p-2 lg:pl-6">
+    <div className="h-12 shrink-0 relative border-b border-neutral-200 dark:border-neutral-700 flex items-center text-sm p-2 lg:pl-6">
       <MenuButton className="lg:hidden" />
       <MagnifyingGlassIcon className="size-4 shrink-0 ml-2.5 lg:ml-0" />
       <Input

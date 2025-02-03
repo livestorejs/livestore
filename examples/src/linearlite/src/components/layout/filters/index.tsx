@@ -37,7 +37,7 @@ export const Filters = ({
           heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0] as Status]!.name : 'Issues'}
         />
       )}
-      <div className="h-12 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm px-4 gap-8">
+      <div className="h-12 shrink-0 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm px-4 gap-8">
         <div className="flex items-center">
           {search && (
             <div className="text-neutral-500 dark:text-neutral-400 text-xs mr-2 lg:ml-2">
