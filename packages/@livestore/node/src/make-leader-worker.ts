@@ -254,7 +254,7 @@ const makeDevtoolsOptions = ({
 
     return {
       enabled: true,
-      makeContext: Effect.gen(function* () {
+      makeBootContext: Effect.gen(function* () {
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
         yield* startDevtoolsServer({
           schemaPath,

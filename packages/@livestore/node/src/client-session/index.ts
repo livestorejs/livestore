@@ -106,10 +106,14 @@ export const makeNodeAdapter = ({
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
+      const devtools: ClientSession['devtools'] = devtoolsEnabled
+        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
+        : { enabled: false }
+
       const clientSession = {
         syncDb: syncInMemoryDb,
         leaderThread,
-        devtools: { enabled: devtoolsEnabled },
+        devtools,
         lockStatus,
         clientId,
         sessionId,

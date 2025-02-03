@@ -104,14 +104,8 @@ export class Store<
 
     this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
-      initialLeaderHead: clientSession.leaderThread.mutations.initialMutationEventId,
-      pushToLeader: (batch) =>
-        clientSession.leaderThread.mutations.push(batch).pipe(
-          // NOTE we don't want to shutdown in case of an invalid push error, since it will be retried
-          Effect.catchTag('InvalidPushError', Effect.ignoreLogged),
-          this.runEffectFork,
-        ),
-      pullFromLeader: clientSession.leaderThread.mutations.pull,
+      clientSession,
+      runtime,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
         const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!
         const execArgsArr = getExecArgsFromMutation({

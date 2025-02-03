@@ -1,9 +1,9 @@
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
+import type { Runtime, Scope } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { ClientSessionLeaderThreadProxy, UnexpectedError } from '../adapter-types.js'
+import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
 import { type LiveStoreSchema } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
@@ -20,18 +20,16 @@ import { SyncState, updateSyncState } from './syncstate.js'
  */
 export const makeClientSessionSyncProcessor = ({
   schema,
-  initialLeaderHead,
-  pushToLeader,
-  pullFromLeader,
+  clientSession,
+  runtime,
   applyMutation,
   rollback,
   refreshTables,
   span,
 }: {
   schema: LiveStoreSchema
-  initialLeaderHead: EventId.EventId
-  pushToLeader: (batch: ReadonlyArray<MutationEvent.AnyEncoded>) => void
-  pullFromLeader: ClientSessionLeaderThreadProxy['mutations']['pull']
+  clientSession: ClientSession
+  runtime: Runtime.Runtime<Scope.Scope>
   applyMutation: (
     mutationEventDecoded: MutationEvent.PartialAnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean },
@@ -47,8 +45,8 @@ export const makeClientSessionSyncProcessor = ({
 
   const syncStateRef = {
     current: new SyncState({
-      localHead: initialLeaderHead,
-      upstreamHead: initialLeaderHead,
+      localHead: clientSession.leaderThread.mutations.initialMutationEventId,
+      upstreamHead: clientSession.leaderThread.mutations.initialMutationEventId,
       pending: [],
       // TODO init rollbackTail from leader to be ready for backend rebasing
       rollbackTail: [],
@@ -103,7 +101,9 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     // console.debug('pushToLeader', encodedMutationEvents.length, ...encodedMutationEvents.map((_) => _.toJSON()))
-    pushToLeader(encodedMutationEvents)
+    clientSession.leaderThread.mutations
+      .push(encodedMutationEvents)
+      .pipe(Effect.tapCauseLogPretty, Effect.provide(runtime), Effect.runFork)
 
     return { writeTables }
   }
@@ -111,10 +111,13 @@ export const makeClientSessionSyncProcessor = ({
   const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
-    yield* pullFromLeader.pipe(
+    yield* clientSession.leaderThread.mutations.pull.pipe(
       Stream.tap(({ payload, remaining }) =>
         Effect.gen(function* () {
           // console.log('pulled payload from leader', { payload, remaining })
+          if (clientSession.devtools.enabled) {
+            yield* clientSession.devtools.pullLatch.await
+          }
 
           const updateResult = updateSyncState({
             syncState: syncStateRef.current,
@@ -155,7 +158,10 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            pushToLeader(updateResult.newSyncState.pending)
+            clientSession.leaderThread.mutations
+              .push(updateResult.newSyncState.pending)
+              .pipe(Effect.tapCauseLogPretty, Effect.provide(runtime), Effect.runFork)
+
           } else {
             span.addEvent('pull:advance', {
               payloadTag: payload._tag,

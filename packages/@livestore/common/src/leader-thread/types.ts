@@ -65,7 +65,7 @@ export type DevtoolsOptions =
     }
   | {
       enabled: true
-      makeContext: Effect.Effect<
+      makeBootContext: Effect.Effect<
         {
           devtoolsWebChannel: WebChannel.WebChannel<Devtools.MessageToAppLeader, Devtools.MessageFromAppLeader>
           persistenceInfo: PersistenceInfoPair
@@ -73,6 +73,16 @@ export type DevtoolsOptions =
         UnexpectedError,
         Scope.Scope
       >
+    }
+
+export type DevtoolsContext =
+  | {
+      enabled: true
+      syncBackendPullLatch: Effect.Latch
+      syncBackendPushLatch: Effect.Latch
+    }
+  | {
+      enabled: false
     }
 
 export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
@@ -89,11 +99,15 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
     mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
-    // devtools: DevtoolsContext
+    devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
-    /** e.g. used for `store.__dev` APIs */
+    /**
+     * e.g. used for `store.__dev` APIs
+     *
+     * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
+     */
     extraIncomingMessagesQueue: Queue.Queue<Devtools.MessageToAppLeader>
   }
 >() {}

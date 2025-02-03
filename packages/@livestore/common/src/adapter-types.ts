@@ -29,7 +29,7 @@ export type SynchronousDatabaseChangeset = {
 export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   syncDb: SynchronousDatabase
-  devtools: { enabled: boolean }
+  devtools: { enabled: false } | { enabled: true; pullLatch: Effect.Latch; pushLatch: Effect.Latch }
   clientId: string
   sessionId: string
   /** Status info whether current session is leader or not */

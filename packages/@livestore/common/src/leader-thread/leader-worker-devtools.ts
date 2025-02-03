@@ -21,7 +21,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
       sendMessage: () => Effect.void,
     }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const { persistenceInfo, devtoolsWebChannel } = yield* options.makeContext
+    const { persistenceInfo, devtoolsWebChannel } = yield* options.makeBootContext
 
     const sendMessage: SendMessageToDevtools = (message) =>
       devtoolsWebChannel

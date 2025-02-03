@@ -374,9 +374,13 @@ export const makeAdapter =
         )
       }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
 
+      const devtools: ClientSession['devtools'] = devtoolsEnabled
+        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
+        : { enabled: false }
+
       const clientSession = {
         syncDb,
-        devtools: { enabled: devtoolsEnabled },
+        devtools,
         lockStatus,
         clientId,
         sessionId,

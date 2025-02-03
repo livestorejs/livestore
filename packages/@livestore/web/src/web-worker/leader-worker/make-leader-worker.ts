@@ -239,7 +239,7 @@ const makeDevtoolsOptions = ({
 
     return {
       enabled: true,
-      makeContext: Effect.gen(function* () {
+      makeBootContext: Effect.gen(function* () {
         return {
           devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
             node,

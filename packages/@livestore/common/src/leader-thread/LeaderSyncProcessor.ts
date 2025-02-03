@@ -1,5 +1,5 @@
 import { isNotUndefined, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import type { HttpClient, Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
   Deferred,
@@ -86,7 +86,17 @@ export const makeLeaderSyncProcessor = ({
       return mutationDef.options.localOnly
     }
 
-    const spanRef = { current: undefined as otel.Span | undefined }
+    // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
+    const ctxRef = {
+      current: undefined as
+        | undefined
+        | {
+            otelSpan: otel.Span | undefined
+            span: Tracer.Span
+            devtoolsPullLatch: Effect.Latch | undefined
+            devtoolsPushLatch: Effect.Latch | undefined
+          },
+    }
 
     const localPushesQueue = yield* BucketQueue.make<PushQueueItem>()
     const localPushesLatch = yield* Effect.makeLatch(true)
@@ -96,6 +106,10 @@ export const makeLeaderSyncProcessor = ({
       Effect.gen(function* () {
         // TODO validate batch
         if (newEvents.length === 0) return
+
+        if (ctxRef.current?.devtoolsPushLatch !== undefined) {
+          yield* ctxRef.current.devtoolsPushLatch.await
+        }
 
         const waitForProcessing = options?.waitForProcessing ?? false
 
@@ -119,9 +133,7 @@ export const makeLeaderSyncProcessor = ({
             batchSize: newEvents.length,
             batch: TRACE_VERBOSE ? newEvents : undefined,
           },
-          links: spanRef.current
-            ? [{ _tag: 'SpanLink', span: OtelTracer.makeExternalSpan(spanRef.current.spanContext()), attributes: {} }]
-            : undefined,
+          links: ctxRef.current?.span ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }] : undefined,
         }),
       )
 
@@ -145,8 +157,16 @@ export const makeLeaderSyncProcessor = ({
     // Starts various background loops
     const boot: LeaderSyncProcessor['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
-        const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
-        spanRef.current = span
+        const span = yield* Effect.currentSpan.pipe(Effect.orDie)
+        const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+        const { devtools } = yield* LeaderThreadCtx
+
+        ctxRef.current = {
+          otelSpan,
+          span,
+          devtoolsPullLatch: devtools.enabled ? devtools.syncBackendPullLatch : undefined,
+          devtoolsPushLatch: devtools.enabled ? devtools.syncBackendPushLatch : undefined,
+        }
 
         const initialBackendHead = dbMissing ? EventId.ROOT.global : getBackendHeadFromDb(dbLog)
         const initialLocalHead = dbMissing ? EventId.ROOT : getLocalHeadFromDb(dbLog)
@@ -193,14 +213,14 @@ export const makeLeaderSyncProcessor = ({
           syncBackendQueue,
           schema,
           isLocalEvent,
-          span,
+          otelSpan,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
         const backendPushingFiberHandle = yield* FiberHandle.make()
 
         yield* FiberHandle.run(
           backendPushingFiberHandle,
-          backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
+          backgroundBackendPushing({ dbReady, syncBackendQueue, otelSpan }).pipe(Effect.tapCauseLogPretty),
         )
 
         yield* backgroundBackendPulling({
@@ -219,14 +239,15 @@ export const makeLeaderSyncProcessor = ({
               // Restart pushing fiber
               yield* FiberHandle.run(
                 backendPushingFiberHandle,
-                backgroundBackendPushing({ dbReady, syncBackendQueue, span }).pipe(Effect.tapCauseLogPretty),
+                backgroundBackendPushing({ dbReady, syncBackendQueue, otelSpan }).pipe(Effect.tapCauseLogPretty),
               )
             }),
           syncStateSref,
           localPushesLatch,
           pullLatch,
-          span,
+          otelSpan,
           initialBlockingSyncContext,
+          devtoolsPullLatch: ctxRef.current?.devtoolsPullLatch,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
@@ -253,7 +274,7 @@ const backgroundApplyLocalPushes = ({
   syncBackendQueue,
   schema,
   isLocalEvent,
-  span,
+  otelSpan,
 }: {
   pullLatch: Effect.Latch
   localPushesLatch: Effect.Latch
@@ -262,7 +283,7 @@ const backgroundApplyLocalPushes = ({
   syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
   schema: LiveStoreSchema
   isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
-  span: otel.Span | undefined
+  otelSpan: otel.Span | undefined
 }) =>
   Effect.gen(function* () {
     const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
@@ -293,7 +314,7 @@ const backgroundApplyLocalPushes = ({
       if (updateResult._tag === 'rebase') {
         return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
       } else if (updateResult._tag === 'reject') {
-        span?.addEvent('local-push:reject', {
+        otelSpan?.addEvent('local-push:reject', {
           batchSize: newEvents.length,
           updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
         })
@@ -331,7 +352,7 @@ const backgroundApplyLocalPushes = ({
         remaining: 0,
       })
 
-      span?.addEvent('local-push', {
+      otelSpan?.addEvent('local-push', {
         batchSize: newEvents.length,
         updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
       })
@@ -406,10 +427,11 @@ const backgroundBackendPulling = ({
   initialBackendHead,
   isLocalEvent,
   restartBackendPushing,
-  span,
+  otelSpan,
   syncStateSref,
   localPushesLatch,
   pullLatch,
+  devtoolsPullLatch,
   initialBlockingSyncContext,
 }: {
   dbReady: Deferred.Deferred<void>
@@ -418,10 +440,11 @@ const backgroundBackendPulling = ({
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
-  span: otel.Span | undefined
+  otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   localPushesLatch: Effect.Latch
   pullLatch: Effect.Latch
+  devtoolsPullLatch: Effect.Latch | undefined
   initialBlockingSyncContext: InitialBlockingSyncContext
 }) =>
   Effect.gen(function* () {
@@ -436,6 +459,10 @@ const backgroundBackendPulling = ({
     const onNewPullChunk = (newEvents: MutationEvent.EncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
+
+        if (devtoolsPullLatch !== undefined) {
+          yield* devtoolsPullLatch.await
+        }
 
         // Prevent more local pushes from being processed until this pull is finished
         yield* localPushesLatch.close
@@ -465,7 +492,7 @@ const backgroundBackendPulling = ({
         updateBackendHead(dbLog, newBackendHead)
 
         if (updateResult._tag === 'rebase') {
-          span?.addEvent('backend-pull:rebase', {
+          otelSpan?.addEvent('backend-pull:rebase', {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
             rollbackCount: updateResult.eventsToRollback.length,
@@ -492,7 +519,7 @@ const backgroundBackendPulling = ({
             remaining,
           })
         } else {
-          span?.addEvent('backend-pull:advance', {
+          otelSpan?.addEvent('backend-pull:advance', {
             newEventsCount: newEvents.length,
             updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
           })
@@ -612,11 +639,11 @@ const getCursorInfo = (remoteHead: EventId.GlobalEventId) =>
 const backgroundBackendPushing = ({
   dbReady,
   syncBackendQueue,
-  span,
+  otelSpan,
 }: {
   dbReady: Deferred.Deferred<void>
   syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
-  span: otel.Span | undefined
+  otelSpan: otel.Span | undefined
 }) =>
   Effect.gen(function* () {
     const { syncBackend, dbLog } = yield* LeaderThreadCtx
@@ -632,7 +659,7 @@ const backgroundBackendPushing = ({
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
-      span?.addEvent('backend-push', {
+      otelSpan?.addEvent('backend-push', {
         batchSize: queueItems.length,
         batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
       })
@@ -641,7 +668,7 @@ const backgroundBackendPushing = ({
       const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
 
       if (pushResult._tag === 'Left') {
-        span?.addEvent('backend-push-error', { error: pushResult.left.toString() })
+        otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
         // wait for interrupt caused by background pulling which will then restart pushing
         return yield* Effect.never
       }

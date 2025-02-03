@@ -59,6 +59,14 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
+    const devtoolsContext = devtoolsOptions.enabled
+      ? {
+          enabled: true as const,
+          syncBackendPullLatch: yield* Effect.makeLatch(true),
+          syncBackendPushLatch: yield* Effect.makeLatch(true),
+        }
+      : { enabled: false as const }
+
     const ctx = {
       schema,
       bootStatusQueue,
@@ -74,6 +82,7 @@ export const makeLeaderThreadLayer = ({
       syncProcessor,
       connectedClientSessionPullQueues: yield* makePullQueueSet,
       extraIncomingMessagesQueue,
+      devtools: devtoolsContext,
     } satisfies typeof LeaderThreadCtx.Service
 
     // @ts-expect-error For debugging purposes

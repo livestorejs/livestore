@@ -73,7 +73,7 @@ export const connectDevtoolsToStore = ({
       const requestIdleCallback = globalThis.requestIdleCallback ?? ((cb: () => void) => cb())
 
       switch (decodedMessage._tag) {
-        case 'LSD.ReactivityGraphSubscribe': {
+        case 'LSD.ClientSession.ReactivityGraphSubscribe': {
           const includeResults = decodedMessage.includeResults
 
           const send = () =>
@@ -104,7 +104,7 @@ export const connectDevtoolsToStore = ({
 
           break
         }
-        case 'LSD.DebugInfoReq': {
+        case 'LSD.ClientSession.DebugInfoReq': {
           sendToDevtools(
             Devtools.DebugInfoRes.make({
               debugInfo: store.syncDbWrapper.debugInfo,
@@ -116,7 +116,7 @@ export const connectDevtoolsToStore = ({
           )
           break
         }
-        case 'LSD.DebugInfoHistorySubscribe': {
+        case 'LSD.ClientSession.DebugInfoHistorySubscribe': {
           const buffer: DebugInfo[] = []
           let hasStopped = false
           let tickHandle: number | undefined
@@ -162,31 +162,31 @@ export const connectDevtoolsToStore = ({
 
           break
         }
-        case 'LSD.DebugInfoHistoryUnsubscribe': {
+        case 'LSD.ClientSession.DebugInfoHistoryUnsubscribe': {
           // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
           // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           debugInfoHistorySubscriptions.get(requestId)?.()
           debugInfoHistorySubscriptions.delete(requestId)
           break
         }
-        case 'LSD.DebugInfoResetReq': {
+        case 'LSD.ClientSession.DebugInfoResetReq': {
           store.syncDbWrapper.debugInfo.slowQueries.clear()
           sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }
-        case 'LSD.DebugInfoRerunQueryReq': {
+        case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
           store.syncDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
           sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }
-        case 'LSD.ReactivityGraphUnsubscribe': {
+        case 'LSD.ClientSession.ReactivityGraphUnsubscribe': {
           // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
           // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           reactivityGraphSubcriptions.get(requestId)?.()
           break
         }
-        case 'LSD.LiveQueriesSubscribe': {
+        case 'LSD.ClientSession.LiveQueriesSubscribe': {
           const send = () =>
             requestIdleCallback(
               () =>
@@ -222,7 +222,7 @@ export const connectDevtoolsToStore = ({
 
           break
         }
-        case 'LSD.LiveQueriesUnsubscribe': {
+        case 'LSD.ClientSession.LiveQueriesUnsubscribe': {
           // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
           // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           liveQueriesSubscriptions.get(requestId)?.()
