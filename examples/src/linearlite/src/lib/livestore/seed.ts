@@ -5,16 +5,22 @@ import { statusOptions } from '@/data/status-options'
 import { Issue, mutations } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { highestIssueId$, issueCount$ } from './queries'
+import { generateKeyBetween } from 'fractional-indexing'
+import { highestIssueId$, highestKanbanOrder$, issueCount$ } from './queries'
 
 export const seed = (store: Store, count: number) => {
   try {
     const existingCount = store.query(issueCount$)
     const [highestId] = store.query(highestIssueId$)
+    const [highestKanbanOrder] = store.query(highestKanbanOrder$)
     if (existingCount >= count) return
     count -= existingCount
     console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')
-    store.mutate(...Array.from(createIssues(count, highestId?.id)).map((_) => mutations.createIssueWithDescription(_)))
+    store.mutate(
+      ...Array.from(createIssues(count, highestId?.id, highestKanbanOrder?.kanbanorder)).map((_) =>
+        mutations.createIssueWithDescription(_),
+      ),
+    )
   } finally {
     const url = new URL(window.location.href)
     url.searchParams.delete('seed')
@@ -22,8 +28,14 @@ export const seed = (store: Store, count: number) => {
   }
 }
 
-function* createIssues(numTasks: number, highestId?: number): Generator<Issue & { description: string }> {
+function* createIssues(
+  numTasks: number,
+  highestId?: number,
+  highestKanbanOrder?: string,
+): Generator<Issue & { description: string }> {
   if (!highestId) highestId = 0
+  let kanbanorder = highestKanbanOrder ?? 'a1'
+
   const getRandomItem = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)]!
   const generateText = () => {
     const action = getRandomItem(actionPhrases)
@@ -36,6 +48,7 @@ function* createIssues(numTasks: number, highestId?: number): Generator<Issue & 
   const now = Date.now()
   const ONE_DAY = 24 * 60 * 60 * 1000
   for (let i = 0; i < numTasks; i++) {
+    kanbanorder = generateKeyBetween(kanbanorder, undefined)
     const [title, description] = generateText()
     const issue = {
       id: (highestId += 1),
@@ -46,7 +59,7 @@ function* createIssues(numTasks: number, highestId?: number): Generator<Issue & 
       deleted: null,
       status: getRandomItem(statuses),
       priority: getRandomItem(priorities),
-      kanbanorder: 'a1',
+      kanbanorder,
       description,
     }
     yield issue

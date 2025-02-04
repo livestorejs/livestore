@@ -32,13 +32,14 @@ export const NewIssueModal = () => {
     if (!title) return
     const date = Date.now()
     const highestIssueId = store.query(highestIssueId$)[0]?.id ?? 0
-    const lastIssueKanbanorder = store.query(
+    const highestKanbanOrder = store.query(
       tables.issue.query
         .select('kanbanorder', { pluck: true })
+        .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
         .orderBy('kanbanorder', 'desc')
-        .first({ fallback: () => 'a0' }),
+        .first({ fallback: () => 'a1' }),
     )
-    const kanbanorder = generateKeyBetween(lastIssueKanbanorder, null)
+    const kanbanorder = generateKeyBetween(highestKanbanOrder, null)
     store.mutate(
       mutations.createIssueWithDescription({
         id: highestIssueId + 1,

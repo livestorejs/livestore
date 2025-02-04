@@ -7,6 +7,7 @@ import { Status } from '@/types/status'
 import { getIssueTag } from '@/utils/get-issue-tag'
 import { useStore } from '@livestore/react'
 import React from 'react'
+import { Button } from 'react-aria-components'
 import { useNavigate } from 'react-router-dom'
 
 export const Card = ({ issue, className }: { issue: Issue; className?: string }) => {
@@ -20,13 +21,12 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
 
   return (
     <div
-      className={`p-2 w-full text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className}`}
+      className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
       onClick={() => navigate(`/issue/${issue.id}`)}
     >
+      <Button slot="drag" className="size-0 absolute left-0 top-0" />
       <div className="flex items-center justify-between pl-2 pt-1 pr-1 mb-0.5">
-        <div className="text-xs text-neutral-500 dark:text-neutral-400">
-          {getIssueTag(issue.id)} - {issue.kanbanorder}
-        </div>
+        <div className="text-xs text-neutral-500 dark:text-neutral-400">{getIssueTag(issue.id)}</div>
         <Avatar name={issue.creator} />
       </div>
       <div className="flex items-center gap-px my-px">

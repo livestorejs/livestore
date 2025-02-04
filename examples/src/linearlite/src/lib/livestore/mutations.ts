@@ -80,8 +80,8 @@ export const updateIssueStatus = defineMutation(
 
 export const updateIssueKanbanOrder = defineMutation(
   'updateIssueKanbanOrder',
-  Schema.Struct({ id: Schema.Number, kanbanorder: Schema.String }),
-  sql`UPDATE issue SET kanbanorder = $kanbanorder, modified = unixepoch() * 1000 WHERE id = $id`,
+  Schema.Struct({ id: Schema.Number, status: Status, kanbanorder: Schema.String }),
+  sql`UPDATE issue SET status = $status, kanbanorder = $kanbanorder, modified = unixepoch() * 1000 WHERE id = $id`,
 )
 
 export const updateIssueTitle = defineMutation(
