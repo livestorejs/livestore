@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
+    "@legendapp/list": "1.0.0-beta.2",
     "@livestore/devtools-expo": "0.2.0",
     "@livestore/expo": "0.2.0",
     "@livestore/livestore": "0.2.0",
