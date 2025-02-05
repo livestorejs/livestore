@@ -288,7 +288,6 @@ const configureSQLite = (db: SqliteDbWrapper) => {
     sql`
       PRAGMA page_size=32768;
       PRAGMA cache_size=10000;
-      PRAGMA journal_mode='MEMORY'; -- we don't flush to disk before committing a write
       PRAGMA synchronous='OFF';
       PRAGMA temp_store='MEMORY';
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
