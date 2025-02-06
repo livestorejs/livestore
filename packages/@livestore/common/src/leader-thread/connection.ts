@@ -46,25 +46,23 @@ type ConnectionOptions = {
 export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMode }: ConnectionOptions) =>
   execSql(
     sqliteDb,
+    // We use the WAL journal mode is significantly faster in most scenarios than the traditional rollback journal mode.
+    // It specifically significantly improves write performance. However, when using the WAL journal mode, transactions
+    // that involve changes against multiple ATTACHed databases are atomic for each database but are not atomic
+    // across all databases as a set. Additionally, it is not possible to change the page size after entering WAL mode,
+    // whether on an empty database or by using VACUUM or the backup API. To change the page size, we must switch to the
+    // rollback journal mode.
+    //
+    // When connected to an in-memory database, the WAL journal mode option is ignored because an in-memory database can
+    // only be in either the MEMORY or OFF options. By default, an in-memory database is in the MEMORY option, which
+    // means that it stores the rollback journal in volatile RAM. This saves disk I/O but at the expense of safety and
+    // integrity. If the thread using SQLite crashes in the middle of a transaction, then the database file will very
+    // likely go corrupt.
     sql`
-    PRAGMA page_size=8192;
-    ${lockingMode !== undefined && sql`PRAGMA locking_mode=${lockingMode};`}
-    /*
-    The WAL journal mode is significantly faster in most scenarios than the traditional rollback journal mode. It
-    specifically significantly improves write performance. However, when using the WAL journal mode, transactions
-    that involve changes against multiple ATTACHed databases are atomic for each database but are not atomic
-    across all databases as a set. Additionally, it is not possible to change the page size after entering WAL mode,
-    whether on an empty database or by using VACUUM or the backup API. To change the page size, we must switch to the
-    rollback journal mode.
-
-    When connected to an in-memory database, the WAL journal mode option is ignored because an in-memory database can
-    only be in either the MEMORY or OFF options. By default, an in-memory database is in the MEMORY option, which means
-    that it stores the rollback journal in volatile RAM. This saves disk I/O but at the expense of safety and integrity.
-    If the thread using SQLite crashes in the middle of a transaction, then the database file will very likely go
-    corrupt. 
-    */
     PRAGMA journal_mode=WAL;
+    PRAGMA page_size=8192;
     PRAGMA foreign_keys=${foreignKeys ? 'ON' : 'OFF'};
+    ${lockingMode !== undefined && sql`PRAGMA locking_mode=${lockingMode};`}
   `,
     {},
   )
