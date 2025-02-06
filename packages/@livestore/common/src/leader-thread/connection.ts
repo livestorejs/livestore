@@ -12,21 +12,43 @@ namespace WaSqlite {
   export type SQLiteError = any
 }
 
-export const configureConnection = (sqliteDb: SqliteDb, { fkEnabled }: { fkEnabled: boolean }) =>
+type ConnectionOptions = {
+  /**
+   * The database connection locking mode.
+   *
+   * @remarks
+   *
+   * This **option is ignored** when used on an **in-memory database** as they can only operate in exclusive locking mode.
+   * In-memory databases can’t share state between connections (unless using a
+   * {@link https://www.sqlite.org/sharedcache.html#shared_cache_and_in_memory_databases|shared cache}),
+   * making concurrent access impossible. This is functionally equivalent to exclusive locking.
+   *
+   * @defaultValue
+   * The default is `"NORMAL"` unless it was unless overridden at compile-time using `SQLITE_DEFAULT_LOCKING_MODE`.
+   *
+   * @see {@link https://www.sqlite.org/pragma.html#pragma_locking_mode|`locking_mode` pragma}
+   */
+  lockingMode?: 'NORMAL' | 'EXCLUSIVE'
+
+  /**
+   * Whether to enforce foreign key constraints.
+   *
+   * @privateRemarks
+   *
+   * We require a value for this option to minimize future problems, as the default value might change in future
+   * versions of SQLite.
+   *
+   * @see {@link https://www.sqlite.org/pragma.html#pragma_foreign_keys|`foreign_keys` pragma}
+   */
+  foreignKeys: boolean
+}
+
+export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMode }: ConnectionOptions) =>
   execSql(
     sqliteDb,
     sql`
     PRAGMA page_size=8192;
-    /*
-    The persisted databases use the AccessHandlePoolVFS which always uses a single database connection. Multiple
-    connections are not supported. This means that we can use the exclusive locking mode to avoid unnecessary system
-    calls and enable the use of the WAL journal mode without the use of shared memory.
-    
-    When connected to an in-memory database, this locking mode pragma is ignored because an in-memory database can only
-    operate in exclusive locking mode. In-memory databases can’t share state between connections (unless using a shared
-    cache), making concurrent access impossible. This is functionally equivalent to exclusive locking.
-    */
-    PRAGMA locking_mode=exclusive;
+    ${lockingMode !== undefined && sql`PRAGMA locking_mode=${lockingMode};`}
     /*
     The WAL journal mode is significantly faster in most scenarios than the traditional rollback journal mode. It
     specifically significantly improves write performance. However, when using the WAL journal mode, transactions
@@ -42,7 +64,7 @@ export const configureConnection = (sqliteDb: SqliteDb, { fkEnabled }: { fkEnabl
     corrupt. 
     */
     PRAGMA journal_mode=WAL;
-    ${fkEnabled ? sql`PRAGMA foreign_keys='ON';` : sql`PRAGMA foreign_keys='OFF';`}
+    PRAGMA foreign_keys=${foreignKeys ? 'ON' : 'OFF'};
   `,
     {},
   )
