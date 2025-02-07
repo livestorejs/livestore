@@ -7,6 +7,10 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - Contributions:
+    - Solid adapter
+    - Expo Linearlite legend list
+    - WAL sqlite improvements
   - Syncing
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics

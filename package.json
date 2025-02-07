@@ -23,7 +23,7 @@
     "syncpack": "^13.0.0",
     "typescript": "^5.7.2"
   },
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@10.2.1",
   "pnpm": {
     "patchedDependencies": {
       "graphology@0.26.0-alpha1": "patches/graphology-npm-0.26.0-alpha1-264be2a8c9.patch"
