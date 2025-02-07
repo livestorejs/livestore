@@ -16,7 +16,7 @@ export {
   type LiveStoreContextRunning,
 } from './store/store-types.js'
 
-export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
+export { SqliteDbWrapper, emptyDebugInfo } from './SqliteDbWrapper.js'
 
 export type {
   GetAtom,
@@ -53,7 +53,7 @@ export {
   sql,
   SessionIdSymbol,
   type BootStatus,
-  type SynchronousDatabase,
+  type SqliteDb,
   type DebugInfo,
   type MutableDebugInfo,
   prepareBindValues,

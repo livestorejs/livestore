@@ -15,20 +15,20 @@ export interface PreparedStatement {
   sql: string
 }
 
-export type SynchronousDatabaseSession = {
+export type SqliteDbSession = {
   changeset: () => Uint8Array | undefined
   finish: () => void
 }
 
-export type SynchronousDatabaseChangeset = {
+export type SqliteDbChangeset = {
   // TODO combining changesets (requires changes in the SQLite WASM binding)
-  invert: () => SynchronousDatabaseChangeset
+  invert: () => SqliteDbChangeset
   apply: () => void
 }
 
 export type ClientSession = {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
-  syncDb: SynchronousDatabase
+  sqliteDb: SqliteDb
   devtools: { enabled: false } | { enabled: true; pullLatch: Effect.Latch; pushLatch: Effect.Latch }
   clientId: string
   sessionId: string
@@ -53,8 +53,13 @@ export type ClientSessionLeaderThreadProxy = {
   sendDevtoolsMessage: (message: Devtools.MessageToAppLeader) => Effect.Effect<void, UnexpectedError>
 }
 
-export type SynchronousDatabase<TReq = any, TMetadata extends TReq = TReq> = {
-  _tag: 'SynchronousDatabase'
+/**
+ * Common interface for SQLite databases used by LiveStore to facilitate a consistent API across different platforms.
+ * Always assumes a synchronous SQLite build with the `bytecode` and `session` extensions enabled.
+ * Can be either in-memory or persisted to disk.
+ */
+export type SqliteDb<TReq = any, TMetadata extends TReq = TReq> = {
+  _tag: 'SqliteDb'
   metadata: TMetadata
   prepare(queryStr: string): PreparedStatement
   execute(
@@ -64,14 +69,14 @@ export type SynchronousDatabase<TReq = any, TMetadata extends TReq = TReq> = {
   ): void
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
-  import: (data: Uint8Array | SynchronousDatabase<TReq>) => void
+  import: (data: Uint8Array | SqliteDb<TReq>) => void
   close(): void
   destroy(): void
-  session(): SynchronousDatabaseSession
-  makeChangeset: (data: Uint8Array) => SynchronousDatabaseChangeset
+  session(): SqliteDbSession
+  makeChangeset: (data: Uint8Array) => SqliteDbChangeset
 }
 
-export type MakeSynchronousDatabase<
+export type MakeSqliteDb<
   TReq = { dbPointer: number; persistenceInfo: PersistenceInfo },
   TInput_ extends { _tag: string } = { _tag: string },
   TMetadata_ extends TReq = TReq,
@@ -81,11 +86,7 @@ export type MakeSynchronousDatabase<
   TMetadata extends TMetadata_ & { _tag: TInput['_tag'] } = TMetadata_ & { _tag: TInput['_tag'] },
 >(
   input: TInput,
-) => Effect.Effect<
-  SynchronousDatabase<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>,
-  SqliteError | UnexpectedError,
-  R
->
+) => Effect.Effect<SqliteDb<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError | UnexpectedError, R>
 
 export const PersistenceInfo = Schema.Struct(
   {
@@ -196,7 +197,7 @@ export type MigrationHooks = {
   post: MigrationHook
 }
 
-export type MigrationHook = (db: SynchronousDatabase) => void | Promise<void> | Effect.Effect<void, unknown>
+export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
 export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
   strategy: 'from-mutation-log'

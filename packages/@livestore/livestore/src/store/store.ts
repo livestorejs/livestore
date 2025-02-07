@@ -52,7 +52,7 @@ import type {
 import { makeReactivityGraph } from '../live-queries/base-class.js'
 import type { Ref } from '../reactive.js'
 import { makeExecBeforeFirstRun } from '../row-query-utils.js'
-import { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
+import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
@@ -76,7 +76,7 @@ export class Store<
 > extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
-  syncDbWrapper: SynchronousDatabaseWrapper
+  sqliteDbWrapper: SqliteDbWrapper
   clientSession: ClientSession
   schema: LiveStoreSchema
   graphQLSchema?: GraphQLSchema
@@ -119,7 +119,7 @@ export class Store<
     this.storeId = storeId
     this.unsyncedMutationEvents = unsyncedMutationEvents
 
-    this.syncDbWrapper = new SynchronousDatabaseWrapper({ otel: otelOptions, db: clientSession.syncDb })
+    this.sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
     this.clientSession = clientSession
     this.schema = schema
 
@@ -147,9 +147,9 @@ export class Store<
           for (const {
             statementSql,
             bindValues,
-            writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
+            writeTables = this.sqliteDbWrapper.getTablesUsed(statementSql),
           } of execArgsArr) {
-            this.syncDbWrapper.execute(statementSql, bindValues, { otelContext, writeTables })
+            this.sqliteDbWrapper.execute(statementSql, bindValues, { otelContext, writeTables })
 
             // durationMsTotal += durationMs
             writeTables.forEach((table) => writeTablesForEvent.add(table))
@@ -158,7 +158,7 @@ export class Store<
 
         let sessionChangeset: Uint8Array | undefined
         if (withChangeset === true) {
-          sessionChangeset = this.syncDbWrapper.withChangeset(exec).changeset
+          sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
         } else {
           exec()
         }
@@ -166,7 +166,7 @@ export class Store<
         return { writeTables: writeTablesForEvent, sessionChangeset }
       },
       rollback: (changeset) => {
-        this.syncDbWrapper.rollback(changeset)
+        this.sqliteDbWrapper.rollback(changeset)
       },
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
@@ -233,7 +233,7 @@ export class Store<
 
     if (graphQLOptions) {
       this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(this.syncDbWrapper, this.otel.tracer, clientSession.sessionId)
+      this.graphQLContext = graphQLOptions.makeContext(this.sqliteDbWrapper, this.otel.tracer, clientSession.sessionId)
     }
 
     this.boot = Effect.gen(this, function* () {
@@ -396,7 +396,7 @@ export class Store<
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.syncDbWrapper.select(query.query, prepareBindValues(query.bindValues, query.query), {
+      return this.sqliteDbWrapper.select(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
       }) as any
     } else if (isQueryBuilder(query)) {
@@ -412,7 +412,7 @@ export class Store<
 
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
-      const rawRes = this.syncDbWrapper.select(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
+      const rawRes = this.sqliteDbWrapper.select(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
         otelContext: options?.otelContext,
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })
@@ -503,7 +503,7 @@ export class Store<
 
               if (mutationsEvents.length > 1) {
                 // TODO: what to do about leader transaction here?
-                return this.syncDbWrapper.txn(applyMutations)
+                return this.sqliteDbWrapper.txn(applyMutations)
               } else {
                 return applyMutations()
               }
@@ -574,7 +574,7 @@ export class Store<
 
   __devDownloadDb = (source: 'local' | 'leader' = 'local') => {
     Effect.gen(this, function* () {
-      const data = source === 'local' ? this.syncDbWrapper.export() : yield* this.clientSession.leaderThread.export
+      const data = source === 'local' ? this.sqliteDbWrapper.export() : yield* this.clientSession.leaderThread.export
       downloadBlob(data, `livestore-${Date.now()}.db`)
     }).pipe(this.runEffectFork)
   }

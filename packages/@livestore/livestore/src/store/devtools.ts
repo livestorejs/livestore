@@ -6,14 +6,14 @@ import { Effect, Stream } from '@livestore/utils/effect'
 
 import type { LiveQuery, ReactivityGraph } from '../live-queries/base-class.js'
 import { NOT_REFRESHED_YET } from '../reactive.js'
-import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
-import { emptyDebugInfo as makeEmptyDebugInfo } from '../SynchronousDatabaseWrapper.js'
+import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
+import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.js'
 import type { ReferenceCountedSet } from '../utils/data-structures.js'
 
 type IStore = {
   clientSession: ClientSession
   reactivityGraph: ReactivityGraph
-  syncDbWrapper: SynchronousDatabaseWrapper
+  sqliteDbWrapper: SqliteDbWrapper
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 }
 
@@ -107,7 +107,7 @@ export const connectDevtoolsToStore = ({
         case 'LSD.ClientSession.DebugInfoReq': {
           sendToDevtools(
             Devtools.DebugInfoRes.make({
-              debugInfo: store.syncDbWrapper.debugInfo,
+              debugInfo: store.sqliteDbWrapper.debugInfo,
               requestId,
               clientId,
               sessionId,
@@ -122,13 +122,13 @@ export const connectDevtoolsToStore = ({
           let tickHandle: number | undefined
 
           const tick = () => {
-            buffer.push(store.syncDbWrapper.debugInfo)
+            buffer.push(store.sqliteDbWrapper.debugInfo)
 
             // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
             // will get the empty debug info
             // TODO We need to come up with a more graceful way to do store. Probably via a single global
             // `requestAnimationFrame` loop that is passed in somehow.
-            store.syncDbWrapper.debugInfo = makeEmptyDebugInfo()
+            store.sqliteDbWrapper.debugInfo = makeEmptyDebugInfo()
 
             if (buffer.length > 10) {
               sendToDevtools(
@@ -170,13 +170,13 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.DebugInfoResetReq': {
-          store.syncDbWrapper.debugInfo.slowQueries.clear()
+          store.sqliteDbWrapper.debugInfo.slowQueries.clear()
           sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }
         case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
-          store.syncDbWrapper.select(queryStr, bindValues, { queriedTables, skipCache: true })
+          store.sqliteDbWrapper.select(queryStr, bindValues, { queriedTables, skipCache: true })
           sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }

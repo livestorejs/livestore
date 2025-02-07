@@ -16,7 +16,7 @@ import { Cause, Effect, Queue, Schema, Stream, SubscriptionRef, WebChannel } fro
 import * as SQLite from 'expo-sqlite'
 
 import type { DbPairRef } from './common.js'
-import { makeSynchronousDatabase, overwriteDbFile } from './common.js'
+import { makeSqliteDb, overwriteDbFile } from './common.js'
 
 export type BootedDevtools = {
   onMutation: ({
@@ -136,15 +136,15 @@ export const bootDevtools = ({
               let tableNames: Set<string>
 
               try {
-                const tmpDb = SQLite.deserializeDatabaseSync(data)
-                const tmpSyncDb = makeSynchronousDatabase(tmpDb)
-                const tableNameResults = tmpSyncDb.select<{ name: string }>(
+                const tmpExpoDb = SQLite.deserializeDatabaseSync(data)
+                const tmpDb = makeSqliteDb(tmpExpoDb)
+                const tableNameResults = tmpDb.select<{ name: string }>(
                   `select name from sqlite_master where type = 'table'`,
                 )
 
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 
-                tmpDb.closeSync()
+                tmpExpoDb.closeSync()
               } catch (e) {
                 yield* expoDevtoolsChannel.send(
                   Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }),

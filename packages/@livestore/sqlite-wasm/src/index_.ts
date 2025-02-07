@@ -1,2 +1,2 @@
 export * from '@livestore/wa-sqlite'
-export * from './make-sync-db.js'
+export * from './make-sqlite-db.js'

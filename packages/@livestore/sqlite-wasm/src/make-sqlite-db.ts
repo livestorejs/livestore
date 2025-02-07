@@ -2,20 +2,20 @@ import type {
   PersistenceInfo,
   PreparedBindValues,
   PreparedStatement,
-  SynchronousDatabase,
-  SynchronousDatabaseChangeset,
+  SqliteDb,
+  SqliteDbChangeset,
 } from '@livestore/common'
 import { SqliteError } from '@livestore/common'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { makeInMemoryDb } from './in-memory-vfs.js'
 
-export const makeSynchronousDatabase = <
+export const makeSqliteDb = <
   TMetadata extends {
     dbPointer: number
     persistenceInfo: PersistenceInfo
     deleteDb: () => void
-    configureDb: (db: SynchronousDatabase<TMetadata>) => void
+    configureDb: (db: SqliteDb<TMetadata>) => void
   },
 >({
   sqlite3,
@@ -23,14 +23,14 @@ export const makeSynchronousDatabase = <
 }: {
   sqlite3: SQLiteAPI
   metadata: TMetadata
-}): SynchronousDatabase<TMetadata> => {
+}): SqliteDb<TMetadata> => {
   const preparedStmts: PreparedStatement[] = []
   const { dbPointer } = metadata
 
   let isClosed = false
 
-  const syncDb: SynchronousDatabase<TMetadata> = {
-    _tag: 'SynchronousDatabase',
+  const sqliteDb: SqliteDb<TMetadata> = {
+    _tag: 'SqliteDb',
     metadata,
     prepare: (queryStr) => {
       try {
@@ -131,18 +131,18 @@ export const makeSynchronousDatabase = <
     },
     export: () => sqlite3.serialize(dbPointer, 'main'),
     execute: (queryStr, bindValues, options) => {
-      const stmt = syncDb.prepare(queryStr)
+      const stmt = sqliteDb.prepare(queryStr)
       stmt.execute(bindValues, options)
       stmt.finalize()
     },
     select: (queryStr, bindValues) => {
-      const stmt = syncDb.prepare(queryStr)
+      const stmt = sqliteDb.prepare(queryStr)
       const results = stmt.select(bindValues)
       stmt.finalize()
       return results as ReadonlyArray<any>
     },
     destroy: () => {
-      syncDb.close()
+      sqliteDb.close()
 
       metadata.deleteDb()
       // if (metadata._tag === 'opfs') {
@@ -183,7 +183,7 @@ export const makeSynchronousDatabase = <
         sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
       }
 
-      metadata.configureDb(syncDb)
+      metadata.configureDb(sqliteDb)
     },
     session: () => {
       const sessionPointer = sqlite3.session_create(dbPointer, 'main')
@@ -203,18 +203,18 @@ export const makeSynchronousDatabase = <
       const changeset = {
         invert: () => {
           const inverted = sqlite3.changeset_invert(data)
-          return syncDb.makeChangeset(inverted)
+          return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {
           sqlite3.changeset_apply(dbPointer, data)
         },
-      } satisfies SynchronousDatabaseChangeset
+      } satisfies SqliteDbChangeset
 
       return changeset
     },
-  } satisfies SynchronousDatabase<TMetadata>
+  } satisfies SqliteDb<TMetadata>
 
-  metadata.configureDb(syncDb)
+  metadata.configureDb(sqliteDb)
 
-  return syncDb
+  return sqliteDb
 }

@@ -16,7 +16,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import type { SynchronousDatabase } from '../adapter-types.js'
+import type { SqliteDb } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
@@ -73,7 +73,7 @@ export const makeLeaderSyncProcessor = ({
   schema: LiveStoreSchema
   /** Only used to know whether we can safely query dbLog during setup execution */
   dbMissing: boolean
-  dbLog: SynchronousDatabase
+  dbLog: SqliteDb
   initialBlockingSyncContext: InitialBlockingSyncContext
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
@@ -579,8 +579,8 @@ const rollback = ({
   dbLog,
   eventIdsToRollback,
 }: {
-  db: SynchronousDatabase
-  dbLog: SynchronousDatabase
+  db: SqliteDb
+  dbLog: SqliteDb
   eventIdsToRollback: EventId.EventId[]
 }) =>
   Effect.gen(function* () {
@@ -691,7 +691,7 @@ const backgroundBackendPushing = ({
     }
   }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:leader-thread:syncing:backend-pushing'))
 
-const trimChangesetRows = (db: SynchronousDatabase, newHead: EventId.EventId) => {
+const trimChangesetRows = (db: SqliteDb, newHead: EventId.EventId) => {
   // Since we're using the session changeset rows to query for the current head,
   // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
   db.execute(sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE idGlobal < ${newHead.global}`)

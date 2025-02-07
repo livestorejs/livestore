@@ -1,7 +1,7 @@
 import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type MigrationOptionsFromMutationLog, type SynchronousDatabase, UnexpectedError } from './adapter-types.js'
+import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'
 import { makeApplyMutation } from './leader-thread/apply-mutation.js'
 import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/mod.js'
 import { EventId, MUTATION_LOG_META_TABLE } from './schema/mod.js'
@@ -16,8 +16,8 @@ export const rehydrateFromMutationLog = ({
   migrationOptions,
   onProgress,
 }: {
-  logDb: SynchronousDatabase
-  db: SynchronousDatabase
+  logDb: SqliteDb
+  db: SqliteDb
   schema: LiveStoreSchema
   migrationOptions: MigrationOptionsFromMutationLog
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>

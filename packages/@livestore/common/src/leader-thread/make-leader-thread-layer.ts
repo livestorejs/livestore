@@ -1,7 +1,7 @@
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSynchronousDatabase, SqliteError, SynchronousDatabase } from '../adapter-types.js'
+import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
@@ -22,7 +22,7 @@ export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
-  makeSyncDb,
+  makeSqliteDb,
   syncOptions,
   db,
   dbLog,
@@ -32,10 +32,10 @@ export const makeLeaderThreadLayer = ({
   storeId: string
   clientId: string
   schema: LiveStoreSchema
-  makeSyncDb: MakeSynchronousDatabase
+  makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
-  db: SynchronousDatabase
-  dbLog: SynchronousDatabase
+  db: SqliteDb
+  dbLog: SqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
@@ -74,7 +74,7 @@ export const makeLeaderThreadLayer = ({
       clientId,
       db,
       dbLog,
-      makeSyncDb,
+      makeSqliteDb,
       mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,

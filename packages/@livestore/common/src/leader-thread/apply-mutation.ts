@@ -2,7 +2,7 @@ import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
-import type { SqliteError, SynchronousDatabase, UnexpectedError } from '../index.js'
+import type { SqliteDb, SqliteError, UnexpectedError } from '../index.js'
 import { getExecArgsFromMutation } from '../mutation.js'
 import {
   type LiveStoreSchema,
@@ -111,7 +111,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
 const insertIntoMutationLog = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
-  dbLog: SynchronousDatabase,
+  dbLog: SqliteDb,
   mutationDefSchemaHashMap: Map<string, number>,
 ) =>
   Effect.gen(function* () {

@@ -16,10 +16,10 @@ import type {
   BootStatus,
   Devtools,
   InvalidPushError,
-  MakeSynchronousDatabase,
+  MakeSqliteDb,
   PersistenceInfo,
+  SqliteDb,
   SyncBackend,
-  SynchronousDatabase,
   UnexpectedError,
 } from '../index.js'
 import type { EventId, LiveStoreSchema, MutationEvent } from '../schema/mod.js'
@@ -56,7 +56,7 @@ export type InitialSyncInfo = Option.Option<{
 //   | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
 //   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
-export type LeaderDatabase = SynchronousDatabase<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
+export type LeaderDatabase = SqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
 export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
 
 export type DevtoolsOptions =
@@ -91,7 +91,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     schema: LiveStoreSchema
     storeId: string
     clientId: string
-    makeSyncDb: MakeSynchronousDatabase
+    makeSqliteDb: MakeSqliteDb
     db: LeaderDatabase
     dbLog: LeaderDatabase
     bootStatusQueue: Queue.Queue<BootStatus>

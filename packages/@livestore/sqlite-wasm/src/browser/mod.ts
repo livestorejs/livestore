@@ -1,9 +1,9 @@
-import type { MakeSynchronousDatabase, PersistenceInfo, SynchronousDatabase } from '@livestore/common'
+import type { MakeSqliteDb, PersistenceInfo, SqliteDb } from '@livestore/common'
 import { Effect, Hash } from '@livestore/utils/effect'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
 import { makeInMemoryDb } from '../in-memory-vfs.js'
-import { makeSynchronousDatabase } from '../make-sync-db.js'
+import { makeSqliteDb } from '../make-sqlite-db.js'
 import type { AccessHandlePoolVFS } from './opfs/AccessHandlePoolVFS.js'
 import { makeOpfsDb } from './opfs/index.js'
 
@@ -15,7 +15,7 @@ export type WebDatabaseMetadataInMemory = {
   dbPointer: number
   persistenceInfo: PersistenceInfo
   deleteDb: () => void
-  configureDb: (db: SynchronousDatabase) => void
+  configureDb: (db: SqliteDb) => void
 }
 
 export type WebDatabaseMetadataOpfs = {
@@ -28,14 +28,14 @@ export type WebDatabaseMetadataOpfs = {
     opfsFileName: string
   }>
   deleteDb: () => void
-  configureDb: (db: SynchronousDatabase) => void
+  configureDb: (db: SqliteDb) => void
 }
 
 export type WebDatabaseMetadata = WebDatabaseMetadataInMemory | WebDatabaseMetadataOpfs
 
 export type WebDatabaseInputInMemory = {
   _tag: 'in-memory'
-  configureDb?: (db: SynchronousDatabase) => void
+  configureDb?: (db: SqliteDb) => void
 }
 
 export type WebDatabaseInputOpfs = {
@@ -43,26 +43,22 @@ export type WebDatabaseInputOpfs = {
   /** Filename of the database file (only used when exporting/downloading the database) */
   fileName: string
   opfsDirectory: string
-  configureDb?: (db: SynchronousDatabase) => void
+  configureDb?: (db: SqliteDb) => void
 }
 
 export type WebDatabaseInput = WebDatabaseInputInMemory | WebDatabaseInputOpfs
 
-export const syncDbFactory =
+export const sqliteDbFactory =
   ({
     sqlite3,
   }: {
     sqlite3: SQLiteAPI
-  }): MakeSynchronousDatabase<
-    { dbPointer: number; persistenceInfo: PersistenceInfo },
-    WebDatabaseInput,
-    WebDatabaseMetadata
-  > =>
+  }): MakeSqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }, WebDatabaseInput, WebDatabaseMetadata> =>
   (input: WebDatabaseInput) =>
     Effect.gen(function* () {
       if (input._tag === 'in-memory') {
         const { dbPointer, vfs } = makeInMemoryDb(sqlite3)
-        return makeSynchronousDatabase<WebDatabaseMetadataInMemory>({
+        return makeSqliteDb<WebDatabaseMetadataInMemory>({
           sqlite3,
           metadata: {
             _tag: 'in-memory',
@@ -95,7 +91,7 @@ export const syncDbFactory =
         fileName: dbFilename,
       })
 
-      return makeSynchronousDatabase<WebDatabaseMetadataOpfs>({
+      return makeSqliteDb<WebDatabaseMetadataOpfs>({
         sqlite3,
         metadata: {
           _tag: 'opfs',

@@ -17,7 +17,7 @@ import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import * as SQLite from 'expo-sqlite'
 
-import { makeSynchronousDatabase } from './common.js'
+import { makeSqliteDb } from './common.js'
 import type { BootedDevtools } from './devtools.js'
 import { bootDevtools } from './devtools.js'
 
@@ -38,17 +38,17 @@ export const makeAdapter =
       const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
       const db = SQLite.openDatabaseSync(fullDbFilePath)
 
-      const dbRef = { current: { db, syncDb: makeSynchronousDatabase(db) } }
+      const dbRef = { current: { db, sqliteDb: makeSqliteDb(db) } }
 
-      const dbWasEmptyWhenOpened = dbRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
+      const dbWasEmptyWhenOpened = dbRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       const dbLog = SQLite.openDatabaseSync(
         `${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`,
       )
 
-      const dbLogRef = { current: { db: dbLog, syncDb: makeSynchronousDatabase(dbLog) } }
+      const dbLogRef = { current: { db: dbLog, sqliteDb: makeSqliteDb(dbLog) } }
 
-      const dbLogWasEmptyWhenOpened = dbLogRef.current.syncDb.select('SELECT 1 FROM sqlite_master').length === 0
+      const dbLogWasEmptyWhenOpened = dbLogRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
@@ -60,7 +60,7 @@ export const makeAdapter =
 
       if (dbLogWasEmptyWhenOpened) {
         yield* migrateTable({
-          db: dbLogRef.current.syncDb,
+          db: dbLogRef.current.sqliteDb,
           behaviour: 'create-if-not-exists',
           tableAst: mutationLogMetaTable.sqliteDef.ast,
           skipMetaTable: true,
@@ -68,16 +68,16 @@ export const makeAdapter =
       }
 
       if (dbWasEmptyWhenOpened) {
-        yield* migrateDb({ db: dbRef.current.syncDb, schema })
+        yield* migrateDb({ db: dbRef.current.sqliteDb, schema })
 
-        initializeSingletonTables(schema, dbRef.current.syncDb)
+        initializeSingletonTables(schema, dbRef.current.sqliteDb)
 
         switch (migrationOptions.strategy) {
           case 'from-mutation-log': {
             // TODO bring back
             // yield* rehydrateFromMutationLog({
-            //   db: dbRef.current.syncDb,
-            //   logDb: dbLogRef.current.syncDb,
+            //   db: dbRef.current.sqliteDb,
+            //   logDb: dbLogRef.current.sqliteDb,
             //   schema,
             //   migrationOptions,
             //   onProgress: () => Effect.void,
@@ -114,7 +114,7 @@ export const makeAdapter =
         [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
       )
 
-      const newMutationLogStmt = dbLogRef.current.syncDb.prepare(
+      const newMutationLogStmt = dbLogRef.current.sqliteDb.prepare(
         insertRowPrepared({ tableName: MUTATION_LOG_META_TABLE, columns: mutationLogMetaTable.sqliteDef.columns }),
       )
 
@@ -136,7 +136,7 @@ export const makeAdapter =
       )
 
       const initialMutationEventId = yield* Schema.decode(initialMutationEventIdSchema)(
-        dbLogRef.current.syncDb.select(
+        dbLogRef.current.sqliteDb.select(
           sql`SELECT idGlobal, idLocal FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
         ),
       )
@@ -208,14 +208,14 @@ export const makeAdapter =
                 }
               }),
           },
-          export: Effect.sync(() => dbRef.current.syncDb.export()),
-          getMutationLogData: Effect.sync(() => dbLogRef.current.syncDb.export()),
+          export: Effect.sync(() => dbRef.current.sqliteDb.export()),
+          getMutationLogData: Effect.sync(() => dbLogRef.current.sqliteDb.export()),
           networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
           sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
           getSyncState: Effect.dieMessage('Not implemented'),
         },
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
-        syncDb: dbRef.current.syncDb,
+        sqliteDb: dbRef.current.sqliteDb,
       } satisfies ClientSession
 
       if (devtoolsEnabled) {

@@ -3,14 +3,14 @@ import type {
   ClientSession,
   ClientSessionLeaderThreadProxy,
   LockStatus,
-  MakeSynchronousDatabase,
+  MakeSqliteDb,
   SyncOptions,
 } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
 import { getLocalHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
-import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -36,8 +36,8 @@ export const makeInMemoryAdapter =
     Effect.gen(function* () {
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
 
-      const makeSyncDb = syncDbFactory({ sqlite3 })
-      const syncDb = yield* makeSyncDb({ _tag: 'in-memory' })
+      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
+      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
@@ -47,14 +47,14 @@ export const makeInMemoryAdapter =
         storeId,
         clientId,
         schema,
-        makeSyncDb,
+        makeSqliteDb,
         syncOptions,
       })
 
-      syncDb.import(initialSnapshot)
+      sqliteDb.import(initialSnapshot)
 
       const clientSession = {
-        syncDb,
+        sqliteDb,
         devtools: { enabled: false },
         clientId,
         sessionId,
@@ -70,23 +70,23 @@ const makeLeaderThread = ({
   storeId,
   clientId,
   schema,
-  makeSyncDb,
+  makeSqliteDb,
   syncOptions,
 }: {
   storeId: string
   clientId: string
   schema: LiveStoreSchema
-  makeSyncDb: MakeSynchronousDatabase
+  makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
 }) =>
   Effect.gen(function* () {
     const layer = yield* Layer.memoize(
       makeLeaderThreadLayer({
         clientId,
-        db: yield* makeSyncDb({ _tag: 'in-memory' }),
-        dbLog: yield* makeSyncDb({ _tag: 'in-memory' }),
+        db: yield* makeSqliteDb({ _tag: 'in-memory' }),
+        dbLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
         devtoolsOptions: { enabled: false },
-        makeSyncDb,
+        makeSqliteDb,
         schema,
         shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
         storeId,

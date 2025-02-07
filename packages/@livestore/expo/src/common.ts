@@ -1,15 +1,15 @@
-import type { PreparedStatement, SynchronousDatabase } from '@livestore/common'
+import type { PreparedStatement, SqliteDb } from '@livestore/common'
 import { base64, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import * as ExpoFS from 'expo-file-system'
 import type * as SQLite from 'expo-sqlite'
 
-export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousDatabase => {
+export const makeSqliteDb = (db: SQLite.SQLiteDatabase): SqliteDb => {
   const stmts: PreparedStatement[] = []
 
-  const syncDb: SynchronousDatabase<any> = {
+  const sqliteDb: SqliteDb<any> = {
     metadata: { fileName: db.databasePath },
-    _tag: 'SynchronousDatabase',
+    _tag: 'SqliteDb',
     prepare: (queryStr) => {
       try {
         const dbStmt = db.prepareSync(queryStr)
@@ -51,7 +51,7 @@ export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousD
       return db.serializeSync()
     },
     select: (queryStr, bindValues) => {
-      const stmt = syncDb.prepare(queryStr)
+      const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
       stmt.finalize()
       return res as any
@@ -78,23 +78,23 @@ export const makeSynchronousDatabase = (db: SQLite.SQLiteDatabase): SynchronousD
     makeChangeset: (data) => {
       return {
         invert: () => {
-          return syncDb.makeChangeset(data)
+          return sqliteDb.makeChangeset(data)
         },
         apply: () => {
           // TODO
         },
       }
     },
-  } satisfies SynchronousDatabase
+  } satisfies SqliteDb
 
-  return syncDb
+  return sqliteDb
 }
 
 export type DbPairRef = {
   current:
     | {
         db: SQLite.SQLiteDatabase
-        syncDb: SynchronousDatabase
+        sqliteDb: SqliteDb
       }
     | undefined
 }

@@ -1,13 +1,13 @@
-import type { PreparedBindValues, SynchronousDatabase } from '@livestore/common'
+import type { PreparedBindValues, SqliteDb } from '@livestore/common'
 import { prepareBindValues, SqliteError } from '@livestore/common'
 import type { BindValues } from '@livestore/common/sql-queries'
 import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 
-export const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => {
+export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
-    try: () => syncDb.execute(sql, bindValues),
+    try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>
       new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(Effect.asVoid)
@@ -23,9 +23,9 @@ export const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValu
 // }
 
 // TODO actually use prepared statements
-export const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindValues: PreparedBindValues) => {
+export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: PreparedBindValues) => {
   return Effect.try({
-    try: () => syncDb.execute(sql, bindValues),
+    try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>
       new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(Effect.asVoid)

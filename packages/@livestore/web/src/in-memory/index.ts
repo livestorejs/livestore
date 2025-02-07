@@ -2,7 +2,7 @@ import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
 import { EventId } from '@livestore/common/schema'
-import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -22,24 +22,24 @@ export const makeInMemoryAdapter =
     Effect.gen(function* () {
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
 
-      const syncDb = yield* syncDbFactory({ sqlite3 })({ _tag: 'in-memory' })
+      const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
 
       if (initialData === undefined) {
-        yield* configureConnection(syncDb, { fkEnabled: true })
+        yield* configureConnection(sqliteDb, { fkEnabled: true })
 
-        yield* migrateDb({ db: syncDb, schema })
+        yield* migrateDb({ db: sqliteDb, schema })
 
-        initializeSingletonTables(schema, syncDb)
+        initializeSingletonTables(schema, sqliteDb)
       } else {
-        syncDb.import(initialData)
+        sqliteDb.import(initialData)
 
-        yield* configureConnection(syncDb, { fkEnabled: true })
+        yield* configureConnection(sqliteDb, { fkEnabled: true })
       }
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
       const clientSession = {
-        syncDb,
+        sqliteDb,
         devtools: { enabled: false },
         clientId: 'in-memory',
         sessionId: nanoid(6),

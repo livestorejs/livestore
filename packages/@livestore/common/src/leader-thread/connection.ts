@@ -1,7 +1,7 @@
 // import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 
-import type { SynchronousDatabase } from '../adapter-types.js'
+import type { SqliteDb } from '../adapter-types.js'
 import { SqliteError } from '../adapter-types.js'
 import type { BindValues } from '../sql-queries/index.js'
 import type { PreparedBindValues } from '../util.js'
@@ -12,9 +12,9 @@ namespace WaSqlite {
   export type SQLiteError = any
 }
 
-export const configureConnection = (syncDb: SynchronousDatabase, { fkEnabled }: { fkEnabled: boolean }) =>
+export const configureConnection = (sqliteDb: SqliteDb, { fkEnabled }: { fkEnabled: boolean }) =>
   execSql(
-    syncDb,
+    sqliteDb,
     sql`
     PRAGMA page_size=8192;
     PRAGMA journal_mode=MEMORY;
@@ -23,10 +23,10 @@ export const configureConnection = (syncDb: SynchronousDatabase, { fkEnabled }: 
     {},
   )
 
-export const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValues) => {
+export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
-    try: () => syncDb.execute(sql, bindValues),
+    try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>
       new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(
@@ -48,9 +48,9 @@ export const execSql = (syncDb: SynchronousDatabase, sql: string, bind: BindValu
 // }
 
 // TODO actually use prepared statements
-export const execSqlPrepared = (syncDb: SynchronousDatabase, sql: string, bindValues: PreparedBindValues) => {
+export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: PreparedBindValues) => {
   return Effect.try({
-    try: () => syncDb.execute(sql, bindValues),
+    try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>
       new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(

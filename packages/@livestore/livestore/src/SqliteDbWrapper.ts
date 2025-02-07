@@ -5,9 +5,9 @@ import type {
   MutableDebugInfo,
   PreparedBindValues,
   PreparedStatement,
-  SynchronousDatabase,
-  SynchronousDatabaseChangeset,
-  SynchronousDatabaseSession,
+  SqliteDb,
+  SqliteDbChangeset,
+  SqliteDbSession,
 } from '@livestore/common'
 import { BoundArray, BoundMap, sql } from '@livestore/common'
 import { isDevEnv } from '@livestore/utils'
@@ -23,13 +23,17 @@ export const emptyDebugInfo = (): DebugInfo => ({
   events: new BoundArray(1000),
 })
 
-export class SynchronousDatabaseWrapper implements SynchronousDatabase {
-  _tag = 'SynchronousDatabase' as const
+/**
+ * This class is mostly adding result caching around a SqliteDb which is used to speed up
+ * SQLite queries when used through the reactivity graph.
+ */
+export class SqliteDbWrapper implements SqliteDb {
+  _tag = 'SqliteDb' as const
   // TODO: how many unique active statements are expected?
   private cachedStmts = new BoundMap<string, PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, Set<string>>(200)
   private resultCache = new QueryCache()
-  private db: SynchronousDatabase
+  private db: SqliteDb
   private otelTracer: otel.Tracer
   private otelRootSpanContext: otel.Context
   private tablesUsedStmt
@@ -39,7 +43,7 @@ export class SynchronousDatabaseWrapper implements SynchronousDatabase {
     db,
     otel,
   }: {
-    db: SynchronousDatabase
+    db: SqliteDb
     otel: {
       tracer: otel.Tracer
       rootSpanContext: otel.Context
@@ -61,7 +65,7 @@ export class SynchronousDatabaseWrapper implements SynchronousDatabase {
   prepare(queryStr: string): PreparedStatement {
     return this.db.prepare(queryStr)
   }
-  import(data: Uint8Array<ArrayBufferLike> | SynchronousDatabase<any, any>) {
+  import(data: Uint8Array<ArrayBufferLike> | SqliteDb<any, any>) {
     return this.db.import(data)
   }
   close(): void {
@@ -70,10 +74,10 @@ export class SynchronousDatabaseWrapper implements SynchronousDatabase {
   destroy(): void {
     return this.db.destroy()
   }
-  session(): SynchronousDatabaseSession {
+  session(): SqliteDbSession {
     return this.db.session()
   }
-  makeChangeset(data: Uint8Array): SynchronousDatabaseChangeset {
+  makeChangeset(data: Uint8Array): SqliteDbChangeset {
     return this.db.makeChangeset(data)
   }
 
@@ -278,7 +282,7 @@ export class SynchronousDatabaseWrapper implements SynchronousDatabase {
 }
 
 /** Set up SQLite performance; hasn't been super carefully optimized yet. */
-const configureSQLite = (db: SynchronousDatabaseWrapper) => {
+const configureSQLite = (db: SqliteDbWrapper) => {
   db.execute(
     // TODO: revisit these tuning parameters for max performance
     sql`

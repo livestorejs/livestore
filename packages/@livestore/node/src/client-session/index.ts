@@ -14,7 +14,7 @@ import { Devtools, UnexpectedError } from '@livestore/common'
 import type { MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { syncDbFactory } from '@livestore/sqlite-wasm/node'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Cause } from '@livestore/utils/effect'
 import {
   BucketQueue,
@@ -64,7 +64,7 @@ export const makeNodeAdapter = ({
       const sessionId = 'static'
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
-      const makeSyncDb = yield* syncDbFactory({ sqlite3 })
+      const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 
       // TODO consider bringing back happy-path initialisation boost
       // const fileData = yield* fs.readFile(dbFilePath).pipe(Effect.either)
@@ -74,7 +74,7 @@ export const makeNodeAdapter = ({
       //   yield* Effect.logWarning('Failed to load database file', fileData.left)
       // }
 
-      const syncInMemoryDb = yield* makeSyncDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
+      const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 
       // TODO actually implement this multi-session support
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
@@ -111,7 +111,7 @@ export const makeNodeAdapter = ({
         : { enabled: false }
 
       const clientSession = {
-        syncDb: syncInMemoryDb,
+        sqliteDb: syncInMemoryDb,
         leaderThread,
         devtools,
         lockStatus,

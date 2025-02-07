@@ -1,11 +1,11 @@
 import '@livestore/utils/node-vitest-polyfill'
 
-import type { InvalidPushError, MakeSynchronousDatabase, UnexpectedError } from '@livestore/common'
+import type { InvalidPushError, MakeSqliteDb, UnexpectedError } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { syncDbFactory } from '@livestore/sqlite-wasm/node'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -196,16 +196,16 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
   )
 
-  const makeSyncDb = (yield* syncDbFactory({ sqlite3 })) as MakeSynchronousDatabase
+  const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb
 
   const leaderContextLayer = makeLeaderThreadLayer({
     schema,
     storeId: 'test',
     clientId: 'test',
-    makeSyncDb,
+    makeSqliteDb,
     syncOptions: { makeBackend: () => mockSyncBackend.makeSyncBackend },
-    db: yield* makeSyncDb({ _tag: 'in-memory' }),
-    dbLog: yield* makeSyncDb({ _tag: 'in-memory' }),
+    db: yield* makeSqliteDb({ _tag: 'in-memory' }),
+    dbLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
     devtoolsOptions: { enabled: false },
     shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
   })

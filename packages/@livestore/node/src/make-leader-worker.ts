@@ -22,7 +22,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { syncDbFactory } from '@livestore/sqlite-wasm/node'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import type { FileSystem, HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Effect,
@@ -179,12 +179,12 @@ const makeLeaderThread = ({
     const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
       Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
     )
-    const makeSyncDb = yield* syncDbFactory({ sqlite3 })
+    const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 
     const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
     const makeDb = (kind: 'app' | 'mutationlog') =>
-      makeSyncDb({
+      makeSqliteDb({
         _tag: 'fs',
         directory: path.join(baseDirectory ?? '', storeId),
         fileName:
@@ -212,7 +212,7 @@ const makeLeaderThread = ({
       schema,
       storeId,
       clientId,
-      makeSyncDb,
+      makeSqliteDb,
       syncOptions,
       db,
       dbLog,

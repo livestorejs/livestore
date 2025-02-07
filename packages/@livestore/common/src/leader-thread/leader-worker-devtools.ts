@@ -71,7 +71,7 @@ const listenToDevtools = ({
   persistenceInfo?: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, makeSyncDb, db, dbLog, shutdownStateSubRef, shutdownChannel, syncProcessor } =
+    const { syncBackend, makeSqliteDb, db, dbLog, shutdownStateSubRef, shutdownChannel, syncProcessor } =
       yield* LeaderThreadCtx
 
     type RequestId = string
@@ -107,15 +107,15 @@ const listenToDevtools = ({
               let tableNames: Set<string>
 
               try {
-                const tmpSyncDb = yield* makeSyncDb({ _tag: 'in-memory' })
-                tmpSyncDb.import(data)
-                const tableNameResults = tmpSyncDb.select<{ name: string }>(
+                const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
+                tmpDb.import(data)
+                const tableNameResults = tmpDb.select<{ name: string }>(
                   `select name from sqlite_master where type = 'table'`,
                 )
 
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 
-                tmpSyncDb.close()
+                tmpDb.close()
               } catch (e) {
                 yield* Effect.logError(`Error importing database file`, e)
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }))

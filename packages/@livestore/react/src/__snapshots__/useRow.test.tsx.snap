@@ -22,22 +22,6 @@ exports[`useRow > otel > should update the data based on component key strictMod
       },
     },
     {
-      "_name": "sql-in-memory-select",
-      "attributes": {
-        "sql.cached": false,
-        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
-        "sql.rowsCount": 0,
-      },
-    },
-    {
-      "_name": "sql-in-memory-select",
-      "attributes": {
-        "sql.cached": false,
-        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
-        "sql.rowsCount": 1,
-      },
-    },
-    {
       "_name": "LiveStore:sync",
     },
     {
@@ -72,6 +56,14 @@ exports[`useRow > otel > should update the data based on component key strictMod
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 0,
+              },
+            },
             {
               "_name": "LiveStore:mutate",
               "attributes": {
@@ -144,6 +136,14 @@ exports[`useRow > otel > should update the data based on component key strictMod
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+            },
             {
               "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
               "attributes": {
@@ -219,22 +219,6 @@ exports[`useRow > otel > should update the data based on component key strictMod
       },
     },
     {
-      "_name": "sql-in-memory-select",
-      "attributes": {
-        "sql.cached": false,
-        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
-        "sql.rowsCount": 0,
-      },
-    },
-    {
-      "_name": "sql-in-memory-select",
-      "attributes": {
-        "sql.cached": false,
-        "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
-        "sql.rowsCount": 1,
-      },
-    },
-    {
       "_name": "LiveStore:sync",
     },
     {
@@ -269,6 +253,14 @@ exports[`useRow > otel > should update the data based on component key strictMod
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
+            {
+              "_name": "sql-in-memory-select",
+              "attributes": {
+                "sql.cached": false,
+                "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 0,
+              },
+            },
             {
               "_name": "LiveStore:mutate",
               "attributes": {

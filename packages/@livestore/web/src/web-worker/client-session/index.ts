@@ -7,7 +7,7 @@ import { ShutdownChannel } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
 import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
-import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -325,13 +325,13 @@ export const makeAdapter =
       // re-exporting the db
       const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.Export()))
 
-      const makeSyncDb = syncDbFactory({ sqlite3 })
-      const syncDb = yield* makeSyncDb({ _tag: 'in-memory' })
+      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
+      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
 
-      syncDb.import(initialSnapshot)
+      sqliteDb.import(initialSnapshot)
 
       const numberOfTables =
-        syncDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
+        sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
         yield* UnexpectedError.make({
           cause: `Encountered empty or corrupted database`,
@@ -339,7 +339,7 @@ export const makeAdapter =
         })
       }
 
-      const mutationHead = syncDb.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
+      const mutationHead = sqliteDb.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
         `select idGlobal, idLocal from ${SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idLocal desc limit 1`,
       )[0]
 
@@ -379,7 +379,7 @@ export const makeAdapter =
         : { enabled: false }
 
       const clientSession = {
-        syncDb,
+        sqliteDb,
         devtools,
         lockStatus,
         clientId,

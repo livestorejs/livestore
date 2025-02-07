@@ -2,7 +2,7 @@ import { SqliteAst, SqliteDsl } from '@livestore/db-schema'
 import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
-import type { SynchronousDatabase } from '../adapter-types.js'
+import type { SqliteDb } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
 import {
@@ -19,7 +19,7 @@ import { validateSchema } from './validate-mutation-defs.js'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
-export const makeSchemaManager = (db: SynchronousDatabase): Effect.Effect<SchemaManager> =>
+export const makeSchemaManager = (db: SqliteDb): Effect.Effect<SchemaManager> =>
   Effect.gen(function* () {
     yield* migrateTable({
       db,
@@ -51,7 +51,7 @@ export const migrateDb = ({
   schema,
   onProgress,
 }: {
-  db: SynchronousDatabase
+  db: SqliteDb
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
 }) =>
@@ -116,7 +116,7 @@ export const migrateTable = ({
   behaviour,
   skipMetaTable = false,
 }: {
-  db: SynchronousDatabase
+  db: SqliteDb
   tableAst: SqliteAst.Table
   schemaHash?: number
   behaviour: 'drop-and-recreate' | 'create-if-not-exists'

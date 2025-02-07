@@ -6,7 +6,7 @@ import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
 import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
+import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import type { StackInfo } from '../utils/stack-info.js'
 import type { Store } from './store.js'
 
@@ -42,7 +42,7 @@ export type BaseGraphQLContext = {
 
 export type GraphQLOptions<TContext> = {
   schema: GraphQLSchema
-  makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => TContext
+  makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => TContext
 }
 
 export type OtelOptions = {

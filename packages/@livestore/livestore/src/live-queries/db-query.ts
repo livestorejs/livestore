@@ -319,7 +319,7 @@ export class LiveStoreDbQuery<
             const bindValues = queryInputResult.bindValues
 
             if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store.syncDbWrapper.getTablesUsed(sqlString)
+              queriedTablesRef.current = store.sqliteDbWrapper.getTablesUsed(sqlString)
             }
 
             if (bindValues !== undefined) {
@@ -335,7 +335,7 @@ export class LiveStoreDbQuery<
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store.syncDbWrapper.select<any>(
+            const rawDbResults = store.sqliteDbWrapper.select<any>(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               {

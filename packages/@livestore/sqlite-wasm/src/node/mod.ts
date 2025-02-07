@@ -1,17 +1,12 @@
 import path from 'node:path'
 
-import {
-  type MakeSynchronousDatabase,
-  type PersistenceInfo,
-  type SynchronousDatabase,
-  UnexpectedError,
-} from '@livestore/common'
+import { type MakeSqliteDb, type PersistenceInfo, type SqliteDb, UnexpectedError } from '@livestore/common'
 import { Effect, FileSystem } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
 import { makeInMemoryDb } from '../in-memory-vfs.js'
-import { makeSynchronousDatabase } from '../make-sync-db.js'
+import { makeSqliteDb } from '../make-sqlite-db.js'
 import { NodeFS } from './NodeFS.js'
 
 export type NodeDatabaseMetadataInMemory = {
@@ -20,7 +15,7 @@ export type NodeDatabaseMetadataInMemory = {
   dbPointer: number
   persistenceInfo: PersistenceInfo
   deleteDb: () => void
-  configureDb: (db: SynchronousDatabase) => void
+  configureDb: (db: SqliteDb) => void
 }
 
 export type NodeDatabaseMetadataFs = {
@@ -29,35 +24,31 @@ export type NodeDatabaseMetadataFs = {
   dbPointer: number
   persistenceInfo: PersistenceInfo<{ directory: string }>
   deleteDb: () => void
-  configureDb: (db: SynchronousDatabase) => void
+  configureDb: (db: SqliteDb) => void
 }
 
 export type NodeDatabaseMetadata = NodeDatabaseMetadataInMemory | NodeDatabaseMetadataFs
 
 export type NodeDatabaseInputInMemory = {
   _tag: 'in-memory'
-  configureDb?: (db: SynchronousDatabase) => void
+  configureDb?: (db: SqliteDb) => void
 }
 
 export type NodeDatabaseInputFs = {
   _tag: 'fs'
   directory: string
   fileName: string
-  configureDb?: (db: SynchronousDatabase) => void
+  configureDb?: (db: SqliteDb) => void
 }
 
 export type NodeDatabaseInput = NodeDatabaseInputInMemory | NodeDatabaseInputFs
 
-export const syncDbFactory = ({
+export const sqliteDbFactory = ({
   sqlite3,
 }: {
   sqlite3: SQLiteAPI
 }): Effect.Effect<
-  MakeSynchronousDatabase<
-    { dbPointer: number; persistenceInfo: PersistenceInfo },
-    NodeDatabaseInput,
-    NodeDatabaseMetadata
-  >,
+  MakeSqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }, NodeDatabaseInput, NodeDatabaseMetadata>,
   never,
   FileSystem.FileSystem
 > =>
@@ -67,7 +58,7 @@ export const syncDbFactory = ({
       Effect.gen(function* () {
         if (input._tag === 'in-memory') {
           const { dbPointer, vfs } = makeInMemoryDb(sqlite3)
-          return makeSynchronousDatabase<NodeDatabaseMetadataInMemory>({
+          return makeSqliteDb<NodeDatabaseMetadataInMemory>({
             sqlite3,
             metadata: {
               _tag: 'in-memory',
@@ -89,7 +80,7 @@ export const syncDbFactory = ({
 
         const filePath = path.join(input.directory, input.fileName)
 
-        return makeSynchronousDatabase<NodeDatabaseMetadataFs>({
+        return makeSqliteDb<NodeDatabaseMetadataFs>({
           sqlite3,
           metadata: {
             _tag: 'fs',

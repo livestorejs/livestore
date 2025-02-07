@@ -52,7 +52,7 @@ export const makeExecBeforeFirstRun =
     if (table.options.isSingleton === false) {
       const idStr = id === SessionIdSymbol ? store.sessionId : id!
       const rowExists =
-        store.syncDbWrapper.select(
+        store.sqliteDbWrapper.select(
           `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
           [idStr] as any as PreparedBindValues,
           { otelContext },

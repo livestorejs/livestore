@@ -64,6 +64,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
         const { 0: client, 1: server } = new WebSocketPair()
 
+        // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
         server.serializeAttachment(Schema.encodeSync(WebSocketAttachmentSchema)({ storeId }))
 
         // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server

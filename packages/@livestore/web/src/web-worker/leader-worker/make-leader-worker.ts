@@ -1,4 +1,4 @@
-import type { NetworkStatus, SynchronousDatabase, SyncOptions } from '@livestore/common'
+import type { NetworkStatus, SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import {
@@ -12,7 +12,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
 import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
-import { syncDbFactory } from '@livestore/sqlite-wasm/browser'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
@@ -109,10 +109,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
     InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
-        const makeSyncDb = syncDbFactory({ sqlite3 })
+        const makeSqliteDb = sqliteDbFactory({ sqlite3 })
 
         const makeDb = (kind: 'app' | 'mutationlog') =>
-          makeSyncDb({
+          makeSqliteDb({
             _tag: 'opfs',
             opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
             fileName: kind === 'app' ? getAppDbFileName(schema) : 'mutationlog.db',
@@ -129,7 +129,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           schema,
           storeId,
           clientId,
-          makeSyncDb,
+          makeSqliteDb,
           syncOptions,
           db,
           dbLog,
@@ -228,8 +228,8 @@ const makeDevtoolsOptions = ({
   dbLog,
 }: {
   devtoolsEnabled: boolean
-  db: SynchronousDatabase
-  dbLog: SynchronousDatabase
+  db: SqliteDb
+  dbLog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebMeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {

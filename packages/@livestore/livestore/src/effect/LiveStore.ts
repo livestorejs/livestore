@@ -5,10 +5,10 @@ import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/uti
 import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
+import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { createStore } from '../store/create-store.js'
 import type { Store } from '../store/store.js'
 import type { BaseGraphQLContext, LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store/store-types.js'
-import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
   LiveStoreContextRunning,
@@ -39,7 +39,7 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   storeId?: string
   graphQLOptions?: {
     schema: Effect.Effect<GraphQLSchema, never, OtelTracer.OtelTracer>
-    makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
+    makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
   }
   boot?: (
     store: Store<GraphQLContext, LiveStoreSchema>,
