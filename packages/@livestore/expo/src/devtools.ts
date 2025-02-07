@@ -32,14 +32,14 @@ export const bootDevtools = ({
   schema,
   shutdown,
   dbRef,
-  dbLogRef,
+  dbMutationLogRef,
   incomingSyncMutationsQueue,
 }: {
   connectDevtoolsToStore: ConnectDevtoolsToStore
   clientSession: ClientSession
   schema: LiveStoreSchema
   dbRef: DbPairRef
-  dbLogRef: DbPairRef
+  dbMutationLogRef: DbPairRef
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
   incomingSyncMutationsQueue: Queue.Queue<PullQueueItem>
 }): Effect.Effect<BootedDevtools, UnexpectedError | ParseResult.ParseError, Scope.Scope> =>
@@ -158,11 +158,11 @@ export const bootDevtools = ({
               if (tableNames.has(MUTATION_LOG_META_TABLE)) {
                 // yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                dbLogRef.current!.db.closeSync()
+                dbMutationLogRef.current!.db.closeSync()
 
-                yield* overwriteDbFile(getDatabaseName(dbLogRef), data)
+                yield* overwriteDbFile(getDatabaseName(dbMutationLogRef), data)
 
-                dbLogRef.current = undefined
+                dbMutationLogRef.current = undefined
 
                 dbRef.current!.db.closeSync()
                 SQLite.deleteDatabaseSync(getDatabaseName(dbRef))
@@ -194,8 +194,8 @@ export const bootDevtools = ({
               SQLite.deleteDatabaseSync(getDatabaseName(dbRef))
 
               if (mode === 'all-data') {
-                dbLogRef.current!.db.closeSync()
-                SQLite.deleteDatabaseSync(getDatabaseName(dbLogRef))
+                dbMutationLogRef.current!.db.closeSync()
+                SQLite.deleteDatabaseSync(getDatabaseName(dbMutationLogRef))
               }
 
               yield* expoDevtoolsChannel.send(Devtools.ResetAllDataRes.make({ ...reqPayload }))
@@ -208,14 +208,14 @@ export const bootDevtools = ({
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
               const dbFileSize = dbRef.current!.db.prepareSync(dbSizeQuery).executeSync<any>().getFirstSync()!
                 .size as number
-              const mutationLogFileSize = dbLogRef
+              const mutationLogFileSize = dbMutationLogRef
                 .current!.db.prepareSync(dbSizeQuery)
                 .executeSync<any>()
                 .getFirstSync()!.size as number
 
               yield* expoDevtoolsChannel.send(
                 Devtools.DatabaseFileInfoRes.make({
-                  db: { fileSize: dbFileSize, persistenceInfo: { fileName: 'livestore.db' } },
+                  readModel: { fileSize: dbFileSize, persistenceInfo: { fileName: 'livestore.db' } },
                   mutationLog: {
                     fileSize: mutationLogFileSize,
                     persistenceInfo: { fileName: 'livestore-mutationlog.db' },

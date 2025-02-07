@@ -71,8 +71,15 @@ const listenToDevtools = ({
   persistenceInfo?: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, makeSqliteDb, db, dbLog, shutdownStateSubRef, shutdownChannel, syncProcessor } =
-      yield* LeaderThreadCtx
+    const {
+      syncBackend,
+      makeSqliteDb,
+      dbReadModel,
+      dbMutationLog,
+      shutdownStateSubRef,
+      shutdownChannel,
+      syncProcessor,
+    } = yield* LeaderThreadCtx
 
     type RequestId = string
     const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
@@ -95,7 +102,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.SnapshotReq': {
-              const snapshot = db.export()
+              const snapshot = dbReadModel.export()
 
               yield* sendMessage(Devtools.SnapshotRes.make({ snapshot, ...reqPayload }))
 
@@ -126,15 +133,15 @@ const listenToDevtools = ({
               if (tableNames.has(MUTATION_LOG_META_TABLE)) {
                 yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                dbLog.import(data)
+                dbMutationLog.import(data)
 
-                db.destroy()
+                dbReadModel.destroy()
               } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
                 yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                db.import(data)
+                dbReadModel.import(data)
 
-                dbLog.destroy()
+                dbMutationLog.destroy()
               } else {
                 yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }))
                 return
@@ -151,10 +158,10 @@ const listenToDevtools = ({
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-              db.destroy()
+              dbReadModel.destroy()
 
               if (mode === 'all-data') {
-                dbLog.destroy()
+                dbMutationLog.destroy()
               }
 
               yield* sendMessage(Devtools.ResetAllDataRes.make({ ...reqPayload }))
@@ -170,12 +177,12 @@ const listenToDevtools = ({
               }
 
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
-              const dbFileSize = db.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
-              const mutationLogFileSize = dbLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const dbFileSize = dbReadModel.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const mutationLogFileSize = dbMutationLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(
                 Devtools.DatabaseFileInfoRes.make({
-                  db: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.db },
+                  readModel: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.readModel },
                   mutationLog: { fileSize: mutationLogFileSize, persistenceInfo: persistenceInfo.mutationLog },
                   ...reqPayload,
                 }),
@@ -184,7 +191,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.MutationLogReq': {
-              const mutationLog = dbLog.export()
+              const mutationLog = dbMutationLog.export()
 
               yield* sendMessage(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
 

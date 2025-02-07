@@ -83,8 +83,8 @@ const makeLeaderThread = ({
     const layer = yield* Layer.memoize(
       makeLeaderThreadLayer({
         clientId,
-        db: yield* makeSqliteDb({ _tag: 'in-memory' }),
-        dbLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
+        dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
+        dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
         devtoolsOptions: { enabled: false },
         makeSqliteDb,
         schema,
@@ -95,10 +95,15 @@ const makeLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { db, dbLog, syncProcessor, connectedClientSessionPullQueues, extraIncomingMessagesQueue } =
-        yield* LeaderThreadCtx
+      const {
+        dbReadModel: db,
+        dbMutationLog,
+        syncProcessor,
+        connectedClientSessionPullQueues,
+        extraIncomingMessagesQueue,
+      } = yield* LeaderThreadCtx
 
-      const initialMutationEventId = getLocalHeadFromDb(dbLog)
+      const initialMutationEventId = getLocalHeadFromDb(dbMutationLog)
       const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialMutationEventId)
 
       const leaderThread = {
@@ -111,7 +116,7 @@ const makeLeaderThread = ({
           initialMutationEventId,
         },
         export: Effect.sync(() => db.export()),
-        getMutationLogData: Effect.sync(() => dbLog.export()),
+        getMutationLogData: Effect.sync(() => dbMutationLog.export()),
         // TODO
         networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
         getSyncState: syncProcessor.syncState,

@@ -12,13 +12,13 @@ export const recreateDb: Effect.Effect<
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | HttpClient.HttpClient
 > = Effect.gen(function* () {
-  const { db, dbLog, schema, bootStatusQueue } = yield* LeaderThreadCtx
+  const { dbReadModel, dbMutationLog, schema, bootStatusQueue } = yield* LeaderThreadCtx
 
   const migrationOptions = schema.migrationOptions
 
   yield* Effect.addFinalizer(
     Effect.fn('recreateDb:finalizer')(function* (ex) {
-      if (ex._tag === 'Failure') db.destroy()
+      if (ex._tag === 'Failure') dbReadModel.destroy()
     }),
   )
 
@@ -26,7 +26,7 @@ export const recreateDb: Effect.Effect<
   // and later we'll overwrite the persisted database with the new data
   // TODO bring back this optimization
   // const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-  const tmpDb = db
+  const tmpDb = dbReadModel
   yield* configureConnection(tmpDb, { fkEnabled: true })
 
   const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
@@ -54,7 +54,7 @@ export const recreateDb: Effect.Effect<
 
       yield* rehydrateFromMutationLog({
         db: tmpDb,
-        logDb: dbLog,
+        logDb: dbMutationLog,
         schema,
         migrationOptions,
         onProgress: ({ done, total }) =>
@@ -76,7 +76,7 @@ export const recreateDb: Effect.Effect<
       break
     }
     case 'manual': {
-      const oldDbData = db.export()
+      const oldDbData = dbReadModel.export()
 
       const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
         UnexpectedError.mapToUnexpectedError,

@@ -38,7 +38,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
     return (mutationEventEncoded, options) =>
       Effect.gen(function* () {
-        const { schema, db, dbLog } = leaderThreadCtx
+        const { schema, dbReadModel: db, dbMutationLog } = leaderThreadCtx
         const skipMutationLog = options?.skipMutationLog ?? false
 
         const mutationName = mutationEventEncoded.mutation
@@ -92,7 +92,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         // write to mutation_log
         const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
         if (skipMutationLog === false && excludeFromMutationLog === false) {
-          yield* insertIntoMutationLog(mutationEventEncoded, dbLog, mutationDefSchemaHashMap)
+          yield* insertIntoMutationLog(mutationEventEncoded, dbMutationLog, mutationDefSchemaHashMap)
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
         }
@@ -111,7 +111,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
 
 const insertIntoMutationLog = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
-  dbLog: SqliteDb,
+  dbMutationLog: SqliteDb,
   mutationDefSchemaHashMap: Map<string, number>,
 ) =>
   Effect.gen(function* () {
@@ -121,7 +121,7 @@ const insertIntoMutationLog = (
 
     // TODO use prepared statements
     yield* execSql(
-      dbLog,
+      dbMutationLog,
       ...insertRow({
         tableName: MUTATION_LOG_META_TABLE,
         columns: mutationLogMetaTable.sqliteDef.columns,

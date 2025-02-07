@@ -67,13 +67,13 @@ type PushQueueItem = [
 export const makeLeaderSyncProcessor = ({
   schema,
   dbMissing,
-  dbLog,
+  dbMutationLog,
   initialBlockingSyncContext,
 }: {
   schema: LiveStoreSchema
-  /** Only used to know whether we can safely query dbLog during setup execution */
+  /** Only used to know whether we can safely query dbMutationLog during setup execution */
   dbMissing: boolean
-  dbLog: SqliteDb
+  dbMutationLog: SqliteDb
   initialBlockingSyncContext: InitialBlockingSyncContext
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
@@ -168,8 +168,8 @@ export const makeLeaderSyncProcessor = ({
           devtoolsPushLatch: devtools.enabled ? devtools.syncBackendPushLatch : undefined,
         }
 
-        const initialBackendHead = dbMissing ? EventId.ROOT.global : getBackendHeadFromDb(dbLog)
-        const initialLocalHead = dbMissing ? EventId.ROOT : getLocalHeadFromDb(dbLog)
+        const initialBackendHead = dbMissing ? EventId.ROOT.global : getBackendHeadFromDb(dbMutationLog)
+        const initialLocalHead = dbMissing ? EventId.ROOT : getLocalHeadFromDb(dbMutationLog)
 
         if (initialBackendHead > initialLocalHead.global) {
           return shouldNeverHappen(
@@ -382,14 +382,14 @@ type ApplyMutationItems = (_: {
 const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError, LeaderThreadCtx | Scope.Scope> =
   Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
-    const { db, dbLog } = leaderThreadCtx
+    const { dbReadModel: db, dbMutationLog } = leaderThreadCtx
 
     const applyMutation = yield* makeApplyMutation
 
     return ({ batchItems, deferreds }) =>
       Effect.gen(function* () {
         db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-        dbLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        dbMutationLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
         yield* Effect.addFinalizer((exit) =>
           Effect.gen(function* () {
@@ -397,7 +397,7 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
 
             // Rollback in case of an error
             db.execute('ROLLBACK', undefined)
-            dbLog.execute('ROLLBACK', undefined)
+            dbMutationLog.execute('ROLLBACK', undefined)
           }),
         )
 
@@ -410,7 +410,7 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
         }
 
         db.execute('COMMIT', undefined) // Commit the transaction
-        dbLog.execute('COMMIT', undefined) // Commit the transaction
+        dbMutationLog.execute('COMMIT', undefined) // Commit the transaction
       }).pipe(
         Effect.uninterruptible,
         Effect.scoped,
@@ -448,7 +448,13 @@ const backgroundBackendPulling = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, db, dbLog, connectedClientSessionPullQueues, schema } = yield* LeaderThreadCtx
+    const {
+      syncBackend,
+      dbReadModel: db,
+      dbMutationLog,
+      connectedClientSessionPullQueues,
+      schema,
+    } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -489,7 +495,7 @@ const backgroundBackendPulling = ({
 
         const newBackendHead = newEvents.at(-1)!.id
 
-        updateBackendHead(dbLog, newBackendHead)
+        updateBackendHead(dbMutationLog, newBackendHead)
 
         if (updateResult._tag === 'rebase') {
           otelSpan?.addEvent('backend-pull:rebase', {
@@ -506,7 +512,7 @@ const backgroundBackendPulling = ({
           yield* restartBackendPushing(filteredRebasedPending)
 
           if (updateResult.eventsToRollback.length > 0) {
-            yield* rollback({ db, dbLog, eventIdsToRollback: updateResult.eventsToRollback.map((_) => _.id) })
+            yield* rollback({ db, dbMutationLog, eventIdsToRollback: updateResult.eventsToRollback.map((_) => _.id) })
           }
 
           yield* connectedClientSessionPullQueues.offer({
@@ -576,11 +582,11 @@ const backgroundBackendPulling = ({
 
 const rollback = ({
   db,
-  dbLog,
+  dbMutationLog,
   eventIdsToRollback,
 }: {
   db: SqliteDb
-  dbLog: SqliteDb
+  dbMutationLog: SqliteDb
   eventIdsToRollback: EventId.EventId[]
 }) =>
   Effect.gen(function* () {
@@ -605,7 +611,7 @@ const rollback = ({
     )
 
     // Delete the mutation log rows
-    dbLog.execute(
+    dbMutationLog.execute(
       sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
     )
   }).pipe(
@@ -616,7 +622,7 @@ const rollback = ({
 
 const getCursorInfo = (remoteHead: EventId.GlobalEventId) =>
   Effect.gen(function* () {
-    const { dbLog } = yield* LeaderThreadCtx
+    const { dbMutationLog } = yield* LeaderThreadCtx
 
     if (remoteHead === EventId.ROOT.global) return Option.none()
 
@@ -625,7 +631,7 @@ const getCursorInfo = (remoteHead: EventId.GlobalEventId) =>
     }).pipe(Schema.pluck('syncMetadataJson'), Schema.Array, Schema.head)
 
     const syncMetadataOption = yield* Effect.sync(() =>
-      dbLog.select<{ syncMetadataJson: string }>(
+      dbMutationLog.select<{ syncMetadataJson: string }>(
         sql`SELECT syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE idGlobal = ${remoteHead} ORDER BY idLocal ASC LIMIT 1`,
       ),
     ).pipe(Effect.andThen(Schema.decode(MutationlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
@@ -646,7 +652,7 @@ const backgroundBackendPushing = ({
   otelSpan: otel.Span | undefined
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, dbLog } = yield* LeaderThreadCtx
+    const { syncBackend, dbMutationLog } = yield* LeaderThreadCtx
     if (syncBackend === undefined) return
 
     yield* dbReady
@@ -679,7 +685,7 @@ const backgroundBackendPushing = ({
       for (let i = 0; i < queueItems.length; i++) {
         const mutationEventEncoded = queueItems[i]!
         yield* execSql(
-          dbLog,
+          dbMutationLog,
           ...updateRows({
             tableName: MUTATION_LOG_META_TABLE,
             columns: mutationLogMetaTable.sqliteDef.columns,

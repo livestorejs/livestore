@@ -120,9 +120,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Might involve some async work, so we're running them concurrently
-        const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
+        const [dbReadModel, dbMutationLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], {
+          concurrency: 2,
+        })
 
-        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, db, dbLog })
+        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbReadModel, dbMutationLog })
         const shutdownChannel = yield* makeShutdownChannel(storeId)
 
         return makeLeaderThreadLayer({
@@ -131,8 +133,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           clientId,
           makeSqliteDb,
           syncOptions,
-          db,
-          dbLog,
+          dbReadModel,
+          dbMutationLog,
           devtoolsOptions,
           shutdownChannel,
         })
@@ -173,12 +175,12 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/web:worker:PushToLeader')),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbReadModel.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/web:worker:Export'),
       ),
     ExportMutationlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbLog.export()).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbMutationLog.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/web:worker:ExportMutationlog'),
       ),
@@ -187,7 +189,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
     GetCurrentMutationEventId: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return getLocalHeadFromDb(workerCtx.dbLog)
+        return getLocalHeadFromDb(workerCtx.dbMutationLog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetCurrentMutationEventId')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
@@ -224,12 +226,12 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
-  db,
-  dbLog,
+  dbReadModel,
+  dbMutationLog,
 }: {
   devtoolsEnabled: boolean
-  db: SqliteDb
-  dbLog: SqliteDb
+  dbReadModel: SqliteDb
+  dbMutationLog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebMeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {
@@ -247,8 +249,8 @@ const makeDevtoolsOptions = ({
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),
           persistenceInfo: {
-            db: db.metadata.persistenceInfo,
-            mutationLog: dbLog.metadata.persistenceInfo,
+            readModel: dbReadModel.metadata.persistenceInfo,
+            mutationLog: dbMutationLog.metadata.persistenceInfo,
           },
         }
       }),

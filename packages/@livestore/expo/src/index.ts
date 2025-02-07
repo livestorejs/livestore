@@ -42,25 +42,26 @@ export const makeAdapter =
 
       const dbWasEmptyWhenOpened = dbRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
 
-      const dbLog = SQLite.openDatabaseSync(
+      const dbMutationLog = SQLite.openDatabaseSync(
         `${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`,
       )
 
-      const dbLogRef = { current: { db: dbLog, sqliteDb: makeSqliteDb(dbLog) } }
+      const dbMutationLogRef = { current: { db: dbMutationLog, sqliteDb: makeSqliteDb(dbMutationLog) } }
 
-      const dbLogWasEmptyWhenOpened = dbLogRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
+      const dbMutationLogWasEmptyWhenOpened =
+        dbMutationLogRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
 
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
           // Ignoring in case the database is already closed
           yield* Effect.try(() => db.closeSync()).pipe(Effect.ignore)
-          yield* Effect.try(() => dbLog.closeSync()).pipe(Effect.ignore)
+          yield* Effect.try(() => dbMutationLog.closeSync()).pipe(Effect.ignore)
         }),
       )
 
-      if (dbLogWasEmptyWhenOpened) {
+      if (dbMutationLogWasEmptyWhenOpened) {
         yield* migrateTable({
-          db: dbLogRef.current.sqliteDb,
+          db: dbMutationLogRef.current.sqliteDb,
           behaviour: 'create-if-not-exists',
           tableAst: mutationLogMetaTable.sqliteDef.ast,
           skipMetaTable: true,
@@ -77,7 +78,7 @@ export const makeAdapter =
             // TODO bring back
             // yield* rehydrateFromMutationLog({
             //   db: dbRef.current.sqliteDb,
-            //   logDb: dbLogRef.current.sqliteDb,
+            //   logDb: dbMutationLogRef.current.sqliteDb,
             //   schema,
             //   migrationOptions,
             //   onProgress: () => Effect.void,
@@ -114,7 +115,7 @@ export const makeAdapter =
         [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
       )
 
-      const newMutationLogStmt = dbLogRef.current.sqliteDb.prepare(
+      const newMutationLogStmt = dbMutationLogRef.current.sqliteDb.prepare(
         insertRowPrepared({ tableName: MUTATION_LOG_META_TABLE, columns: mutationLogMetaTable.sqliteDef.columns }),
       )
 
@@ -136,7 +137,7 @@ export const makeAdapter =
       )
 
       const initialMutationEventId = yield* Schema.decode(initialMutationEventIdSchema)(
-        dbLogRef.current.sqliteDb.select(
+        dbMutationLogRef.current.sqliteDb.select(
           sql`SELECT idGlobal, idLocal FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
         ),
       )
@@ -209,7 +210,7 @@ export const makeAdapter =
               }),
           },
           export: Effect.sync(() => dbRef.current.sqliteDb.export()),
-          getMutationLogData: Effect.sync(() => dbLogRef.current.sqliteDb.export()),
+          getMutationLogData: Effect.sync(() => dbMutationLogRef.current.sqliteDb.export()),
           networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
           sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
           getSyncState: Effect.dieMessage('Not implemented'),
@@ -224,7 +225,7 @@ export const makeAdapter =
           clientSession,
           schema,
           dbRef,
-          dbLogRef,
+          dbMutationLogRef,
           shutdown,
           incomingSyncMutationsQueue,
         }).pipe(
