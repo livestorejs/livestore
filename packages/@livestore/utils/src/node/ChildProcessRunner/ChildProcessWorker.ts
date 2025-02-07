@@ -55,12 +55,9 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
   },
 })
 
-/** @internal */
 export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerImpl)
 
-/** @internal */
 export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
 
-/** @internal */
 export const layer = (spawn: (id: number) => ChildProcess.ChildProcess) =>
   Layer.merge(layerManager, Worker.layerSpawner(spawn))

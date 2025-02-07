@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
 import type { ViewStyle } from 'react-native'
@@ -18,12 +18,13 @@ import {
 } from '@/utils/generate-fake-data.ts'
 
 const COMMENTS_PER_ISSUE = 10
+const users$ = queryDb(tables.users.query.where({}), { label: 'inbox-users' })
 
 const InboxScreen = () => {
   const user = useUser()
   const { store } = useStore()
 
-  const users = useScopedQuery(() => queryDb(tables.users.query.where({}), { label: 'inbox-users' }), ['inbox-users'])
+  const users = useQuery(users$)
 
   const generateRandomData = (numUsers: number, numIssuesPerUser: number) => {
     const users: User[] = []

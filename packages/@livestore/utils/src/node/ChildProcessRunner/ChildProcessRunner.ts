@@ -59,5 +59,4 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   },
 })
 
-/** @internal */
 export const layer = Layer.succeed(Runner.PlatformRunner, platformRunnerImpl)

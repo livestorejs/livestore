@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import React from 'react'
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native'
@@ -15,14 +15,15 @@ const EditIssueScreen = () => {
   const { store } = useStore()
   const router = useRouter()
 
-  const issue = useScopedQuery(
-    () => queryDb(tables.issues.query.where({ id: issueId }).first(), { label: 'issue' }),
-    ['edit-issue', issueId],
+  const issue = useQuery(
+    queryDb(tables.issues.query.where({ id: issueId }).first(), { label: 'issue', deps: `edit-issue-${issueId}` }),
   )
 
-  const assignee = useScopedQuery(
-    () => queryDb(tables.users.query.where({ id: issue.assigneeId! }).first(), { label: 'assignee' }),
-    ['edit-issue-assignee', issue.assigneeId!],
+  const assignee = useQuery(
+    queryDb(tables.users.query.where({ id: issue.assigneeId! }).first(), {
+      label: 'assignee',
+      deps: `edit-issue-assignee-${issue.assigneeId}`,
+    }),
   )
 
   const handleGoBack = () => {

@@ -10,6 +10,7 @@
     "incremental": true,
     "composite": true,
     "allowJs": true,
+    "stripInternal": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,

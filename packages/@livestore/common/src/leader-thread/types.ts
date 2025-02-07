@@ -104,7 +104,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncProcessor: LeaderSyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
     /**
-     * e.g. used for `store.__dev` APIs
+     * e.g. used for `store._dev` APIs
      *
      * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
      */
