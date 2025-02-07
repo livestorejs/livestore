@@ -614,6 +614,8 @@ export class Store<
         .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
         .pipe(Effect.tapCauseLogPretty, Effect.provide(this.runtime), Effect.runFork)
     },
+
+    version: liveStoreVersion,
   }
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path

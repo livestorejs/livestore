@@ -18,6 +18,7 @@
     "access": "public"
   },
   "scripts": {
+    "build": "",
     "test": "echo 'No tests yet'"
   }
 }
