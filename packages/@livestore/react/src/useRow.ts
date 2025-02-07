@@ -2,7 +2,7 @@ import type { QueryInfo, RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import type { SqliteDsl } from '@livestore/db-schema'
-import type { LiveQuery, LiveQueryDef } from '@livestore/livestore'
+import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyRecord } from '@livestore/utils/effect'
@@ -27,6 +27,7 @@ export type UseRowResult<TTableDef extends DbSchema.TableDefBase> = [
  * If the table is a singleton table, `useRow` can be called without an `id` argument. Otherwise, the `id` argument is required.
  */
 export const useRow: {
+  // isSingleton: true
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
@@ -34,7 +35,10 @@ export const useRow: {
     >,
   >(
     table: TTableDef,
+    options?: { store?: Store },
   ): UseRowResult<TTableDef>
+
+  // isSingleton: false with requiredInsertColumnNames: 'id'
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
@@ -48,8 +52,10 @@ export const useRow: {
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string | SessionIdSymbol,
-    options?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
+    options?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>> & { store?: Store },
   ): UseRowResult<TTableDef>
+
+  // isSingleton: false
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
@@ -59,7 +65,7 @@ export const useRow: {
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string | SessionIdSymbol,
-    options: RowQuery.RequiredColumnsOptions<TTableDef>,
+    options: RowQuery.RequiredColumnsOptions<TTableDef> & { store?: Store },
   ): UseRowResult<TTableDef>
 } = <
   TTableDef extends DbSchema.TableDef<
@@ -68,12 +74,12 @@ export const useRow: {
   >,
 >(
   table: TTableDef,
-  idOrOptions?: string | SessionIdSymbol,
-  options_?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
+  idOrOptions?: string | SessionIdSymbol | { store?: Store },
+  options_?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>> & { store?: Store },
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.sqliteDef
   const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
-  const options: Partial<RowQuery.RequiredColumnsOptions<TTableDef>> | undefined =
+  const options: (Partial<RowQuery.RequiredColumnsOptions<TTableDef>> & { store?: Store }) | undefined =
     typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
   const { insertValues } = options ?? {}
 
@@ -85,7 +91,7 @@ export const useRow: {
     shouldNeverHappen(`useRow called on table "${tableName}" which does not have 'deriveMutations: true' set`)
   }
 
-  const { store } = useStore()
+  const { store } = useStore({ store: options?.store })
 
   if (
     store.schema.tables.has(table.sqliteDef.name) === false &&
@@ -110,6 +116,7 @@ export const useRow: {
 
   const queryRef = useQueryRef(queryDef, {
     otelSpanName: `LiveStore:useRow:${tableName}${idStr === undefined ? '' : `:${idStr}`}`,
+    store: options?.store,
   })
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {

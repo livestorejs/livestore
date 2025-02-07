@@ -12,7 +12,7 @@ import type { Priority, Status } from '@/types.ts'
 import { ThemedText } from './ThemedText.tsx'
 
 export interface IssueItemProps {
-  issue: Issue & {
+  issue: Pick<Issue, 'id' | 'title' | 'priority' | 'status'> & {
     assigneePhotoUrl?: string
   }
   showAssignee?: boolean
@@ -23,36 +23,36 @@ export interface IssueItemProps {
 const blurhash =
   '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6fQfQfQIpWXofj[ayj[j[fQayWCoeoeaya}j[ayfQa{oLj?j[WVj[ayayj[fQoff7azayj[ayj[j[ayofayayayj[fQj[ayayj[ayfjj[j[ayjuayj['
 
-const IssueItem = memo(({ issue, showAssignee = true, showStatus = true, showPriority = true }: IssueItemProps) => {
-  const linkHref = `/issue-details?issueId=${issue.id}`
+export const IssueItem = memo(
+  ({ issue, showAssignee = true, showStatus = true, showPriority = true }: IssueItemProps) => {
+    const linkHref = `/issue-details?issueId=${issue.id}`
 
-  return (
-    <Link href={linkHref as LinkProps['href']} asChild>
-      <Pressable className="flex-row items-center justify-between gap-2 active:bg-zinc-100 dark:active:bg-zinc-800 rounded-md p-2 px-3">
-        <View className="w-full flex-1 flex-row items-center justify-between gap-2">
-          <View className="flex-row items-center gap-2 flex-shrink">
-            {showPriority && <PriorityIcon priority={issue.priority as Priority} />}
-            {showStatus && <IssueStatusIcon status={issue.status as Status} />}
-            <ThemedText className="line-clamp-1 flex-shrink font-medium">{issue.title}</ThemedText>
+    return (
+      <Link href={linkHref as LinkProps['href']} asChild>
+        <Pressable className="flex-row items-center justify-between gap-2 active:bg-zinc-100 dark:active:bg-zinc-800 rounded-md p-2 px-3">
+          <View className="w-full flex-1 flex-row items-center justify-between gap-2">
+            <View className="flex-row items-center gap-2 flex-shrink">
+              {showPriority && <PriorityIcon priority={issue.priority as Priority} />}
+              {showStatus && <IssueStatusIcon status={issue.status as Status} />}
+              <ThemedText className="line-clamp-1 flex-shrink font-medium">{issue.title}</ThemedText>
+            </View>
+            {showAssignee && issue.assigneePhotoUrl && (
+              <Image
+                source={issue.assigneePhotoUrl}
+                style={{ width: 20, height: 20, borderRadius: 10 }}
+                placeholder={blurhash}
+                transition={500}
+                cachePolicy={'memory-disk'}
+              />
+            )}
           </View>
-          {showAssignee && issue.assigneePhotoUrl && (
-            <Image
-              source={issue.assigneePhotoUrl}
-              style={{ width: 20, height: 20, borderRadius: 10 }}
-              placeholder={blurhash}
-              transition={500}
-              cachePolicy={'memory-disk'}
-            />
-          )}
-        </View>
-      </Pressable>
-    </Link>
-  )
-})
+        </Pressable>
+      </Link>
+    )
+  },
+)
 
 IssueItem.displayName = 'IssueItem'
-
-export default IssueItem
 
 export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
   const isDarkMode = useColorScheme() === 'dark'

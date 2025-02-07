@@ -11,7 +11,7 @@ if (process.execArgv.includes('--inspect')) {
 import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus, SyncOptions } from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
-import type { DevtoolsOptions, LeaderDatabase } from '@livestore/common/leader-thread'
+import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   getLocalHeadFromDb,
@@ -79,19 +79,19 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         return Stream.fromQueue(pullQueue)
       }).pipe(Stream.unwrapScoped),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.db.export()).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbReadModel.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/node:worker:Export'),
       ),
     ExportMutationlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbLog.export()).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbMutationLog.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/node:worker:ExportMutationlog'),
       ),
     GetCurrentMutationEventId: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return getLocalHeadFromDb(workerCtx.dbLog)
+        return getLocalHeadFromDb(workerCtx.dbMutationLog)
       }).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/node:worker:GetCurrentMutationEventId'),
@@ -124,14 +124,14 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetRecreateSnapshot')),
     Shutdown: () =>
       Effect.gen(function* () {
-        // const { db, dbLog } = yield* LeaderThreadCtx
+        // const { db, dbMutationLog } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/node:worker] Shutdown')
 
         // if (devtools.enabled) {
         //   yield* FiberSet.clear(devtools.connections)
         // }
         // db.close()
-        // dbLog.close()
+        // dbMutationLog.close()
 
         // Buy some time for Otel to flush
         // TODO find a cleaner way to do this
@@ -194,13 +194,13 @@ const makeLeaderThread = ({
       }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
 
     // Might involve some async work, so we're running them concurrently
-    const [db, dbLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
+    const [dbReadModel, dbMutationLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled: devtools.enabled,
       devtoolsPort: devtools.port,
-      db,
-      dbLog,
+      dbReadModel,
+      dbMutationLog,
       storeId,
       clientId,
       schemaPath,
@@ -214,8 +214,8 @@ const makeLeaderThread = ({
       clientId,
       makeSqliteDb,
       syncOptions,
-      db,
-      dbLog,
+      dbReadModel,
+      dbMutationLog,
       devtoolsOptions,
       shutdownChannel,
     })
@@ -230,16 +230,16 @@ const getAppDbFileName = (suffix: string) => `app${suffix}@${liveStoreStorageFor
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
-  db,
-  dbLog,
+  dbReadModel,
+  dbMutationLog,
   storeId,
   clientId,
   devtoolsPort,
   schemaPath,
 }: {
   devtoolsEnabled: boolean
-  db: LeaderDatabase
-  dbLog: LeaderDatabase
+  dbReadModel: LeaderSqliteDb
+  dbMutationLog: LeaderSqliteDb
   storeId: string
   clientId: string
   devtoolsPort: number
@@ -272,8 +272,8 @@ const makeDevtoolsOptions = ({
             schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
           }),
           persistenceInfo: {
-            db: db.metadata.persistenceInfo,
-            mutationLog: dbLog.metadata.persistenceInfo,
+            readModel: dbReadModel.metadata.persistenceInfo,
+            mutationLog: dbMutationLog.metadata.persistenceInfo,
           },
         }
       }),

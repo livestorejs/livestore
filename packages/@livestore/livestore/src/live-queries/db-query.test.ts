@@ -1,9 +1,10 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { computed, queryDb, rawSqlMutation, sql } from '../index.js'
+import * as RG from '../reactive.js'
 import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
 import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
 
@@ -16,6 +17,10 @@ TODO write tests for:
 
 describe('otel', () => {
   let cachedProvider: BasicTracerProvider | undefined
+
+  beforeEach(() => {
+    RG.__resetIds()
+  })
 
   const makeQuery = Effect.gen(function* () {
     const exporter = new InMemorySpanExporter()

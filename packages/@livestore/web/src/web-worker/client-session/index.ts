@@ -351,10 +351,14 @@ export const makeAdapter =
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
-          if (Exit.isFailure(ex) && Exit.isInterrupted(ex) === false) {
+          if (
+            Exit.isFailure(ex) &&
+            Exit.isInterrupted(ex) === false &&
+            Schema.is(IntentionalShutdownCause)(ex.cause) === false
+          ) {
             yield* Effect.logError('[@livestore/web:client-session] client-session shutdown', ex.cause)
           } else {
-            yield* Effect.logWarning('[@livestore/web:client-session] client-session shutdown', gotLocky, ex)
+            yield* Effect.logDebug('[@livestore/web:client-session] client-session shutdown', gotLocky, ex)
           }
 
           if (gotLocky) {

@@ -56,8 +56,8 @@ export type InitialSyncInfo = Option.Option<{
 //   | { _tag: 'Recreate'; snapshotRef: Ref.Ref<Uint8Array | undefined>; syncInfo: InitialSyncInfo }
 //   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
-export type LeaderDatabase = SqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
-export type PersistenceInfoPair = { db: PersistenceInfo; mutationLog: PersistenceInfo }
+export type LeaderSqliteDb = SqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
+export type PersistenceInfoPair = { readModel: PersistenceInfo; mutationLog: PersistenceInfo }
 
 export type DevtoolsOptions =
   | {
@@ -92,8 +92,8 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     storeId: string
     clientId: string
     makeSqliteDb: MakeSqliteDb
-    db: LeaderDatabase
-    dbLog: LeaderDatabase
+    dbReadModel: LeaderSqliteDb
+    dbMutationLog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
@@ -104,7 +104,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncProcessor: LeaderSyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
     /**
-     * e.g. used for `store.__dev` APIs
+     * e.g. used for `store._dev` APIs
      *
      * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
      */

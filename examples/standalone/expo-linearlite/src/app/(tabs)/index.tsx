@@ -1,11 +1,11 @@
 import { queryDb, sql } from '@livestore/livestore'
-import { useRow, useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useRow, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { FlatList, Pressable, View } from 'react-native'
 
-import IssueItem from '@/components/IssueItem.tsx'
+import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
 import { useUser } from '@/hooks/useUser.ts'
 import { updateSelectedHomeTab } from '@/livestore/mutations.ts'
@@ -124,11 +124,10 @@ const HomeScreen = () => {
     [appSettings],
   )
 
-  const issues = useScopedQuery(
-    () =>
-      queryDb(
-        {
-          query: sql`
+  const issues = useQuery(
+    queryDb(
+      {
+        query: sql`
             SELECT issues.title, issues.id, issues.assigneeId, issues.status, issues.priority, users.photoUrl as assigneePhotoUrl
             FROM issues 
             LEFT JOIN users ON issues.assigneeId = users.id
@@ -145,19 +144,25 @@ const HomeScreen = () => {
             )}
             LIMIT 50
           `,
-          schema: Schema.Any,
-        },
-        { label: `issues-${selectedHomeTab}-${user.id}` },
-      ),
-    [
-      'issues',
-      selectedHomeTab,
-      user.id,
-      assignedTabGrouping,
-      assignedTabOrdering,
-      createdTabGrouping,
-      createdTabOrdering,
-    ],
+        schema: tables.issues.schema.pipe(
+          Schema.pick('title', 'id', 'assigneeId', 'status', 'priority'),
+          Schema.extend(Schema.Struct({ assigneePhotoUrl: Schema.String })),
+          Schema.Array,
+        ),
+      },
+      {
+        label: `issues-${selectedHomeTab}-${user.id}`,
+        deps: [
+          'issues',
+          selectedHomeTab,
+          user.id,
+          assignedTabGrouping,
+          assignedTabOrdering,
+          createdTabGrouping,
+          createdTabOrdering,
+        ],
+      },
+    ),
   )
 
   // Memoize the renderItem function

@@ -1,5 +1,5 @@
 import { queryDb, sql } from '@livestore/livestore'
-import { useScopedQuery, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
@@ -17,11 +17,10 @@ const IssueDetailsScreen = () => {
   const store = useStore()
   const router = useRouter()
 
-  const issue = useScopedQuery(
-    () =>
-      queryDb(
-        {
-          query: sql`
+  const issue = useQuery(
+    queryDb(
+      {
+        query: sql`
             SELECT 
               issues.*,
               users.name as assigneeName,
@@ -30,22 +29,20 @@ const IssueDetailsScreen = () => {
             LEFT JOIN users ON issues.assigneeId = users.id
             WHERE issues.id = '${issueId}'
           `,
-          schema: tables.issues.schema.pipe(
-            Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
-            Schema.Array,
-            Schema.headOrElse(),
-          ),
-        },
-        { label: 'issue' },
-      ),
-    ['issue-details', issueId],
+        schema: tables.issues.schema.pipe(
+          Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
+          Schema.Array,
+          Schema.headOrElse(),
+        ),
+      },
+      { label: 'issue', deps: `issue-details-${issueId}` },
+    ),
   )
 
-  const comments = useScopedQuery(
-    () =>
-      queryDb(
-        {
-          query: sql`
+  const comments = useQuery(
+    queryDb(
+      {
+        query: sql`
             SELECT 
               comments.*,
               users.name as authorName,
@@ -67,20 +64,19 @@ const IssueDetailsScreen = () => {
             GROUP BY comments.id
             ORDER BY comments.createdAt DESC
           `,
-          schema: tables.comments.schema.pipe(
-            Schema.extend(
-              Schema.Struct({
-                authorName: Schema.String,
-                authorPhotoUrl: Schema.String,
-                reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
-              }),
-            ),
-            Schema.Array,
+        schema: tables.comments.schema.pipe(
+          Schema.extend(
+            Schema.Struct({
+              authorName: Schema.String,
+              authorPhotoUrl: Schema.String,
+              reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
+            }),
           ),
-        },
-        { label: 'comments' },
-      ),
-    ['issue-details-comments', issueId],
+          Schema.Array,
+        ),
+      },
+      { label: 'comments', deps: `issue-details-comments-${issueId}` },
+    ),
   )
 
   if (!issueId) {

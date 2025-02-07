@@ -1,7 +1,7 @@
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.js'
+import type { BootStatus, MakeSqliteDb, SqliteError } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
@@ -15,7 +15,13 @@ import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
 import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
-import type { DevtoolsOptions, InitialBlockingSyncContext, InitialSyncOptions, ShutdownState } from './types.js'
+import type {
+  DevtoolsOptions,
+  InitialBlockingSyncContext,
+  InitialSyncOptions,
+  LeaderSqliteDb,
+  ShutdownState,
+} from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const makeLeaderThreadLayer = ({
@@ -24,8 +30,8 @@ export const makeLeaderThreadLayer = ({
   clientId,
   makeSqliteDb,
   syncOptions,
-  db,
-  dbLog,
+  dbReadModel,
+  dbMutationLog,
   devtoolsOptions,
   shutdownChannel,
 }: {
@@ -34,8 +40,8 @@ export const makeLeaderThreadLayer = ({
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
-  db: SqliteDb
-  dbLog: SqliteDb
+  dbReadModel: LeaderSqliteDb
+  dbMutationLog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
 }): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
@@ -44,7 +50,8 @@ export const makeLeaderThreadLayer = ({
 
     // TODO do more validation here than just checking the count of tables
     // Either happens on initial boot or if schema changes
-    const dbMissing = db.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+    const dbMissing =
+      dbReadModel.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
     const syncBackend = syncOptions === undefined ? undefined : yield* syncOptions.makeBackend({ storeId, clientId })
 
@@ -53,7 +60,12 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
     })
 
-    const syncProcessor = yield* makeLeaderSyncProcessor({ schema, dbMissing, dbLog, initialBlockingSyncContext })
+    const syncProcessor = yield* makeLeaderSyncProcessor({
+      schema,
+      dbMissing,
+      dbMutationLog,
+      initialBlockingSyncContext,
+    })
 
     const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.MessageToAppLeader>().pipe(
       Effect.acquireRelease(Queue.shutdown),
@@ -72,8 +84,8 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
       storeId,
       clientId,
-      db,
-      dbLog,
+      dbReadModel,
+      dbMutationLog,
       makeSqliteDb,
       mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
@@ -165,17 +177,17 @@ const bootLeaderThread = ({
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbLog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
+    const { dbMutationLog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
 
     yield* migrateTable({
-      db: dbLog,
+      db: dbMutationLog,
       behaviour: 'create-if-not-exists',
       tableAst: mutationLogMetaTable.sqliteDef.ast,
       skipMetaTable: true,
     })
 
     yield* migrateTable({
-      db: dbLog,
+      db: dbMutationLog,
       behaviour: 'create-if-not-exists',
       tableAst: syncStatusTable.sqliteDef.ast,
       skipMetaTable: true,
@@ -183,7 +195,7 @@ const bootLeaderThread = ({
 
     // Create sync status row if it doesn't exist
     yield* execSql(
-      dbLog,
+      dbMutationLog,
       sql`INSERT INTO ${SYNC_STATUS_TABLE} (head)
           SELECT ${EventId.ROOT.global}
           WHERE NOT EXISTS (SELECT 1 FROM ${SYNC_STATUS_TABLE})`,

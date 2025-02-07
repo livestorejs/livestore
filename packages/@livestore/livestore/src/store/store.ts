@@ -572,41 +572,48 @@ export class Store<
       meta: { liveStoreRefType: 'table' },
     })
 
-  __devDownloadDb = (source: 'local' | 'leader' = 'local') => {
-    Effect.gen(this, function* () {
-      const data = source === 'local' ? this.sqliteDbWrapper.export() : yield* this.clientSession.leaderThread.export
-      downloadBlob(data, `livestore-${Date.now()}.db`)
-    }).pipe(this.runEffectFork)
-  }
+  /**
+   * Helper methods useful during development
+   *
+   * @internal
+   */
+  _dev = {
+    downloadDb: (source: 'local' | 'leader' = 'local') => {
+      Effect.gen(this, function* () {
+        const data = source === 'local' ? this.sqliteDbWrapper.export() : yield* this.clientSession.leaderThread.export
+        downloadBlob(data, `livestore-${Date.now()}.db`)
+      }).pipe(this.runEffectFork)
+    },
 
-  __devDownloadMutationLogDb = () => {
-    Effect.gen(this, function* () {
-      const data = yield* this.clientSession.leaderThread.getMutationLogData
-      downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
-    }).pipe(this.runEffectFork)
-  }
+    downloadMutationLogDb: () => {
+      Effect.gen(this, function* () {
+        const data = yield* this.clientSession.leaderThread.getMutationLogData
+        downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
+      }).pipe(this.runEffectFork)
+    },
 
-  __devHardReset = (mode: 'all-data' | 'only-app-db' = 'all-data') => {
-    Effect.gen(this, function* () {
-      yield* this.clientSession.leaderThread.sendDevtoolsMessage(
-        Devtools.ResetAllDataReq.make({ liveStoreVersion, mode, requestId: nanoid() }),
-      )
-    }).pipe(this.runEffectFork)
-  }
+    hardReset: (mode: 'all-data' | 'only-app-db' = 'all-data') => {
+      Effect.gen(this, function* () {
+        yield* this.clientSession.leaderThread.sendDevtoolsMessage(
+          Devtools.ResetAllDataReq.make({ liveStoreVersion, mode, requestId: nanoid() }),
+        )
+      }).pipe(this.runEffectFork)
+    },
 
-  __devSyncStates = () => {
-    Effect.gen(this, function* () {
-      const session = this.syncProcessor.syncStateRef.current
-      console.log('Session sync state:', session.toJSON())
-      const leader = yield* this.clientSession.leaderThread.getSyncState
-      console.log('Leader sync state:', leader.toJSON())
-    }).pipe(this.runEffectFork)
-  }
+    syncStates: () => {
+      Effect.gen(this, function* () {
+        const session = this.syncProcessor.syncStateRef.current
+        console.log('Session sync state:', session.toJSON())
+        const leader = yield* this.clientSession.leaderThread.getSyncState
+        console.log('Leader sync state:', leader.toJSON())
+      }).pipe(this.runEffectFork)
+    },
 
-  __devShutdown = (cause?: Cause.Cause<UnexpectedError>) => {
-    this.clientSession
-      .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
-      .pipe(Effect.tapCauseLogPretty, Effect.provide(this.runtime), Effect.runFork)
+    shutdown: (cause?: Cause.Cause<UnexpectedError>) => {
+      this.clientSession
+        .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
+        .pipe(Effect.tapCauseLogPretty, Effect.provide(this.runtime), Effect.runFork)
+    },
   }
 
   // NOTE This is needed because when booting a Store via Effect it seems to call `toJSON` in the error path

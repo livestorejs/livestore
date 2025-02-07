@@ -161,7 +161,6 @@ export const makeClientSessionSyncProcessor = ({
             clientSession.leaderThread.mutations
               .push(updateResult.newSyncState.pending)
               .pipe(Effect.tapCauseLogPretty, Effect.provide(runtime), Effect.runFork)
-
           } else {
             span.addEvent('pull:advance', {
               payloadTag: payload._tag,

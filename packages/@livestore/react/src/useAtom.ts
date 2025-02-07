@@ -1,7 +1,7 @@
 import type { DerivedMutationHelperFns, QueryInfo } from '@livestore/common'
 import type { DbSchema } from '@livestore/common/schema'
 import type { SqliteDsl } from '@livestore/db-schema'
-import type { GetResult, LiveQueryDef } from '@livestore/livestore'
+import type { GetResult, LiveQueryDef, Store } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
@@ -14,8 +14,11 @@ export const useAtom = <
   TQuery extends LiveQueryDef<any, QueryInfo.Row | QueryInfo.Col>,
 >(
   queryDef: TQuery,
+  options?: {
+    store?: Store
+  },
 ): [value: GetResult<TQuery>, setValue: Dispatch<SetStateAction<Partial<GetResult<TQuery>>>>] => {
-  const queryRef = useQueryRef(queryDef)
+  const queryRef = useQueryRef(queryDef, { store: options?.store })
   const query$ = queryRef.queryRcRef.value
 
   // @ts-expect-error runtime check

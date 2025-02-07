@@ -7,9 +7,10 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - Move Store `__dev` helpers under `Store.__dev.` group
-  - Introduce a new way how to use multiple LiveStore instances in the same app
-    - By passing `storeId` to `LiveStoreProvider` and other APIs
+  - Contributions:
+    - Solid adapter
+    - Expo Linearlite legend list
+    - WAL sqlite improvements
   - Syncing
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
@@ -45,6 +46,7 @@
   ```
 
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
+- Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
 - Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
 - Improve Otel tracing integration
@@ -59,6 +61,7 @@
   - New devtools protocol via webmesh
     - Should improve reliability of devtools connection (particularly during app reloads)
   - Large refactoring to share more code between adapters
+  - Renamed `SynchronousDatabase` to `SqliteDb`
   - Embraced git-style push/pull semantics to sync mutations across the system
   - Upgrade to TypeScript 5.7
 - Upgraded dependencies

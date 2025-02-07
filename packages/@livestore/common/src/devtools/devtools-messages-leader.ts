@@ -18,7 +18,7 @@ export class DatabaseFileInfo extends Schema.Struct({
 }) {}
 
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
-  db: DatabaseFileInfo,
+  readModel: DatabaseFileInfo,
   mutationLog: DatabaseFileInfo,
 }) {}
 

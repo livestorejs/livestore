@@ -5,7 +5,7 @@ import Avatar from '../../components/Avatar'
 import { formatDate } from '../../utils/date'
 import { showWarning } from '../../utils/notification'
 import { Issue } from '../../types'
-import { useStore, useScopedQuery } from '@livestore/react'
+import { useStore, useQuery } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
 import { nanoid } from 'nanoid'
 import { mutations, tables } from '../../livestore/schema'
@@ -19,9 +19,8 @@ function Comments({ issue }: CommentsProps) {
   // TODO move this into LiveStore
   const [newCommentBody, setNewCommentBody] = useState<string>('')
 
-  const comments = useScopedQuery(
-    () => queryDb(tables.comment.query.where('issueId', issue.id).orderBy('created', 'asc')),
-    [issue.id],
+  const comments = useQuery(
+    queryDb(tables.comment.query.where('issueId', issue.id).orderBy('created', 'asc'), { deps: issue.id }),
   )
 
   const { store } = useStore()
