@@ -1,5 +1,9 @@
 name: ci
 
+permissions:
+  id-token: write
+  contents: read
+
 on:
   push:
     branches: 
@@ -16,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
@@ -30,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
@@ -60,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
@@ -81,7 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
@@ -95,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
@@ -116,7 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
