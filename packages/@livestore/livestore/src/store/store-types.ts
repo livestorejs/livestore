@@ -5,7 +5,6 @@ import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
-import type { ReactivityGraph } from '../live-queries/base-class.js'
 import type { DebugRefreshReasonBase } from '../reactive.js'
 import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 import type { StackInfo } from '../utils/stack-info.js'
@@ -61,7 +60,6 @@ export type StoreOptions<
   // TODO remove graphql-related stuff from store and move to GraphQL query directly
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   otelOptions: OtelOptions
-  reactivityGraph: ReactivityGraph
   disableDevtools?: boolean
   lifetimeScope: Scope.Scope
   runtime: Runtime.Runtime<Scope.Scope>
@@ -87,6 +85,8 @@ export type RefreshReason =
       label?: string
       stackInfo?: StackInfo
     }
+  | { _tag: 'subscribe.initial'; label?: string }
+  | { _tag: 'subscribe.update'; label?: string }
   | { _tag: 'manual'; label?: string }
 
 export type QueryDebugInfo = {
@@ -108,3 +108,5 @@ export type StoreMutateOptions = {
   spanLinks?: otel.Link[]
   otelContext?: otel.Context
 }
+
+export type Unsubscribe = () => void

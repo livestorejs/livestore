@@ -66,20 +66,11 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       }
     }).pipe(Effect.withSpan('@livestore/node-sync:test:create-todos', { attributes: { count } }), Effect.orDie),
   StreamTodos: () =>
-    Stream.asyncPush<ReadonlyArray<typeof tables.todo.schema.Type>>((emit) =>
-      Effect.gen(function* () {
-        const query$ = queryDb(tables.todo.query.orderBy('id', 'desc').limit(10))
-
-        const unsub = query$.subscribe((result) => emit.single(result))
-
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            unsub()
-            query$.destroy()
-          }),
-        )
-      }),
-    ).pipe(Stream.withSpan('@livestore/node-sync:test:stream-todos')),
+    Effect.gen(function* () {
+      const { store } = yield* WorkerContext
+      const query$ = queryDb(tables.todo.query.orderBy('id', 'desc').limit(10))
+      return store.subscribeStream(query$)
+    }).pipe(Stream.unwrap, Stream.withSpan('@livestore/node-sync:test:stream-todos')),
 })
 
 const clientId = process.argv[2]

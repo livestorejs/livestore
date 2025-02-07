@@ -1,38 +1,51 @@
-import type { GetResult, LiveQueryAny } from '@livestore/livestore'
+import type { GetResult, LiveQuery, LiveQueryDef, LiveQueryDefAny, RcRef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import { deepEqual, indent } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
 import { useStore } from './LiveStoreContext.js'
+import { useRcResource } from './useRcResource.js'
 import { originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
 
 /**
- * NOTE Some folks have suggested to use `React.useSyncExternalStore`, however, it's not doing anything special
- * for what's needed here, so we handle everything manually.
- */
-
-/**
- * This is needed because the `React.useMemo` call below, can sometimes be called multiple times 🤷,
- * so we need to "cache" the fact that we've already started a span for this component.
- * The map entry is being removed again in the `React.useEffect` call below.
- */
-const spanAlreadyStartedCache = new Map<LiveQueryAny, { span: otel.Span; otelContext: otel.Context }>()
-
-export const useQuery = <TQuery extends LiveQueryAny>(query: TQuery): GetResult<TQuery> => useQueryRef(query).current
-
-/**
+ * Returns the result of a query and subscribes to future updates.
  *
+ * Example:
+ * ```tsx
+ * const App = () => {
+ *   const todos = useQuery(queryDb(tables.todos.query.where({ complete: true })))
+ *   return <div>{todos.map((todo) => <div key={todo.id}>{todo.title}</div>)}</div>
+ * }
+ * ```
  */
-export const useQueryRef = <TQuery extends LiveQueryAny>(
-  query$: TQuery,
-  parentOtelContext?: otel.Context,
-): React.RefObject<GetResult<TQuery>> => {
-  const { store } = useStore()
+export const useQuery = <TQuery extends LiveQueryDefAny>(
+  queryDef: TQuery,
+  options?: { store?: Store },
+): GetResult<TQuery> => useQueryRef(queryDef, options).valueRef.current
 
-  React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
-  // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)
+type GetQueryInfo<TQuery extends LiveQueryDefAny> =
+  TQuery extends LiveQueryDef<infer _1, infer TQueryInfo> ? TQueryInfo : never
+
+/**
+ */
+export const useQueryRef = <TQuery extends LiveQueryDefAny>(
+  queryDef: TQuery,
+  options?: {
+    store?: Store
+    /** Parent otel context for the query */
+    otelContext?: otel.Context
+    /** The name of the span to use for the query */
+    otelSpanName?: string
+  },
+): {
+  valueRef: React.RefObject<GetResult<TQuery>>
+  queryRcRef: RcRef<LiveQuery<GetResult<TQuery>, GetQueryInfo<TQuery>>>
+} => {
+  const { store } = useStore({ store: options?.store })
+
+  const rcRefKey = `${store.storeId}_${queryDef.hash}`
 
   const stackInfo = React.useMemo(() => {
     Error.stackTraceLimit = 10
@@ -42,31 +55,42 @@ export const useQueryRef = <TQuery extends LiveQueryAny>(
     return extractStackInfoFromStackTrace(stack)
   }, [])
 
-  // The following `React.useMemo` and `React.useEffect` calls are used to start and end a span for the lifetime of this component.
-  const { span, otelContext } = React.useMemo(() => {
-    const existingSpan = spanAlreadyStartedCache.get(query$)
-    if (existingSpan !== undefined) return existingSpan
+  const { queryRcRef, span, otelContext } = useRcResource(
+    rcRefKey,
+    () => {
+      const queryDefLabel = queryDef.label
 
-    const span = store.otel.tracer.startSpan(
-      `LiveStore:useQuery:${query$.label}`,
-      { attributes: { label: query$.label, stackInfo: JSON.stringify(stackInfo) } },
-      parentOtelContext ?? store.otel.queriesSpanContext,
-    )
+      const span = store.otel.tracer.startSpan(
+        options?.otelSpanName ?? `LiveStore:useQuery:${queryDefLabel}`,
+        { attributes: { label: queryDefLabel, firstStackInfo: JSON.stringify(stackInfo) } },
+        options?.otelContext ?? store.otel.queriesSpanContext,
+      )
 
-    const otelContext = otel.trace.setSpan(otel.context.active(), span)
+      const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    spanAlreadyStartedCache.set(query$, { span, otelContext })
+      const queryRcRef = queryDef.make(store.reactivityGraph.context!, otelContext)
 
-    return { span, otelContext }
-  }, [parentOtelContext, query$, stackInfo, store.otel.queriesSpanContext, store.otel.tracer])
+      return { queryRcRef, span, otelContext }
+    },
+    // We need to keep the queryRcRef alive a bit longer, so we have a second `useRcResource` below
+    // which takes care of disposing the queryRcRef
+    () => {},
+  )
+  const query$ = queryRcRef.value as LiveQuery<GetResult<TQuery>, GetQueryInfo<TQuery>>
+
+  React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
+  // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)
 
   const initialResult = React.useMemo(() => {
     try {
-      return query$.run(otelContext, {
-        _tag: 'react',
-        api: 'useQuery',
-        label: query$.label,
-        stackInfo,
+      return query$.run({
+        otelContext,
+        debugRefreshReason: {
+          _tag: 'react',
+          api: 'useQuery',
+          label: `useQuery:initial-run:${query$.label}`,
+          stackInfo,
+        },
       })
     } catch (cause: any) {
       throw new Error(
@@ -89,25 +113,20 @@ Stack trace:
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
   const [valueRef, setValue] = useStateRefWithReactiveInput<GetResult<TQuery>>(initialResult)
 
-  React.useEffect(
-    () => () => {
-      spanAlreadyStartedCache.delete(query$)
-      span.end()
-    },
-    [query$, span],
-  )
+  // TODO we probably need to change the order of `useEffect` calls, so we destroy the query at the end
+  // before calling the LS `onEffect` on it
 
   // Subscribe to future updates for this query
   React.useEffect(() => {
+    // TODO double check whether we still need `activeSubscriptions`
     query$.activeSubscriptions.add(stackInfo)
 
     // Dynamic queries only set their actual label after they've been run the first time,
     // so we're also updating the span name here.
-    span.updateName(`LiveStore:useQuery:${query$.label}`)
+    span.updateName(options?.otelSpanName ?? `LiveStore:useQuery:${query$.label}`)
 
-    return store.subscribe(
-      query$,
-      (newValue) => {
+    return store.subscribe(query$, {
+      onUpdate: (newValue) => {
         // NOTE: we return a reference to the result object within LiveStore;
         // this implies that app code must not mutate the results, or else
         // there may be weird reactivity bugs.
@@ -115,12 +134,23 @@ Stack trace:
           setValue(newValue)
         }
       },
-      () => {
+      onUnsubsubscribe: () => {
         query$.activeSubscriptions.delete(stackInfo)
       },
-      { label: query$.label, otelContext },
-    )
-  }, [stackInfo, query$, setValue, store, valueRef, otelContext, span])
+      label: query$.label,
+      otelContext,
+    })
+  }, [stackInfo, query$, setValue, store, valueRef, otelContext, span, options?.otelSpanName])
 
-  return valueRef
+  useRcResource(
+    rcRefKey,
+    () => ({ queryRcRef, span }),
+    ({ queryRcRef, span }) => {
+      // console.debug('deref', queryRcRef.value.id, queryRcRef.value.label)
+      queryRcRef.deref()
+      span.end()
+    },
+  )
+
+  return { valueRef, queryRcRef }
 }

@@ -6,6 +6,8 @@ import type {
   PreparedBindValues,
   PreparedStatement,
   SynchronousDatabase,
+  SynchronousDatabaseChangeset,
+  SynchronousDatabaseSession,
 } from '@livestore/common'
 import { BoundArray, BoundMap, sql } from '@livestore/common'
 import { isDevEnv } from '@livestore/utils'
@@ -21,7 +23,8 @@ export const emptyDebugInfo = (): DebugInfo => ({
   events: new BoundArray(1000),
 })
 
-export class SynchronousDatabaseWrapper {
+export class SynchronousDatabaseWrapper implements SynchronousDatabase {
+  _tag = 'SynchronousDatabase' as const
   // TODO: how many unique active statements are expected?
   private cachedStmts = new BoundMap<string, PreparedStatement>(200)
   private tablesUsedCache = new BoundMap<string, Set<string>>(200)
@@ -53,6 +56,25 @@ export class SynchronousDatabaseWrapper {
     this.cachedStmts.onEvict = (_queryStr, stmt) => stmt.finalize()
 
     configureSQLite(this)
+  }
+  metadata: any
+  prepare(queryStr: string): PreparedStatement {
+    return this.db.prepare(queryStr)
+  }
+  import(data: Uint8Array<ArrayBufferLike> | SynchronousDatabase<any, any>) {
+    return this.db.import(data)
+  }
+  close(): void {
+    return this.db.close()
+  }
+  destroy(): void {
+    return this.db.destroy()
+  }
+  session(): SynchronousDatabaseSession {
+    return this.db.session()
+  }
+  makeChangeset(data: Uint8Array): SynchronousDatabaseChangeset {
+    return this.db.makeChangeset(data)
   }
 
   txn<TRes>(callback: () => TRes): TRes {
@@ -121,9 +143,13 @@ export class SynchronousDatabaseWrapper {
 
   execute(
     queryStr: string,
-    bindValues?: PreparedBindValues,
-    writeTables?: ReadonlySet<string>,
-    options?: { hasNoEffects?: boolean; otelContext?: otel.Context },
+    bindValues?: PreparedBindValues | undefined,
+    options?: {
+      hasNoEffects?: boolean
+      otelContext?: otel.Context
+      writeTables?: ReadonlySet<string>
+      onRowsChanged?: (rowsChanged: number) => void
+    },
   ): { durationMs: number } {
     // console.debug('in-memory-db:execute', query, bindValues)
 
@@ -144,7 +170,7 @@ export class SynchronousDatabaseWrapper {
         if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
           // TODO use write tables instead
           // check what queries actually end up here.
-          this.resultCache.invalidate(writeTables ?? this.getTablesUsed(queryStr))
+          this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
         }
 
         span.end()
@@ -172,14 +198,14 @@ export class SynchronousDatabaseWrapper {
 
   select<T = any>(
     queryStr: string,
+    bindValues?: PreparedBindValues | undefined,
     options?: {
       queriedTables?: ReadonlySet<string>
-      bindValues?: PreparedBindValues
       skipCache?: boolean
       otelContext?: otel.Context
     },
   ): ReadonlyArray<T> {
-    const { queriedTables, bindValues, skipCache = false, otelContext } = options ?? {}
+    const { queriedTables, skipCache = false, otelContext } = options ?? {}
 
     // console.debug('in-memory-db:select', query, bindValues)
 

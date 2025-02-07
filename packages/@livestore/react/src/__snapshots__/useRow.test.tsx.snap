@@ -22,9 +22,6 @@ exports[`useRow > otel > should update the data based on component key strictMod
       },
     },
     {
-      "_name": "LiveStore:createStore",
-    },
-    {
       "_name": "sql-in-memory-select",
       "attributes": {
         "sql.cached": false,
@@ -49,22 +46,17 @@ exports[`useRow > otel > should update the data based on component key strictMod
         {
           "_name": "LiveStore:mutate",
           "attributes": {
-            "livestore.mutateLabel": "mutate",
+            "livestore.mutationEventTags": [
+              "_Derived_Create_UserInfo",
+            ],
+            "livestore.mutationEventsCount": 1,
           },
           "children": [
             {
-              "_name": "LiveStore:mutate:applyMutations",
+              "_name": "livestore.in-memory-db:execute",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')",
-                  },
-                },
-              ],
             },
           ],
         },
@@ -74,60 +66,59 @@ exports[`useRow > otel > should update the data based on component key strictMod
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
-          "attributes": {
-            "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
-            "sql.rowsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "sql-in-memory-select",
-              "attributes": {
-                "sql.cached": false,
-                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
-                "sql.rowsCount": 1,
-              },
-            },
-          ],
-        },
-        {
           "_name": "LiveStore:useRow:UserInfo:u1",
           "attributes": {
-            "id": "u1",
+            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
             {
               "_name": "LiveStore:mutate",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "livestore.mutateLabel": "rowQuery:UserInfo:u1",
+                "livestore.mutationEventTags": [
+                  "_Derived_Create_UserInfo",
+                ],
+                "livestore.mutationEventsCount": 1,
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutate:applyMutations",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.mutateLabel": "mutate",
+                    "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
-                      },
-                    },
-                  ],
                 },
               ],
             },
             {
-              "_name": "LiveStore:useQuery:db(row:UserInfo:u1)",
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
               "attributes": {
-                "label": "db(row:UserInfo:u1)",
-                "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+                "livestore.debugRefreshReason": "useQuery:initial-run:row:UserInfo:u1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "LiveStore.subscribe",
+              "attributes": {
+                "label": "row:UserInfo:u1",
+                "queryLabel": "row:UserInfo:u1",
               },
               "children": [
                 {
                   "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
+                    "livestore.debugRefreshReason": "mutate",
                     "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
@@ -141,13 +132,6 @@ exports[`useRow > otel > should update the data based on component key strictMod
                       },
                     },
                   ],
-                },
-                {
-                  "_name": "LiveStore.subscribe",
-                  "attributes": {
-                    "label": "db(row:UserInfo:u1)",
-                    "queryLabel": "db(row:UserInfo:u1)",
-                  },
                 },
               ],
             },
@@ -156,19 +140,39 @@ exports[`useRow > otel > should update the data based on component key strictMod
         {
           "_name": "LiveStore:useRow:UserInfo:u2",
           "attributes": {
-            "id": "u2",
+            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
             {
-              "_name": "LiveStore:useQuery:db(row:UserInfo:u2)",
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
               "attributes": {
-                "label": "db(row:UserInfo:u2)",
-                "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+                "livestore.debugRefreshReason": "useQuery:initial-run:row:UserInfo:u2",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "LiveStore.subscribe",
+              "attributes": {
+                "label": "row:UserInfo:u2",
+                "queryLabel": "row:UserInfo:u2",
               },
               "children": [
                 {
                   "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
+                    "livestore.debugRefreshReason": "subscribe-initial-run:row:UserInfo:u2",
                     "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
@@ -176,19 +180,12 @@ exports[`useRow > otel > should update the data based on component key strictMod
                     {
                       "_name": "sql-in-memory-select",
                       "attributes": {
-                        "sql.cached": false,
+                        "sql.cached": true,
                         "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                         "sql.rowsCount": 1,
                       },
                     },
                   ],
-                },
-                {
-                  "_name": "LiveStore.subscribe",
-                  "attributes": {
-                    "label": "db(row:UserInfo:u2)",
-                    "queryLabel": "db(row:UserInfo:u2)",
-                  },
                 },
               ],
             },
@@ -222,9 +219,6 @@ exports[`useRow > otel > should update the data based on component key strictMod
       },
     },
     {
-      "_name": "LiveStore:createStore",
-    },
-    {
       "_name": "sql-in-memory-select",
       "attributes": {
         "sql.cached": false,
@@ -249,22 +243,17 @@ exports[`useRow > otel > should update the data based on component key strictMod
         {
           "_name": "LiveStore:mutate",
           "attributes": {
-            "livestore.mutateLabel": "mutate",
+            "livestore.mutationEventTags": [
+              "_Derived_Create_UserInfo",
+            ],
+            "livestore.mutationEventsCount": 1,
           },
           "children": [
             {
-              "_name": "LiveStore:mutate:applyMutations",
+              "_name": "livestore.in-memory-db:execute",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')",
-                  },
-                },
-              ],
             },
           ],
         },
@@ -274,60 +263,59 @@ exports[`useRow > otel > should update the data based on component key strictMod
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
-          "attributes": {
-            "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
-            "sql.rowsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "sql-in-memory-select",
-              "attributes": {
-                "sql.cached": false,
-                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
-                "sql.rowsCount": 1,
-              },
-            },
-          ],
-        },
-        {
           "_name": "LiveStore:useRow:UserInfo:u1",
           "attributes": {
-            "id": "u1",
+            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
             {
               "_name": "LiveStore:mutate",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "livestore.mutateLabel": "rowQuery:UserInfo:u1",
+                "livestore.mutationEventTags": [
+                  "_Derived_Create_UserInfo",
+                ],
+                "livestore.mutationEventsCount": 1,
               },
               "children": [
                 {
-                  "_name": "LiveStore:mutate:applyMutations",
+                  "_name": "livestore.in-memory-db:execute",
                   "attributes": {
-                    "livestore.mutateLabel": "mutate",
+                    "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
                   },
-                  "children": [
-                    {
-                      "_name": "livestore.in-memory-db:execute",
-                      "attributes": {
-                        "sql.query": "INSERT INTO UserInfo (username, text, id) VALUES ($username, $text, $id)",
-                      },
-                    },
-                  ],
                 },
               ],
             },
             {
-              "_name": "LiveStore:useQuery:db(row:UserInfo:u1)",
+              "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
               "attributes": {
-                "label": "db(row:UserInfo:u1)",
-                "stackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+                "livestore.debugRefreshReason": "useQuery:initial-run:row:UserInfo:u1",
+                "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "LiveStore.subscribe",
+              "attributes": {
+                "label": "row:UserInfo:u1",
+                "queryLabel": "row:UserInfo:u1",
               },
               "children": [
                 {
                   "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
+                    "livestore.debugRefreshReason": "mutate",
                     "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
@@ -342,17 +330,232 @@ exports[`useRow > otel > should update the data based on component key strictMod
                     },
                   ],
                 },
-                {
-                  "_name": "LiveStore.subscribe",
-                  "attributes": {
-                    "label": "db(row:UserInfo:u1)",
-                    "queryLabel": "db(row:UserInfo:u1)",
-                  },
-                },
               ],
             },
           ],
         },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`useRow > should update the data based on component key 1`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:UserInfo",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 1,
+      "sub": [],
+      "super": [
+        "node-5",
+      ],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-4",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:AppRouter",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "thunk",
+      "id": "node-5",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "row:UserInfo:u1:results",
+      "meta": {
+        "liveStoreThunkType": "db.result",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "{"username":"","text":"","id":"u1"}",
+      },
+      "recomputations": 1,
+      "sub": [
+        "node-3",
+      ],
+      "super": [
+        "node-6",
+      ],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [
+    {
+      "_tag": "effect",
+      "id": "node-6",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:row:UserInfo:u1",
+      "sub": [
+        "node-5",
+      ],
+    },
+  ],
+}
+`;
+
+exports[`useRow > should update the data based on component key 2`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:UserInfo",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 2,
+      "sub": [],
+      "super": [
+        "node-7",
+      ],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-4",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:AppRouter",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "thunk",
+      "id": "node-7",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "row:UserInfo:u2:results",
+      "meta": {
+        "liveStoreThunkType": "db.result",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "{"username":"username_u2","text":"","id":"u2"}",
+      },
+      "recomputations": 2,
+      "sub": [
+        "node-3",
+      ],
+      "super": [
+        "node-8",
+      ],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [
+    {
+      "_tag": "effect",
+      "id": "node-8",
+      "invocations": 1,
+      "isDestroyed": false,
+      "label": "subscribe:row:UserInfo:u2",
+      "sub": [
+        "node-7",
       ],
     },
   ],

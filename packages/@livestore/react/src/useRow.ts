@@ -2,7 +2,7 @@ import type { QueryInfo, RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { DbSchema } from '@livestore/common/schema'
 import type { SqliteDsl } from '@livestore/db-schema'
-import type { LiveQuery, ReactivityGraph } from '@livestore/livestore'
+import type { LiveQuery, LiveQueryDef } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyRecord } from '@livestore/utils/effect'
@@ -10,17 +10,12 @@ import React from 'react'
 
 import { useStore } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
-import { useMakeScopedQuery } from './useScopedQuery.js'
 
 export type UseRowResult<TTableDef extends DbSchema.TableDefBase> = [
   row: RowQuery.Result<TTableDef>,
   setRow: StateSetters<TTableDef>,
   query$: LiveQuery<RowQuery.Result<TTableDef>, QueryInfo>,
 ]
-
-export type UseRowOptionsBase = {
-  reactivityGraph?: ReactivityGraph
-}
 
 /**
  * Similar to `React.useState` but returns a tuple of `[row, setRow, query$]` for a given table where ...
@@ -39,7 +34,6 @@ export const useRow: {
     >,
   >(
     table: TTableDef,
-    options?: UseRowOptionsBase,
   ): UseRowResult<TTableDef>
   <
     TTableDef extends DbSchema.TableDef<
@@ -54,7 +48,7 @@ export const useRow: {
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string | SessionIdSymbol,
-    options?: UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
+    options?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
   ): UseRowResult<TTableDef>
   <
     TTableDef extends DbSchema.TableDef<
@@ -65,7 +59,7 @@ export const useRow: {
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
     id: string | SessionIdSymbol,
-    options: UseRowOptionsBase & RowQuery.RequiredColumnsOptions<TTableDef>,
+    options: RowQuery.RequiredColumnsOptions<TTableDef>,
   ): UseRowResult<TTableDef>
 } = <
   TTableDef extends DbSchema.TableDef<
@@ -74,14 +68,14 @@ export const useRow: {
   >,
 >(
   table: TTableDef,
-  idOrOptions?: string | SessionIdSymbol | UseRowOptionsBase,
-  options_?: UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
+  idOrOptions?: string | SessionIdSymbol,
+  options_?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>>,
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.sqliteDef
   const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
-  const options: (UseRowOptionsBase & Partial<RowQuery.RequiredColumnsOptions<TTableDef>>) | undefined =
+  const options: Partial<RowQuery.RequiredColumnsOptions<TTableDef>> | undefined =
     typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
-  const { insertValues, reactivityGraph } = options ?? {}
+  const { insertValues } = options ?? {}
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
@@ -105,28 +99,24 @@ export const useRow: {
   const idStr = id === SessionIdSymbol ? 'session' : id
   const rowQuery = table.query.row as any
 
-  type Query$ = LiveQuery<RowQuery.Result<TTableDef>, QueryInfo.Row>
-  const { query$, otelContext } = useMakeScopedQuery(
-    (otelContext) =>
+  type QueryDef = LiveQueryDef<RowQuery.Result<TTableDef>, QueryInfo.Row>
+  const queryDef: QueryDef = React.useMemo(
+    () =>
       DbSchema.tableIsSingleton(table)
-        ? (queryDb(rowQuery(), { reactivityGraph, otelContext }) as any as Query$)
-        : (queryDb(rowQuery(id!, { insertValues: insertValues! }), { reactivityGraph, otelContext }) as any as Query$),
-    [idStr!, tableName],
-    {
-      otel: {
-        spanName: `LiveStore:useRow:${tableName}${idStr === undefined ? '' : `:${idStr}`}`,
-        attributes: { id: idStr },
-      },
-    },
+        ? queryDb(rowQuery(), {})
+        : queryDb(rowQuery(id!, { insertValues: insertValues! }), { deps: idStr! }),
+    [id, insertValues, rowQuery, table, idStr],
   )
 
-  const query$Ref = useQueryRef(query$, otelContext) as React.RefObject<RowQuery.Result<TTableDef>>
+  const queryRef = useQueryRef(queryDef, {
+    otelSpanName: `LiveStore:useRow:${tableName}${idStr === undefined ? '' : `:${idStr}`}`,
+  })
 
   const setState = React.useMemo<StateSetters<TTableDef>>(() => {
     if (table.options.isSingleColumn) {
       return (newValueOrFn: RowQuery.Result<TTableDef>) => {
-        const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
-        if (query$Ref.current === newValue) return
+        const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current) : newValueOrFn
+        if (queryRef.valueRef.current === newValue) return
 
         // NOTE we need to account for the short-hand syntax for single-column+singleton tables
         if (table.options.isSingleton) {
@@ -141,11 +131,11 @@ export const useRow: {
         ReadonlyRecord.map(sqliteTableDef.columns, (column, columnName) => (newValueOrFn: any) => {
           const newValue =
             // @ts-expect-error TODO fix typing
-            typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current[columnName]) : newValueOrFn
+            typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current[columnName]) : newValueOrFn
 
           // Don't update the state if it's the same as the value already seen in the component
           // @ts-expect-error TODO fix typing
-          if (query$Ref.current[columnName] === newValue) return
+          if (queryRef.valueRef.current[columnName] === newValue) return
 
           store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: { [columnName]: newValue } }))
           // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
@@ -154,13 +144,13 @@ export const useRow: {
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
         const columnValues =
           // @ts-expect-error TODO fix typing
-          typeof columnValuesOrFn === 'function' ? columnValuesOrFn(query$Ref.current) : columnValuesOrFn
+          typeof columnValuesOrFn === 'function' ? columnValuesOrFn(queryRef.valueRef.current) : columnValuesOrFn
 
         // TODO use hashing instead
         // Don't update the state if it's the same as the value already seen in the component
         if (
           // @ts-expect-error TODO fix typing
-          Object.entries(columnValues).every(([columnName, value]) => query$Ref.current[columnName] === value)
+          Object.entries(columnValues).every(([columnName, value]) => queryRef.valueRef.current[columnName] === value)
         ) {
           return
         }
@@ -171,9 +161,9 @@ export const useRow: {
 
       return setState as any
     }
-  }, [id, query$Ref, sqliteTableDef.columns, store, table])
+  }, [id, queryRef.valueRef, sqliteTableDef.columns, store, table])
 
-  return [query$Ref.current, setState, query$]
+  return [queryRef.valueRef.current, setState, queryRef.queryRcRef.value]
 }
 
 export type Dispatch<A> = (action: A) => void

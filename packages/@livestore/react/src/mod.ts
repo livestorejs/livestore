@@ -1,7 +1,6 @@
 export { LiveStoreContext, useStore } from './LiveStoreContext.js'
 export { LiveStoreProvider } from './LiveStoreProvider.js'
 export { useQuery } from './useQuery.js'
-export { useScopedQuery } from './useScopedQuery.js'
 export { useStackInfo } from './utils/stack-info.js'
 export {
   useRow,

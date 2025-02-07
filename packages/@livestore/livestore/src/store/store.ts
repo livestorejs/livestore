@@ -27,19 +27,44 @@ import {
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Data, Effect, Inspectable, MutableHashMap, Runtime, Schema } from '@livestore/utils/effect'
+import {
+  Cause,
+  Data,
+  Effect,
+  Inspectable,
+  MutableHashMap,
+  OtelTracer,
+  Runtime,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 import { type GraphQLSchema } from 'graphql'
 
-import type { LiveQuery, QueryContext, ReactivityGraph } from '../live-queries/base-class.js'
+import type {
+  ILiveQueryRefDef,
+  LiveQuery,
+  LiveQueryDef,
+  ReactivityGraph,
+  ReactivityGraphContext,
+} from '../live-queries/base-class.js'
+import { makeReactivityGraph } from '../live-queries/base-class.js'
 import type { Ref } from '../reactive.js'
 import { makeExecBeforeFirstRun } from '../row-query-utils.js'
 import { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { BaseGraphQLContext, RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel } from './store-types.js'
+import type { StackInfo } from '../utils/stack-info.js'
+import type {
+  BaseGraphQLContext,
+  RefreshReason,
+  StoreMutateOptions,
+  StoreOptions,
+  StoreOtel,
+  Unsubscribe,
+} from './store-types.js'
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -61,7 +86,7 @@ export class Store<
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
    * This only works in combination with `equal: () => false` which will always trigger a refresh.
    */
-  tableRefs: { [key: string]: Ref<null, QueryContext, RefreshReason> }
+  tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> }
 
   private runtime: Runtime.Runtime<Scope.Scope>
 
@@ -74,12 +99,13 @@ export class Store<
   private syncProcessor: ClientSessionSyncProcessor
   readonly lifetimeScope: Scope.Scope
 
+  readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+
   // #region constructor
-  private constructor({
+  constructor({
     clientSession,
     schema,
     graphQLOptions,
-    reactivityGraph,
     otelOptions,
     disableDevtools,
     batchUpdates,
@@ -99,6 +125,8 @@ export class Store<
 
     this.lifetimeScope = lifetimeScope
     this.runtime = runtime
+
+    const reactivityGraph = makeReactivityGraph()
 
     const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
 
@@ -121,7 +149,7 @@ export class Store<
             bindValues,
             writeTables = this.syncDbWrapper.getTablesUsed(statementSql),
           } of execArgsArr) {
-            this.syncDbWrapper.execute(statementSql, bindValues, writeTables, { otelContext })
+            this.syncDbWrapper.execute(statementSql, bindValues, { otelContext, writeTables })
 
             // durationMsTotal += durationMs
             writeTables.forEach((table) => writeTablesForEvent.add(table))
@@ -141,13 +169,13 @@ export class Store<
         this.syncDbWrapper.rollback(changeset)
       },
       refreshTables: (tables) => {
-        const tablesToUpdate = [] as [Ref<null, QueryContext, RefreshReason>, null][]
+        const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
           const tableRef = this.tableRefs[tableName]
           assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
           tablesToUpdate.push([tableRef!, null])
         }
-        this.reactivityGraph.setRefs(tablesToUpdate)
+        reactivityGraph.setRefs(tablesToUpdate)
       },
       span: syncSpan,
     })
@@ -167,6 +195,8 @@ export class Store<
     this.reactivityGraph = reactivityGraph
     this.reactivityGraph.context = {
       store: this as unknown as Store<BaseGraphQLContext, LiveStoreSchema>,
+      liveQueryRCMap: new Map(),
+      reactivityGraph: new WeakRef(reactivityGraph),
       otelTracer: otelOptions.tracer,
       rootOtelContext: otelQueriesSpanContext,
       effectsWrapper: batchUpdates,
@@ -206,7 +236,7 @@ export class Store<
       this.graphQLContext = graphQLOptions.makeContext(this.syncDbWrapper, this.otel.tracer, clientSession.sessionId)
     }
 
-    Effect.gen(this, function* () {
+    this.boot = Effect.gen(this, function* () {
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           // Remove all table refs from the reactivity graph
@@ -224,23 +254,9 @@ export class Store<
       )
 
       yield* this.syncProcessor.boot
-    }).pipe(this.runEffectFork)
-  }
-  // #endregion constructor
-
-  static createStore = <TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema = LiveStoreSchema>(
-    storeOptions: StoreOptions<TGraphQLContext, TSchema>,
-    parentSpan: otel.Span,
-  ): Store<TGraphQLContext, TSchema> => {
-    const ctx = otel.trace.setSpan(otel.context.active(), parentSpan)
-    return storeOptions.otelOptions.tracer.startActiveSpan('LiveStore:createStore', {}, ctx, (span) => {
-      try {
-        return new Store(storeOptions)
-      } finally {
-        span.end()
-      }
     })
   }
+  // #endregion constructor
 
   get sessionId(): string {
     return this.clientSession.sessionId
@@ -249,29 +265,66 @@ export class Store<
   /**
    * Subscribe to the results of a query
    * Returns a function to cancel the subscription.
+   *
+   * @example
+   * ```ts
+   * const unsubscribe = store.subscribe(query$, { onUpdate: (result) => console.log(result) })
+   * ```
    */
   subscribe = <TResult>(
-    query$: LiveQuery<TResult, any>,
-    onNewValue: (value: TResult) => void,
-    onUnsubsubscribe?: () => void,
-    options?: { label?: string; otelContext?: otel.Context; skipInitialRun?: boolean } | undefined,
-  ): (() => void) =>
+    query: LiveQueryDef<TResult, any> | LiveQuery<TResult, any>,
+    options: {
+      /** Called when the query result has changed */
+      onUpdate: (value: TResult) => void
+      onSubscribe?: (query$: LiveQuery<TResult, any>) => void
+      /** Gets called after the query subscription has been removed */
+      onUnsubsubscribe?: () => void
+      label?: string
+      /**
+       * Skips the initial `onUpdate` callback
+       * @default false
+       */
+      skipInitialRun?: boolean
+      otelContext?: otel.Context
+      /** If provided, the stack info will be added to the `activeSubscriptions` set of the query */
+      stackInfo?: StackInfo
+    },
+  ): Unsubscribe =>
     this.otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: query$.label } },
+      { attributes: { label: options?.label, queryLabel: query.label } },
       options?.otelContext ?? this.otel.queriesSpanContext,
       (span) => {
         // console.debug('store sub', query$.id, query$.label)
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
+        const queryRcRef =
+          query._tag === 'def'
+            ? query.make(this.reactivityGraph.context!)
+            : {
+                value: query,
+                deref: () => {},
+              }
+        const query$ = queryRcRef.value
+
         const label = `subscribe:${options?.label}`
-        const effect = this.reactivityGraph.makeEffect((get) => onNewValue(get(query$.results$)), { label })
+        const effect = this.reactivityGraph.makeEffect(
+          (get, _otelContext, debugRefreshReason) =>
+            options.onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          { label },
+        )
+
+        if (options?.stackInfo) {
+          query$.activeSubscriptions.add(options.stackInfo)
+        }
+
+        options?.onSubscribe?.(query$)
 
         this.activeQueries.add(query$ as LiveQuery<TResult>)
 
         // Running effect right away to get initial value (unless `skipInitialRun` is set)
-        if (options?.skipInitialRun !== true) {
-          effect.doEffect(otelContext)
+        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
+          effect.doEffect(otelContext, { _tag: 'subscribe.initial', label: `subscribe-initial-run:${options?.label}` })
         }
 
         const unsubscribe = () => {
@@ -279,7 +332,14 @@ export class Store<
           try {
             this.reactivityGraph.destroyNode(effect)
             this.activeQueries.remove(query$ as LiveQuery<TResult>)
-            onUnsubsubscribe?.()
+
+            if (options?.stackInfo) {
+              query$.activeSubscriptions.delete(options.stackInfo)
+            }
+
+            queryRcRef.deref()
+
+            options?.onUnsubsubscribe?.()
           } finally {
             span.end()
           }
@@ -287,6 +347,30 @@ export class Store<
 
         return unsubscribe
       },
+    )
+
+  subscribeStream = <TResult>(
+    query$: LiveQueryDef<TResult, any>,
+    options?: { label?: string; skipInitialRun?: boolean } | undefined,
+  ): Stream.Stream<TResult> =>
+    Stream.asyncPush<TResult>((emit) =>
+      Effect.gen(this, function* () {
+        const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
+          Effect.catchTag('NoSuchElementException', () => Effect.succeed(undefined)),
+        )
+        const otelContext = otelSpan ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
+
+        yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            this.subscribe(query$, {
+              onUpdate: (result) => emit.single(result),
+              otelContext,
+              label: options?.label,
+            }),
+          ),
+          (unsub) => Effect.sync(() => unsub()),
+        )
+      }),
     )
 
   /**
@@ -304,12 +388,15 @@ export class Store<
    * ```
    */
   query = <TResult>(
-    query: QueryBuilder<TResult, any, any> | LiveQuery<TResult, any> | { query: string; bindValues: ParamsObject },
-    options?: { otelContext?: otel.Context },
+    query:
+      | QueryBuilder<TResult, any, any>
+      | LiveQuery<TResult, any>
+      | LiveQueryDef<TResult, any>
+      | { query: string; bindValues: ParamsObject },
+    options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     if (typeof query === 'object' && 'query' in query && 'bindValues' in query) {
-      return this.syncDbWrapper.select(query.query, {
-        bindValues: prepareBindValues(query.bindValues, query.query),
+      return this.syncDbWrapper.select(query.query, prepareBindValues(query.bindValues, query.query), {
         otelContext: options?.otelContext,
       }) as any
     } else if (isQueryBuilder(query)) {
@@ -325,15 +412,36 @@ export class Store<
 
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
-      const rawRes = this.syncDbWrapper.select(sqlRes.query, {
-        bindValues: sqlRes.bindValues as any as PreparedBindValues,
+      const rawRes = this.syncDbWrapper.select(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
         otelContext: options?.otelContext,
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })
       return Schema.decodeSync(schema)(rawRes)
+    } else if (query._tag === 'def') {
+      const query$ = query.make(this.reactivityGraph.context!)
+      const result = this.query(query$.value, options)
+      query$.deref()
+      return result
     } else {
-      return query.run(options?.otelContext)
+      return query.run({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason })
     }
+  }
+
+  // makeLive: {
+  //   <T>(def: LiveQueryDef<T, any>): LiveQuery<T, any>
+  //   <T>(def: ILiveQueryRefDef<T>): ILiveQueryRef<T>
+  // } = (def: any) => {
+  //   if (def._tag === 'live-ref-def') {
+  //     return (def as ILiveQueryRefDef<any>).make(this.reactivityGraph.context!)
+  //   } else {
+  //     return (def as LiveQueryDef<any, any>).make(this.reactivityGraph.context!) as any
+  //   }
+  // }
+
+  setRef = <T>(refDef: ILiveQueryRefDef<T>, value: T): void => {
+    const ref = refDef.make(this.reactivityGraph.context!)
+    ref.value.set(value)
+    ref.deref()
   }
 
   // #region mutate
@@ -363,7 +471,6 @@ export class Store<
 
     if (mutationsEvents.length === 0) return
 
-    const label = options?.label ?? 'mutate'
     const skipRefresh = options?.skipRefresh ?? false
 
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
@@ -377,40 +484,39 @@ export class Store<
 
     return this.otel.tracer.startActiveSpan(
       'LiveStore:mutate',
-      { attributes: { 'livestore.mutateLabel': label }, links: options?.spanLinks },
+      {
+        attributes: {
+          'livestore.mutationEventsCount': mutationsEvents.length,
+          'livestore.mutationEventTags': mutationsEvents.map((_) => _.mutation),
+          'livestore.mutateLabel': options?.label,
+        },
+        links: options?.spanLinks,
+      },
       options?.otelContext ?? this.otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         try {
-          const { writeTables } = this.otel.tracer.startActiveSpan(
-            'LiveStore:mutate:applyMutations',
-            { attributes: { 'livestore.mutateLabel': label } },
-            otel.trace.setSpan(otel.context.active(), span),
-            (span) => {
-              try {
-                const otelContext = otel.trace.setSpan(otel.context.active(), span)
-                // 5
+          const { writeTables } = (() => {
+            try {
+              const applyMutations = () => this.syncProcessor.push(mutationsEvents, { otelContext })
 
-                const applyMutations = () => this.syncProcessor.push(mutationsEvents, { otelContext })
-
-                if (mutationsEvents.length > 1) {
-                  // TODO: what to do about leader transaction here?
-                  return this.syncDbWrapper.txn(applyMutations)
-                } else {
-                  return applyMutations()
-                }
-              } catch (e: any) {
-                console.error(e)
-                span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
-                throw e
-              } finally {
-                span.end()
+              if (mutationsEvents.length > 1) {
+                // TODO: what to do about leader transaction here?
+                return this.syncDbWrapper.txn(applyMutations)
+              } else {
+                return applyMutations()
               }
-            },
-          )
+            } catch (e: any) {
+              console.error(e)
+              span.setStatus({ code: otel.SpanStatusCode.ERROR, message: e.toString() })
+              throw e
+            } finally {
+              span.end()
+            }
+          })()
 
-          const tablesToUpdate = [] as [Ref<null, QueryContext, RefreshReason>, null][]
+          const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
           for (const tableName of writeTables) {
             const tableRef = this.tableRefs[tableName]
             assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)

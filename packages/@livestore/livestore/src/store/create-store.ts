@@ -14,6 +14,7 @@ import {
   Effect,
   Exit,
   identity,
+  Layer,
   Logger,
   LogLevel,
   MutableHashMap,
@@ -26,8 +27,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
-import { globalReactivityGraph } from '../global-state.js'
-import type { ReactivityGraph } from '../live-queries/base-class.js'
+import { LiveStoreContextRunning } from '../effect/index.js'
 import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
 import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, ShutdownDeferred } from './store-types.js'
@@ -36,12 +36,11 @@ export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, 
   schema: TSchema
   adapter: Adapter
   storeId: string
-  reactivityGraph?: ReactivityGraph
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   boot?: (
     store: Store<TGraphQLContext, TSchema>,
     parentSpan: otel.Span,
-  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
+  ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -95,7 +94,6 @@ export const createStore = <
   storeId,
   graphQLOptions,
   boot,
-  reactivityGraph = globalReactivityGraph,
   batchUpdates,
   disableDevtools,
   onBootStatus,
@@ -163,29 +161,28 @@ export const createStore = <
       // TODO fill up with unsynced mutation events from the client session
       const unsyncedMutationEvents = MutableHashMap.empty<EventId.EventId, MutationEvent.ForSchema<TSchema>>()
 
-      const store = Store.createStore<TGraphQLContext, TSchema>(
-        {
-          clientSession,
-          schema,
-          graphQLOptions,
-          otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-          reactivityGraph,
-          disableDevtools,
-          unsyncedMutationEvents,
-          lifetimeScope,
-          runtime,
-          // NOTE during boot we're not yet executing mutations in a batched context
-          // but only set the provided `batchUpdates` function after boot
-          batchUpdates: (run) => run(),
-          storeId,
-        },
-        span,
-      )
+      const store = new Store<TGraphQLContext, TSchema>({
+        clientSession,
+        schema,
+        graphQLOptions,
+        otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
+        disableDevtools,
+        unsyncedMutationEvents,
+        lifetimeScope,
+        runtime,
+        // NOTE during boot we're not yet executing mutations in a batched context
+        // but only set the provided `batchUpdates` function after boot
+        batchUpdates: (run) => run(),
+        storeId,
+      })
+
+      yield* store.boot
 
       if (boot !== undefined) {
         // TODO also incorporate `boot` function progress into `bootStatusQueue`
         yield* Effect.tryAll(() => boot(store, span)).pipe(
           UnexpectedError.mapToUnexpectedError,
+          Effect.provide(Layer.succeed(LiveStoreContextRunning, { stage: 'running', store: store as any as Store })),
           Effect.withSpan('createStore:boot'),
         )
       }

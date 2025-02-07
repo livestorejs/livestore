@@ -1,32 +1,34 @@
 import * as LiveStore from '@livestore/livestore'
 import { getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { render, renderHook } from '@testing-library/react'
+import * as ReactTesting from '@testing-library/react'
 import React from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, expect, it } from 'vitest'
 
-import { AppComponentSchema, AppRouterSchema, makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
+import { AppRouterSchema, makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
 import * as LiveStoreReact from './mod.js'
+import { __resetUseRcResourceCache } from './useRcResource.js'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 
 // NOTE running tests concurrently doesn't work with the default global db graph
-describe('useRow', () => {
-  it('should update the data based on component key', () =>
+Vitest.describe('useRow', () => {
+  beforeEach(() => {
+    __resetUseRcResourceCache()
+  })
+
+  Vitest.scopedLive('should update the data based on component key', () =>
     Effect.gen(function* () {
-      const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
-        useGlobalReactivityGraph: false,
-      })
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
-      const renderCount = makeRenderCount()
-
-      const { result, rerender } = renderHook(
+      const { result, rerender } = ReactTesting.renderHook(
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
+          const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
           return { state, setState }
         },
         { wrapper, initialProps: 'u1' },
@@ -35,37 +37,29 @@ describe('useRow', () => {
       expect(result.current.state.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
-
-      React.act(() =>
-        store.mutate(
-          LiveStore.rawSqlMutation({
-            sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
-          }),
-        ),
-      )
+      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      store.mutate(tables.userInfo.insert({ id: 'u2', username: 'username_u2' }))
 
       rerender('u2')
 
+      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       expect(result.current.state.id).toBe('u2')
       expect(result.current.state.username).toBe('username_u2')
       expect(renderCount.val).toBe(2)
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
+    }),
+  )
 
   // TODO add a test that makes sure React doesn't re-render when a setter is used to set the same value
 
-  it('should update the data reactively - via setState', () =>
+  Vitest.scopedLive('should update the data reactively - via setState', () =>
     Effect.gen(function* () {
-      const { wrapper, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
-        useGlobalReactivityGraph: false,
-      })
+      const { wrapper, renderCount } = yield* makeTodoMvcReact({})
 
-      const renderCount = makeRenderCount()
-
-      const { result } = renderHook(
+      const { result } = ReactTesting.renderHook(
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
+          const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
           return { state, setState }
         },
         { wrapper, initialProps: 'u1' },
@@ -75,26 +69,23 @@ describe('useRow', () => {
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
-      React.act(() => result.current.setState.username('username_u1_hello'))
+      ReactTesting.act(() => result.current.setState.username('username_u1_hello'))
 
       expect(result.current.state.id).toBe('u1')
       expect(result.current.state.username).toBe('username_u1_hello')
       expect(renderCount.val).toBe(2)
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
+    }),
+  )
 
-  it('should update the data reactively - via raw store mutation', () =>
+  Vitest.scopedLive('should update the data reactively - via raw store mutation', () =>
     Effect.gen(function* () {
-      const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
-        useGlobalReactivityGraph: false,
-      })
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
-      const renderCount = makeRenderCount()
-
-      const { result } = renderHook(
+      const { result } = ReactTesting.renderHook(
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
+          const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
           return { state, setState }
         },
         { wrapper, initialProps: 'u1' },
@@ -104,36 +95,30 @@ describe('useRow', () => {
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
-      React.act(() =>
-        store.mutate(
-          LiveStore.rawSqlMutation({
-            sql: LiveStore.sql`UPDATE UserInfo SET username = 'username_u1_hello' WHERE id = 'u1';`,
-          }),
-        ),
+      ReactTesting.act(() =>
+        store.mutate(tables.userInfo.update({ where: { id: 'u1' }, values: { username: 'username_u1_hello' } })),
       )
 
       expect(result.current.state.id).toBe('u1')
       expect(result.current.state.username).toBe('username_u1_hello')
       expect(renderCount.val).toBe(2)
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
+    }),
+  )
 
-  it('should work for a larger app', () =>
+  Vitest.scopedLive('should work for a larger app', () =>
     Effect.gen(function* () {
-      const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
-        useGlobalReactivityGraph: false,
-      })
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
       const allTodos$ = LiveStore.queryDb(
         { query: `select * from todos`, schema: Schema.Array(tables.todos.schema) },
-        { label: 'allTodos', reactivityGraph },
+        { label: 'allTodos' },
       )
 
-      const appRouterRenderCount = makeRenderCount()
       let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
       const AppRouter: React.FC = () => {
-        appRouterRenderCount.inc()
+        renderCount.inc()
 
-        const [state, setState] = LiveStoreReact.useRow(AppRouterSchema, { reactivityGraph })
+        const [state, setState] = LiveStoreReact.useRow(AppRouterSchema)
 
         globalSetState = setState
 
@@ -161,15 +146,15 @@ describe('useRow', () => {
       }
 
       const TaskDetails: React.FC<{ id: string }> = ({ id }) => {
-        const [todo] = LiveStoreReact.useRow(todos, id, { reactivityGraph })
+        const [todo] = LiveStoreReact.useRow(todos, id)
         return <div role="content">{JSON.stringify(todo)}</div>
       }
 
-      const renderResult = render(<AppRouter />, { wrapper })
+      const renderResult = ReactTesting.render(<AppRouter />, { wrapper })
 
-      expect(appRouterRenderCount.val).toBe(1)
+      expect(renderCount.val).toBe(1)
 
-      React.act(() =>
+      ReactTesting.act(() =>
         store.mutate(
           LiveStore.rawSqlMutation({
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
@@ -177,19 +162,19 @@ describe('useRow', () => {
         ),
       )
 
-      expect(appRouterRenderCount.val).toBe(1)
+      expect(renderCount.val).toBe(1)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
 
-      React.act(() => globalSetState!.currentTaskId('t1'))
+      ReactTesting.act(() => globalSetState!.currentTaskId('t1'))
 
-      expect(appRouterRenderCount.val).toBe(2)
+      expect(renderCount.val).toBe(2)
       expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
         `"{"id":"t1","text":"buy milk","completed":false}"`,
       )
 
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
-      React.act(() =>
+      ReactTesting.act(() =>
         store.mutate(
           LiveStore.rawSqlMutation({
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
@@ -201,37 +186,33 @@ describe('useRow', () => {
         ),
       )
 
-      expect(appRouterRenderCount.val).toBe(3)
+      expect(renderCount.val).toBe(3)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t2"')
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
+    }),
+  )
 
-  it('should work for a useRow query chained with a useTemporary query', () =>
+  Vitest.scopedLive('should work for a useRow query chained with a useTemporary query', () =>
     Effect.gen(function* () {
-      const { store, wrapper, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
-        useGlobalReactivityGraph: false,
-      })
-      const renderCount = makeRenderCount()
+      const { store, wrapper, renderCount } = yield* makeTodoMvcReact({})
 
       store.mutate(
         todos.insert({ id: 't1', text: 'buy milk', completed: false }),
         todos.insert({ id: 't2', text: 'buy bread', completed: false }),
       )
 
-      const { result, unmount, rerender } = renderHook(
+      const { result, unmount, rerender } = ReactTesting.renderHook(
         (userId: string) => {
           renderCount.inc()
 
-          const [_row, _setRow, rowState$] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
-          const todos = LiveStoreReact.useScopedQuery(
-            () =>
-              LiveStore.queryDb(
-                (get) => ({
-                  query: LiveStore.sql`select * from todos where text like '%${get(rowState$).text}%'`,
-                  schema: Schema.Array(tables.todos.schema),
-                }),
-                { reactivityGraph, label: 'todosFiltered' },
-              ),
-            userId,
+          const [_row, _setRow, rowState$] = LiveStoreReact.useRow(tables.userInfo, userId)
+          const todos = LiveStoreReact.useQuery(
+            LiveStore.queryDb(
+              (get) => tables.todos.query.where('text', 'LIKE', `%${get(rowState$).text}%`),
+              // TODO find a way where explicit `userId` is not needed here
+              // possibly by automatically understanding the `get(rowState$)` dependency
+              { label: 'todosFiltered', deps: userId },
+            ),
+            // TODO introduce a `deps` array which is only needed when a query is parametric
           )
 
           return { todos }
@@ -239,16 +220,9 @@ describe('useRow', () => {
         { wrapper, initialProps: 'u1' },
       )
 
-      React.act(() =>
-        store.mutate(
-          LiveStore.rawSqlMutation({
-            sql: LiveStore.sql`INSERT INTO UserInfo (id, username, text) VALUES ('u2', 'username_u2', 'milk')`,
-          }),
-        ),
-      )
+      ReactTesting.act(() => store.mutate(tables.userInfo.insert({ id: 'u2', username: 'username_u2', text: 'milk' })))
 
       expect(result.current.todos.length).toBe(2)
-      // expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
       rerender('u2')
@@ -257,9 +231,10 @@ describe('useRow', () => {
       expect(renderCount.val).toBe(2)
 
       unmount()
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise))
+    }),
+  )
 
-  describe('otel', () => {
+  Vitest.describe('otel', () => {
     const provider = new BasicTracerProvider({})
     provider.register()
 
@@ -277,20 +252,17 @@ describe('useRow', () => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         await Effect.gen(function* () {
-          const { wrapper, store, reactivityGraph, makeRenderCount } = yield* makeTodoMvcReact({
-            useGlobalReactivityGraph: false,
+          const { wrapper, store, renderCount } = yield* makeTodoMvcReact({
             otelContext,
             otelTracer,
             strictMode,
           })
 
-          const renderCount = makeRenderCount()
-
-          const { result, rerender, unmount } = renderHook(
+          const { result, rerender, unmount } = ReactTesting.renderHook(
             (userId: string) => {
               renderCount.inc()
 
-              const [state, setState] = LiveStoreReact.useRow(AppComponentSchema, userId, { reactivityGraph })
+              const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
               return { state, setState }
             },
             { wrapper, initialProps: 'u1' },
@@ -300,13 +272,9 @@ describe('useRow', () => {
           expect(result.current.state.username).toBe('')
           expect(renderCount.val).toBe(1)
 
-          React.act(() =>
-            store.mutate(
-              LiveStore.rawSqlMutation({
-                sql: LiveStore.sql`INSERT INTO UserInfo (id, username) VALUES ('u2', 'username_u2')`,
-              }),
-            ),
-          )
+          // For u2 we'll make sure that the row already exists,
+          // so the lazy `insert` will be skipped
+          ReactTesting.act(() => store.mutate(tables.userInfo.insert({ id: 'u2', username: 'username_u2' })))
 
           rerender('u2')
 
@@ -316,13 +284,11 @@ describe('useRow', () => {
 
           unmount()
           span.end()
-
-          return { strictMode }
         }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 
         const mapAttributes = (attributes: otel.Attributes) => {
           return ReadonlyRecord.map(attributes, (val, key) => {
-            if (key === 'stackInfo') {
+            if (key === 'firstStackInfo') {
               const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
               // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
               stackInfo.frames.forEach((_) => {

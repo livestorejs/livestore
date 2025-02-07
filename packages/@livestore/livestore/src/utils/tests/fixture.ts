@@ -1,7 +1,7 @@
 import { provideOtel } from '@livestore/common'
 import type { FromInputSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
-import { createStore, DbSchema, globalReactivityGraph, makeReactivityGraph, makeSchema } from '@livestore/livestore'
+import { createStore, DbSchema, makeSchema } from '@livestore/livestore'
 import { Effect } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
@@ -47,22 +47,17 @@ export interface FixtureSchema extends FromInputSchema.DeriveSchema<{ tables: ty
 export const makeTodoMvc = ({
   otelTracer,
   otelContext,
-  useGlobalReactivityGraph = true,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
-  useGlobalReactivityGraph?: boolean
 } = {}) =>
   Effect.gen(function* () {
-    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
-
     const store: Store<any, FixtureSchema> = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
-      reactivityGraph,
       debug: { instanceId: 'test' },
     })
 
-    return { store, reactivityGraph }
+    return store
   }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer: otelTracer }))

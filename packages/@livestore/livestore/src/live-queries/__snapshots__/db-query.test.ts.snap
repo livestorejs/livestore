@@ -22,9 +22,6 @@ exports[`otel > otel 3`] = `
       },
     },
     {
-      "_name": "LiveStore:createStore",
-    },
-    {
       "_name": "LiveStore:sync",
     },
     {
@@ -33,22 +30,17 @@ exports[`otel > otel 3`] = `
         {
           "_name": "LiveStore:mutate",
           "attributes": {
-            "livestore.mutateLabel": "mutate",
+            "livestore.mutationEventTags": [
+              "livestore.RawSql",
+            ],
+            "livestore.mutationEventsCount": 1,
           },
           "children": [
             {
-              "_name": "LiveStore:mutate:applyMutations",
+              "_name": "livestore.in-memory-db:execute",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-                  },
-                },
-              ],
             },
           ],
         },
@@ -97,7 +89,179 @@ exports[`otel > otel 3`] = `
 }
 `;
 
+exports[`otel > with thunks 1`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [],
+}
+`;
+
 exports[`otel > with thunks 3`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [],
+}
+`;
+
+exports[`otel > with thunks 4`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 1,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [],
+}
+`;
+
+exports[`otel > with thunks 6`] = `
+{
+  "atoms": [
+    {
+      "_tag": "ref",
+      "id": "node-1",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:todos",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 1,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-2",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+  ],
+  "deferredEffects": [],
+  "effects": [],
+}
+`;
+
+exports[`otel > with thunks 7`] = `
 {
   "_name": "createStore",
   "attributes": {
@@ -119,9 +283,6 @@ exports[`otel > with thunks 3`] = `
       },
     },
     {
-      "_name": "LiveStore:createStore",
-    },
-    {
       "_name": "LiveStore:sync",
     },
     {
@@ -130,22 +291,17 @@ exports[`otel > with thunks 3`] = `
         {
           "_name": "LiveStore:mutate",
           "attributes": {
-            "livestore.mutateLabel": "mutate",
+            "livestore.mutationEventTags": [
+              "livestore.RawSql",
+            ],
+            "livestore.mutationEventsCount": 1,
           },
           "children": [
             {
-              "_name": "LiveStore:mutate:applyMutations",
+              "_name": "livestore.in-memory-db:execute",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-                  },
-                },
-              ],
             },
           ],
         },
@@ -181,6 +337,9 @@ exports[`otel > with thunks 3`] = `
             "sql.rowsCount": 1,
           },
           "children": [
+            {
+              "_name": "js:where-filter",
+            },
             {
               "_name": "sql-in-memory-select",
               "attributes": {
@@ -219,9 +378,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       },
     },
     {
-      "_name": "LiveStore:createStore",
-    },
-    {
       "_name": "LiveStore:sync",
     },
     {
@@ -230,22 +386,17 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
         {
           "_name": "LiveStore:mutate",
           "attributes": {
-            "livestore.mutateLabel": "mutate",
+            "livestore.mutationEventTags": [
+              "livestore.RawSql",
+            ],
+            "livestore.mutationEventsCount": 1,
           },
           "children": [
             {
-              "_name": "LiveStore:mutate:applyMutations",
+              "_name": "livestore.in-memory-db:execute",
               "attributes": {
-                "livestore.mutateLabel": "mutate",
+                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
               },
-              "children": [
-                {
-                  "_name": "livestore.in-memory-db:execute",
-                  "attributes": {
-                    "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-                  },
-                },
-              ],
             },
           ],
         },
@@ -281,6 +432,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
             "sql.rowsCount": 1,
           },
           "children": [
+            {
+              "_name": "js:() => ({ completed: false })",
+            },
             {
               "_name": "sql-in-memory-select",
               "attributes": {

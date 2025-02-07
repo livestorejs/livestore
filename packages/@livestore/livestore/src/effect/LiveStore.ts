@@ -10,15 +10,21 @@ import type { Store } from '../store/store.js'
 import type { BaseGraphQLContext, LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store/store-types.js'
 import type { SynchronousDatabaseWrapper } from '../SynchronousDatabaseWrapper.js'
 
-export type LiveStoreContextRunning = LiveStoreContextRunning_
-export const LiveStoreContextRunning = Context.GenericTag<LiveStoreContextRunning>(
-  '@livestore/livestore/effect/LiveStoreContextRunning',
-)
+export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
+  LiveStoreContextRunning,
+  LiveStoreContextRunning_
+>() {
+  static fromDeferred = Effect.gen(function* () {
+    const deferred = yield* DeferredStoreContext
+    const ctx = yield* deferred
+    return Layer.succeed(LiveStoreContextRunning, ctx)
+  }).pipe(Layer.unwrapScoped)
+}
 
-export type DeferredStoreContext = Deferred.Deferred<LiveStoreContextRunning, UnexpectedError>
-export const DeferredStoreContext = Context.GenericTag<DeferredStoreContext>(
-  '@livestore/livestore/effect/DeferredStoreContext',
-)
+export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
+  DeferredStoreContext,
+  Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
+>() {}
 
 export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   schema: LiveStoreSchema
@@ -35,7 +41,9 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
     schema: Effect.Effect<GraphQLSchema, never, OtelTracer.OtelTracer>
     makeContext: (db: SynchronousDatabaseWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
   }
-  boot?: (store: Store<GraphQLContext, LiveStoreSchema>) => Effect.Effect<void, unknown, OtelTracer.OtelTracer>
+  boot?: (
+    store: Store<GraphQLContext, LiveStoreSchema>,
+  ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   adapter: Adapter
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
@@ -52,7 +60,7 @@ export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>
 
 export const LiveStoreContextDeferred = Layer.effect(
   DeferredStoreContext,
-  Deferred.make<LiveStoreContextRunning, UnexpectedError>(),
+  Deferred.make<LiveStoreContextRunning['Type'], UnexpectedError>(),
 )
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
@@ -65,7 +73,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
   onBootStatus,
   batchUpdates,
 }: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
-  LiveStoreContextRunning,
+  LiveStoreContextRunning['Type'],
   UnexpectedError | Cause.TimeoutException,
   DeferredStoreContext | Scope.Scope | OtelTracer.OtelTracer
 > =>
@@ -92,7 +100,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
       }
       globalThis.__debugLiveStore[storeId] = store
 
-      return { stage: 'running', store } satisfies LiveStoreContextRunning
+      return { stage: 'running', store } satisfies LiveStoreContextRunning['Type']
     }),
     Effect.tapErrorCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),

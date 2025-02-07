@@ -7,7 +7,7 @@ import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeNodeAdapter } from '@livestore/node'
-import { Effect, Layer, Logger, LogLevel } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, LogLevel, Stream } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
@@ -42,11 +42,11 @@ const live = Cli.Command.make(
       const firstTable = schema.tables.values().next().value as DbSchema.TableDef
 
       const queries$ = queryDb(firstTable.query.orderBy('id', 'desc').limit(10))
-      const runtime = yield* Effect.runtime<never>()
 
-      store.subscribe(queries$, (result) => {
-        Effect.log('query', result).pipe(Effect.provide(runtime), Effect.runSync)
-      })
+      yield* store.subscribeStream(queries$).pipe(
+        Stream.tap((result) => Effect.log('query', result)),
+        Stream.runDrain,
+      )
 
       // while (true) {
       //   const prompt = yield* Cli.Prompt.text({ message: 'run mutation\n' })
@@ -55,7 +55,6 @@ const live = Cli.Command.make(
       //   store.mutate(tables.todo.insert({ id: nanoid(), title: prompt }))
       // }
 
-      yield* Effect.never
       // yield* Effect.sleep(400)
 
       // yield* FiberSet.clear(fiberSet)

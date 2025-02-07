@@ -7,6 +7,9 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - Move Store `__dev` helpers under `Store.__dev.` group
+  - Introduce a new way how to use multiple LiveStore instances in the same app
+    - By passing `storeId` to `LiveStoreProvider` and other APIs
   - Syncing
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
@@ -30,7 +33,18 @@
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
 - Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
+- Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
+- Breaking: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
+  ```ts
+  // before
+  const query$ = useScopedQuery(() => queryDb(tables.issues.query.where({ id: issueId }).first()), ['issue', issueId])
+
+  // after
+  const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: `issue-${issueId}` }))
+  ```
+
+- Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
 - Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
 - Improve Otel tracing integration

@@ -147,7 +147,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   adapter,
   batchUpdates,
   disableDevtools,
-  reactivityGraph,
   signal,
 }: CreateStoreOptions<GraphQLContext, LiveStoreSchema> & {
   signal?: AbortSignal
@@ -176,7 +175,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     adapter,
     batchUpdates,
     disableDevtools,
-    reactivityGraph,
     signal,
   })
 
@@ -202,7 +200,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
     inputPropsCacheRef.current.adapter !== adapter ||
     inputPropsCacheRef.current.batchUpdates !== batchUpdates ||
     inputPropsCacheRef.current.disableDevtools !== disableDevtools ||
-    inputPropsCacheRef.current.reactivityGraph !== reactivityGraph ||
     inputPropsCacheRef.current.signal !== signal
   ) {
     inputPropsCacheRef.current = {
@@ -213,7 +210,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
       adapter,
       batchUpdates,
       disableDevtools,
-      reactivityGraph,
       signal,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
@@ -267,7 +263,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           graphQLOptions,
           boot,
           adapter,
-          reactivityGraph,
           batchUpdates,
           disableDevtools,
           shutdownDeferred,
@@ -314,18 +309,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         ctxValueRef.current.shutdownDeferred = undefined
       }
     }
-  }, [
-    schema,
-    graphQLOptions,
-    otelOptions,
-    boot,
-    adapter,
-    batchUpdates,
-    disableDevtools,
-    signal,
-    reactivityGraph,
-    storeId,
-  ])
+  }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal, storeId])
 
   return ctxValueRef.current.value
 }

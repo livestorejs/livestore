@@ -5,13 +5,12 @@ import { Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import * as graphql from 'graphql'
 
-import { globalReactivityGraph } from '../global-state.js'
 import { isThunk, type Thunk } from '../reactive.js'
 import type { Store } from '../store/store.js'
 import type { BaseGraphQLContext, RefreshReason } from '../store/store-types.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
-import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
+import { defCounterRef, depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
 export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<To, From>
 
@@ -22,17 +21,37 @@ export const queryGraphQL = <
 >(
   document: DocumentNode<TResult, TVariableValues>,
   genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
-  {
-    label,
-    reactivityGraph,
-    map,
-  }: {
+  options: {
     label?: string
-    reactivityGraph?: ReactivityGraph
+    // reactivityGraph?: ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
+    deps?: DepKey
   } = {},
-): LiveQuery<TResultMapped, QueryInfo.None> =>
-  new LiveStoreGraphQLQuery({ document, genVariableValues, label, reactivityGraph, map })
+): LiveQueryDef<TResultMapped, QueryInfo.None> => {
+  const documentName = graphql.getOperationAST(document)?.name?.value
+  const hash = options.deps
+    ? depsToString(options.deps)
+    : (documentName ?? shouldNeverHappen('No document name found and no deps provided'))
+  const label = options.label ?? documentName ?? 'graphql'
+  const map = options.map
+
+  return {
+    _tag: 'def',
+    id: ++defCounterRef.current,
+    make: withRCMap(hash, (ctx, _otelContext) => {
+      return new LiveStoreGraphQLQuery({
+        document,
+        genVariableValues,
+        label,
+        map,
+        reactivityGraph: ctx.reactivityGraph.deref()!,
+      })
+    }),
+    label,
+    hash,
+    queryInfo: { _tag: 'None' },
+  }
+}
 
 export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
@@ -46,13 +65,13 @@ export class LiveStoreGraphQLQuery<
   document: DocumentNode<TResult, TVariableValues>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResultMapped, QueryContext, RefreshReason>
+  results$: Thunk<TResultMapped, ReactivityGraphContext, RefreshReason>
 
-  variableValues$: Thunk<TVariableValues, QueryContext, RefreshReason> | undefined
+  variableValues$: Thunk<TVariableValues, ReactivityGraphContext, RefreshReason> | undefined
 
   label: string
 
-  protected reactivityGraph: ReactivityGraph
+  reactivityGraph: ReactivityGraph
 
   queryInfo: QueryInfo.None = { _tag: 'None' }
 
@@ -68,7 +87,7 @@ export class LiveStoreGraphQLQuery<
     document: DocumentNode<TResult, TVariableValues>
     genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
     label?: string
-    reactivityGraph?: ReactivityGraph
+    reactivityGraph: ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
   }) {
     super()
@@ -78,7 +97,7 @@ export class LiveStoreGraphQLQuery<
     this.label = labelWithDefault
     this.document = document
 
-    this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
+    this.reactivityGraph = reactivityGraph
 
     this.mapResult =
       map === undefined
@@ -102,8 +121,10 @@ export class LiveStoreGraphQLQuery<
 
     if (typeof genVariableValues === 'function') {
       variableValues$OrvariableValues = this.reactivityGraph.makeThunk(
-        (get, _setDebugInfo, { rootOtelContext }, otelContext) => {
-          return genVariableValues(makeGetAtomResult(get, otelContext ?? rootOtelContext))
+        (get, _setDebugInfo, ctx, otelContext) => {
+          return genVariableValues(
+            makeGetAtomResult(get, ctx, otelContext ?? ctx.rootOtelContext, this.dependencyQueriesRef),
+          )
         },
         { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphql.variables' } },
       )
@@ -114,9 +135,10 @@ export class LiveStoreGraphQLQuery<
 
     const resultsLabel = `${labelWithDefault}:results`
     this.results$ = this.reactivityGraph.makeThunk<TResultMapped>(
-      (get, setDebugInfo, { store, otelTracer, rootOtelContext }, otelContext) => {
+      (get, setDebugInfo, ctx, otelContext, debugRefreshReason) => {
+        const { store, otelTracer, rootOtelContext } = ctx
         const variableValues = isThunk(variableValues$OrvariableValues)
-          ? (get(variableValues$OrvariableValues) as TVariableValues)
+          ? (get(variableValues$OrvariableValues, otelContext, debugRefreshReason) as TVariableValues)
           : (variableValues$OrvariableValues as TVariableValues)
         const { result, queriedTables, durationMs } = this.queryOnce({
           document,
@@ -124,7 +146,7 @@ export class LiveStoreGraphQLQuery<
           otelContext: otelContext ?? rootOtelContext,
           otelTracer,
           store: store as Store<TContext>,
-          get: makeGetAtomResult(get, otelContext ?? rootOtelContext),
+          get: makeGetAtomResult(get, ctx, otelContext ?? rootOtelContext, this.dependencyQueriesRef),
         })
 
         // Add dependencies on any tables that were used
@@ -215,5 +237,9 @@ export class LiveStoreGraphQLQuery<
     }
 
     this.reactivityGraph.destroyNode(this.results$)
+
+    for (const query of this.dependencyQueriesRef) {
+      query.deref()
+    }
   }
 }

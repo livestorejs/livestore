@@ -1,27 +1,48 @@
 import type { QueryInfo } from '@livestore/common'
 import * as otel from '@opentelemetry/api'
 
-import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store/store-types.js'
+import { isValidFunctionString } from '../utils/function-string.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
-import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
+import { defCounterRef, depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
 export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfo.None>(
   fn: (get: GetAtomResult) => TResult,
   options?: {
-    label: string
-    reactivityGraph?: ReactivityGraph
+    label?: string
     queryInfo?: TQueryInfo
+    deps?: DepKey
   },
-): LiveQuery<TResult, TQueryInfo> =>
-  new LiveStoreComputedQuery<TResult, TQueryInfo>({
-    fn,
+): LiveQueryDef<TResult, TQueryInfo> => {
+  const hash = options?.deps ? depsToString(options.deps) : fn.toString()
+  if (isValidFunctionString(hash)._tag === 'invalid') {
+    throw new Error(`On Expo/React Native, computed queries must provide a \`deps\` option`)
+  }
+
+  const queryInfo = options?.queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
+
+  return {
+    _tag: 'def',
+    id: ++defCounterRef.current,
+    make: withRCMap(hash, (ctx, _otelContext) => {
+      // TODO onDestroy
+      return new LiveStoreComputedQuery<TResult, TQueryInfo>({
+        fn,
+        label: options?.label ?? fn.toString(),
+        queryInfo: options?.queryInfo,
+        reactivityGraph: ctx.reactivityGraph.deref()!,
+      })
+    }),
     label: options?.label ?? fn.toString(),
-    reactivityGraph: options?.reactivityGraph,
-    queryInfo: options?.queryInfo,
-  })
+    // NOTE We're using the `makeQuery` function body string to make sure the key is unique across the app
+    // TODO we should figure out whether this could cause some problems and/or if there's a better way to do this
+    // NOTE `fn.toString()` doesn't work in Expo as it always produces `[native code]`
+    hash,
+    queryInfo,
+  }
+}
 
 export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo.None> extends LiveStoreQueryBase<
   TResult,
@@ -30,11 +51,11 @@ export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = Quer
   _tag: 'computed' = 'computed'
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, QueryContext, RefreshReason>
+  results$: Thunk<TResult, ReactivityGraphContext, RefreshReason>
 
   label: string
 
-  protected reactivityGraph: ReactivityGraph
+  reactivityGraph: ReactivityGraph
 
   queryInfo: TQueryInfo
 
@@ -46,23 +67,22 @@ export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = Quer
   }: {
     label: string
     fn: (get: GetAtomResult) => TResult
-    reactivityGraph?: ReactivityGraph
+    reactivityGraph: ReactivityGraph
     queryInfo?: TQueryInfo
   }) {
     super()
 
     this.label = label
-
-    this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
+    this.reactivityGraph = reactivityGraph
     this.queryInfo = queryInfo ?? ({ _tag: 'None' } as TQueryInfo)
 
     const queryLabel = `${label}:results`
 
     this.results$ = this.reactivityGraph.makeThunk(
-      (get, setDebugInfo, { otelTracer, rootOtelContext }, otelContext) =>
-        otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? rootOtelContext, (span) => {
+      (get, setDebugInfo, ctx, otelContext) =>
+        ctx.otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? ctx.rootOtelContext, (span) => {
           const otelContext = otel.trace.setSpan(otel.context.active(), span)
-          const res = fn(makeGetAtomResult(get, otelContext))
+          const res = fn(makeGetAtomResult(get, ctx, otelContext, this.dependencyQueriesRef))
 
           span.end()
 
@@ -79,6 +99,12 @@ export class LiveStoreComputedQuery<TResult, TQueryInfo extends QueryInfo = Quer
   }
 
   destroy = () => {
+    this.isDestroyed = true
+
     this.reactivityGraph.destroyNode(this.results$)
+
+    for (const query of this.dependencyQueriesRef) {
+      query.deref()
+    }
   }
 }

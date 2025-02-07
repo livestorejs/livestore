@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useScopedQuery } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 
 import { tables } from '@/livestore/schema.ts'
 
@@ -7,4 +7,4 @@ import { tables } from '@/livestore/schema.ts'
  * @returns The first user in the users table.
  */
 export const useUser = (userId?: string) =>
-  useScopedQuery(() => queryDb(tables.users.query.where({ id: userId }).first()), ['useUser', userId ?? '-'])
+  useQuery(queryDb(tables.users.query.where({ id: userId }).first(), { deps: `useUser-${userId ?? '-'}` }))

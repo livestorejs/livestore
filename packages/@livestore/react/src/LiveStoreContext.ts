@@ -1,11 +1,15 @@
-import type { Store } from '@livestore/livestore'
-import type { LiveStoreContextRunning as LiveStoreContext_ } from '@livestore/livestore/effect'
-import React, { useContext } from 'react'
+import type { LiveStoreContextRunning, Store } from '@livestore/livestore'
+import React from 'react'
 
-export const LiveStoreContext = React.createContext<LiveStoreContext_ | undefined>(undefined)
+export const LiveStoreContext = React.createContext<LiveStoreContextRunning | undefined>(undefined)
 
-export const useStore = (): { store: Store } => {
-  const storeContext = useContext(LiveStoreContext)
+export const useStore = (options?: { store?: Store }): { store: Store } => {
+  if (options?.store !== undefined) {
+    return { store: options.store }
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const storeContext = React.useContext(LiveStoreContext)
 
   if (storeContext === undefined) {
     throw new Error(`useStore can only be used inside StoreContext.Provider`)

@@ -11,14 +11,14 @@ import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import { globalReactivityGraph } from '../global-state.js'
 import type { Thunk } from '../reactive.js'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.js'
 import { makeExecBeforeFirstRun, rowQueryLabel } from '../row-query-utils.js'
 import type { RefreshReason } from '../store/store-types.js'
+import { isValidFunctionString } from '../utils/function-string.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { GetAtomResult, LiveQuery, QueryContext, ReactivityGraph } from './base-class.js'
-import { LiveStoreQueryBase, makeGetAtomResult } from './base-class.js'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
+import { defCounterRef, depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
 export type QueryInputRaw<TDecoded, TEncoded, TQueryInfo extends QueryInfo> = {
   query: string
@@ -31,8 +31,11 @@ export type QueryInputRaw<TDecoded, TEncoded, TQueryInfo extends QueryInfo> = {
    */
   queriedTables?: Set<string>
   queryInfo?: TQueryInfo
-  execBeforeFirstRun?: (ctx: QueryContext) => void
+  execBeforeFirstRun?: (ctx: ReactivityGraphContext) => void
 }
+
+export const isQueryInputRaw = (value: unknown): value is QueryInputRaw<any, any, any> =>
+  Predicate.hasProperty(value, 'query') && Predicate.hasProperty(value, 'schema')
 
 export type QueryInput<TDecoded, TEncoded, TQueryInfo extends QueryInfo> =
   | QueryInputRaw<TDecoded, TEncoded, TQueryInfo>
@@ -52,10 +55,10 @@ export const queryDb: {
        * Used for debugging / devtools
        */
       label?: string
-      reactivityGraph?: ReactivityGraph
-      otelContext?: otel.Context
+      deps?: DepKey
+      queryInfo?: TQueryInfo
     },
-  ): LiveQuery<TResult, TQueryInfo>
+  ): LiveQueryDef<TResult, TQueryInfo>
   // NOTE in this "thunk case", we can't directly derive label/queryInfo from the queryInput,
   // so the caller needs to provide them explicitly otherwise queryInfo will be set to `None`,
   // and label will be set during the query execution
@@ -69,20 +72,47 @@ export const queryDb: {
        * Used for debugging / devtools
        */
       label?: string
-      reactivityGraph?: ReactivityGraph
+      deps?: DepKey
       queryInfo?: TQueryInfo
-      otelContext?: otel.Context
     },
-  ): LiveQuery<TResult, TQueryInfo>
-} = (queryInput, options) =>
-  new LiveStoreDbQuery({
-    queryInput,
-    label: options?.label,
-    reactivityGraph: options?.reactivityGraph,
-    map: options?.map,
-    queryInfo: Predicate.hasProperty(options, 'queryInfo') ? (options.queryInfo as QueryInfo) : undefined,
-    otelContext: options?.otelContext,
-  })
+  ): LiveQueryDef<TResult, TQueryInfo>
+} = (queryInput, options) => {
+  const queryString = isQueryBuilder(queryInput)
+    ? queryInput.toString()
+    : isQueryInputRaw(queryInput)
+      ? queryInput.query
+      : typeof queryInput === 'function'
+        ? queryInput.toString()
+        : shouldNeverHappen(`Invalid query input: ${queryInput}`)
+
+  const hash = options?.deps ? queryString + '-' + depsToString(options.deps) : queryString
+  if (isValidFunctionString(hash)._tag === 'invalid') {
+    throw new Error(`On Expo/React Native, db queries must provide a \`deps\` option`)
+  }
+
+  const label = options?.label ?? queryString
+
+  return {
+    _tag: 'def',
+    id: ++defCounterRef.current,
+    make: withRCMap(hash, (ctx, otelContext) => {
+      // TODO onDestroy
+      return new LiveStoreDbQuery({
+        reactivityGraph: ctx.reactivityGraph.deref()!,
+        queryInput,
+        label,
+        map: options?.map,
+        // We're not falling back to `None` here as the queryInfo will be set dynamically
+        queryInfo: options?.queryInfo,
+        otelContext,
+      })
+    }),
+    label,
+    hash,
+    queryInfo:
+      options?.queryInfo ?? (isQueryBuilder(queryInput) ? queryInfoFromQueryBuilder(queryInput) : { _tag: 'None' }),
+  }
+}
 
 /* An object encapsulating a reactive SQL query */
 export class LiveStoreDbQuery<
@@ -93,16 +123,16 @@ export class LiveStoreDbQuery<
   _tag: 'db' = 'db'
 
   /** A reactive thunk representing the query text */
-  queryInput$: Thunk<QueryInput<TResultSchema, ReadonlyArray<any>, TQueryInfo>, QueryContext, RefreshReason> | undefined
+  queryInput$: Thunk<QueryInputRaw<any, any, QueryInfo>, ReactivityGraphContext, RefreshReason> | undefined
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResult, QueryContext, RefreshReason>
+  results$: Thunk<TResult, ReactivityGraphContext, RefreshReason>
 
   label: string
 
   queryInfo: TQueryInfo
 
-  protected reactivityGraph
+  readonly reactivityGraph
 
   private mapResult: (rows: TResultSchema) => TResult
 
@@ -117,17 +147,18 @@ export class LiveStoreDbQuery<
     label?: string
     queryInput:
       | QueryInput<TResultSchema, ReadonlyArray<any>, TQueryInfo>
-      | ((get: GetAtomResult, ctx: QueryContext) => QueryInput<TResultSchema, ReadonlyArray<any>, TQueryInfo>)
-    reactivityGraph?: ReactivityGraph
+      | ((get: GetAtomResult, ctx: ReactivityGraphContext) => QueryInput<TResultSchema, ReadonlyArray<any>, TQueryInfo>)
+    reactivityGraph: ReactivityGraph
     map?: (rows: TResultSchema) => TResult
     queryInfo?: TQueryInfo
+    /** Only used for the initial query execution */
     otelContext?: otel.Context
   }) {
     super()
 
     let label = inputLabel ?? 'db(unknown)'
     let queryInfo = inputQueryInfo ?? ({ _tag: 'None' } as TQueryInfo)
-    this.reactivityGraph = reactivityGraph ?? globalReactivityGraph
+    this.reactivityGraph = reactivityGraph
 
     this.mapResult = map === undefined ? (rows: any) => rows as TResult : map
 
@@ -136,13 +167,15 @@ export class LiveStoreDbQuery<
         typeof queryInput === 'function' ? undefined : isQueryBuilder(queryInput) ? undefined : queryInput.schema,
     }
 
-    const execBeforeFirstRunRef: { current: ((ctx: QueryContext, otelContext: otel.Context) => void) | undefined } = {
+    const execBeforeFirstRunRef: {
+      current: ((ctx: ReactivityGraphContext, otelContext: otel.Context) => void) | undefined
+    } = {
       current: undefined,
     }
 
     type TQueryInputRaw = QueryInputRaw<any, any, QueryInfo>
 
-    let queryInputRaw$OrQueryInputRaw: TQueryInputRaw | Thunk<TQueryInputRaw, QueryContext, RefreshReason>
+    let queryInputRaw$OrQueryInputRaw: TQueryInputRaw | Thunk<TQueryInputRaw, ReactivityGraphContext, RefreshReason>
 
     const fromQueryBuilder = (qb: QueryBuilder.Any, otelContext: otel.Context | undefined) => {
       try {
@@ -156,7 +189,7 @@ export class LiveStoreDbQuery<
             schema,
             bindValues: qbRes.bindValues,
             queriedTables: new Set([ast.tableDef.sqliteDef.name]),
-            queryInfo: ast._tag === 'RowQuery' ? { _tag: 'Row', table: ast.tableDef, id: ast.id } : { _tag: 'None' },
+            queryInfo: queryInfoFromQueryBuilder(qb),
           } satisfies TQueryInputRaw,
           label: ast._tag === 'RowQuery' ? rowQueryLabel(ast.tableDef, ast.id) : qb.toString(),
           execBeforeFirstRun:
@@ -178,7 +211,10 @@ export class LiveStoreDbQuery<
       queryInputRaw$OrQueryInputRaw = this.reactivityGraph.makeThunk(
         (get, setDebugInfo, ctx, otelContext) => {
           const startMs = performance.now()
-          const queryInputResult = queryInput(makeGetAtomResult(get, otelContext ?? ctx.rootOtelContext), ctx)
+          const queryInputResult = queryInput(
+            makeGetAtomResult(get, ctx, otelContext ?? ctx.rootOtelContext, this.dependencyQueriesRef),
+            ctx,
+          )
           const durationMs = performance.now() - startMs
 
           let queryInputRaw: TQueryInputRaw
@@ -210,6 +246,8 @@ export class LiveStoreDbQuery<
           equal: (a, b) => a.query === b.query && deepEqual(a.bindValues, b.bindValues),
         },
       )
+
+      this.queryInput$ = queryInputRaw$OrQueryInputRaw
     } else {
       let queryInputRaw: TQueryInputRaw
       if (isQueryBuilder(queryInput)) {
@@ -253,10 +291,16 @@ export class LiveStoreDbQuery<
         : undefined
 
     const results$ = this.reactivityGraph.makeThunk<TResult>(
-      (get, setDebugInfo, queryContext, otelContext) =>
+      (get, setDebugInfo, queryContext, otelContext, debugRefreshReason) =>
         queryContext.otelTracer.startActiveSpan(
           'db:...', // NOTE span name will be overridden further down
-          {},
+          {
+            attributes: {
+              'livestore.debugRefreshReason': Predicate.hasProperty(debugRefreshReason, 'label')
+                ? (debugRefreshReason.label as string)
+                : debugRefreshReason?._tag,
+            },
+          },
           otelContext ?? queryContext.rootOtelContext,
           (span) => {
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -268,7 +312,7 @@ export class LiveStoreDbQuery<
             }
 
             const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw)
-              ? (get(queryInputRaw$OrQueryInputRaw, otelContext) as TQueryInputRaw)
+              ? (get(queryInputRaw$OrQueryInputRaw, otelContext, debugRefreshReason) as TQueryInputRaw)
               : (queryInputRaw$OrQueryInputRaw as TQueryInputRaw)
 
             const sqlString = queryInputResult.query
@@ -285,17 +329,20 @@ export class LiveStoreDbQuery<
             // Establish a reactive dependency on the tables used in the query
             for (const tableName of queriedTablesRef.current) {
               const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
-              get(tableRef, otelContext)
+              get(tableRef, otelContext, debugRefreshReason)
             }
 
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store.syncDbWrapper.select<any>(sqlString, {
-              queriedTables: queriedTablesRef.current,
-              bindValues: bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
-              otelContext,
-            })
+            const rawDbResults = store.syncDbWrapper.select<any>(
+              sqlString,
+              bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+              {
+                queriedTables: queriedTablesRef.current,
+                otelContext,
+              },
+            )
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
 
@@ -346,10 +393,21 @@ Result:`,
   }
 
   destroy = () => {
+    this.isDestroyed = true
+
     if (this.queryInput$ !== undefined) {
       this.reactivityGraph.destroyNode(this.queryInput$)
     }
 
     this.reactivityGraph.destroyNode(this.results$)
+
+    for (const query of this.dependencyQueriesRef) {
+      query.deref()
+    }
   }
+}
+
+const queryInfoFromQueryBuilder = (qb: QueryBuilder.Any): QueryInfo.Row | QueryInfo.None => {
+  const ast = qb[QueryBuilderAstSymbol]
+  return ast._tag === 'RowQuery' ? { _tag: 'Row', table: ast.tableDef, id: ast.id } : { _tag: 'None' }
 }

@@ -8,8 +8,13 @@ export type {
   OtelOptions,
 } from './store/store-types.js'
 
-export type { LiveStoreContextRunning } from './effect/LiveStore.js'
-export { StoreAbort, StoreInterrupted, type LiveStoreContext, type ShutdownDeferred } from './store/store-types.js'
+export {
+  StoreAbort,
+  StoreInterrupted,
+  type LiveStoreContext,
+  type ShutdownDeferred,
+  type LiveStoreContextRunning,
+} from './store/store-types.js'
 
 export { SynchronousDatabaseWrapper, emptyDebugInfo } from './SynchronousDatabaseWrapper.js'
 
@@ -26,8 +31,9 @@ export type {
   Effect,
 } from './reactive.js'
 export { LiveStoreComputedQuery, computed } from './live-queries/computed.js'
-export { LiveStoreDbQuery, queryDb } from './live-queries/db.js'
+export { LiveStoreDbQuery, queryDb } from './live-queries/db-query.js'
 export { LiveStoreGraphQLQuery, queryGraphQL } from './live-queries/graphql.js'
+export { makeRef, type LiveQueryRef } from './live-queries/make-ref.js'
 export {
   type GetAtomResult,
   type ReactivityGraph,
@@ -35,9 +41,10 @@ export {
   type LiveQuery,
   type GetResult,
   type LiveQueryAny,
+  type LiveQueryDef,
+  type LiveQueryDefAny,
+  type RcRef,
 } from './live-queries/base-class.js'
-
-export { globalReactivityGraph } from './global-state.js'
 
 export { deriveColQuery } from './row-query-utils.js'
 

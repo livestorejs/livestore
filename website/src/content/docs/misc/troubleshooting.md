@@ -5,20 +5,20 @@ sidebar:
   order: 8
 ---
 
-## Leaking queries
+## React related issues
 
-If you notice your app getting slower over time, leaking memory or even crashing, it's possible that you have queries which are not being destroyed once no longer needed.
+### Query doesn't update properly
 
-A common scenario for this looks like the following:
+If you notice the result of a `useQuery` hook is not updating properly, you might be missing some dependencies in the query's hash.
 
-```ts
-const query$ = useQuery(query(`SELECT * FROM issues where id = '${issueId}'`))
-```
-
-This will create a new query every time the component using it is re-rendered but never disposes of the previous query. To fix this, it's recommended to use `useScopedQuery` instead:
+For example, the following query:
 
 ```ts
-const query$ = useScopedQuery(() => query(`SELECT * FROM issues where id = '${issueId}'`), [issueId])
+// Don't do this
+const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
+
+// Do this instead
+const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: issueId }))
 ```
 
 ## `node_modules` related issues

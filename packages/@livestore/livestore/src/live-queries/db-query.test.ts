@@ -31,7 +31,7 @@ describe('otel', () => {
     const span = otelTracer.startSpan('test-root')
     const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-    const { store } = yield* makeTodoMvc({ otelTracer, otelContext })
+    const store = yield* makeTodoMvc({ otelTracer, otelContext })
 
     return {
       store,
@@ -51,11 +51,11 @@ describe('otel', () => {
         schema: Schema.Array(tables.todos.schema),
         queriedTables: new Set(['todos']),
       })
-      expect(query$.run()).toMatchInlineSnapshot('[]')
+      expect(store.query(query$)).toMatchInlineSnapshot('[]')
 
       store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-      expect(query$.run()).toMatchInlineSnapshot(`
+      expect(store.query(query$)).toMatchInlineSnapshot(`
       [
         {
           "completed": false,
@@ -65,7 +65,6 @@ describe('otel', () => {
       ]
     `)
 
-      query$.destroy()
       span.end()
 
       return { exporter }
@@ -89,7 +88,9 @@ describe('otel', () => {
         { label: 'all todos' },
       )
 
-      expect(query$.run()).toMatchInlineSnapshot(`
+      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+
+      expect(store.query(query$)).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "",
@@ -97,9 +98,13 @@ describe('otel', () => {
       }
     `)
 
+      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+
       store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-      expect(query$.run()).toMatchInlineSnapshot(`
+      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+
+      expect(store.query(query$)).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "t1",
@@ -107,7 +112,8 @@ describe('otel', () => {
       }
     `)
 
-      query$.destroy()
+      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+
       span.end()
 
       return { exporter }
@@ -125,7 +131,7 @@ describe('otel', () => {
       const filter = computed(() => ({ completed: false }))
       const query$ = queryDb((get) => tables.todos.query.where(get(filter)).first({ fallback: () => defaultTodo }))
 
-      expect(query$.run()).toMatchInlineSnapshot(`
+      expect(store.query(query$)).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "",
@@ -135,7 +141,7 @@ describe('otel', () => {
 
       store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
-      expect(query$.run()).toMatchInlineSnapshot(`
+      expect(store.query(query$)).toMatchInlineSnapshot(`
       {
         "completed": false,
         "id": "t1",
@@ -143,7 +149,6 @@ describe('otel', () => {
       }
     `)
 
-      query$.destroy()
       span.end()
 
       return { exporter }

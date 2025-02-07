@@ -176,7 +176,7 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
-          store.syncDbWrapper.select(queryStr, { bindValues, queriedTables, skipCache: true })
+          store.syncDbWrapper.select(queryStr, bindValues, { queriedTables, skipCache: true })
           sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }

@@ -1,7 +1,7 @@
 import { provideOtel } from '@livestore/common'
 import { DbSchema, makeSchema } from '@livestore/common/schema'
 import type { LiveStoreContextRunning } from '@livestore/livestore'
-import { createStore, globalReactivityGraph, makeReactivityGraph } from '@livestore/livestore'
+import { createStore } from '@livestore/livestore'
 import { Effect } from '@livestore/utils/effect'
 import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
@@ -42,7 +42,7 @@ export const app = DbSchema.table(
   { isSingleton: true },
 )
 
-export const AppComponentSchema = DbSchema.table(
+export const userInfo = DbSchema.table(
   'UserInfo',
   {
     username: DbSchema.text({ default: '' }),
@@ -59,18 +59,16 @@ export const AppRouterSchema = DbSchema.table(
   { isSingleton: true, deriveMutations: true },
 )
 
-export const tables = { todos, app, AppComponentSchema, AppRouterSchema }
+export const tables = { todos, app, userInfo, AppRouterSchema }
 export const schema = makeSchema({ tables })
 
 export const makeTodoMvcReact = ({
   otelTracer,
   otelContext,
-  useGlobalReactivityGraph = true,
   strictMode,
 }: {
   otelTracer?: otel.Tracer
   otelContext?: otel.Context
-  useGlobalReactivityGraph?: boolean
   strictMode?: boolean
 } = {}) =>
   Effect.gen(function* () {
@@ -89,13 +87,10 @@ export const makeTodoMvcReact = ({
       }
     }
 
-    const reactivityGraph = useGlobalReactivityGraph ? globalReactivityGraph : makeReactivityGraph()
-
     const store = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
-      reactivityGraph,
       debug: { instanceId: 'test' },
     })
 
@@ -112,5 +107,7 @@ export const makeTodoMvcReact = ({
       </MaybeStrictMode>
     )
 
-    return { wrapper, store, reactivityGraph, makeRenderCount }
+    const renderCount = makeRenderCount()
+
+    return { wrapper, store, renderCount }
   }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))

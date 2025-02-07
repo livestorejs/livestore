@@ -1,7 +1,8 @@
 import type { DerivedMutationHelperFns, QueryInfo } from '@livestore/common'
 import type { DbSchema } from '@livestore/common/schema'
 import type { SqliteDsl } from '@livestore/db-schema'
-import type { LiveQuery } from '@livestore/livestore'
+import type { GetResult, LiveQueryDef } from '@livestore/livestore'
+import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
 import { useStore } from './LiveStoreContext.js'
@@ -10,18 +11,24 @@ import type { Dispatch, SetStateAction } from './useRow.js'
 
 export const useAtom = <
   // TODO also support colJsonValue
-  TQuery extends LiveQuery<any, QueryInfo.Row | QueryInfo.Col>,
+  TQuery extends LiveQueryDef<any, QueryInfo.Row | QueryInfo.Col>,
 >(
-  query$: TQuery,
-): [value: TQuery['__result!'], setValue: Dispatch<SetStateAction<Partial<TQuery['__result!']>>>] => {
-  const query$Ref = useQueryRef(query$)
+  queryDef: TQuery,
+): [value: GetResult<TQuery>, setValue: Dispatch<SetStateAction<Partial<GetResult<TQuery>>>>] => {
+  const queryRef = useQueryRef(queryDef)
+  const query$ = queryRef.queryRcRef.value
+
+  // @ts-expect-error runtime check
+  if (query$.queryInfo._tag === 'None') {
+    shouldNeverHappen(`Can't useAtom with a query that has no queryInfo`, queryDef)
+  }
 
   const { store } = useStore()
 
   // TODO make API equivalent to useRow
-  const setValue = React.useMemo<Dispatch<SetStateAction<TQuery['__result!']>>>(() => {
-    return (newValueOrFn: any) => {
-      const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(query$Ref.current) : newValueOrFn
+  const setValue = React.useMemo<Dispatch<SetStateAction<Partial<GetResult<TQuery>>>>>(
+    () => (newValueOrFn: any) => {
+      const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current) : newValueOrFn
       const table = query$.queryInfo.table as DbSchema.TableDef &
         DerivedMutationHelperFns<SqliteDsl.Columns, DbSchema.TableOptions>
 
@@ -45,8 +52,9 @@ export const useAtom = <
           )
         }
       }
-    }
-  }, [query$.queryInfo, query$Ref, store])
+    },
+    [query$.queryInfo, queryRef.valueRef, store],
+  )
 
-  return [query$Ref.current, setValue]
+  return [queryRef.valueRef.current, setValue]
 }
