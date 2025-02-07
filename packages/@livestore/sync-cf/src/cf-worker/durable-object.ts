@@ -29,6 +29,12 @@ export const mutationLogTable = DbSchema.table('__unused', {
   createdAt: DbSchema.text({}),
 })
 
+const WebSocketAttachmentSchema = Schema.parseJson(
+  Schema.Struct({
+    storeId: Schema.String,
+  }),
+)
+
 /**
  * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
  *
@@ -47,21 +53,18 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   return class WebSocketServerBase extends DurableObject<Env> {
-    storage: SyncStorage | undefined = undefined
-
     constructor(ctx: DurableObjectState, env: Env) {
       super(ctx, env)
     }
 
     fetch = async (request: Request) =>
       Effect.gen(this, function* () {
-        if (this.storage === undefined) {
-          const storeId = getStoreId(request)
-          const dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
-          this.storage = makeStorage(this.ctx, this.env, dbName)
-        }
+        const storeId = getStoreId(request)
+        const storage = makeStorage(this.ctx, this.env, storeId)
 
         const { 0: client, 1: server } = new WebSocketPair()
+
+        server.serializeAttachment(Schema.encodeSync(WebSocketAttachmentSchema)({ storeId }))
 
         // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
 
@@ -75,7 +78,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         )
 
         const colSpec = makeColumnSpec(mutationLogTable.sqliteDef.ast)
-        this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${this.storage.dbName} (${colSpec}) strict`)
+        this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${storage.dbName} (${colSpec}) strict`)
 
         return new Response(null, {
           status: 101,
@@ -92,14 +95,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           return
         }
 
+        const { storeId } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
+        const storage = makeStorage(this.ctx, this.env, storeId)
+
         const decodedMessage = decodedMessageRes.right
         const requestId = decodedMessage.requestId
-
-        const storage = this.storage
-
-        if (storage === undefined) {
-          throw new Error('storage not initialized')
-        }
 
         try {
           switch (decodedMessage._tag) {
@@ -253,7 +253,9 @@ type SyncStorage = {
   resetRoom: () => Promise<void>
 }
 
-const makeStorage = (ctx: DurableObjectState, env: Env, dbName: string): SyncStorage => {
+const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncStorage => {
+  const dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
+
   const getLatestEvent = async (): Promise<MutationEvent.AnyEncodedGlobal | undefined> => {
     const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY id DESC LIMIT 1`).all()
     if (rawEvents.error) {
