@@ -1,12 +1,12 @@
 // @ts-check
 
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import svgr from 'vite-plugin-svgr'
-import { VitePWA } from 'vite-plugin-pwa'
-import process from 'node:process'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
-// import path from 'path'
+import react from '@vitejs/plugin-react'
+import path from 'node:path'
+import process from 'node:process'
+import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
+import svgr from 'vite-plugin-svgr'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -24,6 +24,11 @@ export default defineConfig({
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/wa-sqlite'],
   },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
   // NOTE This is only in here for convenience while developing the LiveStore devtools (feel free to remove it in your app)
   // resolve: {
   //   alias: {
@@ -33,7 +38,7 @@ export default defineConfig({
   // },
   plugins: [
     react(),
-    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    livestoreDevtoolsPlugin({ schemaPath: './src/lib/livestore/schema/index.ts' }),
     VitePWA({
       registerType: 'prompt',
       workbox: {

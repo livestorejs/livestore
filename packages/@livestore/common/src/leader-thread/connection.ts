@@ -62,7 +62,7 @@ export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMo
     PRAGMA journal_mode=WAL;
     PRAGMA page_size=8192;
     PRAGMA foreign_keys=${foreignKeys ? 'ON' : 'OFF'};
-    ${lockingMode !== undefined && sql`PRAGMA locking_mode=${lockingMode};`}
+    ${lockingMode === undefined ? '' : sql`PRAGMA locking_mode=${lockingMode};`}
   `,
     {},
   )

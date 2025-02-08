@@ -9,6 +9,9 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

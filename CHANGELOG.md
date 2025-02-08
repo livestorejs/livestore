@@ -82,7 +82,7 @@
 - Upgraded dependencies
   - Now supports React 19
   - `effect` (needs to be 3.12.0 or higher)
-  - `@livestore/wa-sqlite` (needs to be 1.0.3-dev.4)
+  - `@livestore/wa-sqlite` (needs to be 1.0.3-dev.7)
 
 ## 0.2.0
 
