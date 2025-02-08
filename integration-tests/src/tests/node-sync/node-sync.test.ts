@@ -11,7 +11,9 @@ import { expect } from 'vitest'
 
 import * as WorkerSchema from './worker-schema.js'
 
-Vitest.describe('node-sync', { timeout: 15_000 }, () => {
+const testTimeout = IS_CI ? 60_000 : 10_000
+
+Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
     'node-sync',
     [WorkerSchema.AdapterType],
@@ -77,7 +79,7 @@ const withCtx =
   (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(IS_CI ? 60_000 : 10_000),
+      Effect.timeout(testTimeout),
       Effect.provide(Logger.prettyWithThread('runner')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
