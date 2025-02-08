@@ -7,10 +7,6 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - Contributions:
-    - Solid framework integration
-    - Expo Linearlite legend list
-    - New Linearlite web example
   - Syncing
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
@@ -27,7 +23,7 @@
 
 ### New features
 
-- New syncing implementation
+- New sync implementation (based on git-like push/pull semantics)
   - See [Syncing docs page](https://livestore.dev/reference/syncing/syncing/) for more details
   - `sync-cf` backend: More reliable websocket connection handling
   - Configurable sync semantics when app starts (either skip initial sync or block with timeout)
@@ -35,6 +31,10 @@
 - New: Node adapter `@livestore/node` (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
+
+- New: Solid integration `@livestore/solid` (experimental)
+  - Still very early stage and probably lacks some features. Feedback wanted!
+  - Thank you to [@kulshekhar](https://github.com/kulshekhar) for the initial implementation! (See [PR #225](https://github.com/livestorejs/livestore/pull/225))
 
 ### Breaking changes
 

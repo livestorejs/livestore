@@ -118,7 +118,7 @@ jobs:
       - run: |
           pnpm deploy:examples:src \
             --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
-            --alias=snapshot-${{ github.sha | slice: 0, 7 }}
+            --alias=snapshot-${{ substring(github.sha, 0, 7) }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 

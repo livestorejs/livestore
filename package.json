@@ -42,6 +42,7 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/node": "workspace:*",
     "@livestore/react": "workspace:*",
+    "@livestore/solid": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",

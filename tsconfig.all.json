@@ -13,6 +13,7 @@
     { "path": "./examples/standalone/todomvc" },
     { "path": "./examples/standalone/todomvc-custom-elements" },
     { "path": "./examples/standalone/todomvc-experimental" },
+    { "path": "./examples/standalone/todomvc-solid" },
     { "path": "./examples/standalone/todomvc-sync-cf" },
     { "path": "./examples/standalone/todomvc-sync-electric" },
   ]
