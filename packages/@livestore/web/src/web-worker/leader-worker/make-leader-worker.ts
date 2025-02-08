@@ -116,7 +116,14 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
             _tag: 'opfs',
             opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
             fileName: kind === 'app' ? getAppDbFileName(schema) : 'mutationlog.db',
-            configureDb: (db) => configureConnection(db, { fkEnabled: true }),
+            configureDb: (db) =>
+              configureConnection(db, {
+                //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
+                //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
+                //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
+                lockingMode: 'EXCLUSIVE',
+                foreignKeys: true,
+              }),
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Might involve some async work, so we're running them concurrently

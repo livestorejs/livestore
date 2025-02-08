@@ -25,7 +25,7 @@ export const makeInMemoryAdapter =
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
 
       if (initialData === undefined) {
-        yield* configureConnection(sqliteDb, { fkEnabled: true })
+        yield* configureConnection(sqliteDb, { foreignKeys: true })
 
         yield* migrateDb({ db: sqliteDb, schema })
 
@@ -33,7 +33,7 @@ export const makeInMemoryAdapter =
       } else {
         sqliteDb.import(initialData)
 
-        yield* configureConnection(sqliteDb, { fkEnabled: true })
+        yield* configureConnection(sqliteDb, { foreignKeys: true })
       }
 
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)

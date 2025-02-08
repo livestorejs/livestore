@@ -27,7 +27,7 @@ export const recreateDb: Effect.Effect<
   // TODO bring back this optimization
   // const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
   const tmpDb = dbReadModel
-  yield* configureConnection(tmpDb, { fkEnabled: true })
+  yield* configureConnection(tmpDb, { foreignKeys: true })
 
   const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
     Effect.gen(function* () {

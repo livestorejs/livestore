@@ -190,7 +190,7 @@ const makeLeaderThread = ({
         fileName:
           kind === 'app' ? getAppDbFileName(schemaHashSuffix) : `mutationlog@${liveStoreStorageFormatVersion}.db`,
         // TODO enable WAL for nodejs
-        configureDb: (db) => configureConnection(db, { fkEnabled: true }),
+        configureDb: (db) => configureConnection(db, { foreignKeys: true }),
       }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
 
     // Might involve some async work, so we're running them concurrently
