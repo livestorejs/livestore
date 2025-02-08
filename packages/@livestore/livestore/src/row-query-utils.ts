@@ -7,7 +7,7 @@ import type * as otel from '@opentelemetry/api'
 import type { GetResult, LiveQueryDef, ReactivityGraphContext } from './live-queries/base-class.js'
 import { computed } from './live-queries/computed.js'
 
-export const rowQueryLabel = (table: DbSchema.TableDefBase, id: string | SessionIdSymbol | undefined) =>
+export const rowQueryLabel = (table: DbSchema.TableDefBase, id: string | SessionIdSymbol | number | undefined) =>
   `row:${table.sqliteDef.name}${id === undefined ? '' : id === SessionIdSymbol ? `:sessionId` : `:${id}`}`
 
 export const deriveColQuery: {
@@ -41,7 +41,7 @@ export const makeExecBeforeFirstRun =
     table,
     otelContext: otelContext_,
   }: {
-    id?: string | SessionIdSymbol
+    id?: string | SessionIdSymbol | number
     insertValues?: any
     table: DbSchema.TableDefBase
     otelContext: otel.Context | undefined
@@ -50,11 +50,11 @@ export const makeExecBeforeFirstRun =
     const otelContext = otelContext_ ?? store.otel.queriesSpanContext
 
     if (table.options.isSingleton === false) {
-      const idStr = id === SessionIdSymbol ? store.sessionId : id!
+      const idVal = id === SessionIdSymbol ? store.sessionId : id!
       const rowExists =
         store.sqliteDbWrapper.select(
           `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
-          [idStr] as any as PreparedBindValues,
+          [idVal] as any as PreparedBindValues,
           { otelContext },
         ).length === 1
 
@@ -69,7 +69,7 @@ export const makeExecBeforeFirstRun =
       // It's important that we only mutate and don't refresh here, as this function might be called during a render
       // and otherwise we might end up in a "reactive loop"
       store.mutate(
-        { otelContext, skipRefresh: true, label: `rowQuery:${table.sqliteDef.name}:${idStr}` },
+        { otelContext, skipRefresh: true, label: `rowQuery:${table.sqliteDef.name}:${idVal}` },
         table.insert({ id, ...insertValues }),
       )
     }

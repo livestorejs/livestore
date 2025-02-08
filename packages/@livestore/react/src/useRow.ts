@@ -51,7 +51,7 @@ export const useRow: {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: string | SessionIdSymbol,
+    id: string | SessionIdSymbol | number,
     options?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>> & { store?: Store },
   ): UseRowResult<TTableDef>
 
@@ -64,7 +64,7 @@ export const useRow: {
   >(
     table: TTableDef,
     // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: string | SessionIdSymbol,
+    id: string | SessionIdSymbol | number,
     options: RowQuery.RequiredColumnsOptions<TTableDef> & { store?: Store },
   ): UseRowResult<TTableDef>
 } = <
@@ -74,13 +74,18 @@ export const useRow: {
   >,
 >(
   table: TTableDef,
-  idOrOptions?: string | SessionIdSymbol | { store?: Store },
+  idOrOptions?: string | SessionIdSymbol | number | { store?: Store },
   options_?: Partial<RowQuery.RequiredColumnsOptions<TTableDef>> & { store?: Store },
 ): UseRowResult<TTableDef> => {
   const sqliteTableDef = table.sqliteDef
-  const id = typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? idOrOptions : undefined
+  const id =
+    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol || typeof idOrOptions === 'number'
+      ? idOrOptions
+      : undefined
   const options: (Partial<RowQuery.RequiredColumnsOptions<TTableDef>> & { store?: Store }) | undefined =
-    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions
+    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol || typeof idOrOptions === 'number'
+      ? options_
+      : idOrOptions
   const { insertValues } = options ?? {}
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
@@ -102,7 +107,7 @@ export const useRow: {
 
   // console.debug('useRow', tableName, id)
 
-  const idStr = id === SessionIdSymbol ? 'session' : id
+  const idVal = id === SessionIdSymbol ? 'session' : id
   const rowQuery = table.query.row as any
 
   type QueryDef = LiveQueryDef<RowQuery.Result<TTableDef>, QueryInfo.Row>
@@ -110,12 +115,12 @@ export const useRow: {
     () =>
       DbSchema.tableIsSingleton(table)
         ? queryDb(rowQuery(), {})
-        : queryDb(rowQuery(id!, { insertValues: insertValues! }), { deps: idStr! }),
-    [id, insertValues, rowQuery, table, idStr],
+        : queryDb(rowQuery(id!, { insertValues: insertValues! }), { deps: idVal! }),
+    [id, insertValues, rowQuery, table, idVal],
   )
 
   const queryRef = useQueryRef(queryDef, {
-    otelSpanName: `LiveStore:useRow:${tableName}${idStr === undefined ? '' : `:${idStr}`}`,
+    otelSpanName: `LiveStore:useRow:${tableName}${idVal === undefined ? '' : `:${idVal}`}`,
     store: options?.store,
   })
 

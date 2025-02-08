@@ -24,20 +24,20 @@ export namespace QueryInfo {
   export type Row = {
     _tag: 'Row'
     table: DbSchema.TableDefBase
-    id: string | SessionIdSymbol
+    id: string | SessionIdSymbol | number
   }
 
   export type Col = {
     _tag: 'Col'
     table: DbSchema.TableDefBase
-    id: string | SessionIdSymbol
+    id: string | SessionIdSymbol | number
     column: string
   }
 
   export type ColJsonValue = {
     _tag: 'ColJsonValue'
     table: DbSchema.TableDefBase
-    id: string | SessionIdSymbol
+    id: string | SessionIdSymbol | number
     column: string
     /**
      * example: `$.tabs[3].items[2]` (`$` referring to the column value)

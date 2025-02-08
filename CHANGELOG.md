@@ -8,9 +8,8 @@
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - Contributions:
-    - Solid adapter
+    - Solid framework integration
     - Expo Linearlite legend list
-    - WAL sqlite improvements
     - New Linearlite web example
   - Syncing
     - Initial Electric sync implementation
@@ -26,15 +25,19 @@
     - Fix: Support multiple leader <> devtools connections
       - Refactor according to ARCHITECTURE.md
 
+### New features
+
 - New syncing implementation
   - See [Syncing docs page](https://livestore.dev/reference/syncing/syncing/) for more details
   - `sync-cf` backend: More reliable websocket connection handling
   - Configurable sync semantics when app starts (either skip initial sync or block with timeout)
-- New: Node adapter (experimental)
+
+- New: Node adapter `@livestore/node` (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
-- Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
-- Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
+
+### Breaking changes
+
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
@@ -50,21 +53,32 @@
 - Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
 - Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
+
+### Notable improvements & fixes
+
+- Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
+- The SQLite leader database now uses the WAL mode to improve performance and reliability. (Thanks [@IGassmann](https://github.com/IGassmann) for the contribution #259.)
 - Improve Otel tracing integration
 - Fix: The query builder now correctly handles `IN` and `NOT IN` where operations
 - Fix: Devtools data browser now more clearly highlights selected table #239
-- Fix: LiveStore crashes when using reserved keywords as a column name (“from”) #245
-- Examples:
-  - Added Otel to `todomvc` and `todomvc-sync-cf` example
-- Internal:
-  - Node syncing integration tests
-  - Got rid of the coordinator abstraction in favour of a clear separation between leader and client sessions
-  - New devtools protocol via webmesh
-    - Should improve reliability of devtools connection (particularly during app reloads)
-  - Large refactoring to share more code between adapters
-  - Renamed `SynchronousDatabase` to `SqliteDb`
-  - Embraced git-style push/pull semantics to sync mutations across the system
-  - Upgrade to TypeScript 5.7
+- Fix: LiveStore crashes when using reserved keywords as a column name (`from`) #245
+
+### Examples
+
+- Reworked the Linearlite React example. (Thanks [@lukaswiesehan](https://github.com/lukaswiesehan) for the contribution #248.)
+- Added Otel to `todomvc` and `todomvc-sync-cf` example
+
+### Internal changes
+
+- Embraced git-style push/pull semantics to sync mutations across the system
+- Added node syncing integration tests
+- Got rid of the coordinator abstraction in favour of a clear separation between leader and client sessions
+- Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
+- New devtools protocol via webmesh
+  - Should improve reliability of devtools connection (particularly during app reloads)
+- Large refactoring to share more code between adapters
+- Renamed `SynchronousDatabase` to `SqliteDb`
+- Upgrade to TypeScript 5.7
 - Upgraded dependencies
   - Now supports React 19
   - `effect` (needs to be 3.12.0 or higher)
