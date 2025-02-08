@@ -11,6 +11,7 @@
     - Solid adapter
     - Expo Linearlite legend list
     - WAL sqlite improvements
+    - New Linearlite web example
   - Syncing
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics

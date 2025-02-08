@@ -6,9 +6,10 @@ import type { Store } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeInMemoryAdapter, makeNodeAdapter } from '@livestore/node'
 import { makeWsSync } from '@livestore/sync-cf'
+import { IS_CI } from '@livestore/utils'
 import { Context, Effect, Layer, Logger, LogLevel, OtelTracer, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { ChildProcessRunner, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
+import { ChildProcessRunner, OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
 import { schema, tables } from './schema.js'
 import * as WorkerSchema from './worker-schema.js'
@@ -84,7 +85,7 @@ runner.pipe(
   Layer.launch,
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/node-sync:run-worker-${clientId}`),
-  Effect.provide(OtelLiveHttp({ serviceName, skipLogUrl: true })),
+  Effect.provide(IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
   Effect.scoped,
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),

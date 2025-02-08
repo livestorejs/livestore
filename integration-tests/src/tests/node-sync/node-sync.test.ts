@@ -2,6 +2,7 @@ import './thread-polyfill.js'
 
 import * as ChildProcess from 'node:child_process'
 
+import { IS_CI } from '@livestore/utils'
 import { Effect, identity, Layer, Logger, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, OtelLiveHttp } from '@livestore/utils/node'
@@ -70,16 +71,13 @@ const makeWorker = ({
     return worker
   })
 
-const envTruish = (env: string | undefined) => env !== undefined && env !== 'false' && env !== '0'
-const isCi = envTruish(process.env.CI)
-
-const otelLayer = isCi ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
+const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'node-sync-test:runner', skipLogUrl: false })
 
 const withCtx =
   (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(isCi ? 60_000 : 10_000),
+      Effect.timeout(IS_CI ? 60_000 : 10_000),
       Effect.provide(Logger.prettyWithThread('runner')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),

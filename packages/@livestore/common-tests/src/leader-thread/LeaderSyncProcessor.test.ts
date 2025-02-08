@@ -6,10 +6,10 @@ import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { IS_CI } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
-  Config,
   Context,
   Effect,
   FetchHttpClient,
@@ -243,18 +243,13 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
   return leaderContextLayer.pipe(Layer.merge(testContextLayer))
 }).pipe(Layer.unwrapScoped)
 
-const isCi = Config.boolean('CI').pipe(
-  Effect.catchAll(() => Effect.succeed(false)),
-  Effect.runSync,
-)
-
-const otelLayer = isCi ? Layer.empty : OtelLiveHttp({ serviceName: 'sync-test', skipLogUrl: false })
+const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'sync-test', skipLogUrl: false })
 
 const withCtx =
   (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(isCi ? 60_000 : 10_000),
+      Effect.timeout(IS_CI ? 60_000 : 10_000),
       Effect.provide(LeaderThreadCtxLive),
       Effect.provide(FetchHttpClient.layer),
       Effect.provide(PlatformNode.NodeFileSystem.layer),

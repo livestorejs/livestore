@@ -4,8 +4,9 @@ import { EventId, MutationEvent } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
 import { makeInMemoryAdapter } from '@livestore/node'
+import { IS_CI } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Config, Context, Effect, FetchHttpClient, Layer, Logger, Schema, Stream } from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, Logger, Schema, Stream } from '@livestore/utils/effect'
 import { OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
 
@@ -100,18 +101,13 @@ const TestContextLive = Layer.scoped(
   }),
 )
 
-const isCi = Config.boolean('CI').pipe(
-  Effect.catchAll(() => Effect.succeed(false)),
-  Effect.runSync,
-)
-
-const otelLayer = isCi ? OtelLiveDummy : OtelLiveHttp({ serviceName: 'store-test', skipLogUrl: false })
+const otelLayer = IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName: 'store-test', skipLogUrl: false })
 
 const withCtx =
   (testContext: Vitest.TaskContext, { suffix }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(isCi ? 60_000 : 10_000),
+      Effect.timeout(IS_CI ? 60_000 : 10_000),
       Effect.provide(TestContextLive),
       Effect.provide(FetchHttpClient.layer),
       Effect.provide(PlatformNode.NodeFileSystem.layer),

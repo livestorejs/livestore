@@ -29,3 +29,7 @@ export const isDevEnv = () => {
 export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined
 
 export const LS_DEV = env('LS_DEV') !== undefined || env('VITE_LS_DEV') !== undefined
+
+const envTruish = (env: string | undefined) => env !== undefined && env !== 'false' && env !== '0'
+
+export const IS_CI = envTruish(env('CI'))

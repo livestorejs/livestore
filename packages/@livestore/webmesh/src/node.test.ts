@@ -1,3 +1,4 @@
+import { IS_CI } from '@livestore/utils'
 import { Chunk, Deferred, Effect, identity, Layer, Logger, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
@@ -517,16 +518,13 @@ Vitest.describe('webmesh node', { timeout: 1000 }, () => {
   })
 })
 
-const envTruish = (env: string | undefined) => env !== undefined && env !== 'false' && env !== '0'
-const isCi = envTruish(process.env.CI)
-
-const otelLayer = isCi ? Layer.empty : OtelLiveHttp({ serviceName: 'webmesh-node-test', skipLogUrl: false })
+const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'webmesh-node-test', skipLogUrl: false })
 
 const withCtx =
   (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(isCi ? 10_000 : 500),
+      Effect.timeout(IS_CI ? 30_000 : 500),
       Effect.provide(Logger.pretty),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
