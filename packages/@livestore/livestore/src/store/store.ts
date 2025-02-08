@@ -195,7 +195,7 @@ export class Store<
     this.reactivityGraph = reactivityGraph
     this.reactivityGraph.context = {
       store: this as unknown as Store<BaseGraphQLContext, LiveStoreSchema>,
-      liveQueryRCMap: new Map(),
+      defRcMap: new Map(),
       reactivityGraph: new WeakRef(reactivityGraph),
       otelTracer: otelOptions.tracer,
       rootOtelContext: otelQueriesSpanContext,

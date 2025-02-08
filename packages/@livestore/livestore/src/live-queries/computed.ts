@@ -6,7 +6,7 @@ import type { RefreshReason } from '../store/store-types.js'
 import { isValidFunctionString } from '../utils/function-string.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { defCounterRef, depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
 export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfo.None>(
   fn: (get: GetAtomResult) => TResult,
@@ -25,7 +25,6 @@ export const computed = <TResult, TQueryInfo extends QueryInfo = QueryInfo.None>
 
   return {
     _tag: 'def',
-    id: ++defCounterRef.current,
     make: withRCMap(hash, (ctx, _otelContext) => {
       // TODO onDestroy
       return new LiveStoreComputedQuery<TResult, TQueryInfo>({

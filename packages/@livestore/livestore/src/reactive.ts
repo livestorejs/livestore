@@ -183,18 +183,11 @@ export type ReactiveGraphSnapshot = {
   readonly deferredEffects: ReadonlyArray<string>
 }
 
-let nodeIdCounter = 0
-const uniqueNodeId = () => `node-${++nodeIdCounter}`
-let refreshInfoIdCounter = 0
-const uniqueRefreshInfoId = () => `refresh-info-${++refreshInfoIdCounter}`
-
 let globalGraphIdCounter = 0
 const uniqueGraphId = () => `graph-${++globalGraphIdCounter}`
 
 /** Used for testing */
 export const __resetIds = () => {
-  nodeIdCounter = 0
-  refreshInfoIdCounter = 0
   globalGraphIdCounter = 0
 }
 
@@ -220,13 +213,18 @@ export class ReactiveGraph<
 
   private refreshCallbacks: Set<() => void> = new Set()
 
+  private nodeIdCounter = 0
+  private uniqueNodeId = () => `node-${++this.nodeIdCounter}`
+  private refreshInfoIdCounter = 0
+  private uniqueRefreshInfoId = () => `refresh-info-${++this.refreshInfoIdCounter}`
+
   makeRef<T>(
     val: T,
     options?: { label?: string; meta?: unknown; equal?: (a: T, b: T) => boolean },
   ): Ref<T, TContext, TDebugRefreshReason> {
     const ref: Ref<T, TContext, TDebugRefreshReason> = {
       _tag: 'ref',
-      id: uniqueNodeId(),
+      id: this.uniqueNodeId(),
       isDirty: false,
       isDestroyed: false,
       previousResult: val,
@@ -262,7 +260,7 @@ export class ReactiveGraph<
   ): Thunk<T, TContext, TDebugRefreshReason> {
     const thunk: Thunk<T, TContext, TDebugRefreshReason> = {
       _tag: 'thunk',
-      id: uniqueNodeId(),
+      id: this.uniqueNodeId(),
       previousResult: NOT_REFRESHED_YET,
       isDirty: true,
       isDestroyed: false,
@@ -314,7 +312,7 @@ export class ReactiveGraph<
             this.currentDebugRefresh = undefined
 
             this.debugRefreshInfos.push({
-              id: uniqueRefreshInfoId(),
+              id: this.uniqueRefreshInfoId(),
               reason: debugRefreshReason ?? ({ _tag: 'makeThunk', label: options?.label } as TDebugRefreshReason),
               skippedRefresh: false,
               refreshedAtoms,
@@ -387,7 +385,7 @@ export class ReactiveGraph<
   ): Effect<TDebugRefreshReason> {
     const effect: Effect<TDebugRefreshReason> = {
       _tag: 'effect',
-      id: uniqueNodeId(),
+      id: this.uniqueNodeId(),
       isDestroyed: false,
       doEffect: (otelContext, debugRefreshReason) => {
         effect.invocations++
@@ -488,7 +486,7 @@ export class ReactiveGraph<
       this.currentDebugRefresh = undefined
 
       const refreshDebugInfo: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo> = {
-        id: uniqueRefreshInfoId(),
+        id: this.uniqueRefreshInfoId(),
         reason: options.debugRefreshReason,
         skippedRefresh: false,
         refreshedAtoms,

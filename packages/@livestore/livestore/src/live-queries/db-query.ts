@@ -18,7 +18,7 @@ import type { RefreshReason } from '../store/store-types.js'
 import { isValidFunctionString } from '../utils/function-string.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { defCounterRef, depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
 export type QueryInputRaw<TDecoded, TEncoded, TQueryInfo extends QueryInfo> = {
   query: string
@@ -94,7 +94,6 @@ export const queryDb: {
 
   return {
     _tag: 'def',
-    id: ++defCounterRef.current,
     make: withRCMap(hash, (ctx, otelContext) => {
       // TODO onDestroy
       return new LiveStoreDbQuery({

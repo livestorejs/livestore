@@ -1,7 +1,8 @@
 import { Effect, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { expect } from 'vitest'
 
 import { computed, queryDb, rawSqlMutation, sql } from '../index.js'
 import * as RG from '../reactive.js'
@@ -15,15 +16,13 @@ TODO write tests for:
 - optional and explicit `queriedTables` argument
 */
 
-describe('otel', () => {
+Vitest.describe('otel', () => {
   let cachedProvider: BasicTracerProvider | undefined
-
-  beforeEach(() => {
-    RG.__resetIds()
-  })
 
   const makeQuery = Effect.gen(function* () {
     const exporter = new InMemorySpanExporter()
+
+    RG.__resetIds()
 
     // const provider = cachedProvider ?? new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
     const provider = cachedProvider ?? new BasicTracerProvider()
@@ -47,8 +46,8 @@ describe('otel', () => {
     }
   })
 
-  it('otel', async () => {
-    const { exporter } = await Effect.gen(function* () {
+  Vitest.scopedLive('otel', () =>
+    Effect.gen(function* () {
       const { store, exporter, span } = yield* makeQuery
 
       const query$ = queryDb({
@@ -73,13 +72,14 @@ describe('otel', () => {
       span.end()
 
       return { exporter }
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()),
+    ),
+  )
 
-    expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()
-  })
-
-  it('with thunks', async () => {
-    const { exporter } = await Effect.gen(function* () {
+  Vitest.scopedLive('with thunks', () =>
+    Effect.gen(function* () {
       const { store, exporter, span } = yield* makeQuery
 
       const defaultTodo = { id: '', text: '', completed: false }
@@ -122,13 +122,14 @@ describe('otel', () => {
       span.end()
 
       return { exporter }
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()),
+    ),
+  )
 
-    expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()
-  })
-
-  it('with thunks with query builder and without labels', async () => {
-    const { exporter } = await Effect.gen(function* () {
+  Vitest.scopedLive('with thunks with query builder and without labels', () =>
+    Effect.gen(function* () {
       const { store, exporter, span } = yield* makeQuery
 
       const defaultTodo = { id: '', text: '', completed: false }
@@ -157,8 +158,9 @@ describe('otel', () => {
       span.end()
 
       return { exporter }
-    }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
-
-    expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()
-  })
+    }).pipe(
+      Effect.scoped,
+      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()),
+    ),
+  )
 })

@@ -1,6 +1,5 @@
 import type { QueryInfo } from '@livestore/common'
 import { isNotNil } from '@livestore/utils'
-import { GlobalValue } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import * as RG from '../reactive.js'
@@ -13,15 +12,10 @@ export type ReactivityGraph = RG.ReactiveGraph<RefreshReason, QueryDebugInfo, Re
 export const makeReactivityGraph = (): ReactivityGraph =>
   new RG.ReactiveGraph<RefreshReason, QueryDebugInfo, ReactivityGraphContext>()
 
-export const defCounterRef = GlobalValue.globalValue('livestore-def-counter', () => ({ current: 0 }))
-
-type LiveQueryDefHash = string
-
-export type LiveQueryRCMap = Map<LiveQueryDefHash, RcRef<LiveQueryAny | ILiveQueryRef<any>>>
-
 export type ReactivityGraphContext = {
   store: Store
-  liveQueryRCMap: LiveQueryRCMap
+  /** Maps from the hash of the query definition to the RcRef of the query */
+  defRcMap: Map<string, RcRef<LiveQueryAny | ILiveQueryRef<any>>>
   /** Back-reference to the reactivity graph for convenience */
   reactivityGraph: WeakRef<ReactivityGraph>
   otelTracer: otel.Tracer
@@ -76,9 +70,6 @@ export const depsToString = (deps: DepKey): string => {
 
 export interface LiveQueryDef<TResult, TQueryInfo extends QueryInfo = QueryInfo.None> {
   _tag: 'def'
-  // TODO do we need both id and hash?
-  /** A unique identifier for the query definition */
-  id: number
   /** Creates a new LiveQuery instance bound to a specific store/reactivityGraph */
   make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<LiveQuery<TResult, TQueryInfo>>
   label: string
@@ -215,7 +206,7 @@ export const withRCMap = <T extends LiveQueryAny | ILiveQueryRef<any>>(
   make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => T,
 ): ((ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<T>) => {
   return (ctx, otelContext) => {
-    let item = ctx.liveQueryRCMap.get(id)
+    let item = ctx.defRcMap.get(id)
     if (item) {
       item.rc++
       return item as RcRef<T>
@@ -231,10 +222,10 @@ export const withRCMap = <T extends LiveQueryAny | ILiveQueryRef<any>>(
         if (item!.rc === 0) {
           item!.value.destroy()
         }
-        ctx.liveQueryRCMap.delete(id)
+        ctx.defRcMap.delete(id)
       },
     }
-    ctx.liveQueryRCMap.set(id, item)
+    ctx.defRcMap.set(id, item)
 
     return item as RcRef<T>
   }

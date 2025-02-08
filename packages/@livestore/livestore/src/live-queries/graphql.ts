@@ -10,7 +10,7 @@ import type { Store } from '../store/store.js'
 import type { BaseGraphQLContext, RefreshReason } from '../store/store-types.js'
 import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { defCounterRef, depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 
 export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<To, From>
 
@@ -37,7 +37,6 @@ export const queryGraphQL = <
 
   return {
     _tag: 'def',
-    id: ++defCounterRef.current,
     make: withRCMap(hash, (ctx, _otelContext) => {
       return new LiveStoreGraphQLQuery({
         document,
