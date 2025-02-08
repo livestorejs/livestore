@@ -1,9 +1,10 @@
+import { LegendList } from '@legendapp/list'
 import { queryDb, sql } from '@livestore/livestore'
 import { useQuery, useRow, useStore } from '@livestore/react'
 import { Schema } from 'effect'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
-import { FlatList, Pressable, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 
 import { IssueItem } from '@/components/IssueItem.tsx'
 import { ThemedText } from '@/components/ThemedText.tsx'
@@ -228,14 +229,17 @@ const HomeScreen = () => {
   )
 
   return (
-    <FlatList
-      data={issues}
+    <LegendList
+      // TODO remove type-cast when LegendList supports immutable arrays
+      data={issues as typeof issues extends (infer T)[] ? T[] : never}
       renderItem={renderItem}
       contentContainerClassName="gap-1 px-2"
-      initialNumToRender={100}
       keyExtractor={(item) => item.id.toString()}
       ListHeaderComponent={ListHeaderComponent}
-      stickyHeaderIndices={[0]}
+      estimatedItemSize={40}
+      drawDistance={1000}
+      waitForInitialLayout
+      recycleItems
     />
   )
 }
