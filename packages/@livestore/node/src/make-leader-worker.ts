@@ -152,12 +152,6 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.provide(FetchHttpClient.layer),
     Effect.provide(NodeFileSystem.layer),
     TracingLive ? Effect.provide(TracingLive) : identity,
-    // Effect.provide(
-    //   OtelLiveHttp({
-    //     serviceName: argvOptions.otel?.workerServiceName ?? 'livestore-node-leader-thread',
-    //     skipLogUrl: true,
-    //   }),
-    // ),
     Logger.withMinimumLogLevel(LogLevel.Debug),
   )
 }

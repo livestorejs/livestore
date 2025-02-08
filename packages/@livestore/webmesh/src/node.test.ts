@@ -74,11 +74,13 @@ const maybeDelay =
       ? effect
       : Effect.sleep(delay).pipe(Effect.withSpan(`${label}:delay(${delay})`), Effect.andThen(effect))
 
+const testTimeout = IS_CI ? 30_000 : 500
+
 // TODO also make work without `Vitest.scopedLive` (i.e. with `Vitest.scoped`)
 // probably requires controlling the clocks
-Vitest.describe('webmesh node', { timeout: 1000 }, () => {
+Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   Vitest.describe('A <> B', () => {
-    Vitest.describe('prop tests', { timeout: 10_000 }, () => {
+    Vitest.describe('prop tests', () => {
       const Delay = Schema.UndefinedOr(Schema.Literal(0, 1, 10, 50))
       // NOTE for message channels, we test both with and without transferables (i.e. proxying)
       const ChannelType = Schema.Literal('messagechannel', 'messagechannel.proxy', 'proxy')
@@ -321,7 +323,6 @@ Vitest.describe('webmesh node', { timeout: 1000 }, () => {
                 concurrency: 'unbounded',
               })
             }).pipe(withCtx(test, { skipOtel: false, suffix: `channelType=${channelType} count=${count}` })),
-          { timeout: 30_000 },
         )
       })
     })
@@ -524,7 +525,7 @@ const withCtx =
   (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(IS_CI ? 30_000 : 500),
+      Effect.timeout(testTimeout),
       Effect.provide(Logger.pretty),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
