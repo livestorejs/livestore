@@ -1,17 +1,9 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -6,7 +6,6 @@
- import { VitePWA } from 'vite-plugin-pwa'
- import process from 'node:process'
- import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
--// import path from 'path'
- 
- const isProdBuild = process.env.NODE_ENV === 'production'
- 
-@@ -14,23 +13,12 @@
+@@ -15,10 +15,6 @@
  export default defineConfig({
    server: {
-     port: 60000,
+     port: 60_000,
 -    fs: {
 -      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
 -      allow: process.env.MONOREPO_ROOT ? [process.env.MONOREPO_ROOT] : [process.env.WORKSPACE_ROOT!],
@@ -19,8 +11,9 @@
    },
    worker: isProdBuild ? { format: 'es' } : undefined,
    optimizeDeps: {
-     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
-     exclude: ['@livestore/wa-sqlite'],
+@@ -30,13 +26,6 @@
+       '@': path.resolve(__dirname, 'src'),
+     },
    },
 -  // NOTE This is only in here for convenience while developing the LiveStore devtools (feel free to remove it in your app)
 -  // resolve: {
@@ -31,4 +24,4 @@
 -  // },
    plugins: [
      react(),
-     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+     livestoreDevtoolsPlugin({ schemaPath: './src/lib/livestore/schema/index.ts' }),
