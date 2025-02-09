@@ -55,6 +55,8 @@ const buildAndDeployExample = ({
     )
 
     console.log(`Deployed ${example} to ${result.deploy_url}`)
+
+    return result
   }).pipe(Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${example}. Cause:`, cause)))
 
 const deploy = ({
@@ -86,9 +88,16 @@ const deploy = ({
       console.log(`Deploying${prod ? ' (to prod)' : ''}: ${filteredExamplesToDeploy.join(', ')}`)
     }
 
-    yield* Effect.forEach(filteredExamplesToDeploy, (example) => buildAndDeployExample({ example, prod, alias }), {
-      concurrency: 4,
-    })
+    const results = yield* Effect.forEach(
+      filteredExamplesToDeploy,
+      (example) => buildAndDeployExample({ example, prod, alias }),
+      { concurrency: 4 },
+    )
+
+    console.log(`Deployed ${results.length} examples:`)
+    for (const result of results) {
+      console.log(`  ${result.site_name}: ${result.deploy_url}`)
+    }
   })
 
 const exampleFilterOption = Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional)

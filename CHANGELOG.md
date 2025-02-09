@@ -35,11 +35,10 @@
 - New: Solid integration `@livestore/solid` (experimental)
   - Still very early stage and probably lacks some features. Feedback wanted!
   - Thank you to [@kulshekhar](https://github.com/kulshekhar) for the initial implementation! (See [PR #225](https://github.com/livestorejs/livestore/pull/225))
+  - There are is still a lot of [work to be done](packages/@livestore/solid/README.md) - contributions welcome!
 
 ### Breaking changes
 
-- Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
-- Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
   // before
@@ -49,10 +48,12 @@
   const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: `issue-${issueId}` }))
   ```
 
+- Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
+- Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
-- Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
 - Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
+- Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
 
 ### Notable improvements & fixes
 
