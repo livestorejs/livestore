@@ -2,7 +2,7 @@ import { Schema } from '@livestore/utils/effect'
 
 import { DebugInfo } from '../debug-info.js'
 import { PreparedBindValues } from '../util.js'
-import { Disconnect, LSDClientSessionReqResMessage } from './devtools-messages-common.js'
+import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.js'
 
 export class DebugInfoReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoReq', {}) {}
 
@@ -78,7 +78,13 @@ export class LiveQueriesRes extends LSDClientSessionReqResMessage('LSD.ClientSes
   liveQueries: Schema.Array(SerializedLiveQuery),
 }) {}
 
-export const MessageToAppClientSession = Schema.Union(
+export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {}) {}
+
+export class Pong extends LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {}) {}
+
+export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
+
+export const MessageToApp = Schema.Union(
   DebugInfoReq,
   DebugInfoHistorySubscribe,
   DebugInfoHistoryUnsubscribe,
@@ -89,13 +95,12 @@ export const MessageToAppClientSession = Schema.Union(
   LiveQueriesSubscribe,
   LiveQueriesUnsubscribe,
   Disconnect,
-  // TODO also introduce a ping/pong protocol for the client session <> devtools connection
-  // Ping,
-).annotations({ identifier: 'LSD.MessageToAppClientSession' })
+  Ping,
+).annotations({ identifier: 'LSD.ClientSession.MessageToApp' })
 
-export type MessageToAppClientSession = typeof MessageToAppClientSession.Type
+export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromAppClientSession = Schema.Union(
+export const MessageFromApp = Schema.Union(
   DebugInfoRes,
   DebugInfoHistoryRes,
   DebugInfoResetRes,
@@ -103,7 +108,7 @@ export const MessageFromAppClientSession = Schema.Union(
   ReactivityGraphRes,
   LiveQueriesRes,
   Disconnect,
-  // Pong,
-).annotations({ identifier: 'LSD.MessageFromAppClientSession' })
+  Pong,
+).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
-export type MessageFromAppClientSession = typeof MessageFromAppClientSession.Type
+export type MessageFromApp = typeof MessageFromApp.Type

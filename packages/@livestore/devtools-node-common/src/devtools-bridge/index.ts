@@ -24,82 +24,88 @@ export const prepareNodeDevtoolsBridge = ({
     const nodeDevtoolsChannelStore = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
       target: `client-session-${storeId}-${clientId}-${sessionId}`,
-      schema: { listen: Devtools.MessageFromAppClientSession, send: Devtools.MessageToAppClientSession },
+      schema: {
+        listen: Devtools.ClientSession.MessageFromApp,
+        send: Devtools.ClientSession.MessageToApp,
+      },
     })
 
     const nodeDevtoolsChannelCoordinator = yield* makeChannelForConnectedMeshNode({
       node: meshNode,
       target: `leader-${storeId}-${clientId}`,
-      schema: { listen: Devtools.MessageFromAppLeader, send: Devtools.MessageToAppLeader },
+      schema: {
+        listen: Devtools.Leader.MessageFromApp,
+        send: Devtools.Leader.MessageToApp,
+      },
     })
 
-    const responsePubSub = yield* PubSub.unbounded<
-      Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession
-    >().pipe(Effect.acquireRelease(PubSub.shutdown))
+    // const responsePubSub = yield* PubSub.unbounded<
+    //   Devtools.MessageFromApp | Devtools.MessageFromApp
+    // >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
-    // const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
+    // // const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 
-    yield* nodeDevtoolsChannelCoordinator.listen.pipe(
-      Stream.flatten(),
-      // Stream.tapLogWithLabel('fromCoordinator.listen'),
-      Stream.tap((msg) =>
-        Effect.gen(function* () {
-          yield* PubSub.publish(responsePubSub, msg)
-        }),
-      ),
-      Stream.runDrain,
-      Effect.withSpan('portForDevtoolsChannelCoordinator.listen'),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // yield* nodeDevtoolsChannelCoordinator.listen.pipe(
+    //   Stream.flatten(),
+    //   // Stream.tapLogWithLabel('fromCoordinator.listen'),
+    //   Stream.tap((msg) =>
+    //     Effect.gen(function* () {
+    //       yield* PubSub.publish(responsePubSub, msg)
+    //     }),
+    //   ),
+    //   Stream.runDrain,
+    //   Effect.withSpan('portForDevtoolsChannelCoordinator.listen'),
+    //   Effect.tapCauseLogPretty,
+    //   Effect.forkScoped,
+    // )
 
-    yield* nodeDevtoolsChannelStore.listen.pipe(
-      Stream.flatten(),
-      // Stream.tapLogWithLabel('fromStore.listen'),
-      Stream.tap((msg) =>
-        Effect.gen(function* () {
-          yield* PubSub.publish(responsePubSub, msg)
-        }),
-      ),
-      Stream.runDrain,
-      Effect.withSpan('portForDevtoolsChannelStore.listen'),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // yield* nodeDevtoolsChannelStore.listen.pipe(
+    //   Stream.flatten(),
+    //   // Stream.tapLogWithLabel('fromStore.listen'),
+    //   Stream.tap((msg) =>
+    //     Effect.gen(function* () {
+    //       yield* PubSub.publish(responsePubSub, msg)
+    //     }),
+    //   ),
+    //   Stream.runDrain,
+    //   Effect.withSpan('portForDevtoolsChannelStore.listen'),
+    //   Effect.tapCauseLogPretty,
+    //   Effect.forkScoped,
+    // )
 
-    // yield* nodeDevtoolsChannelCoordinator.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
+    // // yield* nodeDevtoolsChannelCoordinator.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
-    // const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
+    // // const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 
-    // TODO improve disconnect handling
-    yield* Deferred.await(nodeDevtoolsChannelCoordinator.closedDeferred).pipe(
-      Effect.tap(() =>
-        PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
-      ),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // // TODO improve disconnect handling
+    // yield* Deferred.await(nodeDevtoolsChannelCoordinator.closedDeferred).pipe(
+    //   Effect.tap(() =>
+    //     PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
+    //   ),
+    //   Effect.tapCauseLogPretty,
+    //   Effect.forkScoped,
+    // )
 
-    // TODO improve disconnect handling
-    yield* Deferred.await(nodeDevtoolsChannelStore.closedDeferred).pipe(
-      Effect.tap(() =>
-        PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
-      ),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // // TODO improve disconnect handling
+    // yield* Deferred.await(nodeDevtoolsChannelStore.closedDeferred).pipe(
+    //   Effect.tap(() =>
+    //     PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, clientId, sessionId })),
+    //   ),
+    //   Effect.tapCauseLogPretty,
+    //   Effect.forkScoped,
+    // )
 
-    const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
-      Effect.gen(function* () {
-        // NOTE it's possible that a message is for both the coordinator and the store (e.g. Disconnect)
-        if (Schema.is(Devtools.MessageToAppLeader)(msg)) {
-          yield* nodeDevtoolsChannelCoordinator.send(msg)
-        }
+    // const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
+    //   Effect.gen(function* () {
+    //     // NOTE it's possible that a message is for both the coordinator and the store (e.g. Disconnect)
+    //     if (Schema.is(Devtools.MessageToApp)(msg)) {
+    //       yield* nodeDevtoolsChannelCoordinator.send(msg)
+    //     }
 
-        if (Schema.is(Devtools.MessageToAppClientSession)(msg)) {
-          yield* nodeDevtoolsChannelStore.send(msg)
-        }
-      }).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
+    //     if (Schema.is(Devtools.MessageToApp)(msg)) {
+    //       yield* nodeDevtoolsChannelStore.send(msg)
+    //     }
+    //   }).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
 
     const copyToClipboard = (text: string) =>
       Effect.sync(() => {
@@ -107,11 +113,11 @@ export const prepareNodeDevtoolsBridge = ({
       })
 
     return {
-      responsePubSub,
-      sendToAppHost,
-      clientId,
-      sessionId,
+      webchannels: {
+        leader: nodeDevtoolsChannelCoordinator,
+        clientSession: nodeDevtoolsChannelStore,
+      },
+      clientInfo: { clientId, sessionId, isLeader },
       copyToClipboard,
-      isLeader,
     } satisfies Devtools.PrepareDevtoolsBridge
   }).pipe(Effect.orDie)

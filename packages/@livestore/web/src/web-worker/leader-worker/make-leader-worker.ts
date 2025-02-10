@@ -6,7 +6,6 @@ import {
   getLocalHeadFromDb,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
-  OuterWorkerCtx,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
@@ -90,7 +89,7 @@ const makeWorkerRunnerOuter = (
     // Port coming from client session and forwarded via the shared worker
     InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
       Effect.gen(function* () {
-        const innerFiber = yield* makeWorkerRunnerInner(workerOptions).pipe(
+        yield* makeWorkerRunnerInner(workerOptions).pipe(
           Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
           Layer.launch,
           Effect.scoped,
@@ -100,7 +99,7 @@ const makeWorkerRunnerOuter = (
           Effect.forkScoped,
         )
 
-        return Layer.succeed(OuterWorkerCtx, OuterWorkerCtx.of({ innerFiber }))
+        return Layer.empty
       }).pipe(Effect.withSpan('@livestore/web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
   })
 
@@ -253,7 +252,7 @@ const makeDevtoolsOptions = ({
           devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
             node,
             target: `devtools`,
-            schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
+            schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
           }),
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,

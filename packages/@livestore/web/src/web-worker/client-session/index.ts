@@ -202,25 +202,22 @@ export const makeAdapter =
         yield* Effect.addFinalizer(() =>
           Effect.gen(function* () {
             // console.log('[@livestore/web:client-session] Shutting down leader worker')
-
             // We first try to gracefully shutdown the leader worker and then forcefully terminate it
-            yield* Effect.raceFirst(
-              sharedWorker
-                .executeEffect(new WorkerSchema.LeaderWorkerInner.Shutdown({}))
-                .pipe(Effect.andThen(() => worker.terminate())),
-
-              Effect.sync(() => {
-                console.warn(
-                  '[@livestore/web:client-session] Worker did not gracefully shutdown in time, terminating it',
-                )
-                worker.terminate()
-              }).pipe(
-                // Seems like we still need to wait a bit for the worker to terminate
-                // TODO improve this implementation (possibly via another weblock?)
-                Effect.delay(1000),
-              ),
-            )
-
+            // yield* Effect.raceFirst(
+            //   sharedWorker
+            //     .executeEffect(new WorkerSchema.LeaderWorkerInner.Shutdown({}))
+            //     .pipe(Effect.andThen(() => worker.terminate())),
+            //   Effect.sync(() => {
+            //     console.warn(
+            //       '[@livestore/web:client-session] Worker did not gracefully shutdown in time, terminating it',
+            //     )
+            //     worker.terminate()
+            //   }).pipe(
+            //     // Seems like we still need to wait a bit for the worker to terminate
+            //     // TODO improve this implementation (possibly via another weblock?)
+            //     Effect.delay(1000),
+            //   ),
+            // )
             // yield* Effect.logDebug('[@livestore/web:client-session] client-session shutdown. worker terminated')
           }).pipe(Effect.withSpan('@livestore/web:client-session:lock:shutdown'), Effect.ignoreLogged),
         )
@@ -354,7 +351,7 @@ export const makeAdapter =
           if (
             Exit.isFailure(ex) &&
             Exit.isInterrupted(ex) === false &&
-            Schema.is(IntentionalShutdownCause)(ex.cause) === false
+            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false
           ) {
             yield* Effect.logError('[@livestore/web:client-session] client-session shutdown', ex.cause)
           } else {
@@ -443,7 +440,10 @@ export const makeAdapter =
           const storeDevtoolsChannel = yield* makeWebDevtoolsChannel({
             nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
             target: `devtools`,
-            schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
+            schema: {
+              listen: Devtools.ClientSession.MessageToApp,
+              send: Devtools.ClientSession.MessageFromApp,
+            },
             worker: sharedWorker,
             workerTargetName: 'shared-worker',
           })

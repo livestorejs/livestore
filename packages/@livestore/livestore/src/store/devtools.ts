@@ -34,7 +34,10 @@ export const connectDevtoolsToStore = ({
   storeDevtoolsChannel,
   store,
 }: {
-  storeDevtoolsChannel: WebChannel.WebChannel<Devtools.MessageToAppClientSession, Devtools.MessageFromAppClientSession>
+  storeDevtoolsChannel: WebChannel.WebChannel<
+    Devtools.ClientSession.MessageToApp,
+    Devtools.ClientSession.MessageFromApp
+  >
   store: IStore
 }) =>
   Effect.gen(function* () {
@@ -52,10 +55,10 @@ export const connectDevtoolsToStore = ({
       }),
     )
 
-    const sendToDevtools = (message: Devtools.MessageFromAppClientSession) =>
+    const sendToDevtools = (message: Devtools.ClientSession.MessageFromApp) =>
       storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runFork)
 
-    const onMessage = (decodedMessage: typeof Devtools.MessageToAppClientSession.Type) => {
+    const onMessage = (decodedMessage: typeof Devtools.ClientSession.MessageToApp.Type) => {
       // console.debug('@livestore/livestore:store:devtools:onMessage', decodedMessage)
 
       if (decodedMessage.clientId !== clientId || decodedMessage.sessionId !== sessionId) {
@@ -63,7 +66,7 @@ export const connectDevtoolsToStore = ({
         return
       }
 
-      if (decodedMessage._tag === 'LSD.Disconnect') {
+      if (decodedMessage._tag === 'LSD.ClientSession.Disconnect') {
         // console.error('TODO handle disconnect properly in store')
         return
       }
@@ -82,7 +85,7 @@ export const connectDevtoolsToStore = ({
             requestIdleCallback(
               () =>
                 sendToDevtools(
-                  Devtools.ReactivityGraphRes.make({
+                  Devtools.ClientSession.ReactivityGraphRes.make({
                     reactivityGraph: store.reactivityGraph.getSnapshot({ includeResults }),
                     requestId,
                     clientId,
@@ -106,7 +109,7 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoReq': {
           sendToDevtools(
-            Devtools.DebugInfoRes.make({
+            Devtools.ClientSession.DebugInfoRes.make({
               debugInfo: store.sqliteDbWrapper.debugInfo,
               requestId,
               clientId,
@@ -132,7 +135,7 @@ export const connectDevtoolsToStore = ({
 
             if (buffer.length > 10) {
               sendToDevtools(
-                Devtools.DebugInfoHistoryRes.make({
+                Devtools.ClientSession.DebugInfoHistoryRes.make({
                   debugInfoHistory: buffer,
                   requestId,
                   clientId,
@@ -171,13 +174,17 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoResetReq': {
           store.sqliteDbWrapper.debugInfo.slowQueries.clear()
-          sendToDevtools(Devtools.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
+          sendToDevtools(
+            Devtools.ClientSession.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
+          )
           break
         }
         case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
           store.sqliteDbWrapper.select(queryStr, bindValues, { queriedTables, skipCache: true })
-          sendToDevtools(Devtools.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }))
+          sendToDevtools(
+            Devtools.ClientSession.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
+          )
           break
         }
         case 'LSD.ClientSession.ReactivityGraphUnsubscribe': {
@@ -191,7 +198,7 @@ export const connectDevtoolsToStore = ({
             requestIdleCallback(
               () =>
                 sendToDevtools(
-                  Devtools.LiveQueriesRes.make({
+                  Devtools.ClientSession.LiveQueriesRes.make({
                     liveQueries: [...store.activeQueries].map((q) => ({
                       _tag: q._tag,
                       id: q.id,

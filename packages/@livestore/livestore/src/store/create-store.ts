@@ -2,8 +2,8 @@ import type {
   Adapter,
   BootStatus,
   ClientSession,
+  ClientSessionDevtoolsChannel,
   IntentionalShutdownCause,
-  StoreDevtoolsChannel,
 } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
@@ -128,7 +128,7 @@ export const createStore = <
 
       const storeDeferred = yield* Deferred.make<Store>()
 
-      const connectDevtoolsToStore_ = (storeDevtoolsChannel: StoreDevtoolsChannel) =>
+      const connectDevtoolsToStore_ = (storeDevtoolsChannel: ClientSessionDevtoolsChannel) =>
         Effect.gen(function* () {
           const store = yield* storeDeferred
           yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })

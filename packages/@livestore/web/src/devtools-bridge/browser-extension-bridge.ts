@@ -21,7 +21,7 @@ export const prepareBrowserExtensionDevtoolsBridge = Effect.gen(function* () {
   //   schema: { listen: Schema.Never, send: MessageToPanel },
   // })
   // const responsePubSub = yield* PubSub.unbounded<
-  //   Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession
+  //   Devtools.MessageFromApp | Devtools.MessageFromApp
   // >().pipe(Effect.acquireRelease(PubSub.shutdown))
   // const portForDevtoolsDeferred = yield* Deferred.make<MessagePort>()
   // // Messages coming from the app host (i.e. contentscript) via the background script and the devtools panel window

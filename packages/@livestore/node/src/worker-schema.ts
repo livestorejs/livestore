@@ -151,7 +151,7 @@ export namespace LeaderWorkerInner {
 
   export class ExtraDevtoolsMessage extends Schema.TaggedRequest<ExtraDevtoolsMessage>()('ExtraDevtoolsMessage', {
     payload: {
-      message: Devtools.MessageToAppLeader,
+      message: Devtools.Leader.MessageToApp,
     },
     success: Schema.Void,
     failure: UnexpectedError,

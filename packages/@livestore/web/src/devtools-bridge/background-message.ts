@@ -7,11 +7,11 @@ export namespace BackgroundMessage {
   }) {}
 
   export class MessageFromAppHost extends Schema.TaggedStruct('Background.MessageFromAppHost', {
-    msg: Devtools.MessageFromAppLeader,
+    msg: Devtools.Leader.MessageFromApp,
   }) {}
 
   export class MessageToAppHost extends Schema.TaggedStruct('Background.MessageToAppHost', {
-    msg: Devtools.MessageToAppLeader,
+    msg: Devtools.Leader.MessageToApp,
   }) {}
 
   export class RequestPortForDevtools extends Schema.TaggedStruct('Background.RequestPortForDevtools', {

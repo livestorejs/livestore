@@ -28,13 +28,6 @@ import type { ShutdownChannel } from './shutdown-channel.js'
 
 export type ShutdownState = 'running' | 'shutting-down'
 
-export class OuterWorkerCtx extends Context.Tag('OuterWorkerCtx')<
-  OuterWorkerCtx,
-  {
-    innerFiber: Fiber.RuntimeFiber<any, any>
-  }
->() {}
-
 export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
 
@@ -67,7 +60,7 @@ export type DevtoolsOptions =
       enabled: true
       makeBootContext: Effect.Effect<
         {
-          devtoolsWebChannel: WebChannel.WebChannel<Devtools.MessageToAppLeader, Devtools.MessageFromAppLeader>
+          devtoolsWebChannel: WebChannel.WebChannel<Devtools.Leader.MessageToApp, Devtools.Leader.MessageFromApp>
           persistenceInfo: PersistenceInfoPair
         },
         UnexpectedError,
@@ -108,7 +101,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
      *
      * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
      */
-    extraIncomingMessagesQueue: Queue.Queue<Devtools.MessageToAppLeader>
+    extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
   }
 >() {}
 

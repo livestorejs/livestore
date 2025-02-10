@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import { Deferred, Effect, PubSub, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 
@@ -10,24 +11,21 @@ export const makeShared = ({
   responsePubSub,
 }: {
   portForDevtoolsDeferred: Deferred.Deferred<MessagePort>
-  responsePubSub: PubSub.PubSub<Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession>
+  responsePubSub: PubSub.PubSub<Devtools.MessageFromApp | Devtools.MessageFromApp>
 }) =>
   Effect.gen(function* () {
     const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 
     const appHostStoreChannelDeferred =
       yield* Deferred.make<
-        WebChannel.WebChannel<
-          typeof Devtools.MessageFromAppClientSession.Type,
-          typeof Devtools.MessageToAppClientSession.Type
-        >
+        WebChannel.WebChannel<typeof Devtools.MessageFromApp.Type, typeof Devtools.MessageToApp.Type>
       >()
 
     const portForDevtools = yield* Deferred.await(portForDevtoolsDeferred)
 
     const appHostCoordinatorChannel = yield* WebChannel.messagePortChannel({
       port: portForDevtools,
-      schema: { listen: Devtools.MessageFromAppLeader, send: Devtools.MessageToAppLeader },
+      schema: { listen: Devtools.MessageFromApp, send: Devtools.MessageToApp },
     })
 
     yield* appHostCoordinatorChannel.listen.pipe(
@@ -54,7 +52,7 @@ export const makeShared = ({
 
           //   const portForAppHostStoreChannel = yield* WebChannel.messagePortChannel({
           //     port: storeMessageChannel.port2,
-          //     schema: { listen: Devtools.MessageFromAppClientSession, send: Devtools.MessageToAppClientSession },
+          //     schema: { listen: Devtools.MessageFromApp, send: Devtools.MessageToApp },
           //   })
 
           //   yield* portForAppHostStoreChannel.listen.pipe(
@@ -79,21 +77,21 @@ export const makeShared = ({
     )
 
     // Sends the message to the app host (i.e. contentscript) via the devtools panel window and the background script
-    const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
-      Effect.gen(function* () {
-        // console.log('bridge-shared: sendToAppHost', msg)
-        if (Schema.is(Devtools.MessageToAppLeader)(msg)) {
-          yield* appHostCoordinatorChannel.send(msg)
-        } else {
-          // console.log('bridge-shared: sendToAppHostStore', msg)
-          const appHostStoreChannel = yield* Deferred.await(appHostStoreChannelDeferred)
-          yield* appHostStoreChannel.send(msg)
-        }
-      }).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
+    // const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
+    //   Effect.gen(function* () {
+    //     // console.log('bridge-shared: sendToAppHost', msg)
+    //     if (Schema.is(Devtools.MessageToApp)(msg)) {
+    //       yield* appHostCoordinatorChannel.send(msg)
+    //     } else {
+    //       // console.log('bridge-shared: sendToAppHostStore', msg)
+    //       const appHostStoreChannel = yield* Deferred.await(appHostStoreChannelDeferred)
+    //       yield* appHostStoreChannel.send(msg)
+    //     }
+    //   }).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
 
     // yield* sendToAppHost(Devtools.DevtoolsReady.make({ liveStoreVersion }))
 
     const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
 
-    return { sendToAppHost, appHostId, isLeader }
+    return { appHostId, isLeader }
   })

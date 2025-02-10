@@ -1,8 +1,8 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-import { NetworkStatus } from '../adapter-types.js'
+import { NetworkStatus, UnexpectedError } from '../adapter-types.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
-import { Disconnect, LSDMessage, LSDReqResMessage, Ping, Pong } from './devtools-messages-common.js'
+import { liveStoreVersion, LSDMessage, LSDReqResMessage, requestId } from './devtools-messages-common.js'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),
@@ -79,11 +79,52 @@ export class MutationLogRes extends LSDReqResMessage('LSD.Leader.MutationLogRes'
   mutationLog: Transferable.Uint8Array,
 }) {}
 
-export const MessageToAppLeader = Schema.Union(
+export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {}) {}
+
+export class Pong extends LSDReqResMessage('LSD.Leader.Pong', {}) {}
+
+export class Disconnect extends LSDReqResMessage('LSD.Leader.Disconnect', {}) {}
+
+//
+export class ResetAllData extends Schema.TaggedRequest<ResetAllData>()('LSD.Leader.ResetAllData', {
+  payload: {
+    mode: Schema.Literal('all-data', 'only-app-db'),
+    requestId,
+    liveStoreVersion,
+  },
+  success: Schema.Void,
+  failure: UnexpectedError,
+}) {}
+
+export class DatabaseFileInfo_ extends Schema.TaggedRequest<DatabaseFileInfo_>()('LSD.Leader.DatabaseFileInfo', {
+  payload: {
+    requestId,
+    liveStoreVersion,
+  },
+  success: DatabaseFileInfo,
+  failure: UnexpectedError,
+}) {}
+
+export class NetworkStatus_ extends Schema.TaggedRequest<NetworkStatus_>()('LSD.Leader.NetworkStatus', {
+  payload: {
+    requestId,
+    liveStoreVersion,
+  },
+  success: NetworkStatus,
+  failure: UnexpectedError,
+}) {}
+
+export const MessageToApp_ = Schema.Union(ResetAllData, DatabaseFileInfo_, NetworkStatus_)
+
+export type MessageToApp_ = typeof MessageToApp_.Type
+//
+
+export const MessageToApp = Schema.Union(
   SnapshotReq,
   LoadDatabaseFileReq,
   MutationLogReq,
   ResetAllDataReq,
+  ResetAllData,
   NetworkStatusSubscribe,
   NetworkStatusUnsubscribe,
   Disconnect,
@@ -93,11 +134,11 @@ export const MessageToAppLeader = Schema.Union(
   SyncHistorySubscribe,
   SyncHistoryUnsubscribe,
   SyncingInfoReq,
-).annotations({ identifier: 'LSD.MessageToAppLeader' })
+).annotations({ identifier: 'LSD.Leader.MessageToApp' })
 
-export type MessageToAppLeader = typeof MessageToAppLeader.Type
+export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromAppLeader = Schema.Union(
+export const MessageFromApp = Schema.Union(
   SnapshotRes,
   LoadDatabaseFileRes,
   MutationLogRes,
@@ -110,6 +151,6 @@ export const MessageFromAppLeader = Schema.Union(
   DatabaseFileInfoRes,
   SyncHistoryRes,
   SyncingInfoRes,
-).annotations({ identifier: 'LSD.MessageFromAppLeader' })
+).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
 
-export type MessageFromAppLeader = typeof MessageFromAppLeader.Type
+export type MessageFromApp = typeof MessageFromApp.Type

@@ -1,7 +1,8 @@
 import type { Scope } from 'effect'
 import { Deferred, Effect, Predicate, Queue, Schema, Stream } from 'effect'
 
-import type { WebChannel } from './common.js'
+import { listenToDebugPing, mapSchema } from '../WebChannel.js'
+import type { InputSchema, WebChannel } from './common.js'
 import { WebChannelSymbol } from './common.js'
 
 const ConnectMessage = Schema.TaggedStruct('ConnectMessage', {
@@ -31,17 +32,16 @@ const Message = Schema.Union(ConnectMessage, ConnectAckMessage, DisconnectMessag
  */
 export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   channelName,
-  listenSchema,
-  sendSchema,
+  schema: inputSchema,
 }: {
   channelName: string
-  listenSchema: Schema.Schema<MsgListen, MsgListenEncoded>
-  sendSchema: Schema.Schema<MsgSend, MsgSendEncoded>
+  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const channel = new BroadcastChannel(channelName)
     const messageQueue = yield* Queue.unbounded<MsgSend>()
     const connectionId = crypto.randomUUID()
+    const schema = mapSchema(inputSchema)
 
     const peerIdRef = { current: undefined as undefined | string }
     const connectedLatch = yield* Effect.makeLatch(false)
@@ -53,7 +53,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       Effect.gen(function* () {
         yield* connectedLatch.await
 
-        const payload = yield* Schema.encode(sendSchema)(message)
+        const payload = yield* Schema.encode(schema.send)(message)
         postMessage(PayloadMessage.make({ from: connectionId, to: peerIdRef.current!, payload }))
       })
 
@@ -89,7 +89,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
             }
             case 'PayloadMessage': {
               if (data.to === connectionId) {
-                return Schema.decodeEither(listenSchema)(data.payload)
+                return Schema.decodeEither(schema.listen)(data.payload)
               }
               break
             }
@@ -97,6 +97,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
         }),
       ),
       Stream.filter(Predicate.isNotUndefined),
+      listenToDebugPing(channelName),
     )
 
     const establishConnection = Effect.gen(function* () {
@@ -120,7 +121,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       send,
       listen,
       closedDeferred,
-      schema: { listen: listenSchema, send: sendSchema },
+      schema,
       supportsTransferables,
     }
   }).pipe(Effect.withSpan(`WebChannel:broadcastChannelWithAck(${channelName})`))

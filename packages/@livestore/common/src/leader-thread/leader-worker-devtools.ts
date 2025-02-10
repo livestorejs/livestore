@@ -5,7 +5,7 @@ import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
-type SendMessageToDevtools = (message: Devtools.MessageFromAppLeader) => Effect.Effect<void>
+type SendMessageToDevtools = (message: Devtools.Leader.MessageFromApp) => Effect.Effect<void>
 
 // TODO bind scope to the webchannel lifetime
 export const bootDevtools = (options: DevtoolsOptions) =>
@@ -43,7 +43,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
           if (msg.payload._tag === 'upstream-advance') {
             for (const mutationEventEncoded of msg.payload.newEvents) {
               // TODO refactor with push semantics
-              yield* sendMessage(Devtools.MutationBroadcast.make({ mutationEventEncoded, liveStoreVersion }))
+              yield* sendMessage(Devtools.Leader.MutationBroadcast.make({ mutationEventEncoded, liveStoreVersion }))
             }
           } else {
             yield* Effect.logWarning('TODO implement rebases in devtools')
@@ -66,7 +66,7 @@ const listenToDevtools = ({
   sendMessage,
   persistenceInfo,
 }: {
-  incomingMessages: Stream.Stream<Devtools.MessageToAppLeader>
+  incomingMessages: Stream.Stream<Devtools.Leader.MessageToApp>
   sendMessage: SendMessageToDevtools
   persistenceInfo?: PersistenceInfoPair
 }) =>
@@ -79,6 +79,7 @@ const listenToDevtools = ({
       shutdownStateSubRef,
       shutdownChannel,
       syncProcessor,
+      clientId,
     } = yield* LeaderThreadCtx
 
     type RequestId = string
@@ -89,22 +90,22 @@ const listenToDevtools = ({
         Effect.gen(function* () {
           // yield* Effect.logDebug('[@livestore/common:leader-thread:devtools] incomingMessage', decodedEvent)
 
-          if (decodedEvent._tag === 'LSD.Disconnect') {
+          if (decodedEvent._tag === 'LSD.Leader.Disconnect') {
             return
           }
 
           const { requestId } = decodedEvent
-          const reqPayload = { requestId, liveStoreVersion }
+          const reqPayload = { requestId, liveStoreVersion, clientId }
 
           switch (decodedEvent._tag) {
-            case 'LSD.Ping': {
-              yield* sendMessage(Devtools.Pong.make({ ...reqPayload }))
+            case 'LSD.Leader.Ping': {
+              yield* sendMessage(Devtools.Leader.Pong.make({ ...reqPayload }))
               return
             }
             case 'LSD.Leader.SnapshotReq': {
               const snapshot = dbReadModel.export()
 
-              yield* sendMessage(Devtools.SnapshotRes.make({ snapshot, ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.SnapshotRes.make({ snapshot, ...reqPayload }))
 
               return
             }
@@ -125,7 +126,9 @@ const listenToDevtools = ({
                 tmpDb.close()
               } catch (e) {
                 yield* Effect.logError(`Error importing database file`, e)
-                yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }))
+                yield* sendMessage(
+                  Devtools.Leader.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }),
+                )
 
                 return
               }
@@ -143,11 +146,13 @@ const listenToDevtools = ({
 
                 dbMutationLog.destroy()
               } else {
-                yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }))
+                yield* sendMessage(
+                  Devtools.Leader.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }),
+                )
                 return
               }
 
-              yield* sendMessage(Devtools.LoadDatabaseFileRes.make({ ...reqPayload, status: 'ok' }))
+              yield* sendMessage(Devtools.Leader.LoadDatabaseFileRes.make({ ...reqPayload, status: 'ok' }))
 
               yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' })) ?? Effect.void
 
@@ -164,7 +169,7 @@ const listenToDevtools = ({
                 dbMutationLog.destroy()
               }
 
-              yield* sendMessage(Devtools.ResetAllDataRes.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.ResetAllDataRes.make({ ...reqPayload }))
 
               yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' })) ?? Effect.void
 
@@ -181,7 +186,7 @@ const listenToDevtools = ({
               const mutationLogFileSize = dbMutationLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(
-                Devtools.DatabaseFileInfoRes.make({
+                Devtools.Leader.DatabaseFileInfoRes.make({
                   readModel: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.readModel },
                   mutationLog: { fileSize: mutationLogFileSize, persistenceInfo: persistenceInfo.mutationLog },
                   ...reqPayload,
@@ -193,14 +198,14 @@ const listenToDevtools = ({
             case 'LSD.Leader.MutationLogReq': {
               const mutationLog = dbMutationLog.export()
 
-              yield* sendMessage(Devtools.MutationLogRes.make({ mutationLog, ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.MutationLogRes.make({ mutationLog, ...reqPayload }))
 
               return
             }
             case 'LSD.Leader.RunMutationReq': {
               yield* syncProcessor.pushPartial(decodedEvent.mutationEventEncoded)
 
-              yield* sendMessage(Devtools.RunMutationRes.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.RunMutationRes.make({ ...reqPayload }))
 
               return
             }
@@ -213,7 +218,7 @@ const listenToDevtools = ({
                   Stream.map((_) => _.batch),
                   Stream.flattenIterables,
                   Stream.tap(({ mutationEventEncoded, metadata }) =>
-                    sendMessage(Devtools.SyncHistoryRes.make({ mutationEventEncoded, metadata, ...reqPayload })),
+                    sendMessage(Devtools.Leader.SyncHistoryRes.make({ mutationEventEncoded, metadata, ...reqPayload })),
                   ),
                   Stream.runDrain,
                   Effect.acquireRelease(() => Effect.log('syncHistorySubscribe done')),
@@ -234,12 +239,12 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.SyncingInfoReq': {
-              const syncingInfo = Devtools.SyncingInfo.make({
+              const syncingInfo = Devtools.Leader.SyncingInfo.make({
                 enabled: syncBackend !== undefined,
                 metadata: {},
               })
 
-              yield* sendMessage(Devtools.SyncingInfoRes.make({ syncingInfo, ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.SyncingInfoRes.make({ syncingInfo, ...reqPayload }))
 
               return
             }
@@ -255,7 +260,7 @@ const listenToDevtools = ({
                 yield* syncBackend.isConnected.changes.pipe(
                   Stream.tap((isConnected) =>
                     sendMessage(
-                      Devtools.NetworkStatusRes.make({
+                      Devtools.Leader.NetworkStatusRes.make({
                         networkStatus: { isConnected, timestampMs: Date.now() },
                         ...reqPayload,
                       }),

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import type { Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, PubSub, Schema, Stream } from '@livestore/utils/effect'
@@ -8,13 +9,13 @@ import { makeExpoDevtoolsChannel } from '../web-channel/index.js'
 export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> = Effect.gen(
   function* () {
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
-      sendSchema: Schema.Union(Devtools.MessageToAppLeader, Devtools.MessageToAppClientSession),
-      listenSchema: Schema.Union(Devtools.MessageFromAppLeader, Devtools.MessageFromAppClientSession),
+      sendSchema: Schema.Union(Devtools.MessageToApp, Devtools.MessageToApp),
+      listenSchema: Schema.Union(Devtools.MessageFromApp, Devtools.MessageFromApp),
     })
 
-    const responsePubSub = yield* PubSub.unbounded<
-      Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession
-    >().pipe(Effect.acquireRelease(PubSub.shutdown))
+    const responsePubSub = yield* PubSub.unbounded<Devtools.MessageFromApp | Devtools.MessageFromApp>().pipe(
+      Effect.acquireRelease(PubSub.shutdown),
+    )
 
     const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
 

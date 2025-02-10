@@ -50,7 +50,7 @@ export type ClientSessionLeaderThreadProxy = {
   getSyncState: Effect.Effect<SyncState, UnexpectedError>
   networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
-  sendDevtoolsMessage: (message: Devtools.MessageToAppLeader) => Effect.Effect<void, UnexpectedError>
+  sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
 }
 
 /**
@@ -213,13 +213,13 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type StoreDevtoolsChannel = WebChannel.WebChannel<
-  Devtools.MessageToAppClientSession,
-  Devtools.MessageFromAppClientSession
+export type ClientSessionDevtoolsChannel = WebChannel.WebChannel<
+  Devtools.ClientSession.MessageToApp,
+  Devtools.ClientSession.MessageFromApp
 >
 
 export type ConnectDevtoolsToStore = (
-  storeDevtoolsChannel: StoreDevtoolsChannel,
+  storeDevtoolsChannel: ClientSessionDevtoolsChannel,
 ) => Effect.Effect<void, UnexpectedError, Scope.Scope>
 
 export type Adapter = (opts: {

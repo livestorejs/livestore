@@ -263,7 +263,10 @@ const makeDevtoolsOptions = ({
             nodeName: `leader-${storeId}-${clientId}`,
             target: `devtools`,
             url: `ws://localhost:${devtoolsPort}`,
-            schema: { listen: Devtools.MessageToAppLeader, send: Devtools.MessageFromAppLeader },
+            schema: {
+              listen: Devtools.Leader.MessageToApp,
+              send: Devtools.Leader.MessageFromApp,
+            },
           }),
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,

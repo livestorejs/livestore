@@ -39,7 +39,7 @@ export type WebBridgeOptions = {
 // ): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
 //   Effect.gen(function* () {
 //     const responsePubSub = yield* PubSub.unbounded<
-//       Devtools.MessageFromAppLeader | Devtools.MessageFromAppClientSession
+//       Devtools.MessageFromApp | Devtools.MessageFromApp
 //     >().pipe(Effect.acquireRelease(PubSub.shutdown))
 
 //     const devtoolsId = nanoid()

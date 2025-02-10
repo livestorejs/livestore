@@ -2,10 +2,10 @@ import { Schema } from '@livestore/utils/effect'
 
 import { liveStoreVersion as pkgVersion } from '../version.js'
 
-const requestId = Schema.String
-const clientId = Schema.String
-const sessionId = Schema.String
-const liveStoreVersion = Schema.Literal(pkgVersion)
+export const requestId = Schema.String
+export const clientId = Schema.String
+export const sessionId = Schema.String
+export const liveStoreVersion = Schema.Literal(pkgVersion)
 
 export const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   Schema.TaggedStruct(tag, {
@@ -15,6 +15,7 @@ export const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fiel
 
 export const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {
+    clientId,
     ...fields,
   })
 
@@ -44,9 +45,3 @@ export const LSDReqResMessage = <Tag extends string, Fields extends Schema.Struc
     requestId,
     ...fields,
   })
-
-export class Disconnect extends LSDClientSessionChannelMessage('LSD.Disconnect', {}) {}
-
-export class Ping extends LSDReqResMessage('LSD.Ping', {}) {}
-
-export class Pong extends LSDReqResMessage('LSD.Pong', {}) {}

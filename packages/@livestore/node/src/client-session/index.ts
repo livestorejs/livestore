@@ -99,7 +99,10 @@ export const makeNodeAdapter = ({
             nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
             target: `devtools`,
             url: `ws://localhost:${devtoolsOptions.port}`,
-            schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
+            schema: {
+              listen: Devtools.ClientSession.MessageToApp,
+              send: Devtools.ClientSession.MessageFromApp,
+            },
           })
 
           yield* connectDevtoolsToStore(storeDevtoolsChannel)

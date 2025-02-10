@@ -1,9 +1,10 @@
 import type { Scope } from 'effect'
-import { Deferred, Effect, Either, Option, Predicate, Queue } from 'effect'
+import { Deferred, Effect, Either, Option, Queue } from 'effect'
 
 import * as Schema from './Schema/index.js'
 import * as Stream from './Stream.js'
-import { type WebChannel, WebChannelSymbol } from './WebChannel/common.js'
+import { type InputSchema, type WebChannel, WebChannelSymbol } from './WebChannel/common.js'
+import { listenToDebugPing, mapSchema } from './WebChannel/common.js'
 
 export * from './WebChannel/broadcastChannelWithAck.js'
 
@@ -47,6 +48,7 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
     // TODO also listen to `messageerror` in parallel
     const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
       Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
+      listenToDebugPing(channelName),
     )
 
     const closedDeferred = yield* Deferred.make<void>()
@@ -82,6 +84,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
 
     const listen = Stream.fromEventListener<MessageEvent>(window, 'message').pipe(
       Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
+      listenToDebugPing('window'),
     )
 
     const closedDeferred = yield* Deferred.make<void>()
@@ -114,7 +117,10 @@ export const messagePortChannel: {
 
     const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
       Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
+      listenToDebugPing('messagePort'),
     )
+
+    // NOTE unfortunately MessagePorts don't emit a `close` event when the other end is closed
 
     port.start()
 
@@ -175,6 +181,7 @@ export const messagePortChannelWithAck: {
       })
 
     const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
+      Stream.tapLogWithLabel('messagePortWithAck'),
       Stream.map((_) => Schema.decodeEither(ChannelMessage)(_.data)),
       Stream.tap((msg) =>
         Effect.gen(function* () {
@@ -194,6 +201,8 @@ export const messagePortChannelWithAck: {
             ? Option.some(Either.right(msg.right.payload))
             : Option.none(),
       ),
+      (_) => _ as Stream.Stream<Either.Either<any, any>>,
+      listenToDebugPing('messagePortWithAck'),
     )
 
     port.start()
@@ -212,23 +221,6 @@ export const messagePortChannelWithAck: {
       supportsTransferables,
     }
   }).pipe(Effect.withSpan(`WebChannel:messagePortChannelWithAck`))
-
-export type InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =
-  | Schema.Schema<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded>
-  | {
-      listen: Schema.Schema<MsgListen, MsgListenEncoded>
-      send: Schema.Schema<MsgSend, MsgSendEncoded>
-    }
-
-export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
-  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>,
-): {
-  listen: Schema.Schema<MsgListen, MsgListenEncoded>
-  send: Schema.Schema<MsgSend, MsgSendEncoded>
-} =>
-  Predicate.hasProperty(schema, 'send') && Predicate.hasProperty(schema, 'listen')
-    ? { send: schema.send, listen: schema.listen }
-    : ({ send: schema, listen: schema } as any)
 
 export type QueueChannelProxy<MsgListen, MsgSend> = {
   /** Only meant to be used externally */
@@ -262,7 +254,7 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
 
     const send = (message: MsgSend) => Queue.offer(sendQueue, message)
 
-    const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
+    const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right), listenToDebugPing('queueChannel'))
 
     const closedDeferred = yield* Deferred.make<void>()
     const supportsTransferables = true
@@ -280,26 +272,3 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
 
     return { webChannel, sendQueue, listenQueue }
   })
-
-// export const proxy = <MsgListen, MsgSend>({
-//   originWebChannel,
-//   proxyWebChannel,
-// }: {
-//   originWebChannel: WebChannel<MsgListen, MsgSend>
-//   proxyWebChannel: QueueChannelProxy<MsgListen, MsgSend>
-// }) =>
-//   Effect.gen(function* () {
-//     const proxyListen = originWebChannel.listen.pipe(
-//       Stream.flatten(),
-//       Stream.tap((_) => Queue.offer(proxyWebChannel.listenQueue, _)),
-//       Stream.runDrain,
-//     )
-
-//     const proxySend = proxyWebChannel.sendQueue.pipe(
-//       Stream.fromQueue,
-//       Stream.tap(originWebChannel.send),
-//       Stream.runDrain,
-//     )
-
-//     yield* Effect.all([proxyListen, proxySend], { concurrency: 2 })
-//   })

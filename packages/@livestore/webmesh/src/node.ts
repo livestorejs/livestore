@@ -29,6 +29,8 @@ export interface MeshNode {
 
   debug: {
     print: () => void
+    /** Sends a ping message to all connected nodes and channels */
+    ping: (payload?: string) => void
   }
 
   /**
@@ -401,6 +403,24 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             value.debugInfo?.channel,
           )
         }
+      },
+      ping: (payload) => {
+        Effect.gen(function* () {
+          const msg = (via: string) => {
+            console.log(`sending message to ${via}`)
+            return WebChannel.DebugPingMessage.make({ message: `ping from ${nodeName} via ${via}`, payload })
+          }
+
+          yield* Effect.forEach(connectionChannels, ([channelName, con]) =>
+            con.channel.send(msg(`connection ${channelName}`) as any),
+          )
+
+          yield* Effect.forEach(
+            channelMap,
+            ([channelKey, channel]) =>
+              channel.debugInfo?.channel.send(msg(`channel ${channelKey}`) as any) ?? Effect.void,
+          )
+        }).pipe(Effect.runFork)
       },
     }
 

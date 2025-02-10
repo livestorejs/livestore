@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ClientSession, ConnectDevtoolsToStore } from '@livestore/common'
 import {
   Devtools,
@@ -48,8 +49,8 @@ export const bootDevtools = ({
     const isLeader = true
 
     const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
-      listenSchema: Schema.Union(Devtools.MessageToAppLeader, Devtools.MessageToAppClientSession),
-      sendSchema: Schema.Union(Devtools.MessageFromAppLeader, Devtools.MessageFromAppClientSession),
+      listenSchema: Schema.Union(Devtools.MessageToApp, Devtools.MessageToApp),
+      sendSchema: Schema.Union(Devtools.MessageFromApp, Devtools.MessageFromApp),
     })
 
     const isConnected = yield* SubscriptionRef.make(false)
@@ -59,7 +60,7 @@ export const bootDevtools = ({
      * which is expected by the `connectDevtoolsToStore` function.
      */
     const storeDevtoolsChannelProxy = yield* WebChannel.queueChannelProxy({
-      schema: { listen: Devtools.MessageToAppClientSession, send: Devtools.MessageFromAppClientSession },
+      schema: { listen: Devtools.MessageToApp, send: Devtools.MessageFromApp },
     })
 
     yield* storeDevtoolsChannelProxy.sendQueue.pipe(
@@ -76,7 +77,7 @@ export const bootDevtools = ({
       Stream.flatten(),
       Stream.tap((decodedEvent) =>
         Effect.gen(function* () {
-          if (Schema.is(Devtools.MessageToAppClientSession)(decodedEvent)) {
+          if (Schema.is(Devtools.MessageToApp)(decodedEvent)) {
             yield* storeDevtoolsChannelProxy.listenQueue.pipe(Queue.offer(decodedEvent))
             return
           }

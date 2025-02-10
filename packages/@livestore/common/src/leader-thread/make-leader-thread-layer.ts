@@ -67,7 +67,7 @@ export const makeLeaderThreadLayer = ({
       initialBlockingSyncContext,
     })
 
-    const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.MessageToAppLeader>().pipe(
+    const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(
       Effect.acquireRelease(Queue.shutdown),
     )
 

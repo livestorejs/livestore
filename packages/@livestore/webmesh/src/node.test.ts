@@ -34,14 +34,12 @@ const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode) =>
     // Need to instantiate two different channels because they filter out messages they sent themselves
     const broadcastWebChannelA = yield* WebChannel.broadcastChannelWithAck({
       channelName: `${nodeA.nodeName}↔${nodeB.nodeName}`,
-      listenSchema: Packet,
-      sendSchema: Packet,
+      schema: Packet,
     })
 
     const broadcastWebChannelB = yield* WebChannel.broadcastChannelWithAck({
       channelName: `${nodeA.nodeName}↔${nodeB.nodeName}`,
-      listenSchema: Packet,
-      sendSchema: Packet,
+      schema: Packet,
     })
 
     yield* nodeA.addConnection({ target: nodeB.nodeName, connectionChannel: broadcastWebChannelA })
