@@ -41,6 +41,8 @@ const sqlite3Promise = loadSqlite3Wasm()
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
     opfs: OpfsUtils,
+    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
+    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
   }
 }
 

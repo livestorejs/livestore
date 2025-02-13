@@ -90,6 +90,9 @@ export const makeMessageChannelInternal = ({
     const deferred = yield* makeDeferredResult()
 
     const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
+    // const span = {
+    //   addEvent: (...msg: any[]) => console.log(`${nodeName}→${channelName}→${target}[${channelVersion}]`, ...msg),
+    // }
 
     const schema = {
       send: Schema.Union(schema_.send, MeshSchema.MessageChannelPing, MeshSchema.MessageChannelPong),
@@ -111,8 +114,10 @@ export const makeMessageChannelInternal = ({
           packetChannelVersion: Predicate.hasProperty('channelVersion')(packet) ? packet.channelVersion : undefined,
         })
 
+        // const reqIdStr =
+        //   Predicate.hasProperty('reqId')(packet) && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''
         // yield* Effect.log(
-        //   `${nodeName}→${channelName}→${target}:process packet ${packet._tag} [${channelVersion}], channel state: ${channelState._tag}`,
+        //   `${nodeName}→${channelName}→${target}[${channelVersion}]:process packet ${packet._tag} [${packet.id}${reqIdStr}], channel state: ${channelState._tag}`,
         // )
 
         if (channelState._tag === 'Initial') return shouldNeverHappen()
@@ -222,6 +227,8 @@ export const makeMessageChannelInternal = ({
 
               channelStateRef.current = { _tag: 'winner:ResponseSent', channel, otherSourceId: packet.sourceId }
 
+              // span?.addEvent(`winner side: waiting for ping`)
+
               // Now we wait for the other side to respond via the channel
               yield* channel.listen.pipe(
                 Stream.flatten(),
@@ -229,6 +236,8 @@ export const makeMessageChannelInternal = ({
                 Stream.take(1),
                 Stream.runDrain,
               )
+
+              // span?.addEvent(`winner side: sending pong`)
 
               yield* channel.send(MeshSchema.MessageChannelPong.make({}))
 
@@ -266,7 +275,16 @@ export const makeMessageChannelInternal = ({
               Effect.fork,
             )
 
-            yield* channel.send(MeshSchema.MessageChannelPing.make({}))
+            // span?.addEvent(`loser side: sending ping`)
+
+            // There seems to be some scenario where the initial ping message is lost.
+            // As a workaround until we find the root cause, we're retrying the ping a few times.
+            // TODO write a test that reproduces this issue and fix the root cause
+            yield* channel
+              .send(MeshSchema.MessageChannelPing.make({}))
+              .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
+
+            // span?.addEvent(`loser side: waiting for pong`)
 
             yield* waitForPongFiber
 

@@ -106,80 +106,79 @@ const propTestTimeout = IS_CI ? 60_000 : 20_000
 // TODO also make work without `Vitest.scopedLive` (i.e. with `Vitest.scoped`)
 // probably requires controlling the clocks
 Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
+  const Delay = Schema.UndefinedOr(Schema.Literal(0, 1, 10, 50))
+  // NOTE for message channels, we test both with and without transferables (i.e. proxying)
+  const ChannelType = Schema.Literal('messagechannel', 'messagechannel.proxy', 'proxy')
+  const NodeNames = Schema.Union(
+    Schema.Tuple(Schema.Literal('A'), Schema.Literal('B')),
+    Schema.Tuple(Schema.Literal('B'), Schema.Literal('A')),
+  )
+
+  const fromChannelType = (
+    channelType: typeof ChannelType.Type,
+  ): {
+    mode: 'messagechannel' | 'proxy'
+    connectNodes: typeof connectNodesViaMessageChannel | typeof connectNodesViaBroadcastChannel
+  } => {
+    switch (channelType) {
+      case 'proxy': {
+        return { mode: 'proxy', connectNodes: connectNodesViaBroadcastChannel }
+      }
+      case 'messagechannel': {
+        return { mode: 'messagechannel', connectNodes: connectNodesViaMessageChannel }
+      }
+      case 'messagechannel.proxy': {
+        return { mode: 'proxy', connectNodes: connectNodesViaMessageChannel }
+      }
+    }
+  }
+
+  const exchangeMessages = ({
+    nodeX,
+    nodeY,
+    channelType,
+    // numberOfMessages = 1,
+    delays,
+  }: {
+    nodeX: MeshNode
+    nodeY: MeshNode
+    channelType: 'messagechannel' | 'proxy' | 'messagechannel.proxy'
+    numberOfMessages?: number
+    delays?: { x?: number; y?: number; connect?: number }
+  }) =>
+    Effect.gen(function* () {
+      const nodeLabel = { x: nodeX.nodeName, y: nodeY.nodeName }
+      const { mode, connectNodes } = fromChannelType(channelType)
+
+      const nodeXCode = Effect.gen(function* () {
+        const channelXToY = yield* createChannel(nodeX, nodeY.nodeName, { mode })
+
+        yield* channelXToY.send({ message: `${nodeLabel.x}1` })
+        // console.log('channelXToY', channelXToY.debugInfo)
+        expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}1` })
+        // expect(channelXToY.debugInfo.connectCounter).toBe(1)
+      })
+
+      const nodeYCode = Effect.gen(function* () {
+        const channelYToX = yield* createChannel(nodeY, nodeX.nodeName, { mode })
+
+        yield* channelYToX.send({ message: `${nodeLabel.y}1` })
+        // console.log('channelYToX', channelYToX.debugInfo)
+        expect(yield* getFirstMessage(channelYToX)).toEqual({ message: `${nodeLabel.x}1` })
+        // expect(channelYToX.debugInfo.connectCounter).toBe(1)
+      })
+
+      yield* Effect.all(
+        [
+          connectNodes(nodeX, nodeY).pipe(maybeDelay(delays?.connect, 'connectNodes')),
+          nodeXCode.pipe(maybeDelay(delays?.x, `node${nodeLabel.x}Code`)),
+          nodeYCode.pipe(maybeDelay(delays?.y, `node${nodeLabel.y}Code`)),
+        ],
+        { concurrency: 'unbounded' },
+      ).pipe(Effect.withSpan(`exchangeMessages(${nodeLabel.x}↔${nodeLabel.y})`))
+    })
   Vitest.describe('A <> B', () => {
     Vitest.describe('prop tests', { timeout: propTestTimeout }, () => {
-      const Delay = Schema.UndefinedOr(Schema.Literal(0, 1, 10, 50))
-      // NOTE for message channels, we test both with and without transferables (i.e. proxying)
-      const ChannelType = Schema.Literal('messagechannel', 'messagechannel.proxy', 'proxy')
-      const NodeNames = Schema.Union(
-        Schema.Tuple(Schema.Literal('A'), Schema.Literal('B')),
-        Schema.Tuple(Schema.Literal('B'), Schema.Literal('A')),
-      )
-
-      const fromChannelType = (
-        channelType: typeof ChannelType.Type,
-      ): {
-        mode: 'messagechannel' | 'proxy'
-        connectNodes: typeof connectNodesViaMessageChannel | typeof connectNodesViaBroadcastChannel
-      } => {
-        switch (channelType) {
-          case 'proxy': {
-            return { mode: 'proxy', connectNodes: connectNodesViaBroadcastChannel }
-          }
-          case 'messagechannel': {
-            return { mode: 'messagechannel', connectNodes: connectNodesViaMessageChannel }
-          }
-          case 'messagechannel.proxy': {
-            return { mode: 'proxy', connectNodes: connectNodesViaMessageChannel }
-          }
-        }
-      }
-
-      const exchangeMessages = ({
-        nodeX,
-        nodeY,
-        channelType,
-        // numberOfMessages = 1,
-        delays,
-      }: {
-        nodeX: MeshNode
-        nodeY: MeshNode
-        channelType: 'messagechannel' | 'proxy' | 'messagechannel.proxy'
-        numberOfMessages?: number
-        delays?: { x?: number; y?: number; connect?: number }
-      }) =>
-        Effect.gen(function* () {
-          const nodeLabel = { x: nodeX.nodeName, y: nodeY.nodeName }
-          const { mode, connectNodes } = fromChannelType(channelType)
-
-          const nodeXCode = Effect.gen(function* () {
-            const channelXToY = yield* createChannel(nodeX, nodeY.nodeName, { mode })
-
-            yield* channelXToY.send({ message: `${nodeLabel.x}1` })
-            // console.log('channelXToY', channelXToY.debugInfo)
-            expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}1` })
-            // expect(channelXToY.debugInfo.connectCounter).toBe(1)
-          })
-
-          const nodeYCode = Effect.gen(function* () {
-            const channelYToX = yield* createChannel(nodeY, nodeX.nodeName, { mode })
-
-            yield* channelYToX.send({ message: `${nodeLabel.y}1` })
-            // console.log('channelYToX', channelYToX.debugInfo)
-            expect(yield* getFirstMessage(channelYToX)).toEqual({ message: `${nodeLabel.x}1` })
-            // expect(channelYToX.debugInfo.connectCounter).toBe(1)
-          })
-
-          yield* Effect.all(
-            [
-              connectNodes(nodeX, nodeY).pipe(maybeDelay(delays?.connect, 'connectNodes')),
-              nodeXCode.pipe(maybeDelay(delays?.x, `node${nodeLabel.x}Code`)),
-              nodeYCode.pipe(maybeDelay(delays?.y, `node${nodeLabel.y}Code`)),
-            ],
-            { concurrency: 'unbounded' },
-          ).pipe(Effect.withSpan(`exchangeMessages(${nodeLabel.x}↔${nodeLabel.y})`))
-        })
-
       // const delayX = 40
       // const delayY = undefined
       // const connectDelay = undefined
@@ -453,6 +452,40 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           { fastCheck: { numRuns: 10 } },
         )
       })
+    })
+
+    Vitest.describe('message channel specific tests', () => {
+      Vitest.scopedLive('differing initial connection counter', (test) =>
+        Effect.gen(function* () {
+          const nodeA = yield* makeMeshNode('A')
+          const nodeB = yield* makeMeshNode('B')
+
+          yield* connectNodesViaMessageChannel(nodeA, nodeB)
+
+          const messageCount = 3
+
+          const bFiber = yield* Effect.gen(function* () {
+            const channelBToA = yield* createChannel(nodeB, 'A')
+            yield* channelBToA.listen.pipe(
+              Stream.flatten(),
+              Stream.tap((msg) => channelBToA.send({ message: `resp:${msg.message}` })),
+              Stream.take(messageCount),
+              Stream.runDrain,
+            )
+          }).pipe(Effect.scoped, Effect.fork)
+
+          // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
+          // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
+          // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
+          yield* Effect.gen(function* () {
+            const channelAToB = yield* createChannel(nodeA, 'B')
+            yield* channelAToB.send({ message: 'A' })
+            expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'resp:A' })
+          }).pipe(Effect.scoped, Effect.repeatN(messageCount))
+
+          yield* bFiber
+        }).pipe(withCtx(test)),
+      )
     })
 
     Vitest.scopedLive('manual debug test', (test) =>

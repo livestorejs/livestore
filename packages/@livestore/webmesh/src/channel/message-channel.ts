@@ -55,8 +55,9 @@ export const makeMessageChannel = ({
       const debugInfo = {
         pendingSends: 0,
         totalSends: 0,
-        connectCounter: 1,
+        connectCounter: 0,
         isConnected: false,
+        innerChannelRef: { current: undefined as WebChannel.WebChannel<any, any> | undefined },
       }
 
       // #region reconnect-loop
@@ -144,6 +145,7 @@ export const makeMessageChannel = ({
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
+        debugInfo.innerChannelRef.current = channel
 
         yield* Deferred.succeed(initialConnectionDeferred, void 0)
 
@@ -176,6 +178,7 @@ export const makeMessageChannel = ({
 
         yield* Effect.spanEvent(`Disconnected#${channelVersion}`)
         debugInfo.isConnected = false
+        debugInfo.innerChannelRef.current = undefined
       }).pipe(
         Effect.scoped, // Additionally scoping here to clean up finalizers after each loop run
         Effect.forever,

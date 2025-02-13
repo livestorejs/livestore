@@ -21,3 +21,4 @@ It's used in LiveStore as the foundation for the LiveStore devtools protocol com
 - Elixir `Distribution` / OTP
   - https://elixirschool.com/en/lessons/advanced/otp_distribution
 	- https://serokell.io/blog/elixir-otp-guide
+- Consul by HashiCorp

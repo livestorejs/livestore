@@ -156,6 +156,8 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
     const sendPacket = (packet: typeof MeshSchema.Packet.Type) =>
       Effect.gen(function* () {
+        // yield* Effect.log(`${nodeName}: sendPacket:${packet._tag} [${packet.id}]`)
+
         if (Schema.is(MeshSchema.NetworkConnectionAdded)(packet)) {
           yield* Effect.spanEvent('NetworkConnectionAdded', { packet, nodeName })
           yield* PubSub.publish(newConnectionAvailablePubSub, packet.target)

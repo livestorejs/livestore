@@ -3,7 +3,7 @@ import { Deferred, Either, Exit, Option, Queue, Scope } from 'effect'
 import * as Effect from '../Effect.js'
 import * as Schema from '../Schema/index.js'
 import * as Stream from '../Stream.js'
-import { type InputSchema, type WebChannel, WebChannelSymbol } from './common.js'
+import { DebugPingMessage, type InputSchema, type WebChannel, WebChannelSymbol } from './common.js'
 import { listenToDebugPing, mapSchema } from './common.js'
 
 export * from './broadcastChannelWithAck.js'
@@ -184,8 +184,18 @@ export const messagePortChannelWithAck: {
       const ChannelMessage = Schema.Union(ChannelRequest, ChannelRequestAck)
       type ChannelMessage = typeof ChannelMessage.Type
 
+      const debugInfo = {
+        sendTotal: 0,
+        sendPending: 0,
+        listenTotal: 0,
+        id: debugId,
+      }
+
       const send = (message: any) =>
         Effect.gen(function* () {
+          debugInfo.sendTotal++
+          debugInfo.sendPending++
+
           const id = crypto.randomUUID()
           const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(ChannelMessage)({
             _tag: 'ChannelRequest',
@@ -201,6 +211,8 @@ export const messagePortChannelWithAck: {
           yield* ack
 
           requestAckMap.delete(id)
+
+          debugInfo.sendPending--
         })
 
       const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
@@ -213,6 +225,7 @@ export const messagePortChannelWithAck: {
               if (msg.right._tag === 'ChannelRequestAck') {
                 yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
               } else if (msg.right._tag === 'ChannelRequest') {
+                debugInfo.listenTotal++
                 port.postMessage(Schema.encodeSync(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
               }
             }
@@ -244,9 +257,7 @@ export const messagePortChannelWithAck: {
         shutdown: Scope.close(scope, Exit.succeed('shutdown')),
         schema,
         supportsTransferables,
-        debugInfo: {
-          id: debugId,
-        },
+        debugInfo,
       }
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannelWithAck`)),
   )
@@ -336,4 +347,9 @@ export const toOpenChannel = (channel: WebChannel<any, any>): Effect.Effect<WebC
         listenQueueSize: queue,
       },
     }
+  })
+
+export const sendDebugPing = (channel: WebChannel<any, any>) =>
+  Effect.gen(function* () {
+    yield* channel.send(DebugPingMessage.make({ message: 'ping' }))
   })
