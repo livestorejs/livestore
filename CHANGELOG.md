@@ -8,6 +8,7 @@
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - Syncing
+    - Regression: Re-opening a synced app fails on main thread
     - Initial Electric sync implementation
     - sync-cf: Get rid of broadcast events and embrace pull semantics
   - Devtools

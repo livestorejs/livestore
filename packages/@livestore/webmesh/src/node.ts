@@ -60,7 +60,16 @@ export interface MeshNode {
   /**
    * Tries to broker a MessageChannel connection between the nodes, otherwise will proxy messages via hop-nodes
    *
-   * For a channel to successfully open, both sides need to have a connection and call `makeChannel`
+   * For a channel to successfully open, both sides need to have a connection and call `makeChannel`.
+   *
+   * Example:
+   * ```ts
+   * // Code on node A
+   * const channel = nodeA.makeChannel({ target: 'B', channelName: 'my-channel', schema: ... })
+   *
+   * // Code on node B
+   * const channel = nodeB.makeChannel({ target: 'A', channelName: 'my-channel', schema: ... })
+   * ```
    */
   makeChannel: <MsgListen, MsgSend>(args: {
     target: MeshNodeName
@@ -332,7 +341,12 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         const schema = WebChannel.mapSchema(inputSchema)
         const channelKey = `${target}-${channelName}` satisfies ChannelKey
 
-        if (!channelMap.has(channelKey)) {
+        if (channelMap.has(channelKey)) {
+          const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
+          if (existingChannel) {
+            shouldNeverHappen(`Channel ${channelKey} already exists`, existingChannel)
+          }
+        } else {
           const queue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
             Effect.acquireRelease(Queue.shutdown),
           )
@@ -344,12 +358,23 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         yield* Effect.addFinalizer(() => Effect.sync(() => channelMap.delete(channelKey)))
 
         if (mode === 'messagechannel') {
-          // console.debug(nodeName, 'message mode', modeRef.current)
+          const incomingPacketsQueue = yield* Queue.unbounded<any>()
+
+          // We're we're draining the queue into another new queue.
+          // It's a bit of a mystery why this is needed, since the unit tests also work without it.
+          // But for the LiveStore devtools to actually work, we need to do this.
+          // We should figure out some day why this is needed and further simplify if possible.
+          yield* Queue.takeAll(queue).pipe(
+            Effect.tap((_) => Queue.offerAll(incomingPacketsQueue, _)),
+            Effect.forever,
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
+          )
 
           // NOTE already retries internally when transferables are required
           const channel = yield* makeMessageChannel({
             nodeName,
-            queue,
+            incomingPacketsQueue,
             newConnectionAvailablePubSub,
             target,
             channelName,
@@ -377,6 +402,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           return channel
         }
       }).pipe(
+        // Effect.timeout(timeout),
         Effect.withSpanScoped(`makeChannel:${nodeName}→${target}(${channelName})`, {
           attributes: { target, channelName, mode, timeout },
         }),

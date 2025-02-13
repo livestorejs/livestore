@@ -1,6 +1,6 @@
 import { UnexpectedError } from '@livestore/common'
-import type { Either, ParseResult, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
+import type { Either, ParseResult } from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 import * as ExpoDevtools from 'expo/devtools'
 
 export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncoded>({
@@ -10,48 +10,51 @@ export const makeExpoDevtoolsChannel = <MsgIn, MsgOut, MsgInEncoded, MsgOutEncod
   listenSchema: Schema.Schema<MsgIn, MsgInEncoded>
   sendSchema: Schema.Schema<MsgOut, MsgOutEncoded>
 }): Effect.Effect<WebChannel.WebChannel<MsgIn, MsgOut>, UnexpectedError, Scope.Scope> =>
-  Effect.gen(function* () {
-    const client = yield* Effect.tryPromise({
-      try: () =>
-        ExpoDevtools.getDevToolsPluginClientAsync('livestore-devtools', {
-          websocketBinaryType: 'arraybuffer',
-        }),
-      catch: (cause) => UnexpectedError.make({ cause }),
-    })
-
-    const send = (message: MsgOut) =>
-      Effect.gen(function* () {
-        const messageEncoded = yield* Schema.encode(Schema.MsgPack(sendSchema))(message)
-        // console.log('send encoded', messageEncoded)
-        client.sendMessage('livestore', messageEncoded)
+  Effect.scopeWithCloseable((scope) =>
+    Effect.gen(function* () {
+      const client = yield* Effect.tryPromise({
+        try: () =>
+          ExpoDevtools.getDevToolsPluginClientAsync('livestore-devtools', {
+            websocketBinaryType: 'arraybuffer',
+          }),
+        catch: (cause) => UnexpectedError.make({ cause }),
       })
 
-    const listen = Stream.asyncPush<Either.Either<MsgIn, ParseResult.ParseError>>((emit) =>
-      Effect.gen(function* () {
-        {
-          const sub = client.addMessageListener('livestore', (msg) => {
-            emit.single(Schema.decodeEither(Schema.MsgPack(listenSchema))(msg))
-          })
+      const send = (message: MsgOut) =>
+        Effect.gen(function* () {
+          const messageEncoded = yield* Schema.encode(Schema.MsgPack(sendSchema))(message)
+          // console.log('send encoded', messageEncoded)
+          client.sendMessage('livestore', messageEncoded)
+        })
 
-          return () => sub.remove()
-        }
-      }),
-    )
+      const listen = Stream.asyncPush<Either.Either<MsgIn, ParseResult.ParseError>>((emit) =>
+        Effect.gen(function* () {
+          {
+            const sub = client.addMessageListener('livestore', (msg) => {
+              emit.single(Schema.decodeEither(Schema.MsgPack(listenSchema))(msg))
+            })
 
-    yield* Effect.addFinalizer(() => Effect.promise(() => client.closeAsync()))
+            return () => sub.remove()
+          }
+        }),
+      )
 
-    // There is no close event currently exposed by the Expo Devtools plugin
-    // Let's see whether it will be needed in the future
-    const closedDeferred = yield* Deferred.make<void>()
+      yield* Effect.addFinalizer(() => Effect.promise(() => client.closeAsync()))
 
-    const supportsTransferables = false
+      // There is no close event currently exposed by the Expo Devtools plugin
+      // Let's see whether it will be needed in the future
+      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
-    return {
-      [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
-      send,
-      listen,
-      closedDeferred,
-      schema: { listen: listenSchema, send: sendSchema },
-      supportsTransferables,
-    }
-  }).pipe(Effect.withSpan(`devtools-expo-common:makeExpoDevtoolsChannel`))
+      const supportsTransferables = false
+
+      return {
+        [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
+        send,
+        listen,
+        closedDeferred,
+        schema: { listen: listenSchema, send: sendSchema },
+        supportsTransferables,
+        shutdown: Scope.close(scope, Exit.void),
+      }
+    }).pipe(Effect.withSpan(`devtools-expo-common:makeExpoDevtoolsChannel`)),
+  )

@@ -1,354 +1,219 @@
-import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import type { PubSub, Schema, Scope } from '@livestore/utils/effect'
 import {
+  Cause,
   Deferred,
   Effect,
   Either,
-  Fiber,
-  FiberHandle,
+  Exit,
   Queue,
-  Schedule,
+  Schema,
+  Scope,
   Stream,
-  SubscriptionRef,
+  TQueue,
   WebChannel,
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
-import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.js'
-import * as MeshSchema from '../mesh-schema.js'
+import { WebmeshSchema } from '../mod.js'
+import type { MakeMessageChannelArgs } from './message-channel-internal.js'
+import { makeMessageChannelInternal } from './message-channel-internal.js'
 
-interface MakeMessageChannelArgs {
-  nodeName: MeshNodeName
-  queue: Queue.Queue<MessageQueueItem>
-  newConnectionAvailablePubSub: PubSub.PubSub<MeshNodeName>
-  channelName: ChannelName
-  target: MeshNodeName
-  sendPacket: (packet: typeof MeshSchema.MessageChannelPacket.Type) => Effect.Effect<void>
-  checkTransferableConnections: (
-    packet: typeof MeshSchema.MessageChannelPacket.Type,
-  ) => typeof MeshSchema.MessageChannelResponseNoTransferables.Type | undefined
-  schema: {
-    send: Schema.Schema<any, any>
-    listen: Schema.Schema<any, any>
-  }
-}
-
+/**
+ * Behaviour:
+ * - Waits until there is an initial connection
+ * - Automatically reconnects on disconnect
+ *
+ * Implementation notes:
+ * - We've split up the functionality into a wrapper channel and an internal channel.
+ * - The wrapper channel is responsible for:
+ *   - Forwarding send/listen messages to the internal channel (via a queue)
+ *   - Establishing the initial channel and reconnecting on disconnect
+ *     - Listening for new connections as a hint to reconnect if not already connected
+ *     - The wrapper channel maintains a connection counter which is used as the channel version
+ *
+ * If needed we can also implement further functionality (like heartbeat) in this wrapper channel.
+ */
 export const makeMessageChannel = ({
-  nodeName,
-  queue,
-  newConnectionAvailablePubSub,
-  target,
-  checkTransferableConnections,
-  channelName,
   schema,
+  newConnectionAvailablePubSub,
+  channelName,
+  checkTransferableConnections,
+  nodeName,
+  incomingPacketsQueue,
+  target,
   sendPacket,
 }: MakeMessageChannelArgs) =>
-  Effect.gen(function* () {
-    const reconnectTriggerQueue = yield* Queue.unbounded<void>()
-    const reconnect = Queue.offer(reconnectTriggerQueue, void 0)
+  Effect.scopeWithCloseable((scope) =>
+    Effect.gen(function* () {
+      /** Only used to identify whether a source is the same instance to know when to reconnect */
+      const sourceId = nanoid()
 
-    type ChannelState =
-      | { _tag: 'Established' }
-      | {
-          _tag: 'Initial'
-          deferred: Deferred.Deferred<MessagePort, typeof MeshSchema.MessageChannelResponseNoTransferables.Type>
-        }
-      | {
-          _tag: 'RequestSent'
-          deferred: Deferred.Deferred<MessagePort, typeof MeshSchema.MessageChannelResponseNoTransferables.Type>
-        }
-      | {
-          _tag: 'ResponseSent'
-          // Set in the case where this side already received a request, and created a port.
-          // Might be used or discarded based on tie-breaking logic below.
-          locallyCreatedPort: MessagePort
-          deferred: Deferred.Deferred<MessagePort, typeof MeshSchema.MessageChannelResponseNoTransferables.Type>
-        }
+      const listenQueue = yield* Queue.unbounded<any>()
+      const sendQueue = yield* TQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
-    const makeInitialState = Effect.gen(function* () {
-      const deferred = yield* Deferred.make<MessagePort, typeof MeshSchema.MessageChannelResponseNoTransferables.Type>()
-      return { _tag: 'Initial', deferred } as ChannelState
-    })
+      const initialConnectionDeferred = yield* Deferred.make<void>()
 
-    const channelStateRef = { current: yield* makeInitialState }
+      const debugInfo = {
+        pendingSends: 0,
+        totalSends: 0,
+        connectCounter: 1,
+      }
 
-    const makeMessageChannelInternal: Effect.Effect<
-      WebChannel.WebChannel<any, any, never>,
-      never,
-      Scope.Scope
-    > = Effect.gen(function* () {
-      const processMessagePacket = ({ packet, respondToSender }: MessageQueueItem) =>
-        Effect.gen(function* () {
-          const channelState = channelStateRef.current
+      // #region reconnect-loop
+      yield* Effect.gen(function* () {
+        const resultDeferred = yield* Deferred.make<{
+          channel: WebChannel.WebChannel<any, any>
+          channelVersion: number
+          makeMessageChannelScope: Scope.CloseableScope
+        }>()
 
-          // yield* Effect.log(`${nodeName}:processing packet ${packet._tag}, channel state: ${channelState._tag}`)
+        while (true) {
+          debugInfo.connectCounter++
+          const channelVersion = debugInfo.connectCounter
 
-          switch (packet._tag) {
-            // Since there can be concurrent MessageChannel responses from both sides,
-            // we need to decide which side's port we want to use and which side's port we want to ignore.
-            // This is only relevant in the case where both sides already sent their responses.
-            // In this case we're using the target name as a "tie breaker" to decide which side's port to use.
-            // We do this by sorting the target names lexicographically and use the first one as the winner.
-            case 'MessageChannelResponseSuccess': {
-              if (channelState._tag === 'Initial') {
-                return shouldNeverHappen(
-                  `Expected to find message channel request from ${target}, but was in ${channelState._tag} state`,
-                )
+          yield* Effect.spanEvent(`Connecting#${channelVersion}`)
+
+          const makeMessageChannelScope = yield* Scope.make()
+          // Attach the new scope to the parent scope
+          yield* Effect.addFinalizer((ex) => Scope.close(makeMessageChannelScope, ex))
+
+          /**
+           * Expected concurrency behaviour:
+           * - We're concurrently running the connection setup and the waitForNewConnectionFiber
+           * - Happy path:
+           *   - The connection setup succeeds and we can interrupt the waitForNewConnectionFiber
+           * - Tricky paths:
+           *   - While a connection is still being setup, we want to re-try when there is a new connection
+           *   - If the connection setup returns a `MessageChannelResponseNoTransferables` error,
+           *     we want to wait for a new connection and then re-try
+           * - Further notes:
+           *   - If the parent scope closes, we want to also interrupt both the connection setup and the waitForNewConnectionFiber
+           *   - We're creating a separate scope for each connection attempt, which
+           *     - we'll use to fork the message channel in which allows us to interrupt it later
+           *   - We need to make sure that "interruption" isn't "bubbling out"
+           */
+          const waitForNewConnectionFiber = yield* Stream.fromPubSub(newConnectionAvailablePubSub).pipe(
+            Stream.tap((connectionName) => Effect.spanEvent(`new-conn:${connectionName}`)),
+            Stream.take(1),
+            Stream.runDrain,
+            Effect.as('new-connection' as const),
+            Effect.fork,
+          )
+
+          const makeChannel = makeMessageChannelInternal({
+            nodeName,
+            sourceId,
+            incomingPacketsQueue,
+            target,
+            checkTransferableConnections,
+            channelName,
+            schema,
+            channelVersion,
+            newConnectionAvailablePubSub,
+            sendPacket,
+            scope: makeMessageChannelScope,
+          }).pipe(Scope.extend(makeMessageChannelScope), Effect.forkIn(makeMessageChannelScope))
+
+          const res = yield* Effect.raceFirst(makeChannel, waitForNewConnectionFiber.pipe(Effect.disconnect))
+
+          if (res === 'new-connection') {
+            yield* Scope.close(makeMessageChannelScope, Exit.fail('new-connection'))
+            // We'll try again
+          } else {
+            const result = yield* res.pipe(Effect.exit)
+            if (result._tag === 'Failure') {
+              yield* Scope.close(makeMessageChannelScope, result)
+
+              if (
+                Cause.isFailType(result.cause) &&
+                Schema.is(WebmeshSchema.MessageChannelResponseNoTransferables)(result.cause.error)
+              ) {
+                yield* waitForNewConnectionFiber.pipe(Effect.exit)
               }
+            } else {
+              const channel = result.value
 
-              if (channelState._tag === 'Established') {
-                const deferred = yield* Deferred.make<
-                  MessagePort,
-                  typeof MeshSchema.MessageChannelResponseNoTransferables.Type
-                >()
-
-                channelStateRef.current = { _tag: 'RequestSent', deferred }
-
-                yield* reconnect
-
-                return
-              }
-
-              const thisSideAlsoResponded = channelState._tag === 'ResponseSent'
-
-              const usePortFromThisSide = thisSideAlsoResponded && nodeName > target
-              yield* Effect.annotateCurrentSpan({ usePortFromThisSide })
-
-              const winnerPort = usePortFromThisSide ? channelState.locallyCreatedPort : packet.port
-              yield* Deferred.succeed(channelState.deferred, winnerPort)
-
-              return
-            }
-            case 'MessageChannelResponseNoTransferables': {
-              if (channelState._tag === 'Established') return
-
-              yield* Deferred.fail(channelState!.deferred, packet)
-              channelStateRef.current = yield* makeInitialState
-              return
-            }
-            case 'MessageChannelRequest': {
-              const mc = new MessageChannel()
-
-              const shouldReconnect = channelState._tag === 'Established'
-
-              const deferred =
-                channelState._tag === 'Established'
-                  ? yield* Deferred.make<MessagePort, typeof MeshSchema.MessageChannelResponseNoTransferables.Type>()
-                  : channelState.deferred
-
-              channelStateRef.current = { _tag: 'ResponseSent', locallyCreatedPort: mc.port1, deferred }
-
-              yield* respondToSender(
-                MeshSchema.MessageChannelResponseSuccess.make({
-                  reqId: packet.id,
-                  target,
-                  source: nodeName,
-                  channelName: packet.channelName,
-                  hops: [],
-                  remainingHops: packet.hops,
-                  port: mc.port2,
-                }),
-              )
-
-              // If there's an established channel, we use the new request as a signal
-              // to drop the old channel and use the new one
-              if (shouldReconnect) {
-                yield* reconnect
-              }
-
+              yield* Deferred.succeed(resultDeferred, { channel, makeMessageChannelScope, channelVersion })
               break
             }
-            default: {
-              return casesHandled(packet)
-            }
           }
-        }).pipe(
-          Effect.withSpan(`handleMessagePacket:${packet._tag}:${packet.source}→${packet.target}`, {
-            attributes: packetAsOtelAttributes(packet),
-          }),
+        }
+
+        // Now we wait until the first channel is established
+        const { channel, makeMessageChannelScope, channelVersion } = yield* resultDeferred
+
+        yield* Effect.spanEvent(`Connected#${channelVersion}`)
+
+        yield* Deferred.succeed(initialConnectionDeferred, void 0)
+
+        // We'll now forward all incoming messages to the listen queue
+        yield* channel.listen.pipe(
+          Stream.flatten(),
+          // Stream.tap((msg) => Effect.log(`${target}→${channelName}→${nodeName}:message:${msg.message}`)),
+          Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
+          Stream.runDrain,
+          Effect.tapCauseLogPretty,
+          Effect.forkIn(makeMessageChannelScope),
         )
 
-      yield* Stream.fromQueue(queue).pipe(
-        Stream.tap(processMessagePacket),
-        Stream.runDrain,
+        yield* Effect.gen(function* () {
+          while (true) {
+            const [msg, deferred] = yield* TQueue.peek(sendQueue)
+            // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
+            // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
+            // given we only peeked at the queue, the message to send is still there.
+            yield* channel.send(msg)
+            yield* Deferred.succeed(deferred, void 0)
+            yield* TQueue.take(sendQueue) // Remove the message from the queue
+          }
+        }).pipe(Effect.forkIn(makeMessageChannelScope))
+
+        // Wait until the channel is closed and then try to reconnect
+        yield* channel.closedDeferred
+
+        yield* Scope.close(makeMessageChannelScope, Exit.succeed('channel-closed'))
+
+        yield* Effect.spanEvent(`Disconnected#${channelVersion}`)
+      }).pipe(
+        Effect.scoped, // Additionally scoping here to clean up finalizers after each loop run
+        Effect.forever,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
+      // #endregion reconnect-loop
 
-      const channelFromPort = (port: MessagePort) =>
+      const parentSpan = yield* Effect.currentSpan.pipe(Effect.orDie)
+
+      const send = (message: any) =>
         Effect.gen(function* () {
-          channelStateRef.current = { _tag: 'Established' }
+          const sentDeferred = yield* Deferred.make<void>()
 
-          // NOTE to support re-connects we need to ack each message
-          const channel = yield* WebChannel.messagePortChannelWithAck({ port, schema })
+          debugInfo.pendingSends++
+          debugInfo.totalSends++
 
-          return channel
-        })
+          yield* TQueue.offer(sendQueue, [message, sentDeferred])
 
-      const channelState = channelStateRef.current
+          yield* sentDeferred
 
-      if (channelState._tag === 'Initial' || channelState._tag === 'RequestSent') {
-        // Important to make a new deferred here as the old one might have been used already
-        // TODO model this better
-        const deferred =
-          channelState._tag === 'RequestSent'
-            ? yield* Deferred.make<MessagePort, typeof MeshSchema.MessageChannelResponseNoTransferables.Type>()
-            : channelState.deferred
+          debugInfo.pendingSends--
+        }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-        channelStateRef.current = { _tag: 'RequestSent', deferred }
+      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Either.right))
 
-        const connectionRequest = Effect.gen(function* () {
-          const packet = MeshSchema.MessageChannelRequest.make({ source: nodeName, target, channelName, hops: [] })
+      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
-          const noTransferableResponse = checkTransferableConnections(packet)
-          if (noTransferableResponse !== undefined) {
-            yield* Effect.spanEvent(`No transferable connections found for ${packet.source}→${packet.target}`)
-            yield* Deferred.fail(deferred, noTransferableResponse)
-            return
-          }
+      yield* initialConnectionDeferred
 
-          yield* sendPacket(packet)
-        })
+      const webChannel = {
+        [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
+        send,
+        listen,
+        closedDeferred,
+        supportsTransferables: true,
+        schema,
+        debugInfo,
+        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
+      } satisfies WebChannel.WebChannel<any, any>
 
-        yield* connectionRequest
-
-        const retryOnNewConnectionFiber = yield* Stream.fromPubSub(newConnectionAvailablePubSub).pipe(
-          Stream.tap(() => Effect.spanEvent(`RetryOnNewConnection`)),
-          Stream.tap(() => connectionRequest),
-          Stream.runDrain,
-          Effect.forkScoped,
-        )
-
-        const portResult = yield* deferred.pipe(Effect.either)
-        yield* Fiber.interrupt(retryOnNewConnectionFiber)
-
-        if (portResult._tag === 'Right') {
-          return yield* channelFromPort(portResult.right)
-        } else {
-          // We'll keep retrying with a new connection
-          yield* Stream.fromPubSub(newConnectionAvailablePubSub).pipe(Stream.take(1), Stream.runDrain)
-
-          yield* reconnect
-
-          return yield* Effect.interrupt
-        }
-      } else {
-        // In this case we've already received a request from the other side (before we had a chance to send our request),
-        // so we already created a MessageChannel,responded with one port
-        // and are now using the other port to create the channel.
-        if (channelState._tag === 'ResponseSent') {
-          return yield* channelFromPort(channelState.locallyCreatedPort)
-        } else {
-          return shouldNeverHappen(
-            `Expected pending message channel to be in ResponseSent state, but was in ${channelState._tag} state`,
-          )
-        }
-      }
-    })
-
-    const internalChannelSref = yield* SubscriptionRef.make<WebChannel.WebChannel<any, any> | false>(false)
-
-    const listenQueue = yield* Queue.unbounded<any>()
-
-    let connectCounter = 0
-
-    const connect = Effect.gen(function* () {
-      const connectCount = ++connectCounter
-      yield* Effect.spanEvent(`Connecting#${connectCount}`)
-
-      yield* SubscriptionRef.set(internalChannelSref, false)
-
-      yield* Effect.addFinalizer(() => Effect.spanEvent(`Disconnected#${connectCount}`))
-
-      const internalChannel = yield* makeMessageChannelInternal
-
-      yield* SubscriptionRef.set(internalChannelSref, internalChannel)
-
-      yield* Effect.spanEvent(`Connected#${connectCount}`)
-
-      yield* internalChannel.listen.pipe(
-        Stream.flatten(),
-        Stream.tap((msg) => Queue.offer(listenQueue, msg)),
-        Stream.runDrain,
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
-
-      yield* Effect.never
-    }).pipe(Effect.scoped)
-
-    const fiberHandle = yield* FiberHandle.make<void, never>()
-
-    const runConnect = Effect.gen(function* () {
-      // Cleanly shutdown the previous connection first
-      // Otherwise the old and new connection will "overlap"
-      yield* FiberHandle.clear(fiberHandle)
-      yield* FiberHandle.run(fiberHandle, connect)
-    })
-
-    yield* runConnect
-
-    // Then listen for reconnects
-    yield* Stream.fromQueue(reconnectTriggerQueue).pipe(
-      Stream.tap(() => runConnect),
-      Stream.runDrain,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
-
-    // Wait for the initial connection to be established or for an error to occur
-    yield* Effect.raceFirst(
-      SubscriptionRef.waitUntil(internalChannelSref, (channel) => channel !== false),
-      FiberHandle.join(fiberHandle),
-    )
-
-    const parentSpan = yield* Effect.currentSpan.pipe(Effect.orDie)
-
-    const send = (message: any) =>
-      Effect.gen(function* () {
-        const sendFiberHandle = yield* FiberHandle.make<void, never>()
-
-        const sentDeferred = yield* Deferred.make<void>()
-
-        const trySend = Effect.gen(function* () {
-          const channel = (yield* SubscriptionRef.waitUntil(
-            internalChannelSref,
-            (channel) => channel !== false,
-          )) as WebChannel.WebChannel<any, any>
-
-          const innerSend = Effect.gen(function* () {
-            yield* channel.send(message)
-            yield* Deferred.succeed(sentDeferred, void 0)
-          })
-
-          yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(100)), Effect.orDie)
-        }).pipe(Effect.tapErrorCause(Effect.logError))
-
-        const rerunOnNewChannelFiber = yield* internalChannelSref.changes.pipe(
-          Stream.filter((_) => _ === false),
-          Stream.tap(() => FiberHandle.run(sendFiberHandle, trySend)),
-          Stream.runDrain,
-          Effect.fork,
-        )
-
-        yield* FiberHandle.run(sendFiberHandle, trySend)
-
-        yield* sentDeferred
-
-        yield* Fiber.interrupt(rerunOnNewChannelFiber)
-      }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
-
-    const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
-
-    const closedDeferred = yield* Deferred.make<void>()
-
-    const webChannel = {
-      [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
-      send,
-      listen,
-      closedDeferred,
-      supportsTransferables: true,
-      schema,
-    } satisfies WebChannel.WebChannel<any, any>
-
-    return webChannel as WebChannel.WebChannel<any, any>
-  }).pipe(Effect.withSpanScoped('makeMessageChannel'))
+      return webChannel as WebChannel.WebChannel<any, any>
+    }),
+  )

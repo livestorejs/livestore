@@ -174,6 +174,7 @@ const makeLeaderThread = ({
       Effect.withSpan('@livestore/node:leader-thread:loadSqlite3Wasm'),
     )
     const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+    const runtime = yield* Effect.runtime<never>()
 
     const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
@@ -184,7 +185,8 @@ const makeLeaderThread = ({
         fileName:
           kind === 'app' ? getAppDbFileName(schemaHashSuffix) : `mutationlog@${liveStoreStorageFormatVersion}.db`,
         // TODO enable WAL for nodejs
-        configureDb: (db) => configureConnection(db, { foreignKeys: true }),
+        configureDb: (db) =>
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
       }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
 
     // Might involve some async work, so we're running them concurrently

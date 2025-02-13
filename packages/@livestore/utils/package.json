@@ -3,7 +3,8 @@
   "version": "0.3.0-dev.11",
   "type": "module",
   "sideEffects": [
-    "./dist/global.js"
+    "./dist/global.js",
+    "./dist/node-vitest/polyfill.js"
   ],
   "exports": {
     ".": {

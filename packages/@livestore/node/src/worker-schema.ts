@@ -13,9 +13,9 @@ export const WorkerArgv = Schema.parseJson(
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),
   /**
-   * Default is `livestore-${schema.key}`
+   * Default is `livestore-${storeId}`
    *
-   * When providing this option, make sure to include the `schema.key` in the path to avoid
+   * When providing this option, make sure to include the `storeId` in the path to avoid
    * conflicts with other LiveStore apps.
    */
   directory: Schema.optional(Schema.String),

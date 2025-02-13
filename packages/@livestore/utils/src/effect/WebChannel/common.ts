@@ -13,7 +13,9 @@ export interface WebChannel<MsgListen, MsgSend, E = never> {
   listen: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, E>
   supportsTransferables: boolean
   closedDeferred: Deferred.Deferred<void>
+  shutdown: Effect.Effect<void>
   schema: { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
+  debugInfo?: Record<string, any>
 }
 
 export const DebugPingMessage = Schema.TaggedStruct('WebChannel.DebugPing', {

@@ -1,4 +1,4 @@
-import { type Effect, Schema } from '@livestore/utils/effect'
+import { type Effect, Predicate, Schema } from '@livestore/utils/effect'
 
 import type { MessageChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.js'
 
@@ -32,5 +32,7 @@ export class ConnectionAlreadyExistsError extends Schema.TaggedError<ConnectionA
 
 export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
   packetId: packet.id,
+  'span.label':
+    packet.id + (Predicate.hasProperty(packet, 'reqId') && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
   ...(packet._tag !== 'MessageChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? { packet } : {}),
 })

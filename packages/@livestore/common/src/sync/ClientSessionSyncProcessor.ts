@@ -143,11 +143,11 @@ export const makeClientSessionSyncProcessor = ({
               remaining,
             })
             if (LS_DEV) {
-              console.debug(
+              Effect.logDebug(
                 'pull:rebase: rollback',
                 updateResult.eventsToRollback.length,
                 ...updateResult.eventsToRollback.map((_) => _.toJSON()),
-              )
+              ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
             for (let i = updateResult.eventsToRollback.length - 1; i >= 0; i--) {

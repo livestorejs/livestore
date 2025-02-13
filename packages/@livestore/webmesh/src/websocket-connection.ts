@@ -1,12 +1,13 @@
-import type { Scope } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
   Either,
+  Exit,
   FiberHandle,
   Queue,
   Schedule,
   Schema,
+  Scope,
   Stream,
   WebChannel,
   WebSocket,
@@ -77,82 +78,85 @@ export const makeWebSocketConnection = (
   never,
   Scope.Scope
 > =>
-  Effect.gen(function* () {
-    socket.binaryType = 'arraybuffer'
+  Effect.scopeWithCloseable((scope) =>
+    Effect.gen(function* () {
+      socket.binaryType = 'arraybuffer'
 
-    const fromDeferred = yield* Deferred.make<string>()
+      const fromDeferred = yield* Deferred.make<string>()
 
-    yield* Stream.fromEventListener<MessageEvent>(socket as any, 'message').pipe(
-      Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg.data))),
-      Stream.flatten(),
-      Stream.tap((msg) =>
+      yield* Stream.fromEventListener<MessageEvent>(socket as any, 'message').pipe(
+        Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg.data))),
+        Stream.flatten(),
+        Stream.tap((msg) =>
+          Effect.gen(function* () {
+            if (msg._tag === 'WSConnectionInit') {
+              yield* Deferred.succeed(fromDeferred, msg.from)
+            } else {
+              const decodedPayload = yield* Schema.decode(MeshSchema.Packet)(msg.payload)
+              yield* Queue.offer(listenQueue, decodedPayload)
+            }
+          }),
+        ),
+        Stream.runDrain,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+
+      const listenQueue = yield* Queue.unbounded<typeof MeshSchema.Packet.Type>().pipe(
+        Effect.acquireRelease(Queue.shutdown),
+      )
+
+      const initHandshake = (from: string) =>
+        socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionInit', from }))
+
+      if (socketType._tag === 'leaf') {
+        initHandshake(socketType.from)
+      }
+
+      const deferredResult = yield* fromDeferred
+      const from = socketType._tag === 'leaf' ? socketType.from : deferredResult
+
+      if (socketType._tag === 'relay') {
+        initHandshake(from)
+      }
+
+      const isConnectedLatch = yield* Effect.makeLatch(true)
+
+      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+
+      yield* Effect.eventListener<any>(
+        socket,
+        'close',
+        () =>
+          Effect.gen(function* () {
+            yield* isConnectedLatch.close
+            yield* Deferred.succeed(closedDeferred, undefined)
+          }),
+        { once: true },
+      )
+
+      const send = (message: typeof MeshSchema.Packet.Type) =>
         Effect.gen(function* () {
-          if (msg._tag === 'WSConnectionInit') {
-            yield* Deferred.succeed(fromDeferred, msg.from)
-          } else {
-            const decodedPayload = yield* Schema.decode(MeshSchema.Packet)(msg.payload)
-            yield* Queue.offer(listenQueue, decodedPayload)
-          }
-        }),
-      ),
-      Stream.runDrain,
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+          yield* isConnectedLatch.await
+          const payload = yield* Schema.encode(MeshSchema.Packet)(message)
+          socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionPayload', payload, from }))
+        })
 
-    const listenQueue = yield* Queue.unbounded<typeof MeshSchema.Packet.Type>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
-    )
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
 
-    const initHandshake = (from: string) =>
-      socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionInit', from }))
+      const webChannel = {
+        [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
+        send,
+        listen,
+        closedDeferred,
+        schema: { listen: MeshSchema.Packet, send: MeshSchema.Packet },
+        supportsTransferables: false,
+        shutdown: Scope.close(scope, Exit.void),
+      } satisfies WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>
 
-    if (socketType._tag === 'leaf') {
-      initHandshake(socketType.from)
-    }
-
-    const deferredResult = yield* fromDeferred
-    const from = socketType._tag === 'leaf' ? socketType.from : deferredResult
-
-    if (socketType._tag === 'relay') {
-      initHandshake(from)
-    }
-
-    const isConnectedLatch = yield* Effect.makeLatch(true)
-
-    const closedDeferred = yield* Deferred.make<void>()
-
-    yield* Effect.eventListener<any>(
-      socket,
-      'close',
-      () =>
-        Effect.gen(function* () {
-          yield* isConnectedLatch.close
-          yield* Deferred.succeed(closedDeferred, undefined)
-        }),
-      { once: true },
-    )
-
-    const send = (message: typeof MeshSchema.Packet.Type) =>
-      Effect.gen(function* () {
-        yield* isConnectedLatch.await
-        const payload = yield* Schema.encode(MeshSchema.Packet)(message)
-        socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionPayload', payload, from }))
-      })
-
-    const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
-
-    const webChannel = {
-      [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
-      send,
-      listen,
-      closedDeferred,
-      schema: { listen: MeshSchema.Packet, send: MeshSchema.Packet },
-      supportsTransferables: false,
-    } satisfies WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>
-
-    return {
-      webChannel: webChannel as WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>,
-      from,
-    }
-  })
+      return {
+        webChannel: webChannel as WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>,
+        from,
+      }
+    }).pipe(Effect.withSpanScoped('makeWebSocketConnection')),
+  )

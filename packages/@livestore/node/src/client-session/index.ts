@@ -247,6 +247,8 @@ const makeLeaderThread = ({
         Effect.withSpan('@livestore/node:client-session:pushToLeader', {
           attributes: { batchSize: batch.length },
         }),
+        // We can ignore the error here because the ClientSessionSyncProcessor will retry after rebasing
+        Effect.ignoreLogged,
       )
     }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
 

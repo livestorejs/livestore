@@ -1,6 +1,6 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import type { Context, Duration, Scope, Stream } from 'effect'
-import { Cause, Deferred, Effect, Fiber, FiberRef, HashSet, Logger, pipe } from 'effect'
+import type { Context, Duration, Stream } from 'effect'
+import { Cause, Deferred, Effect, Fiber, FiberRef, HashSet, Logger, pipe, Scope } from 'effect'
 import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
@@ -24,6 +24,18 @@ export * from 'effect/Effect'
 //   Effect.sync(() => {
 //     console.error(message, ...rest)
 //   })
+
+/** Same as `Effect.scopeWith` but with a `CloseableScope` instead of a `Scope`. */
+export const scopeWithCloseable = <R, E, A>(
+  fn: (scope: Scope.CloseableScope) => Effect.Effect<A, E, R | Scope.Scope>,
+): Effect.Effect<A, E, R | Scope.Scope> =>
+  Effect.gen(function* () {
+    // const parentScope = yield* Scope.Scope
+    // const scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
+    const scope = yield* Scope.make()
+    yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
+    return yield* fn(scope).pipe(Scope.extend(scope))
+  })
 
 export const tryAll = <Res>(
   fn: () => Res,

@@ -56,6 +56,7 @@ export {
   Match,
   TestServices,
   Mailbox,
+  ExecutionStrategy,
 } from 'effect'
 
 export { dual } from 'effect/Function'
@@ -69,7 +70,7 @@ export * as Subscribable from './Subscribable.js'
 
 export * as Logger from './Logger.js'
 
-export * as WebChannel from './WebChannel.js'
+export * as WebChannel from './WebChannel/WebChannel.js'
 export * as WebSocket from './WebSocket.js'
 
 export * as SchemaAST from 'effect/SchemaAST'
