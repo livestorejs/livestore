@@ -279,7 +279,8 @@ export const makeMessageChannelInternal = ({
 
             // There seems to be some scenario where the initial ping message is lost.
             // As a workaround until we find the root cause, we're retrying the ping a few times.
-            // TODO write a test that reproduces this issue and fix the root cause
+            // TODO write a test that reproduces this issue and fix the root cause ()
+            // https://github.com/livestorejs/livestore/issues/262
             yield* channel
               .send(MeshSchema.MessageChannelPing.make({}))
               .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))

@@ -215,6 +215,8 @@ export const messagePortChannelWithAck: {
           debugInfo.sendPending--
         })
 
+      // TODO re-implement this via `port.onmessage`
+      // https://github.com/livestorejs/livestore/issues/262
       const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
         // Stream.onStart(Effect.log(`${label}:listen:start`)),
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
