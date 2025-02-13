@@ -56,6 +56,9 @@ export const makeWebDevtoolsChannel = <MsgListen, MsgSend, MsgListenEncoded, Msg
   Effect.gen(function* () {
     const node = yield* makeWebDevtoolsConnectedMeshNode({ nodeName, target: workerTargetName, worker })
 
+    // @ts-expect-error typing
+    globalThis.__debugWebMeshNode = node
+
     const channel = yield* makeChannelForConnectedMeshNode({ node, target, schema })
 
     return channel

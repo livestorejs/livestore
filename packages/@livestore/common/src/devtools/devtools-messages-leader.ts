@@ -1,6 +1,7 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 import { NetworkStatus, UnexpectedError } from '../adapter-types.js'
+import { EventId } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
 import { liveStoreVersion, LSDMessage, LSDReqResMessage, requestId } from './devtools-messages-common.js'
 
@@ -45,6 +46,13 @@ export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHis
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
   mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
   metadata: Schema.Option(Schema.JsonValue),
+}) {}
+
+export class SyncHeadSubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadSubscribe', {}) {}
+export class SyncHeadUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadUnsubscribe', {}) {}
+export class SyncHeadRes extends LSDReqResMessage('LSD.Leader.SyncHeadRes', {
+  local: EventId.EventId,
+  upstream: EventId.EventId,
 }) {}
 
 export class SnapshotReq extends LSDReqResMessage('LSD.Leader.SnapshotReq', {}) {}
@@ -134,6 +142,8 @@ export const MessageToApp = Schema.Union(
   SyncHistorySubscribe,
   SyncHistoryUnsubscribe,
   SyncingInfoReq,
+  SyncHeadSubscribe,
+  SyncHeadUnsubscribe,
 ).annotations({ identifier: 'LSD.Leader.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
@@ -151,6 +161,7 @@ export const MessageFromApp = Schema.Union(
   DatabaseFileInfoRes,
   SyncHistoryRes,
   SyncingInfoRes,
+  SyncHeadRes,
 ).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

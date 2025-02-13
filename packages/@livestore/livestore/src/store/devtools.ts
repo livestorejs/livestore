@@ -1,4 +1,4 @@
-import type { ClientSession, DebugInfo } from '@livestore/common'
+import type { ClientSession, ClientSessionSyncProcessor, DebugInfo, SyncState } from '@livestore/common'
 import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
@@ -15,6 +15,7 @@ type IStore = {
   reactivityGraph: ReactivityGraph
   sqliteDbWrapper: SqliteDbWrapper
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
+  syncProcessor: ClientSessionSyncProcessor
 }
 
 type Unsub = () => void
@@ -44,6 +45,7 @@ export const connectDevtoolsToStore = ({
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
+    const syncHeadClientSessionSubscriptions: SubMap = new Map()
 
     const { clientId, sessionId } = store.clientSession
 
@@ -52,6 +54,7 @@ export const connectDevtoolsToStore = ({
         reactivityGraphSubcriptions.forEach((unsub) => unsub())
         liveQueriesSubscriptions.forEach((unsub) => unsub())
         debugInfoHistorySubscriptions.forEach((unsub) => unsub())
+        syncHeadClientSessionSubscriptions.forEach((unsub) => unsub())
       }),
     )
 
@@ -236,7 +239,42 @@ export const connectDevtoolsToStore = ({
           liveQueriesSubscriptions.delete(requestId)
           break
         }
-        // No default
+        case 'LSD.ClientSession.SyncHeadSubscribe': {
+          const send = (syncState: SyncState) =>
+            sendToDevtools(
+              Devtools.ClientSession.SyncHeadRes.make({
+                local: syncState.localHead,
+                upstream: syncState.upstreamHead,
+                requestId,
+                clientId,
+                sessionId,
+                liveStoreVersion,
+              }),
+            )
+
+          send(store.syncProcessor.syncState.pipe(Effect.runSync))
+
+          syncHeadClientSessionSubscriptions.set(
+            requestId,
+            store.syncProcessor.syncState.changes.pipe(
+              Stream.tap((syncState) => send(syncState)),
+              Stream.runDrain,
+              Effect.interruptible,
+              Effect.tapCauseLogPretty,
+              Effect.runCallback,
+            ),
+          )
+
+          break
+        }
+        case 'LSD.ClientSession.SyncHeadUnsubscribe': {
+          syncHeadClientSessionSubscriptions.get(requestId)?.()
+          syncHeadClientSessionSubscriptions.delete(requestId)
+          break
+        }
+        default: {
+          console.warn(`[LSD.ClientSession] Unknown message`, decodedMessage)
+        }
       }
     }
 

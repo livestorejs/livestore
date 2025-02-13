@@ -1,7 +1,6 @@
 import type {
   Deferred,
   Effect,
-  Fiber,
   HttpClient,
   Option,
   Queue,

@@ -56,6 +56,7 @@ export const makeMessageChannel = ({
         pendingSends: 0,
         totalSends: 0,
         connectCounter: 1,
+        isConnected: false,
       }
 
       // #region reconnect-loop
@@ -142,6 +143,7 @@ export const makeMessageChannel = ({
         const { channel, makeMessageChannelScope, channelVersion } = yield* resultDeferred
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
+        debugInfo.isConnected = true
 
         yield* Deferred.succeed(initialConnectionDeferred, void 0)
 
@@ -173,6 +175,7 @@ export const makeMessageChannel = ({
         yield* Scope.close(makeMessageChannelScope, Exit.succeed('channel-closed'))
 
         yield* Effect.spanEvent(`Disconnected#${channelVersion}`)
+        debugInfo.isConnected = false
       }).pipe(
         Effect.scoped, // Additionally scoping here to clean up finalizers after each loop run
         Effect.forever,
@@ -201,8 +204,6 @@ export const makeMessageChannel = ({
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
-      yield* initialConnectionDeferred
-
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
         send,
@@ -214,6 +215,9 @@ export const makeMessageChannel = ({
         shutdown: Scope.close(scope, Exit.succeed('shutdown')),
       } satisfies WebChannel.WebChannel<any, any>
 
-      return webChannel as WebChannel.WebChannel<any, any>
+      return {
+        webChannel: webChannel as WebChannel.WebChannel<any, any>,
+        initialConnectionDeferred,
+      }
     }),
   )

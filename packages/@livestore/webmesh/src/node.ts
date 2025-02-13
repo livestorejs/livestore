@@ -1,4 +1,4 @@
-import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
+import { indent, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -364,7 +364,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           // It's a bit of a mystery why this is needed, since the unit tests also work without it.
           // But for the LiveStore devtools to actually work, we need to do this.
           // We should figure out some day why this is needed and further simplify if possible.
-          yield* Queue.takeAll(queue).pipe(
+          yield* Queue.takeBetween(queue, 1, 10).pipe(
             Effect.tap((_) => Queue.offerAll(incomingPacketsQueue, _)),
             Effect.forever,
             Effect.tapCauseLogPretty,
@@ -372,7 +372,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           )
 
           // NOTE already retries internally when transferables are required
-          const channel = yield* makeMessageChannel({
+          const { webChannel, initialConnectionDeferred } = yield* makeMessageChannel({
             nodeName,
             incomingPacketsQueue,
             newConnectionAvailablePubSub,
@@ -383,9 +383,11 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             checkTransferableConnections,
           })
 
-          channelMap.set(channelKey, { queue, debugInfo: { channel, target } })
+          channelMap.set(channelKey, { queue, debugInfo: { channel: webChannel, target } })
 
-          return channel
+          yield* initialConnectionDeferred
+
+          return webChannel
         } else {
           const channel = yield* makeProxyChannel({
             nodeName,
@@ -421,12 +423,20 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         console.log('Channels:', channelMap.size)
         for (const [key, value] of channelMap) {
           console.log(
-            `  ${key}: \n`,
-            `    Queue: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`,
-            value.queue,
+            indent(key, 2),
             '\n',
-            `    Channel: target=${value.debugInfo?.target} supportsTransferables=${value.debugInfo?.channel.supportsTransferables}`,
+            Object.entries({
+              target: value.debugInfo?.target,
+              supportsTransferables: value.debugInfo?.channel.supportsTransferables,
+              ...value.debugInfo?.channel.debugInfo,
+            })
+              .map(([key, value]) => indent(`${key}=${value}`, 4))
+              .join('\n'),
+            '    ',
             value.debugInfo?.channel,
+            '\n',
+            indent(`Queue: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`, 4),
+            value.queue,
           )
         }
       },

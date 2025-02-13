@@ -1,13 +1,13 @@
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Runtime, Scope } from '@livestore/utils/effect'
-import { Effect, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
 import { type LiveStoreSchema } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
-import { SyncState, updateSyncState } from './syncstate.js'
+import * as SyncState from './syncstate.js'
 
 /**
  * Rebase behaviour:
@@ -44,7 +44,7 @@ export const makeClientSessionSyncProcessor = ({
   const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
   const syncStateRef = {
-    current: new SyncState({
+    current: new SyncState.SyncState({
       localHead: clientSession.leaderThread.mutations.initialMutationEventId,
       upstreamHead: clientSession.leaderThread.mutations.initialMutationEventId,
       pending: [],
@@ -52,6 +52,8 @@ export const makeClientSessionSyncProcessor = ({
       rollbackTail: [],
     }),
   }
+
+  const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
 
   const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
     const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
@@ -71,7 +73,7 @@ export const makeClientSessionSyncProcessor = ({
       )
     })
 
-    const updateResult = updateSyncState({
+    const updateResult = SyncState.updateSyncState({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
       isLocalEvent,
@@ -88,6 +90,7 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     syncStateRef.current = updateResult.newSyncState
+    syncStateUpdateQueue.offer(updateResult.newSyncState).pipe(Effect.runSync)
 
     const writeTables = new Set<string>()
     for (const mutationEvent of updateResult.newEvents) {
@@ -119,7 +122,7 @@ export const makeClientSessionSyncProcessor = ({
             yield* clientSession.devtools.pullLatch.await
           }
 
-          const updateResult = updateSyncState({
+          const updateResult = SyncState.updateSyncState({
             syncState: syncStateRef.current,
             payload,
             isLocalEvent,
@@ -132,6 +135,7 @@ export const makeClientSessionSyncProcessor = ({
           }
 
           syncStateRef.current = updateResult.newSyncState
+          syncStateUpdateQueue.offer(updateResult.newSyncState).pipe(Effect.runSync)
 
           if (updateResult._tag === 'rebase') {
             span.addEvent('pull:rebase', {
@@ -197,7 +201,14 @@ export const makeClientSessionSyncProcessor = ({
   return {
     push,
     boot,
-    syncStateRef,
+    syncState: Subscribable.make({
+      get: Effect.gen(function* () {
+        const syncState = syncStateRef.current
+        if (syncStateRef === undefined) return shouldNeverHappen('Not initialized')
+        return syncState
+      }),
+      changes: Stream.fromQueue(syncStateUpdateQueue),
+    }),
   } satisfies ClientSessionSyncProcessor
 }
 
@@ -210,5 +221,5 @@ export interface ClientSessionSyncProcessor {
   }
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
 
-  syncStateRef: { current: SyncState }
+  syncState: Subscribable.Subscribable<SyncState.SyncState>
 }

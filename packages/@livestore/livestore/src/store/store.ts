@@ -96,7 +96,7 @@ export class Store<
   // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
   private unsyncedMutationEvents
-  private syncProcessor: ClientSessionSyncProcessor
+  readonly syncProcessor: ClientSessionSyncProcessor
   readonly lifetimeScope: Scope.Scope
 
   readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
@@ -603,7 +603,7 @@ export class Store<
 
     syncStates: () => {
       Effect.gen(this, function* () {
-        const session = this.syncProcessor.syncStateRef.current
+        const session = yield* this.syncProcessor.syncState
         console.log('Session sync state:', session.toJSON())
         const leader = yield* this.clientSession.leaderThread.getSyncState
         console.log('Leader sync state:', leader.toJSON())

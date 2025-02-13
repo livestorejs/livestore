@@ -1,6 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 
 import { DebugInfo } from '../debug-info.js'
+import { EventId } from '../schema/mod.js'
 import { PreparedBindValues } from '../util.js'
 import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.js'
 
@@ -38,6 +39,13 @@ export class DebugInfoRerunQueryRes extends LSDClientSessionReqResMessage(
   'LSD.ClientSession.DebugInfoRerunQueryRes',
   {},
 ) {}
+
+export class SyncHeadSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadSubscribe', {}) {}
+export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadUnsubscribe', {}) {}
+export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
+  local: EventId.EventId,
+  upstream: EventId.EventId,
+}) {}
 
 export class ReactivityGraphSubscribe extends LSDClientSessionReqResMessage(
   'LSD.ClientSession.ReactivityGraphSubscribe',
@@ -96,6 +104,8 @@ export const MessageToApp = Schema.Union(
   LiveQueriesUnsubscribe,
   Disconnect,
   Ping,
+  SyncHeadSubscribe,
+  SyncHeadUnsubscribe,
 ).annotations({ identifier: 'LSD.ClientSession.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
@@ -109,6 +119,7 @@ export const MessageFromApp = Schema.Union(
   LiveQueriesRes,
   Disconnect,
   Pong,
+  SyncHeadRes,
 ).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

@@ -282,6 +282,37 @@ const listenToDevtools = ({
 
               return
             }
+            case 'LSD.Leader.SyncHeadSubscribe': {
+              const { requestId } = decodedEvent
+
+              yield* syncProcessor.syncState.changes.pipe(
+                Stream.tap((syncState) =>
+                  sendMessage(
+                    Devtools.Leader.SyncHeadRes.make({
+                      local: syncState.localHead,
+                      upstream: syncState.upstreamHead,
+                      ...reqPayload,
+                    }),
+                  ),
+                ),
+                Stream.runDrain,
+                Effect.interruptible,
+                Effect.tapCauseLogPretty,
+                FiberMap.run(subscriptionFiberMap, requestId),
+              )
+
+              return
+            }
+            case 'LSD.Leader.SyncHeadUnsubscribe': {
+              const { requestId } = decodedEvent
+
+              yield* FiberMap.remove(subscriptionFiberMap, requestId)
+
+              return
+            }
+            default: {
+              yield* Effect.logWarning(`TODO implement ${decodedEvent._tag}`, decodedEvent)
+            }
           }
         }).pipe(Effect.withSpan(`@livestore/common:leader-thread:onDevtoolsMessage:${decodedEvent._tag}`)),
       ),
