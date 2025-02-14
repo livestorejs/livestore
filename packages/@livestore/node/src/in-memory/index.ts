@@ -101,10 +101,11 @@ const makeLeaderThread = ({
         syncProcessor,
         connectedClientSessionPullQueues,
         extraIncomingMessagesQueue,
+        initialState,
       } = yield* LeaderThreadCtx
 
-      const initialMutationEventId = getLocalHeadFromDb(dbMutationLog)
-      const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialMutationEventId)
+      const initialLeaderHead = getLocalHeadFromDb(dbMutationLog)
+      const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialLeaderHead)
 
       const leaderThread = {
         mutations: {
@@ -113,8 +114,8 @@ const makeLeaderThread = ({
             syncProcessor
               .push(batch.map((item) => new MutationEvent.EncodedWithMeta(item)))
               .pipe(Effect.provide(layer), Effect.scoped),
-          initialMutationEventId,
         },
+        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => db.export()),
         getMutationLogData: Effect.sync(() => dbMutationLog.export()),
         // TODO

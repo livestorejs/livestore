@@ -1,4 +1,4 @@
-import type { Adapter, BootStatus, IntentionalShutdownCause } from '@livestore/common'
+import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
@@ -35,7 +35,7 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
   storeId?: string
   boot?: (
     store: Store<GraphQLContext, LiveStoreSchema>,
-    parentSpan: otel.Span,
+    ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: Partial<OtelOptions>

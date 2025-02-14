@@ -154,16 +154,19 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         Effect.annotateSpans({ debugInstanceId }),
         Layer.unwrapScoped,
       ),
-    // GetRecreateSnapshot: () =>
-    //   Effect.gen(function* () {
-    //     const workerCtx = yield* LeaderThreadCtx
+    GetRecreateSnapshot: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
 
-    //     // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-    //     const cachedSnapshot =
-    //       result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+        // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+        // const cachedSnapshot =
+        //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-    //     return cachedSnapshot ?? workerCtx.db.export()
-    //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
+        // return cachedSnapshot ?? workerCtx.db.export()
+
+        const snapshot = workerCtx.dbReadModel.export()
+        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetRecreateSnapshot')),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
@@ -194,11 +197,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
       ),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
-    GetCurrentMutationEventId: () =>
+    GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return getLocalHeadFromDb(workerCtx.dbMutationLog)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetCurrentMutationEventId')),
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx

@@ -2,7 +2,7 @@ import { SqliteAst, SqliteDsl } from '@livestore/db-schema'
 import { memoizeByStringifyArgs } from '@livestore/utils'
 import { Effect, Schema as EffectSchema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from '../adapter-types.js'
+import type { MigrationsReport, MigrationsReportEntry, SqliteDb, UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import type { SchemaMetaRow, SchemaMutationsMetaRow } from '../schema/system-tables.js'
 import {
@@ -54,7 +54,7 @@ export const migrateDb = ({
   db: SqliteDb
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
-}) =>
+}): Effect.Effect<MigrationsReport, UnexpectedError> =>
   Effect.gen(function* () {
     yield* migrateTable({
       db,
@@ -81,6 +81,7 @@ export const migrateDb = ({
 
     const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: number }>()
 
+    const migrationsReportEntries: MigrationsReportEntry[] = []
     for (const tableDef of tableDefs) {
       const tableAst = tableDef.sqliteDef.ast
       const tableName = tableAst.name
@@ -90,9 +91,10 @@ export const migrateDb = ({
       if (schemaHash !== dbSchemaHash) {
         tablesToMigrate.add({ tableAst, schemaHash })
 
-        console.log(
-          `Schema hash mismatch for table '${tableName}' (DB: ${dbSchemaHash}, expected: ${schemaHash}), migrating table...`,
-        )
+        migrationsReportEntries.push({
+          tableName,
+          hashes: { expected: schemaHash, actual: dbSchemaHash },
+        })
       }
     }
 
@@ -107,6 +109,8 @@ export const migrateDb = ({
         yield* onProgress({ done: processedTables, total: tablesCount })
       }
     }
+
+    return { migrations: migrationsReportEntries }
   })
 
 export const migrateTable = ({

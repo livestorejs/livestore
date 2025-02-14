@@ -1,4 +1,12 @@
-import { BootStatus, Devtools, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
+import {
+  BootStatus,
+  Devtools,
+  InvalidPushError,
+  MigrationsReport,
+  PayloadUpstream,
+  SyncState,
+  UnexpectedError,
+} from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -96,14 +104,20 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class GetCurrentMutationEventId extends Schema.TaggedRequest<GetCurrentMutationEventId>()(
-    'GetCurrentMutationEventId',
-    {
-      payload: {},
-      success: EventId.EventId,
-      failure: UnexpectedError,
-    },
-  ) {}
+  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
+    payload: {},
+    success: Schema.Struct({
+      snapshot: Transferable.Uint8Array,
+      migrationsReport: MigrationsReport,
+    }),
+    failure: UnexpectedError,
+  }) {}
+
+  export class GetLeaderHead extends Schema.TaggedRequest<GetLeaderHead>()('GetLeaderHead', {
+    payload: {},
+    success: EventId.EventId,
+    failure: UnexpectedError,
+  }) {}
 
   export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
     payload: {},
@@ -141,7 +155,8 @@ export namespace LeaderWorkerInner {
     PullStream,
     Export,
     ExportMutationlog,
-    GetCurrentMutationEventId,
+    GetRecreateSnapshot,
+    GetLeaderHead,
     GetLeaderSyncState,
     NetworkStatusStream,
     Shutdown,
@@ -181,9 +196,9 @@ export namespace SharedWorker {
     LeaderWorkerInner.PushToLeader,
     LeaderWorkerInner.PullStream,
     LeaderWorkerInner.Export,
-    // LeaderWorkerInner.GetRecreateSnapshot,
+    LeaderWorkerInner.GetRecreateSnapshot,
     LeaderWorkerInner.ExportMutationlog,
-    LeaderWorkerInner.GetCurrentMutationEventId,
+    LeaderWorkerInner.GetLeaderHead,
     LeaderWorkerInner.GetLeaderSyncState,
     LeaderWorkerInner.NetworkStatusStream,
     LeaderWorkerInner.Shutdown,

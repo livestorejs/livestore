@@ -1,7 +1,7 @@
 import type { HttpClient, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSqliteDb, SqliteError } from '../adapter-types.js'
+import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/index.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
@@ -95,6 +95,8 @@ export const makeLeaderThreadLayer = ({
       connectedClientSessionPullQueues: yield* makePullQueueSet,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
+      // State will be set during `bootLeaderThread`
+      initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
     } satisfies typeof LeaderThreadCtx.Service
 
     // @ts-expect-error For debugging purposes
@@ -102,7 +104,11 @@ export const makeLeaderThreadLayer = ({
 
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
-    yield* bootLeaderThread({ dbMissing, initialBlockingSyncContext, devtoolsOptions }).pipe(Effect.provide(layer))
+    ctx.initialState = yield* bootLeaderThread({
+      dbMissing,
+      initialBlockingSyncContext,
+      devtoolsOptions,
+    }).pipe(Effect.provide(layer))
 
     return layer
   }).pipe(
@@ -172,7 +178,7 @@ const bootLeaderThread = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
-  void,
+  LeaderThreadCtx['Type']['initialState'],
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
@@ -206,10 +212,14 @@ const bootLeaderThread = ({
 
     // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
     // processing any incoming mutations
-    yield* syncProcessor.boot({ dbReady })
+    const { initialLeaderHead } = yield* syncProcessor.boot({ dbReady })
 
+    let migrationsReport: MigrationsReport
     if (dbMissing) {
-      yield* recreateDb
+      const recreateResult = yield* recreateDb
+      migrationsReport = recreateResult.migrationsReport
+    } else {
+      migrationsReport = { migrations: [] }
     }
 
     yield* Deferred.succeed(dbReady, void 0)
@@ -221,4 +231,6 @@ const bootLeaderThread = ({
     yield* Queue.offer(bootStatusQueue, { stage: 'done' })
 
     yield* bootDevtools(devtoolsOptions).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+    return { migrationsReport, leaderHead: initialLeaderHead }
   })

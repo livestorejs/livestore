@@ -24,6 +24,8 @@ description: Considerations when deciding to use LiveStore.
 
 - You want to build a more traditional client-server application with your primary data source being a remote server.
 - You want a full-stack batteries-included solution (e.g. auth, storage, etc.). Technologies like [Jazz](https://jazz.tools) or [Instant](https://instantdb.com) might be a better fit.
+- You don't like to model your data via read-write model separation/event sourcing or the trade-offs it involves.
+- You're a new developer and are just getting started. LiveStore is a relatively advanced technology with many design trade-offs that might make most sense after you have already experienced some of the problems LiveStore is trying to solve.
 
 ## Other considerations
 

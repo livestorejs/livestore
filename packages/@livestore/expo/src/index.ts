@@ -152,7 +152,6 @@ export const makeAdapter =
         sessionId: 'expo',
         leaderThread: {
           mutations: {
-            initialMutationEventId,
             pull: Stream.fromQueue(incomingSyncMutationsQueue),
             push: (batch): Effect.Effect<void, UnexpectedError> =>
               Effect.gen(function* () {
@@ -208,6 +207,12 @@ export const makeAdapter =
                   yield* devtools?.onMutation({ mutationEventEncoded }) ?? Effect.void
                 }
               }),
+          },
+          initialState: {
+            migrationsReport: {
+              migrations: [],
+            },
+            leaderHead: initialMutationEventId,
           },
           export: Effect.sync(() => dbRef.current.sqliteDb.export()),
           getMutationLogData: Effect.sync(() => dbMutationLogRef.current.sqliteDb.export()),

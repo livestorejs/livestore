@@ -2,8 +2,7 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
-import type { EventId } from './schema/EventId.js'
-import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
+import type { EventId, LiveStoreSchema, MutationEvent } from './schema/mod.js'
 import type { InvalidPushError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
@@ -26,7 +25,7 @@ export type SqliteDbChangeset = {
   apply: () => void
 }
 
-export type ClientSession = {
+export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb
   devtools: { enabled: false } | { enabled: true; pullLatch: Effect.Latch; pushLatch: Effect.Latch }
@@ -39,11 +38,17 @@ export type ClientSession = {
   leaderThread: ClientSessionLeaderThreadProxy
 }
 
-export type ClientSessionLeaderThreadProxy = {
+export interface ClientSessionLeaderThreadProxy {
   mutations: {
     pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
     push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | InvalidPushError>
-    initialMutationEventId: EventId
+  }
+  /** The initial state after the leader thread has booted */
+  readonly initialState: {
+    /** The latest mutation event id during boot. Used for the client session to resume syncing. */
+    readonly leaderHead: EventId.EventId
+    /** The migrations report from the leader thread */
+    readonly migrationsReport: MigrationsReport
   }
   export: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
@@ -58,7 +63,7 @@ export type ClientSessionLeaderThreadProxy = {
  * Always assumes a synchronous SQLite build with the `bytecode` and `session` extensions enabled.
  * Can be either in-memory or persisted to disk.
  */
-export type SqliteDb<TReq = any, TMetadata extends TReq = TReq> = {
+export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   _tag: 'SqliteDb'
   metadata: TMetadata
   prepare(queryStr: string): PreparedStatement
@@ -199,7 +204,7 @@ export type MigrationHooks = {
 
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
-export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> = {
+export interface MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   strategy: 'from-mutation-log'
   /**
    * Mutations to exclude in the mutation log
@@ -213,10 +218,8 @@ export type MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = Li
   }
 }
 
-export type ClientSessionDevtoolsChannel = WebChannel.WebChannel<
-  Devtools.ClientSession.MessageToApp,
-  Devtools.ClientSession.MessageFromApp
->
+export interface ClientSessionDevtoolsChannel
+  extends WebChannel.WebChannel<Devtools.ClientSession.MessageToApp, Devtools.ClientSession.MessageFromApp> {}
 
 export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: ClientSessionDevtoolsChannel,
@@ -231,3 +234,19 @@ export type Adapter = (opts: {
   shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
 }) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
+
+export const MigrationsReportEntry = Schema.Struct({
+  tableName: Schema.String,
+  hashes: Schema.Struct({
+    expected: Schema.Number,
+    actual: Schema.optional(Schema.Number),
+  }),
+})
+
+export const MigrationsReport = Schema.Struct({
+  migrations: Schema.Array(MigrationsReportEntry),
+})
+
+export type MigrationsReport = typeof MigrationsReport.Type
+
+export type MigrationsReportEntry = typeof MigrationsReportEntry.Type

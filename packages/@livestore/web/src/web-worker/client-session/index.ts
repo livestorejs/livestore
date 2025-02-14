@@ -322,31 +322,45 @@ export const makeAdapter =
 
       // TODO maybe bring back transfering the initially created in-memory db snapshot instead of
       // re-exporting the db
-      const initialSnapshot = dataFromFile ?? (yield* runInWorker(new WorkerSchema.LeaderWorkerInner.Export()))
+      const initialResult =
+        dataFromFile === undefined
+          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
+              Effect.map(({ snapshot, migrationsReport }) => ({
+                _tag: 'from-leader-worker' as const,
+                snapshot,
+                migrationsReport,
+              })),
+            )
+          : { _tag: 'fast-path' as const, snapshot: dataFromFile }
+
+      const migrationsReport =
+        initialResult._tag === 'from-leader-worker' ? initialResult.migrationsReport : { migrations: [] }
 
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
       const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
 
-      sqliteDb.import(initialSnapshot)
+      sqliteDb.import(initialResult.snapshot)
 
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
         yield* UnexpectedError.make({
           cause: `Encountered empty or corrupted database`,
-          payload: { snapshotByteLength: initialSnapshot.byteLength, storageOptions: options.storage },
+          payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
         })
       }
 
-      const mutationHead = sqliteDb.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
+      // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the mutationlog db/table
+      // in order to avoid exporting/transferring the mutationlog db/table, which is important to speed up the fast path.
+      const initialLeaderHeadRes = sqliteDb.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
         `select idGlobal, idLocal from ${SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idLocal desc limit 1`,
       )[0]
 
-      const initialMutationEventId = mutationHead
-        ? EventId.make({ global: mutationHead.idGlobal, local: mutationHead.idLocal })
+      const initialLeaderHead = initialLeaderHeadRes
+        ? EventId.make({ global: initialLeaderHeadRes.idGlobal, local: initialLeaderHeadRes.idLocal })
         : EventId.ROOT
 
-      // console.debug('[@livestore/web:client-session] initialMutationEventId', initialMutationEventId)
+      // console.debug('[@livestore/web:client-session] initialLeaderHead', initialLeaderHead)
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
@@ -398,17 +412,17 @@ export const makeAdapter =
           ),
 
           mutations: {
-            pull: runInWorkerStream(
-              new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId }),
-            ).pipe(Stream.orDie),
+            pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialLeaderHead })).pipe(
+              Stream.orDie,
+            ),
 
             // NOTE instead of sending the worker message right away, we're batching the events in order to
             // - maintain a consistent order of events
             // - improve efficiency by reducing the number of messages
             push: (batch) => BucketQueue.offerAll(pushQueue, batch),
-
-            initialMutationEventId,
           },
+
+          initialState: { leaderHead: initialLeaderHead, migrationsReport },
 
           getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
             Effect.timeout(10_000),

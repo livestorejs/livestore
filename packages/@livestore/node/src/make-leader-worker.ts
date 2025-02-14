@@ -88,14 +88,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/node:worker:ExportMutationlog'),
       ),
-    GetCurrentMutationEventId: () =>
+    GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return getLocalHeadFromDb(workerCtx.dbMutationLog)
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/node:worker:GetCurrentMutationEventId'),
-      ),
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetLeaderHead')),
     NetworkStatusStream: () =>
       Effect.gen(function* (_) {
         const ctx = yield* LeaderThreadCtx
@@ -113,15 +110,17 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.syncProcessor.syncState
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetLeaderSyncState')),
-    // GetRecreateSnapshot: () =>
-    //   Effect.gen(function* () {
-    //     const workerCtx = yield* LeaderThreadCtx
-    //     const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
-    //     // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-    //     const cachedSnapshot =
-    //       result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
-    //     return cachedSnapshot ?? workerCtx.db.export()
-    //   }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetRecreateSnapshot')),
+    GetRecreateSnapshot: () =>
+      Effect.gen(function* () {
+        const workerCtx = yield* LeaderThreadCtx
+        // const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
+        // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+        // const cachedSnapshot =
+        //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+        // return cachedSnapshot ?? workerCtx.db.export()
+        const snapshot = workerCtx.dbReadModel.export()
+        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetRecreateSnapshot')),
     Shutdown: () =>
       Effect.gen(function* () {
         // const { db, dbMutationLog } = yield* LeaderThreadCtx

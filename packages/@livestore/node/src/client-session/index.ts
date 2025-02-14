@@ -232,7 +232,7 @@ const makeLeaderThread = ({
         )
       }).pipe(Stream.unwrap) as any
 
-    const initialMutationEventId = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetCurrentMutationEventId())
+    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderHead())
 
     const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
       isConnected: true,
@@ -252,17 +252,26 @@ const makeLeaderThread = ({
       )
     }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
 
+    const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
+      Effect.timeout(10_000),
+      UnexpectedError.mapToUnexpectedError,
+      Effect.withSpan('@livestore/node:client-session:export'),
+    )
+
     const leaderThread = {
       networkStatus,
       mutations: {
-        pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialMutationEventId })).pipe(
+        pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialLeaderHead })).pipe(
           Stream.orDie,
         ),
         // NOTE instead of sending the worker message right away, we're batching the events in order to
         // - maintain a consistent order of events
         // - improve efficiency by reducing the number of messages
         push: (batch) => BucketQueue.offerAll(pushQueue, batch),
-        initialMutationEventId,
+      },
+      initialState: {
+        leaderHead: initialLeaderHead,
+        migrationsReport: bootResult.migrationsReport,
       },
       export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
         Effect.timeout(10_000),
@@ -281,11 +290,5 @@ const makeLeaderThread = ({
         ),
     } satisfies ClientSessionLeaderThreadProxy
 
-    const initialSnapshot = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
-      Effect.timeout(10_000),
-      UnexpectedError.mapToUnexpectedError,
-      Effect.withSpan('@livestore/node:client-session:export'),
-    )
-
-    return { leaderThread, initialSnapshot }
+    return { leaderThread, initialSnapshot: bootResult.snapshot }
   })

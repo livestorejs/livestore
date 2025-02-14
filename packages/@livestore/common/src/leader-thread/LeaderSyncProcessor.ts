@@ -249,6 +249,8 @@ export const makeLeaderSyncProcessor = ({
           initialBlockingSyncContext,
           devtoolsPullLatch: ctxRef.current?.devtoolsPullLatch,
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+        return { initialLeaderHead: initialLocalHead }
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
 
     return {

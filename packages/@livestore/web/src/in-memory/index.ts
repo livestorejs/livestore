@@ -1,4 +1,4 @@
-import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus, MigrationsReport } from '@livestore/common'
 import { initializeSingletonTables, migrateDb, UnexpectedError } from '@livestore/common'
 import { configureConnection } from '@livestore/common/leader-thread'
 import { EventId } from '@livestore/common/schema'
@@ -23,11 +23,12 @@ export const makeInMemoryAdapter =
       const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
 
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
+      let migrationsReport: MigrationsReport = { migrations: [] }
 
       if (initialData === undefined) {
         yield* configureConnection(sqliteDb, { foreignKeys: true })
 
-        yield* migrateDb({ db: sqliteDb, schema })
+        migrationsReport = yield* migrateDb({ db: sqliteDb, schema })
 
         initializeSingletonTables(schema, sqliteDb)
       } else {
@@ -47,8 +48,8 @@ export const makeInMemoryAdapter =
           mutations: {
             pull: Stream.never,
             push: () => Effect.void,
-            initialMutationEventId: EventId.ROOT,
           },
+          initialState: { leaderHead: EventId.ROOT, migrationsReport },
           export: Effect.dieMessage('Not implemented'),
           getMutationLogData: Effect.succeed(new Uint8Array()),
           getSyncState: Effect.dieMessage('Not implemented'),

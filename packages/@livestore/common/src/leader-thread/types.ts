@@ -16,6 +16,7 @@ import type {
   Devtools,
   InvalidPushError,
   MakeSqliteDb,
+  MigrationsReport,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
@@ -95,6 +96,10 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     connectedClientSessionPullQueues: PullQueueSet
+    initialState: {
+      leaderHead: EventId.EventId
+      migrationsReport: MigrationsReport
+    }
     /**
      * e.g. used for `store._dev` APIs
      *
@@ -130,7 +135,11 @@ export interface LeaderSyncProcessor {
   pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
   boot: (args: {
     dbReady: Deferred.Deferred<void>
-  }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient>
+  }) => Effect.Effect<
+    { initialLeaderHead: EventId.EventId },
+    UnexpectedError,
+    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+  >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
 }
 

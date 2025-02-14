@@ -45,8 +45,8 @@ export const makeClientSessionSyncProcessor = ({
 
   const syncStateRef = {
     current: new SyncState.SyncState({
-      localHead: clientSession.leaderThread.mutations.initialMutationEventId,
-      upstreamHead: clientSession.leaderThread.mutations.initialMutationEventId,
+      localHead: clientSession.leaderThread.initialState.leaderHead,
+      upstreamHead: clientSession.leaderThread.initialState.leaderHead,
       pending: [],
       // TODO init rollbackTail from leader to be ready for backend rebasing
       rollbackTail: [],

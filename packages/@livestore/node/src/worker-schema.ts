@@ -1,4 +1,12 @@
-import { BootStatus, Devtools, InvalidPushError, PayloadUpstream, SyncState, UnexpectedError } from '@livestore/common'
+import {
+  BootStatus,
+  Devtools,
+  InvalidPushError,
+  MigrationsReport,
+  PayloadUpstream,
+  SyncState,
+  UnexpectedError,
+} from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -107,11 +115,14 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  // export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
-  //   payload: {},
-  //   success: Transferable.Uint8Array,
-  //   failure: UnexpectedError,
-  // }) {}
+  export class GetRecreateSnapshot extends Schema.TaggedRequest<GetRecreateSnapshot>()('GetRecreateSnapshot', {
+    payload: {},
+    success: Schema.Struct({
+      snapshot: Transferable.Uint8Array,
+      migrationsReport: MigrationsReport,
+    }),
+    failure: UnexpectedError,
+  }) {}
 
   export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()('ExportMutationlog', {
     payload: {},
@@ -119,14 +130,11 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class GetCurrentMutationEventId extends Schema.TaggedRequest<GetCurrentMutationEventId>()(
-    'GetCurrentMutationEventId',
-    {
-      payload: {},
-      success: EventId.EventId,
-      failure: UnexpectedError,
-    },
-  ) {}
+  export class GetLeaderHead extends Schema.TaggedRequest<GetLeaderHead>()('GetLeaderHead', {
+    payload: {},
+    success: EventId.EventId,
+    failure: UnexpectedError,
+  }) {}
 
   export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
     payload: {},
@@ -163,9 +171,9 @@ export namespace LeaderWorkerInner {
     PullStream,
     PushToLeader,
     Export,
-    // GetRecreateSnapshot,
+    GetRecreateSnapshot,
     ExportMutationlog,
-    GetCurrentMutationEventId,
+    GetLeaderHead,
     GetLeaderSyncState,
     NetworkStatusStream,
     Shutdown,

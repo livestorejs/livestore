@@ -4,6 +4,7 @@ import type {
   ClientSession,
   ClientSessionDevtoolsChannel,
   IntentionalShutdownCause,
+  MigrationsReport,
 } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
@@ -39,7 +40,10 @@ export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, 
   graphQLOptions?: GraphQLOptions<TGraphQLContext>
   boot?: (
     store: Store<TGraphQLContext, TSchema>,
-    parentSpan: otel.Span,
+    ctx: {
+      migrationsReport: MigrationsReport
+      parentSpan: otel.Span
+    },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   batchUpdates?: (run: () => void) => void
   disableDevtools?: boolean
@@ -160,6 +164,16 @@ export const createStore = <
         debugInstanceId,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
+      if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
+        yield* Effect.logDebug(
+          '[@livestore/livestore:createStore] migrationsReport',
+          ...clientSession.leaderThread.initialState.migrationsReport.migrations.map(
+            (m) =>
+              `Schema hash mismatch for table '${m.tableName}' (DB: ${m.hashes.actual}, expected: ${m.hashes.expected}), migrating table...`,
+          ),
+        )
+      }
+
       // TODO fill up with unsynced mutation events from the client session
       const unsyncedMutationEvents = MutableHashMap.empty<EventId.EventId, MutationEvent.ForSchema<TSchema>>()
 
@@ -178,11 +192,14 @@ export const createStore = <
         storeId,
       })
 
+      // Starts background fibers (syncing, mutation processing, etc) for store
       yield* store.boot
 
       if (boot !== undefined) {
         // TODO also incorporate `boot` function progress into `bootStatusQueue`
-        yield* Effect.tryAll(() => boot(store, span)).pipe(
+        yield* Effect.tryAll(() =>
+          boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
+        ).pipe(
           UnexpectedError.mapToUnexpectedError,
           Effect.provide(Layer.succeed(LiveStoreContextRunning, { stage: 'running', store: store as any as Store })),
           Effect.withSpan('createStore:boot'),
