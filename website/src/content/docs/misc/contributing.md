@@ -94,11 +94,10 @@ pnpm build
 
 As a local OpenTelemetry setup, we recommend the [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
 
+Add the following to your `.envrc.local` file:
+
 ```bash
 export DEVSERVER_HOSTNAME="localhost"
-
-# export VITE_OTEL="0" # disables Otel tracing
-export VITE_OTEL="1" # enables Otel tracing for vite apps
 
 # Grafana endpoint
 export VITE_TRACING_UI_ENDPOINT="http://${DEVSERVER_HOSTNAME}:3000"
