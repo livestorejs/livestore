@@ -90,6 +90,28 @@ pnpm build
 3. Check whether the changes in `/examples/standalone` are what you expected.
 4. Commit your changes in both `/examples/src` and `/examples/standalone` (and possibly `/examples/patches`). Note on GitHub, changes to `examples/standalone` are hidden by default.
 
+### OpenTelemetry setup
+
+As a local OpenTelemetry setup, we recommend the [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
+
+```bash
+export DEVSERVER_HOSTNAME="localhost"
+
+# export VITE_OTEL="0" # disables Otel tracing
+export VITE_OTEL="1" # enables Otel tracing for vite apps
+
+# Grafana endpoint
+export VITE_TRACING_UI_ENDPOINT="http://${DEVSERVER_HOSTNAME}:3000"
+export TRACING_UI_ENDPOINT="http://${DEVSERVER_HOSTNAME}:3000"
+
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://${DEVSERVER_HOSTNAME}:4318/v1/traces"
+export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="http://${DEVSERVER_HOSTNAME}:4318/v1/metrics"
+
+export VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}"
+export VITE_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}"
+```
+
+
 ## Devtools
 
 - The source code of the devtools is currently not part of this monorepo but in a separate private repo.
