@@ -107,6 +107,8 @@ export const createStore = <
   Effect.gen(function* () {
     const lifetimeScope = yield* Scope.make()
 
+    yield* validateStoreId(storeId)
+
     yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
@@ -204,4 +206,16 @@ export const createStore = <
       LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
       Scope.extend(lifetimeScope),
     )
+  })
+
+const validateStoreId = (storeId: string) =>
+  Effect.gen(function* () {
+    const validChars = /^[a-zA-Z0-9_-]+$/
+
+    if (!validChars.test(storeId)) {
+      return yield* UnexpectedError.make({
+        cause: `Invalid storeId: ${storeId}. Only alphanumeric characters, underscores, and hyphens are allowed.`,
+        payload: { storeId },
+      })
+    }
   })
