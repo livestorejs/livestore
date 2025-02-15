@@ -40,7 +40,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
             })
           : makeInMemoryAdapter({
               sync: {
-                makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8888/websocket', storeId }),
+                makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8888', storeId }),
               },
             })
 

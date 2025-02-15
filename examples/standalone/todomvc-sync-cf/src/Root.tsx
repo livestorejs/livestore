@@ -11,7 +11,7 @@ import { MainSection } from './components/MainSection.js'
 import LiveStoreWorker from './livestore.worker?worker'
 import { schema } from './livestore/schema.js'
 import { makeTracer } from './otel.js'
-import { getAppId } from './util/app-id.js'
+import { getStoreId } from './util/store-id.js'
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -21,7 +21,7 @@ const AppBody: React.FC = () => (
   </section>
 )
 
-const appId = getAppId()
+const storeId = getStoreId()
 
 const adapter = makeAdapter({
   storage: { type: 'opfs' },
@@ -37,7 +37,7 @@ export const App: React.FC = () => (
     renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
     adapter={adapter}
     batchUpdates={batchUpdates}
-    storeId={appId}
+    storeId={storeId}
     otelOptions={{ tracer: otelTracer }}
   >
     <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>

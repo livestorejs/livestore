@@ -9,7 +9,7 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { registerSW } from 'virtual:pwa-register'
 
 import { schema } from '@/livestore/schema.js'
-import { getAppId } from '@/util/app-id.js'
+import { getStoreId } from '@/util/store-id.js'
 
 import LiveStoreWorker from '../livestore.worker?worker'
 
@@ -17,7 +17,7 @@ if (import.meta.env.DEV && window.location.pathname.includes('_devtools.html')) 
   const searchParams = new URLSearchParams(window.location.search)
   const storeId = searchParams.get('storeId')
   if (storeId === null) {
-    searchParams.set('storeId', 'replace-with-appId')
+    searchParams.set('storeId', 'replace-with-storeId')
     window.location.search = searchParams.toString()
     document.getElementById('root')!.innerHTML = `
       <div>
@@ -36,7 +36,7 @@ if (import.meta.env.DEV && window.location.pathname.includes('_devtools.html')) 
     //   })
   }
 } else {
-  const appId = getAppId()
+  const storeId = getStoreId()
   const adapter = makeAdapter({
     storage: { type: 'opfs' },
     worker: LiveStoreWorker,
@@ -51,7 +51,7 @@ if (import.meta.env.DEV && window.location.pathname.includes('_devtools.html')) 
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <LiveStoreProvider
         schema={schema}
-        storeId={appId}
+        storeId={storeId}
         renderLoading={() => <div>Loading...</div>}
         adapter={adapter}
         batchUpdates={batchUpdates}
