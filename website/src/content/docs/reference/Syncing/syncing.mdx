@@ -1,7 +1,7 @@
 ---
 title: Syncing
 sidebar:
-  order: 10
+  order: 12
 ---
 
 ## How it works
@@ -74,6 +74,10 @@ The sync backend acts as the global authority and determines the total order of 
 - Require a central sync backend to enforce a global total order of events.
   - This means LiveStore can't be used in a fully decentralized/P2P manner.
 - Do rebasing on the client side (instead of on the sync backend). This allows the user to have more control over the rebase process.
+
+## Notes
+
+- Rich text data is best handled via CRDTs (see [#263](https://github.com/livestorejs/livestore/issues/263))
 
 ## Further reading
 

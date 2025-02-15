@@ -1,7 +1,7 @@
 ---
 title: Devtools
 sidebar:
-  order: 9
+  order: 10
 ---
 
 - LiveStore provides first-class devtools for common workflows including:
