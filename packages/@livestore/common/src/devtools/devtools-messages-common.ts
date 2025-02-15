@@ -45,3 +45,37 @@ export const LSDReqResMessage = <Tag extends string, Fields extends Schema.Struc
     requestId,
     ...fields,
   })
+
+type DefaultFields = {
+  readonly requestId: typeof Schema.String
+  readonly liveStoreVersion: typeof liveStoreVersion
+  readonly clientId: typeof Schema.String
+}
+
+export const LeaderReqResMessage = <
+  Tag extends string,
+  ReqFields extends Schema.Struct.Fields,
+  ResFields extends Schema.Struct.Fields,
+>(
+  tag: Tag,
+  fields: {
+    payload: ReqFields
+    success: ResFields
+  },
+): {
+  Request: Schema.TaggedStruct<`${Tag}.Request`, ReqFields & DefaultFields>
+  Response: Schema.TaggedStruct<`${Tag}.Response`, ResFields & DefaultFields>
+} => {
+  return {
+    Request: Schema.TaggedStruct(`${tag}.Request`, {
+      requestId,
+      liveStoreVersion,
+      ...fields.payload,
+    }).annotations({ identifier: `${tag}.Request` }),
+    Response: Schema.TaggedStruct(`${tag}.Response`, {
+      requestId,
+      liveStoreVersion,
+      ...fields.success,
+    }).annotations({ identifier: `${tag}.Response` }),
+  } as any
+}

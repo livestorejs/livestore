@@ -216,7 +216,9 @@ export const makeAdapter =
           },
           export: Effect.sync(() => dbRef.current.sqliteDb.export()),
           getMutationLogData: Effect.sync(() => dbMutationLogRef.current.sqliteDb.export()),
-          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now() }).pipe(Effect.runSync),
+          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
+            Effect.runSync,
+          ),
           sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
           getSyncState: Effect.dieMessage('Not implemented'),
         },

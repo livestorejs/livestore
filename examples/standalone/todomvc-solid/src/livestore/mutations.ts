@@ -23,7 +23,7 @@ export const uncompleteTodo = defineMutation(
 
 export const deleteTodo = defineMutation(
   'deleteTodo',
-  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  Schema.Struct({ id: Schema.String, deleted: Schema.DateFromNumber }),
   sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
 )
 

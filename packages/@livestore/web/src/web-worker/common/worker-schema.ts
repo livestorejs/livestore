@@ -3,6 +3,7 @@ import {
   Devtools,
   InvalidPushError,
   MigrationsReport,
+  NetworkStatus,
   PayloadUpstream,
   SyncState,
   UnexpectedError,
@@ -127,10 +128,7 @@ export namespace LeaderWorkerInner {
 
   export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
     payload: {},
-    success: Schema.Struct({
-      isConnected: Schema.Boolean,
-      timestampMs: Schema.Number,
-    }),
+    success: NetworkStatus,
     failure: UnexpectedError,
   }) {}
 

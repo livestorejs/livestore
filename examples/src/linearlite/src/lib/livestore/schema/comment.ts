@@ -1,5 +1,5 @@
 import { DbSchema } from '@livestore/livestore'
-
+import { Schema } from 'effect'
 export const comment = DbSchema.table(
   'comment',
   {
@@ -8,7 +8,7 @@ export const comment = DbSchema.table(
     creator: DbSchema.text({ default: '' }),
     issueId: DbSchema.integer(),
     created: DbSchema.integer(),
-    deleted: DbSchema.integer({ nullable: true }),
+    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
   {
     indexes: [{ name: 'issue_id', columns: ['issueId'] }],

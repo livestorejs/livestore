@@ -594,9 +594,9 @@ export class Store<
 
     hardReset: (mode: 'all-data' | 'only-app-db' = 'all-data') => {
       Effect.gen(this, function* () {
+        const clientId = this.clientSession.clientId
         yield* this.clientSession.leaderThread.sendDevtoolsMessage(
-          Devtools.Leader.ResetAllData.make({ liveStoreVersion, mode, requestId: nanoid() }),
-          // Devtools.ResetAllDataReq.make({ liveStoreVersion, mode, requestId: nanoid() }),
+          Devtools.Leader.ResetAllData.Request.make({ liveStoreVersion, mode, requestId: nanoid(), clientId }),
         )
       }).pipe(this.runEffectFork)
     },

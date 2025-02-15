@@ -98,11 +98,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const ctx = yield* LeaderThreadCtx
 
         if (ctx.syncBackend === undefined) {
-          return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now() })
+          return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now(), latchClosed: false })
         }
 
         return ctx.syncBackend.isConnected.changes.pipe(
-          Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now() })),
+          Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now(), latchClosed: false })),
         )
       }).pipe(Stream.unwrap),
     GetLeaderSyncState: () =>

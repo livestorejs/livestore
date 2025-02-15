@@ -37,7 +37,7 @@ export const MainSection: React.FC = () => {
               <label>{todo.text}</label>
               <button
                 className="destroy"
-                onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))}
+                onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id, deleted: new Date() }))}
               ></button>
             </div>
           </li>

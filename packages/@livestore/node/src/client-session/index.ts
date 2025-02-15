@@ -237,6 +237,7 @@ const makeLeaderThread = ({
     const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
       isConnected: true,
       timestampMs: Date.now(),
+      latchClosed: false,
     })
 
     const pushQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()

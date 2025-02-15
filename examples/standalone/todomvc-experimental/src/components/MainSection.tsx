@@ -74,7 +74,7 @@ const Item = ({
         // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
         // Since using the `setState` doesn't seem to happen "quickly enough"
         if (state === 'deleting' && todo.deleted === null && !isDeletedRef.current) {
-          store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))
+          store.mutate(mutations.deleteTodo({ id: todo.id, deleted: new Date() }))
           isDeletedRef.current = true
         }
       }}

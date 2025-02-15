@@ -57,6 +57,8 @@ export {
   TestServices,
   Mailbox,
   ExecutionStrategy,
+  PrimaryKey,
+  Types,
 } from 'effect'
 
 export { dual } from 'effect/Function'

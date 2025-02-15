@@ -71,8 +71,10 @@ export type DevtoolsOptions =
 export type DevtoolsContext =
   | {
       enabled: true
-      syncBackendPullLatch: Effect.Latch
-      syncBackendPushLatch: Effect.Latch
+      // syncBackendPullLatch: Effect.Latch
+      // syncBackendPushLatch: Effect.Latch
+      syncBackendLatch: Effect.Latch
+      syncBackendLatchState: SubscriptionRef.SubscriptionRef<{ latchClosed: boolean }>
     }
   | {
       enabled: false

@@ -293,7 +293,11 @@ export const makeAdapter =
           )
         }).pipe(Stream.unwrap) as any
 
-      const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({ isConnected: false, timestampMs: Date.now() })
+      const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
+        isConnected: false,
+        timestampMs: Date.now(),
+        latchClosed: false,
+      })
 
       yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.NetworkStatusStream()).pipe(
         Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),

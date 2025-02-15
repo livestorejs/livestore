@@ -80,6 +80,7 @@ const listenToDevtools = ({
       shutdownChannel,
       syncProcessor,
       clientId,
+      devtools,
     } = yield* LeaderThreadCtx
 
     type RequestId = string
@@ -158,7 +159,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.Leader.ResetAllDataReq': {
+            case 'LSD.Leader.ResetAllData.Request': {
               const { mode } = decodedEvent
 
               yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
@@ -169,7 +170,7 @@ const listenToDevtools = ({
                 dbMutationLog.destroy()
               }
 
-              yield* sendMessage(Devtools.Leader.ResetAllDataRes.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.ResetAllData.Response.make({ ...reqPayload }))
 
               yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' })) ?? Effect.void
 
@@ -257,11 +258,14 @@ const listenToDevtools = ({
                 // This is probably the same "flaky databrowser loading" bug as we're seeing in the playwright tests
                 yield* Effect.sleep(1000)
 
-                yield* syncBackend.isConnected.changes.pipe(
-                  Stream.tap((isConnected) =>
+                yield* Stream.zipLatest(
+                  syncBackend.isConnected.changes,
+                  devtools.enabled ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
+                ).pipe(
+                  Stream.tap(([isConnected, { latchClosed }]) =>
                     sendMessage(
                       Devtools.Leader.NetworkStatusRes.make({
-                        networkStatus: { isConnected, timestampMs: Date.now() },
+                        networkStatus: { isConnected, timestampMs: Date.now(), latchClosed },
                         ...reqPayload,
                       }),
                     ),
@@ -310,8 +314,25 @@ const listenToDevtools = ({
 
               return
             }
+            case 'LSD.Leader.SetSyncLatch.Request': {
+              const { closeLatch } = decodedEvent
+
+              if (devtools.enabled === false) return
+
+              if (closeLatch === true) {
+                yield* devtools.syncBackendLatch.close
+              } else {
+                yield* devtools.syncBackendLatch.open
+              }
+
+              yield* SubscriptionRef.set(devtools.syncBackendLatchState, { latchClosed: closeLatch })
+
+              yield* sendMessage(Devtools.Leader.SetSyncLatch.Response.make({ ...reqPayload }))
+
+              return
+            }
             default: {
-              yield* Effect.logWarning(`TODO implement ${decodedEvent._tag}`, decodedEvent)
+              yield* Effect.logWarning(`TODO implement devtools message`, decodedEvent)
             }
           }
         }).pipe(Effect.withSpan(`@livestore/common:leader-thread:onDevtoolsMessage:${decodedEvent._tag}`)),

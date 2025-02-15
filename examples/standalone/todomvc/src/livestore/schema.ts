@@ -1,4 +1,5 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
+import { Schema } from 'effect'
 
 import { Filter } from '../types.js'
 import * as mutations from './mutations.js'
@@ -9,7 +10,7 @@ const todos = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     text: DbSchema.text({ default: '' }),
     completed: DbSchema.boolean({ default: false }),
-    deleted: DbSchema.integer({ nullable: true }),
+    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
   { deriveMutations: true },
 )

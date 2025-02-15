@@ -74,8 +74,8 @@ export const makeLeaderThreadLayer = ({
     const devtoolsContext = devtoolsOptions.enabled
       ? {
           enabled: true as const,
-          syncBackendPullLatch: yield* Effect.makeLatch(true),
-          syncBackendPushLatch: yield* Effect.makeLatch(true),
+          syncBackendLatch: yield* Effect.makeLatch(true),
+          syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
         }
       : { enabled: false as const }
 

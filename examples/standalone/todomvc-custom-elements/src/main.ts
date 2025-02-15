@@ -41,7 +41,7 @@ const toggleTodo = (todo: Todo) => {
 }
 
 const deleteTodo = (todo: Todo) => {
-  store.mutate(mutations.deleteTodo({ id: todo.id, deleted: Date.now() }))
+  store.mutate(mutations.deleteTodo({ id: todo.id, deleted: new Date() }))
 }
 
 const TodoItemTemplate = html`

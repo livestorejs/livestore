@@ -22,6 +22,11 @@ A mutation event consists of the following data:
 - Event ids: sequence integers
   - local event id to sync across client sessions
 
+### Sync heads
+
+- The latest event in a mutation eventlog is referred to as the "head" (similar to how Git refers to the latest commit as the "head").
+- Given that LiveStore does hierarchical syncing between the client session, the client leader and the sync backend, there are three heads.
+
 ## Sync backend
 
 The sync backend acts as the global authority and determines the total order of events ("causality"). It's responsible for storing and querying mutation events and for notifying clients when new events are available.

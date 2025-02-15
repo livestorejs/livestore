@@ -1,7 +1,7 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { DbSchema } from '@livestore/livestore'
-
+import { Schema } from 'effect'
 export const issue = DbSchema.table(
   'issue',
   {
@@ -11,7 +11,7 @@ export const issue = DbSchema.table(
     priority: DbSchema.integer({ schema: Priority, default: 0 }),
     status: DbSchema.integer({ schema: Status, default: 0 }),
     created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
-    deleted: DbSchema.integer({ nullable: true }),
+    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
     modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
     kanbanorder: DbSchema.text({ nullable: false, default: '' }),
   },

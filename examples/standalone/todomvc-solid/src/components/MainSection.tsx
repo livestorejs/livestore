@@ -39,7 +39,7 @@ export const MainSection: Component = () => {
                   class="destroy"
                   onClick={(e) => {
                     e.stopPropagation()
-                    store()?.mutate(mutations.deleteTodo({ id: todo().id, deleted: Date.now() }))
+                    store()?.mutate(mutations.deleteTodo({ id: todo().id, deleted: new Date() }))
                   }}
                 ></button>
               </div>

@@ -50,7 +50,7 @@ export const deleteDescription = defineMutation(
 
 export const deleteComment = defineMutation(
   'deleteComment',
-  Schema.Struct({ id: Schema.String, deleted: Schema.Number }),
+  Schema.Struct({ id: Schema.String, deleted: Schema.DateFromNumber }),
   sql`UPDATE comment SET deleted = $deleted WHERE id = $id`,
 )
 

@@ -25,7 +25,7 @@ const todos = DbSchema.table(
     id: DbSchema.text({ primaryKey: true }),
     text: DbSchema.text({ default: '' }),
     completed: DbSchema.boolean({ default: false }),
-    deleted: DbSchema.integer({ nullable: true }),
+    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
 )
 

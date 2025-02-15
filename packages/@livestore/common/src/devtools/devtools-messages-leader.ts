@@ -3,13 +3,17 @@ import { Schema, Transferable } from '@livestore/utils/effect'
 import { NetworkStatus, UnexpectedError } from '../adapter-types.js'
 import { EventId } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
-import { liveStoreVersion, LSDMessage, LSDReqResMessage, requestId } from './devtools-messages-common.js'
+import {
+  LeaderReqResMessage,
+  liveStoreVersion,
+  LSDMessage,
+  LSDReqResMessage,
+  requestId,
+} from './devtools-messages-common.js'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),
 }) {}
-
-export class ResetAllDataRes extends LSDReqResMessage('LSD.Leader.ResetAllDataRes', {}) {}
 
 export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {}) {}
 
@@ -93,17 +97,21 @@ export class Pong extends LSDReqResMessage('LSD.Leader.Pong', {}) {}
 
 export class Disconnect extends LSDReqResMessage('LSD.Leader.Disconnect', {}) {}
 
-//
-export class ResetAllData extends Schema.TaggedRequest<ResetAllData>()('LSD.Leader.ResetAllData', {
+export const SetSyncLatch = LeaderReqResMessage('LSD.Leader.SetSyncLatch', {
+  payload: {
+    closeLatch: Schema.Boolean,
+  },
+  success: {},
+})
+
+export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
   payload: {
     mode: Schema.Literal('all-data', 'only-app-db'),
-    requestId,
-    liveStoreVersion,
   },
-  success: Schema.Void,
-  failure: UnexpectedError,
-}) {}
+  success: {},
+})
 
+// TODO move to `Schema.TaggedRequest` once new RPC is ready https://github.com/Effect-TS/effect/pull/4362
 export class DatabaseFileInfo_ extends Schema.TaggedRequest<DatabaseFileInfo_>()('LSD.Leader.DatabaseFileInfo', {
   payload: {
     requestId,
@@ -122,7 +130,7 @@ export class NetworkStatus_ extends Schema.TaggedRequest<NetworkStatus_>()('LSD.
   failure: UnexpectedError,
 }) {}
 
-export const MessageToApp_ = Schema.Union(ResetAllData, DatabaseFileInfo_, NetworkStatus_)
+export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)
 
 export type MessageToApp_ = typeof MessageToApp_.Type
 //
@@ -131,8 +139,7 @@ export const MessageToApp = Schema.Union(
   SnapshotReq,
   LoadDatabaseFileReq,
   MutationLogReq,
-  ResetAllDataReq,
-  ResetAllData,
+  ResetAllData.Request,
   NetworkStatusSubscribe,
   NetworkStatusUnsubscribe,
   Disconnect,
@@ -144,6 +151,7 @@ export const MessageToApp = Schema.Union(
   SyncingInfoReq,
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
+  SetSyncLatch.Request,
 ).annotations({ identifier: 'LSD.Leader.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
@@ -152,7 +160,6 @@ export const MessageFromApp = Schema.Union(
   SnapshotRes,
   LoadDatabaseFileRes,
   MutationLogRes,
-  ResetAllDataRes,
   Disconnect,
   MutationBroadcast,
   NetworkStatusRes,
@@ -162,6 +169,8 @@ export const MessageFromApp = Schema.Union(
   SyncHistoryRes,
   SyncingInfoRes,
   SyncHeadRes,
+  ResetAllData.Response,
+  SetSyncLatch.Response,
 ).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

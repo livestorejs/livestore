@@ -107,12 +107,11 @@ export type ResetMode = 'all-data' | 'only-app-db'
 export const NetworkStatus = Schema.Struct({
   isConnected: Schema.Boolean,
   timestampMs: Schema.Number,
+  /** Whether the network status devtools latch is closed. Used to simulate network disconnection. */
+  latchClosed: Schema.Boolean,
 })
 
-export type NetworkStatus = {
-  isConnected: boolean
-  timestampMs: number
-}
+export type NetworkStatus = typeof NetworkStatus.Type
 
 export const BootStateProgress = Schema.Struct({
   done: Schema.Number,

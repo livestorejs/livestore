@@ -19,8 +19,8 @@ const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Backe
 const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.ClientToBackendMessage))
 const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
-// NOTE actual table name is determined at runtime by `WebSocketServer.dbName`
-export const mutationLogTable = DbSchema.table('__unused', {
+// NOTE actual table name is determined at runtime
+export const mutationLogTable = DbSchema.table('mutation_log_${PERSISTENCE_FORMAT_VERSION}_${storeId}', {
   id: DbSchema.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
   parentId: DbSchema.integer({ schema: EventId.GlobalEventId }),
   mutation: DbSchema.text({}),
