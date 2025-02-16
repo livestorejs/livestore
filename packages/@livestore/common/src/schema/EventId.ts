@@ -43,6 +43,10 @@ export const isGreaterThan = (a: EventId, b: EventId) => {
   return a.global > b.global || (a.global === b.global && a.local > b.local)
 }
 
+export const isGreaterThanOrEqual = (a: EventId, b: EventId) => {
+  return a.global > b.global || (a.global === b.global && a.local >= b.local)
+}
+
 export const make = (id: EventId | typeof EventId.Encoded): EventId => {
   return Schema.is(EventId)(id) ? id : Schema.decodeSync(EventId)(id)
 }

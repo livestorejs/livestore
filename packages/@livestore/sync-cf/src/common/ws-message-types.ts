@@ -17,8 +17,7 @@ export const SyncMetadata = Schema.Struct({
 export type SyncMetadata = typeof SyncMetadata.Type
 
 export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
-  requestId: Schema.String,
-  events: Schema.Array(
+  batch: Schema.Array(
     Schema.Struct({
       mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
       metadata: Schema.Option(SyncMetadata),
@@ -29,13 +28,6 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
 
 export type PullRes = typeof PullRes.Type
 
-export const PushBroadcast = Schema.TaggedStruct('WSMessage.PushBroadcast', {
-  mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
-  metadata: Schema.Option(SyncMetadata),
-})
-
-export type PushBroadcast = typeof PushBroadcast.Type
-
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
   batch: Schema.Array(MutationEvent.AnyEncodedGlobal),
@@ -45,7 +37,6 @@ export type PushReq = typeof PushReq.Type
 
 export const PushAck = Schema.TaggedStruct('WSMessage.PushAck', {
   requestId: Schema.String,
-  mutationId: Schema.Number,
 })
 
 export type PushAck = typeof PushAck.Type
@@ -99,7 +90,6 @@ export type AdminInfoRes = typeof AdminInfoRes.Type
 export const Message = Schema.Union(
   PullReq,
   PullRes,
-  PushBroadcast,
   PushReq,
   PushAck,
   Error,
@@ -113,15 +103,7 @@ export const Message = Schema.Union(
 export type Message = typeof Message.Type
 export type MessageEncoded = typeof Message.Encoded
 
-export const BackendToClientMessage = Schema.Union(
-  PullRes,
-  PushBroadcast,
-  PushAck,
-  AdminResetRoomRes,
-  AdminInfoRes,
-  Error,
-  Pong,
-)
+export const BackendToClientMessage = Schema.Union(PullRes, PushAck, AdminResetRoomRes, AdminInfoRes, Error, Pong)
 export type BackendToClientMessage = typeof BackendToClientMessage.Type
 
 export const ClientToBackendMessage = Schema.Union(PullReq, PushReq, AdminResetRoomReq, AdminInfoReq, Ping)

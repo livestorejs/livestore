@@ -1,4 +1,4 @@
-import { makeColumnSpec } from '@livestore/common'
+import { makeColumnSpec, UnexpectedError } from '@livestore/common'
 import { DbSchema, EventId, type MutationEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
@@ -104,6 +104,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
         try {
           switch (decodedMessage._tag) {
+            // TODO allow pulling concurrently to not block incoming push requests
             case 'WSMessage.PullReq': {
               if (options?.onPull) {
                 yield* Effect.tryAll(() => options.onPull!(decodedMessage))
@@ -113,21 +114,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const CHUNK_SIZE = 100
 
               // TODO use streaming
-              const remainingEvents = [...(yield* Effect.promise(() => storage.getEvents(cursor)))]
+              const remainingEvents = yield* storage.getEvents(cursor)
 
               // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
-              while (true) {
-                const events = remainingEvents.splice(0, CHUNK_SIZE)
+              for (let i = 0; i < remainingEvents.length; i += CHUNK_SIZE) {
+                const batch = remainingEvents.slice(i, i + CHUNK_SIZE)
+                const remaining = remainingEvents.length - i - 1
 
-                ws.send(
-                  encodeOutgoingMessage(
-                    WSMessage.PullRes.make({ events, remaining: remainingEvents.length, requestId }),
-                  ),
-                )
-
-                if (remainingEvents.length === 0) {
-                  break
-                }
+                ws.send(encodeOutgoingMessage(WSMessage.PullRes.make({ batch, remaining })))
               }
 
               break
@@ -137,60 +131,62 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 yield* Effect.tryAll(() => options.onPush!(decodedMessage))
               }
 
+              if (decodedMessage.batch.length === 0) {
+                ws.send(encodeOutgoingMessage(WSMessage.PushAck.make({ requestId })))
+                return
+              }
+
               // TODO check whether we could use the Durable Object storage for this to speed up the lookup
-              const latestEvent = yield* Effect.promise(() => storage.getLatestEvent())
-              const expectedParentId = latestEvent?.id ?? EventId.ROOT.global
+              const expectedParentId = yield* storage.getHead
 
-              let i = 0
-              for (const mutationEventEncoded of decodedMessage.batch) {
-                if (mutationEventEncoded.parentId !== expectedParentId + i) {
-                  const err = WSMessage.Error.make({
-                    message: `Invalid parent id. Received ${mutationEventEncoded.parentId} but expected ${expectedParentId}`,
-                    requestId,
-                  })
+              // TODO handle clientId unique conflict
 
-                  yield* Effect.fail(err).pipe(Effect.ignoreLogged)
+              // Validate the batch
+              const firstEvent = decodedMessage.batch[0]!
+              if (firstEvent.parentId !== expectedParentId) {
+                const err = WSMessage.Error.make({
+                  message: `Invalid parent id. Received ${firstEvent.parentId} but expected ${expectedParentId}`,
+                  requestId,
+                })
 
-                  ws.send(encodeOutgoingMessage(err))
-                  return
-                }
+                yield* Effect.logError(err)
 
-                // TODO handle clientId unique conflict
+                ws.send(encodeOutgoingMessage(err))
+                return
+              }
 
-                const createdAt = new Date().toISOString()
+              ws.send(encodeOutgoingMessage(WSMessage.PushAck.make({ requestId })))
 
-                // NOTE we're currently not blocking on this to allow broadcasting right away
-                const storePromise = storage.appendEvent(mutationEventEncoded, createdAt)
+              const createdAt = new Date().toISOString()
 
-                ws.send(
-                  encodeOutgoingMessage(WSMessage.PushAck.make({ mutationId: mutationEventEncoded.id, requestId })),
-                )
+              // NOTE we're not waiting for this to complete yet to allow the broadcast to happen right away
+              // while letting the async storage write happen in the background
+              const storeFiber = yield* storage.appendEvents(decodedMessage.batch, createdAt).pipe(Effect.fork)
 
-                // console.debug(`Broadcasting mutation event to ${this.subscribedWebSockets.size} clients`)
+              const connectedClients = this.ctx.getWebSockets()
 
-                const connectedClients = this.ctx.getWebSockets()
+              // console.debug(`Broadcasting push batch to ${this.subscribedWebSockets.size} clients`)
 
-                if (connectedClients.length > 0) {
-                  const broadcastMessage = encodeOutgoingMessage(
-                    // TODO refactor to batch api
-                    WSMessage.PushBroadcast.make({
+              if (connectedClients.length > 0) {
+                const pullRes = encodeOutgoingMessage(
+                  // TODO refactor to batch api
+                  WSMessage.PullRes.make({
+                    batch: decodedMessage.batch.map((mutationEventEncoded) => ({
                       mutationEventEncoded,
                       metadata: Option.some({ createdAt }),
-                    }),
-                  )
+                    })),
+                    remaining: 0,
+                  }),
+                )
 
-                  for (const conn of connectedClients) {
-                    console.log('Broadcasting to client', conn === ws ? 'self' : 'other')
-                    // if (conn !== ws) {
-                    conn.send(broadcastMessage)
-                    // }
-                  }
+                // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
+                for (const conn of connectedClients) {
+                  conn.send(pullRes)
                 }
-
-                yield* Effect.promise(() => storePromise)
-
-                i++
               }
+
+              // Wait for the storage write to complete before finishing this request
+              yield* storeFiber
 
               break
             }
@@ -200,7 +196,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 return
               }
 
-              yield* Effect.promise(() => storage.resetRoom())
+              yield* storage.resetStore
               ws.send(encodeOutgoingMessage(WSMessage.AdminResetRoomRes.make({ requestId })))
 
               break
@@ -244,62 +240,96 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
 type SyncStorage = {
   dbName: string
-  getLatestEvent: () => Promise<MutationEvent.AnyEncodedGlobal | undefined>
+  getHead: Effect.Effect<EventId.GlobalEventId, UnexpectedError>
   getEvents: (
     cursor: number | undefined,
-  ) => Promise<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>
+  ) => Effect.Effect<
+    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    UnexpectedError
   >
-  appendEvent: (event: MutationEvent.AnyEncodedGlobal, createdAt: string) => Promise<void>
-  resetRoom: () => Promise<void>
+  appendEvents: (
+    batch: ReadonlyArray<MutationEvent.AnyEncodedGlobal>,
+    createdAt: string,
+  ) => Effect.Effect<void, UnexpectedError>
+  resetStore: Effect.Effect<void, UnexpectedError>
 }
 
 const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncStorage => {
   const dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
 
-  const getLatestEvent = async (): Promise<MutationEvent.AnyEncodedGlobal | undefined> => {
-    const rawEvents = await env.DB.prepare(`SELECT * FROM ${dbName} ORDER BY id DESC LIMIT 1`).all()
-    if (rawEvents.error) {
-      throw new Error(rawEvents.error)
-    }
-    const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results)
+  const execDb = <T>(cb: (db: D1Database) => Promise<D1Result<T>>) =>
+    Effect.tryPromise({
+      try: () => cb(env.DB),
+      catch: (error) => new UnexpectedError({ cause: error, payload: { dbName } }),
+    }).pipe(Effect.map((_) => _.results))
 
-    return events[0]
-  }
-
-  const getEvents = async (
-    cursor: number | undefined,
-  ): Promise<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>
-  > => {
-    const whereClause = cursor === undefined ? '' : `WHERE id > ${cursor}`
-    const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
-    // TODO handle case where `cursor` was not found
-    const rawEvents = await env.DB.prepare(sql).all()
-    if (rawEvents.error) {
-      throw new Error(rawEvents.error)
-    }
-    const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents.results).map(
-      ({ createdAt, ...mutationEventEncoded }) => ({
-        mutationEventEncoded,
-        metadata: Option.some({ createdAt }),
-      }),
+  const getHead: Effect.Effect<EventId.GlobalEventId, UnexpectedError> = Effect.gen(function* () {
+    const result = yield* execDb<{ id: EventId.GlobalEventId }>((db) =>
+      db.prepare(`SELECT id FROM ${dbName} ORDER BY id DESC LIMIT 1`).all(),
     )
-    return events
-  }
 
-  const appendEvent = async (event: MutationEvent.AnyEncodedGlobal, createdAt: string) => {
-    const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt) VALUES (?, ?, ?, ?, ?)`
-    await env.DB.prepare(sql)
-      .bind(event.id, event.parentId, JSON.stringify(event.args), event.mutation, createdAt)
-      .run()
-  }
+    return result[0]?.id ?? EventId.ROOT.global
+  }).pipe(UnexpectedError.mapToUnexpectedError)
 
-  const resetRoom = async () => {
-    await ctx.storage.deleteAll()
-  }
+  const getEvents = (
+    cursor: number | undefined,
+  ): Effect.Effect<
+    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    UnexpectedError
+  > =>
+    Effect.gen(function* () {
+      const whereClause = cursor === undefined ? '' : `WHERE id > ${cursor}`
+      const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
+      // TODO handle case where `cursor` was not found
+      const rawEvents = yield* execDb((db) => db.prepare(sql).all())
+      const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents).map(
+        ({ createdAt, ...mutationEventEncoded }) => ({
+          mutationEventEncoded,
+          metadata: Option.some({ createdAt }),
+        }),
+      )
+      return events
+    })
 
-  return { dbName, getLatestEvent, getEvents, appendEvent, resetRoom }
+  const appendEvents: SyncStorage['appendEvents'] = (batch, createdAt) =>
+    Effect.gen(function* () {
+      // If there are no events, do nothing.
+      if (batch.length === 0) return
+
+      // CF D1 limits:
+      // Maximum bound parameters per query	100, Maximum arguments per SQL function	32
+      // Thus we need to split the batch into chunks of max (100/5=)20 events each.
+      const CHUNK_SIZE = 20
+
+      for (let i = 0; i < batch.length; i += CHUNK_SIZE) {
+        const chunk = batch.slice(i, i + CHUNK_SIZE)
+
+        // Create a list of placeholders ("(?, ?, ?, ?, ?), …") corresponding to each event.
+        const valuesPlaceholders = chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')
+        const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt) VALUES ${valuesPlaceholders}`
+        // Flatten the event properties into a parameters array.
+        const params = chunk.flatMap((event) => [
+          event.id,
+          event.parentId,
+          JSON.stringify(event.args),
+          event.mutation,
+          createdAt,
+        ])
+
+        yield* execDb((db) =>
+          db
+            .prepare(sql)
+            .bind(...params)
+            .run(),
+        )
+      }
+    })
+
+  const resetStore = Effect.gen(function* () {
+    yield* Effect.promise(() => ctx.storage.deleteAll())
+  }).pipe(UnexpectedError.mapToUnexpectedError)
+
+  return { dbName, getHead, getEvents, appendEvents, resetStore }
 }
 
 const getStoreId = (request: Request) => {

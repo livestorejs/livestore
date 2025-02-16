@@ -2,7 +2,7 @@
 
 import type { SyncBackend } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import { pick } from '@livestore/utils'
+import { LS_DEV } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Deferred,
@@ -43,24 +43,13 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
           yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
           return Stream.fromPubSub(incomingMessages).pipe(
-            Stream.filter((_) => (_._tag === 'WSMessage.PullRes' ? _.requestId === requestId : true)),
             Stream.tap((_) =>
               _._tag === 'WSMessage.Error' && _.requestId === requestId
                 ? new InvalidPullError({ message: _.message })
                 : Effect.void,
             ),
-            Stream.filter(Schema.is(Schema.Union(WSMessage.PushBroadcast, WSMessage.PullRes))),
-            Stream.map((msg) =>
-              msg._tag === 'WSMessage.PushBroadcast'
-                ? { batch: [pick(msg, ['mutationEventEncoded', 'metadata'])], remaining: 0 }
-                : {
-                    batch: msg.events.map(({ mutationEventEncoded, metadata }) => ({
-                      mutationEventEncoded,
-                      metadata,
-                    })),
-                    remaining: msg.remaining,
-                  },
-            ),
+            // This call is mostly here to for type narrowing
+            Stream.filter(Schema.is(WSMessage.PullRes)),
           )
         }).pipe(Stream.unwrap),
 
@@ -70,15 +59,12 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
           const requestId = nanoid()
 
           yield* Stream.fromPubSub(incomingMessages).pipe(
-            Stream.filter((_) => _._tag !== 'WSMessage.PushBroadcast' && _.requestId === requestId),
             Stream.tap((_) =>
-              _._tag === 'WSMessage.Error'
+              _._tag === 'WSMessage.Error' && _.requestId === requestId
                 ? Deferred.fail(ready, new InvalidPushError({ reason: { _tag: 'Unexpected', message: _.message } }))
                 : Effect.void,
             ),
-            Stream.filter(Schema.is(WSMessage.PushAck)),
-            // TODO bring back filterting of "own events"
-            // Stream.filter((_) => _.mutationId === mutationEventEncoded.id.global),
+            Stream.filter((_) => _._tag === 'WSMessage.PushAck' && _.requestId === requestId),
             Stream.take(1),
             Stream.tap(() => Deferred.succeed(ready, void 0)),
             Stream.runDrain,
@@ -115,21 +101,23 @@ const connect = (wsUrl: string) =>
         // Wait first until we're online
         yield* waitUntilOnline
 
-        yield* Effect.spanEvent(
-          `Sending message: ${message._tag}`,
-          message._tag === 'WSMessage.PushReq'
-            ? {
-                id: message.batch[0]!.id,
-                parentId: message.batch[0]!.parentId,
-                batchLength: message.batch.length,
-              }
-            : message._tag === 'WSMessage.PullReq'
-              ? { cursor: message.cursor ?? '-' }
-              : {},
-        )
-
         // TODO use MsgPack instead of JSON to speed up the serialization / reduce the size of the messages
         socketRef.current!.send(Schema.encodeSync(Schema.parseJson(WSMessage.Message))(message))
+
+        if (LS_DEV) {
+          yield* Effect.spanEvent(
+            `Sent message: ${message._tag}`,
+            message._tag === 'WSMessage.PushReq'
+              ? {
+                  id: message.batch[0]!.id,
+                  parentId: message.batch[0]!.parentId,
+                  batchLength: message.batch.length,
+                }
+              : message._tag === 'WSMessage.PullReq'
+                ? { cursor: message.cursor ?? '-' }
+                : {},
+          )
+        }
       })
 
     const innerConnect = Effect.gen(function* () {
@@ -138,6 +126,7 @@ const connect = (wsUrl: string) =>
       while (typeof navigator !== 'undefined' && navigator.onLine === false) {
         yield* Effect.sleep(1000)
       }
+      // TODO bring this back in a cross-platform way
       // if (navigator.onLine === false) {
       //   yield* Effect.async((cb) => self.addEventListener('online', () => cb(Effect.void)))
       // }

@@ -106,10 +106,6 @@ export const makeLeaderSyncProcessor = ({
         // TODO validate batch
         if (newEvents.length === 0) return
 
-        // if (ctxRef.current?.devtoolsLatch !== undefined) {
-        //   yield* ctxRef.current.devtoolsLatch.await
-        // }
-
         const waitForProcessing = options?.waitForProcessing ?? false
 
         if (waitForProcessing) {

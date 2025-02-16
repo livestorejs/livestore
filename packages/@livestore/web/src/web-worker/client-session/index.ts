@@ -34,6 +34,7 @@ import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSessio
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './client-session-devtools.js'
+import { trimPushBatch } from './trim-batch.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -388,7 +389,9 @@ export const makeAdapter =
 
       yield* Effect.gen(function* () {
         const batch = yield* BucketQueue.takeBetween(pushQueue, 1, 100)
-        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+        // We need to trim "old batches" which can happen during client session rebasing
+        const trimmedBatch = trimPushBatch(batch)
+        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch: trimmedBatch })).pipe(
           Effect.withSpan('@livestore/web:client-session:pushToLeader', {
             attributes: { batchSize: batch.length },
           }),

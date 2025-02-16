@@ -8,11 +8,12 @@
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - Syncing
-    - Regression: Re-opening a synced app fails on main thread
+    - Include clientId/sessionId in sync connection handshake
+    - Enable auth setup
     - Initial Electric sync implementation
-    - sync-cf: Get rid of broadcast events and embrace pull semantics
   - Devtools
     - Allow pausing sync (both in client and leader separately)
+    - Highlight local mutations in mutation log view
     - Introduce real-time sync heads view
     - Sometimes gets stuck on initial open (should wait for full connection first)
     - Fix: When resetting the database but keeping the eventlog

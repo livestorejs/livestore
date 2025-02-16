@@ -2337,6 +2337,9 @@ importers:
       '@types/wicg-file-system-access':
         specifier: ^2023.10.5
         version: 2023.10.5
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
 
   packages/@livestore/webmesh:
     dependencies:

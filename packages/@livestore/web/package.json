@@ -66,7 +66,8 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.299",
-    "@types/wicg-file-system-access": "^2023.10.5"
+    "@types/wicg-file-system-access": "^2023.10.5",
+    "vitest": "^2.1.4"
   },
   "publishConfig": {
     "access": "public"
