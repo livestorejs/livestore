@@ -225,7 +225,15 @@ const bootLeaderThread = ({
     yield* Deferred.succeed(dbReady, void 0)
 
     if (initialBlockingSyncContext.blockingDeferred !== undefined) {
-      yield* initialBlockingSyncContext.blockingDeferred
+      // Provides a syncing status right away before the first pull response comes in
+      yield* Queue.offer(bootStatusQueue, {
+        stage: 'syncing',
+        progress: { done: 0, total: -1 },
+      })
+
+      yield* initialBlockingSyncContext.blockingDeferred.pipe(
+        Effect.withSpan('@livestore/common:leader-thread:initial-sync-blocking'),
+      )
     }
 
     yield* Queue.offer(bootStatusQueue, { stage: 'done' })

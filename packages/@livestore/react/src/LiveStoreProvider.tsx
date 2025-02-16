@@ -268,6 +268,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
           shutdownDeferred,
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
+            // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
             setContextValue(status)
           },
         }).pipe(Effect.tapErrorCause((cause) => Deferred.failCause(shutdownDeferred, cause)))

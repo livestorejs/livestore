@@ -32,7 +32,7 @@ export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
 
 export const InitialSyncOptionsBlocking = Schema.TaggedStruct('Blocking', {
-  timeout: Schema.DurationFromMillis,
+  timeout: Schema.Union(Schema.DurationFromMillis, Schema.Number),
 })
 
 export type InitialSyncOptionsBlocking = typeof InitialSyncOptionsBlocking.Type

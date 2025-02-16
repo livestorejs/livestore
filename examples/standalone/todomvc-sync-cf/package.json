@@ -41,6 +41,6 @@
     "dev:vite": "vite --force",
     "dev:wrangler": "wrangler dev --inspector-port 9230",
     "preview": "vite preview",
-    "wrangler:deploy": "wrangler publish"
+    "wrangler:deploy": "wrangler deploy"
   }
 }

@@ -20,9 +20,9 @@
 -    "declaration": false,
 -    "declarationMap": false,
 -    "composite": false,
--    "outDir": "./dist",
+-    "outDir": "./dist/.ts",
 -    "rootDir": "./src",
--    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+-    "tsBuildInfoFile": "./dist/.ts/.tsbuildinfo"
 +
 +    /* Linting */
 +    "strict": true,

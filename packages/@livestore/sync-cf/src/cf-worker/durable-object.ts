@@ -116,11 +116,16 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               // TODO use streaming
               const remainingEvents = yield* storage.getEvents(cursor)
 
-              // NOTE we want to make sure the WS server responds at least once with `InitRes` even if `events` is empty
-              for (let i = 0; i < remainingEvents.length; i += CHUNK_SIZE) {
-                const batch = remainingEvents.slice(i, i + CHUNK_SIZE)
-                const remaining = remainingEvents.length - i - 1
+              // Send at least one response, even if there are no events
+              const batches =
+                remainingEvents.length === 0
+                  ? [[]]
+                  : Array.from({ length: Math.ceil(remainingEvents.length / CHUNK_SIZE) }, (_, i) =>
+                      remainingEvents.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
+                    )
 
+              for (const [index, batch] of batches.entries()) {
+                const remaining = Math.max(0, remainingEvents.length - (index + 1) * CHUNK_SIZE)
                 ws.send(encodeOutgoingMessage(WSMessage.PullRes.make({ batch, remaining })))
               }
 
