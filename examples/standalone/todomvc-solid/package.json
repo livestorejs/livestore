@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@livestore/livestore": "0.3.0-dev.11",
-    "@livestore/solid": "0.3.0-dev.11",
+    "@livestore/livestore": "0.3.0-dev.12",
+    "@livestore/solid": "0.3.0-dev.12",
     "@livestore/wa-sqlite": "1.0.3-dev.7",
-    "@livestore/web": "0.3.0-dev.11",
+    "@livestore/web": "0.3.0-dev.12",
     "@opentelemetry/api": "1.9.0",
     "effect": "3.12.7",
     "solid-js": "1.9.4",
@@ -15,7 +15,7 @@
   },
   "description": "",
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.0-dev.11",
+    "@livestore/devtools-vite": "0.3.0-dev.12",
     "solid-devtools": "^0.29.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",

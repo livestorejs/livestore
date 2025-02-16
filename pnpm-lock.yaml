@@ -10,8 +10,8 @@ overrides:
   '@livestore/devtools-expo': workspace:*
   '@livestore/devtools-expo-common': workspace:*
   '@livestore/devtools-node-common': workspace:*
-  '@livestore/devtools-react': 0.3.0-dev.11
-  '@livestore/devtools-vite': 0.3.0-dev.11
+  '@livestore/devtools-react': 0.3.0-dev.12
+  '@livestore/devtools-vite': 0.3.0-dev.12
   '@livestore/devtools-web-common': workspace:*
   '@livestore/expo': workspace:*
   '@livestore/livestore': workspace:*
@@ -356,8 +356,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(react@19.0.0)
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -525,8 +525,8 @@ importers:
   examples/src/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -601,8 +601,8 @@ importers:
   examples/src/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -671,8 +671,8 @@ importers:
   examples/src/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -763,8 +763,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       solid-devtools:
         specifier: ^0.29.2
         version: 0.29.3(solid-js@1.9.4)(vite@6.0.11(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(yaml@2.7.0))
@@ -781,8 +781,8 @@ importers:
   examples/src/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -869,8 +869,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1196,8 +1196,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(react@19.0.0)
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1365,8 +1365,8 @@ importers:
   examples/standalone/todomvc:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1441,8 +1441,8 @@ importers:
   examples/standalone/todomvc-custom-elements:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1511,8 +1511,8 @@ importers:
   examples/standalone/todomvc-experimental:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1603,8 +1603,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       solid-devtools:
         specifier: ^0.29.2
         version: 0.29.3(solid-js@1.9.4)(vite@6.0.11(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(yaml@2.7.0))
@@ -1621,8 +1621,8 @@ importers:
   examples/standalone/todomvc-sync-cf:
     dependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1709,8 +1709,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1906,8 +1906,8 @@ importers:
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/devtools-react':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/node':
         specifier: workspace:*
         version: link:../node
@@ -2061,8 +2061,8 @@ importers:
         specifier: workspace:*
         version: link:../devtools-node-common
       '@livestore/devtools-react':
-        specifier: 0.3.0-dev.11
-        version: 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -4847,14 +4847,14 @@ packages:
       react: '*'
       react-native: '*'
 
-  '@livestore/devtools-react@0.3.0-dev.11':
-    resolution: {integrity: sha512-e4MW1z7Kutd7YEIL9xj1Kwcc2pebupLR8ul2xzGmfl4K0QxLGydo9qJBVRlo6o+qlbmehYKMsZFpgc245DeYGw==}
+  '@livestore/devtools-react@0.3.0-dev.12':
+    resolution: {integrity: sha512-zNjFKUXfzi67151YDnDcYBPyb2InJBX/j7E+FuGGgxz/3V/U63kcMnTa0pW8rYj1Y+q4Lllpw9N0b3oiY4m/OQ==}
     peerDependencies:
       '@livestore/livestore': workspace:*
       react: ~19.0.0
 
-  '@livestore/devtools-vite@0.3.0-dev.11':
-    resolution: {integrity: sha512-6i6bIbM8hLZwP4FJuJB+eeVOwo/iWrTBpiRaBQ6hHFWUIZiUnv87GOVlgkdtwBzoLrmjE3HOpGpa0MZO2PjIww==}
+  '@livestore/devtools-vite@0.3.0-dev.12':
+    resolution: {integrity: sha512-jA3L2BlZlOYZ+766bjZdtjS6l6Olmh4R0ew6rOIdAl5vLWpKqheDFgMGqSrI+eLDr7EAXAvmId39NMhwfLeutg==}
 
   '@livestore/wa-sqlite@1.0.3-dev.7':
     resolution: {integrity: sha512-eaKCPwzoGkRs4+Buwomx+p/rdAaZtQ50WKrKWux6uWW6ytYL8BlxHmc+F2TLivh2z+ImFB4SZIRlsyAKB2b0wA==}
@@ -19381,14 +19381,14 @@ snapshots:
       react: 19.0.0
       react-native: 0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0)
 
-  '@livestore/devtools-react@0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)':
+  '@livestore/devtools-react@0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)':
     dependencies:
       '@livestore/livestore': link:packages/@livestore/livestore
       react: 19.0.0
 
-  '@livestore/devtools-vite@0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)':
+  '@livestore/devtools-vite@0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)':
     dependencies:
-      '@livestore/devtools-react': 0.3.0-dev.11(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+      '@livestore/devtools-react': 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
       '@livestore/web': link:packages/@livestore/web
     transitivePeerDependencies:
       - '@livestore/livestore'

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/node",
-  "version": "0.3.0-dev.11",
+  "version": "0.3.0-dev.12",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -29,7 +29,7 @@
     "@effect/platform-node": "0.71.1",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-node-common": "workspace:*",
-    "@livestore/devtools-react": "0.3.0-dev.11",
+    "@livestore/devtools-react": "0.3.0-dev.12",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/web": "workspace:*",

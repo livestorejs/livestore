@@ -5,7 +5,7 @@
   "dependencies": {
     "@headlessui/react": "2.2.0",
     "@heroicons/react": "2.2.0",
-    "@livestore/devtools-vite": "0.3.0-dev.11",
+    "@livestore/devtools-vite": "0.3.0-dev.12",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.7",

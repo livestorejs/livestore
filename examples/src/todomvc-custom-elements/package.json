@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/devtools-vite": "0.3.0-dev.11",
+    "@livestore/devtools-vite": "0.3.0-dev.12",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.7",
