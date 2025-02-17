@@ -92,7 +92,13 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         // write to mutation_log
         const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
         if (skipMutationLog === false && excludeFromMutationLog === false) {
-          yield* insertIntoMutationLog(mutationEventEncoded, dbMutationLog, mutationDefSchemaHashMap)
+          yield* insertIntoMutationLog(
+            mutationEventEncoded,
+            dbMutationLog,
+            mutationDefSchemaHashMap,
+            mutationEventEncoded.clientId,
+            mutationEventEncoded.sessionId,
+          )
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
         }
@@ -113,6 +119,8 @@ const insertIntoMutationLog = (
   mutationEventEncoded: MutationEvent.AnyEncoded,
   dbMutationLog: SqliteDb,
   mutationDefSchemaHashMap: Map<string, number>,
+  clientId: string,
+  sessionId: string | undefined,
 ) =>
   Effect.gen(function* () {
     const mutationName = mutationEventEncoded.mutation
@@ -132,6 +140,8 @@ const insertIntoMutationLog = (
           parentIdLocal: mutationEventEncoded.parentId.local,
           mutation: mutationEventEncoded.mutation,
           argsJson: mutationEventEncoded.args ?? {},
+          clientId,
+          sessionId: sessionId ?? null,
           schemaHash: mutationDefSchemaHash,
           syncMetadataJson: Option.none(),
         },

@@ -137,6 +137,8 @@ export const makeSyncBackend = ({
               args: JSON.parse(item.value!.args),
               id: item.value!.id,
               parentId: item.value!.parentId,
+              clientId: item.value!.clientId,
+              sessionId: undefined,
             },
           }))
 

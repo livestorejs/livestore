@@ -181,7 +181,9 @@ class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
-    encodeMutationEvent: (event: MutationEvent.AnyDecoded) => MutationEvent.EncodedWithMeta
+    encodeMutationEvent: (
+      event: Omit<MutationEvent.AnyDecoded, 'clientId' | 'sessionId'>,
+    ) => MutationEvent.EncodedWithMeta
     pullQueue: Queue.Queue<PullQueueItem>
     localPush: (
       ...partialEvents: MutationEvent.PartialAnyDecoded[]
@@ -213,9 +215,16 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
   const testContextLayer = Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
 
-    const encodeMutationEvent = ({ meta, ...event }: typeof MutationEvent.EncodedWithMeta.Encoded) =>
+    const encodeMutationEvent = ({
+      meta,
+      ...event
+    }: Omit<typeof MutationEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
       new MutationEvent.EncodedWithMeta({
-        ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)(event),
+        ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)({
+          ...event,
+          clientId: leaderThreadCtx.clientId,
+          sessionId: undefined,
+        }),
         meta,
       })
 

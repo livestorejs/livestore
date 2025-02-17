@@ -43,11 +43,15 @@ export const rebaseEvents = ({
   pendingLocalEvents,
   newRemoteEvents,
   currentFactsSnapshot,
+  clientId,
+  sessionId,
 }: {
   pendingLocalEvents: HistoryDagNode[]
   newRemoteEvents: HistoryDagNode[]
   rebaseFn: RebaseFn
   currentFactsSnapshot: MutationEventFactsSnapshot
+  clientId: string
+  sessionId: string | undefined
 }): ReadonlyArray<MutationEvent.AnyDecoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(
@@ -93,6 +97,8 @@ export const rebaseEvents = ({
         parentId: EventId.make({ global: headGlobalId + index, local: EventId.localDefault }),
         mutation: event.mutation,
         args: event.args,
+        clientId,
+        sessionId,
       }) satisfies MutationEvent.AnyDecoded,
   )
 }

@@ -7,8 +7,8 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - Rename `localOnly` to `clientOnly`
   - Syncing
-    - Include clientId/sessionId in sync connection handshake
     - Enable auth setup
     - Initial Electric sync implementation
   - Devtools
@@ -60,11 +60,23 @@
 ### Notable improvements & fixes
 
 - Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
+- Shows a browser dialog when trying to close a tab/window with unsaved changes
 - The SQLite leader database now uses the WAL mode to improve performance and reliability. (Thanks [@IGassmann](https://github.com/IGassmann) for the contribution #259.)
 - Improve Otel tracing integration
 - Fix: The query builder now correctly handles `IN` and `NOT IN` where operations
-- Fix: Devtools data browser now more clearly highlights selected table #239
 - Fix: LiveStore crashes when using reserved keywords as a column name (`from`) #245
+
+### Devtools
+
+- Improved sync view:
+  - See sync heads in real-time
+  - Connect/disconnect button
+- Improved mutation log view:
+  - Client-only mutations are now highlighted
+  - Added `clientId` / `sessionId` columns
+- Grouped slow queries and live queries under new queries tab
+- Added SQLite query playground
+- Fix: Data browser now more clearly highlights selected table #239
 
 ### Examples
 

@@ -81,7 +81,7 @@ export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
 
 // TODO refactor this to use push/pull semantics
 export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
-  mutationEventEncoded: MutationEvent.AnyEncoded.pipe(Schema.omit('id', 'parentId')),
+  mutationEventEncoded: MutationEvent.PartialAnyEncoded,
 }) {}
 
 export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}

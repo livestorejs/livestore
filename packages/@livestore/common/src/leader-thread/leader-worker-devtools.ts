@@ -193,7 +193,11 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.RunMutationReq': {
-              yield* syncProcessor.pushPartial(decodedEvent.mutationEventEncoded)
+              yield* syncProcessor.pushPartial({
+                mutationEvent: decodedEvent.mutationEventEncoded,
+                clientId: `devtools-${clientId}`,
+                sessionId: undefined,
+              })
 
               yield* sendMessage(Devtools.Leader.RunMutationRes.make({ ...reqPayload }))
 

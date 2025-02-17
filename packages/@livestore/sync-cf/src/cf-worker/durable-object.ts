@@ -27,6 +27,7 @@ export const mutationLogTable = DbSchema.table('mutation_log_${PERSISTENCE_FORMA
   args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
   /** ISO date format. Currently only used for debugging purposes. */
   createdAt: DbSchema.text({}),
+  clientId: DbSchema.text({}),
 })
 
 const WebSocketAttachmentSchema = Schema.parseJson(
@@ -40,7 +41,7 @@ const WebSocketAttachmentSchema = Schema.parseJson(
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 2
+export const PERSISTENCE_FORMAT_VERSION = 3
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
@@ -303,15 +304,15 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
 
       // CF D1 limits:
       // Maximum bound parameters per query	100, Maximum arguments per SQL function	32
-      // Thus we need to split the batch into chunks of max (100/5=)20 events each.
-      const CHUNK_SIZE = 20
+      // Thus we need to split the batch into chunks of max (100/6=)16 events each.
+      const CHUNK_SIZE = 16
 
       for (let i = 0; i < batch.length; i += CHUNK_SIZE) {
         const chunk = batch.slice(i, i + CHUNK_SIZE)
 
         // Create a list of placeholders ("(?, ?, ?, ?, ?), …") corresponding to each event.
-        const valuesPlaceholders = chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')
-        const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt) VALUES ${valuesPlaceholders}`
+        const valuesPlaceholders = chunk.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')
+        const sql = `INSERT INTO ${dbName} (id, parentId, args, mutation, createdAt, clientId) VALUES ${valuesPlaceholders}`
         // Flatten the event properties into a parameters array.
         const params = chunk.flatMap((event) => [
           event.id,
@@ -319,6 +320,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
           JSON.stringify(event.args),
           event.mutation,
           createdAt,
+          event.clientId,
         ])
 
         yield* execDb((db) =>

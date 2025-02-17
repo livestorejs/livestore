@@ -54,7 +54,6 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
-
   const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
     const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
     return mutationDef.options.localOnly
@@ -69,7 +68,12 @@ export const makeClientSessionSyncProcessor = ({
       const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.localOnly)
       baseEventId = nextIdPair.id
       return new MutationEvent.EncodedWithMeta(
-        Schema.encodeUnknownSync(mutationEventSchema)({ ...mutationEvent, ...nextIdPair }),
+        Schema.encodeUnknownSync(mutationEventSchema)({
+          ...mutationEvent,
+          ...nextIdPair,
+          clientId: clientSession.clientId,
+          sessionId: clientSession.sessionId,
+        }),
       )
     })
 
@@ -114,6 +118,21 @@ export const makeClientSessionSyncProcessor = ({
   const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
+    // eslint-disable-next-line unicorn/prefer-global-this
+    if (typeof window !== 'undefined') {
+      const onBeforeUnload = (event: BeforeUnloadEvent) => {
+        if (syncStateRef.current.pending.length > 0) {
+          // Trigger the default browser dialog
+          event.preventDefault()
+        }
+      }
+
+      yield* Effect.acquireRelease(
+        Effect.sync(() => window.addEventListener('beforeunload', onBeforeUnload)),
+        () => Effect.sync(() => window.removeEventListener('beforeunload', onBeforeUnload)),
+      )
+    }
+
     yield* clientSession.leaderThread.mutations.pull.pipe(
       Stream.tap(({ payload, remaining }) =>
         Effect.gen(function* () {

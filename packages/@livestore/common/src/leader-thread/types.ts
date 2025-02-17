@@ -134,7 +134,11 @@ export interface LeaderSyncProcessor {
     },
   ) => Effect.Effect<void, InvalidPushError>
 
-  pushPartial: (mutationEvent: MutationEvent.PartialAnyEncoded) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
+  pushPartial: (args: {
+    mutationEvent: MutationEvent.PartialAnyEncoded
+    clientId: string
+    sessionId: string | undefined
+  }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
   boot: (args: {
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<

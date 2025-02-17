@@ -30,6 +30,8 @@ export type HistoryDagNode = {
   /** Facts are being used for conflict detection and history compaction */
   factsGroup: MutationEventFactsGroup
   meta?: any
+  clientId: string
+  sessionId: string | undefined
 }
 
 export const rootEventNode: HistoryDagNode = {
@@ -39,6 +41,8 @@ export const rootEventNode: HistoryDagNode = {
   mutation: '__Root__',
   args: {},
   factsGroup: { modifySet: new Map(), modifyUnset: new Map(), depRequire: new Map(), depRead: new Map() },
+  clientId: 'root',
+  sessionId: undefined,
 }
 
 export const EMPTY_FACT_VALUE = Symbol('EMPTY_FACT_VALUE')

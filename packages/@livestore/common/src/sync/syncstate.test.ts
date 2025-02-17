@@ -18,6 +18,8 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
       mutation: 'a',
       args: payload,
       meta: {},
+      clientId: 'static-client-id',
+      sessionId: undefined,
     })
   }
 

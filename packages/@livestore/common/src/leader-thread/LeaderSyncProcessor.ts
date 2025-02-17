@@ -132,17 +132,23 @@ export const makeLeaderSyncProcessor = ({
         }),
       )
 
-    const pushPartial: LeaderSyncProcessor['pushPartial'] = (mutationEventEncoded_) =>
+    const pushPartial: LeaderSyncProcessor['pushPartial'] = ({
+      mutationEvent: partialMutationEvent,
+      clientId,
+      sessionId,
+    }) =>
       Effect.gen(function* () {
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
         const mutationDef =
-          schema.mutations.get(mutationEventEncoded_.mutation) ??
-          shouldNeverHappen(`Unknown mutation: ${mutationEventEncoded_.mutation}`)
+          schema.mutations.get(partialMutationEvent.mutation) ??
+          shouldNeverHappen(`Unknown mutation: ${partialMutationEvent.mutation}`)
 
         const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
-          ...mutationEventEncoded_,
+          ...partialMutationEvent,
+          clientId,
+          sessionId,
           ...EventId.nextPair(syncState.localHead, mutationDef.options.localOnly),
         })
 

@@ -43,7 +43,12 @@ Vitest.describe('Store', () => {
 
         store.mutate(tables.todos.insert({ id: '2', text: 't2', completed: false }))
 
-        yield* mockSyncBackend.advance({ ...encoded, id: EventId.globalEventId(0), parentId: EventId.ROOT.global })
+        yield* mockSyncBackend.advance({
+          ...encoded,
+          id: EventId.globalEventId(0),
+          parentId: EventId.ROOT.global,
+          clientId: 'other-client',
+        })
 
         yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
       }).pipe(withCtx(test)),
@@ -68,6 +73,7 @@ Vitest.describe('Store', () => {
             ...encode(tables.todos.insert({ id: `backend_${i}`, text: '', completed: false })),
             id: EventId.globalEventId(i),
             parentId: EventId.globalEventId(i - 1),
+            clientId: 'other-client',
           })
           .pipe(Effect.fork)
       }

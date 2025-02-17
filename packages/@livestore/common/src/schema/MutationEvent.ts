@@ -10,7 +10,7 @@ export type MutationEventPartial<TMutationsDef extends MutationDef.Any> = {
   args: Schema.Schema.Type<TMutationsDef['schema']>
 }
 
-export type MutationEventPartialEncoded<TMutationsDef extends MutationDef.Any> = {
+export type PartialEncoded<TMutationsDef extends MutationDef.Any> = {
   mutation: TMutationsDef['name']
   args: Schema.Schema.Encoded<TMutationsDef['schema']>
 }
@@ -20,6 +20,8 @@ export type MutationEvent<TMutationsDef extends MutationDef.Any> = {
   args: Schema.Schema.Type<TMutationsDef['schema']>
   id: EventId.EventId
   parentId: EventId.EventId
+  clientId: string
+  sessionId: string | undefined
 }
 
 export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
@@ -27,6 +29,8 @@ export type MutationEventEncoded<TMutationsDef extends MutationDef.Any> = {
   args: Schema.Schema.Encoded<TMutationsDef['schema']>
   id: EventId.EventId
   parentId: EventId.EventId
+  clientId: string
+  sessionId: string | undefined
 }
 
 export type AnyDecoded = MutationEvent<MutationDef.Any>
@@ -35,6 +39,8 @@ export const AnyDecoded = Schema.Struct({
   args: Schema.Any,
   id: EventId.EventId,
   parentId: EventId.EventId,
+  clientId: Schema.String,
+  sessionId: Schema.UndefinedOr(Schema.String),
 }).annotations({ title: 'MutationEvent.AnyDecoded' })
 
 export type AnyEncoded = MutationEventEncoded<MutationDef.Any>
@@ -43,6 +49,8 @@ export const AnyEncoded = Schema.Struct({
   args: Schema.Any,
   id: EventId.EventId,
   parentId: EventId.EventId,
+  clientId: Schema.String,
+  sessionId: Schema.UndefinedOr(Schema.String),
 }).annotations({ title: 'MutationEvent.AnyEncoded' })
 
 export const AnyEncodedGlobal = Schema.Struct({
@@ -50,11 +58,17 @@ export const AnyEncodedGlobal = Schema.Struct({
   args: Schema.Any,
   id: EventId.GlobalEventId,
   parentId: EventId.GlobalEventId,
+  clientId: Schema.String,
 }).annotations({ title: 'MutationEvent.AnyEncodedGlobal' })
 export type AnyEncodedGlobal = typeof AnyEncodedGlobal.Type
 
 export type PartialAnyDecoded = MutationEventPartial<MutationDef.Any>
-export type PartialAnyEncoded = MutationEventPartialEncoded<MutationDef.Any>
+export type PartialAnyEncoded = PartialEncoded<MutationDef.Any>
+
+export const PartialAnyEncoded = Schema.Struct({
+  mutation: Schema.String,
+  args: Schema.Any,
+})
 
 export type PartialForSchema<TSchema extends LiveStoreSchema> = {
   [K in keyof TSchema['_MutationDefMapType']]: MutationEventPartial<TSchema['_MutationDefMapType'][K]>
@@ -75,6 +89,8 @@ export type ForMutationDefRecord<TMutationsDefRecord extends MutationDefRecord> 
       args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
       id: EventId.EventId
       parentId: EventId.EventId
+      clientId: string
+      sessionId: string | undefined
     }
   }[keyof TMutationsDefRecord],
   {
@@ -83,6 +99,8 @@ export type ForMutationDefRecord<TMutationsDefRecord extends MutationDefRecord> 
       args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
       id: EventId.EventId
       parentId: EventId.EventId
+      clientId: string
+      sessionId: string | undefined
     }
   }[keyof TMutationsDefRecord]
 >
@@ -112,6 +130,8 @@ export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
         args: def.schema,
         id: EventId.EventId,
         parentId: EventId.EventId,
+        clientId: Schema.String,
+        sessionId: Schema.UndefinedOr(Schema.String),
       }),
     ),
   ).annotations({ title: 'MutationEvent' }) as any
@@ -136,6 +156,8 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   args: Schema.Any,
   id: EventId.EventId,
   parentId: EventId.EventId,
+  clientId: Schema.String,
+  sessionId: Schema.UndefinedOr(Schema.String),
   // TODO get rid of `meta` again by cleaning up the usage implementations
   meta: Schema.optionalWith(
     Schema.Any as Schema.Schema<{
@@ -166,6 +188,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
       ...mutationEvent,
       id: { global: mutationEvent.id, local: EventId.localDefault },
       parentId: { global: mutationEvent.parentId, local: EventId.localDefault },
+      sessionId: undefined,
     })
 
   toGlobal = (): AnyEncodedGlobal => ({
@@ -179,5 +202,7 @@ export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
   a.id.global === b.id.global &&
   a.id.local === b.id.local &&
   a.mutation === b.mutation &&
+  a.clientId === b.clientId &&
+  // a.sessionId === b.sessionId &&
   // TODO use schema equality here
   JSON.stringify(a.args) === JSON.stringify(b.args)

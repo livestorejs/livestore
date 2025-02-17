@@ -135,6 +135,8 @@ export type PartialEvent = { mutation: string; args: any }
 export const toEventNodes = (
   partialEvents: PartialEvent[],
   mutationDefs: Record<string, MutationDef.Any>,
+  clientId: string,
+  sessionId: string | undefined,
 ): HistoryDagNode[] => {
   const nodesAcc: HistoryDagNode[] = [rootEventNode]
 
@@ -200,6 +202,8 @@ export const toEventNodes = (
       mutation: partialEvent.mutation,
       args: partialEvent.args,
       factsGroup: facts,
+      clientId,
+      sessionId,
     } satisfies HistoryDagNode
     nodesAcc.push(node)
     return node

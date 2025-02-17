@@ -1,7 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
 import type { BindValues } from '../sql-queries/sql-queries.js'
-import type * as EventId from './EventId.js'
 
 export type MutationDefMap = Map<string | 'livestore.RawSql', MutationDef.Any>
 export type MutationDefRecord = {
@@ -46,16 +45,9 @@ export type MutationDef<TName extends string, TFrom, TTo> = {
   }
 
   /** Helper function to construct a partial mutation event */
-  (
-    args: TTo,
-    options?: {
-      id?: number
-    },
-  ): {
+  (args: TTo): {
     mutation: TName
     args: TTo
-    // TODO remove/clean up after sync-next is fully implemented
-    id?: EventId.EventId
   }
 }
 
@@ -130,12 +122,7 @@ export const defineMutation = <TName extends string, TFrom, TTo>(
   sql: MutationDefSqlResult<NoInfer<TTo>>,
   options?: DefineMutationOptions<TTo>,
 ): MutationDef<TName, TFrom, TTo> => {
-  const makePartialEvent = (
-    args: TTo,
-    options?: {
-      id?: EventId.EventId
-    },
-  ) => ({ mutation: name, args, ...options })
+  const makePartialEvent = (args: TTo) => ({ mutation: name, args })
 
   Object.defineProperty(makePartialEvent, 'name', { value: name })
   Object.defineProperty(makePartialEvent, 'schema', { value: schema })

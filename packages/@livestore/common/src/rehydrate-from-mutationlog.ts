@@ -64,6 +64,8 @@ This likely means the schema has changed in an incompatible way.
           parentId: { global: row.parentIdGlobal, local: row.parentIdLocal },
           mutation: row.mutation,
           args,
+          clientId: row.clientId,
+          sessionId: row.sessionId ?? undefined,
         } satisfies MutationEvent.AnyEncoded
 
         yield* applyMutation(mutationEventEncoded, { skipMutationLog: true })
