@@ -13,7 +13,7 @@ import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@lives
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import {
   configureConnection,
-  getLocalHeadFromDb,
+  getClientHeadFromDb,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
 } from '@livestore/common/leader-thread'
@@ -91,7 +91,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return getLocalHeadFromDb(workerCtx.dbMutationLog)
+        return getClientHeadFromDb(workerCtx.dbMutationLog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/node:worker:GetLeaderHead')),
     NetworkStatusStream: () =>
       Effect.gen(function* (_) {

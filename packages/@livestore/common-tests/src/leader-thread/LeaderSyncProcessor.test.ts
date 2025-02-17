@@ -85,7 +85,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
         testContext
           .encodeMutationEvent({
             ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
-            id: EventId.make({ global: 0, local: 0 }),
+            id: EventId.make({ global: 0, client: 0 }),
             parentId: EventId.ROOT,
           })
           .toGlobal(),
@@ -154,8 +154,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
             testContext
               .encodeMutationEvent({
                 ...tables.todos.insert({ id: `backend_${i}`, text: '', completed: false }),
-                id: EventId.make({ global: i, local: 0 }),
-                parentId: EventId.make({ global: i - 1, local: 0 }),
+                id: EventId.make({ global: i, client: 0 }),
+                parentId: EventId.make({ global: i - 1, client: 0 }),
               })
               .toGlobal(),
           )

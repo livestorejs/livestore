@@ -32,7 +32,7 @@ import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
-import { getBackendHeadFromDb, getLocalHeadFromDb, getMutationEventsSince, updateBackendHead } from './mutationlog.js'
+import { getBackendHeadFromDb, getClientHeadFromDb, getMutationEventsSince, updateBackendHead } from './mutationlog.js'
 import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -169,7 +169,7 @@ export const makeLeaderSyncProcessor = ({
         }
 
         const initialBackendHead = dbMissing ? EventId.ROOT.global : getBackendHeadFromDb(dbMutationLog)
-        const initialLocalHead = dbMissing ? EventId.ROOT : getLocalHeadFromDb(dbMutationLog)
+        const initialLocalHead = dbMissing ? EventId.ROOT : getClientHeadFromDb(dbMutationLog)
 
         if (initialBackendHead > initialLocalHead.global) {
           return shouldNeverHappen(
@@ -179,14 +179,14 @@ export const makeLeaderSyncProcessor = ({
 
         const pendingMutationEvents = yield* getMutationEventsSince({
           global: initialBackendHead,
-          local: EventId.localDefault,
+          client: EventId.clientDefault,
         }).pipe(Effect.map(ReadonlyArray.map((_) => new MutationEvent.EncodedWithMeta(_))))
 
         const initialSyncState = new SyncState.SyncState({
           pending: pendingMutationEvents,
           // On the leader we don't need a rollback tail beyond `pending` items
           rollbackTail: [],
-          upstreamHead: { global: initialBackendHead, local: EventId.localDefault },
+          upstreamHead: { global: initialBackendHead, client: EventId.clientDefault },
           localHead: initialLocalHead,
         })
 
@@ -604,9 +604,9 @@ const rollback = ({
   Effect.gen(function* () {
     const rollbackEvents = db
       .select<SessionChangesetMetaRow>(
-        sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
+        sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
-      .map((_) => ({ id: { global: _.idGlobal, local: _.idLocal }, changeset: _.changeset, debug: _.debug }))
+      .map((_) => ({ id: { global: _.idGlobal, client: _.idClient }, changeset: _.changeset, debug: _.debug }))
       .toSorted((a, b) => EventId.compare(a.id, b.id))
 
     // Apply changesets in reverse order
@@ -619,12 +619,12 @@ const rollback = ({
 
     // Delete the changeset rows
     db.execute(
-      sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
+      sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
     )
 
     // Delete the mutation log rows
     dbMutationLog.execute(
-      sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idLocal) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.local})`).join(', ')})`,
+      sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
     )
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:syncing:rollback', {
@@ -644,12 +644,12 @@ const getCursorInfo = (remoteHead: EventId.GlobalEventId) =>
 
     const syncMetadataOption = yield* Effect.sync(() =>
       dbMutationLog.select<{ syncMetadataJson: string }>(
-        sql`SELECT syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE idGlobal = ${remoteHead} ORDER BY idLocal ASC LIMIT 1`,
+        sql`SELECT syncMetadataJson FROM ${MUTATION_LOG_META_TABLE} WHERE idGlobal = ${remoteHead} ORDER BY idClient ASC LIMIT 1`,
       ),
     ).pipe(Effect.andThen(Schema.decode(MutationlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
 
     return Option.some({
-      cursor: { global: remoteHead, local: EventId.localDefault },
+      cursor: { global: remoteHead, client: EventId.clientDefault },
       metadata: syncMetadataOption,
     }) satisfies InitialSyncInfo
   }).pipe(Effect.withSpan('@livestore/common:leader-thread:syncing:getCursorInfo', { attributes: { remoteHead } }))
@@ -710,7 +710,7 @@ const backgroundBackendPushing = ({
           ...updateRows({
             tableName: MUTATION_LOG_META_TABLE,
             columns: mutationLogMetaTable.sqliteDef.columns,
-            where: { idGlobal: mutationEventEncoded.id.global, idLocal: mutationEventEncoded.id.local },
+            where: { idGlobal: mutationEventEncoded.id.global, idClient: mutationEventEncoded.id.client },
             updateValues: { syncMetadataJson: metadata[i]! },
           }),
         )

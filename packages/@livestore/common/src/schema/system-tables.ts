@@ -48,13 +48,13 @@ export const sessionChangesetMetaTable = table(
   {
     // TODO bring back primary key
     idGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
-    idLocal: SqliteDsl.integer({ schema: EventId.LocalEventId }),
+    idClient: SqliteDsl.integer({ schema: EventId.ClientEventId }),
     changeset: SqliteDsl.blob({ nullable: true }),
     debug: SqliteDsl.json({ nullable: true }),
   },
   {
     disableAutomaticIdColumn: true,
-    indexes: [{ columns: ['idGlobal', 'idLocal'], name: 'idx_session_changeset_id' }],
+    indexes: [{ columns: ['idGlobal', 'idClient'], name: 'idx_session_changeset_id' }],
   },
 )
 
@@ -73,9 +73,9 @@ export const mutationLogMetaTable = table(
   MUTATION_LOG_META_TABLE,
   {
     idGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
-    idLocal: SqliteDsl.integer({ primaryKey: true, schema: EventId.LocalEventId }),
+    idClient: SqliteDsl.integer({ primaryKey: true, schema: EventId.ClientEventId }),
     parentIdGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
-    parentIdLocal: SqliteDsl.integer({ schema: EventId.LocalEventId }),
+    parentIdClient: SqliteDsl.integer({ schema: EventId.ClientEventId }),
     mutation: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
@@ -88,7 +88,7 @@ export const mutationLogMetaTable = table(
     disableAutomaticIdColumn: true,
     indexes: [
       { columns: ['idGlobal'], name: 'idx_idGlobal' },
-      { columns: ['idGlobal', 'idLocal'], name: 'idx_mutationlog_id' },
+      { columns: ['idGlobal', 'idClient'], name: 'idx_mutationlog_id' },
     ],
   },
 )

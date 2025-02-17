@@ -7,7 +7,7 @@ import type {
   SyncOptions,
 } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
-import { getLocalHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
@@ -104,7 +104,7 @@ const makeLeaderThread = ({
         initialState,
       } = yield* LeaderThreadCtx
 
-      const initialLeaderHead = getLocalHeadFromDb(dbMutationLog)
+      const initialLeaderHead = getClientHeadFromDb(dbMutationLog)
       const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialLeaderHead)
 
       const leaderThread = {

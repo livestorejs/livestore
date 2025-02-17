@@ -3,7 +3,7 @@ import { Devtools, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
-  getLocalHeadFromDb,
+  getClientHeadFromDb,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
 } from '@livestore/common/leader-thread'
@@ -200,7 +200,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
     GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return getLocalHeadFromDb(workerCtx.dbMutationLog)
+        return getClientHeadFromDb(workerCtx.dbMutationLog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/web:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {

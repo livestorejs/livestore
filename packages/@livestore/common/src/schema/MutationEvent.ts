@@ -171,7 +171,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
     // - More readable way to print the id + parentId
     // - not including `meta`
     return {
-      id: `(${this.id.global},${this.id.local}) → (${this.parentId.global},${this.parentId.local})`,
+      id: `(${this.id.global},${this.id.client}) → (${this.parentId.global},${this.parentId.client})`,
       mutation: this.mutation,
       args: this.args,
     }
@@ -186,8 +186,8 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   static fromGlobal = (mutationEvent: AnyEncodedGlobal) =>
     new EncodedWithMeta({
       ...mutationEvent,
-      id: { global: mutationEvent.id, local: EventId.localDefault },
-      parentId: { global: mutationEvent.parentId, local: EventId.localDefault },
+      id: { global: mutationEvent.id, client: EventId.clientDefault },
+      parentId: { global: mutationEvent.parentId, client: EventId.clientDefault },
       sessionId: undefined,
     })
 
@@ -200,7 +200,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
 
 export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
   a.id.global === b.id.global &&
-  a.id.local === b.id.local &&
+  a.id.client === b.id.client &&
   a.mutation === b.mutation &&
   a.clientId === b.clientId &&
   // a.sessionId === b.sessionId &&

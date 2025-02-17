@@ -93,8 +93,8 @@ export const rebaseEvents = ({
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        id: EventId.make({ global: headGlobalId + index + 1, local: EventId.localDefault }),
-        parentId: EventId.make({ global: headGlobalId + index, local: EventId.localDefault }),
+        id: EventId.make({ global: headGlobalId + index + 1, client: EventId.clientDefault }),
+        parentId: EventId.make({ global: headGlobalId + index, client: EventId.clientDefault }),
         mutation: event.mutation,
         args: event.args,
         clientId,

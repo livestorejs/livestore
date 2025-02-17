@@ -231,5 +231,5 @@ export const compareEventIds = (a: EventId.EventId, b: EventId.EventId) => {
   if (a.global !== b.global) {
     return a.global - b.global
   }
-  return a.local - b.local
+  return a.client - b.client
 }

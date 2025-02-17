@@ -357,12 +357,15 @@ export const makeAdapter =
 
       // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the mutationlog db/table
       // in order to avoid exporting/transferring the mutationlog db/table, which is important to speed up the fast path.
-      const initialLeaderHeadRes = sqliteDb.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
-        `select idGlobal, idLocal from ${SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idLocal desc limit 1`,
+      const initialLeaderHeadRes = sqliteDb.select<{
+        idGlobal: EventId.GlobalEventId
+        idClient: EventId.ClientEventId
+      }>(
+        `select idGlobal, idClient from ${SESSION_CHANGESET_META_TABLE} order by idGlobal desc, idClient desc limit 1`,
       )[0]
 
       const initialLeaderHead = initialLeaderHeadRes
-        ? EventId.make({ global: initialLeaderHeadRes.idGlobal, local: initialLeaderHeadRes.idLocal })
+        ? EventId.make({ global: initialLeaderHeadRes.idGlobal, client: initialLeaderHeadRes.idClient })
         : EventId.ROOT
 
       // console.debug('[@livestore/web:client-session] initialLeaderHead', initialLeaderHead)

@@ -18,7 +18,7 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
       mutation: 'a',
       args: payload,
       meta: {},
-      clientId: 'static-client-id',
+      clientId: 'static-local-id',
       sessionId: undefined,
     })
   }
@@ -28,17 +28,17 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
   }
 
   // Only used for Vitest printing
-  // toJSON = () => `(${this.id.global},${this.id.local},${this.payload})`
+  // toJSON = () => `(${this.id.global},${this.id.client},${this.payload})`
   // toString = () => this.toJSON()
 }
 
-const e_r_1 = new TestEvent({ global: -1, local: 1 }, EventId.ROOT, 'a', true)
-const e_0_0 = new TestEvent({ global: 0, local: 0 }, EventId.ROOT, 'a', false)
-const e_0_1 = new TestEvent({ global: 0, local: 1 }, e_0_0.id, 'a', true)
-const e_0_2 = new TestEvent({ global: 0, local: 2 }, e_0_1.id, 'a', true)
-const e_0_3 = new TestEvent({ global: 0, local: 3 }, e_0_2.id, 'a', true)
-const e_1_0 = new TestEvent({ global: 1, local: 0 }, e_0_0.id, 'a', false)
-const e_1_1 = new TestEvent({ global: 1, local: 1 }, e_1_0.id, 'a', true)
+const e_r_1 = new TestEvent({ global: -1, client: 1 }, EventId.ROOT, 'a', true)
+const e_0_0 = new TestEvent({ global: 0, client: 0 }, EventId.ROOT, 'a', false)
+const e_0_1 = new TestEvent({ global: 0, client: 1 }, e_0_0.id, 'a', true)
+const e_0_2 = new TestEvent({ global: 0, client: 2 }, e_0_1.id, 'a', true)
+const e_0_3 = new TestEvent({ global: 0, client: 3 }, e_0_2.id, 'a', true)
+const e_1_0 = new TestEvent({ global: 1, client: 0 }, e_0_0.id, 'a', false)
+const e_1_1 = new TestEvent({ global: 1, client: 1 }, e_1_0.id, 'a', true)
 
 const isEqualEvent = MutationEvent.isEqualEncoded
 
@@ -178,7 +178,7 @@ describe('syncstate', () => {
     )
 
     describe('upstream-advance: advance', () => {
-      it('should throw error if newEvents are not sorted in ascending order by eventId (local)', () => {
+      it('should throw error if newEvents are not sorted in ascending order by eventId (client)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0],
           rollbackTail: [],
@@ -269,7 +269,7 @@ describe('syncstate', () => {
         expect(result.newEvents).toStrictEqual([e_0_2, e_0_3, e_1_0, e_1_1])
       })
 
-      it('should ignore local events (incoming is subset of pending)', () => {
+      it('should ignore client events (incoming is subset of pending)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_r_1, e_0_0],
           rollbackTail: [],
@@ -289,7 +289,7 @@ describe('syncstate', () => {
         expect(result.newEvents).toStrictEqual([])
       })
 
-      it('should ignore local events (incoming is subset of pending case 2)', () => {
+      it('should ignore client events (incoming is subset of pending case 2)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_r_1, e_0_0, e_1_0],
           rollbackTail: [],
@@ -309,7 +309,7 @@ describe('syncstate', () => {
         expect(result.newEvents).toStrictEqual([])
       })
 
-      it('should ignore local events (incoming goes beyond pending)', () => {
+      it('should ignore client events (incoming goes beyond pending)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_r_1, e_0_0, e_0_1],
           rollbackTail: [],
@@ -332,7 +332,7 @@ describe('syncstate', () => {
     })
 
     describe('upstream-advance: rebase', () => {
-      it('should rebase single local event to end', () => {
+      it('should rebase single client event to end', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0],
           rollbackTail: [],
@@ -353,7 +353,7 @@ describe('syncstate', () => {
       })
 
       it('should rebase different event with same id (no rollback tail)', () => {
-        const e_0_0_b = new TestEvent({ global: 0, local: 0 }, EventId.ROOT, '0_0_b', true)
+        const e_0_0_b = new TestEvent({ global: 0, client: 0 }, EventId.ROOT, '0_0_b', true)
         const syncState = new SyncState.SyncState({
           pending: [e_0_0_b],
           rollbackTail: [],
@@ -374,7 +374,7 @@ describe('syncstate', () => {
       })
 
       it('should rebase different event with same id', () => {
-        const e_1_0_b = new TestEvent({ global: 1, local: 0 }, e_0_0.id, '1_0_b', false)
+        const e_1_0_b = new TestEvent({ global: 1, client: 0 }, e_0_0.id, '1_0_b', false)
         const syncState = new SyncState.SyncState({
           pending: [e_1_0_b],
           rollbackTail: [e_0_0, e_0_1],
@@ -393,7 +393,7 @@ describe('syncstate', () => {
         expect(result.newSyncState.localHead).toMatchObject(e_1_0_e_2_0.id)
       })
 
-      it('should rebase single local event to end (more incoming events)', () => {
+      it('should rebase single client event to end (more incoming events)', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0],
           rollbackTail: [],
@@ -437,7 +437,7 @@ describe('syncstate', () => {
         expect(result.newSyncState.localHead).toMatchObject(e_0_1_e_1_1.id)
       })
 
-      it('should rebase all local events when incoming chain starts differently', () => {
+      it('should rebase all client events when incoming chain starts differently', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0, e_0_1],
           rollbackTail: [],

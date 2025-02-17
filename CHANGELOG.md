@@ -85,6 +85,7 @@
 - Embraced git-style push/pull semantics to sync mutations across the system
 - Added node syncing integration tests
 - Got rid of the coordinator abstraction in favour of a clear separation between leader and client sessions
+- Renamed field from `EventId.local` to `EventId.client`
 - Added `@livestore/sqlite-wasm` package which wraps `@livestore/wa-sqlite` and exposes web and Node.js compatible VFS implementations
 - New devtools protocol via webmesh
   - Should improve reliability of devtools connection (particularly during app reloads)

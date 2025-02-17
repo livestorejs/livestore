@@ -218,11 +218,11 @@ export const toEventNodes = (
 
 const getParentId = (eventId: EventId.EventId): EventId.EventId => {
   const globalParentId = eventId.global
-  const localParentId = eventId.local - 1
+  const clientParentId = eventId.client - 1
 
-  if (localParentId < 0) {
-    return EventId.make({ global: globalParentId - 1, local: EventId.localDefault })
+  if (clientParentId < 0) {
+    return EventId.make({ global: globalParentId - 1, client: EventId.clientDefault })
   }
 
-  return EventId.make({ global: globalParentId, local: localParentId })
+  return EventId.make({ global: globalParentId, client: clientParentId })
 }

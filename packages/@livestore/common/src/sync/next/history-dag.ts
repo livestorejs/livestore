@@ -3,7 +3,7 @@ import { factsToString, validateFacts } from './facts.js'
 import { emptyHistoryDag, type HistoryDagNode, rootParentId } from './history-dag-common.js'
 
 export const eventIdToString = (eventId: EventId.EventId) =>
-  eventId.local === 0 ? eventId.global.toString() : `${eventId.global}.${eventId.local}`
+  eventId.client === 0 ? eventId.global.toString() : `${eventId.global}.${eventId.client}`
 
 export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skipFactsCheck: boolean }) => {
   if (options?.skipFactsCheck !== true) {

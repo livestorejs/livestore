@@ -79,7 +79,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
             columns: sessionChangesetMetaTable.sqliteDef.columns,
             values: {
               idGlobal: mutationEventEncoded.id.global,
-              idLocal: mutationEventEncoded.id.local,
+              idClient: mutationEventEncoded.id.client,
               // NOTE the changeset will be empty (i.e. null) for no-op mutations
               changeset: changeset ?? null,
               debug: execArgsArr,
@@ -107,7 +107,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
           attributes: {
             mutationName: mutationEventEncoded.mutation,
             mutationId: mutationEventEncoded.id,
-            'span.label': `(${mutationEventEncoded.id.global},${mutationEventEncoded.id.local}) ${mutationEventEncoded.mutation}`,
+            'span.label': `(${mutationEventEncoded.id.global},${mutationEventEncoded.id.client}) ${mutationEventEncoded.mutation}`,
           },
         }),
         // Effect.logDuration('@livestore/common:leader-thread:applyMutation'),
@@ -135,9 +135,9 @@ const insertIntoMutationLog = (
         columns: mutationLogMetaTable.sqliteDef.columns,
         values: {
           idGlobal: mutationEventEncoded.id.global,
-          idLocal: mutationEventEncoded.id.local,
+          idClient: mutationEventEncoded.id.client,
           parentIdGlobal: mutationEventEncoded.parentId.global,
-          parentIdLocal: mutationEventEncoded.parentId.local,
+          parentIdClient: mutationEventEncoded.parentId.client,
           mutation: mutationEventEncoded.mutation,
           argsJson: mutationEventEncoded.args ?? {},
           clientId,

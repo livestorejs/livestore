@@ -49,8 +49,8 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
     return {
       pending: this.pending.map((e) => e.toJSON()),
       rollbackTail: this.rollbackTail.map((e) => e.toJSON()),
-      upstreamHead: `(${this.upstreamHead.global},${this.upstreamHead.local})`,
-      localHead: `(${this.localHead.global},${this.localHead.local})`,
+      upstreamHead: `(${this.upstreamHead.global},${this.upstreamHead.client})`,
+      localHead: `(${this.localHead.global},${this.localHead.client})`,
     }
   }
 }
@@ -137,7 +137,7 @@ export const updateSyncState = ({
       )
       if (rollbackIndex === -1) {
         return shouldNeverHappen(
-          `Rollback event not found in rollback tail. Rollback until: [${payload.rollbackUntil.global},${payload.rollbackUntil.local}]. Rollback tail: [${syncState.rollbackTail.map((e) => e.toString()).join(', ')}]`,
+          `Rollback event not found in rollback tail. Rollback until: [${payload.rollbackUntil.global},${payload.rollbackUntil.client}]. Rollback tail: [${syncState.rollbackTail.map((e) => e.toString()).join(', ')}]`,
         )
       }
 
@@ -200,8 +200,8 @@ export const updateSyncState = ({
       })
 
       if (divergentPendingIndex === -1) {
-        const pendingEventIds = new Set(syncState.pending.map((e) => `${e.id.global},${e.id.local}`))
-        const newEvents = payload.newEvents.filter((e) => !pendingEventIds.has(`${e.id.global},${e.id.local}`))
+        const pendingEventIds = new Set(syncState.pending.map((e) => `${e.id.global},${e.id.client}`))
+        const newEvents = payload.newEvents.filter((e) => !pendingEventIds.has(`${e.id.global},${e.id.client}`))
 
         // In the case where the incoming events are a subset of the pending events,
         // we need to split the pending events into two groups:
@@ -227,7 +227,7 @@ export const updateSyncState = ({
 
         const seenEventIds = new Set<string>()
         const pendingAndNewEvents = [...pendingMatching, ...payload.newEvents].filter((event) => {
-          const eventIdStr = `${event.id.global},${event.id.local}`
+          const eventIdStr = `${event.id.global},${event.id.client}`
           if (seenEventIds.has(eventIdStr)) {
             return false
           }

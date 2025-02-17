@@ -126,14 +126,14 @@ export const makeAdapter =
       )
 
       const initialMutationEventIdSchema = mutationLogMetaTable.schema.pipe(
-        Schema.pick('idGlobal', 'idLocal'),
+        Schema.pick('idGlobal', 'idClient'),
         Schema.transform(EventId.EventId, {
-          encode: (_) => ({ idGlobal: _.global, idLocal: _.local }),
-          decode: (_) => EventId.make({ global: _.idGlobal, local: _.idLocal }),
+          encode: (_) => ({ idGlobal: _.global, idClient: _.client }),
+          decode: (_) => EventId.make({ global: _.idGlobal, client: _.idClient }),
           strict: false,
         }),
         Schema.Array,
-        Schema.headOrElse(() => EventId.make({ global: 0, local: 0 })),
+        Schema.headOrElse(() => EventId.make({ global: 0, client: 0 })),
       )
 
       const initialMutationEventId = yield* Schema.decode(initialMutationEventIdSchema)(
@@ -178,13 +178,13 @@ export const makeAdapter =
                     const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
                     const mutationLogRowValues = {
                       idGlobal: mutationEventEncoded.id.global,
-                      idLocal: mutationEventEncoded.id.local,
+                      idClient: mutationEventEncoded.id.client,
                       mutation: mutationEventEncoded.mutation,
                       argsJson,
                       schemaHash: mutationDefSchemaHash,
                       syncMetadataJson: Option.none(),
                       parentIdGlobal: mutationEventEncoded.parentId.global,
-                      parentIdLocal: mutationEventEncoded.parentId.local,
+                      parentIdClient: mutationEventEncoded.parentId.client,
                     } satisfies MutationLogMetaRow
 
                     try {

@@ -37,7 +37,7 @@ const customStringify = (value: any): string => {
       const valStr =
         key === 'facts'
           ? `"${factsToString(val)}"`
-          : (key === 'id' || key === 'parentId') && Object.keys(val).length === 2 && val.local === 0
+          : (key === 'id' || key === 'parentId') && Object.keys(val).length === 2 && val.client === 0
             ? val.global
             : customStringify(val)
 

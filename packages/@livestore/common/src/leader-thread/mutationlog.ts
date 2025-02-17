@@ -23,20 +23,20 @@ export const getMutationEventsSince = (
       .map((_) => ({
         mutation: _.mutation,
         args: _.argsJson,
-        id: { global: _.idGlobal, local: _.idLocal },
-        parentId: { global: _.parentIdGlobal, local: _.parentIdLocal },
+        id: { global: _.idGlobal, client: _.idClient },
+        parentId: { global: _.parentIdGlobal, client: _.parentIdClient },
         clientId: _.clientId,
         sessionId: _.sessionId ?? undefined,
       }))
       .filter((_) => EventId.compare(_.id, since) > 0)
   })
 
-export const getLocalHeadFromDb = (dbMutationLog: SqliteDb): EventId.EventId => {
-  const res = dbMutationLog.select<{ idGlobal: EventId.GlobalEventId; idLocal: EventId.LocalEventId }>(
-    sql`select idGlobal, idLocal from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idLocal DESC limit 1`,
+export const getClientHeadFromDb = (dbMutationLog: SqliteDb): EventId.EventId => {
+  const res = dbMutationLog.select<{ idGlobal: EventId.GlobalEventId; idClient: EventId.ClientEventId }>(
+    sql`select idGlobal, idClient from ${MUTATION_LOG_META_TABLE} order by idGlobal DESC, idClient DESC limit 1`,
   )[0]
 
-  return res ? { global: res.idGlobal, local: res.idLocal } : EventId.ROOT
+  return res ? { global: res.idGlobal, client: res.idClient } : EventId.ROOT
 }
 
 export const getBackendHeadFromDb = (dbMutationLog: SqliteDb): EventId.GlobalEventId =>
