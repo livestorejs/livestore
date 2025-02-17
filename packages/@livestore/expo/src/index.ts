@@ -138,7 +138,7 @@ export const makeAdapter =
 
       const initialMutationEventId = yield* Schema.decode(initialMutationEventIdSchema)(
         dbMutationLogRef.current.sqliteDb.select(
-          sql`SELECT idGlobal, idLocal FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idLocal DESC LIMIT 1`,
+          sql`SELECT idGlobal, idClient FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idClient DESC LIMIT 1`,
         ),
       )
 

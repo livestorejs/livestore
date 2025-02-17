@@ -43,7 +43,9 @@ jobs:
         timeout-minutes: 5
       - run: pnpm install
       - run: pnpm build:ts
-      - run: pnpm test
+      # Seems like webmesh is flaky on CI when running in parallel with the other packages, so we run it separately
+      - run: pnpm --filter '!@livestore/webmesh' --parallel run test
+      - run: pnpm --filter '@livestore/webmesh' run test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
