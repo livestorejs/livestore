@@ -16,6 +16,6 @@
      "@livestore/wa-sqlite": "1.0.3-dev.7",
 -    "@livestore/web": "workspace:*",
 +    "@livestore/web": "0.3.0-dev.12",
-     "effect": "3.12.7",
+     "effect": "3.13.1",
      "react": "19.0.0",
      "react-dom": "19.0.0",

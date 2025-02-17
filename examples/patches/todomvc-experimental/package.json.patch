@@ -17,5 +17,5 @@
 -    "@livestore/web": "workspace:*",
 +    "@livestore/web": "0.3.0-dev.12",
      "@overengineering/fps-meter": "0.1.2",
-     "effect": "3.12.7",
+     "effect": "3.13.1",
      "react": "19.0.0",

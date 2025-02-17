@@ -18,6 +18,6 @@
 +    "@livestore/livestore": "0.3.0-dev.12",
 +    "@livestore/react": "0.3.0-dev.12",
 +    "@livestore/utils": "0.3.0-dev.12",
-     "babel-preset-expo": "12.0.6",
-     "effect": "3.12.7",
+     "babel-preset-expo": "12.0.8",
+     "effect": "3.13.1",
      "expo": "52.0.18",

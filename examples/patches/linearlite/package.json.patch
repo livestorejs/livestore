@@ -18,5 +18,5 @@
 -    "@livestore/web": "workspace:*",
 +    "@livestore/web": "0.3.0-dev.12",
      "@overengineering/fps-meter": "0.1.2",
-     "@tailwindcss/forms": "0.5.7",
+     "@tailwindcss/forms": "0.5.10",
      "@tiptap/core": "2.11.5",
