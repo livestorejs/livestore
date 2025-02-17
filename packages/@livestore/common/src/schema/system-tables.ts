@@ -64,7 +64,7 @@ export const systemTables = [schemaMetaTable, schemaMutationsMetaTable, sessionC
 
 /// Mutation log DB
 
-export const SyncStatus = Schema.Literal('synced', 'pending', 'error', 'localOnly')
+export const SyncStatus = Schema.Literal('synced', 'pending', 'error', 'clientOnly')
 export type SyncStatus = typeof SyncStatus.Type
 
 export const MUTATION_LOG_META_TABLE = 'mutation_log'

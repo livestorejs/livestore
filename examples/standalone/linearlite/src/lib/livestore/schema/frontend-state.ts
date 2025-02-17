@@ -16,5 +16,5 @@ export const defaultFrontendState: FrontendState = { theme: 'system', user: 'Joh
 export const frontendState = DbSchema.table(
   'frontend_state',
   DbSchema.json({ schema: FrontendState, default: defaultFrontendState }),
-  { deriveMutations: { enabled: true, localOnly: true } },
+  { deriveMutations: { enabled: true, clientOnly: true } },
 )

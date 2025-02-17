@@ -54,7 +54,7 @@ export const deriveCreateMutationDef = <
 
       return { sql, bindValues, writeTables: new Set([tableName]) }
     },
-    { localOnly: table.options.deriveMutations.localOnly },
+    { clientOnly: table.options.deriveMutations.clientOnly },
   )
 }
 
@@ -84,7 +84,7 @@ export const deriveUpdateMutationDef = <
 
       return { sql, bindValues, writeTables: new Set([tableName]) }
     },
-    { localOnly: table.options.deriveMutations.localOnly },
+    { clientOnly: table.options.deriveMutations.clientOnly },
   )
 }
 
@@ -112,7 +112,7 @@ export const deriveDeleteMutationDef = <
 
       return { sql, bindValues, writeTables: new Set([tableName]) }
     },
-    { localOnly: table.options.deriveMutations.localOnly },
+    { clientOnly: table.options.deriveMutations.clientOnly },
   )
 }
 

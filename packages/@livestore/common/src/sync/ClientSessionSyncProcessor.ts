@@ -56,7 +56,7 @@ export const makeClientSessionSyncProcessor = ({
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
   const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
     const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
-    return mutationDef.options.localOnly
+    return mutationDef.options.clientOnly
   }
 
   const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
@@ -65,7 +65,7 @@ export const makeClientSessionSyncProcessor = ({
     let baseEventId = syncStateRef.current.localHead
     const encodedMutationEvents = batch.map((mutationEvent) => {
       const mutationDef = schema.mutations.get(mutationEvent.mutation)!
-      const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.localOnly)
+      const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.clientOnly)
       baseEventId = nextIdPair.id
       return new MutationEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(mutationEventSchema)({

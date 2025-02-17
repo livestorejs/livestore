@@ -61,7 +61,7 @@ export type TableOptionsInput = Partial<{
     | boolean
     | {
         enabled: true
-        localOnly?: boolean
+        clientOnly?: boolean
       }
 }>
 
@@ -115,7 +115,7 @@ export type TableOptions = {
         /**
          * When set to true, the mutations won't be synced over the network
          */
-        localOnly: boolean
+        clientOnly: boolean
       }
 
   /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
@@ -153,12 +153,12 @@ export const table = <
     disableAutomaticIdColumn: options?.disableAutomaticIdColumn ?? false,
     deriveMutations:
       options?.deriveMutations === true
-        ? { enabled: true as const, localOnly: false }
+        ? { enabled: true as const, clientOnly: false }
         : options?.deriveMutations === false
           ? { enabled: false as const }
           : options?.deriveMutations === undefined
             ? { enabled: false as const }
-            : { enabled: true as const, localOnly: options.deriveMutations.localOnly ?? false },
+            : { enabled: true as const, clientOnly: options.deriveMutations.clientOnly ?? false },
     isSingleColumn: SqliteDsl.isColumnDefinition(columnOrColumns) === true,
     requiredInsertColumnNames: 'type-level-only',
   }
@@ -234,7 +234,7 @@ export const table = <
 export const tableHasDerivedMutations = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & {
-  options: { deriveMutations: { enabled: true; localOnly: boolean } }
+  options: { deriveMutations: { enabled: true; clientOnly: boolean } }
 } & DerivedMutationHelperFns<TTableDef['sqliteDef']['columns'], TTableDef['options']> =>
   tableDef.options.deriveMutations.enabled === true
 
@@ -268,13 +268,13 @@ type WithDefaults<
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
   deriveMutations: TOptionsInput['deriveMutations'] extends true
-    ? { enabled: true; localOnly: boolean }
+    ? { enabled: true; clientOnly: boolean }
     : TOptionsInput['deriveMutations'] extends false
       ? { enabled: false }
-      : TOptionsInput['deriveMutations'] extends { enabled: true; localOnly?: boolean }
+      : TOptionsInput['deriveMutations'] extends { enabled: true; clientOnly?: boolean }
         ? {
             enabled: true
-            localOnly: TOptionsInput['deriveMutations']['localOnly'] extends true ? true : false
+            clientOnly: TOptionsInput['deriveMutations']['clientOnly'] extends true ? true : false
           }
         : never
   isSingleColumn: SqliteDsl.IsSingleColumn<TColumns>

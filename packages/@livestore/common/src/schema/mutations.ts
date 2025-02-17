@@ -37,9 +37,9 @@ export type MutationDef<TName extends string, TFrom, TTo> = {
     /** Warning: This feature is not fully implemented yet */
     historyId: string
     /**
-     * When set to true, the mutation won't be synced over the network
+     * When set to true, the mutation won't be synced across clients but
      */
-    localOnly: boolean
+    clientOnly: boolean
     /** Warning: This feature is not fully implemented yet */
     facts: FactsCallback<TTo> | undefined
   }
@@ -112,7 +112,7 @@ export type DefineMutationOptions<TTo> = {
   /**
    * When set to true, the mutation won't be synced over the network
    */
-  localOnly?: boolean
+  clientOnly?: boolean
 }
 
 // TODO possibly also allow for mutation event subsumption behaviour
@@ -130,7 +130,7 @@ export const defineMutation = <TName extends string, TFrom, TTo>(
   Object.defineProperty(makePartialEvent, 'options', {
     value: {
       historyId: options?.historyId ?? 'main',
-      localOnly: options?.localOnly ?? false,
+      clientOnly: options?.clientOnly ?? false,
       facts: options?.facts
         ? (args, currentFacts) => {
             const res = options.facts!(args, currentFacts)

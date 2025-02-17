@@ -21,5 +21,5 @@ export type FilterState = typeof FilterState.Type
 export const filterState = DbSchema.table(
   'filter_state',
   DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
-  { deriveMutations: { enabled: true, localOnly: true } },
+  { deriveMutations: { enabled: true, clientOnly: true } },
 )

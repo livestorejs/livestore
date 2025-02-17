@@ -37,12 +37,12 @@ export const updateNewTodoText = defineMutation(
   'updateNewTodoText',
   Schema.Struct({ text: Schema.String, sessionId: Schema.String }),
   sql`UPDATE app SET newTodoText = $text WHERE id = $sessionId`,
-  { localOnly: true },
+  { clientOnly: true },
 )
 
 export const setFilter = defineMutation(
   'setFilter',
   Schema.Struct({ filter: Filter, sessionId: Schema.String }),
   sql`UPDATE app SET filter = $filter WHERE id = $sessionId`,
-  { localOnly: true },
+  { clientOnly: true },
 )

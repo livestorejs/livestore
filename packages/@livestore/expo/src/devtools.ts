@@ -238,7 +238,7 @@ export const bootDevtools = ({
               const { mutationEventEncoded: mutationEventEncoded_ } = decodedEvent
               const mutationDef = schema.mutations.get(mutationEventEncoded_.mutation)!
               // const nextMutationEventIdPair = clientSession.mutations.nextMutationEventIdPair({
-              //   localOnly: mutationDef.options.localOnly,
+              //   clientOnly: mutationDef.options.clientOnly,
               // })
 
               // const mutationEventEncoded = new MutationEvent.EncodedWithMeta({

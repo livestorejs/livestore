@@ -124,7 +124,7 @@ export const mutations = {
     Schema.Struct({ id: Schema.String, text: Schema.String }),
     'UPDATE todos SET text = $text WHERE id = $id',
     {
-      localOnly: true,
+      clientOnly: true,
       facts: ({ id }) => ({ modify: { set: [facts.inputValue(id)] } }),
     },
   ),
@@ -144,7 +144,7 @@ export const toEventNodes = (
 
   const eventNodes = partialEvents.map((partialEvent) => {
     const mutationDef = mutationDefs[partialEvent.mutation]!
-    const eventId = EventId.nextPair(currentEventId, mutationDef.options.localOnly).id
+    const eventId = EventId.nextPair(currentEventId, mutationDef.options.clientOnly).id
     currentEventId = eventId
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)

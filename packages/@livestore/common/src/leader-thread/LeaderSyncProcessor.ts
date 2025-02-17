@@ -83,7 +83,7 @@ export const makeLeaderSyncProcessor = ({
 
     const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
       const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
-      return mutationDef.options.localOnly
+      return mutationDef.options.clientOnly
     }
 
     // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
@@ -149,7 +149,7 @@ export const makeLeaderSyncProcessor = ({
           ...partialMutationEvent,
           clientId,
           sessionId,
-          ...EventId.nextPair(syncState.localHead, mutationDef.options.localOnly),
+          ...EventId.nextPair(syncState.localHead, mutationDef.options.clientOnly),
         })
 
         yield* push([mutationEventEncoded])
@@ -196,10 +196,10 @@ export const makeLeaderSyncProcessor = ({
         // Rehydrate sync queue
         if (pendingMutationEvents.length > 0) {
           const filteredBatch = pendingMutationEvents
-            // Don't sync localOnly mutations
+            // Don't sync clientOnly mutations
             .filter((mutationEventEncoded) => {
               const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
-              return mutationDef.options.localOnly === false
+              return mutationDef.options.clientOnly === false
             })
 
           yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
@@ -369,10 +369,10 @@ const backgroundApplyLocalPushes = ({
         updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
       })
 
-      // Don't sync localOnly mutations
+      // Don't sync clientOnly mutations
       const filteredBatch = updateResult.newEvents.filter((mutationEventEncoded) => {
         const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
-        return mutationDef.options.localOnly === false
+        return mutationDef.options.clientOnly === false
       })
 
       yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
@@ -519,7 +519,7 @@ const backgroundBackendPulling = ({
 
           const filteredRebasedPending = updateResult.newSyncState.pending.filter((mutationEvent) => {
             const mutationDef = schema.mutations.get(mutationEvent.mutation)!
-            return mutationDef.options.localOnly === false
+            return mutationDef.options.clientOnly === false
           })
           yield* restartBackendPushing(filteredRebasedPending)
 

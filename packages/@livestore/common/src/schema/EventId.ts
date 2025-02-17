@@ -14,7 +14,7 @@ export const localDefault = 0 as any as LocalEventId
  * LiveStore event id value consisting of a globally unique event sequence number
  * and a local sequence number.
  *
- * The local sequence number is only used for localOnly mutations and starts from 0 for each global sequence number.
+ * The local sequence number is only used for clientOnly mutations and starts from 0 for each global sequence number.
  */
 export type EventId = { global: GlobalEventId; local: LocalEventId }
 
@@ -58,7 +58,7 @@ export const nextPair = (id: EventId, isLocal: boolean): EventIdPair => {
 
   return {
     id: { global: (id.global + 1) as any as GlobalEventId, local: localDefault },
-    // NOTE we always point to `local: 0` for non-localOnly mutations
+    // NOTE we always point to `local: 0` for non-clientOnly mutations
     parentId: { global: id.global, local: localDefault },
   }
 }

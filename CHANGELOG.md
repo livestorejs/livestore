@@ -7,15 +7,10 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - Rename `localOnly` to `clientOnly`
   - Syncing
     - Enable auth setup
     - Initial Electric sync implementation
   - Devtools
-    - Allow pausing sync (both in client and leader separately)
-    - Highlight local mutations in mutation log view
-    - Introduce real-time sync heads view
-    - Sometimes gets stuck on initial open (should wait for full connection first)
     - Fix: When resetting the database but keeping the eventlog
       - the app doesn't show a shutdown screen
       - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
@@ -50,6 +45,7 @@
   const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: `issue-${issueId}` }))
   ```
 
+- Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
@@ -68,6 +64,7 @@
 
 ### Devtools
 
+- General connection stability improvements
 - Improved sync view:
   - See sync heads in real-time
   - Connect/disconnect button
