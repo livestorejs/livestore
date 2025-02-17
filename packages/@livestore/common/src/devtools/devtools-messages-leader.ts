@@ -3,6 +3,7 @@ import { Schema, Transferable } from '@livestore/utils/effect'
 import { NetworkStatus, UnexpectedError } from '../adapter-types.js'
 import { EventId } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
+import * as SyncState from '../sync/syncstate.js'
 import {
   LeaderReqResMessage,
   liveStoreVersion,
@@ -74,8 +75,8 @@ export class LoadDatabaseFileRes extends LSDReqResMessage('LSD.Leader.LoadDataba
 }) {}
 
 // TODO refactor this to use push/pull semantics
-export class MutationBroadcast extends LSDMessage('LSD.Leader.MutationBroadcast', {
-  mutationEventEncoded: MutationEvent.AnyEncoded,
+export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
+  payload: SyncState.PayloadUpstream,
 }) {}
 
 // TODO refactor this to use push/pull semantics
@@ -161,7 +162,7 @@ export const MessageFromApp = Schema.Union(
   LoadDatabaseFileRes,
   MutationLogRes,
   Disconnect,
-  MutationBroadcast,
+  SyncPull,
   NetworkStatusRes,
   RunMutationRes,
   Pong,

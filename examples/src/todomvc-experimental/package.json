@@ -10,7 +10,7 @@
     "@livestore/wa-sqlite": "1.0.3-dev.7",
     "@livestore/web": "workspace:*",
     "@overengineering/fps-meter": "0.1.2",
-    "effect": "3.12.7",
+    "effect": "3.13.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3",

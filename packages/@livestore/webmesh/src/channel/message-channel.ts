@@ -4,6 +4,7 @@ import {
   Effect,
   Either,
   Exit,
+  Option,
   Queue,
   Schema,
   Scope,
@@ -113,26 +114,33 @@ export const makeMessageChannel = ({
             newConnectionAvailablePubSub,
             sendPacket,
             scope: makeMessageChannelScope,
-          }).pipe(Scope.extend(makeMessageChannelScope), Effect.forkIn(makeMessageChannelScope))
+          }).pipe(
+            Scope.extend(makeMessageChannelScope),
+            Effect.forkIn(makeMessageChannelScope),
+            // Given we only call `Effect.exit` later when joining the fiber,
+            // we don't want Effect to produce a "unhandled error" log message
+            Effect.withUnhandledErrorLogLevel(Option.none()),
+          )
 
-          const res = yield* Effect.raceFirst(makeChannel, waitForNewConnectionFiber.pipe(Effect.disconnect))
+          const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewConnectionFiber.pipe(Effect.disconnect))
 
-          if (res === 'new-connection') {
+          if (raceResult === 'new-connection') {
             yield* Scope.close(makeMessageChannelScope, Exit.fail('new-connection'))
             // We'll try again
           } else {
-            const result = yield* res.pipe(Effect.exit)
-            if (result._tag === 'Failure') {
-              yield* Scope.close(makeMessageChannelScope, result)
+            const channelExit = yield* raceResult.pipe(Effect.exit)
+            if (channelExit._tag === 'Failure') {
+              yield* Scope.close(makeMessageChannelScope, channelExit)
 
               if (
-                Cause.isFailType(result.cause) &&
-                Schema.is(WebmeshSchema.MessageChannelResponseNoTransferables)(result.cause.error)
+                Cause.isFailType(channelExit.cause) &&
+                Schema.is(WebmeshSchema.MessageChannelResponseNoTransferables)(channelExit.cause.error)
               ) {
+                // Only retry when there is a new connection available
                 yield* waitForNewConnectionFiber.pipe(Effect.exit)
               }
             } else {
-              const channel = result.value
+              const channel = channelExit.value
 
               yield* Deferred.succeed(resultDeferred, { channel, makeMessageChannelScope, channelVersion })
               break

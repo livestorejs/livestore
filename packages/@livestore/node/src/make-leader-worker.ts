@@ -8,7 +8,6 @@ if (process.execArgv.includes('--inspect')) {
   inspector.waitForDebugger()
 }
 
-import { NodeFileSystem, NodeWorkerRunner } from '@effect/platform-node'
 import type { NetworkStatus, SyncOptions } from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
@@ -36,6 +35,7 @@ import {
   Stream,
   WorkerRunner,
 } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import type * as otel from '@opentelemetry/api'
 
 import { startDevtoolsServer } from './devtools/devtools-server.js'
@@ -142,14 +142,14 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         Effect.withSpan('@livestore/node:worker:ExtraDevtoolsMessage'),
       ),
   }).pipe(
-    Layer.provide(NodeWorkerRunner.layer),
+    Layer.provide(PlatformNode.NodeWorkerRunner.layer),
     Layer.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread' }),
     Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
     Effect.provide(FetchHttpClient.layer),
-    Effect.provide(NodeFileSystem.layer),
+    Effect.provide(PlatformNode.NodeFileSystem.layer),
     TracingLive ? Effect.provide(TracingLive) : identity,
     Logger.withMinimumLogLevel(LogLevel.Debug),
   )

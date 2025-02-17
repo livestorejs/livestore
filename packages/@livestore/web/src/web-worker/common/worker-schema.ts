@@ -4,7 +4,6 @@ import {
   InvalidPushError,
   MigrationsReport,
   NetworkStatus,
-  PayloadUpstream,
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
@@ -87,7 +86,7 @@ export namespace LeaderWorkerInner {
       cursor: EventId.EventId,
     },
     success: Schema.Struct({
-      payload: PayloadUpstream,
+      payload: SyncState.PayloadUpstream,
       remaining: Schema.Number,
     }),
     failure: UnexpectedError,
@@ -122,7 +121,7 @@ export namespace LeaderWorkerInner {
 
   export class GetLeaderSyncState extends Schema.TaggedRequest<GetLeaderSyncState>()('GetLeaderSyncState', {
     payload: {},
-    success: SyncState,
+    success: SyncState.SyncState,
     failure: UnexpectedError,
   }) {}
 

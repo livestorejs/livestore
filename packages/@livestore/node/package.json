@@ -26,7 +26,6 @@
     }
   },
   "dependencies": {
-    "@effect/platform-node": "0.71.1",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-node-common": "workspace:*",
     "@livestore/devtools-react": "0.3.0-dev.12",
@@ -35,7 +34,7 @@
     "@livestore/web": "workspace:*",
     "@livestore/webmesh": "workspace:*",
     "@opentelemetry/api": "1.9.0",
-    "@opentelemetry/otlp-exporter-base": "0.57.1",
+    "@opentelemetry/otlp-exporter-base": "0.57.2",
     "vite": "6.0.11",
     "ws": "8.18.0"
   },

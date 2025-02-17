@@ -620,7 +620,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
 
-    Vitest.scopedLive('should fail', (test) =>
+    Vitest.scopedLive('should fail with timeout due to missing connection', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -640,6 +640,27 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
+      }).pipe(withCtx(test)),
+    )
+
+    Vitest.scopedLive('should fail with timeout due no transferable', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+        const nodeB = yield* makeMeshNode('B')
+
+        yield* connectNodesViaBroadcastChannel(nodeA, nodeB)
+
+        const nodeACode = Effect.gen(function* () {
+          const err = yield* createChannel(nodeA, 'B').pipe(Effect.timeout(200), Effect.flip)
+          expect(err._tag).toBe('TimeoutException')
+        })
+
+        const nodeBCode = Effect.gen(function* () {
+          const err = yield* createChannel(nodeB, 'A').pipe(Effect.timeout(200), Effect.flip)
+          expect(err._tag).toBe('TimeoutException')
+        })
+
+        yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' })
       }).pipe(withCtx(test)),
     )
 
@@ -738,7 +759,6 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
 
-    // TODO this currently fails but should work. probably needs some more guarding internally.
     Vitest.scopedLive('should work for messagechannels', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')

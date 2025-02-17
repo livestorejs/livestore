@@ -1,7 +1,6 @@
 import { hostname } from 'node:os'
 import * as WT from 'node:worker_threads'
 
-import { NodeFileSystem, NodeWorker } from '@effect/platform-node'
 import type {
   Adapter,
   ClientSession,
@@ -27,6 +26,7 @@ import {
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 
 import * as WorkerSchema from '../worker-schema.js'
 
@@ -127,7 +127,7 @@ export const makeNodeAdapter = ({
     }).pipe(
       Effect.withSpan('@livestore/node:adapter'),
       Effect.parallelFinalizers,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(PlatformNode.NodeFileSystem.layer),
     )) satisfies Adapter
 
 const makeLeaderThread = ({
@@ -169,7 +169,7 @@ const makeLeaderThread = ({
           schemaPath,
         }),
     }).pipe(
-      Effect.provide(NodeWorker.layer(() => nodeWorker)),
+      Effect.provide(PlatformNode.NodeWorker.layer(() => nodeWorker)),
       UnexpectedError.mapToUnexpectedError,
       Effect.tapErrorCause(shutdown),
       Effect.withSpan('@livestore/node:adapter:setupLeaderThread'),

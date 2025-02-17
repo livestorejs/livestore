@@ -8,7 +8,7 @@
     "@livestore/wa-sqlite": "1.0.3-dev.7",
     "@livestore/web": "0.3.0-dev.12",
     "@opentelemetry/api": "1.9.0",
-    "effect": "3.12.7",
+    "effect": "3.13.1",
     "solid-js": "1.9.4",
     "todomvc-app-css": "2.4.3",
     "uuid": "11.0.5"
@@ -16,7 +16,7 @@
   "description": "",
   "devDependencies": {
     "@livestore/devtools-vite": "0.3.0-dev.12",
-    "solid-devtools": "^0.29.2",
+    "solid-devtools": "^0.33.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.11",
     "vite-plugin-solid": "^2.8.2"

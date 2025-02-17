@@ -4,10 +4,10 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@effect/cli": "^0.54.1",
-    "@effect/platform-bun": "^0.55.1",
+    "@effect/cli": "^0.56.1",
+    "@effect/platform-bun": "^0.57.1",
     "@types/node": "^22.10.5",
     "bun-types": "^1.1.33",
-    "effect": "^3.12.7"
+    "effect": "^3.13.1"
   }
 }

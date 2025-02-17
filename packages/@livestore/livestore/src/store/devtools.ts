@@ -240,7 +240,7 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.SyncHeadSubscribe': {
-          const send = (syncState: SyncState) =>
+          const send = (syncState: SyncState.SyncState) =>
             sendToDevtools(
               Devtools.ClientSession.SyncHeadRes.make({
                 local: syncState.localHead,

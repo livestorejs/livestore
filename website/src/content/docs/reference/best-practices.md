@@ -36,3 +36,8 @@ sidebar:
       ...
     ...
   ```
+
+## Package management
+
+- Please make sure you only have a single version of any given package in your project (incl. LiveStore and other packages like `react`, `effect`, etc). Having multiple versions of the same package can lead to all kinds of issues and should be avoided. This is particularly important when using LiveStore in a monorepo.
+- Setting `resolutions` in your root `package.json` or tools like [PNPM catalogs](https://pnpm.io/catalogs) or [Syncpack](https://github.com/JamieMason/syncpack) can help you manage this.

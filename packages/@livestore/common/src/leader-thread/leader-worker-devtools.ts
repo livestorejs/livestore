@@ -38,18 +38,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
     const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(localHead)
 
     yield* Stream.fromQueue(pullQueue).pipe(
-      Stream.tap((msg) =>
-        Effect.gen(function* () {
-          if (msg.payload._tag === 'upstream-advance') {
-            for (const mutationEventEncoded of msg.payload.newEvents) {
-              // TODO refactor with push semantics
-              yield* sendMessage(Devtools.Leader.MutationBroadcast.make({ mutationEventEncoded, liveStoreVersion }))
-            }
-          } else {
-            yield* Effect.logWarning('TODO implement rebases in devtools')
-          }
-        }),
-      ),
+      Stream.tap((msg) => sendMessage(Devtools.Leader.SyncPull.make({ payload: msg.payload, liveStoreVersion }))),
       Stream.runDrain,
       Effect.forkScoped,
     )
