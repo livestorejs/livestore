@@ -27,3 +27,6 @@ dist
 .netlify
 
 _tmp*
+
+.vinxi
+.output

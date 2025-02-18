@@ -54,7 +54,9 @@ export default defineConfig({
       // tsConfigPaths({
       //   projects: ['./tsconfig.json'],
       // }),
-      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+      process.env.NODE_ENV === 'production'
+        ? undefined
+        : livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
       VitePWA({
         registerType: 'prompt',
         workbox: {
