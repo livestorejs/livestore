@@ -8,8 +8,8 @@
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - Syncing
+    - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
-    - Initial Electric sync implementation
   - Devtools
     - Fix: When resetting the database but keeping the eventlog
       - the app doesn't show a shutdown screen
@@ -30,6 +30,9 @@
 - New: Node adapter `@livestore/node` (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
+
+- New: `@livestore/sync-electric` backend (experimental)
+  - See [docs page](https://livestore.dev/reference/syncing/electricsql/) for more details
 
 - New: Solid integration `@livestore/solid` (experimental)
   - Still very early stage and probably lacks some features. Feedback wanted!

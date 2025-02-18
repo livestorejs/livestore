@@ -123,6 +123,7 @@ jobs:
             --alias=snapshot-$(git rev-parse --short HEAD)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
 
   build-deploy-website:
     strategy:
