@@ -12,35 +12,29 @@
     "@livestore/wa-sqlite": "1.0.3-dev.7",
     "@livestore/web": "workspace:*",
     "@overengineering/fps-meter": "0.1.2",
-    "@remix-run/node": "2.15.3",
-    "@remix-run/react": "2.15.3",
+    "@tanstack/start": "1.105.0",
     "effect": "3.13.1",
-    "isbot": "5.1.22",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-error-boundary": "5.0.0",
     "todomvc-app-css": "2.4.3",
-    "uuid": "11.0.5",
     "workbox-window": "7.3.0"
   },
   "devDependencies": {
-    "@remix-run/dev": "^2.13.1",
-    "@remix-run/serve": "^2.13.1",
+    "@tanstack/react-router": "^1.105.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@types/uuid": "^10.0.0",
-    "@vite-pwa/remix": "^0.1.3",
+    "@vitejs/plugin-react": "^4.3.3",
     "postgres": "^3.4.5",
     "rollup-plugin-visualizer": "^5.12.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.11",
+    "vinxi": "^0.5.3",
+    "vite": "^6.1.0",
     "vite-plugin-pwa": "^0.21.1"
   },
   "scripts": {
-    "build": "echo 'No builds supported for this example yet'",
-    "build_": "remix vite:build",
-    "build:analyze": "VITE_ANALYZE=1 run build",
-    "dev": "remix vite:dev --force",
-    "preview": "remix vite:preview"
+    "build": "vinxi build",
+    "dev": "vinxi dev",
+    "preview": "vinxi start"
   }
 }

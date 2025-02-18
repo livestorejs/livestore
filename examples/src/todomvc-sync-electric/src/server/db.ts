@@ -1,8 +1,9 @@
 import type { MutationEvent } from '@livestore/livestore'
+import { toTableName } from '@livestore/sync-electric'
 import postgres from 'postgres'
 
 export const makeDb = (storeId: string) => {
-  const tableName = `events_${storeId}`
+  const tableName = toTableName(storeId)
 
   const sql = postgres({
     database: 'electric',
@@ -14,10 +15,11 @@ export const makeDb = (storeId: string) => {
   const migrate = () =>
     sql`
     CREATE TABLE IF NOT EXISTS ${sql(tableName)} (
-			id INTEGER PRIMARY KEY,
-      parentId INTEGER,
-			mutation TEXT NOT NULL,
-			args JSONB NOT NULL
+			"id" INTEGER PRIMARY KEY,
+      "parentId" INTEGER,
+			"mutation" TEXT NOT NULL,
+			"args" JSONB NOT NULL,
+      "clientId" TEXT NOT NULL
     );
 	`
   // -- schema_hash INTEGER NOT NULL,

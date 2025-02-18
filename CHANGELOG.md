@@ -17,6 +17,8 @@
     - Fix: Expo
     - Fix: Support multiple leader <> devtools connections
       - Refactor according to ARCHITECTURE.md
+- Tanstack Start example:
+  - Fix: devtools should load smoothly on first open (currently causes a Vite error)
 
 ### New features
 

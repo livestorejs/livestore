@@ -9,7 +9,7 @@
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.7",
     "@livestore/web": "workspace:*",
-    "vite": "6.0.11",
+    "vite": "6.1.0",
     "ws": "8.18.0"
   },
   "devDependencies": {

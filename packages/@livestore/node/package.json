@@ -35,7 +35,7 @@
     "@livestore/webmesh": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/otlp-exporter-base": "0.57.2",
-    "vite": "6.0.11",
+    "vite": "6.1.0",
     "ws": "8.18.0"
   },
   "devDependencies": {

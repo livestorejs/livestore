@@ -56,3 +56,18 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
   Schema.Array(Schema.suspend(() => JsonValue)),
   Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
 ).annotations({ title: 'JsonValue' })
+
+export const SearchParamsString = Schema.transform(
+  Schema.String,
+  Schema.Union(Schema.Record({ key: Schema.String, value: Schema.String }), Schema.String),
+  {
+    decode: (searchParamsString) => {
+      const searchParams = new URLSearchParams(searchParamsString)
+      return Object.fromEntries(searchParams.entries())
+    },
+    encode: (searchParams) => {
+      const searchParamsString = new URLSearchParams(Object.entries(searchParams)).toString()
+      return searchParamsString
+    },
+  },
+)

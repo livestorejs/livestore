@@ -1,6 +1,5 @@
 import { useQuery, useStore } from '@livestore/react'
 import React from 'react'
-import { v4 as uuid } from 'uuid'
 
 import { app$ } from '../livestore/queries.js'
 import { mutations } from '../livestore/schema.js'
@@ -13,7 +12,7 @@ export const Header: React.FC = () => {
   const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text, sessionId }))
   const addTodo = () =>
     store.mutate(
-      mutations.addTodo({ id: uuid(), text: newTodoText }),
+      mutations.addTodo({ id: crypto.randomUUID(), text: newTodoText }),
       mutations.updateNewTodoText({ text: '', sessionId }),
     )
 
