@@ -25,3 +25,5 @@ dist
 .wrangler
 .vercel
 .netlify
+
+_tmp*

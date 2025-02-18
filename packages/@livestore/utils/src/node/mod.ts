@@ -64,7 +64,7 @@ export const OtelLiveHttp = ({
     const resource = { serviceName: config.serviceName }
 
     // METRICS
-    const metricExporter = new OTLPMetricExporter({ url: config.exporterUrl })
+    const metricExporter = new OTLPMetricExporter({ url: `${config.exporterUrl}/v1/metrics` })
 
     const metricReader = new PeriodicExportingMetricReader({
       exporter: metricExporter,
@@ -75,7 +75,9 @@ export const OtelLiveHttp = ({
     const OtelLive = OtelNodeSdk.layer(() => ({
       resource,
       metricReader,
-      spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter({ url: config.exporterUrl, headers: {} })),
+      spanProcessor: new BatchSpanProcessor(
+        new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
+      ),
     }))
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
@@ -103,7 +105,7 @@ export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (spa
 
 export const getTracingBackendUrl = (span: otel.Span) =>
   Effect.gen(function* () {
-    const endpoint = yield* Config.string('TRACING_UI_ENDPOINT').pipe(Config.option, Effect.orDie)
+    const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option, Effect.orDie)
     if (endpoint._tag === 'None') return
 
     const traceId = span.spanContext().traceId
