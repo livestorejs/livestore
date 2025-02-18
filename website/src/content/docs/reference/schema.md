@@ -6,6 +6,7 @@ sidebar:
 
 - LiveStore uses schema definitions both to define your database tables (i.e. the read model) and to define your mutations payloads.
 - It's based on the excellent [Effect Schema](https://effect.website/docs/schema/introduction/) library.
+- SQLite tables are defined as [STRICT](https://www.sqlite.org/stricttables.html) tables.
 
 ## Database schema
 
@@ -75,4 +76,41 @@ export const completeTodo = defineMutation(
 )
 ```
 
-### Example
+## Column types
+
+### Core SQLite column types
+
+- `DbSchema.text`: A text field, returns `string`.
+- `DbSchema.integer`: An integer field, returns `number`.
+- `DbSchema.real`: A real field (floating point number), returns `number`.
+- `DbSchema.blob`: A blob field (binary data), returns `Uint8Array`.
+
+### Higher level column types
+
+- `DbSchema.boolean`: An integer field that stores `0` for `false` and `1` for `true` and returns a `boolean`.
+- `DbSchema.json`: A text field that stores a stringified JSON object and returns a decoded JSON value.
+- `DbSchema.datetime`: A text field that stores dates as ISO 8601 strings and returns a `Date`.
+- `DbSchema.datetimeInteger`: A integer field that stores dates as the number of milliseconds since the epoch and returns a `Date`.
+
+
+### Custom column schemas
+
+You can also provide a custom schema for a column which is used to automatically encode and decode the column value.
+
+#### Example: JSON-encoded struct
+
+```ts
+import { DbSchema } from '@livestore/livestore'
+import { Schema } from 'effect'
+
+export const UserMetadata = Schema.Struct({ 
+  petName: Schema.String,
+  favoriteColor: Schema.Literal('red', 'blue', 'green'),
+ })
+
+export const userTable = DbSchema.table('user', {
+  id: DbSchema.text({ primaryKey: true }),
+  name: DbSchema.text(),
+  metadata: DbSchema.json({ schema: UserMetadata }),
+})
+```

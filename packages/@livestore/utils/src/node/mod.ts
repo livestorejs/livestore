@@ -52,8 +52,7 @@ export const OtelLiveHttp = ({
 > =>
   Effect.gen(function* () {
     const config = yield* Config.all({
-      exporterUrlTracing: Config.string('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'),
-      exporterUrlMracing: Config.string('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT'),
+      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT'),
       serviceName: serviceName
         ? Config.succeed(serviceName)
         : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('overtone-node-utils-default-service')),
@@ -65,7 +64,7 @@ export const OtelLiveHttp = ({
     const resource = { serviceName: config.serviceName }
 
     // METRICS
-    const metricExporter = new OTLPMetricExporter({ url: config.exporterUrlMracing })
+    const metricExporter = new OTLPMetricExporter({ url: config.exporterUrl })
 
     const metricReader = new PeriodicExportingMetricReader({
       exporter: metricExporter,
@@ -76,7 +75,7 @@ export const OtelLiveHttp = ({
     const OtelLive = OtelNodeSdk.layer(() => ({
       resource,
       metricReader,
-      spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter({ url: config.exporterUrlTracing, headers: {} })),
+      spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter({ url: config.exporterUrl, headers: {} })),
     }))
 
     const RootSpanLive = Layer.span(config.rootSpanName, {

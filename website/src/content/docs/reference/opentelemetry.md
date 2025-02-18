@@ -11,7 +11,7 @@ LiveStore has built-in support for OpenTelemetry.
 ```tsx
 // otel.ts
 const makeTracer = () => {
-  const url = import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+  const url = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT
   const provider = new WebTracerProvider({
     spanProcessors: [new SimpleSpanProcessor(new OTLPTraceExporter({ url }))],
   })

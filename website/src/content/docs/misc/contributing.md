@@ -97,17 +97,10 @@ As a local OpenTelemetry setup, we recommend the [docker-otel-lgtm](https://gith
 Add the following to your `.envrc.local` file:
 
 ```bash
-export DEVSERVER_HOSTNAME="localhost"
-
-# Grafana endpoint
-export VITE_TRACING_UI_ENDPOINT="http://${DEVSERVER_HOSTNAME}:3000"
-export TRACING_UI_ENDPOINT="http://${DEVSERVER_HOSTNAME}:3000"
-
-export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://${DEVSERVER_HOSTNAME}:4318/v1/traces"
-export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="http://${DEVSERVER_HOSTNAME}:4318/v1/metrics"
-
-export VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}"
-export VITE_OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}"
+export VITE_GRAFANA_ENDPOINT="http://localhost:30003"
+export GRAFANA_ENDPOINT="http://localhost:30003"
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 ```
 
 

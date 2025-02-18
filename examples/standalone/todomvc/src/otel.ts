@@ -4,7 +4,7 @@ import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
 
 export const makeTracer = (serviceName: string) => {
-  const url = import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+  const url = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT
   const provider = new WebTracerProvider({
     spanProcessors: url ? [new SimpleSpanProcessor(new OTLPTraceExporter({ url }))] : [],
     resource: new Resource({ 'service.name': serviceName }),
