@@ -5,8 +5,8 @@
   "dependencies": {
     "@expo/vector-icons": "14.0.4",
     "@legendapp/list": "1.0.0-beta.2",
+    "@livestore/adapter-expo": "0.3.0-dev.12",
     "@livestore/devtools-expo": "0.3.0-dev.12",
-    "@livestore/expo": "0.3.0-dev.12",
     "@livestore/livestore": "0.3.0-dev.12",
     "@livestore/react": "0.3.0-dev.12",
     "@livestore/utils": "0.3.0-dev.12",

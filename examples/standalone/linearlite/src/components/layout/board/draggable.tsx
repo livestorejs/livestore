@@ -6,7 +6,7 @@ import { Card } from './card'
 
 export const Draggable = memo(({ issue, style }: { issue: Issue; style: CSSProperties }) => {
   const preview = React.useRef(null)
-  let { dragProps, isDragging } = useDrag({
+  const { dragProps, isDragging } = useDrag({
     preview,
     getItems: () => [{ 'text/plain': issue.id.toString() }],
   })

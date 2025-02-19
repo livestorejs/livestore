@@ -35,7 +35,7 @@
 -  "references": [
 -    { "path": "../../../packages/@livestore/livestore" },
 -    { "path": "../../../packages/@livestore/utils" },
--    { "path": "../../../packages/@livestore/web" }
+-    { "path": "../../../packages/@livestore/adapter-web" }
 -  ]
 +  "include": ["./src"],
 +  "exclude": ["node_modules"]

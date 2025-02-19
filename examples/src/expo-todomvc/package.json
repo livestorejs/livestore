@@ -4,8 +4,8 @@
   "private": true,
   "dependencies": {
     "@expo/vector-icons": "14.0.4",
+    "@livestore/adapter-expo": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
-    "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/utils": "workspace:*",

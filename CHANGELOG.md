@@ -27,7 +27,7 @@
   - `sync-cf` backend: More reliable websocket connection handling
   - Configurable sync semantics when app starts (either skip initial sync or block with timeout)
 
-- New: Node adapter `@livestore/node` (experimental)
+- New: Node adapter `@livestore/adapter-node` (experimental)
   - Note: Currently uses the `@livestore/sqlite-wasm` build but the plan is to move to a native SQLite build in the future to improve performance and reduce bundle size.
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
 
@@ -41,6 +41,9 @@
 
 ### Breaking changes
 
+- Breaking: Renamed adapter packages:
+  - `@livestore/web` now is `@livestore/adapter-web`
+  - `@livestore/expo` now is `@livestore/adapter-expo`
 - Breaking: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
   // before

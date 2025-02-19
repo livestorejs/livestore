@@ -5,11 +5,11 @@
   "dependencies": {
     "@headlessui/react": "2.2.0",
     "@heroicons/react": "2.2.0",
+    "@livestore/adapter-web": "workspace:*",
     "@livestore/devtools-vite": "0.3.0-dev.12",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.7",
-    "@livestore/web": "workspace:*",
     "@overengineering/fps-meter": "0.1.2",
     "@tailwindcss/forms": "0.5.10",
     "@tiptap/core": "2.11.5",

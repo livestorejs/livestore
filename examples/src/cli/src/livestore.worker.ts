@@ -1,4 +1,4 @@
-import { getWorkerArgs, makeWorkerEffect } from '@livestore/node/worker'
+import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
 import { makeWsSync } from '@livestore/sync-cf'
 import { Effect } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'

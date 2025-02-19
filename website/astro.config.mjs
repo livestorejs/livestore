@@ -18,8 +18,8 @@ export default defineConfig({
           output: 'api/livestore',
         }),
         starlightTypeDoc({
-          entryPoints: ['../packages/@livestore/web/src/index.ts'],
-          tsconfig: '../packages/@livestore/web/tsconfig.json',
+          entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
+          tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
           output: 'api/web',
         }),
       ],

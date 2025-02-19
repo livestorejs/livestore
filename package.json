@@ -30,6 +30,9 @@
     }
   },
   "resolutions": {
+    "@livestore/adapter-expo": "workspace:*",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/db-schema": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
@@ -38,16 +41,13 @@
     "@livestore/devtools-react": "0.3.0-dev.12",
     "@livestore/devtools-vite": "0.3.0-dev.12",
     "@livestore/devtools-web-common": "workspace:*",
-    "@livestore/expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
-    "@livestore/node": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/solid": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/web": "workspace:*",
     "@livestore/webmesh": "workspace:*"
   },
   "resolutions#": {

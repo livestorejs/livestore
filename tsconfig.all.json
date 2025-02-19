@@ -4,9 +4,6 @@
   "include": [],
   "references": [
     { "path": "./tsconfig.dev.json" },
-    { "path": "./packages/@livestore/common-tests" },
-    { "path": "./packages/@livestore/sync-cf" },
-    { "path": "./packages/@livestore/sync-electric" },
     { "path": "./examples/standalone/expo-todomvc" },
     { "path": "./examples/standalone/expo-linearlite" },
     { "path": "./examples/standalone/linearlite" },

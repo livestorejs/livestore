@@ -1,6 +1,6 @@
+import { makeAdapter } from '@livestore/adapter-web'
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
-import { makeAdapter } from '@livestore/web'
-import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 import { FPSMeter } from '@overengineering/fps-meter'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'

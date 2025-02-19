@@ -15,6 +15,6 @@
   "references": [
     { "path": "../../../packages/@livestore/livestore" },
     { "path": "../../../packages/@livestore/solid" },
-    { "path": "../../../packages/@livestore/web" }
+    { "path": "../../../packages/@livestore/adapter-web" }
   ]
 }

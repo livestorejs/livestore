@@ -10,7 +10,7 @@ In your `livestore.worker.ts` file, you can use the `makeWsSync` function to cre
 
 ```ts
 import { makeWsSync } from '@livestore/sync-cf'
-import { makeWorker } from '@livestore/web/worker'
+import { makeWorker } from '@livestore/adapter-web/worker'
 
 import { schema } from './livestore/schema.js'
 

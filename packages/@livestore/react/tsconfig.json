@@ -13,7 +13,7 @@
   "references": [
     { "path": "../db-schema" },
     { "path": "../common" },
-    { "path": "../web" },
+    { "path": "../adapter-web" },
     { "path": "../livestore" },
     { "path": "../utils" }
   ]

@@ -2,10 +2,10 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
+import { makeAdapter } from '@livestore/adapter-web'
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, queryDb } from '@livestore/livestore'
 import { nanoid } from '@livestore/utils/nanoid'
-import { makeAdapter } from '@livestore/web'
-import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'

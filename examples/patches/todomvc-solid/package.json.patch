@@ -1,19 +1,18 @@
 --- package.json
 +++ package.json
-@@ -1,12 +1,12 @@
+@@ -1,11 +1,11 @@
  {
 -  "name": "livestore-example-src-todomvc-solid",
 +  "name": "livestore-example-standalone-todomvc-solid",
    "version": "0.0.0",
    "type": "module",
    "dependencies": {
+-    "@livestore/adapter-web": "workspace:*",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/solid": "workspace:*",
++    "@livestore/adapter-web": "0.3.0-dev.12",
 +    "@livestore/livestore": "0.3.0-dev.12",
 +    "@livestore/solid": "0.3.0-dev.12",
      "@livestore/wa-sqlite": "1.0.3-dev.7",
--    "@livestore/web": "workspace:*",
-+    "@livestore/web": "0.3.0-dev.12",
      "@opentelemetry/api": "1.9.0",
      "effect": "3.13.1",
-     "solid-js": "1.9.4",

@@ -1,9 +1,9 @@
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import type { FromInputSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStore, DbSchema, makeSchema } from '@livestore/livestore'
 import { Effect } from '@livestore/utils/effect'
-import { makeInMemoryAdapter } from '@livestore/web'
 import type * as otel from '@opentelemetry/api'
 
 export type Todo = {

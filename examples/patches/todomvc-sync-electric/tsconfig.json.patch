@@ -40,7 +40,7 @@
 -  "references": [
 -    { "path": "../../../packages/@livestore/livestore" },
 -    { "path": "../../../packages/@livestore/react" },
--    { "path": "../../../packages/@livestore/web" },
+-    { "path": "../../../packages/@livestore/adapter-web" },
 -    { "path": "../../../packages/@livestore/sync-electric" }
 -  ]
 -}

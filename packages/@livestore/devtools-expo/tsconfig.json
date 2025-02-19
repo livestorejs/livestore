@@ -8,8 +8,8 @@
   },
   "include": ["./src", "src/types.d.ts"],
   "references": [
-    { "path": "../web" },
-    { "path": "../node" },
+    { "path": "../adapter-web" },
+    { "path": "../adapter-node" },
     { "path": "../utils" },
   ]
 }

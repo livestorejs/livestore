@@ -66,7 +66,7 @@ const virtualHtmlPlugin: Vite.Plugin = {
 <script type="module">
 import '@livestore/devtools-react/index.css'
 import { mountDevtools } from '@livestore/devtools-react'
-import sharedWorker from '@livestore/web/shared-worker?sharedworker'
+import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { schema } from '@schema'
 
 mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker, mode: 'expo' })

@@ -14,8 +14,8 @@
     { "path": "./examples/src/todomvc-solid" },
     { "path": "./examples/src/todomvc-sync-cf" },
     { "path": "./examples/src/todomvc-sync-electric" },
-    { "path": "./integration-tests" },
-    { "path": "./packages/@livestore/common-tests" },
+    { "path": "./tests/integration" },
+    { "path": "./tests/package-common" },
     { "path": "./packages/@livestore/db-schema" },
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/sync-cf" }

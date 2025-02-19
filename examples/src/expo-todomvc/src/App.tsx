@@ -1,4 +1,4 @@
-import { makeAdapter } from '@livestore/expo'
+import { makeAdapter } from '@livestore/adapter-expo'
 import { LiveStoreProvider } from '@livestore/react'
 import { nanoid } from '@livestore/utils/nanoid'
 import { StatusBar } from 'expo-status-bar'

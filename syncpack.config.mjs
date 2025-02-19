@@ -21,9 +21,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 const localPackages = fs
   .readdirSync(path.join(__dirname, './packages/@livestore'))
-  .filter(
-    (dir) => fs.statSync(path.join(__dirname, './packages/@livestore', dir)).isDirectory() && dir !== 'common-tests',
-  )
+  .filter((dir) => fs.statSync(path.join(__dirname, './packages/@livestore', dir)).isDirectory())
   .map((dir) => `@livestore/${dir}`)
 
 /** @type {import("syncpack").RcFile} */

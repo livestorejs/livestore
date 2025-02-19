@@ -6,8 +6,8 @@ description: Information about LiveStore's web adapter
 ## Example
 
 ```ts
-import { makeAdapter } from '@livestore/web'
-import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker'
+import { makeAdapter } from '@livestore/adapter-web'
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import LiveStoreWorker from './livestore.worker?worker'
 
 const adapter = makeAdapter({
@@ -18,7 +18,7 @@ const adapter = makeAdapter({
 ```
 
 ```ts
-import { makeWorker } from '@livestore/web/worker'
+import { makeWorker } from '@livestore/adapter-web/worker'
 
 import { schema } from './schema/index.js'
 
@@ -31,7 +31,7 @@ makeWorker({ schema })
   - Unfortunately this constraints you from co-locating your table definitions in component files.
   - You might be able to still work around this by using the following import in your worker:
     ```ts
-    import '@livestore/web/worker-vite-dev-polyfill'
+    import '@livestore/adapter-web/worker-vite-dev-polyfill'
     ```
 
 ### Why is there a dedicated web worker and a shared worker?

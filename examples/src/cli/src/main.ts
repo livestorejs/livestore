@@ -3,10 +3,10 @@
 
 import path from 'node:path'
 
+import { makeNodeAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
-import { makeNodeAdapter } from '@livestore/node'
 import { Effect, Layer, Logger, LogLevel, Stream } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 

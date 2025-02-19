@@ -2,7 +2,7 @@ import '../global.css'
 import '../polyfill.ts'
 import 'react-native-reanimated'
 
-import { makeAdapter } from '@livestore/expo'
+import { makeAdapter } from '@livestore/adapter-expo'
 import type { BaseGraphQLContext, LiveStoreSchema, Store } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { nanoid } from '@livestore/utils/nanoid'

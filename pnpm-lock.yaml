@@ -5,6 +5,10 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  '@livestore/adapter-expo': workspace:*
+  '@livestore/adapter-node': workspace:*
+  '@livestore/adapter-web': workspace:*
+  '@livestore/adapter-webmesh': workspace:*
   '@livestore/common': workspace:*
   '@livestore/db-schema': workspace:*
   '@livestore/devtools-expo': workspace:*
@@ -13,17 +17,13 @@ overrides:
   '@livestore/devtools-react': 0.3.0-dev.12
   '@livestore/devtools-vite': 0.3.0-dev.12
   '@livestore/devtools-web-common': workspace:*
-  '@livestore/expo': workspace:*
   '@livestore/livestore': workspace:*
-  '@livestore/node': workspace:*
   '@livestore/react': workspace:*
   '@livestore/solid': workspace:*
   '@livestore/sqlite-wasm': workspace:*
   '@livestore/sync-cf': workspace:*
   '@livestore/sync-electric': workspace:*
   '@livestore/utils': workspace:*
-  '@livestore/web': workspace:*
-  '@livestore/webmesh': workspace:*
 
 patchedDependencies:
   graphology@0.26.0-alpha1:
@@ -94,15 +94,15 @@ importers:
 
   examples/src/cli:
     dependencies:
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-node
       '@livestore/common':
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
-      '@livestore/node':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/node
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
@@ -122,12 +122,12 @@ importers:
       '@legendapp/list':
         specifier: 1.0.0-beta.2
         version: 1.0.0-beta.2(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0))(react@19.0.0)
+      '@livestore/adapter-expo':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
         specifier: workspace:*
         version: link:../../../packages/@livestore/devtools-expo
-      '@livestore/expo':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -282,12 +282,12 @@ importers:
       '@expo/vector-icons':
         specifier: 14.0.4
         version: 14.0.4
+      '@livestore/adapter-expo':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
         specifier: workspace:*
         version: link:../../../packages/@livestore/devtools-expo
-      '@livestore/expo':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -355,6 +355,9 @@ importers:
       '@heroicons/react':
         specifier: 2.2.0
         version: 2.2.0(react@19.0.0)
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -367,9 +370,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -524,6 +524,9 @@ importers:
 
   examples/src/todomvc:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -536,9 +539,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -594,6 +594,9 @@ importers:
 
   examples/src/todomvc-custom-elements:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -606,9 +609,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       effect:
         specifier: 3.13.1
         version: 3.13.1
@@ -658,6 +658,9 @@ importers:
 
   examples/src/todomvc-experimental:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -670,9 +673,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -716,6 +716,9 @@ importers:
 
   examples/src/todomvc-solid:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -725,9 +728,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -762,6 +762,9 @@ importers:
 
   examples/src/todomvc-sync-cf:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -777,9 +780,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -841,6 +841,9 @@ importers:
 
   examples/src/todomvc-sync-electric:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/common':
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
@@ -859,9 +862,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -926,12 +926,12 @@ importers:
       '@legendapp/list':
         specifier: 1.0.0-beta.2
         version: 1.0.0-beta.2(react-native@0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0))(react@19.0.0)
+      '@livestore/adapter-expo':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
         specifier: workspace:*
         version: link:../../../packages/@livestore/devtools-expo
-      '@livestore/expo':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1086,12 +1086,12 @@ importers:
       '@expo/vector-icons':
         specifier: 14.0.4
         version: 14.0.4
+      '@livestore/adapter-expo':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
         specifier: workspace:*
         version: link:../../../packages/@livestore/devtools-expo
-      '@livestore/expo':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/expo
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1159,6 +1159,9 @@ importers:
       '@heroicons/react':
         specifier: 2.2.0
         version: 2.2.0(react@19.0.0)
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -1171,9 +1174,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1328,6 +1328,9 @@ importers:
 
   examples/standalone/todomvc:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -1340,9 +1343,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -1398,6 +1398,9 @@ importers:
 
   examples/standalone/todomvc-custom-elements:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -1410,9 +1413,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       effect:
         specifier: 3.13.1
         version: 3.13.1
@@ -1462,6 +1462,9 @@ importers:
 
   examples/standalone/todomvc-experimental:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -1474,9 +1477,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1520,6 +1520,9 @@ importers:
 
   examples/standalone/todomvc-solid:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1529,9 +1532,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1566,6 +1566,9 @@ importers:
 
   examples/standalone/todomvc-sync-cf:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
@@ -1581,9 +1584,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -1645,6 +1645,9 @@ importers:
 
   examples/standalone/todomvc-sync-electric:
     dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/adapter-web
       '@livestore/common':
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
@@ -1663,9 +1666,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/web
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1722,48 +1722,110 @@ importers:
         specifier: ^0.21.1
         version: 0.21.1(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
 
-  integration-tests:
+  packages/@livestore/adapter-expo:
     dependencies:
       '@livestore/common':
         specifier: workspace:*
-        version: link:../packages/@livestore/common
-      '@livestore/effect-playwright':
+        version: link:../common
+      '@livestore/devtools-expo-common':
         specifier: workspace:*
-        version: link:../packages/@livestore/effect-playwright
-      '@livestore/livestore':
-        specifier: workspace:*
-        version: link:../packages/@livestore/livestore
-      '@livestore/node':
-        specifier: workspace:*
-        version: link:../packages/@livestore/node
-      '@livestore/sync-cf':
-        specifier: workspace:*
-        version: link:../packages/@livestore/sync-cf
+        version: link:../devtools-expo-common
       '@livestore/utils':
         specifier: workspace:*
-        version: link:../packages/@livestore/utils
-      '@livestore/wa-sqlite':
-        specifier: 1.0.3-dev.7
-        version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../packages/@livestore/web
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.50.0
-        version: 1.50.0
-      '@types/node':
-        specifier: ^22.10.5
-        version: 22.10.5
+      expo-file-system:
+        specifier: '*'
+        version: 18.0.6(expo@52.0.23(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@expo/metro-runtime@4.0.1(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0)))(encoding@0.1.13)(graphql@16.10.0)(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))
+      expo-sqlite:
+        specifier: ^15.0.3
+        version: 15.0.3(expo@52.0.23(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@expo/metro-runtime@4.0.1(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0)))(encoding@0.1.13)(graphql@16.10.0)(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))(react@19.0.0)
+
+  packages/@livestore/adapter-node:
+    dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../adapter-web
+      '@livestore/adapter-webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/devtools-node-common':
+        specifier: workspace:*
+        version: link:../devtools-node-common
+      '@livestore/devtools-react':
+        specifier: 0.3.0-dev.12
+        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
+      '@livestore/sqlite-wasm':
+        specifier: workspace:*
+        version: link:../sqlite-wasm
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
+      '@opentelemetry/otlp-exporter-base':
+        specifier: 0.57.2
+        version: 0.57.2(@opentelemetry/api@1.9.0)
       vite:
-        specifier: ^6.1.0
+        specifier: 6.1.0
         version: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      ws:
+        specifier: 8.18.0
+        version: 8.18.0
+    devDependencies:
+      '@rollup/plugin-commonjs':
+        specifier: ^28.0.1
+        version: 28.0.2(rollup@4.30.1)
+      '@rollup/plugin-node-resolve':
+        specifier: ^16.0.0
+        version: 16.0.0(rollup@4.30.1)
+      '@rollup/plugin-terser':
+        specifier: ^0.4.4
+        version: 0.4.4(rollup@4.30.1)
+      '@types/ws':
+        specifier: ^8.5.12
+        version: 8.5.12
+      rollup:
+        specifier: ^4.27.4
+        version: 4.30.1
+
+  packages/@livestore/adapter-web:
+    dependencies:
+      '@livestore/adapter-webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../common
+      '@livestore/devtools-web-common':
+        specifier: workspace:*
+        version: link:../devtools-web-common
+      '@livestore/sqlite-wasm':
+        specifier: workspace:*
+        version: link:../sqlite-wasm
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
+    devDependencies:
+      '@types/chrome':
+        specifier: ^0.0.304
+        version: 0.0.304
+      '@types/wicg-file-system-access':
+        specifier: ^2023.10.5
+        version: 2023.10.5
       vitest:
         specifier: ^2.1.4
         version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
-      wrangler:
-        specifier: ^3.106.0
-        version: 3.106.0(@cloudflare/workers-types@4.20241230.0)
 
   packages/@livestore/common:
     dependencies:
@@ -1790,28 +1852,6 @@ importers:
         specifier: ^2.1.4
         version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
 
-  packages/@livestore/common-tests:
-    dependencies:
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../common
-      '@livestore/livestore':
-        specifier: workspace:*
-        version: link:../livestore
-      '@livestore/node':
-        specifier: workspace:*
-        version: link:../node
-      '@livestore/sqlite-wasm':
-        specifier: workspace:*
-        version: link:../sqlite-wasm
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../utils
-    devDependencies:
-      vitest:
-        specifier: ^2.1.4
-        version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
-
   packages/@livestore/db-schema:
     dependencies:
       dprint-node:
@@ -1833,21 +1873,21 @@ importers:
 
   packages/@livestore/devtools-expo:
     dependencies:
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../adapter-node
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../adapter-web
       '@livestore/devtools-react':
         specifier: 0.3.0-dev.12
         version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
-      '@livestore/node':
-        specifier: workspace:*
-        version: link:../node
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../web
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -1880,27 +1920,27 @@ importers:
 
   packages/@livestore/devtools-node-common:
     dependencies:
+      '@livestore/adapter-webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-      '@livestore/webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
 
   packages/@livestore/devtools-web-common:
     dependencies:
+      '@livestore/adapter-webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-      '@livestore/webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
 
   packages/@livestore/effect-playwright:
     dependencies:
@@ -1914,28 +1954,6 @@ importers:
       '@types/node':
         specifier: ^22.10.5
         version: 22.10.5
-
-  packages/@livestore/expo:
-    dependencies:
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../common
-      '@livestore/devtools-expo-common':
-        specifier: workspace:*
-        version: link:../devtools-expo-common
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@opentelemetry/api':
-        specifier: 1.9.0
-        version: 1.9.0
-    devDependencies:
-      expo-file-system:
-        specifier: '*'
-        version: 18.0.6(expo@52.0.23(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@expo/metro-runtime@4.0.1(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0)))(encoding@0.1.13)(graphql@16.10.0)(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))
-      expo-sqlite:
-        specifier: ^15.0.3
-        version: 15.0.3(expo@52.0.23(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@expo/metro-runtime@4.0.1(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0)))(encoding@0.1.13)(graphql@16.10.0)(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@18.3.12)(encoding@0.1.13)(react@19.0.0))(react@19.0.0)
 
   packages/@livestore/livestore:
     dependencies:
@@ -1958,9 +1976,9 @@ importers:
         specifier: ~16.0
         version: 16.0.1
     devDependencies:
-      '@livestore/web':
+      '@livestore/adapter-web':
         specifier: workspace:*
-        version: link:../web
+        version: link:../adapter-web
       '@opentelemetry/sdk-trace-base':
         specifier: ^1.30.1
         version: 1.30.1(@opentelemetry/api@1.9.0)
@@ -1976,58 +1994,6 @@ importers:
       vitest:
         specifier: ^2.1.4
         version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
-
-  packages/@livestore/node:
-    dependencies:
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../common
-      '@livestore/devtools-node-common':
-        specifier: workspace:*
-        version: link:../devtools-node-common
-      '@livestore/devtools-react':
-        specifier: 0.3.0-dev.12
-        version: 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
-      '@livestore/sqlite-wasm':
-        specifier: workspace:*
-        version: link:../sqlite-wasm
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@livestore/web':
-        specifier: workspace:*
-        version: link:../web
-      '@livestore/webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
-      '@opentelemetry/api':
-        specifier: 1.9.0
-        version: 1.9.0
-      '@opentelemetry/otlp-exporter-base':
-        specifier: 0.57.2
-        version: 0.57.2(@opentelemetry/api@1.9.0)
-      vite:
-        specifier: 6.1.0
-        version: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      ws:
-        specifier: 8.18.0
-        version: 8.18.0
-    devDependencies:
-      '@rollup/plugin-commonjs':
-        specifier: ^28.0.1
-        version: 28.0.2(rollup@4.30.1)
-      '@rollup/plugin-node-resolve':
-        specifier: ^16.0.0
-        version: 16.0.0(rollup@4.30.1)
-      '@rollup/plugin-terser':
-        specifier: ^0.4.4
-        version: 0.4.4(rollup@4.30.1)
-      '@types/ws':
-        specifier: ^8.5.12
-        version: 8.5.12
-      rollup:
-        specifier: ^4.27.4
-        version: 4.30.1
 
   packages/@livestore/react:
     dependencies:
@@ -2047,9 +2013,9 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
-      '@livestore/web':
+      '@livestore/adapter-web':
         specifier: workspace:*
-        version: link:../web
+        version: link:../adapter-web
       '@opentelemetry/sdk-trace-base':
         specifier: ^1.30.1
         version: 1.30.1(@opentelemetry/api@1.9.0)
@@ -2235,37 +2201,6 @@ importers:
         specifier: ^2.1.4
         version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
 
-  packages/@livestore/web:
-    dependencies:
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../common
-      '@livestore/devtools-web-common':
-        specifier: workspace:*
-        version: link:../devtools-web-common
-      '@livestore/sqlite-wasm':
-        specifier: workspace:*
-        version: link:../sqlite-wasm
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@livestore/webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
-      '@opentelemetry/api':
-        specifier: 1.9.0
-        version: 1.9.0
-    devDependencies:
-      '@types/chrome':
-        specifier: ^0.0.304
-        version: 0.0.304
-      '@types/wicg-file-system-access':
-        specifier: ^2023.10.5
-        version: 2023.10.5
-      vitest:
-        specifier: ^2.1.4
-        version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
-
   packages/@livestore/webmesh:
     dependencies:
       '@livestore/common':
@@ -2302,6 +2237,71 @@ importers:
       effect:
         specifier: ^3.13.1
         version: 3.13.1
+
+  tests/integration:
+    dependencies:
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-node
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-web
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common
+      '@livestore/effect-playwright':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/effect-playwright
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/sync-cf':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/sync-cf
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
+      '@livestore/wa-sqlite':
+        specifier: 1.0.3-dev.7
+        version: 1.0.3-dev.7
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.50.0
+        version: 1.50.0
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.10.5
+      vite:
+        specifier: ^6.1.0
+        version: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
+      wrangler:
+        specifier: ^3.106.0
+        version: 3.106.0(@cloudflare/workers-types@4.20241230.0)
+
+  tests/package-common:
+    dependencies:
+      '@livestore/adapter-node':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-node
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/sqlite-wasm':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/sqlite-wasm
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
+    devDependencies:
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
 
   website:
     dependencies:
@@ -4998,6 +4998,12 @@ packages:
 
   '@livestore/wa-sqlite@1.0.3-dev.7':
     resolution: {integrity: sha512-eaKCPwzoGkRs4+Buwomx+p/rdAaZtQ50WKrKWux6uWW6ytYL8BlxHmc+F2TLivh2z+ImFB4SZIRlsyAKB2b0wA==}
+
+  '@livestore/web@0.3.0-dev.12':
+    resolution: {integrity: sha512-wR7tuVYat8drEF7XrBDWuOhhajNcI5JKVXFJDnCCn8zxSfR2jcfrBinynFxHdmbQDjZ53Ily7dz7YKmZY11zUA==}
+
+  '@livestore/webmesh@0.3.0-dev.12':
+    resolution: {integrity: sha512-aJFMiDOmERAl3Js53YchkRZpp08PKEUhIz0Rx1TVxXFlkf1MBqBIc+qUTwimQXcPTKDQarEVSH8R55miM6TcWQ==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -20455,12 +20461,35 @@ snapshots:
   '@livestore/devtools-vite@0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)':
     dependencies:
       '@livestore/devtools-react': 0.3.0-dev.12(@livestore/livestore@packages+@livestore+livestore)(react@19.0.0)
-      '@livestore/web': link:packages/@livestore/web
+      '@livestore/web': 0.3.0-dev.12
     transitivePeerDependencies:
       - '@livestore/livestore'
+      - bufferutil
       - react
+      - utf-8-validate
 
   '@livestore/wa-sqlite@1.0.3-dev.7': {}
+
+  '@livestore/web@0.3.0-dev.12':
+    dependencies:
+      '@livestore/common': link:packages/@livestore/common
+      '@livestore/devtools-web-common': link:packages/@livestore/devtools-web-common
+      '@livestore/sqlite-wasm': link:packages/@livestore/sqlite-wasm
+      '@livestore/utils': link:packages/@livestore/utils
+      '@livestore/webmesh': 0.3.0-dev.12
+      '@opentelemetry/api': 1.9.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@livestore/webmesh@0.3.0-dev.12':
+    dependencies:
+      '@livestore/common': link:packages/@livestore/common
+      '@livestore/utils': link:packages/@livestore/utils
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@lukeed/ms@2.0.2': {}
 

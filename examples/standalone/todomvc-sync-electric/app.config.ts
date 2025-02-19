@@ -5,7 +5,6 @@ import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { defineConfig } from '@tanstack/start/config'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { VitePWA } from 'vite-plugin-pwa'
-// import tsConfigPaths from 'vite-tsconfig-paths'
 
 const __dirname = import.meta.dirname
 
@@ -51,9 +50,6 @@ export default defineConfig({
       exclude: ['@livestore/wa-sqlite'],
     },
     plugins: [
-      // tsConfigPaths({
-      //   projects: ['./tsconfig.json'],
-      // }),
       process.env.NODE_ENV === 'production'
         ? undefined
         : livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),

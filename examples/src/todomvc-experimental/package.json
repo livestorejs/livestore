@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@livestore/adapter-web": "workspace:*",
     "@livestore/devtools-vite": "0.3.0-dev.12",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/wa-sqlite": "1.0.3-dev.7",
-    "@livestore/web": "workspace:*",
     "@overengineering/fps-meter": "0.1.2",
     "effect": "3.13.1",
     "react": "19.0.0",

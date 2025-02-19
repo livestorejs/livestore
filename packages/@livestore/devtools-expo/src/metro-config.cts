@@ -38,7 +38,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
 const makeLiveStoreDevtoolsMiddleware = (options: Options) => {
   // TODO Once Expo supports proper ESM, we can make this a static import
   // const viteServerPromise = makeViteServer(options)
-  const viteServerPromise = import('@livestore/node/devtools').then(({ makeViteServer }) =>
+  const viteServerPromise = import('@livestore/adapter-node/devtools').then(({ makeViteServer }) =>
     makeViteServer({ ...options, mode: { _tag: 'expo' } }).pipe(Effect_.runPromise as typeof Effect.runPromise),
   )
 
