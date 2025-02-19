@@ -1,6 +1,6 @@
 import { makeAdapter } from '@livestore/adapter-expo'
+import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
-import { nanoid } from '@livestore/utils/nanoid'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import { Button, StyleSheet, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'

@@ -4,8 +4,7 @@
 
 import { makeAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, queryDb } from '@livestore/livestore'
-import { nanoid } from '@livestore/utils/nanoid'
+import { createStorePromise, nanoid, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import type { Todo } from './schema.js'

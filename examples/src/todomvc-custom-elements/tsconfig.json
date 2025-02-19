@@ -11,7 +11,6 @@
   "include": ["src"],
   "references": [
     { "path": "../../../packages/@livestore/livestore" },
-    { "path": "../../../packages/@livestore/utils" },
     { "path": "../../../packages/@livestore/adapter-web" }
   ]
 }

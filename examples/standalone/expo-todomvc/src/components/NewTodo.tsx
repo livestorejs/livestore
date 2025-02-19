@@ -1,5 +1,4 @@
 import { useQuery, useStore } from '@livestore/react'
-import { nanoid } from '@livestore/utils/nanoid'
 import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 

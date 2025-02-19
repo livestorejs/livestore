@@ -65,6 +65,7 @@
 
 ### Notable improvements & fixes
 
+- Introduced `@livestore/peer-deps` package to simplify dependency management for Livestore packages if you don't want to manually install all the peer dependencies yourself.
 - Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
 - Shows a browser dialog when trying to close a tab/window with unsaved changes
 - The SQLite leader database now uses the WAL mode to improve performance and reliability. (Thanks [@IGassmann](https://github.com/IGassmann) for the contribution #259.)

@@ -133,9 +133,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -293,9 +290,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 12.0.8
         version: 12.0.8(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -519,7 +513,7 @@ importers:
         version: 0.21.1(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.3.0(rollup@4.30.1)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 4.3.0(rollup@2.79.2)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   examples/src/todomvc:
     dependencies:
@@ -580,7 +574,7 @@ importers:
         version: 4.3.4(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@2.79.2)
+        version: 5.12.0(rollup@4.30.1)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -602,9 +596,6 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
@@ -937,9 +928,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1097,9 +1085,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 12.0.8
         version: 12.0.8(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -1406,9 +1391,6 @@ importers:
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.3-dev.7
         version: 1.0.3-dev.7
@@ -1968,6 +1950,39 @@ importers:
       vitest:
         specifier: ^2.1.4
         version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
+
+  packages/@livestore/peer-deps:
+    dependencies:
+      '@effect/cli':
+        specifier: ~0.56.1
+        version: 0.56.1(@effect/platform@0.77.1(effect@3.13.1))(@effect/printer-ansi@0.40.1(@effect/typeclass@0.31.1(effect@3.13.1))(effect@3.13.1))(@effect/printer@0.40.1(@effect/typeclass@0.31.1(effect@3.13.1))(effect@3.13.1))(effect@3.13.1)
+      '@effect/experimental':
+        specifier: ~0.41.1
+        version: 0.41.1(@effect/platform-node@0.73.1(@effect/platform@0.77.1(effect@3.13.1))(effect@3.13.1))(@effect/platform@0.77.1(effect@3.13.1))(effect@3.13.1)(ioredis@5.5.0)(ws@8.18.0)
+      '@effect/opentelemetry':
+        specifier: ~0.44.1
+        version: 0.44.1(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(effect@3.13.1)
+      '@effect/platform':
+        specifier: ~0.77.1
+        version: 0.77.1(effect@3.13.1)
+      '@effect/platform-browser':
+        specifier: ~0.56.1
+        version: 0.56.1(@effect/platform@0.77.1(effect@3.13.1))(effect@3.13.1)
+      '@effect/platform-bun':
+        specifier: ~0.57.1
+        version: 0.57.1(@effect/platform@0.77.1(effect@3.13.1))(effect@3.13.1)
+      '@effect/platform-node':
+        specifier: ~0.73.1
+        version: 0.73.1(@effect/platform@0.77.1(effect@3.13.1))(effect@3.13.1)
+      '@effect/vitest':
+        specifier: ~0.18.1
+        version: 0.18.1(effect@3.13.1)(vitest@2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0))
+      '@opentelemetry/api':
+        specifier: ~1.9.0
+        version: 1.9.0
+      effect:
+        specifier: ~3.13.1
+        version: 3.13.1
 
   packages/@livestore/react:
     dependencies:
@@ -34494,15 +34509,6 @@ snapshots:
     dependencies:
       rollup-plugin-inject: 3.0.2
 
-  rollup-plugin-visualizer@5.12.0(rollup@2.79.2):
-    dependencies:
-      open: 8.4.2
-      picomatch: 2.3.1
-      source-map: 0.7.4
-      yargs: 17.7.2
-    optionalDependencies:
-      rollup: 2.79.2
-
   rollup-plugin-visualizer@5.12.0(rollup@4.30.1):
     dependencies:
       open: 8.4.2
@@ -36281,6 +36287,17 @@ snapshots:
       vitefu: 1.0.5(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
     transitivePeerDependencies:
       - supports-color
+
+  vite-plugin-svgr@4.3.0(rollup@2.79.2)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
+    dependencies:
+      '@rollup/pluginutils': 5.1.4(rollup@2.79.2)
+      '@svgr/core': 8.1.0(typescript@5.7.2)
+      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.7.2))
+      vite: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+    transitivePeerDependencies:
+      - rollup
+      - supports-color
+      - typescript
 
   vite-plugin-svgr@4.3.0(rollup@4.30.1)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
     dependencies:

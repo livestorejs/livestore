@@ -27,6 +27,5 @@
     { "path": "../../../packages/@livestore/devtools-expo" },
     { "path": "../../../packages/@livestore/livestore" },
     { "path": "../../../packages/@livestore/react" },
-    { "path": "../../../packages/@livestore/utils" },
   ]
 }

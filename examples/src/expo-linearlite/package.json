@@ -9,7 +9,6 @@
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
-    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@react-native/assets-registry": "0.77.1",

@@ -65,6 +65,7 @@ export {
 } from '@livestore/common'
 
 export { deepEqual } from '@livestore/utils'
+export { nanoid } from '@livestore/utils/nanoid'
 
 export * from './utils/stack-info.js'
 

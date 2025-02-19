@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-expo-linearlite",
 +  "name": "livestore-example-standalone-expo-linearlite",
@@ -13,12 +13,10 @@
 -    "@livestore/devtools-expo": "workspace:*",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/react": "workspace:*",
--    "@livestore/utils": "workspace:*",
 +    "@livestore/adapter-expo": "0.3.0-dev.12",
 +    "@livestore/devtools-expo": "0.3.0-dev.12",
 +    "@livestore/livestore": "0.3.0-dev.12",
 +    "@livestore/react": "0.3.0-dev.12",
-+    "@livestore/utils": "0.3.0-dev.12",
      "@opentelemetry/api": "1.9.0",
      "@react-native-segmented-control/segmented-control": "2.5.7",
      "@react-native/assets-registry": "0.77.1",
