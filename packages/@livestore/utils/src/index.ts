@@ -14,12 +14,12 @@ export * as base64 from './base64.js'
 export { default as prettyBytes } from 'pretty-bytes'
 
 import type * as otel from '@opentelemetry/api'
+import type { Types } from 'effect'
 
 import { isDevEnv } from './env.js'
 import { objectToString } from './misc.js'
 
 export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
-export type PrettifyFlat<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 
 export type TypeEq<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 
@@ -29,6 +29,8 @@ export type AssertTrue<T extends true> = T
 
 export type Writeable<T> = { -readonly [P in keyof T]: T[P] }
 export type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> }
+
+export type Nullable<T> = { [K in keyof T]: T[K] | null }
 
 export type Primitive = null | undefined | string | number | boolean | symbol | bigint
 
@@ -134,7 +136,7 @@ export const unwrapThunk = <T>(_: T | (() => T)): T => {
   }
 }
 
-export type NullableFieldsToOptional<T> = PrettifyFlat<
+export type NullableFieldsToOptional<T> = Types.Simplify<
   Partial<T> & {
     [K in keyof T as null extends T[K] ? K : never]?: Exclude<T[K], null>
   } & {

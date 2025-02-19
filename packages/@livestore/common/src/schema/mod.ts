@@ -1,5 +1,6 @@
 export * from './system-tables.js'
 export * as DbSchema from './table-def.js'
+export { SqliteAst, SqliteDsl } from './db-schema/mod.js'
 export * from './mutations.js'
 export * from './schema-helpers.js'
 export * from './schema.js'

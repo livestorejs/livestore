@@ -8,9 +8,7 @@ overrides:
   '@livestore/adapter-expo': workspace:*
   '@livestore/adapter-node': workspace:*
   '@livestore/adapter-web': workspace:*
-  '@livestore/adapter-webmesh': workspace:*
   '@livestore/common': workspace:*
-  '@livestore/db-schema': workspace:*
   '@livestore/devtools-expo': workspace:*
   '@livestore/devtools-expo-common': workspace:*
   '@livestore/devtools-node-common': workspace:*
@@ -24,6 +22,7 @@ overrides:
   '@livestore/sync-cf': workspace:*
   '@livestore/sync-electric': workspace:*
   '@livestore/utils': workspace:*
+  '@livestore/webmesh': workspace:*
 
 patchedDependencies:
   graphology@0.26.0-alpha1:
@@ -520,7 +519,7 @@ importers:
         version: 0.21.1(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.3.0(rollup@2.79.2)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 4.3.0(rollup@4.30.1)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   examples/src/todomvc:
     dependencies:
@@ -581,7 +580,7 @@ importers:
         version: 4.3.4(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.30.1)
+        version: 5.12.0(rollup@2.79.2)
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -1749,9 +1748,6 @@ importers:
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../adapter-web
-      '@livestore/adapter-webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -1767,6 +1763,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1798,9 +1797,6 @@ importers:
 
   packages/@livestore/adapter-web:
     dependencies:
-      '@livestore/adapter-webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -1813,6 +1809,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1829,9 +1828,6 @@ importers:
 
   packages/@livestore/common:
     dependencies:
-      '@livestore/db-schema':
-        specifier: workspace:*
-        version: link:../db-schema
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1848,25 +1844,6 @@ importers:
         specifier: 0.24.8
         version: 0.24.8
     devDependencies:
-      vitest:
-        specifier: ^2.1.4
-        version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
-
-  packages/@livestore/db-schema:
-    dependencies:
-      dprint-node:
-        specifier: 1.0.8
-        version: 1.0.8
-    devDependencies:
-      drizzle-orm:
-        specifier: ^0.39.0
-        version: 0.39.0(@cloudflare/workers-types@4.20241230.0)(@opentelemetry/api@1.9.0)(@types/pg@8.11.10)(@types/react@19.0.8)(bun-types@1.1.42)(expo-sqlite@15.0.3(expo@52.0.23(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@expo/metro-runtime@4.0.1(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0)))(encoding@0.1.13)(graphql@16.10.0)(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(pg@8.13.1)(postgres@3.4.5)(react@19.0.0)(sqlite3@5.1.7)
-      effect:
-        specifier: ^3.13.1
-        version: 3.13.1
-      vite:
-        specifier: ^6.1.0
-        version: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
       vitest:
         specifier: ^2.1.4
         version: 2.1.8(@types/node@22.10.5)(jsdom@26.0.0)(lightningcss@1.28.2)(terser@5.37.0)
@@ -1920,27 +1897,27 @@ importers:
 
   packages/@livestore/devtools-node-common:
     dependencies:
-      '@livestore/adapter-webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
 
   packages/@livestore/devtools-web-common:
     dependencies:
-      '@livestore/adapter-webmesh':
-        specifier: workspace:*
-        version: link:../webmesh
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
 
   packages/@livestore/effect-playwright:
     dependencies:
@@ -1963,9 +1940,6 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
-      '@livestore/db-schema':
-        specifier: workspace:*
-        version: link:../db-schema
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2000,9 +1974,6 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
-      '@livestore/db-schema':
-        specifier: workspace:*
-        version: link:../db-schema
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../livestore
@@ -2055,9 +2026,6 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
-      '@livestore/db-schema':
-        specifier: workspace:*
-        version: link:../db-schema
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../livestore
@@ -2133,9 +2101,6 @@ importers:
 
   packages/@livestore/utils:
     dependencies:
-      '@livestore/db-schema':
-        specifier: workspace:*
-        version: link:../db-schema
       msgpackr:
         specifier: 1.11.2
         version: 1.11.2
@@ -5001,9 +4966,6 @@ packages:
 
   '@livestore/web@0.3.0-dev.12':
     resolution: {integrity: sha512-wR7tuVYat8drEF7XrBDWuOhhajNcI5JKVXFJDnCCn8zxSfR2jcfrBinynFxHdmbQDjZ53Ily7dz7YKmZY11zUA==}
-
-  '@livestore/webmesh@0.3.0-dev.12':
-    resolution: {integrity: sha512-aJFMiDOmERAl3Js53YchkRZpp08PKEUhIz0Rx1TVxXFlkf1MBqBIc+qUTwimQXcPTKDQarEVSH8R55miM6TcWQ==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -9385,9 +9347,6 @@ packages:
   dotenv@16.4.7:
     resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
     engines: {node: '>=12'}
-
-  dprint-node@1.0.8:
-    resolution: {integrity: sha512-iVKnUtYfGrYcW1ZAlfR/F59cUVL8QIhWoBJoSjkkdua/dkWIgjZfiLMeTjiB06X0ZLkQ0M2C1VbUj/CxkIf1zg==}
 
   drizzle-orm@0.39.0:
     resolution: {integrity: sha512-kkZwo3Jvht0fdJD/EWGx0vYcEK0xnGrlNVaY07QYluRZA9N21B9VFbY+54bnb/1xvyzcg97tE65xprSAP/fFGQ==}
@@ -20464,9 +20423,7 @@ snapshots:
       '@livestore/web': 0.3.0-dev.12
     transitivePeerDependencies:
       - '@livestore/livestore'
-      - bufferutil
       - react
-      - utf-8-validate
 
   '@livestore/wa-sqlite@1.0.3-dev.7': {}
 
@@ -20476,20 +20433,8 @@ snapshots:
       '@livestore/devtools-web-common': link:packages/@livestore/devtools-web-common
       '@livestore/sqlite-wasm': link:packages/@livestore/sqlite-wasm
       '@livestore/utils': link:packages/@livestore/utils
-      '@livestore/webmesh': 0.3.0-dev.12
+      '@livestore/webmesh': link:packages/@livestore/webmesh
       '@opentelemetry/api': 1.9.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  '@livestore/webmesh@0.3.0-dev.12':
-    dependencies:
-      '@livestore/common': link:packages/@livestore/common
-      '@livestore/utils': link:packages/@livestore/utils
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   '@lukeed/ms@2.0.2': {}
 
@@ -27165,10 +27110,6 @@ snapshots:
 
   dotenv@16.4.7: {}
 
-  dprint-node@1.0.8:
-    dependencies:
-      detect-libc: 1.0.3
-
   drizzle-orm@0.39.0(@cloudflare/workers-types@4.20241230.0)(@opentelemetry/api@1.8.0)(@types/pg@8.11.10)(@types/react@19.0.8)(bun-types@1.1.42)(expo-sqlite@15.0.3(expo@52.0.23(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@expo/metro-runtime@4.0.1(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0)))(encoding@0.1.13)(graphql@16.10.0)(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(react-native@0.76.5(@babel/core@7.26.9)(@babel/preset-env@7.26.0(@babel/core@7.26.9))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0))(react@19.0.0))(pg@8.13.1)(postgres@3.4.5)(react@19.0.0)(sqlite3@5.1.7):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20241230.0
@@ -27195,6 +27136,7 @@ snapshots:
       postgres: 3.4.5
       react: 19.0.0
       sqlite3: 5.1.7
+    optional: true
 
   dset@3.1.4: {}
 
@@ -34552,6 +34494,15 @@ snapshots:
     dependencies:
       rollup-plugin-inject: 3.0.2
 
+  rollup-plugin-visualizer@5.12.0(rollup@2.79.2):
+    dependencies:
+      open: 8.4.2
+      picomatch: 2.3.1
+      source-map: 0.7.4
+      yargs: 17.7.2
+    optionalDependencies:
+      rollup: 2.79.2
+
   rollup-plugin-visualizer@5.12.0(rollup@4.30.1):
     dependencies:
       open: 8.4.2
@@ -36330,17 +36281,6 @@ snapshots:
       vitefu: 1.0.5(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
     transitivePeerDependencies:
       - supports-color
-
-  vite-plugin-svgr@4.3.0(rollup@2.79.2)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
-    dependencies:
-      '@rollup/pluginutils': 5.1.4(rollup@2.79.2)
-      '@svgr/core': 8.1.0(typescript@5.7.2)
-      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.7.2))
-      vite: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-    transitivePeerDependencies:
-      - rollup
-      - supports-color
-      - typescript
 
   vite-plugin-svgr@4.3.0(rollup@4.30.1)(typescript@5.7.2)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
     dependencies:

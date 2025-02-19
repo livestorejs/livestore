@@ -1,6 +1,6 @@
-import { type SqliteAst as __SqliteAst, SqliteDsl } from '@livestore/db-schema'
 import { Schema } from '@livestore/utils/effect'
 
+import { SqliteDsl } from './db-schema/mod.js'
 import * as EventId from './EventId.js'
 import type { FromTable } from './table-def.js'
 import { table } from './table-def.js'

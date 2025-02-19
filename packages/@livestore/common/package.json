@@ -50,7 +50,6 @@
     }
   },
   "dependencies": {
-    "@livestore/db-schema": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "graphology": "0.26.0-alpha1",

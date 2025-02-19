@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Schema } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
 
 import * as F from './field-defs.js'

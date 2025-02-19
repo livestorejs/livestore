@@ -1,6 +1,5 @@
 import type { DerivedMutationHelperFns, QueryInfo } from '@livestore/common'
-import type { DbSchema } from '@livestore/common/schema'
-import type { SqliteDsl } from '@livestore/db-schema'
+import type { DbSchema, SqliteDsl } from '@livestore/common/schema'
 import type { GetResult, LiveQueryDef, Store } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'

@@ -1,16 +1,15 @@
-import type { Nullable, PrettifyFlat } from '@livestore/db-schema'
-import { SqliteDsl } from '@livestore/db-schema'
+import type { Nullable } from '@livestore/utils'
 import { shouldNeverHappen } from '@livestore/utils'
+import type { Types } from '@livestore/utils/effect'
 import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
 
 import type { DerivedMutationHelperFns } from '../derived-mutations.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
 import type { QueryBuilder } from '../query-builder/mod.js'
 import { makeQueryBuilder } from '../query-builder/mod.js'
+import { SqliteDsl } from './db-schema/mod.js'
 
 export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
-
-export { SqliteDsl } from '@livestore/db-schema'
 
 export type StateType = 'singleton' | 'dynamic'
 
@@ -242,6 +241,8 @@ export const tableIsSingleton = <TTableDef extends TableDefBase>(
   tableDef: TTableDef,
 ): tableDef is TTableDef & { options: { isSingleton: true } } => tableDef.options.isSingleton === true
 
+export type PrettifyFlat<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
+
 type SqliteTableDefForInput<
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition<any, any>,
@@ -283,7 +284,7 @@ type WithDefaults<
 
 export namespace FromTable {
   // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TTableDef extends TableDefBase> = PrettifyFlat<
+  export type RowDecoded<TTableDef extends TableDefBase> = Types.Simplify<
     Nullable<Pick<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>> &
       Omit<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>
   >
@@ -302,7 +303,7 @@ export namespace FromTable {
     >
   }
 
-  export type RowEncoded<TTableDef extends TableDefBase> = PrettifyFlat<
+  export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
     Nullable<Pick<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>> &
       Omit<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>
   >
@@ -314,7 +315,7 @@ export namespace FromTable {
 
 export namespace FromColumns {
   // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TColumns extends SqliteDsl.Columns> = PrettifyFlat<
+  export type RowDecoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
     Nullable<Pick<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>> &
       Omit<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>
   >
@@ -323,7 +324,7 @@ export namespace FromColumns {
     [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
   }
 
-  export type RowEncoded<TColumns extends SqliteDsl.Columns> = PrettifyFlat<
+  export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
     Nullable<Pick<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>> &
       Omit<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>
   >

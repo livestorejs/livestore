@@ -1,4 +1,5 @@
-import { absurd, Option, Schema } from 'effect'
+import { casesHandled } from '@livestore/utils'
+import { Option, Schema } from '@livestore/utils/effect'
 
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType
@@ -235,7 +236,7 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
       return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T>
     }
     default: {
-      return absurd(columnType)
+      return casesHandled(columnType)
     }
   }
 }

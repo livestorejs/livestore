@@ -1,9 +1,9 @@
-import type { SqliteDsl } from '@livestore/db-schema'
-import { SqliteAst } from '@livestore/db-schema'
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../adapter-types.js'
 import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
+import type { SqliteDsl } from './db-schema/mod.js'
+import { SqliteAst } from './db-schema/mod.js'
 import {
   type MutationDef,
   type MutationDefMap,

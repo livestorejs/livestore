@@ -1,8 +1,8 @@
-import type { Option } from 'effect'
-import { Schema } from 'effect'
+import type { Nullable } from '@livestore/utils'
+import type { Option, Types } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
-import type * as SqliteAst from '../../ast/sqlite.js'
-import type { Nullable, PrettifyFlat } from '../../utils.js'
+import type * as SqliteAst from '../ast/sqlite.js'
 import type { ColumnDefinition } from './field-defs.js'
 
 export * from './field-defs.js'
@@ -115,7 +115,7 @@ export type Index = {
 
 export namespace FromTable {
   // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TTableDefinition extends TableDefinition<any, any>> = PrettifyFlat<
+  export type RowDecoded<TTableDefinition extends TableDefinition<any, any>> = Types.Simplify<
     Nullable<Pick<RowDecodedAll<TTableDefinition>, NullableColumnNames<TTableDefinition>>> &
       Omit<RowDecodedAll<TTableDefinition>, NullableColumnNames<TTableDefinition>>
   >
@@ -132,7 +132,7 @@ export namespace FromTable {
     [K in keyof TTableDefinition['columns']]: Schema.Schema.Encoded<TTableDefinition['columns'][K]['schema']>
   }
 
-  export type RowEncoded<TTableDefinition extends TableDefinition<any, any>> = PrettifyFlat<
+  export type RowEncoded<TTableDefinition extends TableDefinition<any, any>> = Types.Simplify<
     Nullable<Pick<RowEncodeNonNullable<TTableDefinition>, NullableColumnNames<TTableDefinition>>> &
       Omit<RowEncodeNonNullable<TTableDefinition>, NullableColumnNames<TTableDefinition>>
   >
@@ -152,7 +152,7 @@ export namespace FromTable {
 
 export namespace FromColumns {
   // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TColumns extends Columns> = PrettifyFlat<
+  export type RowDecoded<TColumns extends Columns> = Types.Simplify<
     Nullable<Pick<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>> &
       Omit<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>
   >
@@ -161,7 +161,7 @@ export namespace FromColumns {
     readonly [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
   }
 
-  export type RowEncoded<TColumns extends Columns> = PrettifyFlat<
+  export type RowEncoded<TColumns extends Columns> = Types.Simplify<
     Nullable<Pick<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>> &
       Omit<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>
   >
@@ -188,7 +188,7 @@ export namespace FromColumns {
   export type RequiresInsertValues<TColumns extends Columns> =
     RequiredInsertColumnNames<TColumns> extends never ? false : true
 
-  export type InsertRowDecoded<TColumns extends Columns> = PrettifyFlat<
+  export type InsertRowDecoded<TColumns extends Columns> = Types.Simplify<
     Pick<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>> &
       Partial<Omit<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>>>
   >

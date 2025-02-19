@@ -64,8 +64,6 @@ export {
   type RowQuery,
 } from '@livestore/common'
 
-export { SqliteAst, SqliteDsl } from '@livestore/db-schema'
-
 export { deepEqual } from '@livestore/utils'
 
 export * from './utils/stack-info.js'

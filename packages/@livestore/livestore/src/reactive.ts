@@ -24,8 +24,8 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
 
 import { BoundArray } from '@livestore/common'
-import type { PrettifyFlat } from '@livestore/utils'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
+import type { Types } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 // import { getDurationMsFromSpan } from './otel.js'
 
@@ -144,7 +144,7 @@ const encodedOptionNone = <A>(): EncodedOption<A> => ({ _tag: 'None' })
 export type SerializedAtom = SerializedRef | SerializedThunk
 
 export type SerializedRef = Readonly<
-  PrettifyFlat<
+  Types.Simplify<
     Pick<Ref<unknown, unknown, any>, '_tag' | 'id' | 'label' | 'meta' | 'isDirty' | 'isDestroyed' | 'refreshes'> & {
       /** Is `None` if `getSnapshot` was called with `includeResults: false` which is the default */
       previousResult: EncodedOption<string>
@@ -155,7 +155,7 @@ export type SerializedRef = Readonly<
 >
 
 export type SerializedThunk = Readonly<
-  PrettifyFlat<
+  Types.Simplify<
     Pick<
       Thunk<unknown, unknown, any>,
       '_tag' | 'id' | 'label' | 'meta' | 'isDirty' | 'isDestroyed' | 'recomputations'
@@ -169,7 +169,7 @@ export type SerializedThunk = Readonly<
 >
 
 export type SerializedEffect = Readonly<
-  PrettifyFlat<
+  Types.Simplify<
     Pick<Effect<any>, '_tag' | 'id' | 'label' | 'invocations' | 'isDestroyed'> & {
       sub: ReadonlyArray<string>
     }

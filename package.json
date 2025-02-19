@@ -34,7 +34,6 @@
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
-    "@livestore/db-schema": "workspace:*",
     "@livestore/devtools-expo": "workspace:*",
     "@livestore/devtools-expo-common": "workspace:*",
     "@livestore/devtools-node-common": "workspace:*",

@@ -1,4 +1,4 @@
-import { type Option, Schema } from 'effect'
+import { type Option, Schema } from '@livestore/utils/effect'
 
 import { hashCode } from '../hash.js'
 

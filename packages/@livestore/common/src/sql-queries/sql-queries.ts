@@ -1,7 +1,7 @@
-import type { SqliteDsl } from '@livestore/db-schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
 
+import type { SqliteDsl } from '../schema/db-schema/mod.js'
 import { sql } from '../util.js'
 import { objectEntries } from './misc.js'
 import * as ClientTypes from './types.js'

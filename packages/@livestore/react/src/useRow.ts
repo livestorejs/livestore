@@ -1,7 +1,7 @@
 import type { QueryInfo, RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
+import type { SqliteDsl } from '@livestore/common/schema'
 import { DbSchema } from '@livestore/common/schema'
-import type { SqliteDsl } from '@livestore/db-schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'

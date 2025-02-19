@@ -18,9 +18,24 @@ export default defineConfig({
           output: 'api/livestore',
         }),
         starlightTypeDoc({
+          entryPoints: ['../packages/@livestore/react/src/mod.ts'],
+          tsconfig: '../packages/@livestore/react/tsconfig.json',
+          output: 'api/react',
+        }),
+        starlightTypeDoc({
           entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
           tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
-          output: 'api/web',
+          output: 'api/adapter-web',
+        }),
+        starlightTypeDoc({
+          entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
+          tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
+          output: 'api/adapter-node',
+        }),
+        starlightTypeDoc({
+          entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
+          tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
+          output: 'api/adapter-expo',
         }),
       ],
 

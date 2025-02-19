@@ -44,6 +44,8 @@
 - Breaking: Renamed adapter packages:
   - `@livestore/web` now is `@livestore/adapter-web`
   - `@livestore/expo` now is `@livestore/adapter-expo`
+- Breaking: Removed `@livestore/db-schema` package and moved to `@livestore/common/schema`
+
 - Breaking: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
   // before
