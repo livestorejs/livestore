@@ -7,6 +7,7 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - Adjust mutations to embrace "past tense" and also add to docs
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
@@ -106,7 +107,7 @@
 - Upgraded dependencies
   - Now supports React 19
   - `effect` (needs to be 3.13.0 or higher)
-  - `@livestore/wa-sqlite` (needs to be 1.0.3-dev.7)
+  - `@livestore/wa-sqlite` (needs to be 1.0.5-dev.1)
 
 ## 0.2.0
 

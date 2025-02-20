@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 
 import { makeDb } from '@/server/db.js'
 
-const electricHost = 'http://localhost:3000'
+const electricHost = 'http://localhost:30000'
 
 export const APIRoute = createAPIFileRoute('/api/electric')({
   GET: async ({ request }) => {

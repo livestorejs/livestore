@@ -11,6 +11,7 @@ const todos = DbSchema.table(
     text: DbSchema.text({ default: '' }),
     completed: DbSchema.boolean({ default: false }),
     deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    importantField: DbSchema.text({}),
   },
   { deriveMutations: true },
 )

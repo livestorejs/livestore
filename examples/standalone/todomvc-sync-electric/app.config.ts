@@ -27,15 +27,16 @@ export default defineConfig({
     appDirectory: './src',
   },
   vite: {
-    // server: {
-    //   port: process.env.PORT ? Number(process.env.PORT) : 60_001,
-    //   headers: credentiallessHeaders,
-    //   fs: {
-    //     strict: false,
-    //   },
-    // },
     // @ts-expect-error
-    server: { fs: { strict: false } },
+    server: {
+      port: process.env.PORT ? Number(process.env.PORT) : 60_001,
+      headers: credentiallessHeaders,
+      fs: {
+        strict: false,
+      },
+    },
+    // // @ts-expect-error
+    // server: { fs: { strict: false } },
     // preview: {
     //   headers: credentiallessHeaders,
     // },

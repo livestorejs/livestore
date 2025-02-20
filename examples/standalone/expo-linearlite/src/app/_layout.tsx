@@ -4,6 +4,7 @@ import 'react-native-reanimated'
 
 import { makeAdapter } from '@livestore/adapter-expo'
 import type { BaseGraphQLContext, LiveStoreSchema, Store } from '@livestore/livestore'
+import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'

@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker'
+import { nanoid } from '@livestore/livestore'
 
 import type { Comment, Issue, Reaction, User } from '@/livestore/schema.ts'
 import { PRIORITIES, STATUSES } from '@/types.ts'

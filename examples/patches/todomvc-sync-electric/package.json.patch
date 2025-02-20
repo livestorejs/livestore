@@ -19,6 +19,6 @@
 +    "@livestore/livestore": "0.3.0-dev.12",
 +    "@livestore/react": "0.3.0-dev.12",
 +    "@livestore/sync-electric": "0.3.0-dev.12",
-     "@livestore/wa-sqlite": "1.0.3-dev.7",
+     "@livestore/wa-sqlite": "1.0.5-dev.1",
      "@overengineering/fps-meter": "0.1.2",
      "@tanstack/start": "1.105.0",
