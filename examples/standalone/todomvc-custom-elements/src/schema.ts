@@ -25,38 +25,38 @@ export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
 
-const addTodo = defineMutation(
-  'addTodo',
+const todoCreated = defineMutation(
+  'todoCreated',
   Schema.Struct({ id: Schema.String, text: Schema.String }),
   sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
 )
 
-const completeTodo = defineMutation(
-  'completeTodo',
+const todoCompleted = defineMutation(
+  'todoCompleted',
   Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = true WHERE id = $id`,
 )
 
-const uncompleteTodo = defineMutation(
-  'uncompleteTodo',
+const todoUncompleted = defineMutation(
+  'todoUncompleted',
   Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = false WHERE id = $id`,
 )
 
-export const deleteTodo = defineMutation(
-  'deleteTodo',
+export const todoDeleted = defineMutation(
+  'todoDeleted',
   Schema.Struct({ id: Schema.String, deleted: Schema.DateFromNumber }),
   sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
 )
 
-export const clearCompleted = defineMutation(
-  'clearCompleted',
+export const todoClearedCompleted = defineMutation(
+  'todoClearedCompleted',
   Schema.Struct({ deleted: Schema.Number }),
   sql`UPDATE todos SET deleted = $deleted WHERE completed = true`,
 )
 
-const updateNewTodoText = defineMutation(
-  'updateNewTodoText',
+const updatedNewTodoText = defineMutation(
+  'updatedNewTodoText',
   Schema.Struct({ text: Schema.String }),
   sql`UPDATE app SET newTodoText = $text`,
 )
@@ -64,12 +64,12 @@ const updateNewTodoText = defineMutation(
 const setFilter = defineMutation('setFilter', Schema.Struct({ filter: Filter }), sql`UPDATE app SET filter = $filter`)
 
 export const mutations = {
-  addTodo,
-  completeTodo,
-  uncompleteTodo,
-  deleteTodo,
-  clearCompleted,
-  updateNewTodoText,
+  todoCreated,
+  todoCompleted
+  todoUncompleted,
+  todoDeleted,
+  todoClearedCompleted,
+  updatedNewTodoText,
   setFilter,
 }
 

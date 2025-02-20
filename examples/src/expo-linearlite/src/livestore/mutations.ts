@@ -93,7 +93,7 @@ export const updateNewIssueDescription = defineMutation(
   sql`UPDATE app SET newIssueDescription = $text`,
 )
 
-export const setFilter = defineMutation(
+export const filterUpdated = defineMutation(
   'setFilter',
   Schema.Struct({ filter: Filter }),
   sql`UPDATE app SET filter = $filter`,

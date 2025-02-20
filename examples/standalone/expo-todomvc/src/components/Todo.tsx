@@ -10,7 +10,7 @@ import { Checkbox } from './Checkbox.tsx'
 export const Todo: React.FC<ITodo> = ({ id, text, completed }) => {
   const { store } = useStore()
 
-  const handleDeleteTodo = () => store.mutate(mutations.deleteTodo({ id, deleted: new Date() }))
+  const handleDeleteTodo = () => store.mutate(mutations.todoDeleted({ id, deleted: new Date() }))
 
   return (
     <View style={styles.container}>

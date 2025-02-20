@@ -10,15 +10,15 @@ export const NewTodo: React.FC = () => {
   const { store } = useStore()
   const { newTodoText } = useQuery(app$)
 
-  const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
-  const addTodo = () =>
+  const updatedNewTodoText = (text: string) => store.mutate(mutations.updatedNewTodoText({ text }))
+  const todoCreated = () =>
     store.mutate(
-      mutations.addTodo({ id: new Date().toISOString(), text: newTodoText }),
-      mutations.updateNewTodoText({ text: '' }),
+      mutations.todoCreated({ id: new Date().toISOString(), text: newTodoText }),
+      mutations.updatedNewTodoText({ text: '' }),
     )
   const addRandom50 = () => {
     const todos = Array.from({ length: 50 }, (_, i) => ({ id: nanoid(), text: `Todo ${i}` }))
-    store.mutate(...todos.map((todo) => mutations.addTodo(todo)))
+    store.mutate(...todos.map((todo) => mutations.todoCreated(todo)))
   }
   const reset = () => store.mutate(mutations.clearAll({ deleted: Date.now() }))
 
@@ -36,7 +36,7 @@ export const NewTodo: React.FC = () => {
           ref={inputRef}
           style={styles.input}
           value={newTodoText}
-          onChangeText={updateNewTodoText}
+          onChangeText={updatedNewTodoText}
           onKeyPress={(e) => {
             console.log(e.nativeEvent.key)
             if (e.nativeEvent.key === 'Escape' || e.nativeEvent.key === 'Tab') {
@@ -44,9 +44,9 @@ export const NewTodo: React.FC = () => {
               inputRef.current?.blur()
             }
           }}
-          onSubmitEditing={addTodo}
+          onSubmitEditing={todoCreated}
         />
-        <Pressable onPress={addTodo}>
+        <Pressable onPress={todoCreated}>
           <Text style={styles.submit}>Add</Text>
         </Pressable>
         <Pressable onPress={addRandom50}>

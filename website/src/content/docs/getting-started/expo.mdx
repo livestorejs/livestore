@@ -201,20 +201,20 @@ Here's an example:
 import { Schema } from 'effect'
 import { defineMutation, sql } from '@livestore/livestore'
 
-export const addTodo = defineMutation(
-  'addTodo',
+export const todoCreated = defineMutation(
+  'todoCreated',
   Schema.Struct({ id: Schema.String, text: Schema.String }),
   sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
 )
 
-export const completeTodo = defineMutation(
-  'completeTodo',
+export const todoCompleted = defineMutation(
+  'todoCompleted',
   Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = true WHERE id = $id`,
 )
 
-export const deleteTodo = defineMutation(
-  'deleteTodo',
+export const todoDeleted = defineMutation(
+  'todoDeleted',
   Schema.Struct({ id: Schema.String, deleted: Schema.DateFromNumber }),
   sql`UPDATE todos SET deleted = $deleted WHERE id = $id`,
 )
@@ -266,7 +266,7 @@ export default function RootLayout() {
 const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
   // If the todos table is empty, add an initial todo
   if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
-    store.mutate(mutations.addTodo({ id: cuid(), text: '☕ Make coffee' }))
+    store.mutate(mutations.todoCreated({ id: cuid(), text: '☕ Make coffee' }))
   }
 }
 ```
@@ -279,7 +279,7 @@ Here's an example:
 
 ```ts
 import { useStore } from '@livestore/react'
-import { deleteTodo } from '@/schema/mutations'
+import { todoDeleted } from '@/schema/mutations'
 
 export default function HomeScreen() {
   const { store } = useStore()
@@ -287,7 +287,7 @@ export default function HomeScreen() {
     <Button
       title="Delete my todo"
       onPress={() => {
-        store.mutate(deleteTodo({ id: '1', deleted: Date.now() }))
+        store.mutate(todoDeleted({ id: '1', deleted: Date.now() }))
       }}
     />
   )

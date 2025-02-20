@@ -63,14 +63,14 @@ Migration strategies:
 import { defineMutation, sql } from '@livestore/livestore'
 import { Schema } from 'effect'
 
-export const addTodo = defineMutation(
-  'addTodo',
+export const todoCreated = defineMutation(
+  'todoCreated',
   Schema.Struct({ id: Schema.String, text: Schema.String }),
   sql`INSERT INTO todos (id, text, completed) VALUES ($id, $text, false)`,
 )
 
-export const completeTodo = defineMutation(
-  'completeTodo',
+export const todoCompleted = defineMutation(
+  'todoCompleted',
   Schema.Struct({ id: Schema.String }),
   sql`UPDATE todos SET completed = true WHERE id = $id`,
 )

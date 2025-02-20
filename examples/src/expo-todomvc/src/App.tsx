@@ -32,7 +32,7 @@ export const App = () => {
         }}
         boot={(store) => {
           if (store.query(tables.todos.query.count()) === 0) {
-            store.mutate(mutations.addTodo({ id: nanoid(), text: 'Make coffee' }))
+            store.mutate(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))
           }
         }}
         adapter={adapter}

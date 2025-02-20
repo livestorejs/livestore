@@ -9,11 +9,11 @@ export const Header: React.FC = () => {
   const sessionId = store.sessionId
   const { newTodoText } = useQuery(app$)
 
-  const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text, sessionId }))
-  const addTodo = () =>
+  const updatedNewTodoText = (text: string) => store.mutate(mutations.updatedNewTodoText({ text, sessionId }))
+  const todoCreated = () =>
     store.mutate(
-      mutations.addTodo({ id: crypto.randomUUID(), text: newTodoText }),
-      mutations.updateNewTodoText({ text: '', sessionId }),
+      mutations.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
+      mutations.updatedNewTodoText({ text: '', sessionId }),
     )
 
   return (
@@ -24,10 +24,10 @@ export const Header: React.FC = () => {
         placeholder="What needs to be done?"
         autoFocus={true}
         value={newTodoText}
-        onChange={(e) => updateNewTodoText(e.target.value)}
+        onChange={(e) => updatedNewTodoText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
-            addTodo()
+            todoCreated()
           }
         }}
       ></input>

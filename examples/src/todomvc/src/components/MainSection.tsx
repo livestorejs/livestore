@@ -21,7 +21,7 @@ export const MainSection: React.FC = () => {
 
   const toggleTodo = React.useCallback(
     ({ id, completed }: Todo) =>
-      store.mutate(completed ? mutations.uncompleteTodo({ id }) : mutations.completeTodo({ id })),
+      store.mutate(completed ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id })),
     [store],
   )
 
@@ -37,7 +37,7 @@ export const MainSection: React.FC = () => {
               <label>{todo.text}</label>
               <button
                 className="destroy"
-                onClick={() => store.mutate(mutations.deleteTodo({ id: todo.id, deleted: new Date() }))}
+                onClick={() => store.mutate(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))}
               ></button>
             </div>
           </li>

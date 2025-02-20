@@ -42,8 +42,8 @@ export const mutations = {
           : { modify: { set: [facts.todoExists(id), facts.todoIsWriteable(id, true), facts.todoTextUpdated(id)] } },
     },
   ),
-  completeTodo: defineMutation(
-    'completeTodo',
+  todoCompleted: defineMutation(
+    'todoCompleted',
     Schema.Struct({ id: Schema.String }),
     // consider `RETURNING` to validate before applying facts
     'UPDATE todos SET completed = true WHERE id = $id',
@@ -58,8 +58,8 @@ export const mutations = {
       }),
     },
   ),
-  uncompleteTodo: defineMutation(
-    'uncompleteTodo',
+  todoUncompleted: defineMutation(
+    'todoUncompleted',
     Schema.Struct({ id: Schema.String }),
     'UPDATE todos SET completed = false WHERE id = $id',
     {
@@ -69,8 +69,8 @@ export const mutations = {
       }),
     },
   ),
-  completeTodos: defineMutation(
-    'completeTodos',
+  todoCompleteds: defineMutation(
+    'todoCompleteds',
     Schema.Struct({ ids: Schema.Array(Schema.String) }),
     'UPDATE todos SET completed = true WHERE id IN ($ids:csv)',
     {

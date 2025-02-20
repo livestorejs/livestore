@@ -12,7 +12,7 @@ export const Checkbox: React.FC<{
   const { store } = useStore()
 
   const handleCheckbox = () =>
-    store.mutate(isCompleted ? mutations.uncompleteTodo({ id }) : mutations.completeTodo({ id }))
+    store.mutate(isCompleted ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id }))
 
   return (
     <TouchableOpacity onPress={handleCheckbox} style={isCompleted ? styles.checked : styles.unChecked}>

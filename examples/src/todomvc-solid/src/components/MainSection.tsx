@@ -20,7 +20,7 @@ const visibleTodos$ = queryDb(
 
 export const MainSection: Component = () => {
   const toggleTodo = ({ id, completed }: Todo) => {
-    store()?.mutate(completed ? mutations.uncompleteTodo({ id }) : mutations.completeTodo({ id }))
+    store()?.mutate(completed ? mutations.todoUncompleted({ id }) : mutations.todoCompleted({ id }))
   }
 
   const visibleTodos = query(visibleTodos$, [])
@@ -39,7 +39,7 @@ export const MainSection: Component = () => {
                   class="destroy"
                   onClick={(e) => {
                     e.stopPropagation()
-                    store()?.mutate(mutations.deleteTodo({ id: todo().id, deleted: new Date() }))
+                    store()?.mutate(mutations.todoDeleted({ id: todo().id, deleted: new Date() }))
                   }}
                 ></button>
               </div>

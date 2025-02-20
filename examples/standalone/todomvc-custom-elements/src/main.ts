@@ -24,23 +24,23 @@ const store = await createStorePromise({
 const appState$ = queryDb(tables.app.query.row())
 const todos$ = queryDb(tables.todos.query.where({ deleted: null }))
 
-const updateNewTodoText = (text: string) => store.mutate(mutations.updateNewTodoText({ text }))
+const updatedNewTodoText = (text: string) => store.mutate(mutations.updatedNewTodoText({ text }))
 
-const addTodo = (newTodoText: string) => {
-  store.mutate(mutations.addTodo({ id: nanoid(), text: newTodoText }))
-  store.mutate(mutations.updateNewTodoText({ text: '' }))
+const todoCreated = (newTodoText: string) => {
+  store.mutate(mutations.todoCreated({ id: nanoid(), text: newTodoText }))
+  store.mutate(mutations.updatedNewTodoText({ text: '' }))
 }
 
 const toggleTodo = (todo: Todo) => {
   if (todo.completed) {
-    store.mutate(mutations.uncompleteTodo({ id: todo.id }))
+    store.mutate(mutations.todoUncompleted({ id: todo.id }))
   } else {
-    store.mutate(mutations.completeTodo({ id: todo.id }))
+    store.mutate(mutations.todoCompleted({ id: todo.id }))
   }
 }
 
-const deleteTodo = (todo: Todo) => {
-  store.mutate(mutations.deleteTodo({ id: todo.id, deleted: new Date() }))
+const todoDeleted = (todo: Todo) => {
+  store.mutate(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
 }
 
 const TodoItemTemplate = html`
@@ -76,7 +76,7 @@ class TodoItem extends HTMLElement {
 
   onDelete() {
     if (this.#todo) {
-      deleteTodo(this.#todo)
+      todoDeleted(this.#todo)
     }
   }
 
@@ -141,13 +141,13 @@ class TodoList extends HTMLElement {
 
   onInput(e: Event) {
     const input = e.target as HTMLInputElement
-    updateNewTodoText(input.value)
+    updatedNewTodoText(input.value)
   }
 
   onSubmit(e: Event) {
     e.preventDefault()
     const input = this.shadowRoot!.querySelector('input')
-    addTodo(input!.value)
+    todoCreated(input!.value)
   }
 
   #todos: ReadonlyArray<Todo> = []

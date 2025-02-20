@@ -24,7 +24,7 @@ export const Header: Component = () => {
         value={newRow()?.newTodoText ?? ''}
         onChange={(e) => {
           store()?.mutate(
-            mutations.updateNewTodoText({
+            mutations.updatedNewTodoText({
               text: e.target.value,
               sessionId,
             }),
@@ -33,8 +33,8 @@ export const Header: Component = () => {
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.currentTarget.value.trim()) {
             store()?.mutate(
-              mutations.addTodo({ id: crypto.randomUUID(), text: e.currentTarget.value }),
-              mutations.updateNewTodoText({ text: '', sessionId }),
+              mutations.todoCreated({ id: crypto.randomUUID(), text: e.currentTarget.value }),
+              mutations.updatedNewTodoText({ text: '', sessionId }),
             )
           }
         }}

@@ -7,7 +7,6 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - Adjust mutations to embrace "past tense" and also add to docs
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
@@ -90,6 +89,7 @@
 ### Examples
 
 - Reworked the Linearlite React example. (Thanks [@lukaswiesehan](https://github.com/lukaswiesehan) for the contribution #248.)
+- Adjusted mutation names to use past-tense
 - Added Otel to `todomvc` and `todomvc-sync-cf` example
 
 ### Internal changes
@@ -187,7 +187,7 @@
   ```tsx
   <LiveStoreProvider
     schema={schema}
-    boot={(store) => store.mutate(mutations.addTodo({ id: nanoid(), text: 'Make coffee' }))}
+    boot={(store) => store.mutate(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))}
     adapter={adapter}
     batchUpdates={batchUpdates}
   >

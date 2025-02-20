@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
   const { filter } = useQuery(app$)
   const incompleteCount = useQuery(incompleteCount$)
 
-  const setFilter = (filter: Filter) => store.mutate(mutations.setFilter({ filter, sessionId }))
+  const setFilter = (filter: Filter) => store.mutate(mutations.filterUpdated({ filter, sessionId }))
 
   return (
     <footer className="footer">
@@ -40,7 +40,7 @@ export const Footer: React.FC = () => {
       </ul>
       <button
         className="clear-completed"
-        onClick={() => store.mutate(mutations.clearCompleted({ deleted: Date.now() }))}
+        onClick={() => store.mutate(mutations.todoClearedCompleted({ deleted: Date.now() }))}
       >
         Clear completed
       </button>

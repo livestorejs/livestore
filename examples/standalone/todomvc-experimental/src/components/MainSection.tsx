@@ -28,7 +28,7 @@ export const MainSection: React.FC = () => {
   const toggleTodo = React.useCallback(
     (todo: Todo) =>
       store.mutate(
-        todo.completed ? mutations.uncompleteTodo({ id: todo.id }) : mutations.completeTodo({ id: todo.id }),
+        todo.completed ? mutations.todoUncompleted({ id: todo.id }) : mutations.todoCompleted({ id: todo.id }),
       ),
     [store],
   )
@@ -74,7 +74,7 @@ const Item = ({
         // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
         // Since using the `setState` doesn't seem to happen "quickly enough"
         if (state === 'deleting' && todo.deleted === null && !isDeletedRef.current) {
-          store.mutate(mutations.deleteTodo({ id: todo.id, deleted: new Date() }))
+          store.mutate(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
           isDeletedRef.current = true
         }
       }}

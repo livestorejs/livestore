@@ -29,7 +29,7 @@ export const ActionBar: Component = () => {
   )
   const incompleteCount = query(incompleteCount$, 0)
 
-  const setFilter = (filter: Filter) => store()?.mutate(mutations.setFilter({ filter, sessionId }))
+  const setFilter = (filter: Filter) => store()?.mutate(mutations.filterUpdated({ filter, sessionId }))
 
   return (
     <footer class="footer">
@@ -72,7 +72,7 @@ export const ActionBar: Component = () => {
       <button
         class="clear-completed"
         onClick={() => {
-          store()?.mutate(mutations.clearCompleted({ deleted: Date.now() }))
+          store()?.mutate(mutations.todoClearedCompleted({ deleted: Date.now() }))
         }}
       >
         Clear completed
