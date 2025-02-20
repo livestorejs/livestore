@@ -10,6 +10,8 @@
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
+    - Electric:
+      - fix: connectivity state + offline handling
   - Devtools
     - Fix: When resetting the database but keeping the eventlog
       - the app doesn't show a shutdown screen
@@ -75,6 +77,7 @@
 
 ### Devtools
 
+- Changed devtools path from `/_devtools.html` to `/_livestore`
 - General connection stability improvements
 - Improved sync view:
   - See sync heads in real-time

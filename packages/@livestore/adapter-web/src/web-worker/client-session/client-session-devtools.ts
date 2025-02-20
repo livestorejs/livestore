@@ -50,7 +50,7 @@ export const bootDevtools = ({
       searchParams.set('clientId', clientSession.clientId)
       searchParams.set('sessionId', clientSession.sessionId)
       searchParams.set('storeId', storeId)
-      const url = `${location.origin}/_devtools.html?${searchParams.toString()}`
+      const url = `${location.origin}/_livestore?${searchParams.toString()}`
 
       // Check whether devtools are available and then log the URL
       const response = yield* Effect.promise(() => fetch(url))

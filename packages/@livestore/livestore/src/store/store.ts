@@ -262,6 +262,10 @@ export class Store<
     return this.clientSession.sessionId
   }
 
+  get clientId(): string {
+    return this.clientSession.clientId
+  }
+
   /**
    * Subscribe to the results of a query
    * Returns a function to cancel the subscription.

@@ -33,7 +33,7 @@ export const Toolbar = () => {
         <SeedInput />
         <ResetButton />
         <DownloadButton />
-        <DevtoolsButton />
+        {import.meta.env.DEV && <DevtoolsButton />}
       </div>
       <FPSMeter height={28} className="hidden lg:block" />
     </div>

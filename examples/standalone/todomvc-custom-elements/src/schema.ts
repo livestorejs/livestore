@@ -65,7 +65,7 @@ const setFilter = defineMutation('setFilter', Schema.Struct({ filter: Filter }),
 
 export const mutations = {
   todoCreated,
-  todoCompleted
+  todoCompleted,
   todoUncompleted,
   todoDeleted,
   todoClearedCompleted,

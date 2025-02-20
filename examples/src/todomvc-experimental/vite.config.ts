@@ -36,13 +36,6 @@ export default defineConfig({
   build: {
     //   sourcemap: true,
     //   minify: false,
-    rollupOptions: {
-      input: {
-        main: path.resolve('./index.html'),
-        // For demo purposes we also include the devtools page in the prod build for the Chrome extension to work
-        devtools: path.resolve('./_devtools.html'),
-      },
-    },
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
