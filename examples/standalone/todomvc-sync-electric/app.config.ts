@@ -51,9 +51,8 @@ export default defineConfig({
       exclude: ['@livestore/wa-sqlite'],
     },
     plugins: [
-      process.env.NODE_ENV === 'production'
-        ? undefined
-        : livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+      // NOTE vinxi causes the devtools to be served on: http://localhost:3000/_build/_livestore
+      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
       VitePWA({
         registerType: 'prompt',
         workbox: {
