@@ -6,7 +6,7 @@
   "dependencies": {
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
-    "@livestore/devtools-react": "0.3.0-dev.12",
+    "@livestore/devtools-vite": "0.3.0-dev.12",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.1",
     "vite": "6.1.0",

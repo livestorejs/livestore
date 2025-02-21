@@ -14,7 +14,6 @@ import { makeNoopTracer } from '../NoopTracer.js'
 // import { tapCauseLogPretty } from '../effect/Effect.js'
 
 export * as Cli from '@effect/cli'
-export * as PlatformBun from '@effect/platform-bun'
 export * as PlatformNode from '@effect/platform-node'
 export * as SocketServer from '@effect/experimental/SocketServer'
 export * as OtelResource from '@effect/opentelemetry/Resource'

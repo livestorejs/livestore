@@ -7,6 +7,7 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - Only allow `useRow` for client-only tables
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
