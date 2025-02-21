@@ -46,9 +46,11 @@
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*"
+    "@livestore/webmesh": "workspace:*",
+    "esbuild": "0.25.0"
   },
   "resolutions#": {
+    "esbuild": "Needed for CF Wrangler / vinxi build",
     "@livestore/*": "Needed to force PNPM to install local packages"
   },
   "scripts": {
