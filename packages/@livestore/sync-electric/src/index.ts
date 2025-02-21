@@ -2,7 +2,7 @@ import type { IsOfflineError, SyncBackend } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { EventId } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
-import { shouldNeverHappen } from '@livestore/utils'
+import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
@@ -187,6 +187,20 @@ export const makeSyncBackend = ({
         const nextHandle = {
           offset: headers['electric-offset'],
           handle: headers['electric-handle'],
+        }
+
+        // TODO handle case where Electric shape is not found for a given handle
+        // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
+        // {
+        // "message": "The shape associated with this shape_handle and offset was not found. Resync to fetch the latest shape",
+        // "shape_handle": "2494_84241",
+        // "offset": "-1"
+        // }
+        if (resp.status === 409) {
+          // TODO: implementation plan:
+          // start pulling events from scratch with the new handle and ignore the "old events"
+          // until we found a new event, then, continue with the new handle
+          return notYetImplemented(`Electric shape not found for handle ${nextHandle.handle}`)
         }
 
         // Electric completes the long-poll request after ~20 seconds with a 204 status
