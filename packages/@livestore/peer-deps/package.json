@@ -20,6 +20,6 @@
     "access": "public"
   },
   "scripts": {
-    "test": "vitest"
+    "test": "echo 'No tests for peer-deps'"
   }
 }
