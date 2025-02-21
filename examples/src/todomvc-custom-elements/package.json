@@ -5,7 +5,7 @@
   "private": true,
   "dependencies": {
     "@livestore/adapter-web": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.13",
+    "@livestore/devtools-vite": "0.3.0-dev.14",
     "@livestore/livestore": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.1",
     "effect": "3.13.1",
