@@ -53,7 +53,7 @@ export const useRow: {
       DbSchema.TableOptions & {
         isSingleton: false
         requiredInsertColumnNames: 'id'
-        deriveMutations: { enabled: true }
+        deriveMutations: { enabled: true; clientOnly: true }
       }
     >,
   >(

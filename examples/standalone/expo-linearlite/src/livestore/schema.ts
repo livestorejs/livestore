@@ -1,21 +1,9 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
 
 import { Filter, PRIORITIES, STATUSES } from '../types.ts'
 import * as issuesMutations from './issues-mutations.ts'
 import * as mutations from './mutations.ts'
 import * as userMutations from './user-mutations.ts'
-
-const todos = DbSchema.table(
-  'todos',
-  {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '' }),
-    completed: DbSchema.boolean({ default: false }),
-    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
-  },
-  { deriveMutations: true },
-)
 
 const app = DbSchema.table(
   'app',
@@ -44,7 +32,7 @@ const app = DbSchema.table(
 
     navigationHistory: DbSchema.text({ default: '/' }),
   },
-  { isSingleton: true, deriveMutations: true },
+  { isSingleton: true, deriveMutations: { clientOnly: true } },
 )
 
 // Linearlite ↓
@@ -124,7 +112,6 @@ export type Reaction = DbSchema.FromTable.RowDecoded<typeof reactions>
 export type Activity = DbSchema.FromTable.RowDecoded<typeof activity>
 
 export const tables = {
-  todos,
   app,
   users,
   issues,

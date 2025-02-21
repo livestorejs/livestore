@@ -268,13 +268,13 @@ type WithDefaults<
   isSingleton: TOptionsInput['isSingleton'] extends true ? true : false
   disableAutomaticIdColumn: TOptionsInput['disableAutomaticIdColumn'] extends true ? true : false
   deriveMutations: TOptionsInput['deriveMutations'] extends true
-    ? { enabled: true; clientOnly: boolean }
+    ? { enabled: true; clientOnly: false }
     : TOptionsInput['deriveMutations'] extends false
       ? { enabled: false }
       : TOptionsInput['deriveMutations'] extends { clientOnly: boolean }
         ? {
             enabled: true
-            clientOnly: TOptionsInput['deriveMutations']['clientOnly']
+            clientOnly: TOptionsInput['deriveMutations']['clientOnly'] extends true ? true : false
           }
         : never
   isSingleColumn: SqliteDsl.IsSingleColumn<TColumns>

@@ -14,7 +14,8 @@ import { Status } from '@/types/status'
 import { formatDate } from '@/utils/format-date'
 import { getIssueTag } from '@/utils/get-issue-tag'
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
-import { useRow, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
+import { queryDb } from '@livestore/livestore'
 import React from 'react'
 import { Button } from 'react-aria-components'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -23,7 +24,7 @@ export const Issue = () => {
   const id = Number(useParams().id ?? 0)
   const navigate = useNavigate()
   const { store } = useStore()
-  const [issue] = useRow(tables.issue, id)
+  const issue = useQuery(queryDb(tables.issue.query.where({ id }).first(), { deps: [id] }))
 
   const close = () => {
     if (window.history.length > 2) navigate(-1)

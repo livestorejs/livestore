@@ -1,6 +1,7 @@
 import Editor from '@/components/common/editor'
 import { Issue, mutations, tables } from '@/lib/livestore/schema'
-import { useRow, useStore } from '@livestore/react'
+import { useQuery, useStore } from '@livestore/react'
+import { queryDb } from '@livestore/livestore'
 import React from 'react'
 
 export const DescriptionInput = ({
@@ -17,8 +18,15 @@ export const DescriptionInput = ({
   className?: string
 }) => {
   const { store } = useStore()
-  const [row] = useRow(tables.description, issue?.id ?? 0)
-  if (issue) description = row?.body
+  description = useQuery(
+    queryDb(
+      tables.description.query
+        .select('body', { pluck: true })
+        .where({ id: issue?.id ?? 0 })
+        .first(),
+      { deps: [issue?.id] },
+    ),
+  )
 
   const handleDescriptionChange = (body: string) => {
     if (issue) store.mutate(mutations.updateDescription({ id: issue.id, body }))

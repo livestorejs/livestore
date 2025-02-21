@@ -29,7 +29,7 @@ export const todos = DbSchema.table(
     text: DbSchema.text({ default: '', nullable: false }),
     completed: DbSchema.boolean({ default: false, nullable: false }),
   },
-  { deriveMutations: true, isSingleton: false },
+  { deriveMutations: { clientOnly: true }, isSingleton: false },
 )
 
 export const app = DbSchema.table(
@@ -48,7 +48,7 @@ export const userInfo = DbSchema.table(
     username: DbSchema.text({ default: '' }),
     text: DbSchema.text({ default: '' }),
   },
-  { deriveMutations: true },
+  { deriveMutations: { clientOnly: true } },
 )
 
 export const AppRouterSchema = DbSchema.table(
