@@ -56,7 +56,7 @@ export const AppRouterSchema = DbSchema.table(
   {
     currentTaskId: DbSchema.text({ default: null, nullable: true }),
   },
-  { isSingleton: true, deriveMutations: true },
+  { isSingleton: true, deriveMutations: { clientOnly: true } },
 )
 
 export const tables = { todos, app, userInfo, AppRouterSchema }

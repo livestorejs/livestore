@@ -11,6 +11,7 @@ sidebar:
   - An adapter can instantiate a client session for a given platform (e.g. web, Expo)
 - Client
   - A logical group of client sessions
+  - client only: tables / mutations are are only available to the client and not synced across clients
 - Client session
   - Store
   - Reactivity graph

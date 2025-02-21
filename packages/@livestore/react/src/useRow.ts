@@ -24,6 +24,14 @@ export type UseRowResult<TTableDef extends DbSchema.TableDefBase> = [
  *   - `setRow` is a function that can be used to update the row (values will be encoded according to the table schema)
  *   - `query$` is a `LiveQuery` that e.g. can be used to subscribe to changes to the row
  *
+ * `useRow` only works with for tables with client-only derived mutations,
+ * i.e. requires the following table options to be set:
+ * ```ts
+ * const myTable = DbSchema.table('myTable', {
+ *  // fields ...
+ * }, { deriveMutations: { clientOnly: true } })
+ * ```
+ *
  * If the table is a singleton table, `useRow` can be called without an `id` argument. Otherwise, the `id` argument is required.
  */
 export const useRow: {
@@ -31,7 +39,7 @@ export const useRow: {
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
-      DbSchema.TableOptions & { isSingleton: true; deriveMutations: { enabled: true } }
+      DbSchema.TableOptions & { isSingleton: true; deriveMutations: { enabled: true; clientOnly: true } }
     >,
   >(
     table: TTableDef,
@@ -59,7 +67,7 @@ export const useRow: {
   <
     TTableDef extends DbSchema.TableDef<
       DbSchema.DefaultSqliteTableDef,
-      DbSchema.TableOptions & { isSingleton: false; deriveMutations: { enabled: true } }
+      DbSchema.TableOptions & { isSingleton: false; deriveMutations: { enabled: true; clientOnly: true } }
     >,
   >(
     table: TTableDef,
@@ -70,7 +78,7 @@ export const useRow: {
 } = <
   TTableDef extends DbSchema.TableDef<
     DbSchema.DefaultSqliteTableDefConstrained,
-    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+    DbSchema.TableOptions & { deriveMutations: { enabled: true; clientOnly: true } }
   >,
 >(
   table: TTableDef,
@@ -90,11 +98,9 @@ export const useRow: {
 
   type TComponentState = SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
 
-  const tableName = table.sqliteDef.name
+  React.useMemo(() => validateTableOptions(table), [table])
 
-  if (DbSchema.tableHasDerivedMutations(table) === false) {
-    shouldNeverHappen(`useRow called on table "${tableName}" which does not have 'deriveMutations: true' set`)
-  }
+  const tableName = table.sqliteDef.name
 
   const { store } = useStore({ store: options?.store })
 
@@ -188,3 +194,17 @@ export type StateSetters<TTableDef extends DbSchema.TableDefBase> = TTableDef['o
     } & {
       setMany: Dispatch<SetStateAction<Partial<RowQuery.Result<TTableDef>>>>
     }
+
+const validateTableOptions = (table: DbSchema.TableDef<any, any>) => {
+  if (table.options.deriveMutations.clientOnly === false) {
+    return shouldNeverHappen(
+      `useRow called on table "${table.sqliteDef.name}" which does not have 'deriveMutations: { clientOnly: true }' set`,
+    )
+  }
+
+  if (table.options.deriveMutations.enabled === false) {
+    return shouldNeverHappen(
+      `useRow called on table "${table.sqliteDef.name}" which does not have 'deriveMutations: { clientOnly: true }' set`,
+    )
+  }
+}

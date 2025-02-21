@@ -59,7 +59,6 @@ export type TableOptionsInput = Partial<{
   deriveMutations:
     | boolean
     | {
-        enabled: true
         clientOnly?: boolean
       }
 }>
@@ -272,10 +271,10 @@ type WithDefaults<
     ? { enabled: true; clientOnly: boolean }
     : TOptionsInput['deriveMutations'] extends false
       ? { enabled: false }
-      : TOptionsInput['deriveMutations'] extends { enabled: true; clientOnly?: boolean }
+      : TOptionsInput['deriveMutations'] extends { clientOnly: boolean }
         ? {
             enabled: true
-            clientOnly: TOptionsInput['deriveMutations']['clientOnly'] extends true ? true : false
+            clientOnly: TOptionsInput['deriveMutations']['clientOnly']
           }
         : never
   isSingleColumn: SqliteDsl.IsSingleColumn<TColumns>

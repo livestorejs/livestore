@@ -143,7 +143,15 @@ jobs:
       - run: pnpm build:ts # Needed for starlight-typedoc
       - run: pnpm build
         working-directory: website
-      - run: bunx netlify deploy --dir=website/dist --site=livestore-website ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --filter=website
+      - run: |
+          # Get branch name and sanitize it for Netlify
+          BRANCH_ALIAS=$(echo ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+          bunx netlify deploy \
+            --dir=website/dist \
+            --site=livestore-website \
+            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
+            --alias=$BRANCH_ALIAS \
+            --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 

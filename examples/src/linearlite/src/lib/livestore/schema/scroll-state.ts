@@ -12,5 +12,5 @@ export const SrollState = Schema.Struct({
 export type ScrollState = typeof SrollState.Type
 
 export const scrollState = DbSchema.table('scroll_state', DbSchema.json({ schema: SrollState, default: {} }), {
-  deriveMutations: { enabled: true, clientOnly: true },
+  deriveMutations: { clientOnly: true },
 })

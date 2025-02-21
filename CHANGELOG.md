@@ -7,7 +7,6 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - Only allow `useRow` for client-only tables
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
@@ -49,7 +48,7 @@
   - `@livestore/expo` now is `@livestore/adapter-expo`
 - Breaking: Removed `@livestore/db-schema` package and moved to `@livestore/common/schema`
 
-- Breaking: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
+- Breaking `@livestore/react`: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
   // before
   const query$ = useScopedQuery(() => queryDb(tables.issues.query.where({ id: issueId }).first()), ['issue', issueId])
@@ -59,6 +58,7 @@
   ```
 
 - Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
+- Breaking `@livestore/react`: `useRow` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
