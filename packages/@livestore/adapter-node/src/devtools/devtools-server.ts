@@ -2,6 +2,7 @@ import http from 'node:http'
 import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
+import { LS_DEV } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
 import { makeWebSocketServer } from '@livestore/webmesh/websocket-server'
@@ -60,16 +61,14 @@ export const startDevtoolsServer = ({
       mode: { _tag: 'node', storeId, clientId, sessionId, url: `ws://localhost:${port}` },
       schemaPath: path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
-        viteConfig.server ??= {}
-        viteConfig.server.fs ??= {}
+        if (LS_DEV) {
+          viteConfig.server ??= {}
+          viteConfig.server.fs ??= {}
+          viteConfig.server.fs.strict = true
 
-        // TODO move this into the example code
-        // Point to Overtone monorepo root
-        viteConfig.server.fs.allow ??= []
-        viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
-
-        viteConfig.optimizeDeps ??= {}
-        viteConfig.optimizeDeps.force = true
+          viteConfig.optimizeDeps ??= {}
+          viteConfig.optimizeDeps.force = true
+        }
 
         return viteConfig
       },
@@ -79,9 +78,9 @@ export const startDevtoolsServer = ({
 
     httpServer.on('request', (req, res) => {
       if (req.url === '/' || req.url === '') {
-        res.writeHead(302, { Location: '/livestore-devtools' })
+        res.writeHead(302, { Location: '/_livestore' })
         res.end()
-      } else if (req.url?.startsWith('/livestore-devtools')) {
+      } else if (req.url?.startsWith('/_livestore')) {
         return viteServer.middlewares(req, res as any)
       }
     })

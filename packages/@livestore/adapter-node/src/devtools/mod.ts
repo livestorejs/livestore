@@ -1,2 +1,2 @@
 export { makeViteServer } from './vite-dev-server.js'
-export type { Options } from './types.js'
+export type { ViteDevtoolsOptions } from './vite-dev-server.js'

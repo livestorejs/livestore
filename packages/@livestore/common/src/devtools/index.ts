@@ -46,3 +46,30 @@ export namespace WebBridge {
       schema: All,
     })
 }
+
+export const DevtoolsMode = Schema.Union(
+  Schema.TaggedStruct('from-search-params', {}),
+  // TODO add storeId, clientId and sessionId for Expo
+  Schema.TaggedStruct('expo', {
+    storeId: Schema.String,
+  }),
+  // TODO add storeId, clientId and sessionId for Node
+  Schema.TaggedStruct('node', {
+    storeId: Schema.String,
+    clientId: Schema.String,
+    sessionId: Schema.String,
+    url: Schema.String,
+  }),
+  Schema.TaggedStruct('web', {
+    storeId: Schema.String,
+    clientId: Schema.String,
+    sessionId: Schema.String,
+  }),
+  Schema.TaggedStruct('browser-extension', {
+    storeId: Schema.String,
+    clientId: Schema.String,
+    sessionId: Schema.String,
+  }),
+)
+
+export type DevtoolsMode = typeof DevtoolsMode.Type

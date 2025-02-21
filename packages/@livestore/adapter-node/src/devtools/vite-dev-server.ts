@@ -2,15 +2,33 @@ import * as http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import type { Devtools } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { Effect } from '@livestore/utils/effect'
 import * as Vite from 'vite'
 
-import type { Options } from './types.js'
+export type ViteDevtoolsOptions = {
+  viteConfig?: (config: Vite.UserConfig) => Vite.UserConfig
+  /**
+   * Path to the file exporting the LiveStore schema as `export const schema = ...`
+   * File path must be relative to the project root and will be imported via Vite.
+   *
+   * Example: `./src/schema.ts`
+   */
+  schemaPath: string
+  /**
+   * The mode of the devtools server.
+   *
+   * @default 'node'
+   */
+  mode: Extract<Devtools.DevtoolsMode, { _tag: 'node' } | { _tag: 'expo' }>
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-export const makeViteServer = (options: Options): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
+// NOTE this is currently also used in @livestore/devtools-expo
+export const makeViteServer = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
   Effect.gen(function* () {
     const hmrPort = yield* getFreePort
 
@@ -22,15 +40,8 @@ export const makeViteServer = (options: Options): Effect.Effect<Vite.ViteDevServ
         hmr: {
           port: hmrPort,
         },
-        fs: {
-          // Adds `node_modules` so we can import `@livestore/wa-sqlite` for WASM to work
-          allow: [path.resolve(__dirname, '..', '..')],
-        },
-      },
-      resolve: {
-        alias: {
-          '@schema': path.resolve(cwd, options.schemaPath),
-        },
+        // Relaxing fs access for monorepo setup
+        fs: { strict: process.env.LS_DEV ? false : true },
       },
       appType: 'spa',
       optimizeDeps: {
@@ -38,8 +49,14 @@ export const makeViteServer = (options: Options): Effect.Effect<Vite.ViteDevServ
         exclude: ['@livestore/wa-sqlite'],
       },
       root: __dirname,
-      base: '/livestore-devtools/',
-      plugins: [virtualHtmlPlugin(options.mode)],
+      base: '/_livestore/',
+      plugins: [
+        livestoreDevtoolsPlugin({
+          schemaPath: path.resolve(cwd, options.schemaPath),
+          mode: options.mode,
+          path: '/',
+        }),
+      ],
       clearScreen: false,
       logLevel: 'silent',
     })
@@ -52,53 +69,6 @@ export const makeViteServer = (options: Options): Effect.Effect<Vite.ViteDevServ
 
     return viteServer
   }).pipe(Effect.withSpan('@livestore/adapter-node:devtools:makeViteServer'))
-
-// TODO unify this with `@livestore/devtools-vite/plugin.ts`
-const virtualHtmlPlugin = (mode: Options['mode']): Vite.Plugin => ({
-  name: 'virtual-html',
-  configureServer: (server) => {
-    return () => {
-      server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/' || req.url === '' || req.url === '/index.html') {
-          const html = `
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="livestore-devtools" content="true" />
-<title>LiveStore Devtools</title>
-</head>
-<body>
-<div id="root"></div>
-<script type="module">
-import '@livestore/devtools-react/index.css'
-import { mountDevtools } from '@livestore/devtools-react'
-import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { schema } from '@schema'
-
-mountDevtools({
-  schema,
-  rootEl: document.getElementById('root'),
-  sharedWorker,
-  mode: ${JSON.stringify(mode)},
-  license: ${JSON.stringify(process.env.LSD_LICENSE)},
-})
-</script>
-</body>
-</html>
-          `
-          const transformedHtml = await server.transformIndexHtml(req.url, html)
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'text/html')
-          res.end(transformedHtml)
-        } else {
-          next()
-        }
-      })
-    }
-  },
-})
 
 export const getFreePort = Effect.async<number, UnexpectedError>((cb) => {
   const server = http.createServer()
