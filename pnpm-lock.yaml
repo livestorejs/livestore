@@ -12,7 +12,7 @@ overrides:
   '@livestore/devtools-expo': workspace:*
   '@livestore/devtools-expo-common': workspace:*
   '@livestore/devtools-node-common': workspace:*
-  '@livestore/devtools-vite': 0.3.0-dev.14
+  '@livestore/devtools-vite': 0.3.0-dev.15
   '@livestore/devtools-web-common': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/react': workspace:*
@@ -351,8 +351,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -520,8 +520,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -590,8 +590,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -651,8 +651,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -734,8 +734,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
@@ -755,8 +755,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -837,8 +837,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1146,8 +1146,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1315,8 +1315,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1385,8 +1385,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1446,8 +1446,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1529,8 +1529,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
@@ -1550,8 +1550,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1632,8 +1632,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1736,8 +1736,8 @@ importers:
         specifier: workspace:*
         version: link:../devtools-node-common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -1838,8 +1838,8 @@ importers:
         specifier: workspace:*
         version: link:../adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.14
-        version: 0.3.0-dev.14
+        specifier: 0.3.0-dev.15
+        version: 0.3.0-dev.15
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -4969,8 +4969,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  '@livestore/devtools-vite@0.3.0-dev.14':
-    resolution: {integrity: sha512-LymTcoF2f8LRfCz+01ms99V6e9JxnvTQOtT05S87sDK7N0tRZHHMzJbydeY3XqzdlwmiJjCE7M2EhKe6ZanKZA==}
+  '@livestore/devtools-vite@0.3.0-dev.15':
+    resolution: {integrity: sha512-1cC02YDcXlSvxyWw/LkWMUJt0nVe5GOV7HZCHJ1Q2iJq/G7K/i4Qk3wt0zgPOA/SzZTs6O7xFjG3ZvT6W6rS3w==}
 
   '@livestore/wa-sqlite@1.0.5-dev.1':
     resolution: {integrity: sha512-cI+PiPvsmaKKn7Ezkb1XrigXmERQ15MynkXiuoXPkCYZCQQTubZ+3GzjMJTCx4Y+GTO/ka2EbbCFG132hbroMA==}
@@ -20426,7 +20426,7 @@ snapshots:
       react: 19.0.0
       react-native: 0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0)
 
-  '@livestore/devtools-vite@0.3.0-dev.14': {}
+  '@livestore/devtools-vite@0.3.0-dev.15': {}
 
   '@livestore/wa-sqlite@1.0.5-dev.1': {}
 
