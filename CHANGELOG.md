@@ -7,6 +7,9 @@
 
 - Still todo:
   - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - Examples:
+    - for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
