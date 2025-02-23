@@ -39,7 +39,9 @@ const makeLiveStoreDevtoolsMiddleware = (options: Options) => {
   // TODO Once Expo supports proper ESM, we can make this a static import
   // const viteServerPromise = makeViteServer(options)
   const viteServerPromise = import('@livestore/adapter-node/devtools').then(({ makeViteServer }) =>
-    makeViteServer({ ...options, mode: { _tag: 'expo' } }).pipe(Effect_.runPromise as typeof Effect.runPromise),
+    makeViteServer({ ...options, mode: { _tag: 'expo', storeId: 'default' } }).pipe(
+      Effect_.runPromise as typeof Effect.runPromise,
+    ),
   )
 
   const middleware = async (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => {
