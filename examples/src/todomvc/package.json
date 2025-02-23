@@ -3,7 +3,11 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=23"
+  },
   "dependencies": {
+    "@happy-dom/global-registrator": "17.1.3",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/devtools-vite": "0.3.0-dev.16",
     "@livestore/livestore": "workspace:*",
@@ -15,6 +19,7 @@
     "@opentelemetry/sdk-trace-web": "1.30.1",
     "@overengineering/fps-meter": "0.1.2",
     "effect": "3.13.1",
+    "happy-dom": "17.1.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3",
@@ -30,7 +35,7 @@
     "vite-plugin-pwa": "^0.21.1"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "vite build; mv dist/index.html dist/index2.html",
     "build:analyze": "VITE_ANALYZE=1 run build",
     "dev": "vite --force",
     "preview": "vite preview"

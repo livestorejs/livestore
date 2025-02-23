@@ -34,8 +34,8 @@ export default defineConfig({
     headers: credentiallessHeaders,
   },
   build: {
-    //   sourcemap: true,
-    //   minify: false,
+    // sourcemap: true,
+    // minify: false,
   },
   worker: isProdBuild ? { format: 'es' } : undefined,
   optimizeDeps: {
@@ -45,13 +45,13 @@ export default defineConfig({
   plugins: [
     react(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-    VitePWA({
-      registerType: 'prompt',
-      workbox: {
-        maximumFileSizeToCacheInBytes: 4_000_000, // ~4MB
-        globPatterns: ['**/*.{js,html,wasm,css,ico,db,lz4,blob}'],
-      },
-    }),
+    // VitePWA({
+    //   registerType: 'prompt',
+    //   workbox: {
+    //     maximumFileSizeToCacheInBytes: 4_000_000, // ~4MB
+    //     globPatterns: ['**/*.{js,html,wasm,css,ico,db,lz4,blob}'],
+    //   },
+    // }),
     // Needed for OPFS Sqlite to work
     {
       name: 'configure-response-headers',

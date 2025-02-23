@@ -127,10 +127,10 @@ export const makeClientSessionSyncProcessor = ({
         }
       }
 
-      yield* Effect.acquireRelease(
-        Effect.sync(() => window.addEventListener('beforeunload', onBeforeUnload)),
-        () => Effect.sync(() => window.removeEventListener('beforeunload', onBeforeUnload)),
-      )
+      // yield* Effect.acquireRelease(
+      //   Effect.sync(() => window.addEventListener('beforeunload', onBeforeUnload)),
+      //   () => Effect.sync(() => window.removeEventListener('beforeunload', onBeforeUnload)),
+      // )
     }
 
     yield* clientSession.leaderThread.mutations.pull.pipe(
