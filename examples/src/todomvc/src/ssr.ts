@@ -8,7 +8,7 @@ import { renderToString } from 'react-dom/server'
 
 // import { App } from './Root.jsx'
 
-export const doSSR = async ({
+export const runSSR = async ({
   dbUrl,
   indexHtmlUrl,
   isNetlify,
@@ -34,7 +34,9 @@ export const doSSR = async ({
 
   const document = window.document
 
+  // Needed for older Node.js versions (e.g. Netlify)
   if (Promise.withResolvers === undefined) {
+    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
     Promise.withResolvers = function <T>() {
       let resolve: (value: T | PromiseLike<T>) => void
       let reject: (reason?: any) => void
@@ -135,7 +137,7 @@ if (import.meta.main) {
     // setTimeout(async () => {}, 1000)
     const indexHtmlUrl = new URL('../dist/index.html', import.meta.url)
     const dbUrl = new URL('../public/app-123.db', import.meta.url)
-    console.log(await doSSR({ dbUrl, indexHtmlUrl }))
+    console.log(await runSSR({ dbUrl, indexHtmlUrl }))
   }
 
   main()
