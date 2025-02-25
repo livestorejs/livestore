@@ -149,7 +149,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       ),
   }).pipe(
     Layer.provide(PlatformNode.NodeWorkerRunner.layer),
-    Layer.launch,
+    WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread' }),

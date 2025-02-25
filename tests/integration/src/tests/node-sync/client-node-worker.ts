@@ -82,7 +82,7 @@ runner.pipe(
   Layer.provide(PlatformNode.NodeContext.layer),
   Layer.provide(ChildProcessRunner.layer),
   // Layer.provide(PlatformNode.NodeWorkerRunner.layer),
-  Layer.launch,
+  WorkerRunner.launch,
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
   Effect.provide(IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),

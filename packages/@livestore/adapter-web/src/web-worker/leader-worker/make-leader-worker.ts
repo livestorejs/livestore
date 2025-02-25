@@ -64,7 +64,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
 
   return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
-    Layer.launch,
+    WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
@@ -91,7 +91,7 @@ const makeWorkerRunnerOuter = (
       Effect.gen(function* () {
         yield* makeWorkerRunnerInner(workerOptions).pipe(
           Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
-          Layer.launch,
+          WorkerRunner.launch,
           Effect.scoped,
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,

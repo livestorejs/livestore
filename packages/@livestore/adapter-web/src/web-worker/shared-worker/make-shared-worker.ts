@@ -282,7 +282,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 export const makeWorker = () => {
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
-    Layer.launch,
+    WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),

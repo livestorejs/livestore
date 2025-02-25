@@ -42,6 +42,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           }
         }
         port.on('message', (message: Runner.BackingRunner.Message<I>) => {
+          // console.log('message', message)
           if (message[0] === 0) {
             const fiber = runFork(handler(0, message[1]))
             fiber.addObserver(onExit)
@@ -49,11 +50,6 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           } else {
             Deferred.unsafeDone(closeLatch, Exit.void)
             port.close()
-            // TODO get rid of this timeout (needs help from Tim Smart)
-            setTimeout(() => {
-              // eslint-disable-next-line unicorn/no-process-exit
-              process.exit(0)
-            }, 1000)
           }
         })
         port.on('messageerror', (cause) => {
