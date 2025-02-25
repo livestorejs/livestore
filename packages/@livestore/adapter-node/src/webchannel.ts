@@ -28,14 +28,17 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
       // )
 
       const listen = Stream.asyncPush<Either.Either<Msg, ParseResult.ParseError>>((emit) =>
-        Effect.gen(function* () {
-          // eslint-disable-next-line unicorn/prefer-add-event-listener
-          channel.onmessage = (event: any) => {
-            return emit.single(Schema.decodeEither(schema)(event.data))
-          }
+        Effect.acquireRelease(
+          Effect.gen(function* () {
+            // eslint-disable-next-line unicorn/prefer-add-event-listener
+            channel.onmessage = (event: any) => {
+              return emit.single(Schema.decodeEither(schema)(event.data))
+            }
 
-          return () => channel.unref()
-        }),
+            return channel
+          }),
+          (channel) => Effect.sync(() => channel.unref()),
+        ),
       )
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))

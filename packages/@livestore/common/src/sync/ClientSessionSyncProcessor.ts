@@ -84,6 +84,10 @@ export const makeClientSessionSyncProcessor = ({
       isEqualEvent: MutationEvent.isEqualEncoded,
     })
 
+    if (updateResult._tag === 'unexpected-error') {
+      return shouldNeverHappen('Unexpected error in client-session-sync-processor', updateResult.cause)
+    }
+
     span.addEvent('local-push', {
       batchSize: encodedMutationEvents.length,
       updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
@@ -147,6 +151,10 @@ export const makeClientSessionSyncProcessor = ({
             isLocalEvent,
             isEqualEvent: MutationEvent.isEqualEncoded,
           })
+
+          if (updateResult._tag === 'unexpected-error') {
+            return yield* Effect.fail(updateResult.cause)
+          }
 
           if (updateResult._tag === 'reject') {
             debugger

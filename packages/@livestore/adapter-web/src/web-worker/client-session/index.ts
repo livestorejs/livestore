@@ -3,7 +3,6 @@ import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { ShutdownChannel } from '@livestore/common/leader-thread'
 import type { MutationEvent } from '@livestore/common/schema'
 import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
 import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
@@ -32,6 +31,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
+import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './client-session-devtools.js'
 import { trimPushBatch } from './trim-batch.js'
@@ -111,11 +111,11 @@ export const makeAdapter =
       const sessionId = getPersistedId(`sessionId:${storeId}`, 'session')
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
+      const workerDisconnectChannel = yield* makeWorkerDisconnectChannel(storeId)
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.filter(Schema.is(IntentionalShutdownCause)),
-        Stream.tap((msg) => shutdown(Cause.fail(msg))),
+        Stream.tap((error) => shutdown(Cause.fail(error))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -193,7 +193,7 @@ export const makeAdapter =
           Effect.forkScoped,
         )
 
-        yield* shutdownChannel.send(ShutdownChannel.DedicatedWorkerDisconnectBroadcast.make({}))
+        yield* workerDisconnectChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
         yield* sharedWorker

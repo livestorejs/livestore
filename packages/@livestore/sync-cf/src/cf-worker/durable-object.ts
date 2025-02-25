@@ -45,7 +45,9 @@ export const PERSISTENCE_FORMAT_VERSION = 3
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
+  onPushRes?: (message: WSMessage.PushAck | WSMessage.Error) => Effect.Effect<void> | Promise<void>
   onPull?: (message: WSMessage.PullReq) => Effect.Effect<void> | Promise<void>
+  onPullRes?: (message: WSMessage.PullRes | WSMessage.Error) => Effect.Effect<void> | Promise<void>
 }
 
 export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) => {
@@ -54,6 +56,9 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   return class WebSocketServerBase extends DurableObject<Env> {
+    /** Needed to prevent concurrent pushes */
+    private pushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
+
     constructor(ctx: DurableObjectState, env: Env) {
       super(ctx, env)
     }
@@ -88,20 +93,20 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         })
       }).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
 
-    webSocketMessage = (ws: WebSocketClient, message: ArrayBuffer | string) =>
-      Effect.gen(this, function* () {
-        const decodedMessageRes = decodeIncomingMessage(message)
+    webSocketMessage = (ws: WebSocketClient, message: ArrayBuffer | string) => {
+      const decodedMessageRes = decodeIncomingMessage(message)
 
-        if (decodedMessageRes._tag === 'Left') {
-          console.error('Invalid message received', decodedMessageRes.left)
-          return
-        }
+      if (decodedMessageRes._tag === 'Left') {
+        console.error('Invalid message received', decodedMessageRes.left)
+        return
+      }
 
+      const decodedMessage = decodedMessageRes.right
+      const requestId = decodedMessage.requestId
+
+      return Effect.gen(this, function* () {
         const { storeId } = yield* Schema.decode(WebSocketAttachmentSchema)(ws.deserializeAttachment())
         const storage = makeStorage(this.ctx, this.env, storeId)
-
-        const decodedMessage = decodedMessageRes.right
-        const requestId = decodedMessage.requestId
 
         try {
           switch (decodedMessage._tag) {
@@ -110,6 +115,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               if (options?.onPull) {
                 yield* Effect.tryAll(() => options.onPull!(decodedMessage))
               }
+
+              const respond = (message: WSMessage.PullRes) =>
+                Effect.gen(function* () {
+                  if (options?.onPullRes) {
+                    yield* Effect.tryAll(() => options.onPullRes!(message))
+                  }
+                  ws.send(encodeOutgoingMessage(message))
+                })
 
               const cursor = decodedMessage.cursor
               const CHUNK_SIZE = 100
@@ -127,26 +140,35 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
               for (const [index, batch] of batches.entries()) {
                 const remaining = Math.max(0, remainingEvents.length - (index + 1) * CHUNK_SIZE)
-                ws.send(encodeOutgoingMessage(WSMessage.PullRes.make({ batch, remaining })))
+                yield* respond(WSMessage.PullRes.make({ batch, remaining }))
               }
 
               break
             }
             case 'WSMessage.PushReq': {
-              if (options?.onPush) {
-                yield* Effect.tryAll(() => options.onPush!(decodedMessage))
-              }
+              const respond = (message: WSMessage.PushAck | WSMessage.Error) =>
+                Effect.gen(function* () {
+                  if (options?.onPushRes) {
+                    yield* Effect.tryAll(() => options.onPushRes!(message))
+                  }
+                  ws.send(encodeOutgoingMessage(message))
+                })
 
               if (decodedMessage.batch.length === 0) {
-                ws.send(encodeOutgoingMessage(WSMessage.PushAck.make({ requestId })))
+                yield* respond(WSMessage.PushAck.make({ requestId }))
                 return
+              }
+
+              yield* this.pushSemaphore.take(1)
+
+              if (options?.onPush) {
+                yield* Effect.tryAll(() => options.onPush!(decodedMessage))
               }
 
               // TODO check whether we could use the Durable Object storage for this to speed up the lookup
               const expectedParentId = yield* storage.getHead
 
               // TODO handle clientId unique conflict
-
               // Validate the batch
               const firstEvent = decodedMessage.batch[0]!
               if (firstEvent.parentId !== expectedParentId) {
@@ -157,11 +179,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
                 yield* Effect.logError(err)
 
-                ws.send(encodeOutgoingMessage(err))
+                yield* respond(err)
+                yield* this.pushSemaphore.release(1)
                 return
               }
 
-              ws.send(encodeOutgoingMessage(WSMessage.PushAck.make({ requestId })))
+              yield* respond(WSMessage.PushAck.make({ requestId }))
+
+              yield* this.pushSemaphore.release(1)
 
               const createdAt = new Date().toISOString()
 
@@ -172,22 +197,23 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const connectedClients = this.ctx.getWebSockets()
 
               // console.debug(`Broadcasting push batch to ${this.subscribedWebSockets.size} clients`)
-
               if (connectedClients.length > 0) {
-                const pullRes = encodeOutgoingMessage(
-                  // TODO refactor to batch api
-                  WSMessage.PullRes.make({
-                    batch: decodedMessage.batch.map((mutationEventEncoded) => ({
-                      mutationEventEncoded,
-                      metadata: Option.some({ createdAt }),
-                    })),
-                    remaining: 0,
-                  }),
-                )
+                // TODO refactor to batch api
+                const pullRes = WSMessage.PullRes.make({
+                  batch: decodedMessage.batch.map((mutationEventEncoded) => ({
+                    mutationEventEncoded,
+                    metadata: Option.some({ createdAt }),
+                  })),
+                  remaining: 0,
+                })
+                const pullResEnc = encodeOutgoingMessage(pullRes)
 
                 // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
                 for (const conn of connectedClients) {
-                  conn.send(pullRes)
+                  if (options?.onPullRes) {
+                    yield* Effect.tryAll(() => options.onPullRes!(pullRes))
+                  }
+                  conn.send(pullResEnc)
                 }
               }
 
@@ -230,12 +256,15 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           ws.send(encodeOutgoingMessage(WSMessage.Error.make({ message: error.message, requestId })))
         }
       }).pipe(
-        Effect.withSpan('@livestore/sync-cf:durable-object:webSocketMessage'),
+        Effect.withSpan(`@livestore/sync-cf:durable-object:webSocketMessage:${decodedMessage._tag}`, {
+          attributes: { requestId },
+        }),
         Effect.tapCauseLogPretty,
         Logger.withMinimumLogLevel(LogLevel.Debug),
         Effect.provide(Logger.pretty),
         Effect.runPromise,
       )
+    }
 
     webSocketClose = async (ws: WebSocketClient, code: number, _reason: string, _wasClean: boolean) => {
       // If the client closes the connection, the runtime will invoke the webSocketClose() handler.
@@ -267,7 +296,10 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
     Effect.tryPromise({
       try: () => cb(env.DB),
       catch: (error) => new UnexpectedError({ cause: error, payload: { dbName } }),
-    }).pipe(Effect.map((_) => _.results))
+    }).pipe(
+      Effect.map((_) => _.results),
+      Effect.withSpan('@livestore/sync-cf:durable-object:execDb'),
+    )
 
   const getHead: Effect.Effect<EventId.GlobalEventId, UnexpectedError> = Effect.gen(function* () {
     const result = yield* execDb<{ id: EventId.GlobalEventId }>((db) =>
@@ -295,7 +327,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
         }),
       )
       return events
-    })
+    }).pipe(UnexpectedError.mapToUnexpectedError)
 
   const appendEvents: SyncStorage['appendEvents'] = (batch, createdAt) =>
     Effect.gen(function* () {
@@ -330,7 +362,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
             .run(),
         )
       }
-    })
+    }).pipe(UnexpectedError.mapToUnexpectedError)
 
   const resetStore = Effect.gen(function* () {
     yield* Effect.promise(() => ctx.storage.deleteAll())

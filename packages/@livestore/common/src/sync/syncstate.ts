@@ -1,6 +1,6 @@
-import { shouldNeverHappen } from '@livestore/utils'
 import { ReadonlyArray, Schema } from '@livestore/utils/effect'
 
+import { UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
 
@@ -103,7 +103,17 @@ export type UpdateResultReject = {
   expectedMinimumId: EventId.EventId
 }
 
-export type UpdateResult = UpdateResultAdvance | UpdateResultRebase | UpdateResultReject
+export type UpdateResultUnexpectedError = {
+  _tag: 'unexpected-error'
+  cause: UnexpectedError
+}
+
+export type UpdateResult = UpdateResultAdvance | UpdateResultRebase | UpdateResultReject | UpdateResultUnexpectedError
+
+const unexpectedError = (cause: unknown): UpdateResultUnexpectedError => ({
+  _tag: 'unexpected-error',
+  cause: new UnexpectedError({ cause }),
+})
 
 export const updateSyncState = ({
   syncState,
@@ -136,7 +146,7 @@ export const updateSyncState = ({
         EventId.isEqual(event.id, payload.rollbackUntil),
       )
       if (rollbackIndex === -1) {
-        return shouldNeverHappen(
+        return unexpectedError(
           `Rollback event not found in rollback tail. Rollback until: [${payload.rollbackUntil.global},${payload.rollbackUntil.client}]. Rollback tail: [${syncState.rollbackTail.map((e) => e.toString()).join(', ')}]`,
         )
       }
@@ -185,8 +195,17 @@ export const updateSyncState = ({
       // Validate that newEvents are sorted in ascending order by eventId
       for (let i = 1; i < payload.newEvents.length; i++) {
         if (EventId.isGreaterThan(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
-          return shouldNeverHappen('Events must be sorted in ascending order by eventId')
+          return unexpectedError(
+            `Events must be sorted in ascending order by eventId. Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
+          )
         }
+      }
+
+      // Validate that incoming events are larger than upstream head
+      if (EventId.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.id)) {
+        return unexpectedError(
+          `Incoming events must be greater than upstream head. Expected greater than: [${syncState.upstreamHead.global},${syncState.upstreamHead.client}]. Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
+        )
       }
 
       const newUpstreamHead = payload.newEvents.at(-1)!.id

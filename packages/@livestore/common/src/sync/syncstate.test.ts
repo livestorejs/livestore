@@ -148,12 +148,11 @@ describe('syncstate', () => {
             upstreamHead: EventId.ROOT,
             localHead: e_0_0.id,
           })
-          expect(() =>
-            run({
-              syncState,
-              payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [e_1_0] },
-            }),
-          ).toThrow()
+          const result = run({
+            syncState,
+            payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [e_1_0] },
+          })
+          expect(result).toMatchObject({ _tag: 'unexpected-error' })
         })
 
         it('should work for empty incoming', () => {
@@ -185,7 +184,8 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        expect(() => run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_0] } })).toThrow()
+        const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_0] } })
+        expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
       it('should throw error if newEvents are not sorted in ascending order by eventId (global)', () => {
@@ -195,7 +195,8 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        expect(() => run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0, e_0_0] } })).toThrow()
+        const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0, e_0_0] } })
+        expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
       it('should acknowledge pending event when receiving matching event', () => {
@@ -328,6 +329,17 @@ describe('syncstate', () => {
         expect(result.newSyncState.upstreamHead).toMatchObject(e_1_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
         expect(result.newEvents).toStrictEqual([e_1_0])
+      })
+
+      it('should fail if incoming event is ≤ local head', () => {
+        const syncState = new SyncState.SyncState({
+          pending: [],
+          rollbackTail: [],
+          upstreamHead: e_1_0.id,
+          localHead: e_1_0.id,
+        })
+        const result = run({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+        expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
     })
 

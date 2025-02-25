@@ -1,11 +1,9 @@
 import type { WebChannel } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import { IntentionalShutdownCause } from '../index.js'
+import { IntentionalShutdownCause, UnexpectedError } from '../index.js'
 
-export class DedicatedWorkerDisconnectBroadcast extends Schema.TaggedStruct('DedicatedWorkerDisconnectBroadcast', {}) {}
-
-export class All extends Schema.Union(IntentionalShutdownCause, DedicatedWorkerDisconnectBroadcast) {}
+export class All extends Schema.Union(IntentionalShutdownCause, UnexpectedError) {}
 
 /**
  * Used internally by an adapter to shutdown gracefully.

@@ -46,6 +46,8 @@ export const Error = Schema.TaggedStruct('WSMessage.Error', {
   message: Schema.String,
 })
 
+export type Error = typeof Error.Type
+
 export const Ping = Schema.TaggedStruct('WSMessage.Ping', {
   requestId: Schema.Literal('ping'),
 })

@@ -233,7 +233,6 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           yield* shutdownChannel.listen.pipe(
             Stream.flatten(),
-            Stream.filter(Schema.is(IntentionalShutdownCause)),
             Stream.tap(() => reset),
             Stream.runDrain,
           )

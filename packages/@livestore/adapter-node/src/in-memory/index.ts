@@ -12,8 +12,10 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import { Cause, Effect, FetchHttpClient, Layer, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+
+import { makeShutdownChannel } from '../shutdown-channel.js'
 
 // TODO unify in-memory adapter with other in-memory adapter implementations
 
@@ -31,6 +33,7 @@ export const makeInMemoryAdapter =
   ({
     schema,
     storeId,
+    shutdown,
     // devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore
   }) =>
     Effect.gen(function* () {
@@ -42,6 +45,17 @@ export const makeInMemoryAdapter =
       const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
 
       const sessionId = nanoid(6)
+
+      const shutdownChannel = yield* makeShutdownChannel(storeId)
+
+      yield* shutdownChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -60,7 +74,7 @@ export const makeInMemoryAdapter =
         sessionId,
         lockStatus,
         leaderThread,
-        shutdown: () => Effect.dieMessage('TODO implement shutdown'),
+        shutdown,
       } satisfies ClientSession
 
       return clientSession
@@ -88,7 +102,8 @@ const makeLeaderThread = ({
         devtoolsOptions: { enabled: false },
         makeSqliteDb,
         schema,
-        shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
+        // NOTE we're creating a separate channel here since you can't listen to your own channel messages
+        shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),

@@ -14,9 +14,9 @@ import type { MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import type { Cause } from '@livestore/utils/effect'
 import {
   BucketQueue,
+  Cause,
   Effect,
   Fiber,
   ParseResult,
@@ -28,6 +28,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
+import { makeShutdownChannel } from '../shutdown-channel.js'
 import * as WorkerSchema from '../worker-schema.js'
 
 export interface NodeAdapterOptions {
@@ -73,6 +74,17 @@ export const makeNodeAdapter = ({
       // } else {
       //   yield* Effect.logWarning('Failed to load database file', fileData.left)
       // }
+
+      const shutdownChannel = yield* makeShutdownChannel(storeId)
+
+      yield* shutdownChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
       const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
 
