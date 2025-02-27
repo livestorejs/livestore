@@ -169,12 +169,29 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   toJSON = (): any => {
     // Only used for logging/debugging
     // - More readable way to print the id + parentId
-    // - not including `meta`
+    // - not including `meta`, `clientId`, `sessionId`
     return {
       id: `(${this.id.global},${this.id.client}) → (${this.parentId.global},${this.parentId.client})`,
       mutation: this.mutation,
       args: this.args,
     }
+  }
+
+  static fromJSON = (
+    json: any,
+    extraData?: { clientId: string; sessionId: string; meta?: { sessionChangeset?: Uint8Array } },
+  ): EncodedWithMeta => {
+    const [idStr, parentIdStr] = json.id.split(' → ')
+    const clientId = extraData?.clientId ?? 'default-client-id'
+    const sessionId = extraData?.sessionId ?? 'default-session-id'
+    return new EncodedWithMeta({
+      ...json,
+      id: EventId.fromString(idStr),
+      parentId: EventId.fromString(parentIdStr),
+      clientId,
+      sessionId,
+      meta: extraData?.meta,
+    })
   }
 
   rebase = (parentId: EventId.EventId, isLocal: boolean) =>

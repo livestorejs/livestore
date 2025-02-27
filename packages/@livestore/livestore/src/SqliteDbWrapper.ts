@@ -9,7 +9,7 @@ import type {
   SqliteDbChangeset,
   SqliteDbSession,
 } from '@livestore/common'
-import { BoundArray, BoundMap, sql } from '@livestore/common'
+import { BoundArray, BoundMap, sql, SqliteError } from '@livestore/common'
 import { isDevEnv } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
@@ -163,39 +163,45 @@ export class SqliteDbWrapper implements SqliteDb {
       { attributes: { 'sql.query': queryStr } },
       options?.otelContext ?? this.otelRootSpanContext,
       (span) => {
-        let stmt = this.cachedStmts.get(queryStr)
-        if (stmt === undefined) {
-          stmt = this.db.prepare(queryStr)
-          this.cachedStmts.set(queryStr, stmt)
+        try {
+          let stmt = this.cachedStmts.get(queryStr)
+          if (stmt === undefined) {
+            stmt = this.db.prepare(queryStr)
+            this.cachedStmts.set(queryStr, stmt)
+          }
+
+          stmt.execute(bindValues)
+
+          if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
+            // TODO use write tables instead
+            // check what queries actually end up here.
+            this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
+          }
+
+          span.end()
+
+          const durationMs = getDurationMsFromSpan(span)
+
+          this.debugInfo.queryFrameDuration += durationMs
+          this.debugInfo.queryFrameCount++
+
+          if (durationMs > 5 && isDevEnv()) {
+            this.debugInfo.slowQueries.push({
+              queryStr,
+              bindValues,
+              durationMs,
+              rowsCount: undefined,
+              queriedTables: new Set(),
+              startTimePerfNow: getStartTimeHighResFromSpan(span),
+            })
+          }
+
+          return { durationMs }
+        } catch (cause: any) {
+          span.recordException(cause)
+          span.end()
+          throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })
         }
-
-        stmt.execute(bindValues)
-
-        if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
-          // TODO use write tables instead
-          // check what queries actually end up here.
-          this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
-        }
-
-        span.end()
-
-        const durationMs = getDurationMsFromSpan(span)
-
-        this.debugInfo.queryFrameDuration += durationMs
-        this.debugInfo.queryFrameCount++
-
-        if (durationMs > 5 && isDevEnv()) {
-          this.debugInfo.slowQueries.push({
-            queryStr,
-            bindValues,
-            durationMs,
-            rowsCount: undefined,
-            queriedTables: new Set(),
-            startTimePerfNow: getStartTimeHighResFromSpan(span),
-          })
-        }
-
-        return { durationMs }
       },
     )
   }

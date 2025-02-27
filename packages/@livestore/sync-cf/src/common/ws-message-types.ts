@@ -23,6 +23,7 @@ export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
       metadata: Schema.Option(SyncMetadata),
     }),
   ),
+  requestId: Schema.Struct({ context: Schema.Literal('pull', 'push'), requestId: Schema.String }),
   remaining: Schema.Number,
 })
 

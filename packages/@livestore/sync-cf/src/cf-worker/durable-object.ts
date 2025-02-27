@@ -140,7 +140,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
               for (const [index, batch] of batches.entries()) {
                 const remaining = Math.max(0, remainingEvents.length - (index + 1) * CHUNK_SIZE)
-                yield* respond(WSMessage.PullRes.make({ batch, remaining }))
+                yield* respond(WSMessage.PullRes.make({ batch, remaining, requestId: { context: 'pull', requestId } }))
               }
 
               break
@@ -205,14 +205,17 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                     metadata: Option.some({ createdAt }),
                   })),
                   remaining: 0,
+                  requestId: { context: 'push', requestId },
                 })
                 const pullResEnc = encodeOutgoingMessage(pullRes)
 
+                // Only calling once for now.
+                if (options?.onPullRes) {
+                  yield* Effect.tryAll(() => options.onPullRes!(pullRes))
+                }
+
                 // NOTE we're also sending the pullRes to the pushing ws client as a confirmation
                 for (const conn of connectedClients) {
-                  if (options?.onPullRes) {
-                    yield* Effect.tryAll(() => options.onPullRes!(pullRes))
-                  }
                   conn.send(pullResEnc)
                 }
               }

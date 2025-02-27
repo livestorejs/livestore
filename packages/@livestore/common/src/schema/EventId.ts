@@ -33,6 +33,22 @@ export const compare = (a: EventId, b: EventId) => {
   return a.client - b.client
 }
 
+/**
+ * Convert an event id to a string representation.
+ */
+export const toString = (id: EventId) => `(${id.global},${id.client})`
+
+/**
+ * Convert a string representation of an event id to an event id.
+ */
+export const fromString = (str: string): EventId => {
+  const [global, client] = str.slice(1, -1).split(',').map(Number)
+  if (global === undefined || client === undefined) {
+    throw new Error('Invalid event id string')
+  }
+  return { global, client } as EventId
+}
+
 export const isEqual = (a: EventId, b: EventId) => a.global === b.global && a.client === b.client
 
 export type EventIdPair = { id: EventId; parentId: EventId }

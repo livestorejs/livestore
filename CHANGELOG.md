@@ -13,8 +13,13 @@
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
+    - cf sync:
+      - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
+        - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
+      - Bring back "broadcast" pull res terminology
     - Electric:
       - fix: connectivity state + offline handling
+    - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
   - Devtools
     - Fix: When resetting the database but keeping the eventlog
       - the app doesn't show a shutdown screen

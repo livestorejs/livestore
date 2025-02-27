@@ -142,17 +142,23 @@ export const createStore = <
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) =>
-        Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
+      const shutdown = Effect.fn('livestore:shutdown')(function* (
+        cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>,
+      ) {
+        yield* Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
           Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
           Effect.timeout(1000),
           Effect.catchTag('TimeoutException', () =>
             Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
           ),
-          Effect.tap(() => (shutdownDeferred ? Deferred.failCause(shutdownDeferred, cause) : Effect.void)),
-          Effect.tap(() => Effect.logDebug('LiveStore shutdown complete')),
-          Effect.withSpan('livestore:shutdown'),
         )
+
+        if (shutdownDeferred) {
+          yield* Deferred.failCause(shutdownDeferred, cause)
+        }
+
+        yield* Effect.logDebug('LiveStore shutdown complete')
+      })
 
       const clientSession: ClientSession = yield* adapter({
         schema,

@@ -1,4 +1,4 @@
-import { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
+import { UnexpectedError } from '@livestore/common'
 import { connectViaWorker } from '@livestore/devtools-web-common/web-channel'
 import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -281,7 +281,8 @@ const makeWorkerRunner = Effect.gen(function* () {
 export const makeWorker = () => {
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
-    WorkerRunner.launch,
+    // WorkerRunner.launch,
+    Layer.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),

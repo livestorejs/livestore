@@ -125,11 +125,11 @@ export const logWarnIfTakesLongerThan =
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<never>()
 
-      let timedOut = false
+      let tookLongerThanTimer = false
 
       const timeoutFiber = Effect.sleep(duration).pipe(
         Effect.tap(() => {
-          timedOut = true
+          tookLongerThanTimer = true
           // TODO include span info
           return Effect.logWarning(`${label}: Took longer than ${duration}ms`)
         }),
@@ -138,9 +138,22 @@ export const logWarnIfTakesLongerThan =
       )
 
       const start = Date.now()
-      const res = yield* eff.pipe(Effect.exit)
+      const res = yield* eff.pipe(
+        Effect.exit,
+        Effect.onInterrupt(
+          Effect.fn(function* () {
+            const end = Date.now()
 
-      if (timedOut) {
+            yield* Fiber.interrupt(timeoutFiber)
+
+            if (tookLongerThanTimer) {
+              yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
+            }
+          }),
+        ),
+      )
+
+      if (tookLongerThanTimer) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
       }

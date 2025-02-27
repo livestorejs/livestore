@@ -2,7 +2,8 @@
 
 import type { SyncBackend } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import { LS_DEV } from '@livestore/utils'
+import { EventId } from '@livestore/common/schema'
+import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Deferred,
@@ -33,10 +34,29 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
 
     const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
 
+    /**
+     * We need to account for the scenario where push-caused PullRes message arrive before the pull-caused PullRes message.
+     * i.e. a scenario where the WS connection is created but before the server processed the initial pull, a push from
+     * another client triggers a PullRes message sent to this client which we need to stash until our pull-caused
+     * PullRes message arrives at which point we can combine the stashed events with the pull-caused events and continue.
+     */
+    const stashedPullBatch: WSMessage.PullRes['batch'][number][] = []
+
+    // We currently only support one pull stream for a sync backend.
+    let pullStarted = false
+
     const api = {
       isConnected,
       pull: (args) =>
         Effect.gen(function* () {
+          if (pullStarted) {
+            return shouldNeverHappen(`Pull already started for this sync backend.`)
+          }
+
+          pullStarted = true
+
+          let pullResponseReceived = false
+
           const requestId = nanoid()
           const cursor = Option.getOrUndefined(args)?.cursor.global
 
@@ -48,6 +68,41 @@ export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<Sy
                 ? new InvalidPullError({ message: _.message })
                 : Effect.void,
             ),
+            Stream.filterMap((msg) => {
+              if (msg._tag === 'WSMessage.PullRes') {
+                if (msg.requestId.context === 'pull') {
+                  if (msg.requestId.requestId === requestId) {
+                    pullResponseReceived = true
+
+                    if (stashedPullBatch.length > 0 && msg.remaining === 0) {
+                      const pullResHead = msg.batch.at(-1)?.mutationEventEncoded.id ?? EventId.ROOT.global
+                      // Index where stashed events are greater than pullResHead
+                      const newPartialBatchIndex = stashedPullBatch.findIndex(
+                        (batchItem) => batchItem.mutationEventEncoded.id > pullResHead,
+                      )
+                      const batchWithNewStashedEvents =
+                        newPartialBatchIndex === -1 ? [] : stashedPullBatch.slice(newPartialBatchIndex)
+                      const combinedBatch = [...msg.batch, ...batchWithNewStashedEvents]
+                      return Option.some({ ...msg, batch: combinedBatch, remaining: 0 })
+                    } else {
+                      return Option.some(msg)
+                    }
+                  } else {
+                    // Ignore
+                    return Option.none()
+                  }
+                } else {
+                  if (pullResponseReceived) {
+                    return Option.some(msg)
+                  } else {
+                    stashedPullBatch.push(...msg.batch)
+                    return Option.none()
+                  }
+                }
+              }
+
+              return Option.none()
+            }),
             // This call is mostly here to for type narrowing
             Stream.filter(Schema.is(WSMessage.PullRes)),
           )
