@@ -10,6 +10,12 @@
   - Examples:
     - for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
     - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+  - Docs
+    - Notes on deployment (when to deploy what)
+    - Embrace term "containers"
+      - Unit of sharing/collaboration/auth
+      - What if I want got my initial container design wrong and I want to change it?
+        - Comparables: document databases, kafka streams, 
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup

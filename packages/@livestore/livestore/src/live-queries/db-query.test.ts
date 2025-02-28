@@ -1,4 +1,4 @@
-import { Effect, Schema } from '@livestore/utils/effect'
+import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
@@ -18,6 +18,15 @@ TODO write tests for:
 
 Vitest.describe('otel', () => {
   let cachedProvider: BasicTracerProvider | undefined
+
+  const mapAttributes = (attributes: otel.Attributes) => {
+    return ReadonlyRecord.map(attributes, (val, key) => {
+      if (key === 'code.stacktrace') {
+        return '<STACKTRACE>'
+      }
+      return val
+    })
+  }
 
   const makeQuery = Effect.gen(function* () {
     const exporter = new InMemorySpanExporter()
@@ -74,7 +83,7 @@ Vitest.describe('otel', () => {
       return { exporter }
     }).pipe(
       Effect.scoped,
-      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()),
+      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()),
     ),
   )
 
@@ -124,7 +133,7 @@ Vitest.describe('otel', () => {
       return { exporter }
     }).pipe(
       Effect.scoped,
-      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()),
+      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()),
     ),
   )
 
@@ -160,7 +169,7 @@ Vitest.describe('otel', () => {
       return { exporter }
     }).pipe(
       Effect.scoped,
-      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter)).toMatchSnapshot()),
+      Effect.tap(({ exporter }) => expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()),
     ),
   )
 })

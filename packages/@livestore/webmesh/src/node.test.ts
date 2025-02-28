@@ -341,6 +341,21 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       )
 
       const ChannelTypeWithoutMessageChannelProxy = Schema.Literal('proxy', 'messagechannel')
+      // TODO there seems to be a flaky case here which gets hit sometimes (e.g. 2025-02-28-17:11)
+      // Log output:
+      // test: { seed: -964670352, path: "1", endOnFailure: true }
+      // test: Counterexample: ["messagechannel",["A","B"]]
+      // test: Shrunk 0 time(s)
+      // test: Got AssertionError: expected { _tag: 'MessageChannelPing' } to deeply equal { message: 'A1' }
+      // test:     at next (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:376:59)
+      // test:     at prop tests:replace connection while keeping the channel:channelType=messagechannel nodeNames=A,B (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:801:14)
+      // test: Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+      // test:    ✓ webmesh node > A <> B > prop tests > TODO improve latency > concurrent messages 2110ms
+      // test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      // test:  FAIL  src/node.test.ts > webmesh node > A <> B > prop tests > replace connection while keeping the channel
+      // test: Error: Property failed after 2 tests
+      // test: { seed: -964670352, path: "1", endOnFailure: true }
+      // test: Counterexample: ["messagechannel",["A","B"]]
       Vitest.scopedLive.prop(
         'replace connection while keeping the channel',
         [ChannelTypeWithoutMessageChannelProxy, NodeNames],

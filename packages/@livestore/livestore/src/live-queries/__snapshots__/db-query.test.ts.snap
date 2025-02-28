@@ -23,7 +23,7 @@ exports[`otel > otel 3`] = `
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "at /Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:261:14",
+        "code.stacktrace": "<STACKTRACE>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
@@ -291,7 +291,7 @@ exports[`otel > with thunks 7`] = `
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "at /Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:261:14",
+        "code.stacktrace": "<STACKTRACE>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
@@ -393,7 +393,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
     {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
-        "code.stacktrace": "at /Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts:261:14",
+        "code.stacktrace": "<STACKTRACE>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
