@@ -1,7 +1,8 @@
-import * as http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { Effect } from '@livestore/utils/effect'
+import { getFreePort } from '@livestore/utils/node'
 import * as Vite from 'vite'
 
 import type { Options } from './types.js'
@@ -9,7 +10,7 @@ import type { Options } from './types.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export const makeViteServer = async (options: Options): Promise<Vite.ViteDevServer> => {
-  const hmrPort = await getFreePort()
+  const hmrPort = await getFreePort.pipe(Effect.runPromise)
 
   const cwd = process.cwd()
 
@@ -84,27 +85,4 @@ mountDevtools({ schema, rootEl: document.getElementById('root'), sharedWorker, m
       })
     }
   },
-}
-
-const getFreePort = (): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer()
-
-    // Listen on port 0 to get an available port
-    server.listen(0, () => {
-      const address = server.address()
-
-      if (address && typeof address === 'object') {
-        const port = address.port
-        server.close(() => resolve(port))
-      } else {
-        server.close(() => reject(new Error('Failed to get a free port')))
-      }
-    })
-
-    // Error handling in case the server encounters an error
-    server.on('error', (err) => {
-      server.close(() => reject(err))
-    })
-  })
 }

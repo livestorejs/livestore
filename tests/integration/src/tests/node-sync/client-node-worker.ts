@@ -55,7 +55,8 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
           : makeInMemoryAdapter({
               clientId,
               sync: {
-                makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8888', storeId }),
+                makeBackend: ({ storeId }) =>
+                  makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}`, storeId }),
               },
             })
 

@@ -1,3 +1,5 @@
+import * as http from 'node:http'
+
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import type * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -8,7 +10,7 @@ import { Config, Effect, Layer } from 'effect'
 import type { ParentSpan } from 'effect/Tracer'
 
 import { tapCauseLogPretty } from '../effect/Effect.js'
-import { OtelTracer } from '../effect/index.js'
+import { OtelTracer, UnknownError } from '../effect/index.js'
 import { makeNoopTracer } from '../NoopTracer.js'
 
 // import { tapCauseLogPretty } from '../effect/Effect.js'
@@ -29,6 +31,31 @@ export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.js'
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)
 
 // export const OtelLiveHttp = (args: any): Layer.Layer<never> => Layer.empty
+
+export const getFreePort = Effect.async<number, UnknownError>((cb, signal) => {
+  const server = http.createServer()
+
+  signal.addEventListener('abort', () => {
+    server.close()
+  })
+
+  // Listen on port 0 to get an available port
+  server.listen(0, () => {
+    const address = server.address()
+
+    if (address && typeof address === 'object') {
+      const port = address.port
+      server.close(() => cb(Effect.succeed(port)))
+    } else {
+      server.close(() => cb(Effect.fail(new UnknownError({ cause: 'Failed to get a free port' }))))
+    }
+  })
+
+  // Error handling in case the server encounters an error
+  server.on('error', (err) => {
+    server.close(() => cb(Effect.fail(new UnknownError({ cause: err }))))
+  })
+})
 
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())

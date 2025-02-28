@@ -1,14 +1,18 @@
-// eslint-disable-next-line unicorn/prefer-node-protocol
-import * as ChildProcess from 'child_process'
+import * as ChildProcess from 'node:child_process'
+
+import { Effect } from '@livestore/utils/effect'
+import { getFreePort } from '@livestore/utils/node'
 import { afterAll, beforeAll } from 'vitest'
 
 let wranglerProcess: ChildProcess.ChildProcess
 
 beforeAll(async () => {
-  ChildProcess.execSync('lsof -ti :8888 | xargs kill -9 || true')
+  const syncPort = await getFreePort.pipe(Effect.runPromise)
 
-  console.log('Starting sync backend via `wrangler dev` on localhost:8888')
-  wranglerProcess = ChildProcess.spawn('bunx', ['wrangler', 'dev', '--port', '8888'], {
+  process.env.LIVESTORE_SYNC_PORT = syncPort.toString()
+
+  console.log(`Starting sync backend via \`wrangler dev\` on localhost:${syncPort}`)
+  wranglerProcess = ChildProcess.spawn('bunx', ['wrangler', 'dev', '--port', syncPort.toString()], {
     stdio: ['ignore', 'pipe', 'pipe'], // ignore stdin, pipe stdout and stderr to parent process
     cwd: import.meta.dirname,
   })

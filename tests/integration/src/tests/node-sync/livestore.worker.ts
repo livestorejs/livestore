@@ -8,7 +8,7 @@ const argv = getWorkerArgs()
 
 makeWorkerEffect({
   sync: {
-    makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8888', storeId }),
+    makeBackend: ({ storeId }) => makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}`, storeId }),
   },
 }).pipe(
   Effect.provide(
