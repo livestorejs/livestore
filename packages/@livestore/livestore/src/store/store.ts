@@ -113,6 +113,7 @@ export class Store<
     storeId,
     lifetimeScope,
     runtime,
+    params,
   }: StoreOptions<TGraphQLContext, TSchema>) {
     super()
 
@@ -178,6 +179,9 @@ export class Store<
         reactivityGraph.setRefs(tablesToUpdate)
       },
       span: syncSpan,
+      params: {
+        leaderPushBatchSize: params.leaderPushBatchSize,
+      },
     })
 
     this.__mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
@@ -614,11 +618,8 @@ export class Store<
       }).pipe(this.runEffectFork)
     },
 
-    shutdown: (cause?: Cause.Cause<UnexpectedError>) => {
-      this.clientSession
-        .shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' })))
-        .pipe(Effect.tapCauseLogPretty, Effect.provide(this.runtime), Effect.runFork)
-    },
+    shutdown: (cause?: Cause.Cause<UnexpectedError>) =>
+      this.clientSession.shutdown(cause ?? Cause.fail(IntentionalShutdownCause.make({ reason: 'manual' }))),
 
     version: liveStoreVersion,
   }

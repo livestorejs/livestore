@@ -50,7 +50,7 @@ export const makeInMemoryAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -127,7 +127,10 @@ const makeLeaderThread = ({
           pull: Stream.fromQueue(pullQueue),
           push: (batch) =>
             syncProcessor
-              .push(batch.map((item) => new MutationEvent.EncodedWithMeta(item)))
+              .push(
+                batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+                { waitForProcessing: true },
+              )
               .pipe(Effect.provide(layer), Effect.scoped),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },

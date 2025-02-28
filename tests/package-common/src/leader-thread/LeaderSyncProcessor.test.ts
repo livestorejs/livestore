@@ -1,6 +1,6 @@
 import '@livestore/utils/node-vitest-polyfill'
 
-import type { InvalidPushError, MakeSqliteDb, UnexpectedError } from '@livestore/common'
+import type { LeaderAheadError, MakeSqliteDb, UnexpectedError } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
@@ -187,7 +187,7 @@ class TestContext extends Context.Tag('TestContext')<
     pullQueue: Queue.Queue<PullQueueItem>
     localPush: (
       ...partialEvents: MutationEvent.PartialAnyDecoded[]
-    ) => Effect.Effect<void, UnexpectedError | InvalidPushError, Scope.Scope | LeaderThreadCtx>
+    ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
 

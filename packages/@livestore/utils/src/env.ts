@@ -26,7 +26,8 @@ export const isDevEnv = () => {
   return false
 }
 
-export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined
+export const TRACE_VERBOSE = true
+// export const TRACE_VERBOSE = env('LS_TRACE_VERBOSE') !== undefined || env('VITE_LS_TRACE_VERBOSE') !== undefined
 
 export const LS_DEV = env('LS_DEV') !== undefined || env('VITE_LS_DEV') !== undefined
 

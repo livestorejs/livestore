@@ -36,6 +36,8 @@ const WebSocketAttachmentSchema = Schema.parseJson(
   }),
 )
 
+export const PULL_CHUNK_SIZE = 100
+
 /**
  * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
  *
@@ -125,7 +127,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 })
 
               const cursor = decodedMessage.cursor
-              const CHUNK_SIZE = 100
 
               // TODO use streaming
               const remainingEvents = yield* storage.getEvents(cursor)
@@ -134,12 +135,12 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const batches =
                 remainingEvents.length === 0
                   ? [[]]
-                  : Array.from({ length: Math.ceil(remainingEvents.length / CHUNK_SIZE) }, (_, i) =>
-                      remainingEvents.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
+                  : Array.from({ length: Math.ceil(remainingEvents.length / PULL_CHUNK_SIZE) }, (_, i) =>
+                      remainingEvents.slice(i * PULL_CHUNK_SIZE, (i + 1) * PULL_CHUNK_SIZE),
                     )
 
               for (const [index, batch] of batches.entries()) {
-                const remaining = Math.max(0, remainingEvents.length - (index + 1) * CHUNK_SIZE)
+                const remaining = Math.max(0, remainingEvents.length - (index + 1) * PULL_CHUNK_SIZE)
                 yield* respond(WSMessage.PullRes.make({ batch, remaining, requestId: { context: 'pull', requestId } }))
               }
 

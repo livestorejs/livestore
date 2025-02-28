@@ -11,7 +11,7 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.5-dev.1"
+    "@livestore/wa-sqlite": "1.0.5-dev.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",

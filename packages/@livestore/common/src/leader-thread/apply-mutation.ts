@@ -1,10 +1,11 @@
-import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import { LS_DEV, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb, SqliteError, UnexpectedError } from '../index.js'
+import type { PreparedBindValues, SqliteDb, SqliteError, UnexpectedError } from '../index.js'
 import { getExecArgsFromMutation } from '../mutation.js'
 import {
+  EventId,
   type LiveStoreSchema,
   MUTATION_LOG_META_TABLE,
   type MutationEvent,
@@ -126,6 +127,20 @@ const insertIntoMutationLog = (
     const mutationName = mutationEventEncoded.mutation
     const mutationDefSchemaHash =
       mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+
+    if (LS_DEV && mutationEventEncoded.parentId.global !== EventId.ROOT.global) {
+      const parentMutationExists =
+        dbMutationLog.select<{ count: number }>(
+          `SELECT COUNT(*) as count FROM ${MUTATION_LOG_META_TABLE} WHERE idGlobal = ? AND idClient = ?`,
+          [mutationEventEncoded.parentId.global, mutationEventEncoded.parentId.client] as any as PreparedBindValues,
+        )[0]!.count === 1
+
+      if (parentMutationExists === false) {
+        shouldNeverHappen(
+          `Parent mutation ${mutationEventEncoded.parentId.global},${mutationEventEncoded.parentId.client} does not exist`,
+        )
+      }
+    }
 
     // TODO use prepared statements
     yield* execSql(

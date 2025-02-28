@@ -8,7 +8,7 @@
     "@livestore/devtools-vite": "0.3.0-dev.16",
     "@livestore/livestore": "0.3.0-dev.16",
     "@livestore/react": "0.3.0-dev.16",
-    "@livestore/wa-sqlite": "1.0.5-dev.1",
+    "@livestore/wa-sqlite": "1.0.5-dev.2",
     "@overengineering/fps-meter": "0.1.2",
     "effect": "3.13.1",
     "react": "19.0.0",

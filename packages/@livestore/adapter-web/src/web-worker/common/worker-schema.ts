@@ -1,7 +1,7 @@
 import {
   BootStatus,
   Devtools,
-  InvalidPushError,
+  LeaderAheadError,
   MigrationsReport,
   NetworkStatus,
   SyncState,
@@ -78,7 +78,7 @@ export namespace LeaderWorkerInner {
       batch: Schema.Array(MutationEvent.AnyEncoded),
     },
     success: Schema.Void,
-    failure: Schema.Union(UnexpectedError, InvalidPushError),
+    failure: Schema.Union(UnexpectedError, LeaderAheadError),
   }) {}
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {

@@ -1,3 +1,4 @@
+import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { Schema } from '@livestore/utils/effect'
 
 import { tables } from './schema.js'
@@ -9,6 +10,9 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('Init
     storeId: Schema.String,
     clientId: Schema.String,
     adapterType: AdapterType,
+    params: Schema.Struct({
+      leaderPushBatchSize: Schema.optional(Schema.Number),
+    }),
   },
   success: Schema.Void,
   failure: Schema.Never,
@@ -17,6 +21,7 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('Init
 export class CreateTodos extends Schema.TaggedRequest<CreateTodos>()('CreateTodos', {
   payload: {
     count: Schema.Number,
+    mutateBatchSize: Schema.optional(Schema.Number),
   },
   success: Schema.Void,
   failure: Schema.Never,
@@ -28,4 +33,10 @@ export class StreamTodos extends Schema.TaggedRequest<StreamTodos>()('StreamTodo
   failure: Schema.Never,
 }) {}
 
-export class Request extends Schema.Union(InitialMessage, CreateTodos, StreamTodos) {}
+export class OnShutdown extends Schema.TaggedRequest<OnShutdown>()('OnShutdown', {
+  payload: {},
+  success: Schema.Void,
+  failure: ShutdownChannel.All,
+}) {}
+
+export class Request extends Schema.Union(InitialMessage, CreateTodos, StreamTodos, OnShutdown) {}

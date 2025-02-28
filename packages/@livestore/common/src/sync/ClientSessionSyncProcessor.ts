@@ -1,6 +1,6 @@
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { Runtime, Scope } from '@livestore/utils/effect'
-import { Effect, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import { BucketQueue, Effect, FiberHandle, Queue, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
@@ -26,6 +26,7 @@ export const makeClientSessionSyncProcessor = ({
   rollback,
   refreshTables,
   span,
+  params,
 }: {
   schema: LiveStoreSchema
   clientSession: ClientSession
@@ -40,6 +41,9 @@ export const makeClientSessionSyncProcessor = ({
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
   span: otel.Span
+  params: {
+    leaderPushBatchSize: number
+  }
 }): ClientSessionSyncProcessor => {
   const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
@@ -58,6 +62,9 @@ export const makeClientSessionSyncProcessor = ({
     const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
     return mutationDef.options.clientOnly
   }
+
+  /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
+  const leaderPushQueue = BucketQueue.make<MutationEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
   const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
     // TODO validate batch
@@ -112,11 +119,15 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     // console.debug('pushToLeader', encodedMutationEvents.length, ...encodedMutationEvents.map((_) => _.toJSON()))
-    clientSession.leaderThread.mutations
-      .push(encodedMutationEvents)
-      .pipe(Effect.tapCauseLogPretty, Effect.provide(runtime), Effect.runFork)
+    BucketQueue.offerAll(leaderPushQueue, encodedMutationEvents).pipe(Effect.runSync)
 
     return { writeTables }
+  }
+
+  const debugInfo = {
+    rebaseCount: 0,
+    advanceCount: 0,
+    rejectCount: 0,
   }
 
   const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -137,6 +148,20 @@ export const makeClientSessionSyncProcessor = ({
       )
     }
 
+    const leaderPushingFiberHandle = yield* FiberHandle.make()
+
+    const backgroundLeaderPushing = Effect.gen(function* () {
+      const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
+      yield* clientSession.leaderThread.mutations.push(batch).pipe(
+        Effect.catchTag('LeaderAheadError', () => {
+          debugInfo.rejectCount++
+          return BucketQueue.clear(leaderPushQueue)
+        }),
+      )
+    }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty)
+
+    yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+
     yield* clientSession.leaderThread.mutations.pull.pipe(
       Stream.tap(({ payload, remaining }) =>
         Effect.gen(function* () {
@@ -154,11 +179,8 @@ export const makeClientSessionSyncProcessor = ({
 
           if (updateResult._tag === 'unexpected-error') {
             return yield* Effect.fail(updateResult.cause)
-          }
-
-          if (updateResult._tag === 'reject') {
-            debugger
-            throw new Error('TODO: implement reject in client-session-sync-queue for pull')
+          } else if (updateResult._tag === 'reject') {
+            return shouldNeverHappen('Unexpected reject in client-session-sync-processor', updateResult)
           }
 
           syncStateRef.current = updateResult.newSyncState
@@ -173,11 +195,21 @@ export const makeClientSessionSyncProcessor = ({
               res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
               remaining,
             })
+
+            debugInfo.rebaseCount++
+
+            yield* FiberHandle.clear(leaderPushingFiberHandle)
+
+            // Reset the leader push queue since we're rebasing and will push again
+            yield* BucketQueue.clear(leaderPushQueue)
+
+            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+
             if (LS_DEV) {
               Effect.logDebug(
                 'pull:rebase: rollback',
                 updateResult.eventsToRollback.length,
-                ...updateResult.eventsToRollback.map((_) => _.toJSON()),
+                ...updateResult.eventsToRollback.slice(0, 10).map((_) => _.toJSON()),
               ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
@@ -189,9 +221,7 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            clientSession.leaderThread.mutations
-              .push(updateResult.newSyncState.pending)
-              .pipe(Effect.tapCauseLogPretty, Effect.provide(runtime), Effect.runFork)
+            yield* BucketQueue.offerAll(leaderPushQueue, updateResult.newSyncState.pending)
           } else {
             span.addEvent('pull:advance', {
               payloadTag: payload._tag,
@@ -200,6 +230,8 @@ export const makeClientSessionSyncProcessor = ({
               res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
               remaining,
             })
+
+            debugInfo.advanceCount++
           }
 
           if (updateResult.newEvents.length === 0) return
@@ -216,10 +248,14 @@ export const makeClientSessionSyncProcessor = ({
           }
 
           refreshTables(writeTables)
-        }),
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          Effect.catchAllCause((cause) => Effect.sync(() => clientSession.shutdown(cause))),
+        ),
       ),
       Stream.runDrain,
       Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+      Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
@@ -236,6 +272,21 @@ export const makeClientSessionSyncProcessor = ({
       }),
       changes: Stream.fromQueue(syncStateUpdateQueue),
     }),
+    debug: {
+      print: () =>
+        Effect.gen(function* () {
+          console.log('debugInfo', debugInfo)
+          console.log('syncState', syncStateRef.current)
+          const pushQueueSize = yield* BucketQueue.size(leaderPushQueue)
+          console.log('pushQueueSize', pushQueueSize)
+          const pushQueueItems = yield* BucketQueue.peekAll(leaderPushQueue)
+          console.log(
+            'pushQueueItems',
+            pushQueueItems.map((_) => _.toJSON()),
+          )
+        }).pipe(Effect.provide(runtime), Effect.runSync),
+      debugInfo: () => debugInfo,
+    },
   } satisfies ClientSessionSyncProcessor
 }
 
@@ -247,6 +298,12 @@ export interface ClientSessionSyncProcessor {
     writeTables: Set<string>
   }
   boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
-
   syncState: Subscribable.Subscribable<SyncState.SyncState>
+  debug: {
+    print: () => void
+    debugInfo: () => {
+      rebaseCount: number
+      advanceCount: number
+    }
+  }
 }

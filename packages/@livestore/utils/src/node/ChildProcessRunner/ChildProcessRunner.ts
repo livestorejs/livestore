@@ -3,7 +3,6 @@ import process from 'node:process'
 
 import { WorkerError } from '@effect/platform/WorkerError'
 import * as Runner from '@effect/platform/WorkerRunner'
-import { Cause } from 'effect'
 import * as Context from 'effect/Context'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
@@ -38,7 +37,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         const runFork = Runtime.runFork(runtime)
         const onExit = (exit: Exit.Exit<any, E>) => {
           if (exit._tag === 'Failure') {
-            Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
+            // Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
+            Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
           }
         }
         port.on('message', (message: Runner.BackingRunner.Message<I>) => {

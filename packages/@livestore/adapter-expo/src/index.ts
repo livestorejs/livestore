@@ -185,6 +185,8 @@ export const makeAdapter =
                       syncMetadataJson: Option.none(),
                       parentIdGlobal: mutationEventEncoded.parentId.global,
                       parentIdClient: mutationEventEncoded.parentId.client,
+                      clientId: 'expo',
+                      sessionId: 'expo',
                     } satisfies MutationLogMetaRow
 
                     try {

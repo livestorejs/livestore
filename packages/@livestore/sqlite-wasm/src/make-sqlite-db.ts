@@ -207,6 +207,8 @@ export const makeSqliteDb = <
         },
         apply: () => {
           sqlite3.changeset_apply(dbPointer, data)
+          // @ts-expect-error data should be garbage collected after use
+          data = undefined
         },
       } satisfies SqliteDbChangeset
 

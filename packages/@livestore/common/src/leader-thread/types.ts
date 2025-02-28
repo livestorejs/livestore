@@ -14,7 +14,7 @@ import { Context, Schema } from '@livestore/utils/effect'
 import type {
   BootStatus,
   Devtools,
-  InvalidPushError,
+  LeaderAheadError,
   MakeSqliteDb,
   MigrationsReport,
   PersistenceInfo,
@@ -127,12 +127,18 @@ export interface LeaderSyncProcessor {
     batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
     options?: {
       /**
+       * This generation number is used to automatically reject subsequent pushes
+       * of a previously rejected push from a client session. This might occur in
+       * certain concurrent scenarios.
+       */
+      // generation: number
+      /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
        * @default false
        */
       waitForProcessing?: boolean
     },
-  ) => Effect.Effect<void, InvalidPushError>
+  ) => Effect.Effect<void, LeaderAheadError>
 
   pushPartial: (args: {
     mutationEvent: MutationEvent.PartialAnyEncoded

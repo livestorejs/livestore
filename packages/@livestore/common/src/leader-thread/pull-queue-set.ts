@@ -2,7 +2,7 @@ import { Effect, Queue } from '@livestore/utils/effect'
 
 import * as MutationEvent from '../schema/MutationEvent.js'
 import { getMutationEventsSince } from './mutationlog.js'
-import { type PullQueueItem, type PullQueueSet } from './types.js'
+import { LeaderThreadCtx, type PullQueueItem, type PullQueueSet } from './types.js'
 
 export const makePullQueueSet = Effect.gen(function* () {
   const set = new Set<Queue.Queue<PullQueueItem>>()
@@ -44,6 +44,15 @@ export const makePullQueueSet = Effect.gen(function* () {
         item.payload.trimRollbackUntil === undefined
       ) {
         return
+      }
+
+      const { clientId } = yield* LeaderThreadCtx
+      if (clientId === 'client-b') {
+        // console.log(
+        //   'offer',
+        //   item.payload._tag,
+        //   item.payload.newEvents.map((_) => _.toJSON()),
+        // )
       }
 
       for (const queue of set) {

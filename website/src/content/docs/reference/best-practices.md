@@ -7,7 +7,10 @@ sidebar:
 
 - It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
 	- This means you'll rarely use `React.useState` when using LiveStore
-- In some cases (such as text input/scroll position/resize events) it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations
+- In some cases for "fast changing values" it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations. Cases where this can make sense can include:
+  - Text input / rich text editing
+  - Scroll position tracking, resize events, move/drag events
+  - ...
 
 ## Web adapter
 

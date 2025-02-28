@@ -7,7 +7,7 @@
     "@livestore/adapter-web": "workspace:*",
     "@livestore/devtools-vite": "0.3.0-dev.16",
     "@livestore/livestore": "workspace:*",
-    "@livestore/wa-sqlite": "1.0.5-dev.1",
+    "@livestore/wa-sqlite": "1.0.5-dev.2",
     "effect": "3.13.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",

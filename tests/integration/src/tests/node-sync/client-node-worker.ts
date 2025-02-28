@@ -3,11 +3,24 @@ import './thread-polyfill.js'
 import path from 'node:path'
 
 import { makeInMemoryAdapter, makeNodeAdapter } from '@livestore/adapter-node'
-import type { Store } from '@livestore/livestore'
+import type { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
+import type { ShutdownDeferred, Store, StoreAbort, StoreInterrupted } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf'
 import { IS_CI } from '@livestore/utils'
-import { Context, Effect, Layer, Logger, LogLevel, OtelTracer, Stream, WorkerRunner } from '@livestore/utils/effect'
+import {
+  Context,
+  Deferred,
+  Effect,
+  Layer,
+  Logger,
+  LogLevel,
+  OtelTracer,
+  pipe,
+  ReadonlyArray,
+  Stream,
+  WorkerRunner,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
@@ -18,11 +31,12 @@ class WorkerContext extends Context.Tag('WorkerContext')<
   WorkerContext,
   {
     store: Store<any, any>
+    shutdownDeferred: ShutdownDeferred
   }
 >() {}
 
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
-  InitialMessage: ({ storeId, clientId, adapterType }) =>
+  InitialMessage: ({ storeId, clientId, adapterType, params }) =>
     Effect.gen(function* () {
       const adapter =
         adapterType === 'file'
@@ -39,14 +53,29 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
               clientId,
             })
           : makeInMemoryAdapter({
+              clientId,
               sync: {
                 makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8888', storeId }),
               },
             })
 
-      const store = yield* createStore({ adapter, schema, storeId, disableDevtools: true })
+      const shutdownDeferred = yield* Deferred.make<
+        void,
+        UnexpectedError | IntentionalShutdownCause | StoreInterrupted | StoreAbort
+      >()
 
-      return Layer.succeed(WorkerContext, { store })
+      const store = yield* createStore({
+        adapter,
+        schema,
+        storeId,
+        disableDevtools: true,
+        shutdownDeferred,
+        params: { leaderPushBatchSize: params.leaderPushBatchSize },
+      })
+      // @ts-expect-error for debugging
+      globalThis.store = store
+
+      return Layer.succeed(WorkerContext, { store, shutdownDeferred })
     }).pipe(
       Effect.orDie,
       Effect.annotateLogs({ clientId }),
@@ -54,24 +83,35 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       Effect.withSpan(`@livestore/adapter-node-sync:test:init-${clientId}`),
       Layer.unwrapScoped,
     ),
-  CreateTodos: ({ count }) =>
+  CreateTodos: ({ count, mutateBatchSize = 1 }) =>
     Effect.gen(function* () {
       // TODO check sync connection status
       const { store } = yield* WorkerContext
       const otelSpan = yield* OtelTracer.currentOtelSpan
-      for (let i = 0; i < count; i++) {
-        store.mutate(
-          { spanLinks: [{ context: otelSpan.spanContext() }] },
-          tables.todo.insert({ id: nanoid(), title: `todo ${i}` }),
-        )
+      const mutationEventBatches = pipe(
+        ReadonlyArray.range(0, count - 1),
+        ReadonlyArray.map((i) => tables.todo.insert({ id: nanoid(), title: `todo ${i} (${clientId})` })),
+        ReadonlyArray.chunksOf(mutateBatchSize),
+      )
+      const spanLinks = [{ context: otelSpan.spanContext() }]
+      for (const batch of mutationEventBatches) {
+        store.mutate({ spanLinks }, ...batch)
       }
     }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count } }), Effect.orDie),
   StreamTodos: () =>
     Effect.gen(function* () {
       const { store } = yield* WorkerContext
-      const query$ = queryDb(tables.todo.query.orderBy('id', 'desc').limit(10))
+      const query$ = queryDb(tables.todo.query.orderBy('id', 'desc'))
       return store.subscribeStream(query$)
     }).pipe(Stream.unwrap, Stream.withSpan('@livestore/adapter-node-sync:test:stream-todos')),
+  OnShutdown: () =>
+    Effect.gen(function* () {
+      const { shutdownDeferred } = yield* WorkerContext
+      yield* shutdownDeferred.pipe(
+        Effect.catchTag('LiveStore.StoreAbort', () => Effect.void),
+        Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void),
+      )
+    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:on-shutdown')),
 })
 
 const clientId = process.argv[2]

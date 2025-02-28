@@ -3,7 +3,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/index.js'
 import type { EventId, LiveStoreSchema, MutationEvent } from './schema/mod.js'
-import type { InvalidPushError } from './sync/sync.js'
+import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
 
@@ -33,7 +33,7 @@ export interface ClientSession {
   sessionId: string
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
 }
@@ -41,7 +41,8 @@ export interface ClientSession {
 export interface ClientSessionLeaderThreadProxy {
   mutations: {
     pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
-    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | InvalidPushError>
+    /** It's important that a client session doesn't call `push` concurrently. */
+    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {
@@ -230,7 +231,7 @@ export type Adapter = (opts: {
   devtoolsEnabled: boolean
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
-  shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+  shutdown: (cause: Cause.Cause<any>) => void
   connectDevtoolsToStore: ConnectDevtoolsToStore
 }) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
 

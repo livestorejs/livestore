@@ -66,6 +66,9 @@ export type StoreOptions<
   batchUpdates: (runUpdates: () => void) => void
   // TODO validate whether we still need this
   unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId.EventId, MutationEvent.ForSchema<TSchema>>
+  params: {
+    leaderPushBatchSize: number
+  }
 }
 
 export type RefreshReason =

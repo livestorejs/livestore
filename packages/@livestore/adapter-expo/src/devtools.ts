@@ -41,7 +41,7 @@ export const bootDevtools = ({
   schema: LiveStoreSchema
   dbRef: DbPairRef
   dbMutationLogRef: DbPairRef
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   incomingSyncMutationsQueue: Queue.Queue<PullQueueItem>
 }): Effect.Effect<BootedDevtools, UnexpectedError | ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {

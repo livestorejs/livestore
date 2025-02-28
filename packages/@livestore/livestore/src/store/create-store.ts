@@ -33,6 +33,10 @@ import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
 import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, ShutdownDeferred } from './store-types.js'
 
+export const DEFAULT_PARAMS = {
+  leaderPushBatchSize: 1,
+}
+
 export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> {
   schema: TSchema
   adapter: Adapter
@@ -49,6 +53,9 @@ export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, 
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
   shutdownDeferred?: ShutdownDeferred
+  params?: {
+    leaderPushBatchSize?: number
+  }
   debug?: {
     instanceId?: string
   }
@@ -102,6 +109,7 @@ export const createStore = <
   disableDevtools,
   onBootStatus,
   shutdownDeferred,
+  params,
   debug,
 }: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<
   Store<TGraphQLContext, TSchema>,
@@ -142,23 +150,30 @@ export const createStore = <
 
       const runtime = yield* Effect.runtime<Scope.Scope>()
 
-      const shutdown = Effect.fn('livestore:shutdown')(function* (
-        cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>,
-      ) {
-        yield* Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
-          Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
-          Effect.timeout(1000),
-          Effect.catchTag('TimeoutException', () =>
-            Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
-          ),
+      const shutdown = (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => {
+        Effect.gen(function* () {
+          yield* Scope.close(lifetimeScope, Exit.failCause(cause)).pipe(
+            Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
+            Effect.timeout(1000),
+            Effect.catchTag('TimeoutException', () =>
+              Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
+            ),
+          )
+
+          if (shutdownDeferred) {
+            yield* Deferred.failCause(shutdownDeferred, cause)
+          }
+
+          yield* Effect.logDebug('LiveStore shutdown complete')
+        }).pipe(
+          Effect.withSpan('@livestore/livestore:shutdown'),
+          Effect.provide(runtime),
+          Effect.tapCauseLogPretty,
+          // Given that the shutdown flow might also interrupt the effect that is calling the shutdown,
+          // we want to detach the shutdown effect so it's not interrupted by itself
+          Effect.runFork,
         )
-
-        if (shutdownDeferred) {
-          yield* Deferred.failCause(shutdownDeferred, cause)
-        }
-
-        yield* Effect.logDebug('LiveStore shutdown complete')
-      })
+      }
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -173,9 +188,10 @@ export const createStore = <
       if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
         yield* Effect.logDebug(
           '[@livestore/livestore:createStore] migrationsReport',
-          ...clientSession.leaderThread.initialState.migrationsReport.migrations.map(
-            (m) =>
-              `Schema hash mismatch for table '${m.tableName}' (DB: ${m.hashes.actual}, expected: ${m.hashes.expected}), migrating table...`,
+          ...clientSession.leaderThread.initialState.migrationsReport.migrations.map((m) =>
+            m.hashes.actual === undefined
+              ? `Table '${m.tableName}' doesn't exist yet. Creating table...`
+              : `Schema hash mismatch for table '${m.tableName}' (DB: ${m.hashes.actual}, expected: ${m.hashes.expected}), migrating table...`,
           ),
         )
       }
@@ -196,6 +212,9 @@ export const createStore = <
         // but only set the provided `batchUpdates` function after boot
         batchUpdates: (run) => run(),
         storeId,
+        params: {
+          leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
+        },
       })
 
       // Starts background fibers (syncing, mutation processing, etc) for store

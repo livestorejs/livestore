@@ -1,9 +1,10 @@
 import './thread-polyfill.js'
 
 import * as ChildProcess from 'node:child_process'
+import * as inspector from 'node:inspector'
 
 import { IS_CI } from '@livestore/utils'
-import { Effect, identity, Layer, Logger, Stream, Worker } from '@livestore/utils/effect'
+import { Effect, identity, Layer, Logger, Schema, Stream, Worker } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, OtelLiveHttp } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
@@ -12,10 +13,13 @@ import { expect } from 'vitest'
 import * as WorkerSchema from './worker-schema.js'
 
 const testTimeout = IS_CI ? 60_000 : 10_000
+const propTestTimeout = IS_CI ? 300_000 : 120_000
+
+const DEBUGGER_ACTIVE = process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined
 
 Vitest.describe('node-sync', { timeout: testTimeout }, () => {
   Vitest.scopedLive.prop(
-    'node-sync',
+    'create 4 todos on client-a and wait for them to be synced to client-b',
     [WorkerSchema.AdapterType],
     ([adapterType], test) =>
       Effect.gen(function* () {
@@ -42,16 +46,84 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     { fastCheck: { numRuns: 2 } },
   )
+
+  const CreateCount = Schema.Int.pipe(Schema.between(1, 500))
+  const MutateBatchSize = Schema.Literal(1, 2, 10, 100)
+  const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
+  // TODO introduce random delays in async operations as part of prop testing
+
+  Vitest.scopedLive.prop(
+    'node-sync prop tests',
+    DEBUGGER_ACTIVE
+      ? [Schema.Literal('file'), Schema.Literal(500), Schema.Literal(500), Schema.Literal(1), Schema.Literal(1)]
+      : [WorkerSchema.AdapterType, CreateCount, CreateCount, MutateBatchSize, LEADER_PUSH_BATCH_SIZE],
+    ([adapterType, todoCountA, todoCountB, mutateBatchSize, leaderPushBatchSize], test) =>
+      Effect.gen(function* () {
+        const storeId = nanoid(10)
+        const totalCount = todoCountA + todoCountB
+        console.log('concurrent push', { adapterType, todoCountA, todoCountB, mutateBatchSize, leaderPushBatchSize })
+
+        const [clientA, clientB] = yield* Effect.all(
+          [
+            makeWorker({ clientId: 'client-a', storeId, adapterType, leaderPushBatchSize }),
+            makeWorker({ clientId: 'client-b', storeId, adapterType, leaderPushBatchSize }),
+          ],
+          { concurrency: 'unbounded' },
+        )
+
+        // TODO also alternate the order and delay of todo creation as part of prop testing
+        yield* clientA
+          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, mutateBatchSize }))
+          .pipe(Effect.fork)
+
+        yield* clientB
+          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, mutateBatchSize }))
+          .pipe(Effect.fork)
+
+        const test = Effect.all(
+          [
+            clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
+              Stream.filter((_) => _.length === totalCount),
+              Stream.runHead,
+              Effect.flatten,
+            ),
+            clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+              Stream.filter((_) => _.length === totalCount),
+              Stream.runHead,
+              Effect.flatten,
+            ),
+          ],
+          { concurrency: 'unbounded' },
+        )
+
+        const onShutdown = Effect.raceFirst(
+          clientA.executeEffect(WorkerSchema.OnShutdown.make()),
+          clientB.executeEffect(WorkerSchema.OnShutdown.make()),
+        )
+
+        yield* Effect.raceFirst(test, onShutdown)
+      }).pipe(
+        withCtx(test, {
+          skipOtel: DEBUGGER_ACTIVE ? false : true,
+          suffix: `adapterType=${adapterType} todoCountA=${todoCountA} todoCountB=${todoCountB}`,
+        }),
+      ),
+    DEBUGGER_ACTIVE
+      ? { fastCheck: { numRuns: 1 }, timeout: propTestTimeout * 100 }
+      : { fastCheck: { numRuns: 10 }, timeout: propTestTimeout },
+  )
 })
 
 const makeWorker = ({
   clientId,
   storeId,
   adapterType,
+  leaderPushBatchSize,
 }: {
   clientId: string
   storeId: string
   adapterType: typeof WorkerSchema.AdapterType.Type
+  leaderPushBatchSize?: number
 }) =>
   Effect.gen(function* () {
     const nodeChildProcess = ChildProcess.fork(
@@ -63,7 +135,8 @@ const makeWorker = ({
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
       size: 1,
       concurrency: 100,
-      initialMessage: () => WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType }),
+      initialMessage: () =>
+        WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, params: { leaderPushBatchSize } }),
     }).pipe(
       Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)),
       Effect.tapCauseLogPretty,
@@ -79,9 +152,10 @@ const withCtx =
   (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(testTimeout),
+      DEBUGGER_ACTIVE ? identity : Effect.timeout(testTimeout),
       Effect.provide(Logger.prettyWithThread('runner')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
+      Effect.annotateLogs({ suffix }),
       skipOtel ? identity : Effect.provide(otelLayer),
     )

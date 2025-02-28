@@ -1,4 +1,4 @@
-import { BootStatus, Devtools, InvalidPushError, MigrationsReport, SyncState, UnexpectedError } from '@livestore/common'
+import { BootStatus, Devtools, LeaderAheadError, MigrationsReport, SyncState, UnexpectedError } from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -85,8 +85,6 @@ export namespace LeaderWorkerInner {
       cursor: EventId.EventId,
     },
     success: Schema.Struct({
-      // mutationEvents: Schema.Array(EncodedAny),
-      // backendHead: Schema.Number,
       payload: SyncState.PayloadUpstream,
       remaining: Schema.Number,
     }),
@@ -98,7 +96,7 @@ export namespace LeaderWorkerInner {
       batch: Schema.Array(MutationEvent.AnyEncoded),
     },
     success: Schema.Void,
-    failure: Schema.Union(UnexpectedError, InvalidPushError),
+    failure: Schema.Union(UnexpectedError, LeaderAheadError),
   }) {}
 
   export class Export extends Schema.TaggedRequest<Export>()('Export', {

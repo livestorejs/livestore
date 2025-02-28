@@ -68,7 +68,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     InitialMessage: (args) => makeLeaderThread({ ...args, syncOptions: options.sync }),
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(batch.map((item) => new MutationEvent.EncodedWithMeta(item))),
+        _.syncProcessor.push(
+          batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+          // We'll wait in order to keep back pressure on the client session
+          { waitForProcessing: true },
+        ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
@@ -152,7 +156,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
-    Effect.annotateLogs({ thread: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread' }),
+    Effect.annotateLogs({
+      thread: options.otelOptions?.serviceName ?? 'livestore-node-leader-thread',
+      processId: process.pid,
+    }),
     Effect.provide(Logger.prettyWithThread(options.otelOptions?.serviceName ?? 'livestore-node-leader-thread')),
     Effect.provide(FetchHttpClient.layer),
     Effect.provide(PlatformNode.NodeFileSystem.layer),

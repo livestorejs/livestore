@@ -1,4 +1,4 @@
-import { isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
@@ -18,6 +18,7 @@ import type * as otel from '@opentelemetry/api'
 
 import type { SqliteDb } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
+import { clientId } from '../devtools/devtools-messages-common.js'
 import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
@@ -27,7 +28,7 @@ import {
   SESSION_CHANGESET_META_TABLE,
 } from '../schema/mod.js'
 import { updateRows } from '../sql-queries/index.js'
-import { InvalidPushError } from '../sync/sync.js'
+import { InvalidPushError, LeaderAheadError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -36,9 +37,12 @@ import { getBackendHeadFromDb, getClientHeadFromDb, getMutationEventsSince, upda
 import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
-type PushQueueItem = [
+export const BACKEND_PUSH_BATCH_SIZE = 50
+
+type LocalPushQueueItem = [
   mutationEvent: MutationEvent.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, InvalidPushError> | undefined,
+  deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
+  generation: number,
 ]
 
 /**
@@ -68,12 +72,14 @@ export const makeLeaderSyncProcessor = ({
   schema,
   dbMissing,
   dbMutationLog,
+  clientId,
   initialBlockingSyncContext,
 }: {
   schema: LiveStoreSchema
   /** Only used to know whether we can safely query dbMutationLog during setup execution */
   dbMissing: boolean
   dbMutationLog: SqliteDb
+  clientId: string
   initialBlockingSyncContext: InitialBlockingSyncContext
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
@@ -86,6 +92,13 @@ export const makeLeaderSyncProcessor = ({
       return mutationDef.options.clientOnly
     }
 
+    /**
+     * Tracks generations of queued local push events.
+     * If a batch is rejected, all subsequent push queue items with the same generation are also rejected,
+     * even if they would be valid on their own.
+     */
+    const currentLocalPushGenerationRef = { current: 0 }
+
     // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
     const ctxRef = {
       current: undefined as
@@ -97,7 +110,7 @@ export const makeLeaderSyncProcessor = ({
           },
     }
 
-    const localPushesQueue = yield* BucketQueue.make<PushQueueItem>()
+    const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
     const localPushesLatch = yield* Effect.makeLatch(true)
     const pullLatch = yield* Effect.makeLatch(true)
 
@@ -106,20 +119,36 @@ export const makeLeaderSyncProcessor = ({
         // TODO validate batch
         if (newEvents.length === 0) return
 
+        // if (options.generation < currentLocalPushGenerationRef.current) {
+        //   debugger
+        //   // We can safely drop this batch as it's from a previous push generation
+        //   return
+        // }
+
+        if (clientId === 'client-b') {
+          // console.log(
+          //   'push from client session',
+          //   newEvents.map((item) => item.toJSON()),
+          // )
+        }
+
         const waitForProcessing = options?.waitForProcessing ?? false
+        const generation = currentLocalPushGenerationRef.current
 
         if (waitForProcessing) {
-          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, InvalidPushError>())
+          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
 
           const items = newEvents.map(
-            (mutationEventEncoded, i) => [mutationEventEncoded, deferreds[i]] as PushQueueItem,
+            (mutationEventEncoded, i) => [mutationEventEncoded, deferreds[i], generation] as LocalPushQueueItem,
           )
 
           yield* BucketQueue.offerAll(localPushesQueue, items)
 
           yield* Effect.all(deferreds)
         } else {
-          const items = newEvents.map((mutationEventEncoded) => [mutationEventEncoded, undefined] as PushQueueItem)
+          const items = newEvents.map(
+            (mutationEventEncoded) => [mutationEventEncoded, undefined, generation] as LocalPushQueueItem,
+          )
           yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
@@ -153,14 +182,14 @@ export const makeLeaderSyncProcessor = ({
         })
 
         yield* push([mutationEventEncoded])
-      }).pipe(Effect.catchTag('InvalidPushError', Effect.orDie))
+      }).pipe(Effect.catchTag('LeaderAheadError', Effect.orDie))
 
     // Starts various background loops
     const boot: LeaderSyncProcessor['boot'] = ({ dbReady }) =>
       Effect.gen(function* () {
         const span = yield* Effect.currentSpan.pipe(Effect.orDie)
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
-        const { devtools } = yield* LeaderThreadCtx
+        const { devtools, shutdownChannel } = yield* LeaderThreadCtx
 
         ctxRef.current = {
           otelSpan,
@@ -205,6 +234,12 @@ export const makeLeaderSyncProcessor = ({
           yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
         }
 
+        const shutdownOnError = (cause: unknown) =>
+          Effect.gen(function* () {
+            yield* shutdownChannel.send(UnexpectedError.make({ cause }))
+            yield* Effect.die(cause)
+          })
+
         yield* backgroundApplyLocalPushes({
           localPushesLatch,
           localPushesQueue,
@@ -214,7 +249,8 @@ export const makeLeaderSyncProcessor = ({
           schema,
           isLocalEvent,
           otelSpan,
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+          currentLocalPushGenerationRef,
+        }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
         const backendPushingFiberHandle = yield* FiberHandle.make()
 
@@ -225,7 +261,7 @@ export const makeLeaderSyncProcessor = ({
             syncBackendQueue,
             otelSpan,
             devtoolsLatch: ctxRef.current?.devtoolsLatch,
-          }).pipe(Effect.tapCauseLogPretty),
+          }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError)),
         )
 
         yield* backgroundBackendPulling({
@@ -249,7 +285,7 @@ export const makeLeaderSyncProcessor = ({
                   syncBackendQueue,
                   otelSpan,
                   devtoolsLatch: ctxRef.current?.devtoolsLatch,
-                }).pipe(Effect.tapCauseLogPretty),
+                }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError)),
               )
             }),
           syncStateSref,
@@ -258,7 +294,7 @@ export const makeLeaderSyncProcessor = ({
           otelSpan,
           initialBlockingSyncContext,
           devtoolsLatch: ctxRef.current?.devtoolsLatch,
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
         return { initialLeaderHead: initialLocalHead }
       }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
@@ -287,31 +323,47 @@ const backgroundApplyLocalPushes = ({
   schema,
   isLocalEvent,
   otelSpan,
+  currentLocalPushGenerationRef,
 }: {
   pullLatch: Effect.Latch
   localPushesLatch: Effect.Latch
-  localPushesQueue: BucketQueue.BucketQueue<PushQueueItem>
+  localPushesQueue: BucketQueue.BucketQueue<LocalPushQueueItem>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
   schema: LiveStoreSchema
   isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
   otelSpan: otel.Span | undefined
+  currentLocalPushGenerationRef: { current: number }
 }) =>
   Effect.gen(function* () {
-    const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
+    const { connectedClientSessionPullQueues, clientId } = yield* LeaderThreadCtx
 
     const applyMutationItems = yield* makeApplyMutationItems
 
     while (true) {
       // TODO make batch size configurable
       const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, 10)
-      const [newEvents, deferreds] = ReadonlyArray.unzip(batchItems)
 
       // Wait for the backend pulling to finish
       yield* localPushesLatch.await
 
-      // Prevent the backend pulling from starting until this local push is finished
+      // Prevent backend pull processing until this local push is finished
       yield* pullLatch.close
+
+      // Since the generation might have changed since enqueuing, we need to filter out items with older generation
+      // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
+      const filteredBatchItems = batchItems
+        .filter(([_1, _2, generation]) => generation === currentLocalPushGenerationRef.current)
+        .map(([mutationEventEncoded, deferred]) => [mutationEventEncoded, deferred] as const)
+
+      if (filteredBatchItems.length === 0) {
+        // console.log('dropping old-gen batch', currentLocalPushGenerationRef.current)
+        // Allow the backend pulling to start
+        yield* pullLatch.open
+        continue
+      }
+
+      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredBatchItems)
 
       const syncState = yield* syncStateSref
       if (syncState === undefined) return shouldNeverHappen('Not initialized')
@@ -323,42 +375,82 @@ const backgroundApplyLocalPushes = ({
         isEqualEvent: MutationEvent.isEqualEncoded,
       })
 
-      if (updateResult._tag === 'rebase') {
-        return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
-      } else if (updateResult._tag === 'reject') {
-        otelSpan?.addEvent('local-push:reject', {
-          batchSize: newEvents.length,
-          updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
-        })
+      switch (updateResult._tag) {
+        case 'unexpected-error': {
+          otelSpan?.addEvent('local-push:unexpected-error', {
+            batchSize: newEvents.length,
+            newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+          })
+          return yield* Effect.fail(updateResult.cause)
+        }
+        case 'rebase': {
+          return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
+        }
+        case 'reject': {
+          otelSpan?.addEvent('local-push:reject', {
+            batchSize: newEvents.length,
+            updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+          })
 
-        const providedId = newEvents.at(0)!.id
-        const remainingEvents = yield* BucketQueue.takeAll(localPushesQueue)
-        const allDeferreds = [...deferreds, ...remainingEvents.map(([_, deferred]) => deferred)].filter(isNotUndefined)
-        yield* Effect.forEach(allDeferreds, (deferred) =>
-          Deferred.fail(
-            deferred,
-            InvalidPushError.make({
-              // TODO improve error handling so it differentiates between a push being rejected
-              // because of itself or because of another push
-              reason: {
-                _tag: 'LeaderAhead',
+          /*
+
+          TODO: how to test this?
+          */
+          currentLocalPushGenerationRef.current++
+
+          const nextGeneration = currentLocalPushGenerationRef.current
+
+          const providedId = newEvents.at(0)!.id
+          // All subsequent pushes with same generation should be rejected as well
+          // We're also handling the case where the localPushQueue already contains events
+          // from the next generation which we preserve in the queue
+          const remainingEventsMatchingGeneration = yield* BucketQueue.takeSplitWhere(
+            localPushesQueue,
+            (item) => item[2] >= nextGeneration,
+          )
+
+          if ((yield* BucketQueue.size(localPushesQueue)) > 0) {
+            console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
+            debugger
+          }
+
+          const allDeferredsToReject = [
+            ...deferreds,
+            ...remainingEventsMatchingGeneration.map(([_, deferred]) => deferred),
+          ].filter(isNotUndefined)
+
+          yield* Effect.forEach(allDeferredsToReject, (deferred) =>
+            Deferred.fail(
+              deferred,
+              LeaderAheadError.make({
                 minimumExpectedId: updateResult.expectedMinimumId,
                 providedId,
-              },
-            }),
-          ),
-        )
+                // nextGeneration,
+              }),
+            ),
+          )
 
-        // Allow the backend pulling to start
-        yield* pullLatch.open
+          // Allow the backend pulling to start
+          yield* pullLatch.open
 
-        // In this case we're skipping state update and down/upstream processing
-        // We've cleared the local push queue and are now waiting for new local pushes / backend pulls
-        continue
+          // In this case we're skipping state update and down/upstream processing
+          // We've cleared the local push queue and are now waiting for new local pushes / backend pulls
+          continue
+        }
+        case 'advance': {
+          break
+        }
+        default: {
+          casesHandled(updateResult)
+        }
       }
 
       yield* SubscriptionRef.set(syncStateSref, updateResult.newSyncState)
 
+      if (clientId === 'client-b') {
+        // yield* Effect.log('offer upstream-advance due to local-push')
+        // debugger
+      }
       yield* connectedClientSessionPullQueues.offer({
         payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents },
         remaining: 0,
@@ -387,7 +479,7 @@ const backgroundApplyLocalPushes = ({
 type ApplyMutationItems = (_: {
   batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
   /** Indexes are aligned with `batchItems` */
-  deferreds: ReadonlyArray<Deferred.Deferred<void, InvalidPushError> | undefined> | undefined
+  deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
 }) => Effect.Effect<void, UnexpectedError>
 
 // TODO how to handle errors gracefully
@@ -466,6 +558,7 @@ const backgroundBackendPulling = ({
       dbMutationLog,
       connectedClientSessionPullQueues,
       schema,
+      clientId,
     } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
@@ -503,6 +596,12 @@ const backgroundBackendPulling = ({
 
         if (updateResult._tag === 'reject') {
           return shouldNeverHappen('The leader thread should never reject upstream advances')
+        } else if (updateResult._tag === 'unexpected-error') {
+          otelSpan?.addEvent('backend-pull:unexpected-error', {
+            newEventsCount: newEvents.length,
+            newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+          })
+          return yield* Effect.fail(updateResult.cause)
         }
 
         const newBackendHead = newEvents.at(-1)!.id
@@ -542,6 +641,9 @@ const backgroundBackendPulling = ({
             updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
           })
 
+          if (clientId === 'client-b') {
+            // yield* Effect.log('offer upstream-advance due to pull')
+          }
           yield* connectedClientSessionPullQueues.offer({
             payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents, trimRollbackUntil },
             remaining,
@@ -617,15 +719,23 @@ const rollback = ({
       }
     }
 
-    // Delete the changeset rows
-    db.execute(
-      sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
+    const eventIdPairChunks = ReadonlyArray.chunksOf(100)(
+      eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`),
     )
 
+    // Delete the changeset rows
+    for (const eventIdPairChunk of eventIdPairChunks) {
+      db.execute(
+        sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+      )
+    }
+
     // Delete the mutation log rows
-    dbMutationLog.execute(
-      sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
-    )
+    for (const eventIdPairChunk of eventIdPairChunks) {
+      dbMutationLog.execute(
+        sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+      )
+    }
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:syncing:rollback', {
       attributes: { count: eventIdsToRollback.length },
@@ -675,7 +785,7 @@ const backgroundBackendPushing = ({
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
       // TODO make batch size configurable
-      const queueItems = yield* BucketQueue.takeBetween(syncBackendQueue, 1, 50)
+      const queueItems = yield* BucketQueue.takeBetween(syncBackendQueue, 1, BACKEND_PUSH_BATCH_SIZE)
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -693,7 +803,7 @@ const backgroundBackendPushing = ({
 
       if (pushResult._tag === 'Left') {
         if (LS_DEV) {
-          yield* Effect.logDebug('backend-push-error', { error: pushResult.left.toString() })
+          yield* Effect.logDebug('handled backend-push-error', { error: pushResult.left.toString() })
         }
         otelSpan?.addEvent('backend-push-error', { error: pushResult.left.toString() })
         // wait for interrupt caused by background pulling which will then restart pushing

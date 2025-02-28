@@ -3,7 +3,6 @@ import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import type { MutationEvent } from '@livestore/common/schema'
 import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
 import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
@@ -11,7 +10,6 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   BrowserWorker,
-  BucketQueue,
   Cause,
   Deferred,
   Effect,
@@ -34,7 +32,6 @@ import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
 import { bootDevtools } from './client-session-devtools.js'
-import { trimPushBatch } from './trim-batch.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -115,7 +112,7 @@ export const makeAdapter =
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -144,7 +141,7 @@ export const makeAdapter =
         Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
-        Effect.tapErrorCause(shutdown),
+        Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
@@ -187,7 +184,7 @@ export const makeAdapter =
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnexpectedError.mapToUnexpectedError,
-          Effect.tapErrorCause(shutdown),
+          Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -196,9 +193,10 @@ export const makeAdapter =
         yield* workerDisconnectChannel.send(DedicatedWorkerDisconnectBroadcast.make({}))
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-        yield* sharedWorker
-          .executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 }))
-          .pipe(UnexpectedError.mapToUnexpectedError, Effect.tapErrorCause(shutdown))
+        yield* sharedWorker.executeEffect(new WorkerSchema.SharedWorker.UpdateMessagePort({ port: mc.port2 })).pipe(
+          UnexpectedError.mapToUnexpectedError,
+          Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
+        )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
 
@@ -304,7 +302,7 @@ export const makeAdapter =
         Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
         Stream.runDrain,
         Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
-        Effect.tapErrorCause(shutdown),
+        Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -313,7 +311,9 @@ export const makeAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
+        Effect.tapErrorCause((cause) =>
+          Cause.isInterruptedOnly(cause) ? Effect.void : Effect.sync(() => shutdown(cause)),
+        ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -388,21 +388,6 @@ export const makeAdapter =
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
-      const pushQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()
-
-      yield* Effect.gen(function* () {
-        const batch = yield* BucketQueue.takeBetween(pushQueue, 1, 100)
-        // We need to trim "old batches" which can happen during client session rebasing
-        const trimmedBatch = trimPushBatch(batch)
-        yield* runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch: trimmedBatch })).pipe(
-          Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
-            attributes: { batchSize: batch.length },
-          }),
-          // We can ignore the error here because the ClientSessionSyncProcessor will retry after rebasing
-          Effect.ignoreLogged,
-        )
-      }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
-
       const devtools: ClientSession['devtools'] = devtoolsEnabled
         ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
         : { enabled: false }
@@ -425,11 +410,12 @@ export const makeAdapter =
             pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialLeaderHead })).pipe(
               Stream.orDie,
             ),
-
-            // NOTE instead of sending the worker message right away, we're batching the events in order to
-            // - maintain a consistent order of events
-            // - improve efficiency by reducing the number of messages
-            push: (batch) => BucketQueue.offerAll(pushQueue, batch),
+            push: (batch) =>
+              runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+                Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
+                  attributes: { batchSize: batch.length },
+                }),
+              ),
           },
 
           initialState: { leaderHead: initialLeaderHead, migrationsReport },

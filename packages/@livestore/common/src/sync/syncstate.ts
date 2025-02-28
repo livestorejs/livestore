@@ -1,4 +1,5 @@
-import { ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { casesHandled } from '@livestore/utils'
+import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
@@ -79,41 +80,104 @@ export const PayloadUpstream = Schema.Union(PayloadUpstreamRebase, PayloadUpstre
 
 export type PayloadUpstream = typeof PayloadUpstream.Type
 
-export type UpdateResultAdvance = {
-  _tag: 'advance'
-  newSyncState: SyncState
-  previousSyncState: SyncState
-  /** Events which weren't pending before the update */
-  newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
+/** Only used for debugging purposes */
+export class UpdateContext extends Schema.Class<UpdateContext>('UpdateContext')({
+  payload: Payload,
+  syncState: SyncState,
+}) {
+  toJSON = (): any => {
+    const payload = Match.value(this.payload).pipe(
+      Match.tag('local-push', () => ({
+        _tag: 'local-push',
+        newEvents: this.payload.newEvents.map((e) => e.toJSON()),
+      })),
+      Match.tag('upstream-advance', () => ({
+        _tag: 'upstream-advance',
+        newEvents: this.payload.newEvents.map((e) => e.toJSON()),
+      })),
+      Match.tag('upstream-rebase', () => ({
+        _tag: 'upstream-rebase',
+        newEvents: this.payload.newEvents.map((e) => e.toJSON()),
+      })),
+      Match.exhaustive,
+    )
+    return {
+      payload,
+      syncState: this.syncState.toJSON(),
+    }
+  }
 }
 
-export type UpdateResultRebase = {
-  _tag: 'rebase'
-  newSyncState: SyncState
-  previousSyncState: SyncState
+export class UpdateResultAdvance extends Schema.Class<UpdateResultAdvance>('UpdateResultAdvance')({
+  _tag: Schema.Literal('advance'),
+  newSyncState: SyncState,
   /** Events which weren't pending before the update */
-  newEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  eventsToRollback: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  updateContext: UpdateContext,
+}) {
+  toJSON = (): any => {
+    return {
+      _tag: this._tag,
+      newSyncState: this.newSyncState.toJSON(),
+      newEvents: this.newEvents.map((e) => e.toJSON()),
+      updateContext: this.updateContext.toJSON(),
+    }
+  }
 }
 
-export type UpdateResultReject = {
-  _tag: 'reject'
-  previousSyncState: SyncState
+export class UpdateResultRebase extends Schema.Class<UpdateResultRebase>('UpdateResultRebase')({
+  _tag: Schema.Literal('rebase'),
+  newSyncState: SyncState,
+  /** Events which weren't pending before the update */
+  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  eventsToRollback: Schema.Array(MutationEvent.EncodedWithMeta),
+  updateContext: UpdateContext,
+}) {
+  toJSON = (): any => {
+    return {
+      _tag: this._tag,
+      newSyncState: this.newSyncState.toJSON(),
+      newEvents: this.newEvents.map((e) => e.toJSON()),
+      eventsToRollback: this.eventsToRollback.map((e) => e.toJSON()),
+      updateContext: this.updateContext.toJSON(),
+    }
+  }
+}
+
+export class UpdateResultReject extends Schema.Class<UpdateResultReject>('UpdateResultReject')({
+  _tag: Schema.Literal('reject'),
   /** The minimum id that the new events must have */
-  expectedMinimumId: EventId.EventId
+  expectedMinimumId: EventId.EventId,
+  updateContext: UpdateContext,
+}) {
+  toJSON = (): any => {
+    return {
+      _tag: this._tag,
+      expectedMinimumId: `(${this.expectedMinimumId.global},${this.expectedMinimumId.client})`,
+      updateContext: this.updateContext.toJSON(),
+    }
+  }
 }
 
-export type UpdateResultUnexpectedError = {
-  _tag: 'unexpected-error'
-  cause: UnexpectedError
-}
+export class UpdateResultUnexpectedError extends Schema.Class<UpdateResultUnexpectedError>(
+  'UpdateResultUnexpectedError',
+)({
+  _tag: Schema.Literal('unexpected-error'),
+  cause: UnexpectedError,
+}) {}
 
-export type UpdateResult = UpdateResultAdvance | UpdateResultRebase | UpdateResultReject | UpdateResultUnexpectedError
+export class UpdateResult extends Schema.Union(
+  UpdateResultAdvance,
+  UpdateResultRebase,
+  UpdateResultReject,
+  UpdateResultUnexpectedError,
+) {}
 
-const unexpectedError = (cause: unknown): UpdateResultUnexpectedError => ({
-  _tag: 'unexpected-error',
-  cause: new UnexpectedError({ cause }),
-})
+const unexpectedError = (cause: unknown): UpdateResultUnexpectedError =>
+  UpdateResultUnexpectedError.make({
+    _tag: 'unexpected-error',
+    cause: new UnexpectedError({ cause }),
+  })
 
 export const updateSyncState = ({
   syncState,
@@ -128,7 +192,7 @@ export const updateSyncState = ({
   isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
   /** This is used in the leader which should ignore local events when receiving an upstream-advance payload */
   ignoreLocalEvents?: boolean
-}): UpdateResult => {
+}): typeof UpdateResult.Type => {
   const trimRollbackTail = (
     rollbackTail: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ): ReadonlyArray<MutationEvent.EncodedWithMeta> => {
@@ -138,6 +202,8 @@ export const updateSyncState = ({
     if (index === -1) return []
     return rollbackTail.slice(index + 1)
   }
+
+  const updateContext = UpdateContext.make({ payload, syncState })
 
   switch (payload._tag) {
     case 'upstream-rebase': {
@@ -163,7 +229,7 @@ export const updateSyncState = ({
         isLocalEvent,
       })
 
-      return {
+      return UpdateResultRebase.make({
         _tag: 'rebase',
         newSyncState: new SyncState({
           pending: rebasedPending,
@@ -171,15 +237,15 @@ export const updateSyncState = ({
           upstreamHead: newUpstreamHead,
           localHead: rebasedPending.at(-1)?.id ?? newUpstreamHead,
         }),
-        previousSyncState: syncState,
-        newEvents: payload.newEvents,
+        newEvents: [...payload.newEvents, ...rebasedPending],
         eventsToRollback,
-      }
+        updateContext,
+      })
     }
 
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
-        return {
+        return UpdateResultAdvance.make({
           _tag: 'advance',
           newSyncState: new SyncState({
             pending: syncState.pending,
@@ -187,9 +253,9 @@ export const updateSyncState = ({
             upstreamHead: syncState.upstreamHead,
             localHead: syncState.localHead,
           }),
-          previousSyncState: syncState,
           newEvents: [],
-        }
+          updateContext,
+        })
       }
 
       // Validate that newEvents are sorted in ascending order by eventId
@@ -254,7 +320,7 @@ export const updateSyncState = ({
           return true
         })
 
-        return {
+        return UpdateResultAdvance.make({
           _tag: 'advance',
           newSyncState: new SyncState({
             pending: pendingRemaining,
@@ -262,9 +328,9 @@ export const updateSyncState = ({
             upstreamHead: newUpstreamHead,
             localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
           }),
-          previousSyncState: syncState,
           newEvents,
-        }
+          updateContext,
+        })
       } else {
         const divergentPending = syncState.pending.slice(divergentPendingIndex)
         const rebasedPending = rebaseEvents({
@@ -281,7 +347,7 @@ export const updateSyncState = ({
           ignoreLocalEvents,
         })
 
-        return {
+        return UpdateResultRebase.make({
           _tag: 'rebase',
           newSyncState: new SyncState({
             pending: rebasedPending,
@@ -289,16 +355,21 @@ export const updateSyncState = ({
             upstreamHead: newUpstreamHead,
             localHead: rebasedPending.at(-1)!.id,
           }),
-          previousSyncState: syncState,
           newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
           eventsToRollback: [...syncState.rollbackTail, ...divergentPending],
-        }
+          updateContext,
+        })
       }
     }
 
     case 'local-push': {
       if (payload.newEvents.length === 0) {
-        return { _tag: 'advance', newSyncState: syncState, previousSyncState: syncState, newEvents: [] }
+        return UpdateResultAdvance.make({
+          _tag: 'advance',
+          newSyncState: syncState,
+          newEvents: [],
+          updateContext,
+        })
       }
 
       const newEventsFirst = payload.newEvents.at(0)!
@@ -306,9 +377,13 @@ export const updateSyncState = ({
 
       if (invalidEventId) {
         const expectedMinimumId = EventId.nextPair(syncState.localHead, true).id
-        return { _tag: 'reject', previousSyncState: syncState, expectedMinimumId }
+        return UpdateResultReject.make({
+          _tag: 'reject',
+          expectedMinimumId,
+          updateContext,
+        })
       } else {
-        return {
+        return UpdateResultAdvance.make({
           _tag: 'advance',
           newSyncState: new SyncState({
             pending: [...syncState.pending, ...payload.newEvents],
@@ -316,33 +391,15 @@ export const updateSyncState = ({
             upstreamHead: syncState.upstreamHead,
             localHead: payload.newEvents.at(-1)!.id,
           }),
-          previousSyncState: syncState,
           newEvents: payload.newEvents,
-        }
+          updateContext,
+        })
       }
     }
 
-    // case 'upstream-trim-rollback-tail': {
-    //   // Find the index of the new rollback start in the rollback tail
-    //   const startIndex = syncState.rollbackTail.findIndex((event) => eventIdsEqual(event.id, payload.trimRollbackUntil))
-    //   if (startIndex === -1) {
-    //     return shouldNeverHappen('New rollback start event not found in rollback tail')
-    //   }
-
-    //   // Keep only the events from the start index onwards
-    //   const newRollbackTail = syncState.rollbackTail.slice(startIndex)
-
-    //   return {
-    //     _tag: 'advance',
-    //     syncState: {
-    //       pending: syncState.pending,
-    //       rollbackTail: newRollbackTail,
-    //       upstreamHead: syncState.upstreamHead,
-    //       localHead: syncState.localHead,
-    //     },
-    //     newEvents: [],
-    //   }
-    // }
+    default: {
+      casesHandled(payload)
+    }
   }
 }
 
@@ -404,3 +461,12 @@ const rebaseEvents = ({
     return newEvent
   })
 }
+
+/**
+ * TODO: Implement this
+ *
+ * In certain scenarios e.g. when the client session has a queue of upstream update results,
+ * it could make sense to "flatten" update results into a single update result which the client session
+ * can process more efficiently which avoids push-threshing
+ */
+const _flattenUpdateResults = (_updateResults: ReadonlyArray<UpdateResult>) => {}

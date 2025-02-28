@@ -10,12 +10,10 @@ import type {
   NetworkStatus,
 } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
-import type { MutationEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
-  BucketQueue,
   Cause,
   Effect,
   Fiber,
@@ -79,7 +77,7 @@ export const makeNodeAdapter = ({
 
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -153,7 +151,7 @@ const makeLeaderThread = ({
   devtoolsOptions,
   schemaPath,
 }: {
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   storeId: string
   clientId: string
   sessionId: string
@@ -183,7 +181,7 @@ const makeLeaderThread = ({
     }).pipe(
       Effect.provide(PlatformNode.NodeWorker.layer(() => nodeWorker)),
       UnexpectedError.mapToUnexpectedError,
-      Effect.tapErrorCause(shutdown),
+      Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
@@ -252,19 +250,6 @@ const makeLeaderThread = ({
       latchClosed: false,
     })
 
-    const pushQueue = yield* BucketQueue.make<MutationEvent.AnyEncoded>()
-
-    yield* Effect.gen(function* () {
-      const batch = yield* BucketQueue.takeBetween(pushQueue, 1, 100)
-      yield* runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-        Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
-          attributes: { batchSize: batch.length },
-        }),
-        // We can ignore the error here because the ClientSessionSyncProcessor will retry after rebasing
-        Effect.ignoreLogged,
-      )
-    }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
-
     const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
       Effect.timeout(10_000),
       UnexpectedError.mapToUnexpectedError,
@@ -277,10 +262,12 @@ const makeLeaderThread = ({
         pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialLeaderHead })).pipe(
           Stream.orDie,
         ),
-        // NOTE instead of sending the worker message right away, we're batching the events in order to
-        // - maintain a consistent order of events
-        // - improve efficiency by reducing the number of messages
-        push: (batch) => BucketQueue.offerAll(pushQueue, batch),
+        push: (batch) =>
+          runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
+            Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
+              attributes: { batchSize: batch.length },
+            }),
+          ),
       },
       initialState: {
         leaderHead: initialLeaderHead,

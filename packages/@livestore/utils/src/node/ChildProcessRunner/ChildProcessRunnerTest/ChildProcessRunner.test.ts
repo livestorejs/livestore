@@ -1,6 +1,6 @@
+// import * as WorkerThreads from 'node:worker_threads'
 import * as ChildProcess from 'node:child_process'
 
-// import * as WorkerThreads from 'node:worker_threads'
 import * as EffectWorker from '@effect/platform/Worker'
 import { assert, it } from '@effect/vitest'
 import { Chunk, Effect, Stream } from 'effect'

@@ -67,13 +67,16 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
       minimumExpectedId: Schema.Number,
       providedId: Schema.Number,
     }),
-    Schema.TaggedStruct('LeaderAhead', {
-      minimumExpectedId: EventId.EventId,
-      providedId: EventId.EventId,
-    }),
   ),
 }) {}
 
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
   message: Schema.String,
+}) {}
+
+export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
+  minimumExpectedId: EventId.EventId,
+  providedId: EventId.EventId,
+  /** Generation number the client session should use for subsequent pushes */
+  // nextGeneration: Schema.Number,
 }) {}

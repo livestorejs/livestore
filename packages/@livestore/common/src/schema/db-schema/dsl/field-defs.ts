@@ -53,8 +53,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     const TNullable extends boolean = false,
     const TDefault extends TDecoded | SqlDefaultValue | NoDefault | (TNullable extends true ? null : never) = NoDefault,
     const TPrimaryKey extends boolean = false,
-  >(args: {
-    schema?: Schema.Schema<TDecoded, TEncoded>
+  >(args: {    schema?: Schema.Schema<TDecoded, TEncoded>
     default?: TDefault
     nullable?: TNullable
     primaryKey?: TPrimaryKey

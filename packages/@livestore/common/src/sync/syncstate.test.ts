@@ -17,7 +17,7 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
       parentId: EventId.make(parentId),
       mutation: 'a',
       args: payload,
-      meta: {},
+
       clientId: 'static-local-id',
       sessionId: undefined,
     })
@@ -87,7 +87,7 @@ describe('syncstate', () => {
           }
           expect(result.newSyncState.upstreamHead).toMatchObject(e_0_1_e_1_1.id)
           expect(result.newSyncState.localHead).toMatchObject(e_1_0_e_2_0.id)
-          expectEventArraysEqual(result.newEvents, [e_0_0_e_1_0, e_0_1_e_1_1])
+          expectEventArraysEqual(result.newEvents, [e_0_0_e_1_0, e_0_1_e_1_1, e_1_0_e_2_0])
           expectEventArraysEqual(result.eventsToRollback, [e_0_0, e_0_1, e_1_0])
         })
 
@@ -118,7 +118,7 @@ describe('syncstate', () => {
           }
           expect(result.newSyncState.upstreamHead).toMatchObject(e_0_1_e_1_0.id)
           expect(result.newSyncState.localHead).toMatchObject(e_1_0_e_2_0.id)
-          expectEventArraysEqual(result.newEvents, [e_0_1_e_1_0])
+          expectEventArraysEqual(result.newEvents, [e_0_1_e_1_0, e_1_0_e_2_0])
           expectEventArraysEqual(result.eventsToRollback, [e_0_1, e_1_0])
         })
 
@@ -525,14 +525,20 @@ const expectEventArraysEqual = (
   })
 }
 
-function expectAdvance(result: SyncState.UpdateResult): asserts result is SyncState.UpdateResultAdvance {
+function expectAdvance(
+  result: typeof SyncState.UpdateResult.Type,
+): asserts result is typeof SyncState.UpdateResultAdvance.Type {
   expect(result._tag).toBe('advance')
 }
 
-function expectRebase(result: SyncState.UpdateResult): asserts result is SyncState.UpdateResultRebase {
+function expectRebase(
+  result: typeof SyncState.UpdateResult.Type,
+): asserts result is typeof SyncState.UpdateResultRebase.Type {
   expect(result._tag).toBe('rebase')
 }
 
-function expectReject(result: SyncState.UpdateResult): asserts result is SyncState.UpdateResultReject {
+function expectReject(
+  result: typeof SyncState.UpdateResult.Type,
+): asserts result is typeof SyncState.UpdateResultReject.Type {
   expect(result._tag).toBe('reject')
 }
