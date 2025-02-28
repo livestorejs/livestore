@@ -361,8 +361,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -530,8 +530,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -597,8 +597,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       effect:
         specifier: 3.13.1
         version: 3.13.1
@@ -661,8 +661,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -716,8 +716,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -768,8 +768,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -850,8 +850,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1156,8 +1156,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1325,8 +1325,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -1392,8 +1392,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       effect:
         specifier: 3.13.1
         version: 3.13.1
@@ -1456,8 +1456,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1511,8 +1511,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1563,8 +1563,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.57.2
         version: 0.57.2(@opentelemetry/api@1.9.0)
@@ -1645,8 +1645,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       '@overengineering/fps-meter':
         specifier: 0.1.2
         version: 0.1.2(react@19.0.0)
@@ -1845,8 +1845,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.10.5)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -2079,8 +2079,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.304
@@ -2245,8 +2245,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 1.0.5-dev.1
-        version: 1.0.5-dev.1
+        specifier: 1.0.5-dev.2
+        version: 1.0.5-dev.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.0
@@ -4145,8 +4145,8 @@ packages:
   '@livestore/devtools-vite@0.3.0-dev.16':
     resolution: {integrity: sha512-T+AMnfDjp4Xsf1hIOg/C5YOir8YODnNvLCvvSzonvPRzqQ45mBl2dIzV7njMbUz2wGM9YCw/kxCIxFM/49miBw==}
 
-  '@livestore/wa-sqlite@1.0.5-dev.1':
-    resolution: {integrity: sha512-cI+PiPvsmaKKn7Ezkb1XrigXmERQ15MynkXiuoXPkCYZCQQTubZ+3GzjMJTCx4Y+GTO/ka2EbbCFG132hbroMA==}
+  '@livestore/wa-sqlite@1.0.5-dev.2':
+    resolution: {integrity: sha512-i7tKFEp0m3+4tGLV9Z5eAr/3RZPuNOyuf4NaQ/ygF2KwzlHc3TnqouPuE2sMH06r3soXIilWYND/x0eT8x6D6Q==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -19157,7 +19157,7 @@ snapshots:
 
   '@livestore/devtools-vite@0.3.0-dev.16': {}
 
-  '@livestore/wa-sqlite@1.0.5-dev.1': {}
+  '@livestore/wa-sqlite@1.0.5-dev.2': {}
 
   '@lukeed/ms@2.0.2': {}
 
