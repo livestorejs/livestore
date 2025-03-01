@@ -360,7 +360,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         yield* Effect.addFinalizer(() => Effect.sync(() => channelMap.delete(channelKey)))
 
         if (mode === 'messagechannel') {
-          const incomingPacketsQueue = yield* Queue.unbounded<any>()
+          const incomingPacketsQueue = yield* Queue.unbounded<any>().pipe(Effect.acquireRelease(Queue.shutdown))
 
           // We're we're draining the queue into another new queue.
           // It's a bit of a mystery why this is needed, since the unit tests also work without it.

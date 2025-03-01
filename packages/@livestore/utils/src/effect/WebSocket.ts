@@ -22,50 +22,65 @@ export const makeWebSocket = ({
   reconnect?: Schedule.Schedule<unknown> | false
 }): Effect.Effect<globalThis.WebSocket, WebSocketError, Scope.Scope> =>
   Effect.gen(function* () {
-    const socket = yield* Effect.tryPromise({
-      try: async () => {
-        // console.debug('[WebSocket] connecting to', url)
+    const socket = yield* Effect.async<globalThis.WebSocket, WebSocketError>((cb, signal) => {
+      try {
         const socket = new globalThis.WebSocket(url)
 
         if (socket.readyState === globalThis.WebSocket.OPEN) {
-          return socket
+          cb(Effect.succeed(socket))
+          return
         }
 
-        return await new Promise<globalThis.WebSocket>((resolve, reject) => {
-          socket.addEventListener('open', () => resolve(socket), { once: true })
-          // eslint-disable-next-line unicorn/prefer-add-event-listener
-          socket.onerror = (event) => reject(event)
+        signal.addEventListener('abort', () => {
+          socket.close(3000, 'abort signal')
         })
-      },
-      catch: (errorEvent: any) => {
-        if (errorEvent.currentTarget != null && errorEvent.currentTarget instanceof globalThis.WebSocket) {
-          errorEvent.currentTarget.close(3000, `closing websocket connection due to error: ${errorEvent.toString()}`)
-        }
 
-        return new WebSocketError({ cause: errorEvent })
-      },
-    }).pipe(
-      /**
-       * Common WebSocket close codes: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
-       *   1000: Normal closure
-       *   1001: Endpoint is going away, a server is terminating the connection because it has received a request that indicates the client is ending the connection.
-       *   1002: Protocol error, a server is terminating the connection because it has received data on the connection that was not consistent with the type of the connection.
-       *   1011: Internal server error, a server is terminating the connection because it encountered an unexpected condition that prevented it from fulfilling the request.
-       *
-       * For reference, here are the valid WebSocket close code ranges:
-       *   1000-1999: Reserved for protocol usage
-       *   2000-2999: Reserved for WebSocket extensions
-       *   3000-3999: Available for libraries and frameworks
-       *   4000-4999: Available for applications
-       */
-      Effect.acquireRelease((socket, exit) =>
-        Effect.sync(() =>
-          Exit.isFailure(exit)
-            ? socket.close(3000, `closing webmesh websocket connection due to error: ${exit.cause.toString()}`)
-            : socket.close(1000, 'closing webmesh websocket connection gracefully'),
-        ),
-      ),
-      reconnect ? Effect.retry(reconnect) : identity,
+        socket.addEventListener('open', () => cb(Effect.succeed(socket)), { once: true })
+
+        socket.addEventListener('error', (event) => cb(Effect.fail(new WebSocketError({ cause: event }))), {
+          once: true,
+        })
+
+        socket.addEventListener(
+          'close',
+          (event) => {
+            // console.log('makeWebSocket:socket:onclose', event)
+            return cb(Effect.fail(new WebSocketError({ cause: event })))
+          },
+          { once: true },
+        )
+
+        // console.log('makeWebSocket:socket:waiting for open', url)
+      } catch (error) {
+        cb(Effect.fail(new WebSocketError({ cause: error })))
+      }
+    }).pipe(reconnect ? Effect.retry(reconnect) : identity)
+
+    /**
+     * Common WebSocket close codes: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
+     *   1000: Normal closure
+     *   1001: Endpoint is going away, a server is terminating the connection because it has received a request that indicates the client is ending the connection.
+     *   1002: Protocol error, a server is terminating the connection because it has received data on the connection that was not consistent with the type of the connection.
+     *   1011: Internal server error, a server is terminating the connection because it encountered an unexpected condition that prevented it from fulfilling the request.
+     *
+     * For reference, here are the valid WebSocket close code ranges:
+     *   1000-1999: Reserved for protocol usage
+     *   2000-2999: Reserved for WebSocket extensions
+     *   3000-3999: Available for libraries and frameworks
+     *   4000-4999: Available for applications
+     */
+    yield* Effect.addFinalizer((exit) =>
+      Effect.async<void, WebSocketError>((cb) => {
+        try {
+          if (Exit.isFailure(exit)) {
+            socket.close(3000)
+          } else {
+            socket.close(1000)
+          }
+        } catch (error) {
+          cb(Effect.fail(new WebSocketError({ cause: error })))
+        }
+      }).pipe(Effect.orDie),
     )
 
     return socket

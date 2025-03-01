@@ -15,7 +15,7 @@ export const makeNodeDevtoolsConnectedMeshNode = ({
   Effect.gen(function* () {
     const node = yield* makeMeshNode(nodeName)
 
-    yield* connectViaWebSocket({ node, url })
+    yield* connectViaWebSocket({ node, url }).pipe(Effect.forkScoped)
 
     return node
   })

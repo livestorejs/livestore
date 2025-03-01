@@ -118,12 +118,12 @@ export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (spa
   getTracingBackendUrl(span).pipe(
     Effect.tap((url) => {
       if (url === undefined) {
-        console.warn('No tracing backend url found')
+        return Effect.logWarning('No tracing backend url found')
       } else {
         if (printMsg) {
-          console.log(printMsg(url))
+          return Effect.log(printMsg(url))
         } else {
-          console.log(`Trace URL: ${url}`)
+          return Effect.log(`Trace URL: ${url}`)
         }
       }
     }),

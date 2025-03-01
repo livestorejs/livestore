@@ -3,7 +3,6 @@ import {
   Effect,
   Either,
   Exit,
-  FiberHandle,
   Queue,
   Schedule,
   Schema,
@@ -49,23 +48,23 @@ export const connectViaWebSocket = ({
   reconnect?: Schedule.Schedule<unknown> | false
 }): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const fiberHandle = yield* FiberHandle.make()
+    const disconnected = yield* Deferred.make<void>()
 
-    const connect = Effect.gen(function* () {
-      const socket = yield* WebSocket.makeWebSocket({ url, reconnect })
+    const socket = yield* WebSocket.makeWebSocket({ url, reconnect })
 
-      // NOTE we want to use `runFork` here so this Effect is not part of the fiber that will be interrupted
-      socket.addEventListener('close', () => FiberHandle.run(fiberHandle, connect).pipe(Effect.runFork))
+    socket.addEventListener('close', () => Deferred.unsafeDone(disconnected, Exit.void))
 
-      const connection = yield* makeWebSocketConnection(socket, { _tag: 'leaf', from: node.nodeName })
+    const connection = yield* makeWebSocketConnection(socket, { _tag: 'leaf', from: node.nodeName })
 
-      yield* node.addConnection({ target: 'ws', connectionChannel: connection.webChannel, replaceIfExists: true })
+    yield* node.addConnection({ target: 'ws', connectionChannel: connection.webChannel, replaceIfExists: true })
 
-      yield* Effect.never
-    }).pipe(Effect.scoped, Effect.withSpan('@livestore/webmesh:websocket-connection:connect'))
-
-    yield* FiberHandle.run(fiberHandle, connect)
-  })
+    yield* disconnected
+  }).pipe(
+    Effect.scoped,
+    Effect.forever,
+    Effect.catchTag('WebSocketError', Effect.orDie),
+    Effect.onInterrupt(() => Effect.log('connectViaWebSocket:interrupted')),
+  )
 
 export const makeWebSocketConnection = (
   socket: globalThis.WebSocket | NodeWebSocket.WebSocket,
@@ -84,6 +83,10 @@ export const makeWebSocketConnection = (
 
       const fromDeferred = yield* Deferred.make<string>()
 
+      const listenQueue = yield* Queue.unbounded<typeof MeshSchema.Packet.Type>().pipe(
+        Effect.acquireRelease(Queue.shutdown),
+      )
+
       yield* Stream.fromEventListener<MessageEvent>(socket as any, 'message').pipe(
         Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg.data))),
         Stream.flatten(),
@@ -98,12 +101,9 @@ export const makeWebSocketConnection = (
           }),
         ),
         Stream.runDrain,
+        Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
-      )
-
-      const listenQueue = yield* Queue.unbounded<typeof MeshSchema.Packet.Type>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
       )
 
       const initHandshake = (from: string) =>
@@ -154,9 +154,6 @@ export const makeWebSocketConnection = (
         shutdown: Scope.close(scope, Exit.void),
       } satisfies WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>
 
-      return {
-        webChannel: webChannel as WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>,
-        from,
-      }
+      return { webChannel, from }
     }).pipe(Effect.withSpanScoped('makeWebSocketConnection')),
   )

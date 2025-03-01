@@ -3,17 +3,22 @@
 
 import path from 'node:path'
 
-import { makeNodeAdapter } from '@livestore/adapter-node'
+import { makeInMemoryAdapter, makeNodeAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
-import { Effect, Layer, Logger, LogLevel, Stream } from '@livestore/utils/effect'
+import { makeWsSync } from '@livestore/sync-cf'
+import { Effect, Layer, Logger, LogLevel, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
 const baseDirectoryOption = Cli.Options.text('directory').pipe(Cli.Options.withDefault(''))
 const schemaPathOption = Cli.Options.text('schema-path')
 const enableDevtoolsOption = Cli.Options.boolean('enable-devtools').pipe(Cli.Options.withDefault(false))
+const adapterTypeOption = Cli.Options.text('adapter-type').pipe(
+  Cli.Options.withSchema(Schema.Literal('file', 'in-memory')),
+  Cli.Options.withDefault('file'),
+)
 
 const pull = Cli.Command.make('pull', {}, () => Effect.log('Pulling...'))
 const push = Cli.Command.make('push', {}, () => Effect.log('Pushing...'))
@@ -24,18 +29,26 @@ const live = Cli.Command.make(
     storeId: storeIdOption,
     schemaPath: schemaPathOption,
     enableDevtools: enableDevtoolsOption,
+    adapterType: adapterTypeOption,
   },
-  ({ baseDirectory, storeId, schemaPath, enableDevtools }) =>
+  ({ baseDirectory, storeId, schemaPath, enableDevtools, adapterType }) =>
     Effect.gen(function* () {
       const relativeSchemaPath = path.isAbsolute(schemaPath) ? schemaPath : path.resolve(process.cwd(), schemaPath)
       // console.log('relativeSchemaPath', relativeSchemaPath)
       const schema: LiveStoreSchema = yield* Effect.promise(() => import(relativeSchemaPath).then((m) => m.schema))
 
-      const adapter = makeNodeAdapter({
-        schemaPath: relativeSchemaPath,
-        workerUrl: new URL('./livestore.worker.js', import.meta.url),
-        baseDirectory,
-      })
+      const adapter =
+        adapterType === 'file'
+          ? makeNodeAdapter({
+              schemaPath: relativeSchemaPath,
+              workerUrl: new URL('./livestore.worker.js', import.meta.url),
+              baseDirectory,
+            })
+          : makeInMemoryAdapter({
+              sync: {
+                makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8787', storeId }),
+              },
+            })
 
       const store = yield* createStore({ adapter, schema, storeId, disableDevtools: !enableDevtools })
 

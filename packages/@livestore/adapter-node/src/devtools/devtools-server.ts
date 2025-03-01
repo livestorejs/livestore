@@ -28,10 +28,23 @@ export const startDevtoolsServer = ({
   port: number
 }): Effect.Effect<void, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const httpServer = http.createServer()
-    const webSocketServer = yield* makeWebSocketServer({ relayNodeName: 'ws' })
+    const httpServer = yield* Effect.sync(() => http.createServer()).pipe(
+      Effect.acquireRelease((httpServer) =>
+        Effect.async<void, UnexpectedError>((cb) => {
+          httpServer.removeAllListeners()
+          httpServer.closeAllConnections()
+          httpServer.close((err) => {
+            if (err) {
+              cb(Effect.fail(UnexpectedError.make({ cause: err })))
+            } else {
+              cb(Effect.succeed(undefined))
+            }
+          })
+        }).pipe(Effect.orDie),
+      ),
+    )
 
-    yield* Effect.addFinalizer(() => Effect.sync(() => httpServer.close()))
+    const webSocketServer = yield* makeWebSocketServer({ relayNodeName: 'ws' })
 
     // Handle upgrade manually
     httpServer.on('upgrade', (request, socket, head) => {
@@ -46,7 +59,7 @@ export const startDevtoolsServer = ({
           cb(UnexpectedError.make({ cause: err }))
         })
 
-        httpServer.listen(port, () => {
+        httpServer.listen(port, '0.0.0.0', () => {
           cb(Effect.succeed(undefined))
         })
       })
@@ -54,7 +67,7 @@ export const startDevtoolsServer = ({
     yield* startServer(port)
 
     yield* Effect.logDebug(
-      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://localhost:${port}/livestore-devtools`,
+      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://localhost:${port}/_livestore`,
     )
 
     const viteServer = yield* makeViteServer({
