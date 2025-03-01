@@ -24,7 +24,7 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
 2. **Install dependencies**
 
-   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup.
+   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/getting-started/package-management) for more details).
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
@@ -50,15 +50,6 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
        Going forward you can use `npm install` again to install the dependencies.
      </TabItem>
-     <TabItem label="yarn">
-       Given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
-
-       ```shell
-       yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
-       ```
-
-       Going forward you can use `yarn install` again to install the dependencies.
-     </TabItem>
    </Tabs>
 
    Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
@@ -79,11 +70,6 @@ For existing projects, see [Existing project setup](#existing-project-setup).
      <TabItem label="npm">
        ```shell
        npm run dev
-       ```
-     </TabItem>
-     <TabItem label="yarn">
-       ```shell
-       yarn dev
        ```
      </TabItem>
    </Tabs>
@@ -116,11 +102,6 @@ For existing projects, see [Existing project setup](#existing-project-setup).
      <TabItem label="npm">
        ```shell
        npm install @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
-       ```
-     </TabItem>
-     <TabItem label="yarn">
-       ```shell
-       yarn add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
        ```
      </TabItem>
    </Tabs>

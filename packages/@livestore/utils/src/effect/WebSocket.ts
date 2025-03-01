@@ -37,9 +37,13 @@ export const makeWebSocket = ({
 
         socket.addEventListener('open', () => cb(Effect.succeed(socket)), { once: true })
 
-        socket.addEventListener('error', (event) => cb(Effect.fail(new WebSocketError({ cause: event }))), {
-          once: true,
-        })
+        socket.addEventListener(
+          'error',
+          (event) => {
+            cb(Effect.fail(new WebSocketError({ cause: event })))
+          },
+          { once: true },
+        )
 
         socket.addEventListener(
           'close',

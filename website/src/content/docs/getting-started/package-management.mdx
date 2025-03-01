@@ -1,0 +1,23 @@
+---
+title: Note on package management
+---
+
+## Recommended
+
+It's strongly recommended to use `pnpm` or `bun` when building an app with LiveStore to avoid dependency issues (e.g. wrong version resolution, duplicate dependencies, etc).
+
+### Peer dependencies
+
+Since LiveStore has a few peer dependencies, you either should manually add them to your project or add the `@livestore/peer-deps` package to your project to satisfy them.
+
+### PNPM Catalog
+
+When using `pnpm`, we recommend specifying the following packages in your [PNPM Catalog](https://pnpm.io/catalogs):
+
+```
+# pnpm-workspace.yaml
+# ...
+catalog:
+  effect: 3.13.1 # As LiveStore
+	# also `react`, `react-dom` etc based on your project
+```
