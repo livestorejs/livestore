@@ -1,5 +1,6 @@
 packages:
   - scripts
+  - vitals
   - website
   - packages/@livestore/*
   - examples/src/*

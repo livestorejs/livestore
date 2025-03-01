@@ -1,0 +1,8 @@
+[
+  {"name": "Sputnik 1", "year": 1957, "y": 10},
+  {"name": "Apollo 11", "year": 1969, "y": 20},
+  {"name": "Viking 1 and 2", "year": 1975, "y": 30},
+  {"name": "Space Shuttle Columbia", "year": 1981, "y": 40},
+  {"name": "Hubble Space Telescope", "year": 1990, "y": 50},
+  {"name": "ISS Construction", "year": 1998, "y": 60}
+]
