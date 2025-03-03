@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo-common",
-  "version": "0.3.0-dev.16",
+  "version": "0.3.0-dev.17",
   "type": "module",
   "sideEffects": false,
   "exports": {

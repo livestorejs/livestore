@@ -6,7 +6,7 @@
     "@headlessui/react": "2.2.0",
     "@heroicons/react": "2.2.0",
     "@livestore/adapter-web": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.16",
+    "@livestore/devtools-vite": "0.3.0-dev.17",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.2",

@@ -12,7 +12,7 @@ overrides:
   '@livestore/devtools-expo': workspace:*
   '@livestore/devtools-expo-common': workspace:*
   '@livestore/devtools-node-common': workspace:*
-  '@livestore/devtools-vite': 0.3.0-dev.16
+  '@livestore/devtools-vite': 0.3.0-dev.17
   '@livestore/devtools-web-common': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/react': workspace:*
@@ -352,8 +352,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -513,7 +513,7 @@ importers:
         version: 0.21.1(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.3.0(rollup@2.79.2)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 4.3.0(rollup@4.30.1)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   examples/src/todomvc:
     dependencies:
@@ -521,8 +521,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -574,7 +574,7 @@ importers:
         version: 4.3.4(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@4.30.1)
+        version: 5.12.0(rollup@2.79.2)
       typescript:
         specifier: ^5.7.3
         version: 5.7.3
@@ -591,8 +591,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -652,8 +652,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -735,8 +735,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
@@ -756,8 +756,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -838,8 +838,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1147,8 +1147,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1316,8 +1316,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1386,8 +1386,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1447,8 +1447,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1530,8 +1530,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
@@ -1551,8 +1551,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1633,8 +1633,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -1737,8 +1737,8 @@ importers:
         specifier: workspace:*
         version: link:../devtools-node-common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -1839,8 +1839,8 @@ importers:
         specifier: workspace:*
         version: link:../adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.16
-        version: 0.3.0-dev.16
+        specifier: 0.3.0-dev.17
+        version: 0.3.0-dev.17
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
@@ -4142,8 +4142,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  '@livestore/devtools-vite@0.3.0-dev.16':
-    resolution: {integrity: sha512-T+AMnfDjp4Xsf1hIOg/C5YOir8YODnNvLCvvSzonvPRzqQ45mBl2dIzV7njMbUz2wGM9YCw/kxCIxFM/49miBw==}
+  '@livestore/devtools-vite@0.3.0-dev.17':
+    resolution: {integrity: sha512-k2uwV0QCOptwRQumtq15U5ZzlLMKhl/bukuqydzCl5rOYZviQ88LwKsfKPd7+VRp/n8OIkpehYx8YXr/itrZYA==}
 
   '@livestore/wa-sqlite@1.0.5-dev.2':
     resolution: {integrity: sha512-i7tKFEp0m3+4tGLV9Z5eAr/3RZPuNOyuf4NaQ/ygF2KwzlHc3TnqouPuE2sMH06r3soXIilWYND/x0eT8x6D6Q==}
@@ -19150,7 +19150,7 @@ snapshots:
       react: 19.0.0
       react-native: 0.76.5(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@19.0.8)(encoding@0.1.13)(react@19.0.0)
 
-  '@livestore/devtools-vite@0.3.0-dev.16': {}
+  '@livestore/devtools-vite@0.3.0-dev.17': {}
 
   '@livestore/wa-sqlite@1.0.5-dev.2': {}
 
@@ -33063,6 +33063,15 @@ snapshots:
     dependencies:
       rollup-plugin-inject: 3.0.2
 
+  rollup-plugin-visualizer@5.12.0(rollup@2.79.2):
+    dependencies:
+      open: 8.4.2
+      picomatch: 2.3.1
+      source-map: 0.7.4
+      yargs: 17.7.2
+    optionalDependencies:
+      rollup: 2.79.2
+
   rollup-plugin-visualizer@5.12.0(rollup@4.30.1):
     dependencies:
       open: 8.4.2
@@ -34841,17 +34850,6 @@ snapshots:
       vitefu: 1.0.5(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
     transitivePeerDependencies:
       - supports-color
-
-  vite-plugin-svgr@4.3.0(rollup@2.79.2)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
-    dependencies:
-      '@rollup/pluginutils': 5.1.4(rollup@2.79.2)
-      '@svgr/core': 8.1.0(typescript@5.7.3)
-      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.7.3))
-      vite: 6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-    transitivePeerDependencies:
-      - rollup
-      - supports-color
-      - typescript
 
   vite-plugin-svgr@4.3.0(rollup@4.30.1)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
     dependencies:
