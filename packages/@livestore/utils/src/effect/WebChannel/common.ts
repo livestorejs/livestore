@@ -43,7 +43,7 @@ export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>,
 ): OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =>
   Predicate.hasProperty(schema, 'send') && Predicate.hasProperty(schema, 'listen')
-    ? schemaWithDebugPing(schema)
+    ? (schemaWithDebugPing(schema) as any)
     : (schemaWithDebugPing({ send: schema, listen: schema }) as any)
 
 export const listenToDebugPing = (channelName: string) => {

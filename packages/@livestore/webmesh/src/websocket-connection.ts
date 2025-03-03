@@ -11,7 +11,7 @@ import {
   WebChannel,
   WebSocket,
 } from '@livestore/utils/effect'
-import type NodeWebSocket from 'ws'
+import type * as NodeWebSocket from 'ws'
 
 import * as MeshSchema from './mesh-schema.js'
 import type { MeshNode } from './node.js'

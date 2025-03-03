@@ -25,7 +25,7 @@
     "@types/react": "^19.0.8",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^14.5.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "main": "./src/AppEntry.ts",
   "scripts": {
