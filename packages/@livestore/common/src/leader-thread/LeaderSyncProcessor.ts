@@ -18,17 +18,17 @@ import type * as otel from '@opentelemetry/api'
 
 import type { SqliteDb } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
-import { clientId } from '../devtools/devtools-messages-common.js'
 import type { LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
+  getMutationDef,
   MUTATION_LOG_META_TABLE,
   MutationEvent,
   mutationLogMetaTable,
   SESSION_CHANGESET_META_TABLE,
 } from '../schema/mod.js'
 import { updateRows } from '../sql-queries/index.js'
-import { InvalidPushError, LeaderAheadError } from '../sync/sync.js'
+import { LeaderAheadError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -88,7 +88,7 @@ export const makeLeaderSyncProcessor = ({
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
     const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
-      const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
+      const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
       return mutationDef.options.clientOnly
     }
 
@@ -170,9 +170,7 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const mutationDef =
-          schema.mutations.get(partialMutationEvent.mutation) ??
-          shouldNeverHappen(`Unknown mutation: ${partialMutationEvent.mutation}`)
+        const mutationDef = getMutationDef(schema, partialMutationEvent.mutation)
 
         const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
           ...partialMutationEvent,
@@ -227,7 +225,7 @@ export const makeLeaderSyncProcessor = ({
           const filteredBatch = pendingMutationEvents
             // Don't sync clientOnly mutations
             .filter((mutationEventEncoded) => {
-              const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
+              const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
               return mutationDef.options.clientOnly === false
             })
 
@@ -463,7 +461,7 @@ const backgroundApplyLocalPushes = ({
 
       // Don't sync clientOnly mutations
       const filteredBatch = updateResult.newEvents.filter((mutationEventEncoded) => {
-        const mutationDef = schema.mutations.get(mutationEventEncoded.mutation)!
+        const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
         return mutationDef.options.clientOnly === false
       })
 
@@ -617,7 +615,7 @@ const backgroundBackendPulling = ({
           })
 
           const filteredRebasedPending = updateResult.newSyncState.pending.filter((mutationEvent) => {
-            const mutationDef = schema.mutations.get(mutationEvent.mutation)!
+            const mutationDef = getMutationDef(schema, mutationEvent.mutation)
             return mutationDef.options.clientOnly === false
           })
           yield* restartBackendPushing(filteredRebasedPending)

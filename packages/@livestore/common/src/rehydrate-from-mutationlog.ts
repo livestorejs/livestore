@@ -4,7 +4,7 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'
 import { makeApplyMutation } from './leader-thread/apply-mutation.js'
 import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/mod.js'
-import { EventId, MUTATION_LOG_META_TABLE } from './schema/mod.js'
+import { EventId, getMutationDef, MUTATION_LOG_META_TABLE } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
@@ -33,7 +33,7 @@ export const rehydrateFromMutationLog = ({
 
     const processMutation = (row: MutationLogMetaRow) =>
       Effect.gen(function* () {
-        const mutationDef = schema.mutations.get(row.mutation) ?? shouldNeverHappen(`Unknown mutation ${row.mutation}`)
+        const mutationDef = getMutationDef(schema, row.mutation)
 
         if (migrationOptions.excludeMutations?.has(row.mutation) === true) return
 

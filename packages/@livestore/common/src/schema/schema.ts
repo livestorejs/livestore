@@ -72,29 +72,32 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
-  const mutations: MutationDefMap = new Map()
+  const mutations: MutationDefMap = {
+    map: new Map(),
+    wasProvided: inputSchema.mutations !== undefined,
+  }
 
   if (isReadonlyArray(inputSchema.mutations)) {
     for (const mutation of inputSchema.mutations) {
-      mutations.set(mutation.name, mutation)
+      mutations.map.set(mutation.name, mutation)
     }
   } else {
     for (const mutation of Object.values(inputSchema.mutations ?? {})) {
-      if (mutations.has(mutation.name)) {
+      if (mutations.map.has(mutation.name)) {
         shouldNeverHappen(`Duplicate mutation name: ${mutation.name}. Please use unique names for mutations.`)
       }
-      mutations.set(mutation.name, mutation)
+      mutations.map.set(mutation.name, mutation)
     }
   }
 
-  mutations.set(rawSqlMutation.name, rawSqlMutation)
+  mutations.map.set(rawSqlMutation.name, rawSqlMutation)
 
   for (const tableDef of tables.values()) {
     if (tableHasDerivedMutations(tableDef)) {
       const derivedMutationDefs = makeDerivedMutationDefsForTable(tableDef)
-      mutations.set(derivedMutationDefs.insert.name, derivedMutationDefs.insert)
-      mutations.set(derivedMutationDefs.update.name, derivedMutationDefs.update)
-      mutations.set(derivedMutationDefs.delete.name, derivedMutationDefs.delete)
+      mutations.map.set(derivedMutationDefs.insert.name, derivedMutationDefs.insert)
+      mutations.map.set(derivedMutationDefs.update.name, derivedMutationDefs.update)
+      mutations.map.set(derivedMutationDefs.delete.name, derivedMutationDefs.delete)
     }
   }
 
@@ -112,6 +115,15 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
     hash,
   } satisfies LiveStoreSchema
+}
+
+export const getMutationDef = <TSchema extends LiveStoreSchema>(schema: TSchema, mutationName: string) => {
+  const mutationDef = schema.mutations.map.get(mutationName)
+  if (mutationDef === undefined) {
+    const extraInfo = schema.mutations.wasProvided ? '' : ' Please provide \`mutations\` in the schema options.'
+    return shouldNeverHappen(`No mutation definition found for \`${mutationName}\`.${extraInfo}`)
+  }
+  return mutationDef
 }
 
 export namespace FromInputSchema {

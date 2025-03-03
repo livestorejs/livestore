@@ -11,7 +11,13 @@ import {
 } from '@livestore/common'
 import type { PullQueueItem } from '@livestore/common/leader-thread'
 import type { MutationLogMetaRow } from '@livestore/common/schema'
-import { EventId, MUTATION_LOG_META_TABLE, MutationEvent, mutationLogMetaTable } from '@livestore/common/schema'
+import {
+  EventId,
+  getMutationDef,
+  MUTATION_LOG_META_TABLE,
+  MutationEvent,
+  mutationLogMetaTable,
+} from '@livestore/common/schema'
 import { insertRowPrepared, makeBindValues } from '@livestore/common/sql-queries'
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -112,7 +118,7 @@ export const makeAdapter =
 
       const mutationEventSchema = MutationEvent.makeMutationEventSchema(schema)
       const mutationDefSchemaHashMap = new Map(
-        [...schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
+        [...schema.mutations.map.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
       )
 
       const newMutationLogStmt = dbMutationLogRef.current.sqliteDb.prepare(
@@ -159,8 +165,7 @@ export const makeAdapter =
                   if (migrationOptions.strategy !== 'from-mutation-log') return
 
                   const mutation = mutationEventEncoded.mutation
-                  const mutationDef =
-                    schema.mutations.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
+                  const mutationDef = getMutationDef(schema, mutation)
 
                   const execArgsArr = getExecArgsFromMutation({
                     mutationDef,

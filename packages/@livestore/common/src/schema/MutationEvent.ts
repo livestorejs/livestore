@@ -124,7 +124,7 @@ export const makeMutationEventSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): ForMutationDefRecord<TSchema['_MutationDefMapType']> =>
   Schema.Union(
-    ...[...schema.mutations.values()].map((def) =>
+    ...[...schema.mutations.map.values()].map((def) =>
       Schema.Struct({
         mutation: Schema.Literal(def.name),
         args: def.schema,
@@ -140,7 +140,7 @@ export const makeMutationEventPartialSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): MutationEventPartialSchema<TSchema['_MutationDefMapType']> =>
   Schema.Union(
-    ...[...schema.mutations.values()].map((def) =>
+    ...[...schema.mutations.map.values()].map((def) =>
       Schema.Struct({
         mutation: Schema.Literal(def.name),
         args: def.schema,

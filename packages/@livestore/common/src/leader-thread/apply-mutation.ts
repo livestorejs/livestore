@@ -6,6 +6,7 @@ import type { PreparedBindValues, SqliteDb, SqliteError, UnexpectedError } from 
 import { getExecArgsFromMutation } from '../mutation.js'
 import {
   EventId,
+  getMutationDef,
   type LiveStoreSchema,
   MUTATION_LOG_META_TABLE,
   type MutationEvent,
@@ -34,7 +35,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
       // Also see https://github.com/Effect-TS/effect/issues/2719
-      [...leaderThreadCtx.schema.mutations.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
+      [...leaderThreadCtx.schema.mutations.map.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
     return (mutationEventEncoded, options) =>
@@ -43,7 +44,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         const skipMutationLog = options?.skipMutationLog ?? false
 
         const mutationName = mutationEventEncoded.mutation
-        const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+        const mutationDef = getMutationDef(schema, mutationName)
 
         const execArgsArr = getExecArgsFromMutation({
           mutationDef,
@@ -175,7 +176,7 @@ const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) 
   return (mutationName: string, mutationEventEncoded: MutationEvent.AnyEncoded): boolean => {
     if (mutationLogExclude.has(mutationName)) return true
 
-    const mutationDef = schema.mutations.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+    const mutationDef = getMutationDef(schema, mutationName)
     const execArgsArr = getExecArgsFromMutation({
       mutationDef,
       mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },

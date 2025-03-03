@@ -20,6 +20,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
+  getMutationDef,
   MutationEvent,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
@@ -136,7 +137,8 @@ export class Store<
       clientSession,
       runtime,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
-        const mutationDef = schema.mutations.get(mutationEventDecoded.mutation)!
+        const mutationDef = getMutationDef(schema, mutationEventDecoded.mutation)
+
         const execArgsArr = getExecArgsFromMutation({
           mutationDef,
           mutationEvent: { decoded: mutationEventDecoded, encoded: undefined },

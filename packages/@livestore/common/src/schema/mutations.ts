@@ -2,7 +2,10 @@ import { Schema } from '@livestore/utils/effect'
 
 import type { BindValues } from '../sql-queries/sql-queries.js'
 
-export type MutationDefMap = Map<string | 'livestore.RawSql', MutationDef.Any>
+export type MutationDefMap = {
+  map: Map<string | 'livestore.RawSql', MutationDef.Any>
+  wasProvided: boolean
+}
 export type MutationDefRecord = {
   'livestore.RawSql': RawSqlMutation
   [name: string]: MutationDef.Any
