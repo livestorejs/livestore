@@ -1,9 +1,9 @@
 {
-  "name": "@local/root",
+  "name": "@livestore/monorepo",
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@effect/language-service": "^0.2.0",
+    "@effect/language-service": "^0.3.1",
     "@typescript-eslint/eslint-plugin": "^8.12.2",
     "@typescript-eslint/parser": "^8.12.2",
     "eslint": "^8.57.0",

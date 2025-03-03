@@ -19,14 +19,7 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "plugins": [
-      {
-        "name": "@effect/language-service",
-        "diagnostics": {
-          "1002": "none"
-        }
-      }
-    ],
+    "plugins": [{ "name": "@effect/language-service" }],
     "paths": {
       "@livestore/utils/effect/*": ["./packages/@livestore/utils/src/effect/*"],
       "@livestore/*": ["./packages/@livestore/*"]
