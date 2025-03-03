@@ -64,6 +64,7 @@ const config = {
       label: 'use workspace protocol for local packages',
       dependencies: [...localPackages],
       dependencyTypes: ['!local'],
+      // Except for standalone examples
       packages: ['!livestore-example-standalone-**'],
       pinVersion: 'workspace:*',
     },

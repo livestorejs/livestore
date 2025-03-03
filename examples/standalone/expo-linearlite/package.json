@@ -54,7 +54,7 @@
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eslint-config-expo": "^8.0.1",
     "eslint-plugin-react-compiler": "^19.0.0-beta-0dec889-20241115",
-    "prettier": "^3.3.3",
+    "prettier": "^3.4.2",
     "react-test-renderer": "^19.0.0",
     "typescript": "^5.7.3"
   },

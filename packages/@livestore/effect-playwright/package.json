@@ -13,7 +13,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.10.5"
+    "@types/node": "^22.10.10"
   },
   "peerDependencies": {
     "@playwright/test": "~1.50.0"
