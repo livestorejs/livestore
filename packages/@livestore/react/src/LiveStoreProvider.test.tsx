@@ -71,7 +71,7 @@ describe('LiveStoreProvider', () => {
 
     abortController.abort()
 
-    await waitFor(() => screen.getByText('LiveStore Shutdown due to abort signal'))
+    await waitFor(() => screen.getByText('LiveStore Shutdown due to interrupted', { exact: false }))
   })
 
   // TODO test aborting during boot

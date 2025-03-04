@@ -45,6 +45,7 @@
             pkgsUnstable.esbuild
             watchman
             caddy
+            act
             
             self.packages.${system}.find-free-port
 
