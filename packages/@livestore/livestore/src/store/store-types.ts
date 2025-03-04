@@ -1,7 +1,6 @@
-import type { ClientSession, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
+import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import type { Deferred, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 
@@ -18,16 +17,10 @@ export type LiveStoreContext =
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreAbort
+      cause: IntentionalShutdownCause | StoreInterrupted
     }
 
-export class StoreAbort extends Schema.TaggedError<StoreAbort>()('LiveStore.StoreAbort', {}) {}
-export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {}) {}
-
-export type ShutdownDeferred = Deferred.Deferred<
-  void,
-  UnexpectedError | IntentionalShutdownCause | StoreInterrupted | StoreAbort
->
+export type ShutdownDeferred = Deferred.Deferred<void, UnexpectedError | IntentionalShutdownCause | StoreInterrupted>
 
 export type LiveStoreContextRunning = {
   stage: 'running'

@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { makeInMemoryAdapter, makeNodeAdapter } from '@livestore/adapter-node'
 import type { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
-import type { ShutdownDeferred, Store, StoreAbort, StoreInterrupted } from '@livestore/livestore'
+import type { ShutdownDeferred, Store, StoreInterrupted } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf'
 import { IS_CI } from '@livestore/utils'
@@ -62,7 +62,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
 
       const shutdownDeferred = yield* Deferred.make<
         void,
-        UnexpectedError | IntentionalShutdownCause | StoreInterrupted | StoreAbort
+        UnexpectedError | IntentionalShutdownCause | StoreInterrupted
       >()
 
       const store = yield* createStore({
@@ -108,10 +108,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
   OnShutdown: () =>
     Effect.gen(function* () {
       const { shutdownDeferred } = yield* WorkerContext
-      yield* shutdownDeferred.pipe(
-        Effect.catchTag('LiveStore.StoreAbort', () => Effect.void),
-        Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void),
-      )
+      yield* shutdownDeferred.pipe(Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void))
     }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:on-shutdown')),
 })
 

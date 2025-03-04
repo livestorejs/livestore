@@ -34,8 +34,8 @@ importers:
   .:
     devDependencies:
       '@effect/language-service':
-        specifier: ^0.3.1
-        version: 0.3.1
+        specifier: ^0.3.2
+        version: 0.3.2
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.12.2
         version: 8.12.2(@typescript-eslint/parser@8.12.2(eslint@8.57.0)(typescript@5.7.3))(eslint@8.57.0)(typescript@5.7.3)
@@ -513,7 +513,7 @@ importers:
         version: 0.21.1(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(workbox-build@7.3.0(@types/babel__core@7.20.5))(workbox-window@7.3.0)
       vite-plugin-svgr:
         specifier: ^4.2.0
-        version: 4.3.0(rollup@4.30.1)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 4.3.0(rollup@2.79.2)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   examples/src/todomvc:
     dependencies:
@@ -574,7 +574,7 @@ importers:
         version: 4.3.4(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       rollup-plugin-visualizer:
         specifier: ^5.12.0
-        version: 5.12.0(rollup@2.79.2)
+        version: 5.12.0(rollup@4.30.1)
       typescript:
         specifier: ^5.7.3
         version: 5.7.3
@@ -3327,8 +3327,8 @@ packages:
       ws:
         optional: true
 
-  '@effect/language-service@0.3.1':
-    resolution: {integrity: sha512-w906m3XaMfTgflOW6MvwlJ5BsiPkapIjEhp61R3c7sa8umYAOXlYytOmVi/KE8CPLzIRheXzMJTzGmCjmri2jA==}
+  '@effect/language-service@0.3.2':
+    resolution: {integrity: sha512-0Ztw20JB622U8Ht0hj3ChdBjyIyh5UlDBlCkEz2aHasSBDUDYjJx9vNaG0AGmdpgOq8d0CLvt568K8UOrse9Bw==}
 
   '@effect/opentelemetry@0.44.1':
     resolution: {integrity: sha512-GBZy+EBzsB/eXRKn8vRp/HHdoQfHxmcAMGJfwX4y8w7XsFcPsDHkOCZSgQQs22sEa4KboInLdklCVMTDLGxF3Q==}
@@ -17788,7 +17788,7 @@ snapshots:
       ioredis: 5.5.0
       ws: 8.18.0
 
-  '@effect/language-service@0.3.1': {}
+  '@effect/language-service@0.3.2': {}
 
   '@effect/opentelemetry@0.44.1(@opentelemetry/api@1.9.0)(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(effect@3.13.1)':
     dependencies:
@@ -33063,15 +33063,6 @@ snapshots:
     dependencies:
       rollup-plugin-inject: 3.0.2
 
-  rollup-plugin-visualizer@5.12.0(rollup@2.79.2):
-    dependencies:
-      open: 8.4.2
-      picomatch: 2.3.1
-      source-map: 0.7.4
-      yargs: 17.7.2
-    optionalDependencies:
-      rollup: 2.79.2
-
   rollup-plugin-visualizer@5.12.0(rollup@4.30.1):
     dependencies:
       open: 8.4.2
@@ -34850,6 +34841,17 @@ snapshots:
       vitefu: 1.0.5(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
     transitivePeerDependencies:
       - supports-color
+
+  vite-plugin-svgr@4.3.0(rollup@2.79.2)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
+    dependencies:
+      '@rollup/pluginutils': 5.1.4(rollup@2.79.2)
+      '@svgr/core': 8.1.0(typescript@5.7.3)
+      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(typescript@5.7.3))
+      vite: 6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+    transitivePeerDependencies:
+      - rollup
+      - supports-color
+      - typescript
 
   vite-plugin-svgr@4.3.0(rollup@4.30.1)(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.8)(jiti@2.4.2)(lightningcss@1.28.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
     dependencies:

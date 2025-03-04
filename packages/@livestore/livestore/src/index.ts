@@ -8,13 +8,7 @@ export type {
   OtelOptions,
 } from './store/store-types.js'
 
-export {
-  StoreAbort,
-  StoreInterrupted,
-  type LiveStoreContext,
-  type ShutdownDeferred,
-  type LiveStoreContextRunning,
-} from './store/store-types.js'
+export { type LiveStoreContext, type ShutdownDeferred, type LiveStoreContextRunning } from './store/store-types.js'
 
 export { SqliteDbWrapper, emptyDebugInfo } from './SqliteDbWrapper.js'
 
@@ -62,6 +56,9 @@ export {
   type QueryBuilderAst,
   type QueryBuilder,
   type RowQuery,
+  StoreInterrupted,
+  IntentionalShutdownCause,
+  provideOtel,
 } from '@livestore/common'
 
 export { deepEqual } from '@livestore/utils'

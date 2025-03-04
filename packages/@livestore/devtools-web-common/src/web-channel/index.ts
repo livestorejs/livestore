@@ -78,9 +78,11 @@ export const connectViaWorker = ({
 
     const isConnected = yield* Deferred.make<boolean, never>()
 
-    yield* Effect.addFinalizerLog(
-      `@livestore/devtools-web-common: closing message channel ${node.nodeName} → ${target}`,
-    )
+    if (LS_DEV) {
+      yield* Effect.addFinalizerLog(
+        `@livestore/devtools-web-common: closing message channel ${node.nodeName} → ${target}`,
+      )
+    }
 
     yield* worker.execute(WorkerSchema.CreateConnection.make({ from: node.nodeName, port: mc.port1 })).pipe(
       Stream.tap(() => Deferred.succeed(isConnected, true)),

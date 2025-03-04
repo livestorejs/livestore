@@ -167,6 +167,10 @@ export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShut
   },
 ) {}
 
+export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>()('LiveStore.StoreInterrupted', {
+  reason: Schema.String,
+}) {}
+
 export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.SqliteError', {
   query: Schema.optional(
     Schema.Struct({

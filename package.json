@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "@effect/language-service": "^0.3.1",
+    "@effect/language-service": "^0.3.2",
     "@typescript-eslint/eslint-plugin": "^8.12.2",
     "@typescript-eslint/parser": "^8.12.2",
     "eslint": "^8.57.0",
@@ -62,6 +62,7 @@
     "circular": "madge --circular --no-spinner examples/src/*/src packages/*/*/src",
     "deploy:examples:src": "bun scripts/deploy-examples.ts",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
+    "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
     "generate:examples:standalone": "bun scripts/generate-examples.ts sync --direction src-to-standalone",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0 && syncpack lint",
     "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
@@ -69,5 +70,15 @@
     "release:patch": "pnpm run build && pnpm --filter '@livestore/*' exec -- npm version patch --no-workspaces-update && pnpm --filter '@livestore/*' exec -- pnpm publish --no-git-checks",
     "test": "CI=1 pnpm --parallel run test",
     "update-lockfile": "CI=1 pnpm install --lockfile-only"
+  },
+  "dependencies": {
+    "@livestore/livestore": "link:",
+    "@livestore/webmesh": "link:",
+    "adapter-web": "link:../../../../Library/pnpm/global/5/node_modules/@livestore/adapter-web",
+    "common": "link:../../../../Library/pnpm/global/5/node_modules/@livestore/common",
+    "livestore": "link:../../../../Library/pnpm/global/5/node_modules/@livestore/livestore",
+    "peer-deps": "link:../../../../Library/pnpm/global/5/node_modules/@livestore/peer-deps",
+    "react": "link:../../../../Library/pnpm/global/5/node_modules/@livestore/react",
+    "utils": "link:../../../../Library/pnpm/global/5/node_modules/@livestore/utils"
   }
 }

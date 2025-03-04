@@ -1,5 +1,5 @@
 import type { Adapter, ClientSession, LockStatus, NetworkStatus } from '@livestore/common'
-import { Devtools, IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
+import { Devtools, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
@@ -375,7 +375,8 @@ export const makeAdapter =
           if (
             Exit.isFailure(ex) &&
             Exit.isInterrupted(ex) === false &&
-            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false
+            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
+            Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
           ) {
             yield* Effect.logError('[@livestore/adapter-web:client-session] client-session shutdown', ex.cause)
           } else {

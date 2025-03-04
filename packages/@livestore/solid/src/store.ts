@@ -1,4 +1,4 @@
-import { type IntentionalShutdownCause, provideOtel, type UnexpectedError } from '@livestore/common'
+import { type IntentionalShutdownCause, provideOtel, StoreInterrupted, type UnexpectedError } from '@livestore/common'
 import type {
   BaseGraphQLContext,
   BootStatus,
@@ -9,16 +9,12 @@ import type {
   ShutdownDeferred,
   Store,
 } from '@livestore/livestore'
-import { createStore, StoreAbort, StoreInterrupted } from '@livestore/livestore'
+import { createStore } from '@livestore/livestore'
 import { LS_DEV } from '@livestore/utils'
 import { Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
 
-const interrupt = (
-  componentScope: Scope.CloseableScope,
-  shutdownDeferred: ShutdownDeferred,
-  error: StoreAbort | StoreInterrupted,
-) =>
+const interrupt = (componentScope: Scope.CloseableScope, shutdownDeferred: ShutdownDeferred, error: StoreInterrupted) =>
   Effect.gen(function* () {
     // console.log('[@livestore/livestore/react] interupting', error)
     yield* Scope.close(componentScope, Exit.fail(error))
@@ -94,7 +90,11 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
         storeValue.shutdownDeferred !== undefined &&
         storeValue.counter === counter
       ) {
-        interrupt(storeValue.componentScope, storeValue.shutdownDeferred, new StoreAbort())
+        interrupt(
+          storeValue.componentScope,
+          storeValue.shutdownDeferred,
+          new StoreInterrupted({ reason: 'Aborted via provided AbortController' }),
+        )
         storeValue.componentScope = undefined
         storeValue.shutdownDeferred = undefined
       }
@@ -104,7 +104,7 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
       const componentScope = yield* Scope.make()
       const shutdownDeferred = yield* Deferred.make<
         void,
-        UnexpectedError | IntentionalShutdownCause | StoreAbort | StoreInterrupted
+        UnexpectedError | IntentionalShutdownCause | StoreInterrupted
       >()
 
       yield* Effect.gen(function* () {
@@ -126,13 +126,13 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
         setupDone()
       }).pipe(Scope.extend(componentScope), Effect.forkIn(componentScope))
 
-      const shutdownContext = (cause: IntentionalShutdownCause | StoreAbort) =>
+      const shutdownContext = (cause: IntentionalShutdownCause | StoreInterrupted) =>
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
         Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', cause)),
         Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
-        Effect.catchTag('LiveStore.StoreAbort', (cause) => shutdownContext(cause)),
+        Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),
         Effect.tapDefect((defect) => Effect.sync(() => setContextValue({ stage: 'error', error: defect }))),
         Effect.exit,
@@ -152,7 +152,11 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
 
     Solid.onCleanup(() => {
       if (storeValue.componentScope !== undefined && storeValue.shutdownDeferred !== undefined) {
-        interrupt(storeValue.componentScope, storeValue.shutdownDeferred, new StoreInterrupted())
+        interrupt(
+          storeValue.componentScope,
+          storeValue.shutdownDeferred,
+          new StoreInterrupted({ reason: 'unmounting component' }),
+        )
         storeValue.componentScope = undefined
         storeValue.shutdownDeferred = undefined
       }
