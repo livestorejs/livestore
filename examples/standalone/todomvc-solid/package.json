@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@livestore/adapter-web": "0.3.0-dev.17",
-    "@livestore/livestore": "0.3.0-dev.17",
-    "@livestore/solid": "0.3.0-dev.17",
+    "@livestore/adapter-web": "0.3.0-dev.18",
+    "@livestore/livestore": "0.3.0-dev.18",
+    "@livestore/solid": "0.3.0-dev.18",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "@opentelemetry/api": "1.9.0",
     "effect": "3.13.1",
@@ -15,7 +15,7 @@
   },
   "description": "",
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.0-dev.17",
+    "@livestore/devtools-vite": "0.3.0-dev.18",
     "solid-devtools": "^0.33.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",

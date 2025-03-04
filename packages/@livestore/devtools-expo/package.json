@@ -1,12 +1,12 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.3.0-dev.17",
+  "version": "0.3.0-dev.18",
   "sideEffects": false,
   "types": "./dist/index.d.cts",
   "dependencies": {
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.17",
+    "@livestore/devtools-vite": "0.3.0-dev.18",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "vite": "6.1.0",
