@@ -13,7 +13,18 @@ import type {
 import { createStore, StoreInterrupted } from '@livestore/livestore'
 import { errorToString, LS_DEV } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
-import { Deferred, Effect, Exit, identity, Logger, LogLevel, Schema, Scope, TaskTracing } from '@livestore/utils/effect'
+import {
+  Cause,
+  Deferred,
+  Effect,
+  Exit,
+  identity,
+  Logger,
+  LogLevel,
+  Schema,
+  Scope,
+  TaskTracing,
+} from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { ReactElement, ReactNode } from 'react'
 import React from 'react'
@@ -288,7 +299,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
-        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', cause)),
+        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', Cause.pretty(cause))),
         Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),

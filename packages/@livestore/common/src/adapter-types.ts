@@ -82,6 +82,7 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   makeChangeset: (data: Uint8Array) => SqliteDbChangeset
 }
 
+// TODO refactor this helper type. It's quite cumbersome to use and should be revisited.
 export type MakeSqliteDb<
   TReq = { dbPointer: number; persistenceInfo: PersistenceInfo },
   TInput_ extends { _tag: string } = { _tag: string },

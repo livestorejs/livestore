@@ -132,7 +132,7 @@ export const makeClientSessionSyncProcessor = ({
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     // eslint-disable-next-line unicorn/prefer-global-this
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog

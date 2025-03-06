@@ -28,8 +28,7 @@ addLiveStoreDevtoolsMiddleware(config, {
   schemaPath: './src/livestore/schema.ts',
   viteConfig: (viteConfig) => {
     viteConfig.server.fs ??= {}
-    // Point to Overtone monorepo root
-    viteConfig.server.fs.allow.push(process.env.WORKSPACE_ROOT + '/../..')
+    viteConfig.server.fs.strict = false
     viteConfig.optimizeDeps.force = true
     return viteConfig
   },

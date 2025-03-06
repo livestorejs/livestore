@@ -15,11 +15,11 @@
   "devDependencies": {
     "@types/node": "^22.10.10",
     "@types/ws": "^8.5.12",
-    "expo": "^52.0.18"
+    "expo": "^52.0.37"
   },
   "main": "./dist/index.cjs",
   "peerDependencies": {
-    "expo": "~52.0.18"
+    "expo": "~52.0.37"
   },
   "publishConfig": {
     "access": "public"

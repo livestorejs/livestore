@@ -1,251 +1,89 @@
-import type { Adapter, ClientSession, LockStatus, PreparedBindValues } from '@livestore/common'
-import {
-  getExecArgsFromMutation,
-  initializeSingletonTables,
-  liveStoreStorageFormatVersion,
-  migrateDb,
-  migrateTable,
-  rehydrateFromMutationLog,
-  sql,
-  UnexpectedError,
-} from '@livestore/common'
-import type { PullQueueItem } from '@livestore/common/leader-thread'
-import type { MutationLogMetaRow } from '@livestore/common/schema'
-import {
-  EventId,
-  getMutationDef,
-  MUTATION_LOG_META_TABLE,
-  MutationEvent,
-  mutationLogMetaTable,
-} from '@livestore/common/schema'
-import { insertRowPrepared, makeBindValues } from '@livestore/common/sql-queries'
-import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Queue, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { Adapter, ClientSession, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
+import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import type { LiveStoreSchema } from '@livestore/common/schema'
+import { MutationEvent } from '@livestore/common/schema'
+import { Cause, Effect, FetchHttpClient, Layer, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import * as SQLite from 'expo-sqlite'
 
-import { makeSqliteDb } from './common.js'
-import type { BootedDevtools } from './devtools.js'
-import { bootDevtools } from './devtools.js'
+import type { MakeExpoSqliteDb } from './make-sqlite-db.js'
+import { makeSqliteDb } from './make-sqlite-db.js'
+import { makeShutdownChannel } from './shutdown-channel.js'
 
 export type MakeDbOptions = {
-  fileNamePrefix?: string
-  subDirectory?: string
+  sync?: SyncOptions
+  storage?: {
+    /**
+     * Relative to expo-sqlite's default directory
+     *
+     * Example of a resulting path for `subDirectory: 'my-app'`:
+     * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-mutationlog@3.db`
+     */
+    subDirectory?: string
+  }
   // syncBackend?: TODO
+  /** @default 'expo' */
+  clientId?: string
+  /** @default nanoid(6) */
+  sessionId?: string
 }
 
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makeAdapter =
-  (options?: MakeDbOptions): Adapter =>
-  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled }) =>
+  (options: MakeDbOptions = {}): Adapter =>
+  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue, debugInstanceId }) =>
     Effect.gen(function* () {
-      const { fileNamePrefix, subDirectory } = options ?? {}
-      const migrationOptions = schema.migrationOptions
-      const subDirectoryPath = subDirectory ? subDirectory.replace(/\/$/, '') + '/' : ''
-      const fullDbFilePath = `${subDirectoryPath}${fileNamePrefix ?? 'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
-      const db = SQLite.openDatabaseSync(fullDbFilePath)
+      const { storage, clientId = 'expo', sessionId = nanoid(6), sync: syncOptions } = options
 
-      const dbRef = { current: { db, sqliteDb: makeSqliteDb(db) } }
+      const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
-      const dbWasEmptyWhenOpened = dbRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
+      const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      const dbMutationLog = SQLite.openDatabaseSync(
-        `${subDirectory ?? ''}${fileNamePrefix ?? 'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`,
+      yield* shutdownChannel.listen.pipe(
+        Stream.flatten(),
+        Stream.tap((error) => Effect.sync(() => shutdown(Cause.fail(error)))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
       )
 
-      const dbMutationLogRef = { current: { db: dbMutationLog, sqliteDb: makeSqliteDb(dbMutationLog) } }
+      const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
+        storeId,
+        clientId,
+        schema,
+        makeSqliteDb,
+        syncOptions,
+        storage: storage ?? {},
+      })
 
-      const dbMutationLogWasEmptyWhenOpened =
-        dbMutationLogRef.current.sqliteDb.select('SELECT 1 FROM sqlite_master').length === 0
-
-      yield* Effect.addFinalizer(() =>
-        Effect.gen(function* () {
-          // Ignoring in case the database is already closed
-          yield* Effect.try(() => db.closeSync()).pipe(Effect.ignore)
-          yield* Effect.try(() => dbMutationLog.closeSync()).pipe(Effect.ignore)
-        }),
-      )
-
-      if (dbMutationLogWasEmptyWhenOpened) {
-        yield* migrateTable({
-          db: dbMutationLogRef.current.sqliteDb,
-          behaviour: 'create-if-not-exists',
-          tableAst: mutationLogMetaTable.sqliteDef.ast,
-          skipMetaTable: true,
-        })
-      }
-
-      if (dbWasEmptyWhenOpened) {
-        yield* migrateDb({ db: dbRef.current.sqliteDb, schema })
-
-        initializeSingletonTables(schema, dbRef.current.sqliteDb)
-
-        switch (migrationOptions.strategy) {
-          case 'from-mutation-log': {
-            // TODO bring back
-            // yield* rehydrateFromMutationLog({
-            //   db: dbRef.current.sqliteDb,
-            //   logDb: dbMutationLogRef.current.sqliteDb,
-            //   schema,
-            //   migrationOptions,
-            //   onProgress: () => Effect.void,
-            // })
-
-            break
-          }
-          case 'hard-reset': {
-            // This is already the case by note doing anything now
-
-            break
-          }
-          case 'manual': {
-            // const migrateFn = migrationStrategy.migrate
-            console.warn('Manual migration strategy not implemented yet')
-
-            // TODO figure out a way to get previous database file to pass to the migration function
-
-            break
-          }
-          default: {
-            casesHandled(migrationOptions)
-          }
-        }
-      }
-
-      const mutationLogExclude =
-        migrationOptions.strategy === 'from-mutation-log'
-          ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
-          : new Set(['livestore.RawSql'])
-
-      const mutationEventSchema = MutationEvent.makeMutationEventSchema(schema)
-      const mutationDefSchemaHashMap = new Map(
-        [...schema.mutations.map.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
-      )
-
-      const newMutationLogStmt = dbMutationLogRef.current.sqliteDb.prepare(
-        insertRowPrepared({ tableName: MUTATION_LOG_META_TABLE, columns: mutationLogMetaTable.sqliteDef.columns }),
-      )
-
-      const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
-
-      const incomingSyncMutationsQueue = yield* Queue.unbounded<PullQueueItem>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
-      )
-
-      const initialMutationEventIdSchema = mutationLogMetaTable.schema.pipe(
-        Schema.pick('idGlobal', 'idClient'),
-        Schema.transform(EventId.EventId, {
-          encode: (_) => ({ idGlobal: _.global, idClient: _.client }),
-          decode: (_) => EventId.make({ global: _.idGlobal, client: _.idClient }),
-          strict: false,
-        }),
-        Schema.Array,
-        Schema.headOrElse(() => EventId.make({ global: 0, client: 0 })),
-      )
-
-      const initialMutationEventId = yield* Schema.decode(initialMutationEventIdSchema)(
-        dbMutationLogRef.current.sqliteDb.select(
-          sql`SELECT idGlobal, idClient FROM ${MUTATION_LOG_META_TABLE} ORDER BY idGlobal DESC, idClient DESC LIMIT 1`,
-        ),
-      )
-
-      let devtools: BootedDevtools | undefined
+      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
+      sqliteDb.import(initialSnapshot)
 
       const clientSession = {
         devtools: { enabled: false },
         lockStatus,
-        // Expo doesn't support multiple client sessions, so we just use a fixed session id
-        clientId: 'expo',
-        sessionId: 'expo',
-        leaderThread: {
-          mutations: {
-            pull: Stream.fromQueue(incomingSyncMutationsQueue),
-            push: (batch): Effect.Effect<void, UnexpectedError> =>
-              Effect.gen(function* () {
-                for (const mutationEventEncoded of batch) {
-                  if (migrationOptions.strategy !== 'from-mutation-log') return
-
-                  const mutation = mutationEventEncoded.mutation
-                  const mutationDef = getMutationDef(schema, mutation)
-
-                  const execArgsArr = getExecArgsFromMutation({
-                    mutationDef,
-                    mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
-                  })
-
-                  // write to mutation_log
-                  if (
-                    mutationLogExclude.has(mutation) === false &&
-                    execArgsArr.some((_) => _.statementSql.includes('__livestore')) === false
-                  ) {
-                    const mutationDefSchemaHash =
-                      mutationDefSchemaHashMap.get(mutation) ?? shouldNeverHappen(`Unknown mutation: ${mutation}`)
-
-                    const argsJson = JSON.stringify(mutationEventEncoded.args ?? {})
-                    const mutationLogRowValues = {
-                      idGlobal: mutationEventEncoded.id.global,
-                      idClient: mutationEventEncoded.id.client,
-                      mutation: mutationEventEncoded.mutation,
-                      argsJson,
-                      schemaHash: mutationDefSchemaHash,
-                      syncMetadataJson: Option.none(),
-                      parentIdGlobal: mutationEventEncoded.parentId.global,
-                      parentIdClient: mutationEventEncoded.parentId.client,
-                      clientId: 'expo',
-                      sessionId: 'expo',
-                    } satisfies MutationLogMetaRow
-
-                    try {
-                      newMutationLogStmt.execute(
-                        makeBindValues({
-                          columns: mutationLogMetaTable.sqliteDef.columns,
-                          values: mutationLogRowValues,
-                          variablePrefix: '$',
-                        }) as PreparedBindValues,
-                      )
-                    } catch (e) {
-                      console.error('Error writing to mutation_log', e, mutationLogRowValues)
-                      debugger
-                      throw e
-                    }
-                  } else {
-                    //   console.debug('livestore-webworker: skipping mutation log write', mutation, statementSql, bindValues)
-                  }
-
-                  yield* devtools?.onMutation({ mutationEventEncoded }) ?? Effect.void
-                }
-              }),
-          },
-          initialState: {
-            migrationsReport: {
-              migrations: [],
-            },
-            leaderHead: initialMutationEventId,
-          },
-          export: Effect.sync(() => dbRef.current.sqliteDb.export()),
-          getMutationLogData: Effect.sync(() => dbMutationLogRef.current.sqliteDb.export()),
-          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
-            Effect.runSync,
-          ),
-          sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
-          getSyncState: Effect.dieMessage('Not implemented'),
-        },
+        clientId,
+        sessionId,
+        leaderThread,
         shutdown: () => Effect.dieMessage('TODO implement shutdown'),
-        sqliteDb: dbRef.current.sqliteDb,
+        sqliteDb,
       } satisfies ClientSession
 
       if (devtoolsEnabled) {
-        devtools = yield* bootDevtools({
-          connectDevtoolsToStore,
-          clientSession,
-          schema,
-          dbRef,
-          dbMutationLogRef,
-          shutdown,
-          incomingSyncMutationsQueue,
-        }).pipe(
-          Effect.tapCauseLogPretty,
-          Effect.catchAll(() => Effect.succeed(undefined)),
-        )
+        // yield* Effect.gen(function* () {
+        //   const storeDevtoolsChannel = yield* makeNodeDevtoolsChannel({
+        //     nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
+        //     target: `devtools`,
+        //     url: `ws://localhost:${devtoolsOptions.port}`,
+        //     schema: {
+        //       listen: Devtools.ClientSession.MessageToApp,
+        //       send: Devtools.ClientSession.MessageFromApp,
+        //     },
+        //   })
+        //   yield* connectDevtoolsToStore(storeDevtoolsChannel)
+        // }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
       return clientSession
@@ -253,3 +91,84 @@ export const makeAdapter =
       Effect.mapError((cause) => (cause._tag === 'LiveStore.UnexpectedError' ? cause : new UnexpectedError({ cause }))),
       Effect.tapCauseLogPretty,
     )
+
+const makeLeaderThread = ({
+  storeId,
+  clientId,
+  schema,
+  makeSqliteDb,
+  syncOptions,
+  storage,
+}: {
+  storeId: string
+  clientId: string
+  schema: LiveStoreSchema
+  makeSqliteDb: MakeExpoSqliteDb
+  syncOptions: SyncOptions | undefined
+  storage: {
+    subDirectory?: string
+  }
+}) =>
+  Effect.gen(function* () {
+    const subDirectory = storage.subDirectory ? storage.subDirectory.replace(/\/$/, '') + '/' : ''
+    const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
+    const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
+
+    const readModelDatabaseName = `${'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
+    const dbMutationLogPath = `${'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`
+
+    const layer = yield* Layer.memoize(
+      makeLeaderThreadLayer({
+        clientId,
+        dbReadModel: yield* makeSqliteDb({ _tag: 'expo', databaseName: readModelDatabaseName, directory }),
+        dbMutationLog: yield* makeSqliteDb({ _tag: 'expo', databaseName: dbMutationLogPath, directory }),
+        devtoolsOptions: { enabled: false },
+        makeSqliteDb,
+        schema,
+        // NOTE we're creating a separate channel here since you can't listen to your own channel messages
+        shutdownChannel: yield* makeShutdownChannel(storeId),
+        storeId,
+        syncOptions,
+      }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
+    )
+
+    return yield* Effect.gen(function* () {
+      const {
+        dbReadModel: db,
+        dbMutationLog,
+        syncProcessor,
+        connectedClientSessionPullQueues,
+        extraIncomingMessagesQueue,
+        initialState,
+      } = yield* LeaderThreadCtx
+
+      const initialLeaderHead = getClientHeadFromDb(dbMutationLog)
+      const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialLeaderHead)
+
+      const leaderThread = {
+        mutations: {
+          pull: Stream.fromQueue(pullQueue),
+          push: (batch) =>
+            syncProcessor
+              .push(
+                batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+                { waitForProcessing: true },
+              )
+              .pipe(Effect.provide(layer), Effect.scoped),
+        },
+        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+        export: Effect.sync(() => db.export()),
+        getMutationLogData: Effect.sync(() => dbMutationLog.export()),
+        // TODO
+        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
+          Effect.runSync,
+        ),
+        getSyncState: syncProcessor.syncState,
+        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+      } satisfies ClientSessionLeaderThreadProxy
+
+      const initialSnapshot = db.export()
+
+      return { leaderThread, initialSnapshot }
+    }).pipe(Effect.provide(layer))
+  })

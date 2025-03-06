@@ -15,7 +15,7 @@ export type MakeBackendArgs = {
 }
 
 export type SyncOptions = {
-  makeBackend: (args: MakeBackendArgs) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
+  makeBackend?: (args: MakeBackendArgs) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
 }

@@ -1,6 +1,7 @@
 import { makeAdapter } from '@livestore/adapter-expo'
 import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
+import { makeWsSync } from '@livestore/sync-cf'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import { Button, StyleSheet, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
@@ -11,7 +12,12 @@ import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { mutations, schema, tables } from './livestore/schema.ts'
 
-const adapter = makeAdapter()
+const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID ?? nanoid(6)
+const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL
+
+const adapter = makeAdapter({
+  sync: { makeBackend: syncUrl ? ({ storeId }) => makeWsSync({ url: syncUrl, storeId }) : undefined },
+})
 
 export const App = () => {
   const [, rerender] = React.useState({})
@@ -37,6 +43,7 @@ export const App = () => {
         }}
         adapter={adapter}
         batchUpdates={batchUpdates}
+        storeId={storeId}
       >
         <InnerApp />
       </LiveStoreProvider>

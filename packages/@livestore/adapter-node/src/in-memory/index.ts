@@ -25,11 +25,15 @@ export interface InMemoryAdapterOptions {
    * @default 'in-memory'
    */
   clientId?: string
+  /**
+   * @default nanoid(6)
+   */
+  sessionId?: string
 }
 
 /** NOTE: This adapter is currently only used for testing */
 export const makeInMemoryAdapter =
-  ({ sync: syncOptions, clientId = 'in-memory' }: InMemoryAdapterOptions): Adapter =>
+  ({ sync: syncOptions, clientId = 'in-memory', sessionId = nanoid(6) }: InMemoryAdapterOptions): Adapter =>
   ({
     schema,
     storeId,
@@ -42,9 +46,7 @@ export const makeInMemoryAdapter =
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
       const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
 
-      const lockStatus = SubscriptionRef.make<LockStatus>('has-lock').pipe(Effect.runSync)
-
-      const sessionId = nanoid(6)
+      const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 

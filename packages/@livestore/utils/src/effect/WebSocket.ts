@@ -22,6 +22,8 @@ export const makeWebSocket = ({
   reconnect?: Schedule.Schedule<unknown> | false
 }): Effect.Effect<globalThis.WebSocket, WebSocketError, Scope.Scope> =>
   Effect.gen(function* () {
+    yield* validateUrl(url)
+
     const socket = yield* Effect.async<globalThis.WebSocket, WebSocketError>((cb, signal) => {
       try {
         const socket = new globalThis.WebSocket(url)
@@ -88,4 +90,10 @@ export const makeWebSocket = ({
     )
 
     return socket
+  })
+
+const validateUrl = (url: string) =>
+  Effect.try({
+    try: () => new URL(url),
+    catch: (error) => new WebSocketError({ cause: error }),
   })

@@ -2,8 +2,7 @@ import { Deferred, Exit, Predicate, Queue, Schema, Scope, Stream } from 'effect'
 
 import * as Effect from '../Effect.js'
 import type { InputSchema, WebChannel } from './common.js'
-import { WebChannelSymbol } from './common.js'
-import { listenToDebugPing, mapSchema } from './WebChannel.js'
+import { listenToDebugPing, mapSchema, WebChannelSymbol } from './common.js'
 
 const ConnectMessage = Schema.TaggedStruct('ConnectMessage', {
   from: Schema.String,

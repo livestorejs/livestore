@@ -51,7 +51,7 @@
 
             # needed for Expo
             (lib.optionals stdenv.isDarwin [
-              # cocoapods
+              cocoapods
             ])
           ];
 

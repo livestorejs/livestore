@@ -18,16 +18,20 @@
   },
   "devDependencies": {
     "expo-file-system": "*",
-    "expo-sqlite": "^15.0.3"
+    "expo-sqlite": "^15.1.2"
   },
   "peerDependencies": {
     "expo-file-system": "*",
-    "expo-sqlite": "~15.0.3"
+    "expo-sqlite": "^15.1.2"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
+    "postinstall": "rm -f node_modules/expo-sqlite",
     "test": "echo No tests yet"
+  },
+  "scripts_": {
+    "postinstall": "This is needed to avoid a Expo/PNPM related issue"
   }
 }

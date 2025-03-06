@@ -1,7 +1,5 @@
 import { Array, Effect, STM, TRef } from 'effect'
 
-import { ReadonlyArray } from './index.js'
-
 export type BucketQueue<A> = TRef.TRef<A[]>
 
 export const make = <A>(): STM.STM<BucketQueue<A>> => TRef.make<A[]>([])
@@ -43,7 +41,7 @@ export const peekAll = <A>(bucket: BucketQueue<A>) => TRef.get(bucket)
 export const takeSplitWhere = <A>(bucket: BucketQueue<A>, predicate: (a: A) => boolean) =>
   STM.gen(function* () {
     const bucketValue = yield* TRef.get(bucket)
-    const [elements, rest] = ReadonlyArray.splitWhere(bucketValue, predicate)
+    const [elements, rest] = Array.splitWhere(bucketValue, predicate)
     yield* TRef.set(bucket, rest)
     return elements
   })

@@ -11,12 +11,12 @@ import type {
 } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
 import { LS_DEV } from '@livestore/utils'
-import { Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
+import { Cause, Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
 
 const interrupt = (componentScope: Scope.CloseableScope, shutdownDeferred: ShutdownDeferred, error: StoreInterrupted) =>
   Effect.gen(function* () {
-    // console.log('[@livestore/livestore/react] interupting', error)
+    // console.log('[@livestore/livestore/solid] interupting', error)
     yield* Scope.close(componentScope, Exit.fail(error))
     yield* Deferred.fail(shutdownDeferred, error)
   }).pipe(
@@ -130,7 +130,7 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
         Effect.sync(() => setContextValue({ stage: 'shutdown', cause }))
 
       yield* Deferred.await(shutdownDeferred).pipe(
-        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/react] shutdown', cause)),
+        Effect.tapErrorCause((cause) => Effect.logDebug('[@livestore/livestore/solid] shutdown', Cause.pretty(cause))),
         Effect.catchTag('LiveStore.IntentionalShutdownCause', (cause) => shutdownContext(cause)),
         Effect.catchTag('LiveStore.StoreInterrupted', (cause) => shutdownContext(cause)),
         Effect.tapError((error) => Effect.sync(() => setContextValue({ stage: 'error', error }))),

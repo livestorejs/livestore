@@ -6,10 +6,6 @@ import * as Stream from '../Stream.js'
 import { DebugPingMessage, type InputSchema, type WebChannel, WebChannelSymbol } from './common.js'
 import { listenToDebugPing, mapSchema } from './common.js'
 
-export * from './broadcastChannelWithAck.js'
-
-export * from './common.js'
-
 export const shutdown = <MsgListen, MsgSend>(webChannel: WebChannel<MsgListen, MsgSend>): Effect.Effect<void> =>
   Deferred.done(webChannel.closedDeferred, Exit.void)
 

@@ -40,6 +40,8 @@ export interface NodeAdapterOptions {
   baseDirectory?: string
   /** The default is the hostname of the current machine */
   clientId?: string
+  /** @default 'static' */
+  sessionId?: string
   devtools?: {
     /**
      * Where to run the devtools server (via Vite)
@@ -50,18 +52,20 @@ export interface NodeAdapterOptions {
   }
 }
 
+/**
+ * Warning: This adapter doesn't currently support multiple client sessions for the same client (i.e. same storeId + clientId)
+ */
 export const makeNodeAdapter = ({
   workerUrl,
   schemaPath,
   baseDirectory,
   devtools: devtoolsOptions = { port: 4242 },
   clientId = hostname(),
+  // TODO make this dynamic and actually support multiple sessions
+  sessionId = 'static',
 }: NodeAdapterOptions): Adapter =>
   (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore }) =>
     Effect.gen(function* () {
-      // TODO make this dynamic and actually support multiple sessions
-      const sessionId = 'static'
-
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
       const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 

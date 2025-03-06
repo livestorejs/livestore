@@ -18,10 +18,10 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "expo": "^52.0.18"
+    "expo": "^52.0.37"
   },
   "peerDependencies": {
-    "expo": "~52.0.18"
+    "expo": "~52.0.37"
   },
   "publishConfig": {
     "access": "public"
