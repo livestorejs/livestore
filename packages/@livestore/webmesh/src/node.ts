@@ -17,10 +17,10 @@ import { makeMessageChannel } from './channel/message-channel.js'
 import { makeProxyChannel } from './channel/proxy-channel.js'
 import type { ChannelKey, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.js'
 import { ConnectionAlreadyExistsError, packetAsOtelAttributes } from './common.js'
-import * as MeshSchema from './mesh-schema.js'
+import * as WebmeshSchema from './mesh-schema.js'
 import { TimeoutSet } from './utils.js'
 
-type ConnectionChannel = WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>
+type ConnectionChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
 export interface MeshNode {
   nodeName: MeshNodeName
@@ -130,7 +130,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
       }
     >()
 
-    const checkTransferableConnections = (packet: typeof MeshSchema.MessageChannelPacket.Type) => {
+    const checkTransferableConnections = (packet: typeof WebmeshSchema.MessageChannelPacket.Type) => {
       if (
         (packet._tag === 'MessageChannelRequest' &&
           (connectionChannels.size === 0 ||
@@ -139,7 +139,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         // ... or if no forward-connections support transferables
         ![...connectionChannels.values()].some((c) => c.channel.supportsTransferables === true)
       ) {
-        return MeshSchema.MessageChannelResponseNoTransferables.make({
+        return WebmeshSchema.MessageChannelResponseNoTransferables.make({
           reqId: packet.id,
           channelName: packet.channelName,
           // NOTE for now we're "pretending" that the message is coming from the target node
@@ -154,11 +154,11 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
       }
     }
 
-    const sendPacket = (packet: typeof MeshSchema.Packet.Type) =>
+    const sendPacket = (packet: typeof WebmeshSchema.Packet.Type) =>
       Effect.gen(function* () {
         // yield* Effect.log(`${nodeName}: sendPacket:${packet._tag} [${packet.id}]`)
 
-        if (Schema.is(MeshSchema.NetworkConnectionAdded)(packet)) {
+        if (Schema.is(WebmeshSchema.NetworkConnectionAdded)(packet)) {
           yield* Effect.spanEvent('NetworkConnectionAdded', { packet, nodeName })
           yield* PubSub.publish(newConnectionAvailablePubSub, packet.target)
 
@@ -245,7 +245,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           Stream.flatten(),
           Stream.tap((message) =>
             Effect.gen(function* () {
-              const packet = yield* Schema.decodeUnknown(MeshSchema.Packet)(message)
+              const packet = yield* Schema.decodeUnknown(WebmeshSchema.Packet)(message)
 
               // console.debug(nodeName, 'received', packet._tag, packet.source, packet.target)
 
@@ -266,7 +266,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
                 const queue = channelMap.get(channelKey)!.queue
 
-                const respondToSender = (outgoingPacket: typeof MeshSchema.Packet.Type) =>
+                const respondToSender = (outgoingPacket: typeof WebmeshSchema.Packet.Type) =>
                   connectionChannel
                     .send(outgoingPacket)
                     .pipe(
@@ -277,13 +277,13 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
                       Effect.orDie,
                     )
 
-                if (Schema.is(MeshSchema.ProxyChannelPacket)(packet)) {
+                if (Schema.is(WebmeshSchema.ProxyChannelPacket)(packet)) {
                   yield* Queue.offer(queue, { packet, respondToSender })
-                } else if (Schema.is(MeshSchema.MessageChannelPacket)(packet)) {
+                } else if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
                   yield* Queue.offer(queue, { packet, respondToSender })
                 }
               } else {
-                if (Schema.is(MeshSchema.MessageChannelPacket)(packet)) {
+                if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
                   const noTransferableResponse = checkTransferableConnections(packet)
                   if (noTransferableResponse !== undefined) {
                     yield* Effect.spanEvent(`No transferable connections found for ${packet.source}→${packet.target}`)
@@ -307,7 +307,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
         connectionChannels.set(targetNodeName, { channel: connectionChannel, listenFiber })
 
-        const connectionAddedPacket = MeshSchema.NetworkConnectionAdded.make({
+        const connectionAddedPacket = WebmeshSchema.NetworkConnectionAdded.make({
           source: nodeName,
           target: targetNodeName,
         })

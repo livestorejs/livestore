@@ -32,12 +32,12 @@
     - Fix: When resetting the database but keeping the eventlog
       - the app doesn't show a shutdown screen
       - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
+    - Expo: Dynamic storeId support
     - Fix: Support multiple leader <> devtools connections
       - Refactor according to ARCHITECTURE.md
+    - Refactor: share more code between devtools bridges
 - Expo:
-  - Fix:  Require cycle: ../../../packages/@livestore/livestore/dist/store/create-store.js -> ../../../packages/@livestore/livestore/dist/effect/index.js -> ../../../packages/@livestore/livestore/dist/effect/LiveStore.js -> ../../../packages/@livestore/livestore/dist/store/create-store.js
-- Tanstack Start example:
-  - Fix: devtools should load smoothly on first open (currently causes a Vite error)
+  - Fix: Implement proper SQLite rollback via session extension once landed in expo-sqlite
 
 ### New features
 
@@ -52,6 +52,13 @@
 
 - New: `@livestore/sync-electric` backend (experimental)
   - See [docs page](https://livestore.dev/reference/syncing/electricsql/) for more details
+
+- New: `@livestore/adapter-expo` now supports syncing:
+  ```ts
+  const adapter = makeAdapter({
+    sync: { makeBackend: ({ storeId }) => makeWsSync({ url: `...`, storeId }) },
+  })
+  ```
 
 - New: Solid integration `@livestore/solid` (experimental)
   - Still very early stage and probably lacks some features. Feedback wanted!

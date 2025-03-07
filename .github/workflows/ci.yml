@@ -27,6 +27,7 @@ jobs:
         timeout-minutes: 5
       - run: pnpm install
       - run: pnpm lint:check
+      - run: pnpm circular
 
   test:
     strategy:

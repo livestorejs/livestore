@@ -19,7 +19,6 @@
     },
     "./nanoid": {
       "types": "./dist/nanoid/index.d.ts",
-      "react-native": "./dist/nanoid/index.browser.js",
       "default": "./dist/nanoid/index.js"
     },
     "./effect": {
@@ -71,7 +70,7 @@
   },
   "dependencies": {
     "msgpackr": "1.11.2",
-    "nanoid": "5.1.0",
+    "nanoid": "5.1.3",
     "pretty-bytes": "6.1.1"
   },
   "devDependencies": {

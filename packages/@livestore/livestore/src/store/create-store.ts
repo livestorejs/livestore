@@ -11,6 +11,7 @@ import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/
 import { LS_DEV } from '@livestore/utils'
 import type { Cause } from '@livestore/utils/effect'
 import {
+  Context,
   Deferred,
   Effect,
   Exit,
@@ -27,14 +28,61 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
+import type { GraphQLSchema } from 'graphql'
 
-import { LiveStoreContextRunning } from '../effect/index.js'
+import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
-import type { BaseGraphQLContext, GraphQLOptions, OtelOptions, ShutdownDeferred } from './store-types.js'
+import type {
+  BaseGraphQLContext,
+  GraphQLOptions,
+  LiveStoreContextRunning as LiveStoreContextRunning_,
+  OtelOptions,
+  ShutdownDeferred,
+} from './store-types.js'
 
 export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 1,
+}
+
+export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
+  LiveStoreContextRunning,
+  LiveStoreContextRunning_
+>() {
+  static fromDeferred = Effect.gen(function* () {
+    const deferred = yield* DeferredStoreContext
+    const ctx = yield* deferred
+    return Layer.succeed(LiveStoreContextRunning, ctx)
+  }).pipe(Layer.unwrapScoped)
+}
+
+export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
+  DeferredStoreContext,
+  Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
+>() {}
+
+export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
+  schema: LiveStoreSchema
+  /**
+   * The `storeId` can be used to isolate multiple stores from each other.
+   * So it can be useful for multi-tenancy scenarios.
+   *
+   * The `storeId` is also used for persistence.
+   *
+   * @default 'default'
+   */
+  storeId?: string
+  graphQLOptions?: {
+    schema: Effect.Effect<GraphQLSchema, never, OtelTracer.OtelTracer>
+    makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
+  }
+  boot?: (
+    store: Store<GraphQLContext, LiveStoreSchema>,
+  ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
+  adapter: Adapter
+  disableDevtools?: boolean
+  onBootStatus?: (status: BootStatus) => void
+  batchUpdates: (run: () => void) => void
 }
 
 export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> {

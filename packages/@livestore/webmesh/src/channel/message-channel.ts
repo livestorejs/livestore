@@ -14,7 +14,7 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { WebmeshSchema } from '../mod.js'
+import * as WebmeshSchema from '../mesh-schema.js'
 import type { MakeMessageChannelArgs } from './message-channel-internal.js'
 import { makeMessageChannelInternal } from './message-channel-internal.js'
 

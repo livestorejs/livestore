@@ -1,67 +1,10 @@
-import type { Adapter, BootStatus, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
+import type { UnexpectedError } from '@livestore/common'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
+import { Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
 
-import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { createStore } from '../store/create-store.js'
-import type { Store } from '../store/store.js'
-import type { BaseGraphQLContext, LiveStoreContextRunning as LiveStoreContextRunning_ } from '../store/store-types.js'
-
-export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
-  LiveStoreContextRunning,
-  LiveStoreContextRunning_
->() {
-  static fromDeferred = Effect.gen(function* () {
-    const deferred = yield* DeferredStoreContext
-    const ctx = yield* deferred
-    return Layer.succeed(LiveStoreContextRunning, ctx)
-  }).pipe(Layer.unwrapScoped)
-}
-
-export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
-  DeferredStoreContext,
-  Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
->() {}
-
-export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
-  schema: LiveStoreSchema
-  /**
-   * The `storeId` can be used to isolate multiple stores from each other.
-   * So it can be useful for multi-tenancy scenarios.
-   *
-   * The `storeId` is also used for persistence.
-   *
-   * @default 'default'
-   */
-  storeId?: string
-  graphQLOptions?: {
-    schema: Effect.Effect<GraphQLSchema, never, OtelTracer.OtelTracer>
-    makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
-  }
-  boot?: (
-    store: Store<GraphQLContext, LiveStoreSchema>,
-  ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
-  adapter: Adapter
-  disableDevtools?: boolean
-  onBootStatus?: (status: BootStatus) => void
-  batchUpdates: (run: () => void) => void
-}
-
-export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
-  props: LiveStoreContextProps<GraphQLContext>,
-): Layer.Layer<LiveStoreContextRunning, UnexpectedError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
-  Layer.scoped(LiveStoreContextRunning, makeLiveStoreContext(props)).pipe(
-    Layer.withSpan('LiveStore'),
-    Layer.provide(LiveStoreContextDeferred),
-  )
-
-export const LiveStoreContextDeferred = Layer.effect(
-  DeferredStoreContext,
-  Deferred.make<LiveStoreContextRunning['Type'], UnexpectedError>(),
-)
+import type { LiveStoreContextProps } from '../store/create-store.js'
+import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.js'
+import type { BaseGraphQLContext } from '../store/store-types.js'
 
 export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
   schema,
@@ -109,3 +52,16 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
     Effect.timeout(Duration.minutes(5)),
     Effect.withSpan('@livestore/livestore/effect:makeLiveStoreContext'),
   )
+
+export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
+  props: LiveStoreContextProps<GraphQLContext>,
+): Layer.Layer<LiveStoreContextRunning, UnexpectedError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
+  Layer.scoped(LiveStoreContextRunning, makeLiveStoreContext(props)).pipe(
+    Layer.withSpan('LiveStore'),
+    Layer.provide(LiveStoreContextDeferred),
+  )
+
+export const LiveStoreContextDeferred = Layer.effect(
+  DeferredStoreContext,
+  Deferred.make<LiveStoreContextRunning['Type'], UnexpectedError>(),
+)
