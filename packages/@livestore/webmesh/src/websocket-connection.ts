@@ -13,7 +13,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as NodeWebSocket from 'ws'
 
-import * as MeshSchema from './mesh-schema.js'
+import * as WebmeshSchema from './mesh-schema.js'
 import type { MeshNode } from './node.js'
 
 export class WSConnectionInit extends Schema.TaggedStruct('WSConnectionInit', {
@@ -59,19 +59,14 @@ export const connectViaWebSocket = ({
     yield* node.addConnection({ target: 'ws', connectionChannel: connection.webChannel, replaceIfExists: true })
 
     yield* disconnected
-  }).pipe(
-    Effect.scoped,
-    Effect.forever,
-    Effect.catchTag('WebSocketError', Effect.orDie),
-    Effect.onInterrupt(() => Effect.log('connectViaWebSocket:interrupted')),
-  )
+  }).pipe(Effect.scoped, Effect.forever, Effect.catchTag('WebSocketError', Effect.orDie))
 
 export const makeWebSocketConnection = (
   socket: globalThis.WebSocket | NodeWebSocket.WebSocket,
   socketType: SocketType,
 ): Effect.Effect<
   {
-    webChannel: WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>
+    webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
     from: string
   },
   never,
@@ -83,7 +78,7 @@ export const makeWebSocketConnection = (
 
       const fromDeferred = yield* Deferred.make<string>()
 
-      const listenQueue = yield* Queue.unbounded<typeof MeshSchema.Packet.Type>().pipe(
+      const listenQueue = yield* Queue.unbounded<typeof WebmeshSchema.Packet.Type>().pipe(
         Effect.acquireRelease(Queue.shutdown),
       )
 
@@ -95,7 +90,7 @@ export const makeWebSocketConnection = (
             if (msg._tag === 'WSConnectionInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
-              const decodedPayload = yield* Schema.decode(MeshSchema.Packet)(msg.payload)
+              const decodedPayload = yield* Schema.decode(WebmeshSchema.Packet)(msg.payload)
               yield* Queue.offer(listenQueue, decodedPayload)
             }
           }),
@@ -135,10 +130,10 @@ export const makeWebSocketConnection = (
         { once: true },
       )
 
-      const send = (message: typeof MeshSchema.Packet.Type) =>
+      const send = (message: typeof WebmeshSchema.Packet.Type) =>
         Effect.gen(function* () {
           yield* isConnectedLatch.await
-          const payload = yield* Schema.encode(MeshSchema.Packet)(message)
+          const payload = yield* Schema.encode(WebmeshSchema.Packet)(message)
           socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionPayload', payload, from }))
         })
 
@@ -149,10 +144,10 @@ export const makeWebSocketConnection = (
         send,
         listen,
         closedDeferred,
-        schema: { listen: MeshSchema.Packet, send: MeshSchema.Packet },
+        schema: { listen: WebmeshSchema.Packet, send: WebmeshSchema.Packet },
         supportsTransferables: false,
         shutdown: Scope.close(scope, Exit.void),
-      } satisfies WebChannel.WebChannel<typeof MeshSchema.Packet.Type, typeof MeshSchema.Packet.Type>
+      } satisfies WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
       return { webChannel, from }
     }).pipe(Effect.withSpanScoped('makeWebSocketConnection')),

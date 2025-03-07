@@ -1,6 +1,6 @@
 --- metro.config.js
 +++ metro.config.js
-@@ -3,7 +3,6 @@
+@@ -4,7 +4,6 @@
  // Learn more https://docs.expo.io/guides/customizing-metro
  const { getDefaultConfig } = require('expo/metro-config')
  const { addLiveStoreDevtoolsMiddleware } = require('@livestore/devtools-expo')
@@ -8,7 +8,7 @@
  
  /** @type {import('expo/metro-config').MetroConfig} */
  const config = getDefaultConfig(__dirname)
-@@ -11,28 +10,7 @@
+@@ -12,28 +11,7 @@
  config.resolver.unstable_enableSymlinks = true
  config.resolver.unstable_enablePackageExports = true
  
@@ -16,7 +16,7 @@
 -const projectRoot = __dirname
 -const monorepoRoot = process.env.MONOREPO_ROOT
 -  ? path.resolve(process.env.MONOREPO_ROOT)
--  : path.resolve(projectRoot, '../..')
+-  : path.resolve(projectRoot, '../../..')
 -
 -config.watchFolders = [monorepoRoot]
 -

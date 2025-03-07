@@ -1,8 +1,8 @@
 import type * as http from 'node:http'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
-const { Effect_ } = require('@livestore/utils/effect')
-import type { Effect } from '@livestore/utils/effect' with { 'resolution-mode': 'import' }
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { Effect } = require('@livestore/utils/effect') as typeof import('@livestore/utils/effect')
+
 import type { MetroConfig } from 'expo/metro-config'
 
 import type { Middleware, Options } from './types.js'
@@ -27,7 +27,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
     const enhancedMiddleware = previousEnhanceMiddleware(metroMiddleware, server)
 
     return (req, res, next) =>
-      req.url?.startsWith('/livestore-devtools')
+      req.url?.startsWith('/_livestore')
         ? viteMiddleware(req, res, () => enhancedMiddleware(req, res, next))
         : enhancedMiddleware(req, res, next)
   }
@@ -39,13 +39,19 @@ const makeLiveStoreDevtoolsMiddleware = (options: Options) => {
   // TODO Once Expo supports proper ESM, we can make this a static import
   // const viteServerPromise = makeViteServer(options)
   const viteServerPromise = import('@livestore/adapter-node/devtools').then(({ makeViteServer }) =>
-    makeViteServer({ ...options, mode: { _tag: 'expo', storeId: 'default' } }).pipe(
-      Effect_.runPromise as typeof Effect.runPromise,
-    ),
+    makeViteServer({
+      ...options,
+      mode: {
+        _tag: 'expo',
+        storeId: options.storeId ?? 'default',
+        clientId: options.clientId ?? 'expo',
+        sessionId: options.sessionId ?? 'expo',
+      },
+    }).pipe(Effect.runPromise),
   )
 
   const middleware = async (req: http.IncomingMessage, res: http.ServerResponse, next: () => void) => {
-    if (req.url?.startsWith('/livestore-devtools') == false) {
+    if (req.url?.startsWith('/_livestore') == false) {
       return next()
     }
 
@@ -69,3 +75,4 @@ module.exports = {
 }
 
 export type { addLiveStoreDevtoolsMiddleware, makeLiveStoreDevtoolsMiddleware }
+export type { Options } from './types.js'

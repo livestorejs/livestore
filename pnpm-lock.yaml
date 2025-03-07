@@ -1095,6 +1095,9 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
+      '@livestore/sync-cf':
+        specifier: workspace:*
+        version: link:../../../packages/@livestore/sync-cf
       babel-preset-expo:
         specifier: 12.0.8
         version: 12.0.8(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))
@@ -1724,6 +1727,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -1882,6 +1888,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
+      '@livestore/webmesh':
+        specifier: workspace:*
+        version: link:../webmesh
     devDependencies:
       expo:
         specifier: ^52.0.37

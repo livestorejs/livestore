@@ -13,4 +13,7 @@ export type Options = {
    * Example: `./src/schema.ts`
    */
   schemaPath: string
+  storeId?: string
+  clientId?: string
+  sessionId?: string
 }

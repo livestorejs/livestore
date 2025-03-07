@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable unicorn/prefer-module */
 
 // Learn more https://docs.expo.io/guides/customizing-metro
@@ -15,7 +16,7 @@ config.resolver.unstable_enablePackageExports = true
 const projectRoot = __dirname
 const monorepoRoot = process.env.MONOREPO_ROOT
   ? path.resolve(process.env.MONOREPO_ROOT)
-  : path.resolve(projectRoot, '../..')
+  : path.resolve(projectRoot, '../../..')
 
 config.watchFolders = [monorepoRoot]
 

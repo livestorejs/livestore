@@ -49,9 +49,10 @@ export namespace WebBridge {
 
 export const DevtoolsMode = Schema.Union(
   Schema.TaggedStruct('from-search-params', {}),
-  // TODO add storeId, clientId and sessionId for Expo
   Schema.TaggedStruct('expo', {
     storeId: Schema.String,
+    clientId: Schema.String,
+    sessionId: Schema.String,
   }),
   // TODO add storeId, clientId and sessionId for Node
   Schema.TaggedStruct('node', {

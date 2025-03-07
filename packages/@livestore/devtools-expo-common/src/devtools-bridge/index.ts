@@ -1,68 +1,60 @@
-// @ts-nocheck
-import { Devtools, liveStoreVersion } from '@livestore/common'
+import { Devtools } from '@livestore/common'
 import type { Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, PubSub, Schema, Stream } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 
-import { makeExpoDevtoolsChannel } from '../web-channel/index.js'
+import { makeChannelForConnectedMeshNode, makeExpoDevtoolsConnectedMeshNode } from '../web-channel/index.js'
 
 // TODO use a unique bridgeId for each connection (similar to web bridge)
-export const prepareExpoDevtoolsBridge: Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> = Effect.gen(
-  function* () {
-    const expoDevtoolsChannel = yield* makeExpoDevtoolsChannel({
-      sendSchema: Schema.Union(Devtools.MessageToApp, Devtools.MessageToApp),
-      listenSchema: Schema.Union(Devtools.MessageFromApp, Devtools.MessageFromApp),
+export const prepareExpoDevtoolsBridge = ({
+  storeId,
+  clientId,
+  sessionId,
+}: {
+  storeId: string
+  clientId: string
+  sessionId: string
+}): Effect.Effect<Devtools.PrepareDevtoolsBridge, never, Scope.Scope> =>
+  Effect.gen(function* () {
+    const target = `expo-${storeId}-${clientId}-${sessionId}`
+    const meshNode = yield* makeExpoDevtoolsConnectedMeshNode({
+      nodeName: `devtools-${storeId}-${clientId}-${sessionId}`,
+      target,
     })
 
-    const responsePubSub = yield* PubSub.unbounded<Devtools.MessageFromApp | Devtools.MessageFromApp>().pipe(
-      Effect.acquireRelease(PubSub.shutdown),
-    )
+    // @ts-expect-error typing
+    globalThis.__debugWebMeshNode = meshNode
 
-    const appHostInfoDeferred = yield* Deferred.make<{ appHostId: string; isLeader: boolean }>()
+    const isLeader = true // TODO properly implement this
 
-    yield* expoDevtoolsChannel.listen.pipe(
-      Stream.flatten(),
-      // Stream.tapLogWithLabel('appHostCoordinatorChannel.listen'),
-      Stream.tap((msg) =>
-        Effect.gen(function* () {
-          // if (msg._tag === 'LSD.AppHostReady') {
-          //   // const { appHostId, isLeader } = msg
-          //   // yield* Deferred.succeed(appHostInfoDeferred, { appHostId, isLeader })
-          // } else {
-          yield* PubSub.publish(responsePubSub, msg)
-          // }
-        }),
-      ),
-      Stream.runDrain,
-      Effect.withSpan('portForDevtoolsChannel.listen'),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // TODO maybe we need a temporary channel to create a unique bridge channel e..g see appHostInfoDeferred below
+    const expoDevtoolsChannelClientSession = yield* makeChannelForConnectedMeshNode({
+      node: meshNode,
+      target,
+      schema: {
+        listen: Devtools.ClientSession.MessageFromApp,
+        send: Devtools.ClientSession.MessageToApp,
+      },
+      channelType: 'clientSession',
+    })
 
-    // yield* expoDevtoolsChannel.send(Devtools.DevtoolsReady.make({ liveStoreVersion }))
+    const expoDevtoolsChannelLeader = yield* makeChannelForConnectedMeshNode({
+      node: meshNode,
+      target,
+      schema: { listen: Devtools.Leader.MessageFromApp, send: Devtools.Leader.MessageToApp },
+      channelType: 'leader',
+    })
 
-    // const { appHostId, isLeader } = yield* Deferred.await(appHostInfoDeferred)
+    const copyToClipboard = (text: string) =>
+      Effect.sync(() => {
+        navigator.clipboard.writeText(text)
+      })
 
-    // yield* Deferred.await(expoDevtoolsChannel.closedDeferred).pipe(
-    //   Effect.tap(() => PubSub.publish(responsePubSub, Devtools.Disconnect.make({ liveStoreVersion, appHostId }))),
-    //   Effect.tapCauseLogPretty,
-    //   Effect.forkScoped,
-    // )
-
-    // const sendToAppHost: Devtools.PrepareDevtoolsBridge['sendToAppHost'] = (msg) =>
-    //   expoDevtoolsChannel.send(msg).pipe(Effect.withSpan('sendToAppHost'), Effect.orDie)
-
-    // const copyToClipboard = (text: string) =>
-    //   Effect.sync(() => {
-    //     navigator.clipboard.writeText(text)
-    //   })
-
-    // return {
-    //   responsePubSub,
-    //   sendToAppHost,
-    //   appHostId,
-    //   copyToClipboard,
-    //   isLeader,
-    // } satisfies Devtools.PrepareDevtoolsBridge
-    return yield* Effect.dieMessage('Not implemented')
-  },
-).pipe(Effect.orDie)
+    return {
+      webchannels: {
+        leader: expoDevtoolsChannelLeader,
+        clientSession: expoDevtoolsChannelClientSession,
+      },
+      clientInfo: { clientId, sessionId, isLeader },
+      copyToClipboard,
+    } satisfies Devtools.PrepareDevtoolsBridge
+  }).pipe(Effect.orDie)

@@ -1,10 +1,16 @@
 import type { Adapter, ClientSession, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
-import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
+import {
+  makeChannelForConnectedMeshNode,
+  makeExpoDevtoolsConnectedMeshNode,
+} from '@livestore/devtools-expo-common/web-channel'
+import type { Scope } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Layer, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
+import type { MeshNode } from '@livestore/webmesh'
 import * as SQLite from 'expo-sqlite'
 
 import type { MakeExpoSqliteDb } from './make-sqlite-db.js'
@@ -25,7 +31,7 @@ export type MakeDbOptions = {
   // syncBackend?: TODO
   /** @default 'expo' */
   clientId?: string
-  /** @default nanoid(6) */
+  /** @default 'expo' */
   sessionId?: string
 }
 
@@ -34,7 +40,7 @@ export const makeAdapter =
   (options: MakeDbOptions = {}): Adapter =>
   ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue, debugInstanceId }) =>
     Effect.gen(function* () {
-      const { storage, clientId = 'expo', sessionId = nanoid(6), sync: syncOptions } = options
+      const { storage, clientId = 'expo', sessionId = 'expo', sync: syncOptions } = options
 
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
@@ -49,13 +55,23 @@ export const makeAdapter =
         Effect.forkScoped,
       )
 
+      const devtoolsWebmeshNode = devtoolsEnabled
+        ? yield* makeExpoDevtoolsConnectedMeshNode({
+            nodeName: `expo-${storeId}-${clientId}-${sessionId}`,
+            target: `devtools-${storeId}-${clientId}-${sessionId}`,
+          })
+        : undefined
+
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
         clientId,
+        sessionId,
         schema,
         makeSqliteDb,
         syncOptions,
         storage: storage ?? {},
+        devtoolsEnabled,
+        devtoolsWebmeshNode,
       })
 
       const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
@@ -72,18 +88,15 @@ export const makeAdapter =
       } satisfies ClientSession
 
       if (devtoolsEnabled) {
-        // yield* Effect.gen(function* () {
-        //   const storeDevtoolsChannel = yield* makeNodeDevtoolsChannel({
-        //     nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
-        //     target: `devtools`,
-        //     url: `ws://localhost:${devtoolsOptions.port}`,
-        //     schema: {
-        //       listen: Devtools.ClientSession.MessageToApp,
-        //       send: Devtools.ClientSession.MessageFromApp,
-        //     },
-        //   })
-        //   yield* connectDevtoolsToStore(storeDevtoolsChannel)
-        // }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        yield* Effect.gen(function* () {
+          const storeDevtoolsChannel = yield* makeChannelForConnectedMeshNode({
+            target: `devtools-${storeId}-${clientId}-${sessionId}`,
+            node: devtoolsWebmeshNode!,
+            schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
+            channelType: 'clientSession',
+          })
+          yield* connectDevtoolsToStore(storeDevtoolsChannel)
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
       return clientSession
@@ -95,19 +108,25 @@ export const makeAdapter =
 const makeLeaderThread = ({
   storeId,
   clientId,
+  sessionId,
   schema,
   makeSqliteDb,
   syncOptions,
   storage,
+  devtoolsEnabled,
+  devtoolsWebmeshNode,
 }: {
   storeId: string
   clientId: string
+  sessionId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeExpoSqliteDb
   syncOptions: SyncOptions | undefined
   storage: {
     subDirectory?: string
   }
+  devtoolsEnabled: boolean
+  devtoolsWebmeshNode: MeshNode | undefined
 }) =>
   Effect.gen(function* () {
     const subDirectory = storage.subDirectory ? storage.subDirectory.replace(/\/$/, '') + '/' : ''
@@ -117,12 +136,25 @@ const makeLeaderThread = ({
     const readModelDatabaseName = `${'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
     const dbMutationLogPath = `${'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`
 
+    const dbReadModel = yield* makeSqliteDb({ _tag: 'expo', databaseName: readModelDatabaseName, directory })
+    const dbMutationLog = yield* makeSqliteDb({ _tag: 'expo', databaseName: dbMutationLogPath, directory })
+
+    const devtoolsOptions = yield* makeDevtoolsOptions({
+      devtoolsEnabled,
+      dbReadModel,
+      dbMutationLog,
+      storeId,
+      clientId,
+      sessionId,
+      devtoolsWebmeshNode,
+    })
+
     const layer = yield* Layer.memoize(
       makeLeaderThreadLayer({
         clientId,
-        dbReadModel: yield* makeSqliteDb({ _tag: 'expo', databaseName: readModelDatabaseName, directory }),
-        dbMutationLog: yield* makeSqliteDb({ _tag: 'expo', databaseName: dbMutationLogPath, directory }),
-        devtoolsOptions: { enabled: false },
+        dbReadModel,
+        dbMutationLog,
+        devtoolsOptions,
         makeSqliteDb,
         schema,
         // NOTE we're creating a separate channel here since you can't listen to your own channel messages
@@ -171,4 +203,52 @@ const makeLeaderThread = ({
 
       return { leaderThread, initialSnapshot }
     }).pipe(Effect.provide(layer))
+  })
+
+const makeDevtoolsOptions = ({
+  devtoolsEnabled,
+  dbReadModel,
+  dbMutationLog,
+  storeId,
+  clientId,
+  sessionId,
+  devtoolsWebmeshNode,
+}: {
+  devtoolsEnabled: boolean
+  dbReadModel: LeaderSqliteDb
+  dbMutationLog: LeaderSqliteDb
+  storeId: string
+  clientId: string
+  sessionId: string
+  devtoolsWebmeshNode: MeshNode | undefined
+}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+  Effect.gen(function* () {
+    if (devtoolsEnabled === false) {
+      return {
+        enabled: false,
+      }
+    }
+
+    return {
+      enabled: true,
+      makeBootContext: Effect.gen(function* () {
+        return {
+          // devtoolsWebChannel: yield* makeExpoDevtoolsChannel({
+          // nodeName: `leader-${storeId}-${clientId}`,
+          devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
+            node: devtoolsWebmeshNode!,
+            target: `devtools-${storeId}-${clientId}-${sessionId}`,
+            schema: {
+              listen: Devtools.Leader.MessageToApp,
+              send: Devtools.Leader.MessageFromApp,
+            },
+            channelType: 'leader',
+          }),
+          persistenceInfo: {
+            readModel: dbReadModel.metadata.persistenceInfo,
+            mutationLog: dbMutationLog.metadata.persistenceInfo,
+          },
+        }
+      }),
+    }
   })

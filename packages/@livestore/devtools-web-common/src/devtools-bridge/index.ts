@@ -1,6 +1,6 @@
-import { Devtools, liveStoreVersion } from '@livestore/common'
+import { Devtools } from '@livestore/common'
 import type { Scope, Worker } from '@livestore/utils/effect'
-import { Deferred, Effect, PubSub, Schema, Stream } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 
 import { makeChannelForConnectedMeshNode, makeWebDevtoolsConnectedMeshNode } from '../web-channel/index.js'
 import type * as WorkerSchema from '../worker/schema.js'

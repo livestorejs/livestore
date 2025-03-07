@@ -70,6 +70,13 @@ export const makeProxyChannel = ({
 
       const channelStateRef = { current: { _tag: 'Initial' } as ProxiedChannelState }
 
+      const debugInfo = {
+        pendingSends: 0,
+        totalSends: 0,
+        connectCounter: 0,
+        isConnected: false,
+      }
+
       /**
        * We need to unique identify a channel as multiple channels might exist between the same two nodes.
        * We do this by letting each channel end generate a unique id and then combining them in a deterministic way.
@@ -99,6 +106,7 @@ export const makeProxyChannel = ({
             combinedChannelId: channelId,
           }
           yield* SubscriptionRef.set(connectedStateRef, channelStateRef.current)
+          debugInfo.isConnected = true
         })
 
       const connectionRequest = Effect.suspend(() =>
@@ -126,6 +134,8 @@ export const makeProxyChannel = ({
                 yield* SubscriptionRef.set(connectedStateRef, false)
                 channelStateRef.current = { _tag: 'Pending', initiatedVia: 'incoming-request' }
                 yield* Effect.spanEvent(`Reconnecting`).pipe(Effect.withParentSpan(channelSpan))
+                debugInfo.isConnected = false
+                debugInfo.connectCounter++
 
                 // If we're already connected, we need to re-establish the connection
                 if (channelState._tag === 'Established' && channelState.combinedChannelId !== combinedChannelId) {
@@ -275,6 +285,9 @@ export const makeProxyChannel = ({
 
           const sentDeferred = yield* Deferred.make<void>()
 
+          debugInfo.pendingSends++
+          debugInfo.totalSends++
+
           const trySend = Effect.gen(function* () {
             const { combinedChannelId } = (yield* SubscriptionRef.waitUntil(
               connectedStateRef,
@@ -298,6 +311,8 @@ export const makeProxyChannel = ({
 
               yield* ack
               yield* Deferred.succeed(sentDeferred, void 0)
+
+              debugInfo.pendingSends--
             })
 
             yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(100)), Effect.orDie)
@@ -333,6 +348,7 @@ export const makeProxyChannel = ({
         supportsTransferables: true,
         schema,
         shutdown: Scope.close(scope, Exit.void),
+        debugInfo,
       } satisfies WebChannel.WebChannel<any, any>
 
       return webChannel as WebChannel.WebChannel<any, any>
