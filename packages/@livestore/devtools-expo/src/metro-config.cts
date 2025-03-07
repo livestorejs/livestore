@@ -1,7 +1,7 @@
 import type * as http from 'node:http'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { Effect } = require('@livestore/utils/effect') as typeof import('@livestore/utils/effect')
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports, prettier/prettier
+const { Effect } = require('@livestore/utils/effect') as typeof import('@livestore/utils/effect', { with: { "resolution-mode": "import" } })
 
 import type { MetroConfig } from 'expo/metro-config'
 
