@@ -1,0 +1,12 @@
+--- app.config.ts
++++ app.config.ts
+@@ -31,9 +31,6 @@
+     server: {
+       port: process.env.PORT ? Number(process.env.PORT) : 60_001,
+       headers: credentiallessHeaders,
+-      fs: {
+-        strict: false,
+-      },
+     },
+     // // @ts-expect-error
+     // server: { fs: { strict: false } },

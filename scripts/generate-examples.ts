@@ -3,9 +3,9 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { BunContext, BunRuntime } from '@effect/platform-bun'
+import { Effect, Schema } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import { $ } from 'bun'
-import { Effect, Schema } from 'effect'
 
 import { BunShell, Cli } from './lib.js'
 
@@ -160,7 +160,7 @@ const setupWatchman = (direction: SyncDirection) =>
           const changes = JSON.parse(data.toString())
           if (changes.files) {
             console.log(`Changes detected in ${dir}:`, changes.files.map((f: { name: string }) => f.name).join(', '))
-            syncDirectories(direction)
+            syncDirectories(direction).pipe(Effect.runPromise)
           }
         } catch (error) {
           console.error(`Error parsing Watchman output: ${error}`)
@@ -187,7 +187,14 @@ const updatePatches = Effect.gen(function* () {
   yield* BunShell.cmd(`rm -rf ${PATCHES_DIR}`)
 
   const exampleDirs = fs.readdirSync(SRC_DIR).filter((item) => fs.statSync(`${SRC_DIR}/${item}`).isDirectory())
-  const filesToPatch = ['package.json', 'tsconfig.json', 'vite.config.ts', 'vite.config.js', 'metro.config.js']
+  const filesToPatch = [
+    'package.json',
+    'tsconfig.json',
+    'vite.config.ts',
+    'vite.config.js',
+    'metro.config.js',
+    'app.config.ts', // TanStack Start
+  ]
   for (const exampleDir of exampleDirs) {
     const patchDir = `${PATCHES_DIR}/${exampleDir}`
     yield* BunShell.cmd(`mkdir -p ${patchDir}`)
@@ -257,4 +264,4 @@ const cli = Cli.Command.run(command, {
   version: '0.0.1',
 })
 
-cli(process.argv).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain)
+cli(process.argv).pipe(Effect.provide(PlatformNode.NodeContext.layer), PlatformNode.NodeRuntime.runMain)

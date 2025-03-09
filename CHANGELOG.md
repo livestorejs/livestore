@@ -16,6 +16,8 @@
       - Unit of sharing/collaboration/auth
       - What if I want got my initial container design wrong and I want to change it?
         - Comparables: document databases, kafka streams, 
+  - Fix linting
+  - Remove `graphql` from peer dependencies
   - Syncing
     - Fix: mutation log unique constraint violation during concurrent mutations
     - Enable auth setup
@@ -33,6 +35,7 @@
       - the app doesn't show a shutdown screen
       - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
     - Expo: Dynamic storeId support
+    - Fix: bring back chrome extension
     - Fix: Support multiple leader <> devtools connections
       - Refactor according to ARCHITECTURE.md
     - Refactor: share more code between devtools bridges
@@ -134,7 +137,7 @@
 - Upgrade to TypeScript 5.7
 - Upgraded dependencies
   - Now supports React 19
-  - `effect` (needs to be 3.13.1 or higher)
+  - `effect` (needs to be 3.13.7 or higher)
   - `@livestore/wa-sqlite` (needs to be 1.0.5-dev.2)
 
 ## 0.2.0

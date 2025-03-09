@@ -2,8 +2,8 @@
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { BunContext, BunRuntime } from '@effect/platform-bun'
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 
 import { BunShell, Cli } from './lib.js'
 
@@ -115,4 +115,4 @@ const cli = Cli.Command.run(command, {
   version: '0.0.1',
 })
 
-cli(process.argv).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain)
+cli(process.argv).pipe(Effect.provide(PlatformNode.NodeContext.layer), PlatformNode.NodeRuntime.runMain)

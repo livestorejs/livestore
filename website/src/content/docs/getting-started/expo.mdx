@@ -20,7 +20,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 1.  **Set up project from template**
 
     ```bash
-    npx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/expo-todomvc my-app
+    bunx tiged --mode=git git@github.com:livestorejs/livestore/examples/standalone/expo-todomvc my-app
     ```
 
     Replace `my-app` with your desired app name.
@@ -51,7 +51,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
                 <TabItem label="npm">
                 	Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
                 	```
-                	npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+                	npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @opentelemetry/api effect
                 	```
 
                 	Going forward you can use `npm install` again to install the dependencies.
@@ -67,7 +67,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
                 	Additionally, given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
                 	```
-                	yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @effect/schema @opentelemetry/api effect
+                	yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @opentelemetry/api effect
                 	```
                 </TabItem>
 
@@ -93,7 +93,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 1.  **Install dependencies**
 
     ```bash
-    npx expo install @livestore/devtools-expo @livestore/adapter-expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
+    bunx expo install @livestore/devtools-expo @livestore/adapter-expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
     ```
 
 2.  **Add Vite meta plugin to babel config file**

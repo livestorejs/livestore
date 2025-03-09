@@ -14,11 +14,11 @@
     "@livestore/wa-sqlite": "1.0.5-dev.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.0",
-    "@types/node": "^22.10.10",
-    "vite": "^6.1.0",
-    "vitest": "^2.1.4",
-    "wrangler": "^3.106.0"
+    "@playwright/test": "^1.51.0",
+    "@types/node": "^22.13.10",
+    "vite": "^6.2.1",
+    "vitest": "^2.1.9",
+    "wrangler": "^3.114.0"
   },
   "scripts": {
     "test": "pnpm test:unit & pnpm test:todomvc & pnpm test:node-sync",

@@ -1,16 +1,10 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-import { NetworkStatus, UnexpectedError } from '../adapter-types.js'
+import { NetworkStatus } from '../adapter-types.js'
 import { EventId } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
 import * as SyncState from '../sync/syncstate.js'
-import {
-  LeaderReqResMessage,
-  liveStoreVersion,
-  LSDMessage,
-  LSDReqResMessage,
-  requestId,
-} from './devtools-messages-common.js'
+import { LeaderReqResMessage, LSDMessage, LSDReqResMessage } from './devtools-messages-common.js'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),
@@ -66,13 +60,19 @@ export class SnapshotRes extends LSDReqResMessage('LSD.Leader.SnapshotRes', {
   snapshot: Transferable.Uint8Array,
 }) {}
 
-export class LoadDatabaseFileReq extends LSDReqResMessage('LSD.Leader.LoadDatabaseFileReq', {
-  data: Transferable.Uint8Array,
-}) {}
-
-export class LoadDatabaseFileRes extends LSDReqResMessage('LSD.Leader.LoadDatabaseFileRes', {
-  status: Schema.Literal('ok', 'unsupported-file', 'unsupported-database'),
-}) {}
+export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile', {
+  payload: {
+    data: Transferable.Uint8Array,
+  },
+  success: {},
+  error: {
+    cause: Schema.Union(
+      Schema.TaggedStruct('unsupported-file', {}),
+      Schema.TaggedStruct('unsupported-database', {}),
+      Schema.TaggedStruct('unexpected-error', { cause: Schema.Defect }),
+    ),
+  },
+})
 
 // TODO refactor this to use push/pull semantics
 export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
@@ -113,32 +113,32 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 })
 
 // TODO move to `Schema.TaggedRequest` once new RPC is ready https://github.com/Effect-TS/effect/pull/4362
-export class DatabaseFileInfo_ extends Schema.TaggedRequest<DatabaseFileInfo_>()('LSD.Leader.DatabaseFileInfo', {
-  payload: {
-    requestId,
-    liveStoreVersion,
-  },
-  success: DatabaseFileInfo,
-  failure: UnexpectedError,
-}) {}
+// export class DatabaseFileInfo_ extends Schema.TaggedRequest<DatabaseFileInfo_>()('LSD.Leader.DatabaseFileInfo', {
+//   payload: {
+//     requestId,
+//     liveStoreVersion,
+//   },
+//   success: DatabaseFileInfo,
+//   failure: UnexpectedError,
+// }) {}
 
-export class NetworkStatus_ extends Schema.TaggedRequest<NetworkStatus_>()('LSD.Leader.NetworkStatus', {
-  payload: {
-    requestId,
-    liveStoreVersion,
-  },
-  success: NetworkStatus,
-  failure: UnexpectedError,
-}) {}
+// export class NetworkStatus_ extends Schema.TaggedRequest<NetworkStatus_>()('LSD.Leader.NetworkStatus', {
+//   payload: {
+//     requestId,
+//     liveStoreVersion,
+//   },
+//   success: NetworkStatus,
+//   failure: UnexpectedError,
+// }) {}
 
-export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)
+// export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)
 
-export type MessageToApp_ = typeof MessageToApp_.Type
+// export type MessageToApp_ = typeof MessageToApp_.Type
 //
 
 export const MessageToApp = Schema.Union(
   SnapshotReq,
-  LoadDatabaseFileReq,
+  LoadDatabaseFile.Request,
   MutationLogReq,
   ResetAllData.Request,
   NetworkStatusSubscribe,
@@ -159,7 +159,7 @@ export type MessageToApp = typeof MessageToApp.Type
 
 export const MessageFromApp = Schema.Union(
   SnapshotRes,
-  LoadDatabaseFileRes,
+  LoadDatabaseFile.Response,
   MutationLogRes,
   Disconnect,
   SyncPull,
@@ -170,8 +170,8 @@ export const MessageFromApp = Schema.Union(
   SyncHistoryRes,
   SyncingInfoRes,
   SyncHeadRes,
-  ResetAllData.Response,
-  SetSyncLatch.Response,
+  ResetAllData.Success,
+  SetSyncLatch.Success,
 ).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

@@ -20,8 +20,8 @@
     "ws": "8.18.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.12",
-    "vitest": "^2.1.4"
+    "@types/ws": "^8.18.0",
+    "vitest": "^2.1.9"
   },
   "publishConfig": {
     "access": "public"

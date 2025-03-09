@@ -23,7 +23,7 @@
   },
   "peerDependencies": {
     "expo-file-system": "*",
-    "expo-sqlite": "^15.1.2"
+    "expo-sqlite": "~15.1.2"
   },
   "publishConfig": {
     "access": "public"

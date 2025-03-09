@@ -99,7 +99,7 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.Leader.LoadDatabaseFileReq': {
+            case 'LSD.Leader.LoadDatabaseFile.Request': {
               const { data } = decodedEvent
 
               let tableNames: Set<string>
@@ -114,39 +114,57 @@ const listenToDevtools = ({
                 tableNames = new Set(tableNameResults.map((_) => _.name))
 
                 tmpDb.close()
-              } catch (e) {
-                yield* Effect.logError(`Error importing database file`, e)
+              } catch (cause) {
+                yield* Effect.logError(`Error importing database file`, cause)
                 yield* sendMessage(
-                  Devtools.Leader.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-file' }),
+                  Devtools.Leader.LoadDatabaseFile.Error.make({
+                    ...reqPayload,
+                    cause: { _tag: 'unexpected-error', cause },
+                  }),
                 )
 
                 return
               }
 
-              if (tableNames.has(MUTATION_LOG_META_TABLE)) {
-                yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
+              try {
+                if (tableNames.has(MUTATION_LOG_META_TABLE)) {
+                  // Is mutation log
+                  yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                dbMutationLog.import(data)
+                  dbMutationLog.import(data)
 
-                dbReadModel.destroy()
-              } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
-                yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
+                  dbReadModel.destroy()
+                } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
+                  // Is read model
+                  yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                dbReadModel.import(data)
+                  dbReadModel.import(data)
 
-                dbMutationLog.destroy()
-              } else {
+                  dbMutationLog.destroy()
+                } else {
+                  yield* sendMessage(
+                    Devtools.Leader.LoadDatabaseFile.Error.make({
+                      ...reqPayload,
+                      cause: { _tag: 'unsupported-database' },
+                    }),
+                  )
+                  return
+                }
+
+                yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
+                yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' })) ?? Effect.void
+
+                return
+              } catch (cause) {
+                yield* Effect.logError(`Error importing database file`, cause)
                 yield* sendMessage(
-                  Devtools.Leader.LoadDatabaseFileRes.make({ ...reqPayload, status: 'unsupported-database' }),
+                  Devtools.Leader.LoadDatabaseFile.Error.make({
+                    ...reqPayload,
+                    cause: { _tag: 'unexpected-error', cause },
+                  }),
                 )
                 return
               }
-
-              yield* sendMessage(Devtools.Leader.LoadDatabaseFileRes.make({ ...reqPayload, status: 'ok' }))
-
-              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' })) ?? Effect.void
-
-              return
             }
             case 'LSD.Leader.ResetAllData.Request': {
               const { mode } = decodedEvent
@@ -159,7 +177,7 @@ const listenToDevtools = ({
                 dbMutationLog.destroy()
               }
 
-              yield* sendMessage(Devtools.Leader.ResetAllData.Response.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.ResetAllData.Success.make({ ...reqPayload }))
 
               yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' })) ?? Effect.void
 
@@ -320,7 +338,7 @@ const listenToDevtools = ({
 
               yield* SubscriptionRef.set(devtools.syncBackendLatchState, { latchClosed: closeLatch })
 
-              yield* sendMessage(Devtools.Leader.SetSyncLatch.Response.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.SetSyncLatch.Success.make({ ...reqPayload }))
 
               return
             }

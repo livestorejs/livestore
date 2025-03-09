@@ -42,7 +42,10 @@ export const runAndGetExit = <Tag extends string, A>({
 }: {
   importPath: string
   exportName: string
-  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnexpectedError, Schema.Defect> }>
+  schema: Schema.TaggedStruct<
+    Tag,
+    { exit: Schema.Exit<Schema.Schema<A>, typeof UnexpectedError, typeof Schema.Defect> }
+  >
 }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext

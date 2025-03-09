@@ -1,6 +1,6 @@
+import { Effect } from '@livestore/utils/effect'
 import { $ } from 'bun'
-import { Effect } from 'effect'
-export * as Cli from '@effect/cli'
+export { Cli } from '@livestore/utils/node'
 
 const cmd = (command: string, cwd?: string) =>
   Effect.promise(() => (cwd ? $`${{ raw: command }}`.cwd(cwd) : $`${{ raw: command }}`))

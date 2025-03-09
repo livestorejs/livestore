@@ -1,4 +1,11 @@
-import type { Adapter, ClientSession, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
+import type {
+  Adapter,
+  BootStatus,
+  ClientSession,
+  ClientSessionLeaderThreadProxy,
+  LockStatus,
+  SyncOptions,
+} from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
@@ -9,7 +16,7 @@ import {
   makeExpoDevtoolsConnectedMeshNode,
 } from '@livestore/devtools-expo-common/web-channel'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, FetchHttpClient, Layer, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 import * as SQLite from 'expo-sqlite'
 
@@ -38,9 +45,11 @@ export type MakeDbOptions = {
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makeAdapter =
   (options: MakeDbOptions = {}): Adapter =>
-  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue, debugInstanceId }) =>
+  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue }) =>
     Effect.gen(function* () {
       const { storage, clientId = 'expo', sessionId = 'expo', sync: syncOptions } = options
+
+      yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
@@ -72,6 +81,7 @@ export const makeAdapter =
         storage: storage ?? {},
         devtoolsEnabled,
         devtoolsWebmeshNode,
+        bootStatusQueue,
       })
 
       const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
@@ -115,6 +125,7 @@ const makeLeaderThread = ({
   storage,
   devtoolsEnabled,
   devtoolsWebmeshNode,
+  bootStatusQueue: bootStatusQueueClientSession,
 }: {
   storeId: string
   clientId: string
@@ -127,6 +138,7 @@ const makeLeaderThread = ({
   }
   devtoolsEnabled: boolean
   devtoolsWebmeshNode: MeshNode | undefined
+  bootStatusQueue: Queue.Queue<BootStatus>
 }) =>
   Effect.gen(function* () {
     const subDirectory = storage.subDirectory ? storage.subDirectory.replace(/\/$/, '') + '/' : ''
@@ -172,7 +184,21 @@ const makeLeaderThread = ({
         connectedClientSessionPullQueues,
         extraIncomingMessagesQueue,
         initialState,
+        bootStatusQueue,
       } = yield* LeaderThreadCtx
+
+      const bootStatusFiber = yield* Queue.takeBetween(bootStatusQueue, 1, 1000).pipe(
+        Effect.tap((bootStatus) => Queue.offerAll(bootStatusQueueClientSession, bootStatus)),
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+
+      yield* Queue.awaitShutdown(bootStatusQueueClientSession).pipe(
+        Effect.andThen(Fiber.interrupt(bootStatusFiber)),
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
       const initialLeaderHead = getClientHeadFromDb(dbMutationLog)
       const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialLeaderHead)

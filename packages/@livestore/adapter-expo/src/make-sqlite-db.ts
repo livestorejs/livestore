@@ -1,6 +1,15 @@
-import type { MakeSqliteDb, PersistenceInfo, PreparedStatement, SqliteDb } from '@livestore/common'
+import {
+  type MakeSqliteDb,
+  type PersistenceInfo,
+  type PreparedStatement,
+  type SqliteDb,
+  SqliteError,
+} from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
+// // @ts-expect-error package misses `exports`
+// import * as ExpoFs from 'expo-file-system/src/next'
+// import * as ExpoFs from 'expo-file-system'
 import * as SQLite from 'expo-sqlite'
 
 type Metadata = {
@@ -65,8 +74,8 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
   makeDb: () => SQLite.SQLiteDatabase
   metadata: TMetadata
 }): SqliteDb<TMetadata> => {
-  const stmts: PreparedStatement[] = []
-  const dbRef = { current: makeDb() }
+  const stmts: Set<PreparedStatement> = new Set()
+  const dbRef = { current: makeDb(), count: 0 }
 
   const sqliteDb: SqliteDb<TMetadata> = {
     metadata,
@@ -90,10 +99,13 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
               res.resetSync()
             }
           },
-          finalize: () => dbStmt.finalizeSync(),
+          finalize: () => {
+            dbStmt.finalizeSync()
+            stmts.delete(stmt)
+          },
           sql: queryStr,
         } satisfies PreparedStatement
-        stmts.push(stmt)
+        stmts.add(stmt)
         return stmt
       } catch (e) {
         console.error(`Error preparing statement: ${queryStr}`, e)
@@ -120,28 +132,48 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       stmt.finalize()
       return res as any
     },
-    // TODO
     destroy: () => {
       if (metadata.input._tag === 'expo') {
         SQLite.deleteDatabaseSync(metadata.input.databaseName, metadata.input.directory)
       }
     },
     close: () => {
-      const db = dbRef.current
-      for (const stmt of stmts) {
-        stmt.finalize()
+      try {
+        const db = dbRef.current
+        for (const stmt of stmts) {
+          stmt.finalize()
+        }
+        stmts.clear()
+
+        db.closeSync()
+      } catch (cause) {
+        throw new SqliteError({
+          cause,
+          note: `Error closing database ${metadata.input._tag === 'expo' ? metadata.input.databaseName : 'in-memory'}`,
+        })
+        // console.error('Error closing database', metadata.input, e, dbCount)
       }
-      return db.closeSync()
     },
     import: (data) => {
       if (!(data instanceof Uint8Array)) {
         throw new TypeError('importing from an existing database is not yet supported in expo')
       }
+
+      const prevDb = dbRef.current
+      for (const stmt of stmts) {
+        stmt.finalize()
+      }
+      stmts.clear()
+      prevDb.closeSync()
+
       if (metadata.input._tag === 'expo') {
-        throw new Error('not implemented')
-        // SQLite.importDatabaseSync(metadata.input.databaseName, metadata.input.directory, _data)
+        // const file = new ExpoFs.File(metadata.input.directory, metadata.input.databaseName)
+        // file.write(data)
+
+        dbRef.count++
+        dbRef.current = makeDb()
       } else {
-        dbRef.current.closeSync()
+        dbRef.count++
         dbRef.current = SQLite.deserializeDatabaseSync(data)
       }
     },

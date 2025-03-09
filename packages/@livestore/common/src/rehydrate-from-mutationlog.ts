@@ -1,4 +1,4 @@
-import { memoizeByRef, shouldNeverHappen } from '@livestore/utils'
+import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'

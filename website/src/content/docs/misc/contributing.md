@@ -103,6 +103,30 @@ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 ```
 
+### TypeScript
+
+- Each package has its own `tsconfig.json` file which extends the root `tsconfig.base.json`.
+- This project makes heavy use of TypeScript project references.
+
+### Package management
+
+- This project uses [pnpm](https://pnpm.io/) to manage the workspace.
+- We're using the `workspace:*` protocol to link packages together.
+- We should try to keep dependencies to an absolute minimum and only add them if we absolutely need them.
+- We also need to manually add peer dependencies for each package.
+- We should try to avoid duplicate dependencies across the monorepo as much as possible as duplicate dependencies can lead to a lot of issues and pain.
+  - We're also using the `resolutions` field in the root `package.json` to force some packages to be the same across the monorepo (ideally not needed but for some packages it's necessary currently).
+- We're using [syncpack](https://github.com/JamieMason/syncpack) to help maintain consistent dependency versions across the monorepo.
+  - See `syncpack.config.mjs` for the configuration.
+  - Common commands:
+    - `bunx syncpack format` to format the `package.json` files
+    - `bunx syncpack lint` to check all version ranges
+    - `bunx syncpack fix-mismatches` to adjust versions across `package.json` files (check before with `lint`)
+    - `bunx syncpack update` to update packages across the monorepo to the latest versions
+
+#### Updating dependencies
+
+- Either update the versions manually in each `package.json` file or use `bunx syncpack update`.
 
 ## Devtools
 

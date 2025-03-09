@@ -18,6 +18,13 @@
 +    "@livestore/livestore": "0.3.0-dev.19",
 +    "@livestore/react": "0.3.0-dev.19",
 +    "@livestore/sync-cf": "0.3.0-dev.19",
-     "babel-preset-expo": "12.0.8",
-     "effect": "3.13.1",
+     "babel-preset-expo": "12.0.9",
+     "effect": "3.13.7",
      "expo": "52.0.37",
+@@ -35,4 +35,4 @@
+     "start": "expo start",
+     "web": "expo start --web"
+   }
+-}
++}
+\ No newline at end of file

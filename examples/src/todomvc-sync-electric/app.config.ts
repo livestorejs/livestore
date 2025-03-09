@@ -27,7 +27,7 @@ export default defineConfig({
     appDirectory: './src',
   },
   vite: {
-    // @ts-expect-error
+    // @ts-expect-error TODO
     server: {
       port: process.env.PORT ? Number(process.env.PORT) : 60_001,
       headers: credentiallessHeaders,
@@ -70,7 +70,6 @@ export default defineConfig({
           })
         },
       },
-      // @ts-expect-error plugin types seem to be wrong
       shouldAnalyze
         ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })
         : undefined,

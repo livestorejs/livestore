@@ -183,6 +183,7 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
   code: Schema.optional(Schema.Number),
   /** The original SQLite3 error */
   cause: Schema.Defect,
+  note: Schema.optional(Schema.String),
 }) {}
 
 // TODO possibly allow a combination of these options

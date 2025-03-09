@@ -1,4 +1,4 @@
-import { Deferred, Either, Exit, Option, Queue, Scope } from 'effect'
+import { Deferred, Either, Exit, GlobalValue, Option, PubSub, Queue, Scope } from 'effect'
 
 import * as Effect from '../Effect.js'
 import * as Schema from '../Schema/index.js'
@@ -27,6 +27,7 @@ export const noopChannel = <MsgListen, MsgSend>(): Effect.Effect<WebChannel<MsgL
     }).pipe(Effect.withSpan(`WebChannel:noopChannel`)),
   )
 
+/** Only works in browser environments */
 export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   channelName,
   schema: inputSchema,
@@ -152,6 +153,49 @@ export const messagePortChannel: {
         supportsTransferables,
       }
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannel`)),
+  )
+
+const sameThreadChannels = GlobalValue.globalValue(
+  'livestore:sameThreadChannels',
+  () => new Map<string, PubSub.PubSub<any>>(),
+)
+
+export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
+  schema: inputSchema,
+  channelName,
+}: {
+  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
+  channelName: string
+}): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
+  Effect.scopeWithCloseable((scope) =>
+    Effect.gen(function* () {
+      let pubSub = sameThreadChannels.get(channelName)
+      if (pubSub === undefined) {
+        pubSub = yield* PubSub.unbounded<any>().pipe(Effect.acquireRelease(PubSub.shutdown))
+        sameThreadChannels.set(channelName, pubSub)
+      }
+
+      const schema = mapSchema(inputSchema)
+
+      const send = (message: MsgSend) =>
+        Effect.gen(function* () {
+          yield* PubSub.publish(pubSub, message)
+        })
+
+      const listen = Stream.fromPubSub(pubSub).pipe(Stream.map(Either.right), listenToDebugPing(channelName))
+
+      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+
+      return {
+        [WebChannelSymbol]: WebChannelSymbol,
+        send,
+        listen,
+        closedDeferred,
+        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
+        schema,
+        supportsTransferables: false,
+      }
+    }),
   )
 
 export const messagePortChannelWithAck: {

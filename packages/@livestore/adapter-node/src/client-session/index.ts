@@ -3,6 +3,7 @@ import * as WT from 'node:worker_threads'
 
 import type {
   Adapter,
+  BootStatus,
   ClientSession,
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
@@ -18,6 +19,7 @@ import {
   Effect,
   Fiber,
   ParseResult,
+  Queue,
   Schema,
   Stream,
   SubscriptionRef,
@@ -64,8 +66,10 @@ export const makeNodeAdapter = ({
   // TODO make this dynamic and actually support multiple sessions
   sessionId = 'static',
 }: NodeAdapterOptions): Adapter =>
-  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore }) =>
+  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore, bootStatusQueue }) =>
     Effect.gen(function* () {
+      yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
+
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
       const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 
@@ -103,6 +107,7 @@ export const makeNodeAdapter = ({
         devtoolsEnabled,
         devtoolsOptions,
         schemaPath,
+        bootStatusQueue,
       })
 
       syncInMemoryDb.import(initialSnapshot)
@@ -154,6 +159,7 @@ const makeLeaderThread = ({
   devtoolsEnabled,
   devtoolsOptions,
   schemaPath,
+  bootStatusQueue,
 }: {
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   storeId: string
@@ -164,6 +170,7 @@ const makeLeaderThread = ({
   devtoolsEnabled: boolean
   devtoolsOptions: { port: number }
   schemaPath: string
+  bootStatusQueue: Queue.Queue<BootStatus>
 }) =>
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
@@ -245,6 +252,23 @@ const makeLeaderThread = ({
           Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
         )
       }).pipe(Stream.unwrap) as any
+
+    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
+      Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
+      Stream.runDrain,
+      Effect.tapErrorCause((cause) =>
+        Cause.isInterruptedOnly(cause) ? Effect.void : Effect.sync(() => shutdown(cause)),
+      ),
+      Effect.interruptible,
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
+
+    yield* Queue.awaitShutdown(bootStatusQueue).pipe(
+      Effect.andThen(Fiber.interrupt(bootStatusFiber)),
+      Effect.tapCauseLogPretty,
+      Effect.forkScoped,
+    )
 
     const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderHead())
 

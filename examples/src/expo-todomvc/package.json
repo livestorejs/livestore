@@ -9,10 +9,10 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
-    "babel-preset-expo": "12.0.8",
-    "effect": "3.13.1",
+    "babel-preset-expo": "12.0.9",
+    "effect": "3.13.7",
     "expo": "52.0.37",
-    "expo-asset": "11.0.3",
+    "expo-asset": "11.0.4",
     "expo-crypto": "14.0.2",
     "expo-sqlite": "15.1.2",
     "expo-status-bar": "2.0.1",
@@ -20,13 +20,13 @@
     "react-native": "0.76.7"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.0",
+    "@babel/core": "^7.26.9",
     "@babel/plugin-syntax-import-attributes": "^7.26.0",
-    "@babel/runtime": "^7.26.0",
-    "@types/react": "^19.0.8",
+    "@babel/runtime": "^7.26.9",
+    "@types/react": "^19.0.10",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
-    "eas-cli": "^14.5.0",
-    "typescript": "^5.7.3"
+    "eas-cli": "^14.7.1",
+    "typescript": "^5.8.2"
   },
   "main": "./src/AppEntry.ts",
   "scripts": {

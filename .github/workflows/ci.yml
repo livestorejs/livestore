@@ -101,6 +101,7 @@ jobs:
       - uses: HatsuneMiku3939/direnv-action@v1
         timeout-minutes: 5
       - run: pnpm install
+      - run: pnpm build:ts
       - run: pnpm generate:examples:standalone
 
   build-and-deploy-examples-src:

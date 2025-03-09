@@ -11,7 +11,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.9"
   },
   "scripts": {
     "test": "vitest"

@@ -52,30 +52,55 @@ type DefaultFields = {
   readonly clientId: typeof Schema.String
 }
 
+export type LeaderReqResSchema<
+  Tag extends string,
+  PayloadFields extends Schema.Struct.Fields,
+  SuccessFields extends Schema.Struct.Fields,
+  ErrorFields extends Schema.Struct.Fields = never,
+> = {
+  Request: Schema.TaggedStruct<`${Tag}.Request`, PayloadFields & DefaultFields>
+  Response:
+    | Schema.TaggedStruct<`${Tag}.Response.Success`, SuccessFields & DefaultFields>
+    | (ErrorFields extends never ? never : Schema.TaggedStruct<`${Tag}.Response.Error`, ErrorFields & DefaultFields>)
+  Success: Schema.TaggedStruct<`${Tag}.Response.Success`, SuccessFields & DefaultFields>
+  Error: ErrorFields extends never ? never : Schema.TaggedStruct<`${Tag}.Response.Error`, ErrorFields & DefaultFields>
+}
+
 export const LeaderReqResMessage = <
   Tag extends string,
-  ReqFields extends Schema.Struct.Fields,
-  ResFields extends Schema.Struct.Fields,
+  PayloadFields extends Schema.Struct.Fields,
+  SuccessFields extends Schema.Struct.Fields,
+  ErrorFields extends Schema.Struct.Fields = never,
 >(
   tag: Tag,
   fields: {
-    payload: ReqFields
-    success: ResFields
+    payload: PayloadFields
+    success: SuccessFields
+    error?: ErrorFields
   },
-): {
-  Request: Schema.TaggedStruct<`${Tag}.Request`, ReqFields & DefaultFields>
-  Response: Schema.TaggedStruct<`${Tag}.Response`, ResFields & DefaultFields>
-} => {
+): LeaderReqResSchema<Tag, PayloadFields, SuccessFields, ErrorFields> => {
+  const Success = Schema.TaggedStruct(`${tag}.Response.Success`, {
+    requestId,
+    liveStoreVersion,
+    ...fields.success,
+  }).annotations({ identifier: `${tag}.Response.Success` })
+
+  const Error = fields.error
+    ? Schema.TaggedStruct(`${tag}.Response.Error`, {
+        requestId,
+        liveStoreVersion,
+        ...fields.error,
+      }).annotations({ identifier: `${tag}.Response.Error` })
+    : Schema.Never
+
   return {
     Request: Schema.TaggedStruct(`${tag}.Request`, {
       requestId,
       liveStoreVersion,
       ...fields.payload,
     }).annotations({ identifier: `${tag}.Request` }),
-    Response: Schema.TaggedStruct(`${tag}.Response`, {
-      requestId,
-      liveStoreVersion,
-      ...fields.success,
-    }).annotations({ identifier: `${tag}.Response` }),
+    Response: Schema.Union(Success, Error),
+    Success,
+    Error,
   } as any
 }

@@ -2,30 +2,25 @@
   "name": "@livestore/monorepo",
   "version": "0.0.0",
   "private": true,
-  "dependencies": {
-    "@livestore/livestore": "link:",
-    "@livestore/webmesh": "link:"
-  },
   "devDependencies": {
-    "@effect/language-service": "^0.3.2",
-    "@typescript-eslint/eslint-plugin": "^8.12.2",
-    "@typescript-eslint/parser": "^8.12.2",
-    "eslint": "^8.57.0",
+    "@effect/language-service": "^0.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-only-warn": "^1.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-prettier": "^5.2.1",
-    "eslint-plugin-react": "^7.37.2",
-    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-prettier": "^5.2.3",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "eslint-plugin-unicorn": "^56.0.0",
+    "eslint-plugin-unicorn": "^56.0.1",
     "madge": "^6.1.0",
-    "netlify-cli": "^18.0.3",
-    "prettier": "^3.4.2",
-    "prettier-plugin-packagejson": "^2.5.8",
-    "syncpack": "^13.0.0",
-    "typescript": "^5.7.3"
+    "prettier": "^3.5.3",
+    "prettier-plugin-packagejson": "^2.5.10",
+    "syncpack": "^13.0.2",
+    "typescript": "^5.8.2"
   },
   "packageManager": "pnpm@10.2.1",
   "pnpm": {
@@ -51,6 +46,7 @@
     "@livestore/sync-electric": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
+    "babel-plugin-syntax-hermes-parser": "0.25.1",
     "esbuild": "0.25.0"
   },
   "resolutions#": {

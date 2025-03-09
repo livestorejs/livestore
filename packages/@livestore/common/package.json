@@ -57,7 +57,7 @@
     "graphology-types": "0.24.8"
   },
   "devDependencies": {
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.9"
   },
   "publishConfig": {
     "access": "public"

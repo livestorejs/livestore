@@ -1,10 +1,9 @@
-import type { ShutdownChannel } from '@livestore/common/leader-thread'
+import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { WebChannel } from '@livestore/utils/effect'
 
-// TODO find an actual implementation for Expo
+// Once we'll implement multi-threading for the Expo adapter, we'll need to implement a multi-threaded version of this
 export const makeShutdownChannel = (storeId: string) =>
-  WebChannel.noopChannel<typeof ShutdownChannel.All.Type, typeof ShutdownChannel.All.Type>()
-// WebChannel.broadcastChannel({
-//   channelName: `livestore.shutdown.${storeId}`,
-//   schema: ShutdownChannel.All,
-// })
+  WebChannel.sameThreadChannel({
+    channelName: `livestore.shutdown.${storeId}`,
+    schema: ShutdownChannel.All,
+  })
