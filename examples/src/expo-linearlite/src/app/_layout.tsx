@@ -3,7 +3,7 @@ import '../polyfill.ts'
 import 'react-native-reanimated'
 
 import { makeAdapter } from '@livestore/adapter-expo'
-import type { BaseGraphQLContext, LiveStoreSchema, Store } from '@livestore/livestore'
+import type { Store } from '@livestore/livestore'
 import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { Stack } from 'expo-router'
@@ -81,7 +81,7 @@ const RootLayout = () => {
  * This function is called when the app is booted.
  * It is used to initialize the database with some data.
  */
-const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
+const boot = (store: Store) => {
   if (store.query(tables.users.query.count()) === 0) {
     store.mutate(
       userMutations.createUser({

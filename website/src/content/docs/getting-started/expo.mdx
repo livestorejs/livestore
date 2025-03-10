@@ -230,7 +230,7 @@ Here's an example:
 import React from 'react'
 import { Stack } from 'expo-router'
 import { makeAdapter } from '@livestore/adapter-expo'
-import { BaseGraphQLContext, LiveStoreSchema, sql, Store } from '@livestore/livestore'
+import { sql, Store } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { cuid } from '@livestore/utils/cuid'
 import { Button, Text, unstable_batchedUpdates as batchUpdates } from 'react-native'
@@ -263,7 +263,7 @@ export default function RootLayout() {
  * This function is called when the app is booted.
  * It is used to initialize the database with initial data.
  */
-const boot = (store: Store<BaseGraphQLContext, LiveStoreSchema>) => {
+const boot = (store: Store) => {
   // If the todos table is empty, add an initial todo
   if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
     store.mutate(mutations.todoCreated({ id: cuid(), text: '☕ Make coffee' }))

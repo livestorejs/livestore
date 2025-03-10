@@ -253,8 +253,23 @@ const makeLeaderThread = ({
         )
       }).pipe(Stream.unwrap) as any
 
-    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
-      Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
+    const _bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
+      // TODO bring back when fixed https://github.com/Effect-TS/effect/issues/4576
+      // Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
+      // TODO remove when fixed https://github.com/Effect-TS/effect/issues/4576
+      // Stream.tap(
+      //   Effect.fn(function* (_) {
+      //     if (yield* Queue.isShutdown(bootStatusQueue)) {
+      //       return
+      //     } else {
+      //       console.log('offering boot status', _)
+      //       // yield* Queue.offer(bootStatusQueue, _).pipe(
+      //       //   Effect.onInterrupt(() => Effect.log('boot status stream interrupted')),
+      //       //   // Effect.tapErrorCause((cause) => Effect.logError('error offering boot status', cause)),
+      //       // )
+      //     }
+      //   }),
+      // ),
       Stream.runDrain,
       Effect.tapErrorCause((cause) =>
         Cause.isInterruptedOnly(cause) ? Effect.void : Effect.sync(() => shutdown(cause)),
@@ -264,11 +279,12 @@ const makeLeaderThread = ({
       Effect.forkScoped,
     )
 
-    yield* Queue.awaitShutdown(bootStatusQueue).pipe(
-      Effect.andThen(Fiber.interrupt(bootStatusFiber)),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
-    )
+    // TODO bring back when fixed https://github.com/Effect-TS/effect/issues/4576
+    // yield* Queue.awaitShutdown(bootStatusQueue).pipe(
+    //   Effect.andThen(Fiber.interrupt(bootStatusFiber)),
+    //   Effect.tapCauseLogPretty,
+    //   Effect.forkScoped,
+    // )
 
     const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderHead())
 
