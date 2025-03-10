@@ -16,8 +16,8 @@ import {
   DroppableCollectionReorderEvent,
   GridList,
   GridListItem,
-  UNSTABLE_ListLayout as ListLayout,
-  UNSTABLE_Virtualizer as Virtualizer,
+  ListLayout,
+  Virtualizer,
   isTextDropItem,
   useDragAndDrop,
 } from 'react-aria-components'

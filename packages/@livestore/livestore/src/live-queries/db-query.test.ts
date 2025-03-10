@@ -1,13 +1,16 @@
+import { sql } from '@livestore/common'
+import { rawSqlMutation } from '@livestore/common/schema'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { expect } from 'vitest'
 
-import { computed, queryDb, rawSqlMutation, sql } from '../mod.js'
 import * as RG from '../reactive.js'
 import { makeTodoMvc, tables } from '../utils/tests/fixture.js'
 import { getSimplifiedRootSpan } from '../utils/tests/otel.js'
+import { computed } from './computed.js'
+import { queryDb } from './db-query.js'
 
 /*
 TODO write tests for:

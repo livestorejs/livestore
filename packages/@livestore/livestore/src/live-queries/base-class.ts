@@ -15,7 +15,7 @@ export const makeReactivityGraph = (): ReactivityGraph =>
 export type ReactivityGraphContext = {
   store: Store
   /** Maps from the hash of the query definition to the RcRef of the query */
-  defRcMap: Map<string, RcRef<LiveQueryAny | ILiveQueryRef<any>>>
+  defRcMap: Map<string, RcRef<LiveQuery.Any | ILiveQueryRef<any>>>
   /** Back-reference to the reactivity graph for convenience */
   reactivityGraph: WeakRef<ReactivityGraph>
   otelTracer: otel.Tracer
@@ -23,7 +23,7 @@ export type ReactivityGraphContext = {
   effectsWrapper: (run: () => void) => void
 }
 
-export type GetResult<TQuery extends LiveQueryDefAny | LiveQueryAny> =
+export type GetResult<TQuery extends LiveQueryDef.Any | LiveQuery.Any> =
   TQuery extends LiveQuery<infer TResult, infer _1>
     ? TResult
     : TQuery extends LiveQueryDef<infer TResult, infer _1>
@@ -31,9 +31,6 @@ export type GetResult<TQuery extends LiveQueryDefAny | LiveQueryAny> =
       : unknown
 
 let queryIdCounter = 0
-
-export type LiveQueryAny = LiveQuery<any, QueryInfo>
-export type LiveQueryDefAny = LiveQueryDef<any, any>
 
 export interface ILiveQueryRefDef<T> {
   _tag: 'live-ref-def'
@@ -77,6 +74,10 @@ export interface LiveQueryDef<TResult, TQueryInfo extends QueryInfo = QueryInfo.
   queryInfo: TQueryInfo
 }
 
+export namespace LiveQueryDef {
+  export type Any = LiveQueryDef<any, any>
+}
+
 /**
  * A LiveQuery is stateful
  */
@@ -113,6 +114,10 @@ export interface LiveQuery<TResult, TQueryInfo extends QueryInfo = QueryInfo.Non
   runs: number
 
   executionTimes: number[]
+}
+
+export namespace LiveQuery {
+  export type Any = LiveQuery<any, any>
 }
 
 export abstract class LiveStoreQueryBase<TResult, TQueryInfo extends QueryInfo>
@@ -170,7 +175,7 @@ export type GetAtomResult = <T>(
   debugRefreshReason?: RefreshReason | undefined,
 ) => T
 
-export type DependencyQueriesRef = Set<RcRef<LiveQueryAny | ILiveQueryRef<any>>>
+export type DependencyQueriesRef = Set<RcRef<LiveQuery.Any | ILiveQueryRef<any>>>
 
 export const makeGetAtomResult = (
   get: RG.GetAtom,
@@ -201,7 +206,7 @@ export const makeGetAtomResult = (
   return getAtom
 }
 
-export const withRCMap = <T extends LiveQueryAny | ILiveQueryRef<any>>(
+export const withRCMap = <T extends LiveQuery.Any | ILiveQueryRef<any>>(
   id: string,
   make: (ctx: ReactivityGraphContext, otelContext?: otel.Context) => T,
 ): ((ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<T>) => {

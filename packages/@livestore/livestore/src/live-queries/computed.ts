@@ -1,10 +1,10 @@
 import type { QueryInfo } from '@livestore/common'
+import { getDurationMsFromSpan } from '@livestore/common'
 import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.js'
 import type { RefreshReason } from '../store/store-types.js'
 import { isValidFunctionString } from '../utils/function-string.js'
-import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
 

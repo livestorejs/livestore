@@ -1,13 +1,13 @@
-import type { GetResult, LiveQueryDefAny } from '@livestore/livestore'
+import type { LiveQueries } from '@livestore/livestore/internal'
 import * as Solid from 'solid-js'
 
 import { storeToExport } from './store.js'
 
-export const query = <TQuery extends LiveQueryDefAny>(
+export const query = <TQuery extends LiveQueries.LiveQueryDef.Any>(
   queryDef: TQuery,
   // TODO do we actually need an `initialValue` at all?
-  initialValue: GetResult<TQuery>,
-): Solid.Accessor<GetResult<TQuery>> => {
+  initialValue: LiveQueries.GetResult<TQuery>,
+): Solid.Accessor<LiveQueries.GetResult<TQuery>> => {
   const [value, setValue] = Solid.createSignal(initialValue)
 
   const store = storeToExport()

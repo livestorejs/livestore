@@ -5,40 +5,39 @@
 
 ## 0.3.0
 
-- Still todo:
-  - After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - Examples:
-    - for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
-    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
-  - Docs
-    - Notes on deployment (when to deploy what)
-    - Embrace term "containers"
-      - Unit of sharing/collaboration/auth
-      - What if I want got my initial container design wrong and I want to change it?
-        - Comparables: document databases, kafka streams, 
-  - Fix linting
-  - Remove `graphql` from peer dependencies
-  - Syncing
-    - Fix: mutation log unique constraint violation during concurrent mutations
-    - Enable auth setup
-    - cf sync:
-      - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
-        - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
-      - Bring back "broadcast" pull res terminology
-    - Electric:
-      - fix: connectivity state + offline handling
-    - Remaining issues:
-      - Sometimes the following error still occurs (and needs a minimal repro): `Incoming events must be greater than upstream head. Expected greater than: [9,1]. Received: [(6,0), (7,0), (8,0), (8,1), (8,2), (8,3), (8,4), (9,0), (9,1)]`
-    - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-  - Devtools
-    - Fix: When resetting the database but keeping the eventlog
-      - the app doesn't show a shutdown screen
-      - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
-    - Expo: Dynamic storeId support
-    - Fix: bring back chrome extension
-    - Fix: Support multiple leader <> devtools connections
-      - Refactor according to ARCHITECTURE.md
-    - Refactor: share more code between devtools bridges
+### Still todo:
+- After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+- Examples:
+  - for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+  - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+- Docs
+  - Notes on deployment (when to deploy what)
+  - Embrace term "containers"
+    - Unit of sharing/collaboration/auth
+    - What if I want got my initial container design wrong and I want to change it?
+      - Comparables: document databases, kafka streams, 
+- Fix linting
+- Syncing
+  - Fix: mutation log unique constraint violation during concurrent mutations
+  - Enable auth setup
+  - cf sync:
+    - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
+      - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
+    - Bring back "broadcast" pull res terminology
+  - Electric:
+    - fix: connectivity state + offline handling
+  - Remaining issues:
+    - Sometimes the following error still occurs (and needs a minimal repro): `Incoming events must be greater than upstream head. Expected greater than: [9,1]. Received: [(6,0), (7,0), (8,0), (8,1), (8,2), (8,3), (8,4), (9,0), (9,1)]`
+  - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+- Devtools
+  - Fix: When resetting the database but keeping the eventlog
+    - the app doesn't show a shutdown screen
+    - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
+  - Expo: Dynamic storeId support
+  - Fix: bring back chrome extension
+  - Fix: Support multiple leader <> devtools connections
+    - Refactor according to ARCHITECTURE.md
+  - Refactor: share more code between devtools bridges
 - Expo:
   - Fix: Implement proper SQLite rollback via session extension once landed in expo-sqlite
 
@@ -91,6 +90,7 @@
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
 - Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
+- Breaking: Moved `queryGraphQL` to `@livestore/graphql` and thus removing `graphql` from peer dependencies of `@livestore/livestore`.
 - Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
 
 ### Notable improvements & fixes

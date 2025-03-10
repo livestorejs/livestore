@@ -1,0 +1,31 @@
+{
+  "name": "@livestore/graphql",
+  "version": "0.0.54-dev.27",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@graphql-typed-document-node/core": "3.2.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "graphql": "^16.10.0"
+  },
+  "peerDependencies": {
+    "graphql": "~16.10.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo 'No tests'"
+  }
+}

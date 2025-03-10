@@ -1,18 +1,37 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import type { QueryInfo } from '@livestore/common'
+import { getDurationMsFromSpan, type QueryInfo } from '@livestore/common'
+import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
+import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
+import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
 
-import { isThunk, type Thunk } from '../reactive.js'
-import type { Store } from '../store/store.js'
-import type { BaseGraphQLContext, RefreshReason } from '../store/store-types.js'
-import { getDurationMsFromSpan } from '../utils/otel.js'
-import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
+export type BaseGraphQLContext = {
+  queriedTables: Set<string>
+  /** Needed by Pothos Otel plugin for resolver tracing to work */
+  otelContext?: otel.Context
+}
 
-export type MapResult<To, From> = ((res: From, get: GetAtomResult) => To) | Schema.Schema<To, From>
+export type LazyGraphQLContextRef = {
+  current:
+    | {
+        _tag: 'pending'
+        make: (store: Store) => BaseGraphQLContext
+      }
+    | {
+        _tag: 'active'
+        value: BaseGraphQLContext
+      }
+}
+
+export type GraphQLOptions<TContext> = {
+  schema: GraphQLSchema
+  makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => TContext
+}
+
+export type MapResult<To, From> = ((res: From, get: LiveQueries.GetAtomResult) => To) | Schema.Schema<To, From>
 
 export const queryGraphQL = <
   TResult extends Record<string, any>,
@@ -20,24 +39,24 @@ export const queryGraphQL = <
   TResultMapped extends Record<string, any> = TResult,
 >(
   document: DocumentNode<TResult, TVariableValues>,
-  genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues),
+  genVariableValues: TVariableValues | ((get: LiveQueries.GetAtomResult) => TVariableValues),
   options: {
     label?: string
     // reactivityGraph?: ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
-    deps?: DepKey
+    deps?: LiveQueries.DepKey
   } = {},
-): LiveQueryDef<TResultMapped, QueryInfo.None> => {
+): LiveQueries.LiveQueryDef<TResultMapped, QueryInfo.None> => {
   const documentName = graphql.getOperationAST(document)?.name?.value
   const hash = options.deps
-    ? depsToString(options.deps)
+    ? LiveQueries.depsToString(options.deps)
     : (documentName ?? shouldNeverHappen('No document name found and no deps provided'))
   const label = options.label ?? documentName ?? 'graphql'
   const map = options.map
 
   return {
     _tag: 'def',
-    make: withRCMap(hash, (ctx, _otelContext) => {
+    make: LiveQueries.withRCMap(hash, (ctx, _otelContext) => {
       return new LiveStoreGraphQLQuery({
         document,
         genVariableValues,
@@ -55,22 +74,21 @@ export const queryGraphQL = <
 export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
   TVariableValues extends Record<string, any>,
-  TContext extends BaseGraphQLContext,
   TResultMapped extends Record<string, any> = TResult,
-> extends LiveStoreQueryBase<TResultMapped, QueryInfo.None> {
+> extends LiveQueries.LiveStoreQueryBase<TResultMapped, QueryInfo.None> {
   _tag: 'graphql' = 'graphql'
 
   /** The abstract GraphQL query */
   document: DocumentNode<TResult, TVariableValues>
 
   /** A reactive thunk representing the query results */
-  results$: Thunk<TResultMapped, ReactivityGraphContext, RefreshReason>
+  results$: ReactiveGraph.Thunk<TResultMapped, LiveQueries.ReactivityGraphContext, RefreshReason>
 
-  variableValues$: Thunk<TVariableValues, ReactivityGraphContext, RefreshReason> | undefined
+  variableValues$: ReactiveGraph.Thunk<TVariableValues, LiveQueries.ReactivityGraphContext, RefreshReason> | undefined
 
   label: string
 
-  reactivityGraph: ReactivityGraph
+  reactivityGraph: LiveQueries.ReactivityGraph
 
   queryInfo: QueryInfo.None = { _tag: 'None' }
 
@@ -84,9 +102,9 @@ export class LiveStoreGraphQLQuery<
     map,
   }: {
     document: DocumentNode<TResult, TVariableValues>
-    genVariableValues: TVariableValues | ((get: GetAtomResult) => TVariableValues)
+    genVariableValues: TVariableValues | ((get: LiveQueries.GetAtomResult) => TVariableValues)
     label?: string
-    reactivityGraph: ReactivityGraph
+    reactivityGraph: LiveQueries.ReactivityGraph
     map?: MapResult<TResultMapped, TResult>
   }) {
     super()
@@ -122,7 +140,7 @@ export class LiveStoreGraphQLQuery<
       variableValues$OrvariableValues = this.reactivityGraph.makeThunk(
         (get, _setDebugInfo, ctx, otelContext) => {
           return genVariableValues(
-            makeGetAtomResult(get, ctx, otelContext ?? ctx.rootOtelContext, this.dependencyQueriesRef),
+            LiveQueries.makeGetAtomResult(get, ctx, otelContext ?? ctx.rootOtelContext, this.dependencyQueriesRef),
           )
         },
         { label: `${labelWithDefault}:variableValues`, meta: { liveStoreThunkType: 'graphql.variables' } },
@@ -136,7 +154,7 @@ export class LiveStoreGraphQLQuery<
     this.results$ = this.reactivityGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, ctx, otelContext, debugRefreshReason) => {
         const { store, otelTracer, rootOtelContext } = ctx
-        const variableValues = isThunk(variableValues$OrvariableValues)
+        const variableValues = ReactiveGraph.isThunk(variableValues$OrvariableValues)
           ? (get(variableValues$OrvariableValues, otelContext, debugRefreshReason) as TVariableValues)
           : (variableValues$OrvariableValues as TVariableValues)
         const { result, queriedTables, durationMs } = this.queryOnce({
@@ -144,8 +162,8 @@ export class LiveStoreGraphQLQuery<
           variableValues,
           otelContext: otelContext ?? rootOtelContext,
           otelTracer,
-          store: store as Store<TContext>,
-          get: makeGetAtomResult(get, ctx, otelContext ?? rootOtelContext, this.dependencyQueriesRef),
+          get: LiveQueries.makeGetAtomResult(get, ctx, otelContext ?? rootOtelContext, this.dependencyQueriesRef),
+          store,
         })
 
         // Add dependencies on any tables that were used
@@ -168,20 +186,17 @@ export class LiveStoreGraphQLQuery<
     otelContext,
     otelTracer,
     variableValues,
-    store,
     get,
+    store,
   }: {
     document: graphql.DocumentNode
     otelContext: otel.Context
     otelTracer: otel.Tracer
     variableValues: TVariableValues
-    store: Store<TContext>
-    get: GetAtomResult
+    get: LiveQueries.GetAtomResult
+    store: Store
   }) => {
-    const schema =
-      store.graphQLSchema ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL schema")
-    const context =
-      store.graphQLContext ?? shouldNeverHappen("Can't run a GraphQL query on a store without GraphQL context")
+    const { schema, context } = unpackStoreContext(store)
 
     const operationName = graphql.getOperationAST(document)?.name?.value
 
@@ -241,4 +256,23 @@ export class LiveStoreGraphQLQuery<
       query.deref()
     }
   }
+}
+
+const unpackStoreContext = (store: Store): { schema: graphql.GraphQLSchema; context: BaseGraphQLContext } => {
+  if (Predicate.hasProperty(store.context, 'graphql') === false) {
+    return shouldNeverHappen('Store context does not contain graphql context')
+  }
+  if (Predicate.hasProperty(store.context.graphql, 'schema') === false) {
+    return shouldNeverHappen('Store context does not contain graphql.schema')
+  }
+  if (Predicate.hasProperty(store.context.graphql, 'context') === false) {
+    return shouldNeverHappen('Store context does not contain graphql.context')
+  }
+  const schema = store.context.graphql.schema as graphql.GraphQLSchema
+  const context = store.context.graphql.context as LazyGraphQLContextRef
+  if (context.current._tag === 'pending') {
+    const value = context.current.make(store)
+    context.current = { _tag: 'active', value }
+  }
+  return { schema, context: context.current.value }
 }

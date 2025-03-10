@@ -8,7 +8,7 @@
     "@livestore/devtools-vite": "0.3.0-dev.19",
     "@livestore/livestore": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
-    "effect": "3.13.7",
+    "effect": "3.13.8",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3",

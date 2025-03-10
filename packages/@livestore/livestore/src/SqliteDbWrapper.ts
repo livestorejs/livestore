@@ -9,12 +9,18 @@ import type {
   SqliteDbChangeset,
   SqliteDbSession,
 } from '@livestore/common'
-import { BoundArray, BoundMap, sql, SqliteError } from '@livestore/common'
+import {
+  BoundArray,
+  BoundMap,
+  getDurationMsFromSpan,
+  getStartTimeHighResFromSpan,
+  sql,
+  SqliteError,
+} from '@livestore/common'
 import { isDevEnv } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
-import { getDurationMsFromSpan, getStartTimeHighResFromSpan } from './utils/otel.js'
 
 export const emptyDebugInfo = (): DebugInfo => ({
   slowQueries: new BoundArray(200),

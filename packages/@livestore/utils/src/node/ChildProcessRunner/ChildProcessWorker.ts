@@ -23,8 +23,8 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
             childProcess.send([1])
             return Deferred.await(exitDeferred)
           }).pipe(
-            Effect.interruptible,
             Effect.timeout(5000),
+            Effect.interruptible,
             Effect.catchAllCause(() => Effect.sync(() => childProcess.kill())),
           ),
         ),

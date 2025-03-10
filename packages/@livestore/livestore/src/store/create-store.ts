@@ -28,14 +28,10 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
 
-import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { connectDevtoolsToStore } from './devtools.js'
 import { Store } from './store.js'
 import type {
-  BaseGraphQLContext,
-  GraphQLOptions,
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
@@ -61,8 +57,8 @@ export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effe
   Deferred.Deferred<LiveStoreContextRunning['Type'], UnexpectedError>
 >() {}
 
-export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
-  schema: LiveStoreSchema
+export type LiveStoreContextProps<TSchema extends LiveStoreSchema, TContext = {}> = {
+  schema: TSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
    * So it can be useful for multi-tenancy scenarios.
@@ -72,12 +68,10 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
    * @default 'default'
    */
   storeId?: string
-  graphQLOptions?: {
-    schema: Effect.Effect<GraphQLSchema, never, OtelTracer.OtelTracer>
-    makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => GraphQLContext
-  }
+  /** Can be useful for custom live query implementations (e.g. see `@livestore/graphql`) */
+  context?: TContext
   boot?: (
-    store: Store<GraphQLContext, LiveStoreSchema>,
+    store: Store<TSchema, TContext>,
   ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   adapter: Adapter
   disableDevtools?: boolean
@@ -85,13 +79,13 @@ export type LiveStoreContextProps<GraphQLContext extends BaseGraphQLContext> = {
   batchUpdates: (run: () => void) => void
 }
 
-export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, TSchema extends LiveStoreSchema> {
+export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = {}> {
   schema: TSchema
   adapter: Adapter
   storeId: string
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
+  context?: TContext
   boot?: (
-    store: Store<TGraphQLContext, TSchema>,
+    store: Store<TSchema, TContext>,
     ctx: {
       migrationsReport: MigrationsReport
       parentSpan: otel.Span
@@ -110,17 +104,14 @@ export interface CreateStoreOptions<TGraphQLContext extends BaseGraphQLContext, 
 }
 
 /** Create a new LiveStore Store */
-export const createStorePromise = async <
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
->({
+export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}>({
   signal,
   otelOptions,
   ...options
-}: CreateStoreOptions<TGraphQLContext, TSchema> & {
+}: CreateStoreOptions<TSchema, TContext> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
-}): Promise<Store<TGraphQLContext, TSchema>> =>
+}): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
     const runtime = yield* Effect.runtime()
@@ -144,14 +135,11 @@ export const createStorePromise = async <
     Effect.runPromise,
   )
 
-export const createStore = <
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
->({
+export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}>({
   schema,
   adapter,
   storeId,
-  graphQLOptions,
+  context = {} as TContext,
   boot,
   batchUpdates,
   disableDevtools,
@@ -159,8 +147,8 @@ export const createStore = <
   shutdownDeferred,
   params,
   debug,
-}: CreateStoreOptions<TGraphQLContext, TSchema>): Effect.Effect<
-  Store<TGraphQLContext, TSchema>,
+}: CreateStoreOptions<TSchema, TContext>): Effect.Effect<
+  Store<TSchema, TContext>,
   UnexpectedError,
   Scope.Scope | OtelTracer.OtelTracer
 > =>
@@ -247,10 +235,10 @@ export const createStore = <
       // TODO fill up with unsynced mutation events from the client session
       const unsyncedMutationEvents = MutableHashMap.empty<EventId.EventId, MutationEvent.ForSchema<TSchema>>()
 
-      const store = new Store<TGraphQLContext, TSchema>({
+      const store = new Store<TSchema, TContext>({
         clientSession,
         schema,
-        graphQLOptions,
+        context,
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
         disableDevtools,
         unsyncedMutationEvents,

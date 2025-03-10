@@ -8,6 +8,7 @@ import type {
 } from '@livestore/common'
 import {
   Devtools,
+  getDurationMsFromSpan,
   getExecArgsFromMutation,
   getResultSchema,
   IntentionalShutdownCause,
@@ -41,7 +42,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
-import { type GraphQLSchema } from 'graphql'
 
 import type {
   ILiveQueryRefDef,
@@ -56,32 +56,20 @@ import { makeExecBeforeFirstRun } from '../row-query-utils.js'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
-import { getDurationMsFromSpan } from '../utils/otel.js'
 import type { StackInfo } from '../utils/stack-info.js'
-import type {
-  BaseGraphQLContext,
-  RefreshReason,
-  StoreMutateOptions,
-  StoreOptions,
-  StoreOtel,
-  Unsubscribe,
-} from './store-types.js'
+import type { RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel, Unsubscribe } from './store-types.js'
 
 if (isDevEnv()) {
   exposeDebugUtils()
 }
 
-export class Store<
-  TGraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
-> extends Inspectable.Class {
+export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> extends Inspectable.Class {
   readonly storeId: string
   reactivityGraph: ReactivityGraph
   sqliteDbWrapper: SqliteDbWrapper
   clientSession: ClientSession
   schema: LiveStoreSchema
-  graphQLSchema?: GraphQLSchema
-  graphQLContext?: TGraphQLContext
+  context: TContext
   otel: StoreOtel
   /**
    * Note we're using `Ref<null>` here as we don't care about the value but only about *that* something has changed.
@@ -106,8 +94,8 @@ export class Store<
   constructor({
     clientSession,
     schema,
-    graphQLOptions,
     otelOptions,
+    context,
     disableDevtools,
     batchUpdates,
     unsyncedMutationEvents,
@@ -115,7 +103,7 @@ export class Store<
     lifetimeScope,
     runtime,
     params,
-  }: StoreOptions<TGraphQLContext, TSchema>) {
+  }: StoreOptions<TSchema, TContext>) {
     super()
 
     this.storeId = storeId
@@ -124,6 +112,7 @@ export class Store<
     this.sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
     this.clientSession = clientSession
     this.schema = schema
+    this.context = context
 
     this.lifetimeScope = lifetimeScope
     this.runtime = runtime
@@ -200,7 +189,7 @@ export class Store<
 
     this.reactivityGraph = reactivityGraph
     this.reactivityGraph.context = {
-      store: this as unknown as Store<BaseGraphQLContext, LiveStoreSchema>,
+      store: this as unknown as Store<LiveStoreSchema>,
       defRcMap: new Map(),
       reactivityGraph: new WeakRef(reactivityGraph),
       otelTracer: otelOptions.tracer,
@@ -235,11 +224,6 @@ export class Store<
     )
     for (const tableName of allTableNames) {
       this.tableRefs[tableName] = existingTableRefs.get(tableName) ?? this.makeTableRef(tableName)
-    }
-
-    if (graphQLOptions) {
-      this.graphQLSchema = graphQLOptions.schema
-      this.graphQLContext = graphQLOptions.makeContext(this.sqliteDbWrapper, this.otel.tracer, clientSession.sessionId)
     }
 
     this.boot = Effect.gen(this, function* () {

@@ -52,7 +52,7 @@ export const makeTodoMvc = ({
   otelContext?: otel.Context
 } = {}) =>
   Effect.gen(function* () {
-    const store: Store<any, FixtureSchema> = yield* createStore({
+    const store: Store<FixtureSchema> = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),

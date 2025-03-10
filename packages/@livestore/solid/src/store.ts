@@ -1,6 +1,5 @@
 import { type IntentionalShutdownCause, provideOtel, StoreInterrupted, type UnexpectedError } from '@livestore/common'
 import type {
-  BaseGraphQLContext,
   BootStatus,
   CreateStoreOptions,
   LiveStoreContext as StoreContext_,
@@ -56,17 +55,16 @@ const [, setInternalStore] = Solid.createSignal<{
 
 export const [storeToExport, setStoreToExport] = Solid.createSignal<LiveStoreContextRunning['store']>()
 
-const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
+const setupStore = async ({
   schema,
   storeId,
-  graphQLOptions,
   boot,
   adapter,
   batchUpdates,
   disableDevtools,
   signal,
   setupDone,
-}: CreateStoreOptions<GraphQLContext, LiveStoreSchema> & { signal?: AbortSignal; setupDone: () => void }) => {
+}: CreateStoreOptions<LiveStoreSchema> & { signal?: AbortSignal; setupDone: () => void }) => {
   Solid.createEffect(() => {
     const counter = storeValue.counter
 
@@ -111,7 +109,6 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
         const store = yield* createStore({
           schema,
           storeId,
-          graphQLOptions,
           boot,
           adapter,
           batchUpdates,
@@ -164,15 +161,12 @@ const setupStore = async <GraphQLContext extends BaseGraphQLContext>({
   })
 }
 
-export const getStore = async <
-  Schema extends LiveStoreSchema,
-  GraphQLContext extends BaseGraphQLContext = BaseGraphQLContext,
->({
+export const getStore = async <Schema extends LiveStoreSchema>({
   adapter,
   schema,
   storeId,
-}: Pick<CreateStoreOptions<GraphQLContext, Schema>, 'schema' | 'adapter' | 'storeId'>): Promise<
-  Solid.Accessor<Store<BaseGraphQLContext, Schema> | undefined>
+}: Pick<CreateStoreOptions<Schema>, 'schema' | 'adapter' | 'storeId'>): Promise<
+  Solid.Accessor<Store<Schema> | undefined>
 > => {
   const setupDone = Promise.withResolvers<void>()
 
@@ -185,5 +179,5 @@ export const getStore = async <
 
   await setupDone.promise
 
-  return storeToExport as unknown as Solid.Accessor<Store<BaseGraphQLContext, Schema>>
+  return storeToExport as unknown as Solid.Accessor<Store<Schema>>
 }

@@ -1,35 +1,31 @@
 import type { UnexpectedError } from '@livestore/common'
+import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
 import { Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
 
 import type { LiveStoreContextProps } from '../store/create-store.js'
 import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.js'
-import type { BaseGraphQLContext } from '../store/store-types.js'
 
-export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>({
+export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext = {}>({
   schema,
   storeId = 'default',
-  graphQLOptions: graphQLOptions_,
+  context,
   boot,
   adapter,
   disableDevtools,
   onBootStatus,
   batchUpdates,
-}: LiveStoreContextProps<GraphQLContext>): Effect.Effect<
+}: LiveStoreContextProps<TSchema, TContext>): Effect.Effect<
   LiveStoreContextRunning['Type'],
   UnexpectedError | Cause.TimeoutException,
   DeferredStoreContext | Scope.Scope | OtelTracer.OtelTracer
 > =>
   pipe(
     Effect.gen(function* () {
-      const graphQLOptions = yield* graphQLOptions_
-        ? Effect.all({ schema: graphQLOptions_.schema, makeContext: Effect.succeed(graphQLOptions_.makeContext) })
-        : Effect.succeed(undefined)
-
       const store = yield* createStore({
         schema,
         storeId,
-        graphQLOptions,
+        context,
         boot,
         adapter,
         disableDevtools,
@@ -43,7 +39,7 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
       }
       globalThis.__debugLiveStore[storeId] = store
 
-      return { stage: 'running', store } satisfies LiveStoreContextRunning['Type']
+      return { stage: 'running', store } as any as LiveStoreContextRunning['Type']
     }),
     Effect.tapErrorCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
@@ -53,8 +49,8 @@ export const makeLiveStoreContext = <GraphQLContext extends BaseGraphQLContext>(
     Effect.withSpan('@livestore/livestore/effect:makeLiveStoreContext'),
   )
 
-export const LiveStoreContextLayer = <GraphQLContext extends BaseGraphQLContext>(
-  props: LiveStoreContextProps<GraphQLContext>,
+export const LiveStoreContextLayer = <TSchema extends LiveStoreSchema, TContext = {}>(
+  props: LiveStoreContextProps<TSchema, TContext>,
 ): Layer.Layer<LiveStoreContextRunning, UnexpectedError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
   Layer.scoped(LiveStoreContextRunning, makeLiveStoreContext(props)).pipe(
     Layer.withSpan('LiveStore'),

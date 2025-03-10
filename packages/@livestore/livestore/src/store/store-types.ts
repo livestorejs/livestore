@@ -2,10 +2,8 @@ import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, Unexpec
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import type { Deferred, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
 
 import type { DebugRefreshReasonBase } from '../reactive.js'
-import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import type { StackInfo } from '../utils/stack-info.js'
 import type { Store } from './store.js'
 
@@ -27,31 +25,16 @@ export type LiveStoreContextRunning = {
   store: Store
 }
 
-export type BaseGraphQLContext = {
-  queriedTables: Set<string>
-  /** Needed by Pothos Otel plugin for resolver tracing to work */
-  otelContext?: otel.Context
-}
-
-export type GraphQLOptions<TContext> = {
-  schema: GraphQLSchema
-  makeContext: (db: SqliteDbWrapper, tracer: otel.Tracer, sessionId: string) => TContext
-}
-
 export type OtelOptions = {
   tracer: otel.Tracer
   rootSpanContext: otel.Context
 }
 
-export type StoreOptions<
-  TGraphQLContext extends BaseGraphQLContext,
-  TSchema extends LiveStoreSchema = LiveStoreSchema,
-> = {
+export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext = {}> = {
   clientSession: ClientSession
   schema: TSchema
   storeId: string
-  // TODO remove graphql-related stuff from store and move to GraphQL query directly
-  graphQLOptions?: GraphQLOptions<TGraphQLContext>
+  context: TContext
   otelOptions: OtelOptions
   disableDevtools?: boolean
   lifetimeScope: Scope.Scope
@@ -86,7 +69,7 @@ export type RefreshReason =
   | { _tag: 'manual'; label?: string }
 
 export type QueryDebugInfo = {
-  _tag: 'graphql' | 'db' | 'computed' | 'unknown'
+  _tag: string
   label: string
   query: string
   durationMs: number

@@ -1,6 +1,7 @@
 import type { DerivedMutationHelperFns, QueryInfo } from '@livestore/common'
 import type { DbSchema, SqliteDsl } from '@livestore/common/schema'
-import type { GetResult, LiveQueryDef, Store } from '@livestore/livestore'
+import type { Store } from '@livestore/livestore'
+import type { LiveQueries } from '@livestore/livestore/internal'
 import { shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
@@ -10,13 +11,16 @@ import type { Dispatch, SetStateAction } from './useRow.js'
 
 export const useAtom = <
   // TODO also support colJsonValue
-  TQuery extends LiveQueryDef<any, QueryInfo.Row | QueryInfo.Col>,
+  TQuery extends LiveQueries.LiveQueryDef<any, QueryInfo.Row | QueryInfo.Col>,
 >(
   queryDef: TQuery,
   options?: {
     store?: Store
   },
-): [value: GetResult<TQuery>, setValue: Dispatch<SetStateAction<Partial<GetResult<TQuery>>>>] => {
+): [
+  value: LiveQueries.GetResult<TQuery>,
+  setValue: Dispatch<SetStateAction<Partial<LiveQueries.GetResult<TQuery>>>>,
+] => {
   const queryRef = useQueryRef(queryDef, { store: options?.store })
   const query$ = queryRef.queryRcRef.value
 
@@ -28,7 +32,7 @@ export const useAtom = <
   const { store } = useStore()
 
   // TODO make API equivalent to useRow
-  const setValue = React.useMemo<Dispatch<SetStateAction<Partial<GetResult<TQuery>>>>>(
+  const setValue = React.useMemo<Dispatch<SetStateAction<Partial<LiveQueries.GetResult<TQuery>>>>>(
     () => (newValueOrFn: any) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current) : newValueOrFn
       const table = query$.queryInfo.table as DbSchema.TableDef &

@@ -30,7 +30,7 @@ import * as WorkerSchema from './worker-schema.js'
 class WorkerContext extends Context.Tag('WorkerContext')<
   WorkerContext,
   {
-    store: Store<any, any>
+    store: Store<any>
     shutdownDeferred: ShutdownDeferred
   }
 >() {}

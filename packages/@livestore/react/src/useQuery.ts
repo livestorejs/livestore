@@ -1,5 +1,6 @@
-import type { GetResult, LiveQuery, LiveQueryDef, LiveQueryDefAny, RcRef, Store } from '@livestore/livestore'
+import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
+import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, indent } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
@@ -20,17 +21,17 @@ import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInp
  * }
  * ```
  */
-export const useQuery = <TQuery extends LiveQueryDefAny>(
+export const useQuery = <TQuery extends LiveQueryDef.Any>(
   queryDef: TQuery,
   options?: { store?: Store },
-): GetResult<TQuery> => useQueryRef(queryDef, options).valueRef.current
+): LiveQueries.GetResult<TQuery> => useQueryRef(queryDef, options).valueRef.current
 
-type GetQueryInfo<TQuery extends LiveQueryDefAny> =
+type GetQueryInfo<TQuery extends LiveQueryDef.Any> =
   TQuery extends LiveQueryDef<infer _1, infer TQueryInfo> ? TQueryInfo : never
 
 /**
  */
-export const useQueryRef = <TQuery extends LiveQueryDefAny>(
+export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   queryDef: TQuery,
   options?: {
     store?: Store
@@ -40,8 +41,8 @@ export const useQueryRef = <TQuery extends LiveQueryDefAny>(
     otelSpanName?: string
   },
 ): {
-  valueRef: React.RefObject<GetResult<TQuery>>
-  queryRcRef: RcRef<LiveQuery<GetResult<TQuery>, GetQueryInfo<TQuery>>>
+  valueRef: React.RefObject<LiveQueries.GetResult<TQuery>>
+  queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>>
 } => {
   const { store } = useStore({ store: options?.store })
 
@@ -76,7 +77,7 @@ export const useQueryRef = <TQuery extends LiveQueryDefAny>(
     // which takes care of disposing the queryRcRef
     () => {},
   )
-  const query$ = queryRcRef.value as LiveQuery<GetResult<TQuery>, GetQueryInfo<TQuery>>
+  const query$ = queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
   // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)
@@ -111,7 +112,7 @@ Stack trace:
   }, [otelContext, query$, stackInfo])
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
-  const [valueRef, setValue] = useStateRefWithReactiveInput<GetResult<TQuery>>(initialResult)
+  const [valueRef, setValue] = useStateRefWithReactiveInput<LiveQueries.GetResult<TQuery>>(initialResult)
 
   // TODO we probably need to change the order of `useEffect` calls, so we destroy the query at the end
   // before calling the LS `onEffect` on it

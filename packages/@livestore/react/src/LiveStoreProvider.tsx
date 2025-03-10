@@ -2,9 +2,7 @@ import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport } 
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
-  BaseGraphQLContext,
   CreateStoreOptions,
-  GraphQLOptions,
   LiveStoreContext as StoreContext_,
   OtelOptions,
   ShutdownDeferred,
@@ -31,7 +29,7 @@ import React from 'react'
 
 import { LiveStoreContext } from './LiveStoreContext.js'
 
-interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
+export interface LiveStoreProviderProps {
   schema: LiveStoreSchema
   /**
    * The `storeId` can be used to isolate multiple stores from each other.
@@ -45,10 +43,9 @@ interface LiveStoreProviderProps<GraphQLContext extends BaseGraphQLContext> {
    */
   storeId?: string
   boot?: (
-    store: Store<GraphQLContext, LiveStoreSchema>,
+    store: Store<LiveStoreSchema>,
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
-  graphQLOptions?: GraphQLOptions<GraphQLContext>
   otelOptions?: Partial<OtelOptions>
   renderLoading: (status: BootStatus) => ReactElement
   renderError?: (error: UnexpectedError | unknown) => ReactElement
@@ -89,11 +86,10 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
   return <>LiveStore Shutdown due to {reason}</>
 }
 
-export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
+export const LiveStoreProvider = ({
   renderLoading,
   renderError = defaultRenderError,
   renderShutdown = defaultRenderShutdown,
-  graphQLOptions,
   otelOptions,
   children,
   schema,
@@ -103,11 +99,10 @@ export const LiveStoreProvider = <GraphQLContext extends BaseGraphQLContext>({
   batchUpdates,
   disableDevtools,
   signal,
-}: LiveStoreProviderProps<GraphQLContext> & { children?: ReactNode }): React.ReactElement => {
+}: LiveStoreProviderProps & { children?: ReactNode }): React.ReactElement => {
   const storeCtx = useCreateStore({
     storeId,
     schema,
-    graphQLOptions,
     otelOptions,
     boot,
     adapter,
@@ -149,17 +144,16 @@ const withSemaphore = (storeId: SchemaKey) => {
   return semaphore.withPermits(1)
 }
 
-const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
+const useCreateStore = ({
   schema,
   storeId,
-  graphQLOptions,
   otelOptions,
   boot,
   adapter,
   batchUpdates,
   disableDevtools,
   signal,
-}: CreateStoreOptions<GraphQLContext, LiveStoreSchema> & {
+}: CreateStoreOptions<LiveStoreSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
 }) => {
@@ -180,7 +174,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
 
   const inputPropsCacheRef = React.useRef({
     schema,
-    graphQLOptions,
     otelOptions,
     boot,
     adapter,
@@ -205,7 +198,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
 
   if (
     inputPropsCacheRef.current.schema !== schema ||
-    inputPropsCacheRef.current.graphQLOptions !== graphQLOptions ||
     inputPropsCacheRef.current.otelOptions !== otelOptions ||
     inputPropsCacheRef.current.boot !== boot ||
     inputPropsCacheRef.current.adapter !== adapter ||
@@ -215,7 +207,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
   ) {
     inputPropsCacheRef.current = {
       schema,
-      graphQLOptions,
       otelOptions,
       boot,
       adapter,
@@ -279,7 +270,6 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         const store = yield* createStore({
           schema,
           storeId,
-          graphQLOptions,
           boot,
           adapter,
           batchUpdates,
@@ -333,7 +323,7 @@ const useCreateStore = <GraphQLContext extends BaseGraphQLContext>({
         ctxValueRef.current.shutdownDeferred = undefined
       }
     }
-  }, [schema, graphQLOptions, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal, storeId])
+  }, [schema, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal, storeId])
 
   return ctxValueRef.current.value
 }
