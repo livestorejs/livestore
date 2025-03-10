@@ -159,7 +159,7 @@ const makeLeaderThread = ({
   devtoolsEnabled,
   devtoolsOptions,
   schemaPath,
-  bootStatusQueue,
+  // bootStatusQueue,
 }: {
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   storeId: string
