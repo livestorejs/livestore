@@ -2268,6 +2268,60 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.10)(@vitest/ui@3.1.1)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
 
+  tests/performance:
+    dependencies:
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-web
+      '@livestore/common':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common
+      '@livestore/effect-playwright':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/effect-playwright
+      '@livestore/livestore':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/livestore
+      '@livestore/react':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/react
+      '@livestore/utils':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/utils
+      '@livestore/wa-sqlite':
+        specifier: 1.0.5-dev.1
+        version: 1.0.5-dev.1
+      '@playwright/test':
+        specifier: ^1.50.0
+        version: 1.51.0
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.13.10
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.1.2
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.4(@types/react@19.1.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.3
+        version: 4.3.4(vite@6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      effect:
+        specifier: 3.13.1
+        version: 3.13.1
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vite:
+        specifier: ^6.1.0
+        version: 6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
+
   website:
     dependencies:
       '@astrojs/check':
@@ -3371,7 +3425,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.24.2':
     resolution: {integrity: sha512-CW/mLfLMk7FRBIka+4W+3dmv93uAQ3MGe4e7iWbmuW/Pm6F9V8ueoPZ11cUGbEQX7MGJfyb4jZQtgYecoPX8yw==}
@@ -3831,6 +3885,9 @@ packages:
 
   '@livestore/peer-deps@0.3.0-dev.37':
     resolution: {integrity: sha512-X1KEUnLGz64bsPrOCrQoR6ukmP3twZ8AjeOLMCHva/Dhikn/GV86agZZ5nl+FJx/gAXVUjNE7eULJsBGvLi8ag==}
+
+  '@livestore/wa-sqlite@1.0.5-dev.1':
+    resolution: {integrity: sha512-cI+PiPvsmaKKn7Ezkb1XrigXmERQ15MynkXiuoXPkCYZCQQTubZ+3GzjMJTCx4Y+GTO/ka2EbbCFG132hbroMA==}
 
   '@livestore/wa-sqlite@1.0.5-dev.2':
     resolution: {integrity: sha512-i7tKFEp0m3+4tGLV9Z5eAr/3RZPuNOyuf4NaQ/ygF2KwzlHc3TnqouPuE2sMH06r3soXIilWYND/x0eT8x6D6Q==}
@@ -7438,6 +7495,9 @@ packages:
 
   effect@3.12.7:
     resolution: {integrity: sha512-BsDTgSjLbL12g0+vGn5xkOgOVhRSaR3VeHmjcUb0gLvpXACJ9OgmlfeH+/FaAZwM5+omIF3I/j1gC5KJrbK1Aw==}
+
+  effect@3.13.1:
+    resolution: {integrity: sha512-YbA45m51eZapqy/ptZvIIZi+XBj13fPCzbiDRLgxZTEUhKuf4xLzuuSsKc61Y3SIscMM2o+VPht2ty+bVEQHQQ==}
 
   effect@3.14.8:
     resolution: {integrity: sha512-cHV6Mc2gb1e6l+CxhCeZm1JOzE4C9Mp7MhqHNFuAcSds2c2f23ZAb1ef4gBRHMIcdJ5sr3KGm+Xn+4z/UByE8w==}
@@ -14940,6 +15000,8 @@ snapshots:
       - lmdb
       - utf-8-validate
 
+  '@livestore/wa-sqlite@1.0.5-dev.1': {}
+
   '@livestore/wa-sqlite@1.0.5-dev.2': {}
 
   '@mapbox/node-pre-gyp@2.0.0':
@@ -20047,6 +20109,11 @@ snapshots:
 
   effect@3.12.7:
     dependencies:
+      fast-check: 3.23.2
+
+  effect@3.13.1:
+    dependencies:
+      '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
 
   effect@3.14.8:
