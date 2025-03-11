@@ -27,7 +27,7 @@
   - Electric:
     - fix: connectivity state + offline handling
   - Remaining issues:
-    - Sometimes the following error still occurs (and needs a minimal repro): `Incoming events must be greater than upstream head. Expected greater than: [9,1]. Received: [(6,0), (7,0), (8,0), (8,1), (8,2), (8,3), (8,4), (9,0), (9,1)]`
+    - [#283](https://github.com/livestorejs/livestore/issues/283)
   - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
 - Devtools
   - Fix: When resetting the database but keeping the eventlog

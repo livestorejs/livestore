@@ -149,18 +149,21 @@ jobs:
       - run: |
           # Get branch name and sanitize it for Netlify
           BRANCH_ALIAS=$(echo ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+          SITE=${{ github.ref == 'refs/heads/main' && 'livestore-website' || 'livestore-website-next' }}
+          # TODO update to `dev` for next release branch
+          PROD_FLAG=${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/wip/0.3.0') && '--prod' || '' }}
           
           # First deploy - gets a unique deploy URL
           bunx netlify-cli deploy \
             --dir=website/dist \
-            --site=livestore-website \
+            --site=$SITE \
             --filter=website
 
           # Second deploy - with branch alias
           bunx netlify-cli deploy \
             --dir=website/dist \
-            --site=livestore-website \
-            ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
+            --site=$SITE \
+            $PROD_FLAG \
             --alias=$BRANCH_ALIAS \
             --filter=website
         env:

@@ -1,6 +1,4 @@
 @import "tailwindcss";
 
-/*
-Add additional Tailwind styles to this file, for example with @layer:
-https://tailwindcss.com/docs/adding-custom-styles#using-css-and-layer
-*/
+/* Replace when fixed https://github.com/withastro/starlight/issues/2862 */
+@config "../tailwind.config.mjs";
