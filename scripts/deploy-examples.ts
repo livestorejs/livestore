@@ -42,7 +42,7 @@ const buildAndDeployExample = ({
     yield* BunShell.cmd('pnpm build', cwd)
     const prodFlag = prod ? '--prod' : ''
     const aliasFlag = Option.isSome(alias) ? `--alias=${alias.value}` : ''
-    const deployCommand = `bunx netlify deploy --dir=${EXAMPLES_SRC_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
+    const deployCommand = `bunx netlify-cli deploy --dir=${EXAMPLES_SRC_DIR}/${example}/dist --site=example-${example} ${prodFlag} ${aliasFlag}`
     // Gradually falling back for debugging purposes
     const resultJson = yield* BunShell.cmdJson(`${deployCommand} --json`, cwd).pipe(
       Effect.catchAllCause(() => BunShell.cmdText(`${deployCommand} --json`, cwd)),

@@ -60,7 +60,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           # TODO surface deploy url in github UI via environments
         run: |
-          pnpm netlify deploy --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
+          bunx netlify-cli deploy --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
 
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
@@ -151,13 +151,13 @@ jobs:
           BRANCH_ALIAS=$(echo ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
           
           # First deploy - gets a unique deploy URL
-          bunx netlify deploy \
+          bunx netlify-cli deploy \
             --dir=website/dist \
             --site=livestore-website \
             --filter=website
 
           # Second deploy - with branch alias
-          bunx netlify deploy \
+          bunx netlify-cli deploy \
             --dir=website/dist \
             --site=livestore-website \
             ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} \
