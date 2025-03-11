@@ -121,38 +121,31 @@ const App = () => {
       }
     }
 
-    // Measure main thread blocking
-    // globalThis.measureMainThreadBlocking = async (operation) => {
-    //   // Create a series of timestamps before operation
-    //   const timestamps: DOMHighResTimeStamp[] = []
-    //   const startTime = performance.now()
-    //
-    //   // Start a separate "thread" to record timestamps
-    //   const recordingPromise = new Promise<void>((resolve) => {
-    //     const interval = setInterval(() => {
-    //       timestamps.push(performance.now())
-    //       if (performance.now() - startTime > 5000) {
-    //         clearInterval(interval)
-    //         resolve()
-    //       }
-    //     }, 1)
-    //   })
-    //
-    //   // Run the operation
-    //   operation()
-    //
-    //   // Wait for recording to finish
-    //   await recordingPromise
-    //
-    //   // Calculate max gap between timestamps
-    //   let maxGap = 0
-    //   for (let i = 1; i < timestamps.length; i++) {
-    //     const gap = timestamps[i] - timestamps[i - 1]
-    //     maxGap = Math.max(maxGap, gap)
-    //   }
-    //
-    //   return maxGap
-    // }
+    globalThis.measureMainThreadBlocking = async (operation) => {
+      // Create a series of timestamps before operation
+      const timestamps: DOMHighResTimeStamp[] = []
+      const startTime = performance.now()
+
+      // Start a separate "thread" to record timestamps
+      const recordingPromise = new Promise<void>((resolve) => {
+        const interval = setInterval(() => {
+          timestamps.push(performance.now())
+          if (performance.now() - startTime > 5000) {
+            clearInterval(interval)
+            resolve()
+          }
+        }, 1)
+      })
+
+      // Run the operation
+      operation()
+
+      // Wait for recording to finish
+      await recordingPromise
+
+      // Return the max gap between timestamps
+      return timestamps.length > 1 ? Math.max(...timestamps.slice(1).map((t, i) => t - timestamps[i]!)) : 0
+    }
 
     globalThis.runMemoryProfileTest = async () => {
       if (!('memory' in performance)) {
