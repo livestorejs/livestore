@@ -19,28 +19,26 @@ export const runMemoryPerformanceTests = () => {
         const todos = generateDatabase(size)
 
         const baselineMemory = await page.evaluate(() => {
-          const memory = (performance as any).memory
-          return memory ? memory.usedJSHeapSize / (1024 * 1024) : null
+          // @ts-expect-error `Performance.memory` is deprecated, but we still use it until `Performance.measureUserAgentSpecificMemory()` becomes available.
+          const memory: { usedJSHeapSize: number } = performance.memory
+          return memory.usedJSHeapSize / (1024 * 1024)
         })
 
         await page.evaluate((data) => {
-          window.prepareStore(data)
+          globalThis.prepareStore(data)
         }, todos)
 
         const afterInitMemory = await page.evaluate(() => {
-          const memory = (performance as any).memory
-          return memory ? memory.usedJSHeapSize / (1024 * 1024) : null
+          // @ts-expect-error `Performance.memory` is deprecated, but we still use it until `Performance.measureUserAgentSpecificMemory()` becomes available.
+          const memory: { usedJSHeapSize: number } = performance.memory
+          return memory.usedJSHeapSize / (1024 * 1024)
         })
 
         const memoryProfile = await page.evaluate(() => {
-          return window.runMemoryProfileTest()
+          return globalThis.runMemoryProfileTest()
         })
 
-        await page.evaluate(() => {
-          if (window.gc) {
-            window.gc()
-          }
-        })
+        // TODO: Should we force garbage collection before measuring final memory?
 
         const finalMemory = await page.evaluate(() => {
           const memory = (performance as any).memory

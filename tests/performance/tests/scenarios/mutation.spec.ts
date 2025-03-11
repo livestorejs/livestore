@@ -23,7 +23,7 @@ test.describe('Mutation Performance Tests', () => {
 
       const insertTime = await page.evaluate(() => {
         performance.mark('insert-start')
-        window.runSingleInsert({
+        globalThis.runSingleInsert({
           id: 'new-todo-' + Date.now(),
           text: 'New todo item',
           completed: false,
@@ -38,12 +38,17 @@ test.describe('Mutation Performance Tests', () => {
       //   'mutation_type': 'insert'
       // })
 
-      const updateTime = await page.evaluate(() => {
+      const randomTodoIds = todos
+        .sort(() => Math.random())
+        .slice(0, 50)
+        .map((todo) => todo.id)
+
+      const batchUpdateTime = await page.evaluate((todoIds) => {
         performance.mark('update-start')
-        window.runBatchUpdate()
+        globalThis.runBatchUpdate(todoIds)
         performance.mark('update-end')
         return performance.measure('update', 'update-start', 'update-end').duration
-      })
+      }, randomTodoIds)
 
       // metrics.mutationLatency(updateTime, {
       //   'database_size': size.toString(),
@@ -51,30 +56,19 @@ test.describe('Mutation Performance Tests', () => {
       // })
 
       const throughputResult = await page.evaluate(() => {
-        return window.measureMutationThroughput(1000) // 1 second test
+        return globalThis.measureMutationThroughput(1000) // 1 second test
       })
 
       // metrics.mutationThroughput(throughputResult.mutationsPerSecond, {
       //   'database_size': size.toString()
       // })
 
-      const blockingTime = await page.evaluate(() => {
-        return window.measureMainThreadBlocking(() => {
-          window.runLargeBatchOperation()
-        })
-      })
-
-      // metrics.mainThreadBlocking(blockingTime, {
-      //   'database_size': size.toString(),
-      //   'operation_type': 'batch_mutation'
-      // })
 
       expect(insertTime).toBeGreaterThan(0)
       console.log(`Mutation performance with ${size} records:`, {
         insertTime,
-        updateTime,
+        batchUpdateTime,
         throughputResult,
-        blockingTime,
       })
     })
   }

@@ -33,7 +33,6 @@ test.describe('Query Performance Tests', () => {
       //   query_type: 'simple',
       // })
 
-      // Measure filtered query performance
       const filteredQueryTime = await page.evaluate(() => {
         performance.mark('filtered-query-start')
         globalThis.runFilteredQuery()
@@ -44,6 +43,18 @@ test.describe('Query Performance Tests', () => {
       // metrics.queryLatency(filteredQueryTime, {
       //   database_size: size.toString(),
       //   query_type: 'filtered',
+      // })
+
+      const complexQueryTime = await page.evaluate(() => {
+        performance.mark('complex-query-start')
+        globalThis.runComplexQuery()
+        performance.mark('complex-query-end')
+        return performance.measure('complex-query', 'complex-query-start', 'complex-query-end').duration
+      })
+
+      // metrics.queryLatency(complexQueryTime, {
+      //   database_size: size.toString(),
+      //   query_type: 'complex',
       // })
 
       const throughputResult = await page.evaluate(() => {
@@ -67,9 +78,12 @@ test.describe('Query Performance Tests', () => {
 
       // Basic assertions to ensure test is working
       expect(simpleQueryTime).toBeGreaterThan(0)
+      expect(filteredQueryTime).toBeGreaterThan(0)
+      expect(complexQueryTime).toBeGreaterThan(0)
       console.log(`Query performance with ${size} records:`, {
         simpleQueryTime,
         filteredQueryTime,
+        complexQueryTime,
         throughputResult,
         blockingTime,
       })

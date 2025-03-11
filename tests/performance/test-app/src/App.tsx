@@ -13,8 +13,8 @@ declare global {
   function runComplexQuery(): ReadonlyArray<Todo>
 
   function runSingleInsert(todo: Todo): void
-  function runBatchUpdate(): Promise<number>
-  function runLargeBatchOperation(): Promise<number>
+  function runBatchUpdate(todoIds: string[]): void
+  function runLargeBatchOperation(): void
   function measureQueryThroughput(
     durationMs: number,
   ): Promise<{ queriesPerSecond: number; totalQueries: number; durationMs: number }>
@@ -22,7 +22,7 @@ declare global {
     durationMs: number,
   ): Promise<{ mutationsPerSecond: number; totalMutations: number; durationMs: number }>
   function measureMainThreadBlocking(operation: () => void): Promise<number>
-  function runMemoryProfileTest(): Promise<{ stage: string; memory: number }[]>
+  function runMemoryProfileTest(): { stage: string; memory: number }[]
 }
 
 const App = () => {
@@ -42,44 +42,22 @@ const App = () => {
       }
     }
 
-    globalThis.runSimpleQuery = () => {
-      const query = queryDb(tables.todos.query.select())
-      return store.query(query)
-    }
-
-    globalThis.runFilteredQuery = () => {
-      return store.query(queryDb(tables.todos.query.select().where({ completed: true })))
-    }
-
-    globalThis.runComplexQuery = () => {
-      return store.query(
+    globalThis.runSimpleQuery = () => store.query(queryDb(tables.todos.query.select()))
+    globalThis.runFilteredQuery = () => store.query(queryDb(tables.todos.query.select().where({ completed: true })))
+    globalThis.runComplexQuery = () =>
+      store.query(
         queryDb(tables.todos.query.where({ completed: true, deleted: null }).orderBy('text', 'desc').limit(100)),
       )
-    }
 
-    globalThis.runSingleInsert = (todo: Todo) => {
-      return store.mutate(addTodo({ id: todo.id, text: todo.text }))
-    }
-
-    globalThis.runBatchUpdate = async () => {
-      const todos = store.query(queryDb(tables.todos.query.select().where({ completed: false }).limit(50)))
-
-      for (const todo of todos) {
-        store.mutate(completeTodo({ id: todo.id }))
-      }
-
-      return todos.length
-    }
-
-    globalThis.runLargeBatchOperation = async () => {
+    globalThis.runSingleInsert = (todo: Todo) => store.mutate(addTodo({ id: todo.id, text: todo.text }))
+    globalThis.runBatchUpdate = (todoIds: string[]) => store.mutate(...todoIds.map((id) => completeTodo({ id })))
+    globalThis.runLargeBatchOperation = () => {
       const todos = store.query(queryDb(tables.todos.query.select().limit(500)))
 
       const now = Date.now()
       for (const todo of todos) {
         store.mutate(deleteTodo({ id: todo.id, deleted: now }))
       }
-
-      return todos.length
     }
 
     globalThis.measureQueryThroughput = async (durationMs: number) => {
@@ -147,7 +125,7 @@ const App = () => {
       return timestamps.length > 1 ? Math.max(...timestamps.slice(1).map((t, i) => t - timestamps[i]!)) : 0
     }
 
-    globalThis.runMemoryProfileTest = async () => {
+    globalThis.runMemoryProfileTest = () => {
       if (!('memory' in performance)) {
         throw new Error('Performance.memory is not supported in this environment.')
       }
@@ -178,7 +156,7 @@ const App = () => {
       profile.push({ stage: 'after_100_mutations', memory: getMemory() })
 
       // After complex operations
-      await globalThis.runLargeBatchOperation()
+      globalThis.runLargeBatchOperation()
       profile.push({ stage: 'after_batch_operation', memory: getMemory() })
 
       return profile
