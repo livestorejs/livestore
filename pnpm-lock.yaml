@@ -2292,7 +2292,7 @@ importers:
         specifier: 1.0.5-dev.1
         version: 1.0.5-dev.1
       '@playwright/test':
-        specifier: ^1.50.0
+        specifier: ^1.51.0
         version: 1.51.0
       '@types/node':
         specifier: ^22.10.5

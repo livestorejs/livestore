@@ -14,7 +14,7 @@
     "@livestore/react": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.1",
-    "@playwright/test": "^1.50.0",
+    "@playwright/test": "^1.51.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
