@@ -1,0 +1,83 @@
+---
+import type { Props } from '@astrojs/starlight/props'
+import { execSync } from 'node:child_process'
+import SocialIcons_ from '@astrojs/starlight/components/SocialIcons.astro'
+
+const IS_MAIN_BRANCH = process.env.GITHUB_REF_NAME
+	? process.env.GITHUB_REF_NAME === 'main'
+	: execSync('git rev-parse --abbrev-ref HEAD').toString().trim() === 'main'
+
+const nextUrl = 'https://dev.livestore.dev'
+const latestUrl = 'https://livestore.dev'
+---
+
+<div class="version-selector">
+	<div class="version-select-wrapper">
+		<select id="version-select">
+			<option value={latestUrl} selected={IS_MAIN_BRANCH}>Version: Latest</option>
+			<option value={nextUrl} selected={!IS_MAIN_BRANCH}>Version: Next</option>
+		</select>
+	</div>
+	<SocialIcons_ />
+</div>
+
+<style>
+	.version-selector {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.version-select-wrapper {
+		background-color: var(--sl-color-accent-600);
+		border-radius: 0.25rem;
+		padding: 0.25rem;
+	}
+
+	.version-select-wrapper:hover {
+		background-color: var(--sl-color-accent-700);
+	}
+
+	/* Style the select element */
+	.version-select-wrapper select {
+		appearance: none;
+		background-color: transparent;
+		background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.5rem center;
+		color: white;
+		border: none;
+		font-size: 0.875rem;
+		padding: 0 1.5rem 0 0.5rem;
+		cursor: pointer;
+	}
+
+	/* Remove focus outline */
+	.version-select-wrapper select:focus {
+		outline: none;
+	}
+</style>
+
+<script>
+	// Handle version switching while preserving the current path
+	document.addEventListener('DOMContentLoaded', () => {
+		const versionSelect = document.getElementById('version-select') as HTMLSelectElement
+
+		if (versionSelect) {
+			versionSelect.addEventListener('change', () => {
+				const targetUrl = versionSelect.value
+				if (targetUrl === undefined || targetUrl === null) return
+
+				// Get current path and search params
+				const currentPath = window.location.pathname
+				const currentSearch = window.location.search
+
+				// Construct new URL with the same path
+				const newUrl = new URL(currentPath + currentSearch, targetUrl)
+
+				// Navigate to the new URL
+				window.location.href = newUrl.toString()
+			})
+		}
+	})
+</script>

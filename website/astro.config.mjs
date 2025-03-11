@@ -1,5 +1,7 @@
+// @ts-check
+
 import starlight from '@astrojs/starlight'
-import tailwind from '@astrojs/tailwind'
+import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import starlightTypeDoc from 'starlight-typedoc'
 
@@ -10,34 +12,41 @@ export default defineConfig({
       title: 'LiveStore',
       social: {
         github: 'https://github.com/livestorejs/livestore',
+        discord: 'https://discord.gg/RbMcjUAPd7',
+        'x.com': 'https://x.com/livestoredev',
       },
-      plugins: [
-        starlightTypeDoc({
-          entryPoints: ['../packages/@livestore/livestore/src/index.ts'],
-          tsconfig: '../packages/@livestore/livestore/tsconfig.json',
-          output: 'api/livestore',
-        }),
-        starlightTypeDoc({
-          entryPoints: ['../packages/@livestore/react/src/mod.ts'],
-          tsconfig: '../packages/@livestore/react/tsconfig.json',
-          output: 'api/react',
-        }),
-        starlightTypeDoc({
-          entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
-          tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
-          output: 'api/adapter-web',
-        }),
-        starlightTypeDoc({
-          entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
-          tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
-          output: 'api/adapter-node',
-        }),
-        starlightTypeDoc({
-          entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
-          tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
-          output: 'api/adapter-expo',
-        }),
-      ],
+      components: {
+        SocialIcons: './src/components/SocialIcons.astro',
+      },
+      plugins: process.env.STARLIGHT_SKIP_API_DOCS
+        ? []
+        : [
+            starlightTypeDoc({
+              entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
+              tsconfig: '../packages/@livestore/livestore/tsconfig.json',
+              output: 'api/livestore',
+            }),
+            starlightTypeDoc({
+              entryPoints: ['../packages/@livestore/react/src/mod.ts'],
+              tsconfig: '../packages/@livestore/react/tsconfig.json',
+              output: 'api/react',
+            }),
+            starlightTypeDoc({
+              entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
+              tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
+              output: 'api/adapter-web',
+            }),
+            starlightTypeDoc({
+              entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
+              tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
+              output: 'api/adapter-node',
+            }),
+            starlightTypeDoc({
+              entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
+              tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
+              output: 'api/adapter-expo',
+            }),
+          ],
 
       sidebar: [
         // {
@@ -80,7 +89,6 @@ export default defineConfig({
         replacesTitle: true,
       },
     }),
-    tailwind({ applyBaseStyles: false }),
   ],
   vite: {
     server: {
@@ -88,5 +96,6 @@ export default defineConfig({
         strict: false,
       },
     },
+    plugins: [tailwind()],
   },
 })

@@ -7,8 +7,9 @@ import {
 } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-// // @ts-expect-error package misses `exports`
-// import * as ExpoFs from 'expo-file-system/src/next'
+// TODO remove `expo-file-system` dependency once expo-sqlite supports `import`
+// @ts-expect-error package misses `exports`
+import * as ExpoFs from 'expo-file-system/src/next'
 // import * as ExpoFs from 'expo-file-system'
 import * as SQLite from 'expo-sqlite'
 
@@ -134,6 +135,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
     },
     destroy: () => {
       if (metadata.input._tag === 'expo') {
+        sqliteDb.close()
         SQLite.deleteDatabaseSync(metadata.input.databaseName, metadata.input.directory)
       }
     },
@@ -167,8 +169,8 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       prevDb.closeSync()
 
       if (metadata.input._tag === 'expo') {
-        // const file = new ExpoFs.File(metadata.input.directory, metadata.input.databaseName)
-        // file.write(data)
+        const file = new ExpoFs.File(metadata.input.directory, metadata.input.databaseName)
+        file.write(data)
 
         dbRef.count++
         dbRef.current = makeDb()
