@@ -15,14 +15,12 @@ test.describe('Query Performance Tests', () => {
 
   for (const size of [DatabaseSize.SMALL, DatabaseSize.MEDIUM, DatabaseSize.LARGE]) {
     test(`Query performance with ${size} records`, async ({ page }, testInfo) => {
-      console.group('Query performance with ${size} records')
       const todos = generateDatabase(size)
 
       await page.evaluate((data) => {
         globalThis.prepareStore(data)
       }, todos)
 
-      // Measure simple query performance
       const simpleQueryTime = await page.evaluate(() => {
         performance.mark('simple-query-start')
         globalThis.runSimpleQuery()
@@ -30,12 +28,10 @@ test.describe('Query Performance Tests', () => {
         return performance.measure('simple-query', 'simple-query-start', 'simple-query-end').duration
       })
 
-      // Record metrics
-      // metrics.queryLatency.record(simpleQueryTime, {
+      // metrics.queryLatency(simpleQueryTime, {
       //   database_size: size.toString(),
       //   query_type: 'simple',
       // })
-      // Log to console the simple query time and its metadata
 
       // Measure filtered query performance
       const filteredQueryTime = await page.evaluate(() => {
@@ -45,42 +41,46 @@ test.describe('Query Performance Tests', () => {
         return performance.measure('filtered-query', 'filtered-query-start', 'filtered-query-end').duration
       })
 
-      // Record metrics
-      // metrics.queryLatency.record(filteredQueryTime, {
+      // metrics.queryLatency(filteredQueryTime, {
       //   database_size: size.toString(),
       //   query_type: 'filtered',
       // })
 
-      // Measure query throughput
-      // const throughputResult = await page.evaluate(() => {
-      //   return window.measureQueryThroughput(1000) // 1 second test
-      // })
-      //
-      // metrics.queryThroughput.add(throughputResult.queriesPerSecond, {
+      const throughputResult = await page.evaluate(() => {
+        return globalThis.measureQueryThroughput(1000)
+      })
+
+      // metrics.queryThroughput(throughputResult.queriesPerSecond, {
       //   database_size: size.toString(),
       // })
 
-      // Check main thread blocking
-      // const blockingTime = await page.evaluate(() => {
-      //   return globalThis.measureMainThreadBlocking(() => {
-      //     globalThis.runComplexQuery()
-      //   })
-      // })
+      const blockingTime = await page.evaluate(() => {
+        return globalThis.measureMainThreadBlocking(() => {
+          globalThis.runComplexQuery()
+        })
+      })
 
-      // metrics.mainThreadBlocking.record(blockingTime, {
+      // metrics.mainThreadBlocking(blockingTime, {
       //   database_size: size.toString(),
       //   operation_type: 'complex_query',
       // })
 
       // Basic assertions to ensure test is working
       expect(simpleQueryTime).toBeGreaterThan(0)
-      console.log(`Query performance with ${size} records:`, { simpleQueryTime, filteredQueryTime })
+      console.log(`Query performance with ${size} records:`, {
+        simpleQueryTime,
+        filteredQueryTime,
+        throughputResult,
+        blockingTime,
+      })
 
-      const jsonBuffer = new TextEncoder().encode(JSON.stringify({ simpleQueryTime, filteredQueryTime }))
+      const jsonBuffer = new TextEncoder().encode(
+        JSON.stringify({ simpleQueryTime, filteredQueryTime, throughputResult, blockingTime }),
+      )
 
       await testInfo.attach('result', {
         contentType: 'application/json',
-        body: Buffer.from(jsonBuffer)
+        body: Buffer.from(jsonBuffer),
       })
     })
   }

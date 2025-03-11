@@ -23,7 +23,6 @@ declare global {
   ): Promise<{ mutationsPerSecond: number; totalMutations: number; durationMs: number }>
   function measureMainThreadBlocking(operation: () => void): Promise<number>
   function runMemoryProfileTest(): Promise<{ stage: string; memory: number }[]>
-  function initializeLiveStore(data: Todo[], callback: () => void): void
 }
 
 const App = () => {
@@ -48,24 +47,20 @@ const App = () => {
       return store.query(query)
     }
 
-    // Filtered query
     globalThis.runFilteredQuery = () => {
       return store.query(queryDb(tables.todos.query.select().where({ completed: true })))
     }
 
-    // Complex query
     globalThis.runComplexQuery = () => {
       return store.query(
         queryDb(tables.todos.query.where({ completed: true, deleted: null }).orderBy('text', 'desc').limit(100)),
       )
     }
 
-    // Single insert
     globalThis.runSingleInsert = (todo: Todo) => {
       return store.mutate(addTodo({ id: todo.id, text: todo.text }))
     }
 
-    // Batch update
     globalThis.runBatchUpdate = async () => {
       const todos = store.query(queryDb(tables.todos.query.select().where({ completed: false }).limit(50)))
 
@@ -76,7 +71,6 @@ const App = () => {
       return todos.length
     }
 
-    // Large batch operation
     globalThis.runLargeBatchOperation = async () => {
       const todos = store.query(queryDb(tables.todos.query.select().limit(500)))
 
@@ -88,7 +82,6 @@ const App = () => {
       return todos.length
     }
 
-    // Measure query throughput
     globalThis.measureQueryThroughput = async (durationMs: number) => {
       const startTime = Date.now()
       let queryCount = 0
@@ -106,7 +99,6 @@ const App = () => {
       }
     }
 
-    // Measure mutation throughput
     globalThis.measureMutationThroughput = async (durationMs: number) => {
       const startTime = Date.now()
       let mutationCount = 0
@@ -198,31 +190,6 @@ const App = () => {
 
       return profile
     }
-
-    // Initialize LiveStore for startup tests
-    // globalThis.initializeLiveStore = (data, callback) => {
-    //   // Create a new store
-    //   const newStore = createStore({
-    //     schema: { tables },
-    //   })
-    //
-    //   // Load data and call callback when done
-    //   const loadData = async () => {
-    //     for (const todo of data) {
-    //       newStore.mutate(addTodo({ id: todo.id, text: todo.text }))
-    //       if (todo.completed) {
-    //         newStore.mutate(completeTodo({ id: todo.id }))
-    //       }
-    //       if (todo.deleted) {
-    //         newStore.mutate(deleteTodo({ id: todo.id, deleted: todo.deleted }))
-    //       }
-    //     }
-    //     callback()
-    //   }
-    //
-    //   loadData()
-    //   return newStore
-    // }
   }, [store])
 
   return (
