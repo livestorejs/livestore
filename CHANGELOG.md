@@ -10,6 +10,7 @@
 - Examples:
   - for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
   - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+  - Add peer-deps package to each example and update docs
 - Docs
   - Notes on deployment (when to deploy what)
   - Embrace term "containers"

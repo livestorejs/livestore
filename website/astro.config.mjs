@@ -1,6 +1,7 @@
 // @ts-check
 
 import starlight from '@astrojs/starlight'
+import { liveStoreVersion } from '@livestore/common'
 import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import starlightTypeDoc from 'starlight-typedoc'
@@ -9,7 +10,7 @@ import starlightTypeDoc from 'starlight-typedoc'
 export default defineConfig({
   integrations: [
     starlight({
-      title: 'LiveStore',
+      title: `LiveStore (${liveStoreVersion})`,
       social: {
         github: 'https://github.com/livestorejs/livestore',
         discord: 'https://discord.gg/RbMcjUAPd7',

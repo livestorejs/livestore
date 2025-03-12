@@ -7,6 +7,7 @@
     "@astrojs/check": "0.9.4",
     "@astrojs/starlight": "0.32.2",
     "@astrojs/starlight-tailwind": "3.0.0",
+    "@livestore/common": "workspace:*",
     "@tailwindcss/vite": "4.0.12",
     "astro": "5.4.3",
     "sharp": "0.33.5",
