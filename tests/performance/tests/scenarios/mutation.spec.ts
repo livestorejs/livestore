@@ -1,8 +1,9 @@
-import { test, expect } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { DatabaseSize, generateDatabase } from '../fixtures/dataGenerator.ts'
+import { perfTest } from '../fixtures/perfTest.ts'
 
-test.describe('Mutation Performance', () => {
-  test.beforeEach(async ({ page }) => {
+perfTest.describe('Mutation performance', () => {
+  perfTest.beforeEach(async ({ page }) => {
     await page.goto('./')
     await page.waitForFunction(
       () =>
@@ -14,7 +15,7 @@ test.describe('Mutation Performance', () => {
   })
 
   for (const size of [DatabaseSize.SMALL, DatabaseSize.MEDIUM, DatabaseSize.LARGE]) {
-    test(`Mutation performance with ${size} records`, async ({ page }) => {
+    perfTest(`with ${size} records`, async ({ page }) => {
       const todos = generateDatabase(size)
 
       await page.evaluate((data) => {
@@ -22,15 +23,14 @@ test.describe('Mutation Performance', () => {
       }, todos)
 
       const insertTime = await page.evaluate(() => {
-        performance.mark('insert:start')
+        const startTime = performance.now()
         globalThis.runSingleInsert({
           id: 'new-todo-' + Date.now(),
           text: 'New todo item',
           completed: false,
           deleted: null,
         })
-        performance.mark('insert:end')
-        return performance.measure('insert', 'insert:start', 'insert:end').duration
+        return performance.measure('insert-mutation', { start: startTime }).duration
       })
 
       // metrics.mutationLatency(insertTime, {
@@ -44,10 +44,9 @@ test.describe('Mutation Performance', () => {
         .map((todo) => todo.id)
 
       const batchUpdateTime = await page.evaluate((todoIds) => {
-        performance.mark('update:start')
+        const startTime = performance.now()
         globalThis.runBatchUpdate(todoIds)
-        performance.mark('update:end')
-        return performance.measure('update', 'update:start', 'update:end').duration
+        return performance.measure('update-mutation', { start: startTime }).duration
       }, randomTodoIds)
 
       // metrics.mutationLatency(updateTime, {

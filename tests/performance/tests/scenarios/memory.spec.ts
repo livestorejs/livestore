@@ -1,9 +1,9 @@
-import { test } from '@playwright/test'
 import { DatabaseSize, generateDatabase } from '../fixtures/dataGenerator'
+import { perfTest } from "../fixtures/perfTest.ts";
 
 export const runMemoryPerformanceTests = () => {
-  test.describe('Memory Consumption Tests', () => {
-    test.beforeEach(async ({ page }) => {
+  perfTest.describe('Memory consumption', () => {
+    perfTest.beforeEach(async ({ page }) => {
       await page.goto('./')
       await page.waitForFunction(
         () =>
@@ -15,7 +15,7 @@ export const runMemoryPerformanceTests = () => {
     })
 
     for (const size of [DatabaseSize.SMALL, DatabaseSize.MEDIUM, DatabaseSize.LARGE]) {
-      test(`Memory usage patterns with ${size} records`, async ({ page }) => {
+      perfTest(`with ${size} records`, async ({ page }) => {
         const todos = generateDatabase(size)
 
         const baselineMemory = await page.evaluate(() => {

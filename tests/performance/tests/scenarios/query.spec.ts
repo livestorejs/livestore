@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { DatabaseSize, generateDatabase } from '../fixtures/dataGenerator.ts'
+import { perfTest } from '../fixtures/perfTest.ts'
 
-test.describe('Query Performance', () => {
-  test.beforeEach(async ({ page }) => {
+perfTest.describe('Query performance', () => {
+  perfTest.beforeEach(async ({ page }) => {
     await page.goto('./')
     await page.waitForFunction(
       () =>
@@ -14,7 +15,7 @@ test.describe('Query Performance', () => {
   })
 
   for (const size of [DatabaseSize.SMALL, DatabaseSize.MEDIUM, DatabaseSize.LARGE]) {
-    test(`Query performance with ${size} records`, async ({ page }, testInfo) => {
+    perfTest(`with ${size} records`, async ({ page }, testInfo) => {
       const todos = generateDatabase(size)
 
       await page.evaluate((data) => {
@@ -22,10 +23,9 @@ test.describe('Query Performance', () => {
       }, todos)
 
       const simpleQueryTime = await page.evaluate(() => {
-        performance.mark('simple-query:start')
+        const startTime = performance.now()
         globalThis.runSimpleQuery()
-        performance.mark('simple-query:end')
-        return performance.measure('simple-query', 'simple-query:start', 'simple-query:end').duration
+        return performance.measure('simple-query', { start: startTime }).duration
       })
 
       // metrics.queryLatency(simpleQueryTime, {
@@ -34,10 +34,9 @@ test.describe('Query Performance', () => {
       // })
 
       const filteredQueryTime = await page.evaluate(() => {
-        performance.mark('filtered-query:start')
+        const queryStartTime = performance.now()
         globalThis.runFilteredQuery()
-        performance.mark('filtered-query:end')
-        return performance.measure('filtered-query', 'filtered-query:start', 'filtered-query:end').duration
+        return performance.measure('filtered-query', { start: queryStartTime }).duration
       })
 
       // metrics.queryLatency(filteredQueryTime, {
@@ -46,10 +45,9 @@ test.describe('Query Performance', () => {
       // })
 
       const complexQueryTime = await page.evaluate(() => {
-        performance.mark('complex-query:start')
+        const queryStartTime = performance.now()
         globalThis.runComplexQuery()
-        performance.mark('complex-query:end')
-        return performance.measure('complex-query', 'complex-query:start', 'complex-query:end').duration
+        return performance.measure('complex-query', { start: queryStartTime }).duration
       })
 
       // metrics.queryLatency(complexQueryTime, {
