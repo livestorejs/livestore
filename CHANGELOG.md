@@ -26,6 +26,7 @@
     - Bring back "broadcast" pull res terminology
   - Electric:
     - fix: connectivity state + offline handling
+  - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
   - Remaining issues:
     - [#283](https://github.com/livestorejs/livestore/issues/283)
   - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)

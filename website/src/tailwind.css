@@ -1,4 +1,123 @@
-@import "tailwindcss";
-
 /* Replace when fixed https://github.com/withastro/starlight/issues/2862 */
-@config "../tailwind.config.mjs";
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --font-sans:
+    Poppins, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --color-gray-100: #f5f6f5;
+  --color-gray-200: #eceeec;
+  --color-gray-300: #c0c3c0;
+  --color-gray-400: #888d87;
+  --color-gray-500: #555954;
+  --color-gray-700: #363935;
+  --color-gray-800: #242823;
+  --color-gray-900: #171917;
+
+  --color-accent-50: oklch(0.98 0.016 73.684);
+  --color-accent-100: oklch(0.954 0.038 75.164);
+  --color-accent-200: oklch(0.901 0.076 70.697);
+  --color-accent-300: oklch(0.837 0.128 66.29);
+  --color-accent-400: oklch(0.75 0.183 55.934);
+  --color-accent-500: oklch(0.705 0.213 47.604);
+  --color-accent-600: oklch(0.646 0.222 41.116);
+  --color-accent-700: oklch(0.553 0.195 38.402);
+  --color-accent-800: oklch(0.47 0.157 37.304);
+  --color-accent-900: oklch(0.408 0.123 38.172);
+  --color-accent-950: oklch(0.266 0.079 36.259);
+
+  --outline-color-200: var(--color-accent-200);
+  --outline-color-500: var(--color-accent-500);
+  --outline-color-600: var(--color-accent-600);
+  --outline-color-700: var(--color-accent-700);
+  --outline-color-800: var(--color-accent-800);
+  --outline-color-900: var(--color-accent-900);
+  --outline-color-950: var(--color-accent-950);
+
+  --ring-color-200: var(--color-accent-200);
+  --ring-color-500: var(--color-accent-500);
+  --ring-color-600: var(--color-accent-600);
+  --ring-color-700: var(--color-accent-700);
+  --ring-color-800: var(--color-accent-800);
+  --ring-color-900: var(--color-accent-900);
+  --ring-color-950: var(--color-accent-950);
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+/* https://tailwindcss.com/docs/dark-mode#using-a-data-attribute */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Starlight theme below */
+:root {
+  --custom-outline-color: var(--color-accent-200);
+
+  --sl-font: var(--font-sans);
+  --sl-font-mono: var(--font-mono);
+
+  /* Dark mode Starlight theme variables */
+  --sl-color-white: white;
+
+  --sl-color-gray-1: var(--color-gray-200);
+  --sl-color-gray-2: var(--color-gray-300);
+  --sl-color-gray-3: var(--color-gray-400);
+  --sl-color-gray-4: var(--color-gray-600);
+  --sl-color-gray-5: var(--color-gray-700);
+  --sl-color-gray-6: var(--color-gray-800);
+
+  --sl-color-black: var(--color-gray-900);
+
+  --sl-color-accent-low: var(--color-accent-950);
+  --sl-color-accent: var(--color-accent-600);
+  --sl-color-accent-high: var(--color-accent-200);
+
+  :focus-visible {
+    outline: solid 1px var(--custom-outline-color);
+  }
+
+  &[data-theme='light'] {
+    --custom-outline-color: var(--color-accent-600);
+
+    /* Light mode Starlight theme variables */
+    --sl-color-white: var(--color-gray-900);
+
+    --sl-color-gray-1: var(--color-gray-800);
+    --sl-color-gray-2: var(--color-gray-700);
+    --sl-color-gray-3: var(--color-gray-500);
+    --sl-color-gray-4: var(--color-gray-400);
+    --sl-color-gray-5: var(--color-gray-300);
+    --sl-color-gray-6: var(--color-gray-200);
+    --sl-color-gray-7: var(--color-gray-100);
+
+    --sl-color-black: white;
+
+    --sl-color-accent-low: var(--color-accent-200);
+    --sl-color-accent: var(--color-accent-600);
+    --sl-color-accent-high: var(--color-accent-900);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
