@@ -156,17 +156,15 @@ jobs:
 
           # TODO update to `dev` for next release branch
           if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "wip/0.3.0" ]]; then
-            PROD_FLAG="--prod"
+            DEPLOY_FLAG="--prod"
           else
-            PROD_FLAG=""
+            BRANCH_ALIAS=$(echo ${BRANCH_NAME} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+            DEPLOY_FLAG="--alias=$BRANCH_ALIAS"
           fi
-
-          BRANCH_ALIAS=$(echo ${BRANCH_NAME} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
 
           echo "BRANCH_NAME: $BRANCH_NAME"
           echo "SITE: $SITE"
-          echo "PROD_FLAG: $PROD_FLAG"
-          echo "BRANCH_ALIAS: $BRANCH_ALIAS"
+          echo "DEPLOY_FLAG: $DEPLOY_FLAG"
           
           # First deploy - gets a unique deploy URL
           bunx netlify-cli deploy \
@@ -174,13 +172,11 @@ jobs:
             --site=$SITE \
             --filter=website
 
-
-          # Second deploy - with branch alias
+          # Second deploy - with branch alias or prod flag
           bunx netlify-cli deploy \
+            $DEPLOY_FLAG \
             --dir=website/dist \
             --site=$SITE \
-            $PROD_FLAG \
-            --alias=$BRANCH_ALIAS \
             --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
