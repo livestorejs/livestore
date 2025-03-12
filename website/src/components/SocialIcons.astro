@@ -2,6 +2,7 @@
 import type { Props } from '@astrojs/starlight/props'
 import { execSync } from 'node:child_process'
 import SocialIcons_ from '@astrojs/starlight/components/SocialIcons.astro'
+import { liveStoreVersion } from '@livestore/common'
 
 const IS_MAIN_BRANCH = process.env.GITHUB_REF_NAME
 	? process.env.GITHUB_REF_NAME === 'main'
@@ -14,8 +15,10 @@ const latestUrl = 'https://livestore.dev'
 <div class="version-selector">
 	<div class="version-select-wrapper">
 		<select id="version-select">
-			<option value={latestUrl} selected={IS_MAIN_BRANCH}>Version: Latest</option>
-			<option value={nextUrl} selected={!IS_MAIN_BRANCH}>Version: Next</option>
+			<option value={latestUrl} selected={IS_MAIN_BRANCH}
+				>Version: {IS_MAIN_BRANCH ? liveStoreVersion : 'latest'}</option
+			>
+			<option value={nextUrl} selected={!IS_MAIN_BRANCH}>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option>
 		</select>
 	</div>
 	<SocialIcons_ />

@@ -148,25 +148,32 @@ jobs:
         working-directory: website
       - run: |
           # Get branch name and sanitize it for Netlify
-          BRANCH_ALIAS=$(echo ${GITHUB_REF_NAME} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
-          if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+          if [[ "$BRANCH_NAME" == "main" ]]; then
             SITE="livestore-website"
           else
             SITE="livestore-website-next"
           fi
 
           # TODO update to `dev` for next release branch
-          if [[ "$GITHUB_REF_NAME" == "main" || "$GITHUB_REF_NAME" == "wip/0.3.0" ]]; then
+          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "wip/0.3.0" ]]; then
             PROD_FLAG="--prod"
           else
             PROD_FLAG=""
           fi
+
+          BRANCH_ALIAS=$(echo ${BRANCH_NAME} | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+
+          echo "BRANCH_NAME: $BRANCH_NAME"
+          echo "SITE: $SITE"
+          echo "PROD_FLAG: $PROD_FLAG"
+          echo "BRANCH_ALIAS: $BRANCH_ALIAS"
           
           # First deploy - gets a unique deploy URL
           bunx netlify-cli deploy \
             --dir=website/dist \
             --site=$SITE \
             --filter=website
+
 
           # Second deploy - with branch alias
           bunx netlify-cli deploy \
@@ -177,6 +184,7 @@ jobs:
             --filter=website
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
 
   # NOTE for the example jobs below we're not using the Nix setup but instead are just using bun directly
   # to simulate a simple user-facing setup
