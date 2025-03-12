@@ -21,7 +21,6 @@ declare global {
   function measureMutationThroughput(
     durationMs: number,
   ): Promise<{ mutationsPerSecond: number; totalMutations: number; durationMs: number }>
-  function runMemoryProfileTest(): { stage: string; memory: number }[]
 }
 
 const App = () => {
@@ -50,14 +49,6 @@ const App = () => {
 
     globalThis.runSingleInsert = (todo: Todo) => store.mutate(addTodo({ id: todo.id, text: todo.text }))
     globalThis.runBatchUpdate = (todoIds: string[]) => store.mutate(...todoIds.map((id) => completeTodo({ id })))
-    globalThis.runLargeBatchOperation = () => {
-      const todos = store.query(queryDb(tables.todos.query.select().limit(500)))
-
-      const now = Date.now()
-      for (const todo of todos) {
-        store.mutate(deleteTodo({ id: todo.id, deleted: now }))
-      }
-    }
 
     globalThis.measureQueryThroughput = async (durationMs: number) => {
       const startTime = Date.now()
@@ -96,43 +87,6 @@ const App = () => {
         totalMutations: mutationCount,
         durationMs: actualDuration,
       }
-    }
-
-    globalThis.runMemoryProfileTest = () => {
-      if (!('memory' in performance)) {
-        throw new Error('Performance.memory is not supported in this environment.')
-      }
-
-      const getMemory = () => {
-        // @ts-expect-error `Performance.memory` is deprecated, but we still use it until `Performance.measureUserAgentSpecificMemory()` becomes available.
-        const memory: { usedJSHeapSize: number } = performance.memory
-        return memory.usedJSHeapSize / (1024 * 1024)
-      }
-
-      const profile = []
-
-      profile.push({ stage: 'baseline', memory: getMemory() })
-
-      for (let i = 0; i < 100; i++) {
-        globalThis.runSimpleQuery()
-      }
-      profile.push({ stage: 'after_100_queries', memory: getMemory() })
-
-      for (let i = 0; i < 100; i++) {
-        globalThis.runSingleInsert({
-          id: `memory-test-${i}-${Date.now()}`,
-          text: `Memory test todo ${i}`,
-          completed: false,
-          deleted: null,
-        })
-      }
-      profile.push({ stage: 'after_100_mutations', memory: getMemory() })
-
-      // After complex operations
-      globalThis.runLargeBatchOperation()
-      profile.push({ stage: 'after_batch_operation', memory: getMemory() })
-
-      return profile
     }
   }, [store])
 
