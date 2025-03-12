@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { DatabaseSize, generateDatabase } from '../fixtures/dataGenerator.ts'
 
-test.describe('Mutation Performance Tests', () => {
+test.describe('Mutation Performance', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./')
     await page.waitForFunction(
@@ -22,15 +22,15 @@ test.describe('Mutation Performance Tests', () => {
       }, todos)
 
       const insertTime = await page.evaluate(() => {
-        performance.mark('insert-start')
+        performance.mark('insert:start')
         globalThis.runSingleInsert({
           id: 'new-todo-' + Date.now(),
           text: 'New todo item',
           completed: false,
           deleted: null,
         })
-        performance.mark('insert-end')
-        return performance.measure('insert', 'insert-start', 'insert-end').duration
+        performance.mark('insert:end')
+        return performance.measure('insert', 'insert:start', 'insert:end').duration
       })
 
       // metrics.mutationLatency(insertTime, {
@@ -44,10 +44,10 @@ test.describe('Mutation Performance Tests', () => {
         .map((todo) => todo.id)
 
       const batchUpdateTime = await page.evaluate((todoIds) => {
-        performance.mark('update-start')
+        performance.mark('update:start')
         globalThis.runBatchUpdate(todoIds)
-        performance.mark('update-end')
-        return performance.measure('update', 'update-start', 'update-end').duration
+        performance.mark('update:end')
+        return performance.measure('update', 'update:start', 'update:end').duration
       }, randomTodoIds)
 
       // metrics.mutationLatency(updateTime, {
@@ -62,7 +62,6 @@ test.describe('Mutation Performance Tests', () => {
       // metrics.mutationThroughput(throughputResult.mutationsPerSecond, {
       //   'database_size': size.toString()
       // })
-
 
       expect(insertTime).toBeGreaterThan(0)
       console.log(`Mutation performance with ${size} records:`, {

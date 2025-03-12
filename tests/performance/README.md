@@ -12,3 +12,7 @@
 - [ ] Figure out a way to properly run many repetitions of the same test to get stable performance results.
 - [ ] Write README.md
 - [ ] Document performance test results
+- [ ] Run tests on CI pipeline
+- [ ] Have the same CPU profile between tests.
+  - Potential solution: Calibrate and throttle CPU before tests. Requires https://developer.chrome.com/blog/new-in-devtools-134#calibrated-cpu-throttling to be accessible with the Chrome Devtools Protocol.
+  - Potential solution: Run tests in a Docker container with a fixed CPU profile.

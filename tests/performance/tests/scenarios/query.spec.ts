@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { DatabaseSize, generateDatabase } from '../fixtures/dataGenerator.ts'
 
-test.describe('Query Performance Tests', () => {
+test.describe('Query Performance', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./')
     await page.waitForFunction(
@@ -22,10 +22,10 @@ test.describe('Query Performance Tests', () => {
       }, todos)
 
       const simpleQueryTime = await page.evaluate(() => {
-        performance.mark('simple-query-start')
+        performance.mark('simple-query:start')
         globalThis.runSimpleQuery()
-        performance.mark('simple-query-end')
-        return performance.measure('simple-query', 'simple-query-start', 'simple-query-end').duration
+        performance.mark('simple-query:end')
+        return performance.measure('simple-query', 'simple-query:start', 'simple-query:end').duration
       })
 
       // metrics.queryLatency(simpleQueryTime, {
@@ -34,10 +34,10 @@ test.describe('Query Performance Tests', () => {
       // })
 
       const filteredQueryTime = await page.evaluate(() => {
-        performance.mark('filtered-query-start')
+        performance.mark('filtered-query:start')
         globalThis.runFilteredQuery()
-        performance.mark('filtered-query-end')
-        return performance.measure('filtered-query', 'filtered-query-start', 'filtered-query-end').duration
+        performance.mark('filtered-query:end')
+        return performance.measure('filtered-query', 'filtered-query:start', 'filtered-query:end').duration
       })
 
       // metrics.queryLatency(filteredQueryTime, {
@@ -46,10 +46,10 @@ test.describe('Query Performance Tests', () => {
       // })
 
       const complexQueryTime = await page.evaluate(() => {
-        performance.mark('complex-query-start')
+        performance.mark('complex-query:start')
         globalThis.runComplexQuery()
-        performance.mark('complex-query-end')
-        return performance.measure('complex-query', 'complex-query-start', 'complex-query-end').duration
+        performance.mark('complex-query:end')
+        return performance.measure('complex-query', 'complex-query:start', 'complex-query:end').duration
       })
 
       // metrics.queryLatency(complexQueryTime, {
