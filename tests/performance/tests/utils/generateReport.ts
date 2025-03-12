@@ -12,7 +12,6 @@ const processResults = (results) => {
     mutationLatency: {},
     startupTime: {},
     memoryConsumption: {},
-    mainThreadBlocking: {},
     throughput: {}
   }
 
@@ -49,7 +48,6 @@ const processSuite = (suite, metrics) => {
                   const data = JSON.parse(atob(attachment.body))
                   metrics.queryLatency[dbSize].simple = data.simpleQueryTime
                   metrics.queryLatency[dbSize].filtered = data.filteredQueryTime
-                  metrics.mainThreadBlocking[dbSize] = data.blockingTime
                 }
               })
             }
@@ -98,11 +96,6 @@ const generateHtmlReport = (metrics) => {
       <h2>Startup Time</h2>
       <div class="chart-container">
         <canvas id="startupTimeChart"></canvas>
-      </div>
-      
-      <h2>Main Thread Blocking</h2>
-      <div class="chart-container">
-        <canvas id="blockingChart"></canvas>
       </div>
       
       <script>

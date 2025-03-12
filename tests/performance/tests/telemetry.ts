@@ -8,7 +8,6 @@ export class PerformanceMetrics extends Context.Tag('PerformanceMetrics')<
     queryLatency: Metric.Metric.Histogram<Duration.Duration>
     mutationLatency: Metric.Metric.Histogram<Duration.Duration>
     memoryUsage: Metric.Metric.Gauge<number>
-    mainThreadBlocking: Metric.Metric.Histogram<Duration.Duration>
     queryThroughput: Metric.Metric.Counter<number>
     mutationThroughput: Metric.Metric.Counter<number>
     startupTime: Metric.Metric.Histogram<Duration.Duration>
@@ -28,7 +27,6 @@ const PerformanceMetricsLive = Layer.succeed(PerformanceMetrics, {
   }),
   startupTime: Metric.timer('startup_time', 'Time to startup LiveStore'),
   memoryUsage: Metric.gauge('memory_usage', { description: 'Memory usage during operations' }),
-  mainThreadBlocking: Metric.timer('main_thread_blocking', 'Main thread blocking duration'),
 })
 
 export const TelemetryLive = Layer.merge(PerformanceMetricsLive, OtelLiveHttp({ serviceName: 'livestore-performance' }))

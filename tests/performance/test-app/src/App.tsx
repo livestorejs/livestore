@@ -21,7 +21,6 @@ declare global {
   function measureMutationThroughput(
     durationMs: number,
   ): Promise<{ mutationsPerSecond: number; totalMutations: number; durationMs: number }>
-  function measureMainThreadBlocking(operation: () => void): Promise<number>
   function runMemoryProfileTest(): { stage: string; memory: number }[]
 }
 
@@ -97,32 +96,6 @@ const App = () => {
         totalMutations: mutationCount,
         durationMs: actualDuration,
       }
-    }
-
-    globalThis.measureMainThreadBlocking = async (operation) => {
-      // Create a series of timestamps before operation
-      const timestamps: DOMHighResTimeStamp[] = []
-      const startTime = performance.now()
-
-      // Start a separate "thread" to record timestamps
-      const recordingPromise = new Promise<void>((resolve) => {
-        const interval = setInterval(() => {
-          timestamps.push(performance.now())
-          if (performance.now() - startTime > 5000) {
-            clearInterval(interval)
-            resolve()
-          }
-        }, 1)
-      })
-
-      // Run the operation
-      operation()
-
-      // Wait for recording to finish
-      await recordingPromise
-
-      // Return the max gap between timestamps
-      return timestamps.length > 1 ? Math.max(...timestamps.slice(1).map((t, i) => t - timestamps[i]!)) : 0
     }
 
     globalThis.runMemoryProfileTest = () => {

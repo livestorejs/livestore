@@ -65,17 +65,6 @@ test.describe('Query Performance', () => {
       //   database_size: size.toString(),
       // })
 
-      const blockingTime = await page.evaluate(() => {
-        return globalThis.measureMainThreadBlocking(() => {
-          globalThis.runComplexQuery()
-        })
-      })
-
-      // metrics.mainThreadBlocking(blockingTime, {
-      //   database_size: size.toString(),
-      //   operation_type: 'complex_query',
-      // })
-
       // Basic assertions to ensure test is working
       expect(simpleQueryTime).toBeGreaterThan(0)
       expect(filteredQueryTime).toBeGreaterThan(0)
@@ -85,11 +74,10 @@ test.describe('Query Performance', () => {
         filteredQueryTime,
         complexQueryTime,
         throughputResult,
-        blockingTime,
       })
 
       const jsonBuffer = new TextEncoder().encode(
-        JSON.stringify({ simpleQueryTime, filteredQueryTime, throughputResult, blockingTime }),
+        JSON.stringify({ simpleQueryTime, filteredQueryTime, throughputResult }),
       )
 
       await testInfo.attach('result', {
