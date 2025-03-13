@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "test-app": "vite test-app",
-    "test": "playwright test",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
     "test:report": "node tests/utils/generateReport.ts"
   },
   "dependencies": {
