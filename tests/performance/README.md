@@ -2,6 +2,7 @@
 
 - [ ] Use [parameterized tests](https://playwright.dev/docs/test-parameterize)
 - [ ] Use [custom reporters](https://playwright.dev/docs/test-reporters#custom-reporters) to generate an HTML report
+- [ ] Make memory leak test more reliable
 - [ ] Use production build of the test app
 - [ ] Run tests on CI pipeline
 - [ ] Write README.md
