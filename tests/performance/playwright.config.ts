@@ -5,24 +5,16 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './tests',
-  /* Maximum time one test can run for. */
-  timeout: 5 * 60 * 1000, // 5 minutes
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
+  timeout: 45 * 1000,
+  forbidOnly: !!process.env.CI, // Fail the build on CI if we accidentally left test.only in the source code
   workers: 1, // Run tests serially for more accurate performance measurements
-  /* See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: 'test-results/html-report' }],
     ['json', { outputFile: 'test-results/results.json' }],
   ],
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:5173',
-
     headless: true,
-
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
   projects: [

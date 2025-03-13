@@ -5,14 +5,12 @@ export const perfTest = base.extend<{ forEachTest: void }>({
   forEachTest: [
     async ({ page, browser }, use, testInfo) => {
       // This code runs before every test.
-      console.debug('\n==== Start tracing (Chromium DevTools) ====\n')
       await browser.startTracing(page, { path: testInfo.outputPath('perf-trace-profile.json') })
 
       // Run the test
       await use()
 
       // This code runs after every test.
-      console.debug('\n==== Stop tracing (Chromium DevTools) ====\n')
       await browser.stopTracing()
     },
     { auto: true },

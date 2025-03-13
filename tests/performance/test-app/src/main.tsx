@@ -1,15 +1,71 @@
 import { makeAdapter } from '@livestore/adapter-web'
-import type { Store } from '@livestore/livestore'
-import { LiveStoreProvider } from '@livestore/react'
-import { nanoid } from '@livestore/utils/nanoid'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { StrictMode } from 'react'
+import { queryDb, SessionIdSymbol } from '@livestore/livestore'
+import { LiveStoreProvider, useQuery, useStore } from '@livestore/react'
+import React, { StrictMode } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 
-import App from './App.tsx'
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { mutations, schema, tables } from './schema'
+import { type Data, schema, tables } from './schema.ts'
+
+const A = [
+  'pretty',
+  'large',
+  'big',
+  'small',
+  'tall',
+  'short',
+  'long',
+  'handsome',
+  'plain',
+  'quaint',
+  'clean',
+  'elegant',
+  'easy',
+  'angry',
+  'crazy',
+  'helpful',
+  'mushy',
+  'odd',
+  'unsightly',
+  'adorable',
+  'important',
+  'inexpensive',
+  'cheap',
+  'expensive',
+  'fancy',
+]
+const C = ['red', 'yellow', 'blue', 'green', 'pink', 'brown', 'purple', 'brown', 'white', 'black', 'orange']
+const N = [
+  'table',
+  'chair',
+  'house',
+  'bbq',
+  'desk',
+  'car',
+  'pony',
+  'cookie',
+  'sandwich',
+  'burger',
+  'pizza',
+  'mouse',
+  'keyboard',
+]
+
+const random = (max: number) => Math.round(Math.random() * 1000) % max
+
+let nextId = 1
+const buildData = (count: number): Data => {
+  const data: Data = Array.from({ length: count })
+  for (let i = 0; i < count; i++) {
+    data[i] = {
+      id: nextId++,
+      label: `${A[random(A.length)]} ${C[random(C.length)]} ${N[random(N.length)]}`,
+    }
+  }
+  return data
+}
 
 const adapter = makeAdapter({
   worker: LiveStoreWorker,
@@ -17,27 +73,134 @@ const adapter = makeAdapter({
   storage: { type: 'opfs' },
 })
 
-/**
- * This function is called when the app is booted.
- * It is used to initialize the database with initial data.
- */
-const boot = (store: Store) => {
-  // If the todos table is empty, add an initial todo
-  if (store.query(tables.todos.query.count()) === 0) {
-    store.mutate(mutations.addTodo({ id: nanoid(), text: '☕ Make coffee' }))
-  }
+const GlyphIcon = <span className="glyphicon glyphicon-remove" aria-hidden="true">X</span>
+
+const Row = React.memo(({ data }: { data: { id: number; label: string } }) => {
+  const { store } = useStore()
+  const { selected } = useQuery(queryDb(tables.app.query.row(SessionIdSymbol)))
+  const isSelected = selected === data.id
+  return (
+    <tr className={isSelected ? 'danger' : ''}>
+      <td className="col-md-1">{data.id}</td>
+      <td className="col-md-4">
+        <a
+          onClick={() => {
+            // @ts-expect-error `id` is not typed correctly
+            store.mutate(tables.app.update({ where: { id: SessionIdSymbol }, values: { selected: data.id } }))
+          }}
+        >
+          {data.label}
+        </a>
+      </td>
+      <td className="col-md-1">
+        <a
+          onClick={() => {
+            store.mutate(tables.data.delete({ where: { id: data.id } }))
+          }}
+        >
+          {GlyphIcon}
+        </a>
+      </td>
+      <td className="col-md-6"></td>
+    </tr>
+  )
+})
+
+const RowList = React.memo(() => {
+  const rows = useQuery(queryDb(tables.data.query.select()))
+  return rows.map((data) => <Row key={data.id} data={data} />)
+})
+
+const Button = React.memo(({ id, title, cb }: { id: string; title: string; cb: () => void }) => (
+  <div className="col-sm-6 smallpad">
+    <button type="button" className="btn btn-primary btn-block" id={id} onClick={cb}>
+      {title}
+    </button>
+  </div>
+))
+
+const Main = () => {
+  const { store } = useStore()
+  return (
+    <div className="container">
+      <div className="jumbotron">
+        <div className="row">
+          <div className="col-md-6">
+            <h1>React + LiveStore</h1>
+          </div>
+          <div className="col-md-6">
+            <div className="row">
+              <Button
+                id="run"
+                title="Create 1,000 rows"
+                cb={() => {
+                  // Should replace the entire table
+                  store.mutate(
+                    tables.data.delete({ where: {} }),
+                    ...buildData(1000).map((row) => tables.data.insert(row)),
+                  )
+                }}
+              />
+              <Button
+                id="runlots"
+                title="Create 10,000 rows"
+                cb={() => {
+                  store.mutate(...buildData(10_000).map((row) => tables.data.insert(row)))
+                }}
+              />
+              <Button
+                id="add"
+                title="Append 1,000 rows"
+                cb={() => {
+                  store.mutate(...buildData(1000).map((row) => tables.data.insert(row)))
+                }}
+              />
+              <Button
+                id="update"
+                title="Update every 10th row"
+                cb={() => {
+                  const rows = store.query(queryDb(tables.data.query.select()))
+
+                  const updates = []
+                  for (let i = 0; i < rows.length; i += 10) {
+                    updates.push(
+                      tables.data.update({ where: { id: rows[i]!.id }, values: { label: rows[i]!.label + ' !!!' } }),
+                    )
+                  }
+
+                  store.mutate(...updates)
+                }}
+              />
+              <Button
+                id="clear"
+                title="Clear"
+                cb={() => {
+                  store.mutate(tables.data.delete({ where: {} }))
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <table className="table table-hover table-striped test-data">
+        <tbody>
+          <RowList />
+        </tbody>
+      </table>
+      <span className="preloadicon glyphicon glyphicon-remove" aria-hidden="true"></span>
+    </div>
+  )
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LiveStoreProvider
-      boot={boot}
       schema={schema}
       adapter={adapter}
       batchUpdates={batchUpdates}
       renderLoading={(bootStatus) => <p>Stage: {bootStatus.stage}</p>}
     >
-      <App />
+      <Main />
     </LiveStoreProvider>
   </StrictMode>,
 )
