@@ -4,7 +4,7 @@
   "scripts": {
     "test-app": "vite test-app",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
-    "test:report": "node tests/utils/generateReport.ts"
+    "test:profile": "PERF_PROFILER=1 test"
   },
   "dependencies": {
     "@livestore/adapter-web": "workspace:*",

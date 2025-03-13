@@ -1,11 +1,7 @@
 ## TODO
 
-- [ ] Use [custom reporters](https://playwright.dev/docs/test-reporters#custom-reporters) to generate HTML report
 - [ ] Use [parameterized tests](https://playwright.dev/docs/test-parameterize)
-- [ ] Figure out a way to properly run many repetitions of the same test to get stable performance results.
-- [ ] Refactor to use Effect
-  - [ ] Send metrics to Tempo+Grafana
-- [ ] Only enable Chromium tracing profiling on a flag
+- [ ] Use [custom reporters](https://playwright.dev/docs/test-reporters#custom-reporters) to generate an HTML report
 - [ ] Use production build of the test app
 - [ ] Run tests on CI pipeline
 - [ ] Write README.md
