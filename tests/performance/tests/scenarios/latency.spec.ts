@@ -7,9 +7,9 @@ perfTest.describe('Latency', () => {
     await page.goto('./')
   })
 
-  perfTest('for creating 1,000 rows (5 warmup runs)', async ({ page }) => {
+  perfTest('for creating 1,000 rows (5 warmup runs)', async ({ page }, testInfo) => {
     const warmupCount = 5
-    let latency: number
+    let measurement: number
 
     await perfTest.step('warmup', async () => {
       for (let i = 0; i < warmupCount; i++) {
@@ -20,7 +20,9 @@ perfTest.describe('Latency', () => {
       }
     })
 
-    await page.requestGC()
+    await perfTest.step('prepare', async () => {
+      await page.requestGC()
+    })
 
     await perfTest.step('run', async () => {
       await page.evaluate(() => {
@@ -30,16 +32,22 @@ perfTest.describe('Latency', () => {
       await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText(
         ((warmupCount + 1) * 1000).toFixed(0),
       )
-      latency = await page.evaluate(() => {
+      measurement = await page.evaluate(() => {
         return performance.measure('create-rows', 'create-rows:start').duration
       })
-      console.log('Latency:', latency)
+    })
+
+    await perfTest.step('annotate', async () => {
+      testInfo.annotations.push(
+        { type: 'warmup count', description: warmupCount.toString() },
+        { type: 'measurement', description: measurement.toString() },
+      )
     })
   })
 
-  perfTest('for updating all 1,000 rows (5 warmup runs)', async ({ page }) => {
+  perfTest('for updating all 1,000 rows (5 warmup runs)', async ({ page }, testInfo) => {
     const warmupCount = 5
-    let latency: number
+    let measurement: number
 
     await perfTest.step('warmup', async () => {
       for (let i = 0; i < warmupCount; i++) {
@@ -48,7 +56,9 @@ perfTest.describe('Latency', () => {
       }
     })
 
-    await page.requestGC()
+    await perfTest.step('prepare', async () => {
+      await page.requestGC()
+    })
 
     await perfTest.step('run', async () => {
       await page.evaluate(() => {
@@ -58,48 +68,68 @@ perfTest.describe('Latency', () => {
       await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(1)')).toHaveText(
         (warmupCount * 1000 + 1).toFixed(0),
       )
-      latency = await page.evaluate(() => {
+      measurement = await page.evaluate(() => {
         return performance.measure('replace-all-rows', 'replace-all-rows:start').duration
       })
-      console.log('Latency:', latency)
+    })
+
+    await perfTest.step('annotate', async () => {
+      testInfo.annotations.push(
+        { type: 'warmup count', description: warmupCount.toString() },
+        { type: 'measurement', description: measurement.toString() },
+      )
     })
   })
 
-  perfTest('for updating every 10th row for 1,000 row (3 warmup runs, 4x CPU slowdown)', async ({ page, context }) => {
-    const warmupCount = 3
-    const cpuThrottlingRate = 4
-    let latency: number
+  perfTest(
+    'for updating every 10th row for 1,000 row (3 warmup runs, 4x CPU slowdown)',
+    async ({ page, context }, testInfo) => {
+      const warmupCount = 3
+      const cpuThrottlingRate = 4
+      let measurement: number
 
-    await perfTest.step('warmup', async () => {
-      await page.locator('#run').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText((1000).toFixed(0))
-      for (let i = 0; i < warmupCount; i++) {
+      await perfTest.step('warmup', async () => {
+        await page.locator('#run').click()
+        await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText((1000).toFixed(0))
+        for (let i = 0; i < warmupCount; i++) {
+          await page.locator('#update').click()
+          await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>a')).toContainText(
+            ' !!!'.repeat(i + 1),
+          )
+        }
+      })
+
+      await perfTest.step('prepare', async () => {
+        await page.requestGC()
+        const cdpSession = await context.newCDPSession(page)
+        await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+      })
+
+      await perfTest.step('run', async () => {
+        await page.evaluate(() => {
+          performance.mark('partial-update:start')
+        })
         await page.locator('#update').click()
-        await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>a')).toContainText(' !!!'.repeat(i + 1))
-      }
-    })
-
-    await page.requestGC()
-    const cdpSession = await context.newCDPSession(page)
-    await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
-
-    await perfTest.step('run', async () => {
-      await page.evaluate(() => {
-        performance.mark('partial-update:start')
+        await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>a')).toContainText(' !!!'.repeat(3 + 1))
+        measurement = await page.evaluate(() => {
+          return performance.measure('partial-update', 'partial-update:start').duration
+        })
       })
-      await page.locator('#update').click()
-      await expect(page.locator('tbody>tr:nth-of-type(991)>td:nth-of-type(2)>a')).toContainText(' !!!'.repeat(3 + 1))
-      latency = await page.evaluate(() => {
-        return performance.measure('partial-update', 'partial-update:start').duration
-      })
-      console.log('Latency:', latency)
-    })
-  })
 
-  perfTest('for highlighting a selected row (5 warmup runs, 4x CPU slowdown)', async ({ page, context }) => {
+      await perfTest.step('annotate', async () => {
+        testInfo.annotations.push(
+          { type: 'cpu throttling rate', description: cpuThrottlingRate.toString() },
+          { type: 'warmup count', description: warmupCount.toString() },
+          { type: 'measurement', description: measurement.toString() },
+        )
+      })
+    },
+  )
+
+  perfTest('for highlighting a selected row (5 warmup runs, 4x CPU slowdown)', async ({ page, context }, testInfo) => {
     const warmupCount = 5
     const cpuThrottlingRate = 4
-    let latency: number
+    let measurement: number
 
     await perfTest.step('warmup', async () => {
       await page.locator('#run').click()
@@ -111,9 +141,11 @@ perfTest.describe('Latency', () => {
       }
     })
 
-    await page.requestGC()
-    const cdpSession = await context.newCDPSession(page)
-    await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+    await perfTest.step('prepare', async () => {
+      await page.requestGC()
+      const cdpSession = await context.newCDPSession(page)
+      await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+    })
 
     await perfTest.step('run', async () => {
       await page.evaluate(() => {
@@ -121,18 +153,25 @@ perfTest.describe('Latency', () => {
       })
       await page.locator('tbody>tr:nth-of-type(2)>td:nth-of-type(2)>a').click()
       await expect(page.locator('tbody>tr:nth-of-type(2)')).toHaveClass(/danger/)
-      latency = await page.evaluate(() => {
+      measurement = await page.evaluate(() => {
         return performance.measure('select-row', 'select-row:start').duration
       })
-      console.log('Latency:', latency)
+    })
+
+    await perfTest.step('annotate', async () => {
+      testInfo.annotations.push(
+        { type: 'cpu throttling rate', description: cpuThrottlingRate.toString() },
+        { type: 'warmup count', description: warmupCount.toString() },
+        { type: 'measurement', description: measurement.toString() },
+      )
     })
   })
 
-  perfTest('for removing one row (5 warmup runs, 2x CPU slowdown)', async ({ page, context }) => {
+  perfTest('for removing one row (5 warmup runs, 2x CPU slowdown)', async ({ page, context }, testInfo) => {
     const rowsToSkip = 4
     const warmupCount = 5
     const cpuThrottlingRate = 2
-    let latency: number
+    let measurement: number
 
     await perfTest.step('warmup', async () => {
       await page.locator('#run').click()
@@ -162,9 +201,11 @@ perfTest.describe('Latency', () => {
       )
     })
 
-    await page.requestGC()
-    const cdpSession = await context.newCDPSession(page)
-    await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+    await perfTest.step('prepare', async () => {
+      await page.requestGC()
+      const cdpSession = await context.newCDPSession(page)
+      await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+    })
 
     await perfTest.step('run', async () => {
       await page.evaluate(() => {
@@ -174,16 +215,23 @@ perfTest.describe('Latency', () => {
       await expect(page.locator(`tbody>tr:nth-of-type(${rowsToSkip})>td:nth-of-type(1)`)).toHaveText(
         `${rowsToSkip + warmupCount + 1}`,
       )
-      latency = await page.evaluate(() => {
+      measurement = await page.evaluate(() => {
         return performance.measure('remove-row', 'remove-row:start').duration
-      });
-      console.log('Latency:', latency)
+      })
+    })
+
+    await perfTest.step('annotate', async () => {
+      testInfo.annotations.push(
+        { type: 'cpu throttling rate', description: cpuThrottlingRate.toString() },
+        { type: 'warmup count', description: warmupCount.toString() },
+        { type: 'measurement', description: measurement.toString() },
+      )
     })
   })
 
-  perfTest('for creating 10,000 rows (5 warmup runs)', async ({ page }) => {
+  perfTest('for creating 10,000 rows (5 warmup runs)', async ({ page }, testInfo) => {
     const warmupCount = 5
-    let latency: number
+    let measurement: number
 
     await perfTest.step('warmup', async () => {
       for (let i = 0; i < warmupCount; i++) {
@@ -194,7 +242,9 @@ perfTest.describe('Latency', () => {
       }
     })
 
-    await page.requestGC()
+    await perfTest.step('prepare', async () => {
+      await page.requestGC()
+    })
 
     await perfTest.step('run', async () => {
       await page.evaluate(() => {
@@ -202,16 +252,22 @@ perfTest.describe('Latency', () => {
       })
       await page.locator('#runlots').click()
       await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>a')).toBeVisible()
-      latency = await page.evaluate(() => {
+      measurement = await page.evaluate(() => {
         return performance.measure('create-many-rows', 'create-many-rows:start').duration
       })
-      console.log('Latency:', latency)
+    })
+
+    await perfTest.step('annotate', async () => {
+      testInfo.annotations.push(
+        { type: 'warmup count', description: warmupCount.toString() },
+        { type: 'measurement', description: measurement.toString() },
+      )
     })
   })
 
-  perfTest('for appending 1,000 to a table with 1,000 rows (5 warmup runs)', async ({ page }) => {
+  perfTest('for appending 1,000 to a table with 1,000 rows (5 warmup runs)', async ({ page }, testInfo) => {
     const warmupCount = 5
-    let latency: number
+    let measurement: number
 
     await perfTest.step('warmup', async () => {
       for (let i = 0; i < warmupCount; i++) {
@@ -224,7 +280,9 @@ perfTest.describe('Latency', () => {
       await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toBeVisible()
     })
 
-    await page.requestGC()
+    await perfTest.step('prepare', async () => {
+      await page.requestGC()
+    })
 
     await perfTest.step('run', async () => {
       await page.evaluate(() => {
@@ -232,43 +290,61 @@ perfTest.describe('Latency', () => {
       })
       await page.locator('#add').click()
       await expect(page.locator('tbody>tr:nth-of-type(2000)>td:nth-of-type(1)')).toBeVisible()
-      latency = await page.evaluate(() => {
+      measurement = await page.evaluate(() => {
         return performance.measure('append-rows-to-large-table', 'append-rows-to-large-table:start').duration
       })
-      console.log('Latency:', latency)
+    })
+
+    await perfTest.step('annotate', async () => {
+      testInfo.annotations.push(
+        { type: 'warmup count', description: warmupCount.toString() },
+        { type: 'measurement', description: measurement.toString() },
+      )
     })
   })
 
-  perfTest('for clearing a table with 1,000 rows (5 warmup runs, 4x CPU slowdown)', async ({ page, context }) => {
-    const warmupCount = 5
-    const cpuThrottlingRate = 4
-    let latency: number
+  perfTest(
+    'for clearing a table with 1,000 rows (5 warmup runs, 4x CPU slowdown)',
+    async ({ page, context }, testInfo) => {
+      const warmupCount = 5
+      const cpuThrottlingRate = 4
+      let measurement: number
 
-    await perfTest.step('warmup', async () => {
-      for (let i = 0; i < warmupCount; i++) {
+      await perfTest.step('warmup', async () => {
+        for (let i = 0; i < warmupCount; i++) {
+          await page.locator('#run').click()
+          await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(1)')).toHaveText((i * 1000 + 1).toFixed(0))
+          await page.locator('#clear').click()
+          await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).not.toBeVisible()
+        }
         await page.locator('#run').click()
-        await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(1)')).toHaveText((i * 1000 + 1).toFixed(0))
+        await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(1)')).toHaveText(`${warmupCount * 1000 + 1}`)
+      })
+
+      await perfTest.step('prepare', async () => {
+        await page.requestGC()
+        const cdpSession = await context.newCDPSession(page)
+        await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
+      })
+
+      await perfTest.step('run', async () => {
+        await page.evaluate(() => {
+          performance.mark('clear-rows:start')
+        })
         await page.locator('#clear').click()
         await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).not.toBeVisible()
-      }
-      await page.locator('#run').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(1)')).toHaveText(`${warmupCount * 1000 + 1}`)
-    })
-
-    await page.requestGC()
-    const cdpSession = await context.newCDPSession(page)
-    await cdpSession.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottlingRate })
-
-    await perfTest.step('run', async () => {
-      await page.evaluate(() => {
-        performance.mark('clear-rows:start')
+        measurement = await page.evaluate(() => {
+          return performance.measure('clear-rows', 'clear-rows:start').duration
+        })
       })
-      await page.locator('#clear').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).not.toBeVisible()
-      latency = await page.evaluate(() => {
-        return performance.measure('clear-rows', 'clear-rows:start').duration
+
+      await perfTest.step('annotate', async () => {
+        testInfo.annotations.push(
+          { type: 'cpu throttling rate', description: cpuThrottlingRate.toString() },
+          { type: 'warmup count', description: warmupCount.toString() },
+          { type: 'measurement', description: measurement.toString() },
+        )
       })
-      console.log('Latency:', latency)
-    })
-  })
+    },
+  )
 })

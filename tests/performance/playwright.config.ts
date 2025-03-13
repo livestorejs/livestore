@@ -5,18 +5,9 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './tests',
-  timeout: 45 * 1000,
   forbidOnly: !!process.env.CI, // Fail the build on CI if we accidentally left test.only in the source code
   workers: 1, // Run tests serially for more accurate performance measurements
-  reporter: [
-    ['html', { outputFolder: 'test-results/html-report' }],
-    ['json', { outputFile: 'test-results/results.json' }],
-  ],
-  use: {
-    baseURL: 'http://localhost:5173',
-    headless: true,
-    trace: 'on-first-retry',
-  },
+  use: { baseURL: 'http://localhost:5173' },
   projects: [
     {
       name: 'chromium',

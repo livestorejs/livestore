@@ -1,4 +1,5 @@
 import { type CDPSession, expect } from '@playwright/test'
+
 import { perfTest } from '../fixtures/perfTest.ts'
 
 const getJsHeapUsedSize = async (cdpSession: CDPSession): Promise<number> => {
@@ -17,10 +18,11 @@ perfTest.describe('Memory usage (main thread)', () => {
     await page.goto('./')
   })
 
-  perfTest.afterEach(async ({ page, context }) => {
+  perfTest.afterEach(async ({ page, context }, testInfo) => {
     const cdpSession = await context.newCDPSession(page)
     await page.requestGC()
-    console.log('Memory usage:', await getJsHeapUsedSize(cdpSession))
+    const measurement = await getJsHeapUsedSize(cdpSession)
+    testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
   })
 
   perfTest('after startup', async ({ page }) => {
