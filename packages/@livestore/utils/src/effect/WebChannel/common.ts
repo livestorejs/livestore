@@ -1,5 +1,5 @@
-import type { Deferred, Effect, Either, ParseResult } from 'effect'
-import { Predicate, Schema, Stream } from 'effect'
+import type { Deferred, Either, ParseResult } from 'effect'
+import { Effect, Predicate, Schema, Stream } from 'effect'
 
 export const WebChannelSymbol = Symbol('WebChannel')
 export type WebChannelSymbol = typeof WebChannelSymbol
@@ -46,26 +46,19 @@ export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
     ? (schemaWithDebugPing(schema) as any)
     : (schemaWithDebugPing({ send: schema, listen: schema }) as any)
 
-export const listenToDebugPing = (channelName: string) => {
-  const threadName = (() => {
-    if (typeof globalThis !== 'undefined' && Predicate.hasProperty(globalThis, 'name') && self.name !== '') {
-      return self.name
-    } else if (typeof globalThis !== 'undefined') {
-      return 'window'
-    }
-    return 'unknown thread'
-  })()
-
-  return <MsgListen>(
+export const listenToDebugPing =
+  (channelName: string) =>
+  <MsgListen>(
     stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, never>,
   ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, never> =>
     stream.pipe(
-      Stream.filter((msg) => {
-        if (msg._tag === 'Right' && Schema.is(DebugPingMessage)(msg.right)) {
-          console.log(`[${threadName}] WebChannel:ping [${channelName}]`, msg.right.message, msg.right.payload)
-          return false
-        }
-        return true
-      }),
+      Stream.filterEffect(
+        Effect.fn(function* (msg) {
+          if (msg._tag === 'Right' && Schema.is(DebugPingMessage)(msg.right)) {
+            yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.right.message}`, msg.right.payload)
+            return false
+          }
+          return true
+        }),
+      ),
     )
-}

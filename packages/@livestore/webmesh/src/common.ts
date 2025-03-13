@@ -15,7 +15,7 @@ export type MessageQueueItem = {
 export type MeshNodeName = string
 
 export type ChannelName = string
-export type ChannelKey = `${MeshNodeName}-${ChannelName}`
+export type ChannelKey = `target:${MeshNodeName}, channelName:${ChannelName}`
 
 // TODO actually use this to avoid timeouts in certain cases
 export class NoConnectionRouteSignal extends Schema.TaggedError<NoConnectionRouteSignal>()(

@@ -123,7 +123,7 @@ export const makeProxyChannel = ({
           // yield* Effect.log(`${nodeName}:processing packet ${packet._tag} from ${packet.source}`)
 
           const otherSideName = packet.source
-          const channelKey = `${otherSideName}-${packet.channelName}` satisfies ChannelKey
+          const channelKey = `target:${otherSideName}, channelName:${packet.channelName}` satisfies ChannelKey
           const channelState = channelStateRef.current
 
           switch (packet._tag) {

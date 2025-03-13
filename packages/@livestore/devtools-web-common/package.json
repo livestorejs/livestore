@@ -11,10 +11,6 @@
     "./worker": {
       "types": "./dist/worker/mod.d.ts",
       "default": "./dist/worker/mod.js"
-    },
-    "./devtools-bridge": {
-      "types": "./dist/devtools-bridge/index.d.ts",
-      "default": "./dist/devtools-bridge/index.js"
     }
   },
   "dependencies": {

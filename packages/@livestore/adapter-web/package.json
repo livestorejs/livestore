@@ -27,10 +27,6 @@
     "./opfs-utils": {
       "types": "./dist/opfs-utils.d.ts",
       "default": "./dist/opfs-utils.js"
-    },
-    "./devtools-bridge": {
-      "types": "./dist/devtools-bridge/index.d.ts",
-      "default": "./dist/devtools-bridge/index.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -50,9 +46,6 @@
       ],
       "opfs-utils": [
         "./dist/opfs.d.ts"
-      ],
-      "devtools-bridge": [
-        "./dist/devtools-bridge/index.d.ts"
       ]
     }
   },

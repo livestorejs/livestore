@@ -1,6 +1,6 @@
-import { BootStatus, UnexpectedError } from '@livestore/common'
 import { DbSchema, makeSchema } from '@livestore/common/schema'
-import { Schema } from '@livestore/utils/effect'
+
+export * as Bridge from './bridge.js'
 
 const todos = DbSchema.table(
   'todos',
@@ -13,23 +13,3 @@ const todos = DbSchema.table(
 )
 
 export const schema = makeSchema({ tables: [todos] })
-
-export namespace Bridge {
-  export class ResultBootStatus extends Schema.TaggedStruct('Bridge.ResultBootStatus', {
-    exit: Schema.Exit({
-      success: Schema.Struct({
-        bootStatusUpdates: Schema.Array(BootStatus),
-      }),
-      failure: UnexpectedError,
-      defect: Schema.Defect,
-    }),
-  }) {}
-
-  export class ResultStoreBootError extends Schema.TaggedStruct('Bridge.ResultStoreBootError', {
-    exit: Schema.Exit({
-      success: Schema.Any,
-      failure: UnexpectedError,
-      defect: Schema.Defect,
-    }),
-  }) {}
-}

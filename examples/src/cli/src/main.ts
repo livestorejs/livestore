@@ -103,7 +103,7 @@ const command = Cli.Command.make('livestore').pipe(
 
 const cli = Cli.Command.run(command, { name: 'LiveStore CLI', version: liveStoreVersion })
 
-const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.pretty)
+const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-main'))
 
 cli(process.argv).pipe(
   Effect.annotateLogs({ thread: 'cli-main' }),

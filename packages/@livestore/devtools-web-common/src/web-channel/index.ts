@@ -7,6 +7,13 @@ import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
 
 import * as WorkerSchema from '../worker/schema.js'
 
+export * as WorkerSchema from '../worker/schema.js'
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __debugWebMeshNode: any
+}
+
 export const makeWebDevtoolsConnectedMeshNode = ({
   nodeName,
   target,
@@ -35,7 +42,7 @@ export const makeChannelForConnectedMeshNode = <MsgListen, MsgSend, MsgListenEnc
 }) =>
   node.makeChannel({
     target,
-    channelName: 'devtools:' + [node.nodeName, target].sort().join('_'),
+    channelName: 'devtools(' + [node.nodeName, target].sort().join('↔') + ')',
     schema,
     mode: 'messagechannel',
   })
@@ -56,7 +63,6 @@ export const makeWebDevtoolsChannel = <MsgListen, MsgSend, MsgListenEncoded, Msg
   Effect.gen(function* () {
     const node = yield* makeWebDevtoolsConnectedMeshNode({ nodeName, target: workerTargetName, worker })
 
-    // @ts-expect-error typing
     globalThis.__debugWebMeshNode = node
 
     const channel = yield* makeChannelForConnectedMeshNode({ node, target, schema })

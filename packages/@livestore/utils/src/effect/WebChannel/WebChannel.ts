@@ -70,6 +70,84 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
     }).pipe(Effect.withSpan(`WebChannel:broadcastChannel(${channelName})`)),
   )
 
+/**
+ * NOTE the `listenName` and `sendName` is needed for cases where both sides are using the same window
+ * e.g. for a browser extension, so we need a way to know for which side a message is intended for.
+ */
+export const windowChannel2 = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
+  listenWindow,
+  sendWindow,
+  targetOrigin = '*',
+  ids,
+  schema: inputSchema,
+}: {
+  listenWindow: Window
+  sendWindow: Window
+  targetOrigin?: string
+  ids: { own: string; other: string }
+  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
+}): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
+  Effect.scopeWithCloseable((scope) =>
+    Effect.gen(function* () {
+      const schema = mapSchema(inputSchema)
+
+      const debugInfo = {
+        sendTotal: 0,
+        listenTotal: 0,
+        targetOrigin,
+        ids,
+      }
+
+      const WindowMessageListen = Schema.Struct({
+        message: schema.listen,
+        from: Schema.Literal(ids.other),
+        to: Schema.Literal(ids.own),
+      }).annotations({ title: 'webmesh.WindowMessageListen' })
+
+      const WindowMessageSend = Schema.Struct({
+        message: schema.send,
+        from: Schema.Literal(ids.own),
+        to: Schema.Literal(ids.other),
+      }).annotations({ title: 'webmesh.WindowMessageSend' })
+
+      const send = (message: MsgSend) =>
+        Effect.gen(function* () {
+          debugInfo.sendTotal++
+
+          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(WindowMessageSend)({
+            message,
+            from: ids.own,
+            to: ids.other,
+          })
+          sendWindow.postMessage(messageEncoded, targetOrigin, transferables)
+        })
+
+      const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
+        // Stream.tap((_) => Effect.log(`${ids.other}→${ids.own}:message`, _.data)),
+        Stream.filter((_) => Schema.is(Schema.encodedSchema(WindowMessageListen))(_.data)),
+        Stream.map((_) => {
+          debugInfo.listenTotal++
+          return Schema.decodeEither(schema.listen)(_.data.message)
+        }),
+        listenToDebugPing('window'),
+      )
+
+      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const supportsTransferables = true
+
+      return {
+        [WebChannelSymbol]: WebChannelSymbol,
+        send,
+        listen,
+        closedDeferred,
+        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
+        schema,
+        supportsTransferables,
+        debugInfo,
+      }
+    }).pipe(Effect.withSpan(`WebChannel:windowChannel`)),
+  )
+
 export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   window,
   targetOrigin = '*',

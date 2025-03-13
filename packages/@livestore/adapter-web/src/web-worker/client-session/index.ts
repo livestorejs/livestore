@@ -4,7 +4,7 @@ import { Devtools, IntentionalShutdownCause, StoreInterrupted, UnexpectedError }
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
-import { makeWebDevtoolsChannel } from '@livestore/devtools-web-common/web-channel'
+import { connectViaWorker, makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -20,18 +20,20 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
+  WebChannel,
   WebLock,
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+import * as Webmesh from '@livestore/webmesh'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.js'
 import { makeShutdownChannel } from '../common/shutdown-channel.js'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.js'
 import * as WorkerSchema from '../common/worker-schema.js'
-import { bootDevtools } from './client-session-devtools.js'
+import { logDevtoolsUrl } from './client-session-devtools.js'
 
 // NOTE we're starting to initialize the sqlite wasm binary here to speed things up
 const sqlite3Promise = loadSqlite3Wasm()
@@ -74,6 +76,16 @@ export type WebAdapterOptions = {
    * @default false
    */
   resetPersistence?: boolean
+  /**
+   * By default the adapter will initially generate a random clientId (via `nanoid(5)`),
+   * store it in `localStorage` and restore it for subsequent client sessions. It's the same across all tabs/windows.
+   */
+  clientId?: string
+  /**
+   * By default the adapter will initially generate a random sessionId (via `nanoid(5)`),
+   * store it in `sessionStorage` and restore it for subsequent client sessions in the same tab/window.
+   */
+  sessionId?: string
 }
 
 export const makeAdapter =
@@ -103,9 +115,9 @@ export const makeAdapter =
       const dataFromFile = yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
 
       // The same across all client sessions (i.e. tabs, windows)
-      const clientId = getPersistedId(`clientId:${storeId}`, 'local')
+      const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
       // Unique per client session (i.e. tab, window)
-      const sessionId = getPersistedId(`sessionId:${storeId}`, 'session')
+      const sessionId = options.sessionId ?? getPersistedId(`sessionId:${storeId}`, 'session')
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
       const workerDisconnectChannel = yield* makeWorkerDisconnectChannel(storeId)
@@ -163,7 +175,7 @@ export const makeAdapter =
 
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
-          `[@livestore/adapter-web:client-session] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
+          `[@livestore/adapter-web:client-session] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (clientId: ${clientId}, sessionId: ${sessionId})`,
         )
 
         yield* Effect.addFinalizer(() =>
@@ -445,22 +457,37 @@ export const makeAdapter =
       } satisfies ClientSession
 
       if (devtoolsEnabled) {
-        // yield* bootDevtools({ client-session, waitForDevtoolsWebBridgePort, connectToDevtools, storeId })
         yield* Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
 
-          yield* bootDevtools({ clientSession, storeId })
+          const webmeshNode = yield* Webmesh.makeMeshNode(`client-session-${storeId}-${clientId}-${sessionId}`)
+          globalThis.__debugWebMeshNode = webmeshNode
 
-          // TODO re-enable browser extension as well
-          const storeDevtoolsChannel = yield* makeWebDevtoolsChannel({
-            nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
+          yield* logDevtoolsUrl({ clientSession, storeId })
+
+          yield* Effect.gen(function* () {
+            const contentscriptMainChannel = yield* WebChannel.windowChannel2({
+              listenWindow: window,
+              sendWindow: window,
+              schema: Webmesh.WebmeshSchema.Packet,
+              ids: { own: webmeshNode.nodeName, other: 'contentscript-main' },
+            })
+
+            yield* webmeshNode.addConnection({
+              target: 'contentscript-main',
+              connectionChannel: contentscriptMainChannel,
+            })
+            // yield* Effect.logDebug(
+            //   `[@livestore/adapter-web:client-session] initiated connection: ${webmeshNode.nodeName} → contentscript-main`,
+            // )
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+          yield* connectViaWorker({ node: webmeshNode, target: 'shared-worker', worker: sharedWorker })
+
+          const storeDevtoolsChannel = yield* makeChannelForConnectedMeshNode({
+            node: webmeshNode,
             target: `devtools`,
-            schema: {
-              listen: Devtools.ClientSession.MessageToApp,
-              send: Devtools.ClientSession.MessageFromApp,
-            },
-            worker: sharedWorker,
-            workerTargetName: 'shared-worker',
+            schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
           })
 
           yield* connectDevtoolsToStore(storeDevtoolsChannel)

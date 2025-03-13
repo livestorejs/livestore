@@ -31,6 +31,10 @@ export interface MeshNode {
     print: () => void
     /** Sends a ping message to all connected nodes and channels */
     ping: (payload?: string) => void
+    /**
+     * Requests the topology of the network from all connected nodes
+     */
+    requestTopology: (timeoutMs?: number) => Promise<void>
   }
 
   /**
@@ -130,6 +134,9 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
       }
     >()
 
+    type RequestId = string
+    const topologyRequestsMap = new Map<RequestId, Map<MeshNodeName, Set<MeshNodeName>>>()
+
     const checkTransferableConnections = (packet: typeof WebmeshSchema.MessageChannelPacket.Type) => {
       if (
         (packet._tag === 'MessageChannelRequest' &&
@@ -170,6 +177,63 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           return
         }
 
+        if (Schema.is(WebmeshSchema.NetworkConnectionTopologyRequest)(packet)) {
+          if (packet.source !== nodeName) {
+            const backConnectionName =
+              packet.hops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected hops for packet`, packet)
+            const backConnectionChannel = connectionChannels.get(backConnectionName)!.channel
+
+            // Respond with own connection info
+            const response = WebmeshSchema.NetworkConnectionTopologyResponse.make({
+              reqId: packet.id,
+              source: packet.source,
+              target: packet.target,
+              remainingHops: packet.hops.slice(0, -1),
+              nodeName,
+              connections: Array.from(connectionChannels.keys()),
+            })
+
+            yield* backConnectionChannel.send(response)
+          }
+
+          // Forward the packet to all connections except the already visited ones
+          const connectionsToForwardTo = Array.from(connectionChannels)
+            .filter(([name]) => !packet.hops.includes(name))
+            .map(([_, con]) => con.channel)
+
+          const adjustedPacket = {
+            ...packet,
+            hops: [...packet.hops, nodeName],
+          }
+
+          yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(adjustedPacket), { concurrency: 'unbounded' })
+
+          return
+        }
+
+        if (Schema.is(WebmeshSchema.NetworkConnectionTopologyResponse)(packet)) {
+          if (packet.source === nodeName) {
+            const topologyRequestItem = topologyRequestsMap.get(packet.reqId)!
+            topologyRequestItem.set(packet.nodeName, new Set(packet.connections))
+          } else {
+            const remainingHops = packet.remainingHops
+            // Forwarding the response to the original sender via the route back
+            const routeBack =
+              remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)
+            const connectionChannel =
+              connectionChannels.get(routeBack)?.channel ??
+              shouldNeverHappen(
+                `${nodeName}: Expected connection channel (${routeBack}) for packet`,
+                packet,
+                'Available connections:',
+                Array.from(connectionChannels.keys()),
+              )
+
+            yield* connectionChannel.send({ ...packet, remainingHops: packet.remainingHops.slice(0, -1) })
+          }
+          return
+        }
+
         // We have a direct connection to the target node
         if (connectionChannels.has(packet.target)) {
           const connectionChannel = connectionChannels.get(packet.target)!.channel
@@ -180,7 +244,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         // eslint-disable-next-line unicorn/no-negated-condition
         else if (packet.remainingHops !== undefined) {
           const hopTarget =
-            packet.remainingHops[0] ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)
+            packet.remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)
           const connectionChannel = connectionChannels.get(hopTarget)?.channel
 
           if (connectionChannel === undefined) {
@@ -193,7 +257,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
           yield* connectionChannel.send({
             ...packet,
-            remainingHops: packet.remainingHops.slice(1),
+            remainingHops: packet.remainingHops.slice(0, -1),
             hops: [...packet.hops, nodeName],
           })
         }
@@ -252,50 +316,61 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
               if (handledPacketIds.has(packet.id)) return
               handledPacketIds.add(packet.id)
 
-              if (packet._tag === 'NetworkConnectionAdded') {
-                yield* sendPacket(packet)
-              } else if (packet.target === nodeName) {
-                const channelKey = `${packet.source}-${packet.channelName}` satisfies ChannelKey
+              switch (packet._tag) {
+                case 'NetworkConnectionAdded':
+                case 'NetworkConnectionTopologyRequest':
+                case 'NetworkConnectionTopologyResponse': {
+                  yield* sendPacket(packet)
 
-                if (!channelMap.has(channelKey)) {
-                  const queue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
-                    Effect.acquireRelease(Queue.shutdown),
-                  )
-                  channelMap.set(channelKey, { queue, debugInfo: undefined })
+                  break
                 }
+                default: {
+                  if (packet.target === nodeName) {
+                    const channelKey = `target:${packet.source}, channelName:${packet.channelName}` satisfies ChannelKey
 
-                const queue = channelMap.get(channelKey)!.queue
+                    if (!channelMap.has(channelKey)) {
+                      const queue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
+                        Effect.acquireRelease(Queue.shutdown),
+                      )
+                      channelMap.set(channelKey, { queue, debugInfo: undefined })
+                    }
 
-                const respondToSender = (outgoingPacket: typeof WebmeshSchema.Packet.Type) =>
-                  connectionChannel
-                    .send(outgoingPacket)
-                    .pipe(
-                      Effect.withSpan(
-                        `respondToSender:${outgoingPacket._tag}:${outgoingPacket.source}→${outgoingPacket.target}`,
-                        { attributes: packetAsOtelAttributes(outgoingPacket) },
-                      ),
-                      Effect.orDie,
-                    )
+                    const queue = channelMap.get(channelKey)!.queue
 
-                if (Schema.is(WebmeshSchema.ProxyChannelPacket)(packet)) {
-                  yield* Queue.offer(queue, { packet, respondToSender })
-                } else if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
-                  yield* Queue.offer(queue, { packet, respondToSender })
-                }
-              } else {
-                if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
-                  const noTransferableResponse = checkTransferableConnections(packet)
-                  if (noTransferableResponse !== undefined) {
-                    yield* Effect.spanEvent(`No transferable connections found for ${packet.source}→${packet.target}`)
-                    return yield* connectionChannel.send(noTransferableResponse).pipe(
-                      Effect.withSpan(`sendNoTransferableResponse:${packet.source}→${packet.target}`, {
-                        attributes: packetAsOtelAttributes(noTransferableResponse),
-                      }),
-                    )
+                    const respondToSender = (outgoingPacket: typeof WebmeshSchema.Packet.Type) =>
+                      connectionChannel
+                        .send(outgoingPacket)
+                        .pipe(
+                          Effect.withSpan(
+                            `respondToSender:${outgoingPacket._tag}:${outgoingPacket.source}→${outgoingPacket.target}`,
+                            { attributes: packetAsOtelAttributes(outgoingPacket) },
+                          ),
+                          Effect.orDie,
+                        )
+
+                    if (Schema.is(WebmeshSchema.ProxyChannelPacket)(packet)) {
+                      yield* Queue.offer(queue, { packet, respondToSender })
+                    } else if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
+                      yield* Queue.offer(queue, { packet, respondToSender })
+                    }
+                  } else {
+                    if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
+                      const noTransferableResponse = checkTransferableConnections(packet)
+                      if (noTransferableResponse !== undefined) {
+                        yield* Effect.spanEvent(
+                          `No transferable connections found for ${packet.source}→${packet.target}`,
+                        )
+                        return yield* connectionChannel.send(noTransferableResponse).pipe(
+                          Effect.withSpan(`sendNoTransferableResponse:${packet.source}→${packet.target}`, {
+                            attributes: packetAsOtelAttributes(noTransferableResponse),
+                          }),
+                        )
+                      }
+                    }
+
+                    yield* sendPacket(packet)
                   }
                 }
-
-                yield* sendPacket(packet)
               }
             }),
           ),
@@ -311,7 +386,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
           source: nodeName,
           target: targetNodeName,
         })
-        yield* sendPacket(connectionAddedPacket).pipe(Effect.ignoreLogged)
+        yield* sendPacket(connectionAddedPacket).pipe(Effect.orDie)
       }).pipe(
         Effect.withSpan(`addConnection:${nodeName}→${targetNodeName}`, {
           attributes: { supportsTransferables: connectionChannel.supportsTransferables },
@@ -341,7 +416,7 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
     }) =>
       Effect.gen(function* () {
         const schema = WebChannel.mapSchema(inputSchema)
-        const channelKey = `${target}-${channelName}` satisfies ChannelKey
+        const channelKey = `target:${target}, channelName:${channelName}` satisfies ChannelKey
 
         if (channelMap.has(channelKey)) {
           const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
@@ -415,8 +490,12 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
     const connectionKeys: MeshNode['connectionKeys'] = Effect.sync(() => new Set(connectionChannels.keys()))
 
+    const runtime = yield* Effect.runtime()
+
     const debug: MeshNode['debug'] = {
       print: () => {
+        console.log('Webmesh debug info for node:', nodeName)
+
         console.log('Connections:', connectionChannels.size)
         for (const [key, value] of connectionChannels) {
           console.log(`  ${key}: supportsTransferables=${value.channel.supportsTransferables}`)
@@ -444,22 +523,42 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
       },
       ping: (payload) => {
         Effect.gen(function* () {
-          const msg = (via: string) => {
-            console.log(`sending message to ${via}`)
-            return WebChannel.DebugPingMessage.make({ message: `ping from ${nodeName} via ${via}`, payload })
+          const msg = (via: string) =>
+            WebChannel.DebugPingMessage.make({ message: `ping from ${nodeName} via connection ${via}`, payload })
+
+          for (const [channelName, con] of connectionChannels) {
+            yield* Effect.logDebug(`sending ping via connection ${channelName}`)
+            yield* con.channel.send(msg(`connection ${channelName}`) as any)
           }
 
-          yield* Effect.forEach(connectionChannels, ([channelName, con]) =>
-            con.channel.send(msg(`connection ${channelName}`) as any),
-          )
-
-          yield* Effect.forEach(
-            channelMap,
-            ([channelKey, channel]) =>
-              channel.debugInfo?.channel.send(msg(`channel ${channelKey}`) as any) ?? Effect.void,
-          )
-        }).pipe(Effect.runFork)
+          for (const [channelKey, channel] of channelMap) {
+            if (channel.debugInfo === undefined) continue
+            yield* Effect.logDebug(`sending ping via channel ${channelKey}`)
+            yield* channel.debugInfo.channel.send(msg(`channel ${channelKey}`) as any)
+          }
+        }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runFork)
       },
+      requestTopology: (timeoutMs = 1000) =>
+        Effect.gen(function* () {
+          const packet = WebmeshSchema.NetworkConnectionTopologyRequest.make({
+            source: nodeName,
+            target: '-',
+            hops: [],
+          })
+
+          const item = new Map<MeshNodeName, Set<MeshNodeName>>()
+          item.set(nodeName, new Set(connectionChannels.keys()))
+          topologyRequestsMap.set(packet.id, item)
+
+          yield* sendPacket(packet)
+
+          yield* Effect.logDebug(`Waiting ${timeoutMs}ms for topology response`)
+          yield* Effect.sleep(timeoutMs)
+
+          for (const [key, value] of item) {
+            yield* Effect.logDebug(`node '${key}' is connected to: ${Array.from(value.values()).join(', ')}`)
+          }
+        }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runPromise),
     }
 
     return { nodeName, addConnection, removeConnection, makeChannel, connectionKeys, debug } satisfies MeshNode

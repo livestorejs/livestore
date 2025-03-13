@@ -219,7 +219,7 @@ export const makeMessageChannelInternal = ({
                   source: nodeName,
                   channelName: packet.channelName,
                   hops: [],
-                  remainingHops: packet.hops,
+                  remainingHops: packet.hops.slice(0, -1),
                   port: mc.port2,
                   channelVersion,
                 }),

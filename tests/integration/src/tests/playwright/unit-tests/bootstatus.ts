@@ -1,7 +1,7 @@
-import type { BootStatus } from '@livestore/common'
-import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
 import { makeAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+import type { BootStatus } from '@livestore/common'
+import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
 
 import LiveStoreWorker from './livestore.worker?worker'
 import { Bridge, schema } from './shared.js'

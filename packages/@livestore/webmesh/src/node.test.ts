@@ -204,6 +204,8 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               channelType,
               delays: { x: delayX, y: delayY, connect: connectDelay },
             })
+
+            yield* Effect.promise(() => nodeX.debug.requestTopology(100))
           }).pipe(
             withCtx(test, {
               skipOtel: true,
@@ -755,6 +757,50 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeDCode], { concurrency: 'unbounded' })
+      }).pipe(withCtx(test)),
+    )
+  })
+
+  /**
+   *    A       E
+   *     \     /
+   *      C---D
+   *     /     \
+   *    B       F
+   *
+   * Topology: Butterfly topology with two connected hubs (C-D) each serving multiple nodes
+   */
+  Vitest.describe('butterfly topology', () => {
+    Vitest.scopedLive('should work', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+        const nodeB = yield* makeMeshNode('B')
+        const nodeC = yield* makeMeshNode('C')
+        const nodeD = yield* makeMeshNode('D')
+        const nodeE = yield* makeMeshNode('E')
+        const nodeF = yield* makeMeshNode('F')
+
+        yield* connectNodesViaMessageChannel(nodeA, nodeC)
+        yield* connectNodesViaMessageChannel(nodeB, nodeC)
+        yield* connectNodesViaMessageChannel(nodeC, nodeD)
+        yield* connectNodesViaMessageChannel(nodeD, nodeE)
+        yield* connectNodesViaMessageChannel(nodeD, nodeF)
+
+        yield* Effect.promise(() => nodeA.debug.requestTopology(100))
+
+        const nodeACode = Effect.gen(function* () {
+          const channelAToE = yield* createChannel(nodeA, 'E')
+          yield* channelAToE.send({ message: 'A1' })
+          expect(yield* getFirstMessage(channelAToE)).toEqual({ message: 'E1' })
+        })
+
+        const nodeECode = Effect.gen(function* () {
+          const channelEToA = yield* createChannel(nodeE, 'A')
+          yield* channelEToA.send({ message: 'E1' })
+          expect(yield* getFirstMessage(channelEToA)).toEqual({ message: 'A1' })
+        })
+
+        yield* Effect.all([nodeACode, nodeECode], { concurrency: 'unbounded' })
       }).pipe(withCtx(test)),
     )
   })

@@ -7,10 +7,6 @@
     "./web-channel": {
       "types": "./dist/web-channel/index.d.ts",
       "default": "./dist/web-channel/index.js"
-    },
-    "./devtools-bridge": {
-      "types": "./dist/devtools-bridge/index.d.ts",
-      "default": "./dist/devtools-bridge/index.js"
     }
   },
   "dependencies": {

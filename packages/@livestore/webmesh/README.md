@@ -15,6 +15,7 @@ It's used in LiveStore as the foundation for the LiveStore devtools protocol com
 
 - Each node name needs to be unique in the network.
   - The node name is also used as a "tie-breaker" as part of the messaging protocol.
+- It's using the `WebChannel` concept from the `@livestore/utils` package.
 
 ## Inspiration
 
@@ -22,3 +23,4 @@ It's used in LiveStore as the foundation for the LiveStore devtools protocol com
   - https://elixirschool.com/en/lessons/advanced/otp_distribution
 	- https://serokell.io/blog/elixir-otp-guide
 - Consul by HashiCorp
+- Ethernet

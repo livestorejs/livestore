@@ -18,6 +18,7 @@
     - What if I want got my initial container design wrong and I want to change it?
       - Comparables: document databases, kafka streams, 
 - Fix linting
+- Webmesh: rename connection to "edge"
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations
   - Enable auth setup
@@ -36,7 +37,8 @@
     - the app doesn't show a shutdown screen
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
   - Expo: Dynamic storeId support
-  - Fix: bring back chrome extension
+  - chrome extension
+    - Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
   - Fix: Support multiple leader <> devtools connections
     - Refactor according to ARCHITECTURE.md
   - Refactor: share more code between devtools bridges

@@ -86,11 +86,29 @@ export class ProxyChannelPayloadAck extends Schema.TaggedStruct('ProxyChannelPay
  * Broadcast to all nodes when a new connection is added.
  * Mostly used for auto-reconnect purposes.
  */
-// TODO actually use for this use case
 export class NetworkConnectionAdded extends Schema.TaggedStruct('NetworkConnectionAdded', {
   id,
   source: Schema.String,
   target: Schema.String,
+}) {}
+
+export class NetworkConnectionTopologyRequest extends Schema.TaggedStruct('NetworkConnectionTopologyRequest', {
+  id,
+  hops: Schema.Array(Schema.String),
+  /** Always fixed to who requested the topology */
+  source: Schema.String,
+  target: Schema.Literal('-'),
+}) {}
+
+export class NetworkConnectionTopologyResponse extends Schema.TaggedStruct('NetworkConnectionTopologyResponse', {
+  id,
+  reqId: Schema.String,
+  remainingHops: Schema.Array(Schema.String),
+  nodeName: Schema.String,
+  connections: Schema.Array(Schema.String),
+  /** Always fixed to who requested the topology */
+  source: Schema.String,
+  target: Schema.Literal('-'),
 }) {}
 
 export class MessageChannelPacket extends Schema.Union(
@@ -106,7 +124,13 @@ export class ProxyChannelPacket extends Schema.Union(
   ProxyChannelPayloadAck,
 ) {}
 
-export class Packet extends Schema.Union(MessageChannelPacket, ProxyChannelPacket, NetworkConnectionAdded) {}
+export class Packet extends Schema.Union(
+  MessageChannelPacket,
+  ProxyChannelPacket,
+  NetworkConnectionAdded,
+  NetworkConnectionTopologyRequest,
+  NetworkConnectionTopologyResponse,
+) {}
 
 export class MessageChannelPing extends Schema.TaggedStruct('MessageChannelPing', {}) {}
 export class MessageChannelPong extends Schema.TaggedStruct('MessageChannelPong', {}) {}

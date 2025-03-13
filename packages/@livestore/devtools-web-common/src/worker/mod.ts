@@ -15,7 +15,6 @@ export class CacheService extends Context.Tag('@livestore/devtools-web-common:Ca
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)
 
-      // @ts-expect-error typing
       globalThis.__debugWebMeshNode = node
 
       return { node }

@@ -22,11 +22,7 @@ export default defineConfig({
   server: {
     port: process.env.DEV_SERVER_PORT ? Number(process.env.DEV_SERVER_PORT) : 61_001,
     headers: credentiallessHeaders,
-    fs: {
-      // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
-      // Feel free to remove this if you're just copying this example
-      allow: ['../../..'],
-    },
+    fs: { strict: false },
   },
   preview: {
     headers: credentiallessHeaders,

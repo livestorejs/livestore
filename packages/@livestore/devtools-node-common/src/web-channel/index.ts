@@ -31,7 +31,7 @@ export const makeChannelForConnectedMeshNode = <MsgListen, MsgSend, MsgListenEnc
 }) =>
   node.makeChannel({
     target,
-    channelName: 'devtools:' + [node.nodeName, target].sort().join('_'),
+    channelName: 'devtools(' + [node.nodeName, target].sort().join('↔') + ')',
     schema,
     mode: 'proxy',
   })
