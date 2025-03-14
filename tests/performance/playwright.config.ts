@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import * as process from 'node:process'
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -7,6 +8,7 @@ export default defineConfig({
   testDir: './tests',
   forbidOnly: !!process.env.CI, // Fail the build on CI if we accidentally left test.only in the source code
   workers: 1, // Run tests serially for more accurate performance measurements
+  reporter: [process.env.CI ? ['dot'] : ['line'], ['./tests/measurements-reporter.ts']],
   use: { baseURL: 'http://localhost:5173' },
   projects: [
     {

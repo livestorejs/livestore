@@ -73,7 +73,11 @@ const adapter = makeAdapter({
   storage: { type: 'opfs' },
 })
 
-const GlyphIcon = <span className="glyphicon glyphicon-remove" aria-hidden="true">X</span>
+const GlyphIcon = (
+  <span className="glyphicon glyphicon-remove" aria-hidden="true">
+    X
+  </span>
+)
 
 const Row = React.memo(({ data }: { data: { id: number; label: string } }) => {
   const { store } = useStore()
@@ -85,8 +89,10 @@ const Row = React.memo(({ data }: { data: { id: number; label: string } }) => {
       <td className="col-md-4">
         <a
           onClick={() => {
+            performance.mark('select-row:start')
             // @ts-expect-error `id` is not typed correctly
             store.mutate(tables.app.update({ where: { id: SessionIdSymbol }, values: { selected: data.id } }))
+            performance.mark('select-row:end')
           }}
         >
           {data.label}
@@ -95,7 +101,9 @@ const Row = React.memo(({ data }: { data: { id: number; label: string } }) => {
       <td className="col-md-1">
         <a
           onClick={() => {
+            performance.mark('remove-row:start')
             store.mutate(tables.data.delete({ where: { id: data.id } }))
+            performance.mark('remove-row:end')
           }}
         >
           {GlyphIcon}
@@ -134,31 +142,37 @@ const Main = () => {
                 id="run"
                 title="Create 1,000 rows"
                 cb={() => {
-                  // Should replace the entire table
+                  performance.mark("run:start")
                   store.mutate(
                     tables.data.delete({ where: {} }),
                     ...buildData(1000).map((row) => tables.data.insert(row)),
-                  )
+                  ) // Should replace the entire table
+                  performance.mark('run:end')
                 }}
               />
               <Button
                 id="runlots"
                 title="Create 10,000 rows"
                 cb={() => {
+                  performance.mark("runlots:start")
                   store.mutate(...buildData(10_000).map((row) => tables.data.insert(row)))
+                  performance.mark('runlots:end')
                 }}
               />
               <Button
                 id="add"
                 title="Append 1,000 rows"
                 cb={() => {
+                  performance.mark("add:start")
                   store.mutate(...buildData(1000).map((row) => tables.data.insert(row)))
+                  performance.mark('add:end')
                 }}
               />
               <Button
                 id="update"
                 title="Update every 10th row"
                 cb={() => {
+                  performance.mark("update:start")
                   const rows = store.query(queryDb(tables.data.query.select()))
 
                   const updates = []
@@ -169,13 +183,16 @@ const Main = () => {
                   }
 
                   store.mutate(...updates)
+                  performance.mark('update:end')
                 }}
               />
               <Button
                 id="clear"
                 title="Clear"
                 cb={() => {
+                  performance.mark("clear:start")
                   store.mutate(tables.data.delete({ where: {} }))
+                  performance.mark('clear:end')
                 }}
               />
             </div>
