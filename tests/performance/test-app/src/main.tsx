@@ -7,7 +7,7 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { type Data, schema, tables } from './schema.ts'
+import { type Items, type Item, schema, tables } from './schema.ts'
 
 const A = [
   'pretty',
@@ -56,15 +56,15 @@ const N = [
 const random = (max: number) => Math.round(Math.random() * 1000) % max
 
 let nextId = 1
-const buildData = (count: number): Data => {
-  const data: Data = Array.from({ length: count })
+const buildItems = (count: number): Items => {
+  const items: Items = Array.from({ length: count })
   for (let i = 0; i < count; i++) {
-    data[i] = {
+    items[i] = {
       id: nextId++,
       label: `${A[random(A.length)]} ${C[random(C.length)]} ${N[random(N.length)]}`,
     }
   }
-  return data
+  return items
 }
 
 const adapter = makeAdapter({
@@ -73,138 +73,120 @@ const adapter = makeAdapter({
   storage: { type: 'opfs' },
 })
 
-const GlyphIcon = (
-  <span className="glyphicon glyphicon-remove" aria-hidden="true">
-    X
-  </span>
-)
+const RemoveIcon = <span>X</span>
 
-const Row = React.memo(({ data }: { data: { id: number; label: string } }) => {
+const Row = React.memo(({ item }: { item: Item }) => {
   const { store } = useStore()
   const { selected } = useQuery(queryDb(tables.app.query.row(SessionIdSymbol)))
-  const isSelected = selected === data.id
+  const isSelected = selected === item.id
   return (
-    <tr className={isSelected ? 'danger' : ''}>
-      <td className="col-md-1">{data.id}</td>
-      <td className="col-md-4">
-        <a
+    <tr style={{ backgroundColor: isSelected ? 'lightblue' : 'white' }}>
+      <td>{item.id}</td>
+      <td>
+        <Button
+          id={`select-${item.id}`}
           onClick={() => {
-            performance.mark('select-row:start')
             // @ts-expect-error `id` is not typed correctly
-            store.mutate(tables.app.update({ where: { id: SessionIdSymbol }, values: { selected: data.id } }))
-            performance.mark('select-row:end')
+            store.mutate(tables.app.update({ where: { id: SessionIdSymbol }, values: { selected: item.id } }))
           }}
         >
-          {data.label}
-        </a>
+          {item.label}
+        </Button>
       </td>
-      <td className="col-md-1">
-        <a
+      <td>
+        <Button
+          id={`remove-${item.id}`}
           onClick={() => {
-            performance.mark('remove-row:start')
-            store.mutate(tables.data.delete({ where: { id: data.id } }))
-            performance.mark('remove-row:end')
+            store.mutate(tables.items.delete({ where: { id: item.id } }))
           }}
         >
-          {GlyphIcon}
-        </a>
+          {RemoveIcon}
+        </Button>
       </td>
-      <td className="col-md-6"></td>
+      <td></td>
     </tr>
   )
 })
 
 const RowList = React.memo(() => {
-  const rows = useQuery(queryDb(tables.data.query.select()))
-  return rows.map((data) => <Row key={data.id} data={data} />)
+  const items = useQuery(queryDb(tables.items.query.select()))
+  return items.map((item) => <Row key={item.id} item={item} />)
 })
 
-const Button = React.memo(({ id, title, cb }: { id: string; title: string; cb: () => void }) => (
-  <div className="col-sm-6 smallpad">
-    <button type="button" className="btn btn-primary btn-block" id={id} onClick={cb}>
-      {title}
+const Button = React.memo(
+  ({ id, onClick, children }: { id: string; onClick: () => void; children: React.ReactNode }) => (
+    <button type="button" id={id} onClick={onClick}>
+      {children}
     </button>
-  </div>
-))
+  ),
+)
 
 const Main = () => {
   const { store } = useStore()
   return (
-    <div className="container">
-      <div className="jumbotron">
-        <div className="row">
-          <div className="col-md-6">
-            <h1>React + LiveStore</h1>
-          </div>
-          <div className="col-md-6">
-            <div className="row">
-              <Button
-                id="run"
-                title="Create 1,000 rows"
-                cb={() => {
-                  performance.mark("run:start")
-                  store.mutate(
-                    tables.data.delete({ where: {} }),
-                    ...buildData(1000).map((row) => tables.data.insert(row)),
-                  ) // Should replace the entire table
-                  performance.mark('run:end')
-                }}
-              />
-              <Button
-                id="runlots"
-                title="Create 10,000 rows"
-                cb={() => {
-                  performance.mark("runlots:start")
-                  store.mutate(...buildData(10_000).map((row) => tables.data.insert(row)))
-                  performance.mark('runlots:end')
-                }}
-              />
-              <Button
-                id="add"
-                title="Append 1,000 rows"
-                cb={() => {
-                  performance.mark("add:start")
-                  store.mutate(...buildData(1000).map((row) => tables.data.insert(row)))
-                  performance.mark('add:end')
-                }}
-              />
-              <Button
-                id="update"
-                title="Update every 10th row"
-                cb={() => {
-                  performance.mark("update:start")
-                  const rows = store.query(queryDb(tables.data.query.select()))
+    <div>
+      <div>
+        <h1>React + LiveStore</h1>
+        <div>
+          <Button
+            id="create1k"
+            onClick={() => {
+              store.mutate(
+                tables.items.delete({ where: {} }),
+                ...buildItems(1000).map((item) => tables.items.insert(item)),
+              ) // Should replace the entire table
+            }}
+          >
+            Create 1,000 rows
+          </Button>
+          <Button
+            id="create10k"
+            onClick={() => {
+              store.mutate(...buildItems(10_000).map((item) => tables.items.insert(item)))
+            }}
+          >
+            Create 10,000 rows
+          </Button>
+          <Button
+            id="append1k"
+            onClick={() => {
+              store.mutate(...buildItems(1000).map((item) => tables.items.insert(item)))
+            }}
+          >
+            Append 1,000 rows
+          </Button>
+          <Button
+            id="updateEvery10th"
+            onClick={() => {
+              const items = store.query(queryDb(tables.items.query.select()))
 
-                  const updates = []
-                  for (let i = 0; i < rows.length; i += 10) {
-                    updates.push(
-                      tables.data.update({ where: { id: rows[i]!.id }, values: { label: rows[i]!.label + ' !!!' } }),
-                    )
-                  }
+              const updates = []
+              for (let i = 0; i < items.length; i += 10) {
+                updates.push(
+                  tables.items.update({ where: { id: items[i]!.id }, values: { label: items[i]!.label + ' !!!' } }),
+                )
+              }
 
-                  store.mutate(...updates)
-                  performance.mark('update:end')
-                }}
-              />
-              <Button
-                id="clear"
-                title="Clear"
-                cb={() => {
-                  performance.mark("clear:start")
-                  store.mutate(tables.data.delete({ where: {} }))
-                  performance.mark('clear:end')
-                }}
-              />
-            </div>
-          </div>
+              store.mutate(...updates)
+            }}
+          >
+            Update every 10th row
+          </Button>
+          <Button
+            id="clear"
+            onClick={() => {
+              store.mutate(tables.items.delete({ where: {} }))
+            }}
+          >
+            Clear
+          </Button>
         </div>
       </div>
-      <table className="table table-hover table-striped test-data">
+      <table>
         <tbody>
           <RowList />
         </tbody>
       </table>
-      <span className="preloadicon glyphicon glyphicon-remove" aria-hidden="true"></span>
     </div>
   )
 }

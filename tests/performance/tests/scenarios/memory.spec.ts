@@ -18,7 +18,7 @@ perfTest.describe(
   { annotation: { type: 'measurement unit', description: 'bytes' } },
   () => {
     perfTest.beforeEach(async ({ page }) => {
-      await page.goto('./')
+      await page.goto('/')
     })
 
     perfTest.afterEach(async ({ page, context }, testInfo) => {
@@ -29,30 +29,30 @@ perfTest.describe(
     })
 
     perfTest('after startup', async ({ page }) => {
-      await expect(page.locator('#run')).toBeVisible()
+      await expect(page.locator('#create1k')).toBeVisible()
     })
 
-    perfTest('after adding 1,000 rows', async ({ page }) => {
-      await page.locator('#run').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>a')).toBeVisible()
+    perfTest('after creating 1,000 rows', async ({ page }) => {
+      await page.locator('#create1k').click()
+      await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toBeVisible()
     })
 
-    perfTest('after adding 10,000 rows', async ({ page }) => {
-      await page.locator('#runlots').click()
-      await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>a')).toBeVisible()
+    perfTest('after creating 10,000 rows', async ({ page }) => {
+      await page.locator('#create10k').click()
+      await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>button')).toBeVisible()
     })
 
     perfTest('after updating every 10th row 5 times', async ({ page }) => {
-      await page.locator('#run').click()
+      await page.locator('#create1k').click()
       for (let i = 0; i < 5; i++) {
-        await page.locator('#update').click()
-        await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>a')).toContainText(' !!!'.repeat(i))
+        await page.locator('#updateEvery10th').click()
+        await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toContainText(' !!!'.repeat(i))
       }
     })
 
     perfTest('after creating and clearing 1,000 rows 5 times', async ({ page }) => {
       for (let i = 0; i < 5; i++) {
-        await page.locator('#run').click()
+        await page.locator('#create1k').click()
         await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText(
           (1000 * (i + 1)).toFixed(0),
         )

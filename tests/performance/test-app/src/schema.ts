@@ -1,7 +1,7 @@
 import { DbSchema, makeSchema } from '@livestore/livestore'
 
-const data = DbSchema.table(
-  'data',
+const items = DbSchema.table(
+  'items',
   {
     id: DbSchema.integer({ primaryKey: true }),
     label: DbSchema.text({ nullable: false }),
@@ -17,12 +17,12 @@ const app = DbSchema.table(
   { deriveMutations: { clientOnly: true } },
 )
 
-export type Row = DbSchema.FromTable.RowDecoded<typeof data>
+export type Item = DbSchema.FromTable.RowDecoded<typeof items>
 export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
 
-export type Data = Row[]
+export type Items = Item[]
 
-export const tables = { data, app }
+export const tables = { items, app }
 
 export const schema = makeSchema({
   tables,

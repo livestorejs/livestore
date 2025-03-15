@@ -4,7 +4,7 @@
   "scripts": {
     "test-app": "vite test-app",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
-    "test:profile": "PERF_PROFILER=1 test"
+    "test:profiler": "PERF_PROFILER=1 pnpm test"
   },
   "dependencies": {
     "@livestore/adapter-web": "workspace:*",

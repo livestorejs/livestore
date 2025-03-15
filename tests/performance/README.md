@@ -2,6 +2,9 @@
 
 - [ ] Use [parameterized tests](https://playwright.dev/docs/test-parameterize)
 - [ ] Have the same CPU profile between tests
+  - Potential solutions:
+  - Calibrate and throttle CPU before tests. Requires https://developer.chrome.com/blog/new-in-devtools-134#calibrated-cpu-throttling to be accessible with the Chrome Devtools Protocol.
+- Run tests in a Docker container with a fixed CPU profile.
 - [ ] Use production build of the test app
 - [ ] Run tests on CI pipeline
   - Fail test if regression is detected
@@ -10,6 +13,3 @@
 - [ ] Document performance test results
 - [ ] Test throughput
 - [ ] Test startup
-  - Potential solutions:
-    - Calibrate and throttle CPU before tests. Requires https://developer.chrome.com/blog/new-in-devtools-134#calibrated-cpu-throttling to be accessible with the Chrome Devtools Protocol.
-    - Run tests in a Docker container with a fixed CPU profile.
