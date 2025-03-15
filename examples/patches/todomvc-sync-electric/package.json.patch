@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,18 +1,18 @@
  {
 -  "name": "livestore-example-src-todomvc-sync-electric",
 +  "name": "livestore-example-standalone-todomvc-sync-electric",
@@ -10,15 +10,28 @@
    "dependencies": {
 -    "@livestore/adapter-web": "workspace:*",
 -    "@livestore/common": "workspace:*",
-+    "@livestore/adapter-web": "0.3.0-dev.19",
-+    "@livestore/common": "0.3.0-dev.19",
-     "@livestore/devtools-vite": "0.3.0-dev.19",
++    "@livestore/adapter-web": "0.3.0-dev.20",
++    "@livestore/common": "0.3.0-dev.20",
+     "@livestore/devtools-vite": "0.3.0-dev.20",
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/react": "workspace:*",
 -    "@livestore/sync-electric": "workspace:*",
-+    "@livestore/livestore": "0.3.0-dev.19",
-+    "@livestore/react": "0.3.0-dev.19",
-+    "@livestore/sync-electric": "0.3.0-dev.19",
++    "@livestore/livestore": "0.3.0-dev.20",
++    "@livestore/react": "0.3.0-dev.20",
++    "@livestore/sync-electric": "0.3.0-dev.20",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@overengineering/fps-meter": "0.1.2",
-     "@tanstack/start": "1.105.0",
+-    "@tanstack/start": "1.114.19",
++    "@tanstack/start": "1.105.0",
+     "effect": "3.13.8",
+     "react": "19.0.0",
+     "react-dom": "19.0.0",
+@@ -21,7 +21,7 @@
+     "workbox-window": "7.3.0"
+   },
+   "devDependencies": {
+-    "@tanstack/react-router": "^1.114.17",
++    "@tanstack/react-router": "^1.112.18",
+     "@types/react": "^19.0.10",
+     "@types/react-dom": "^19.0.4",
+     "@vitejs/plugin-react": "^4.3.4",

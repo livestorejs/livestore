@@ -15,7 +15,7 @@
   },
   "description": "",
   "devDependencies": {
-    "@livestore/devtools-vite": "0.3.0-dev.19",
+    "@livestore/devtools-vite": "0.3.0-dev.20",
     "solid-devtools": "^0.33.0",
     "typescript": "^5.8.2",
     "vite": "^6.2.1",
