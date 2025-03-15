@@ -116,7 +116,7 @@ export const connectViaWorker = ({
       schema: WebmeshSchema.Packet,
     })
 
-    yield* node.addConnection({ target, connectionChannel: sharedWorkerConnection, replaceIfExists: true })
+    yield* node.addEdge({ target, edgeChannel: sharedWorkerConnection, replaceIfExists: true })
 
     if (LS_DEV) {
       yield* Effect.logDebug(`@livestore/devtools-web-common: initiated connection: ${node.nodeName} → ${target}`)

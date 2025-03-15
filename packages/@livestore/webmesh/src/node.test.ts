@@ -24,7 +24,7 @@ import { makeMeshNode } from './node.js'
 
 // TODO test cases where in-between node only comes online later
 // TODO test cases where other side tries to reconnect
-// TODO test combination of connection types (message, proxy)
+// TODO test combination of channel types (message, proxy)
 // TODO test "diamond shape" topology (A <> B1, A <> B2, B1 <> C, B2 <> C)
 // TODO test cases where multiple entities try to claim to be the same channel end (e.g. A,B,B)
 // TODO write tests with worker threads
@@ -37,14 +37,14 @@ const connectNodesViaMessageChannel = (nodeA: MeshNode, nodeB: MeshNode, options
     const meshChannelAToB = yield* WebChannel.messagePortChannel({ port: mc.port1, schema: Packet })
     const meshChannelBToA = yield* WebChannel.messagePortChannel({ port: mc.port2, schema: Packet })
 
-    yield* nodeA.addConnection({
+    yield* nodeA.addEdge({
       target: nodeB.nodeName,
-      connectionChannel: meshChannelAToB,
+      edgeChannel: meshChannelAToB,
       replaceIfExists: options?.replaceIfExists,
     })
-    yield* nodeB.addConnection({
+    yield* nodeB.addEdge({
       target: nodeA.nodeName,
-      connectionChannel: meshChannelBToA,
+      edgeChannel: meshChannelBToA,
       replaceIfExists: options?.replaceIfExists,
     })
   }).pipe(Effect.withSpan(`connectNodesViaMessageChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
@@ -62,14 +62,14 @@ const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode, optio
       schema: Packet,
     })
 
-    yield* nodeA.addConnection({
+    yield* nodeA.addEdge({
       target: nodeB.nodeName,
-      connectionChannel: broadcastWebChannelA,
+      edgeChannel: broadcastWebChannelA,
       replaceIfExists: options?.replaceIfExists,
     })
-    yield* nodeB.addConnection({
+    yield* nodeB.addEdge({
       target: nodeA.nodeName,
-      connectionChannel: broadcastWebChannelB,
+      edgeChannel: broadcastWebChannelB,
       replaceIfExists: options?.replaceIfExists,
     })
   }).pipe(Effect.withSpan(`connectNodesViaBroadcastChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
@@ -239,7 +239,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
               const { mode, connectNodes } = fromChannelType(channelType)
 
-              // TODO also optionally delay the connection
+              // TODO also optionally delay the edge
               yield* connectNodes(nodeA, nodeB)
 
               const waitForBToBeOffline =
@@ -350,16 +350,16 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       // test: Shrunk 0 time(s)
       // test: Got AssertionError: expected { _tag: 'MessageChannelPing' } to deeply equal { message: 'A1' }
       // test:     at next (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:376:59)
-      // test:     at prop tests:replace connection while keeping the channel:channelType=messagechannel nodeNames=A,B (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:801:14)
+      // test:     at prop tests:replace edge while keeping the channel:channelType=messagechannel nodeNames=A,B (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/webmesh/src/node.test.ts:801:14)
       // test: Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
       // test:    ✓ webmesh node > A <> B > prop tests > TODO improve latency > concurrent messages 2110ms
       // test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
-      // test:  FAIL  src/node.test.ts > webmesh node > A <> B > prop tests > replace connection while keeping the channel
+      // test:  FAIL  src/node.test.ts > webmesh node > A <> B > prop tests > replace edge while keeping the channel
       // test: Error: Property failed after 2 tests
       // test: { seed: -964670352, path: "1", endOnFailure: true }
       // test: Counterexample: ["messagechannel",["A","B"]]
       Vitest.scopedLive.prop(
-        'replace connection while keeping the channel',
+        'replace edge while keeping the channel',
         [ChannelTypeWithoutMessageChannelProxy, NodeNames],
         ([channelType, nodeNames], test) =>
           Effect.gen(function* () {
@@ -372,7 +372,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
             yield* connectNodes(nodeX, nodeY)
 
-            const waitForConnectionReplacement = yield* Deferred.make<void>()
+            const waitForEdgeReplacement = yield* Deferred.make<void>()
 
             const nodeXCode = Effect.gen(function* () {
               const channelXToY = yield* createChannel(nodeX, nodeLabel.y, { mode })
@@ -380,7 +380,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               yield* channelXToY.send({ message: `${nodeLabel.x}1` })
               expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}1` })
 
-              yield* waitForConnectionReplacement
+              yield* waitForEdgeReplacement
 
               yield* channelXToY.send({ message: `${nodeLabel.x}2` })
               expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}2` })
@@ -392,11 +392,11 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               yield* channelYToX.send({ message: `${nodeLabel.y}1` })
               expect(yield* getFirstMessage(channelYToX)).toEqual({ message: `${nodeLabel.x}1` })
 
-              // Switch out connection while keeping the channel
-              yield* nodeX.removeConnection(nodeLabel.y)
-              yield* nodeY.removeConnection(nodeLabel.x)
+              // Switch out edge while keeping the channel
+              yield* nodeX.removeEdge(nodeLabel.y)
+              yield* nodeY.removeEdge(nodeLabel.x)
               yield* connectNodes(nodeX, nodeY)
-              yield* Deferred.succeed(waitForConnectionReplacement, void 0)
+              yield* Deferred.succeed(waitForEdgeReplacement, void 0)
 
               yield* channelYToX.send({ message: `${nodeLabel.y}2` })
               expect(yield* getFirstMessage(channelYToX)).toEqual({ message: `${nodeLabel.x}2` })
@@ -472,7 +472,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     })
 
     Vitest.describe('message channel specific tests', () => {
-      Vitest.scopedLive('differing initial connection counter', (test) =>
+      Vitest.scopedLive('differing initial edge counter', (test) =>
         Effect.gen(function* () {
           const nodeA = yield* makeMeshNode('A')
           const nodeB = yield* makeMeshNode('B')
@@ -533,7 +533,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
 
-    Vitest.scopedLive('broadcast connection with message channel', (test) =>
+    Vitest.scopedLive('broadcast edge with message channel', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -577,7 +577,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
 
-    Vitest.scopedLive('should work - delayed connection', (test) =>
+    Vitest.scopedLive('should work - delayed edge', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -637,7 +637,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
 
-    Vitest.scopedLive('should fail with timeout due to missing connection', (test) =>
+    Vitest.scopedLive('should fail with timeout due to missing edge', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -805,7 +805,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     )
   })
 
-  Vitest.describe('mixture of messagechannel and proxy connections', () => {
+  Vitest.describe('mixture of messagechannel and proxy edge connections', () => {
     // TODO test case to better guard against case where side A tries to create a proxy channel to B
     // and side B tries to create a messagechannel to A
     Vitest.scopedLive('should work for proxy channels', (test) =>
@@ -816,7 +816,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         yield* connectNodesViaMessageChannel(nodeB, nodeA)
         const err = yield* connectNodesViaBroadcastChannel(nodeA, nodeB).pipe(Effect.flip)
 
-        expect(err._tag).toBe('ConnectionAlreadyExistsError')
+        expect(err._tag).toBe('EdgeAlreadyExistsError')
       }).pipe(withCtx(test)),
     )
 

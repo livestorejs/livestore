@@ -17,7 +17,7 @@ const defaultPacketFields = {
 const remainingHopsUndefined = Schema.Undefined.pipe(Schema.optional)
 
 /**
- * Needs to go through already existing MessageChannel connections, times out otherwise
+ * Needs to go through already existing MessageChannel edges, times out otherwise
  *
  * Can't yet contain the `port` because the request might be duplicated while forwarding to multiple nodes.
  * We need a clear path back to the sender to avoid this, thus we respond with a separate
@@ -83,16 +83,16 @@ export class ProxyChannelPayloadAck extends Schema.TaggedStruct('ProxyChannelPay
 }) {}
 
 /**
- * Broadcast to all nodes when a new connection is added.
+ * Broadcast to all nodes when a new edge is added.
  * Mostly used for auto-reconnect purposes.
  */
-export class NetworkConnectionAdded extends Schema.TaggedStruct('NetworkConnectionAdded', {
+export class NetworkEdgeAdded extends Schema.TaggedStruct('NetworkEdgeAdded', {
   id,
   source: Schema.String,
   target: Schema.String,
 }) {}
 
-export class NetworkConnectionTopologyRequest extends Schema.TaggedStruct('NetworkConnectionTopologyRequest', {
+export class NetworkTopologyRequest extends Schema.TaggedStruct('NetworkTopologyRequest', {
   id,
   hops: Schema.Array(Schema.String),
   /** Always fixed to who requested the topology */
@@ -100,12 +100,12 @@ export class NetworkConnectionTopologyRequest extends Schema.TaggedStruct('Netwo
   target: Schema.Literal('-'),
 }) {}
 
-export class NetworkConnectionTopologyResponse extends Schema.TaggedStruct('NetworkConnectionTopologyResponse', {
+export class NetworkTopologyResponse extends Schema.TaggedStruct('NetworkTopologyResponse', {
   id,
   reqId: Schema.String,
   remainingHops: Schema.Array(Schema.String),
   nodeName: Schema.String,
-  connections: Schema.Array(Schema.String),
+  edges: Schema.Array(Schema.String),
   /** Always fixed to who requested the topology */
   source: Schema.String,
   target: Schema.Literal('-'),
@@ -140,9 +140,9 @@ export class ProxyChannelPacket extends Schema.Union(
 export class Packet extends Schema.Union(
   MessageChannelPacket,
   ProxyChannelPacket,
-  NetworkConnectionAdded,
-  NetworkConnectionTopologyRequest,
-  NetworkConnectionTopologyResponse,
+  NetworkEdgeAdded,
+  NetworkTopologyRequest,
+  NetworkTopologyResponse,
   BroadcastChannelPacket,
 ) {}
 

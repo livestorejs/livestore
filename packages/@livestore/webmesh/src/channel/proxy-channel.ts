@@ -29,7 +29,7 @@ import * as MeshSchema from '../mesh-schema.js'
 interface MakeProxyChannelArgs {
   queue: Queue.Queue<ProxyQueueItem>
   nodeName: MeshNodeName
-  newConnectionAvailablePubSub: PubSub.PubSub<MeshNodeName>
+  newEdgeAvailablePubSub: PubSub.PubSub<MeshNodeName>
   sendPacket: (packet: typeof MeshSchema.ProxyChannelPacket.Type) => Effect.Effect<void>
   channelName: ChannelName
   target: MeshNodeName
@@ -42,7 +42,7 @@ interface MakeProxyChannelArgs {
 export const makeProxyChannel = ({
   queue,
   nodeName,
-  newConnectionAvailablePubSub,
+  newEdgeAvailablePubSub,
   sendPacket,
   target,
   channelName,
@@ -96,7 +96,7 @@ export const makeProxyChannel = ({
 
       const setStateToEstablished = (channelId: string) =>
         Effect.gen(function* () {
-          // TODO avoid "double" `Connected` events (we might call `setStateToEstablished` twice during initial connection)
+          // TODO avoid "double" `Connected` events (we might call `setStateToEstablished` twice during initial edge)
           yield* Effect.spanEvent(`Connected (${channelId})`).pipe(Effect.withParentSpan(channelSpan))
           channelStateRef.current = {
             _tag: 'Established',
@@ -109,7 +109,7 @@ export const makeProxyChannel = ({
           debugInfo.isConnected = true
         })
 
-      const connectionRequest = Effect.suspend(() =>
+      const edgeRequest = Effect.suspend(() =>
         sendPacket(
           MeshSchema.ProxyChannelRequest.make({ channelName, hops: [], source: nodeName, target, channelIdCandidate }),
         ),
@@ -137,9 +137,9 @@ export const makeProxyChannel = ({
                 debugInfo.isConnected = false
                 debugInfo.connectCounter++
 
-                // If we're already connected, we need to re-establish the connection
+                // If we're already connected, we need to re-establish the edge
                 if (channelState._tag === 'Established' && channelState.combinedChannelId !== combinedChannelId) {
-                  yield* connectionRequest
+                  yield* edgeRequest
                 }
               }
 
@@ -254,7 +254,7 @@ export const makeProxyChannel = ({
       const ackMap = new Map<string, Deferred.Deferred<void, never>>()
 
       // check if already established via incoming `ProxyChannelRequest` from other side
-      // which indicates we already have a connection to the target node
+      // which indicates we already have a edge to the target node
       // const channelState = channelStateRef.current
       {
         if (channelStateRef.current._tag !== 'Initial') {
@@ -263,17 +263,17 @@ export const makeProxyChannel = ({
 
         channelStateRef.current = { _tag: 'Pending', initiatedVia: 'outgoing-request' }
 
-        yield* connectionRequest
+        yield* edgeRequest
 
-        const retryOnNewConnectionFiber = yield* Stream.fromPubSub(newConnectionAvailablePubSub).pipe(
-          Stream.tap(() => connectionRequest),
+        const retryOnNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+          Stream.tap(() => edgeRequest),
           Stream.runDrain,
           Effect.forkScoped,
         )
 
         const { combinedChannelId: channelId } = yield* waitForEstablished
 
-        yield* Fiber.interrupt(retryOnNewConnectionFiber)
+        yield* Fiber.interrupt(retryOnNewEdgeFiber)
 
         yield* setStateToEstablished(channelId)
       }

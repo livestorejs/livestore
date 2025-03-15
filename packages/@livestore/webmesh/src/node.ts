@@ -18,16 +18,16 @@ import {
 import { makeMessageChannel } from './channel/message-channel.js'
 import { makeProxyChannel } from './channel/proxy-channel.js'
 import type { ChannelKey, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.js'
-import { ConnectionAlreadyExistsError, packetAsOtelAttributes } from './common.js'
+import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.js'
 import * as WebmeshSchema from './mesh-schema.js'
 import { TimeoutSet } from './utils.js'
 
-type ConnectionChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
+type EdgeChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
 export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
   nodeName: TName
 
-  connectionKeys: Effect.Effect<Set<MeshNodeName>>
+  edgeKeys: Effect.Effect<Set<MeshNodeName>>
 
   debug: {
     print: () => void
@@ -40,33 +40,33 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
   }
 
   /**
-   * Manually adds a connection to get connected to the network of nodes with an existing WebChannel.
+   * Manually adds a edge to get connected to the network of nodes with an existing WebChannel.
    *
-   * Assumptions about the WebChannel connection:
-   * - 1:1 connection
+   * Assumptions about the WebChannel edge:
+   * - 1:1 edge
    * - Queues messages internally to never drop messages
    * - Automatically reconnects
    * - Ideally supports transferables
    */
-  addConnection: {
+  addEdge: {
     (options: {
       target: MeshNodeName
-      connectionChannel: ConnectionChannel
+      edgeChannel: EdgeChannel
       replaceIfExists: true
     }): Effect.Effect<void, never, Scope.Scope>
     (options: {
       target: MeshNodeName
-      connectionChannel: ConnectionChannel
+      edgeChannel: EdgeChannel
       replaceIfExists?: boolean
-    }): Effect.Effect<void, ConnectionAlreadyExistsError, Scope.Scope>
+    }): Effect.Effect<void, EdgeAlreadyExistsError, Scope.Scope>
   }
 
-  removeConnection: (targetNodeName: MeshNodeName) => Effect.Effect<void, Cause.NoSuchElementException>
+  removeEdge: (targetNodeName: MeshNodeName) => Effect.Effect<void, Cause.NoSuchElementException>
 
   /**
-   * Tries to broker a MessageChannel connection between the nodes, otherwise will proxy messages via hop-nodes
+   * Tries to broker a MessageChannel edge between the nodes, otherwise will proxy messages via hop-nodes
    *
-   * For a channel to successfully open, both sides need to have a connection and call `makeChannel`.
+   * For a channel to successfully open, both sides need to have a edge and call `makeChannel`.
    *
    * Example:
    * ```ts
@@ -95,7 +95,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      */
     mode: 'messagechannel' | 'proxy'
     /**
-     * Amount of time before we consider a channel creation failed and retry when a new connection is available
+     * Amount of time before we consider a channel creation failed and retry when a new edge is available
      *
      * @default 1 second
      */
@@ -116,17 +116,12 @@ export const makeMeshNode = <TName extends MeshNodeName>(
   nodeName: TName,
 ): Effect.Effect<MeshNode<TName>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const connectionChannels = new Map<
-      MeshNodeName,
-      { channel: ConnectionChannel; listenFiber: Fiber.RuntimeFiber<void> }
-    >()
+    const edgeChannels = new Map<MeshNodeName, { channel: EdgeChannel; listenFiber: Fiber.RuntimeFiber<void> }>()
 
     // To avoid unbounded memory growth, we automatically forget about packet ids after a while
     const handledPacketIds = new TimeoutSet<string>({ timeout: Duration.minutes(1) })
 
-    const newConnectionAvailablePubSub = yield* PubSub.unbounded<MeshNodeName>().pipe(
-      Effect.acquireRelease(PubSub.shutdown),
-    )
+    const newEdgeAvailablePubSub = yield* PubSub.unbounded<MeshNodeName>().pipe(Effect.acquireRelease(PubSub.shutdown))
 
     // const proxyPacketsToProcess = yield* Queue.unbounded<ProxyQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
     // const messagePacketsToProcess = yield* Queue.unbounded<MessageQueueItem>().pipe(
@@ -153,14 +148,14 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     type BroadcastChannelName = string
     const broadcastChannelListenQueueMap = new Map<BroadcastChannelName, Queue.Queue<any>>()
 
-    const checkTransferableConnections = (packet: typeof WebmeshSchema.MessageChannelPacket.Type) => {
+    const checkTransferableEdges = (packet: typeof WebmeshSchema.MessageChannelPacket.Type) => {
       if (
         (packet._tag === 'MessageChannelRequest' &&
-          (connectionChannels.size === 0 ||
-            // Either if direct connection does not support transferables ...
-            connectionChannels.get(packet.target)?.channel.supportsTransferables === false)) ||
-        // ... or if no forward-connections support transferables
-        ![...connectionChannels.values()].some((c) => c.channel.supportsTransferables === true)
+          (edgeChannels.size === 0 ||
+            // Either if direct edge does not support transferables ...
+            edgeChannels.get(packet.target)?.channel.supportsTransferables === false)) ||
+        // ... or if no forward-edges support transferables
+        ![...edgeChannels.values()].some((c) => c.channel.supportsTransferables === true)
       ) {
         return WebmeshSchema.MessageChannelResponseNoTransferables.make({
           reqId: packet.id,
@@ -181,20 +176,20 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       Effect.gen(function* () {
         // yield* Effect.log(`${nodeName}: sendPacket:${packet._tag} [${packet.id}]`)
 
-        if (Schema.is(WebmeshSchema.NetworkConnectionAdded)(packet)) {
-          yield* Effect.spanEvent('NetworkConnectionAdded', { packet, nodeName })
-          yield* PubSub.publish(newConnectionAvailablePubSub, packet.target)
+        if (Schema.is(WebmeshSchema.NetworkEdgeAdded)(packet)) {
+          yield* Effect.spanEvent('NetworkEdgeAdded', { packet, nodeName })
+          yield* PubSub.publish(newEdgeAvailablePubSub, packet.target)
 
-          const connectionsToForwardTo = Array.from(connectionChannels)
+          const edgesToForwardTo = Array.from(edgeChannels)
             .filter(([name]) => name !== packet.source)
             .map(([_, con]) => con.channel)
 
-          yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(packet), { concurrency: 'unbounded' })
+          yield* Effect.forEach(edgesToForwardTo, (con) => con.send(packet), { concurrency: 'unbounded' })
           return
         }
 
         if (Schema.is(WebmeshSchema.BroadcastChannelPacket)(packet)) {
-          const connectionsToForwardTo = Array.from(connectionChannels)
+          const edgesToForwardTo = Array.from(edgeChannels)
             .filter(([name]) => !packet.hops.includes(name))
             .map(([_, con]) => con.channel)
 
@@ -203,7 +198,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             hops: [...packet.hops, nodeName],
           }
 
-          yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(adjustedPacket), { concurrency: 'unbounded' })
+          yield* Effect.forEach(edgesToForwardTo, (con) => con.send(adjustedPacket), { concurrency: 'unbounded' })
 
           // Don't emit the packet to the own node listen queue
           if (packet.source === nodeName) {
@@ -219,27 +214,27 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           return
         }
 
-        if (Schema.is(WebmeshSchema.NetworkConnectionTopologyRequest)(packet)) {
+        if (Schema.is(WebmeshSchema.NetworkTopologyRequest)(packet)) {
           if (packet.source !== nodeName) {
-            const backConnectionName =
+            const backEdgeName =
               packet.hops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected hops for packet`, packet)
-            const backConnectionChannel = connectionChannels.get(backConnectionName)!.channel
+            const backEdgeChannel = edgeChannels.get(backEdgeName)!.channel
 
-            // Respond with own connection info
-            const response = WebmeshSchema.NetworkConnectionTopologyResponse.make({
+            // Respond with own edge info
+            const response = WebmeshSchema.NetworkTopologyResponse.make({
               reqId: packet.id,
               source: packet.source,
               target: packet.target,
               remainingHops: packet.hops.slice(0, -1),
               nodeName,
-              connections: Array.from(connectionChannels.keys()),
+              edges: Array.from(edgeChannels.keys()),
             })
 
-            yield* backConnectionChannel.send(response)
+            yield* backEdgeChannel.send(response)
           }
 
-          // Forward the packet to all connections except the already visited ones
-          const connectionsToForwardTo = Array.from(connectionChannels)
+          // Forward the packet to all edges except the already visited ones
+          const edgesToForwardTo = Array.from(edgeChannels)
             .filter(([name]) => !packet.hops.includes(name))
             .map(([_, con]) => con.channel)
 
@@ -248,72 +243,72 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             hops: [...packet.hops, nodeName],
           }
 
-          yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(adjustedPacket), { concurrency: 'unbounded' })
+          yield* Effect.forEach(edgesToForwardTo, (con) => con.send(adjustedPacket), { concurrency: 'unbounded' })
 
           return
         }
 
-        if (Schema.is(WebmeshSchema.NetworkConnectionTopologyResponse)(packet)) {
+        if (Schema.is(WebmeshSchema.NetworkTopologyResponse)(packet)) {
           if (packet.source === nodeName) {
             const topologyRequestItem = topologyRequestsMap.get(packet.reqId)!
-            topologyRequestItem.set(packet.nodeName, new Set(packet.connections))
+            topologyRequestItem.set(packet.nodeName, new Set(packet.edges))
           } else {
             const remainingHops = packet.remainingHops
             // Forwarding the response to the original sender via the route back
             const routeBack =
               remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)
-            const connectionChannel =
-              connectionChannels.get(routeBack)?.channel ??
+            const edgeChannel =
+              edgeChannels.get(routeBack)?.channel ??
               shouldNeverHappen(
-                `${nodeName}: Expected connection channel (${routeBack}) for packet`,
+                `${nodeName}: Expected edge channel (${routeBack}) for packet`,
                 packet,
-                'Available connections:',
-                Array.from(connectionChannels.keys()),
+                'Available edges:',
+                Array.from(edgeChannels.keys()),
               )
 
-            yield* connectionChannel.send({ ...packet, remainingHops: packet.remainingHops.slice(0, -1) })
+            yield* edgeChannel.send({ ...packet, remainingHops: packet.remainingHops.slice(0, -1) })
           }
           return
         }
 
-        // We have a direct connection to the target node
-        if (connectionChannels.has(packet.target)) {
-          const connectionChannel = connectionChannels.get(packet.target)!.channel
+        // We have a direct edge to the target node
+        if (edgeChannels.has(packet.target)) {
+          const edgeChannel = edgeChannels.get(packet.target)!.channel
           const hops = packet.source === nodeName ? [] : [...packet.hops, nodeName]
-          yield* connectionChannel.send({ ...packet, hops })
+          yield* edgeChannel.send({ ...packet, hops })
         }
         // In this case we have an expected route back we should follow
         // eslint-disable-next-line unicorn/no-negated-condition
         else if (packet.remainingHops !== undefined) {
           const hopTarget =
             packet.remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)
-          const connectionChannel = connectionChannels.get(hopTarget)?.channel
+          const edgeChannel = edgeChannels.get(hopTarget)?.channel
 
-          if (connectionChannel === undefined) {
+          if (edgeChannel === undefined) {
             yield* Effect.logWarning(
-              `${nodeName}: Expected to find hop target ${hopTarget} in connections. Dropping packet.`,
+              `${nodeName}: Expected to find hop target ${hopTarget} in edges. Dropping packet.`,
               packet,
             )
             return
           }
 
-          yield* connectionChannel.send({
+          yield* edgeChannel.send({
             ...packet,
             remainingHops: packet.remainingHops.slice(0, -1),
             hops: [...packet.hops, nodeName],
           })
         }
-        // No route found, forward to all connections
+        // No route found, forward to all edges
         else {
           const hops = packet.source === nodeName ? [] : [...packet.hops, nodeName]
 
-          // Optimization: filter out connection where packet just came from
-          const connectionsToForwardTo = Array.from(connectionChannels)
+          // Optimization: filter out edge where packet just came from
+          const edgesToForwardTo = Array.from(edgeChannels)
             .filter(([name]) => name !== packet.source)
             .map(([_, con]) => con.channel)
 
           // TODO if hops-depth=0, we should fail right away with no route found
-          if (hops.length === 0 && connectionsToForwardTo.length === 0 && LS_DEV) {
+          if (hops.length === 0 && edgesToForwardTo.length === 0 && LS_DEV) {
             console.log(nodeName, 'no route found', packet._tag, 'TODO handle better')
             // TODO return a expected failure
           }
@@ -321,7 +316,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           const packetToSend = { ...packet, hops }
           // console.debug(nodeName, 'sendPacket:forwarding', packetToSend)
 
-          yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(packetToSend), { concurrency: 'unbounded' })
+          yield* Effect.forEach(edgesToForwardTo, (con) => con.send(packetToSend), { concurrency: 'unbounded' })
         }
       }).pipe(
         Effect.withSpan(`sendPacket:${packet._tag}:${packet.source}→${packet.target}`, {
@@ -330,24 +325,20 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         Effect.orDie,
       )
 
-    const addConnection: MeshNode['addConnection'] = ({
-      target: targetNodeName,
-      connectionChannel,
-      replaceIfExists = false,
-    }) =>
+    const addEdge: MeshNode['addEdge'] = ({ target: targetNodeName, edgeChannel, replaceIfExists = false }) =>
       Effect.gen(function* () {
-        if (connectionChannels.has(targetNodeName)) {
+        if (edgeChannels.has(targetNodeName)) {
           if (replaceIfExists) {
-            yield* removeConnection(targetNodeName).pipe(Effect.orDie)
+            yield* removeEdge(targetNodeName).pipe(Effect.orDie)
             // console.log('interrupting', targetNodeName)
-            // yield* Fiber.interrupt(connectionChannels.get(targetNodeName)!.listenFiber)
+            // yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
           } else {
-            return yield* new ConnectionAlreadyExistsError({ target: targetNodeName })
+            return yield* new EdgeAlreadyExistsError({ target: targetNodeName })
           }
         }
 
-        // TODO use a priority queue instead to prioritize network-changes/connection-requests over payloads
-        const listenFiber = yield* connectionChannel.listen.pipe(
+        // TODO use a priority queue instead to prioritize network-changes/edge-requests over payloads
+        const listenFiber = yield* edgeChannel.listen.pipe(
           Stream.flatten(),
           Stream.tap((message) =>
             Effect.gen(function* () {
@@ -359,9 +350,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
               handledPacketIds.add(packet.id)
 
               switch (packet._tag) {
-                case 'NetworkConnectionAdded':
-                case 'NetworkConnectionTopologyRequest':
-                case 'NetworkConnectionTopologyResponse': {
+                case 'NetworkEdgeAdded':
+                case 'NetworkTopologyRequest':
+                case 'NetworkTopologyResponse': {
                   yield* sendPacket(packet)
 
                   break
@@ -380,7 +371,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                     const queue = channelMap.get(channelKey)!.queue
 
                     const respondToSender = (outgoingPacket: typeof WebmeshSchema.Packet.Type) =>
-                      connectionChannel
+                      edgeChannel
                         .send(outgoingPacket)
                         .pipe(
                           Effect.withSpan(
@@ -397,12 +388,10 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                     }
                   } else {
                     if (Schema.is(WebmeshSchema.MessageChannelPacket)(packet)) {
-                      const noTransferableResponse = checkTransferableConnections(packet)
+                      const noTransferableResponse = checkTransferableEdges(packet)
                       if (noTransferableResponse !== undefined) {
-                        yield* Effect.spanEvent(
-                          `No transferable connections found for ${packet.source}→${packet.target}`,
-                        )
-                        return yield* connectionChannel.send(noTransferableResponse).pipe(
+                        yield* Effect.spanEvent(`No transferable edges found for ${packet.source}→${packet.target}`)
+                        return yield* edgeChannel.send(noTransferableResponse).pipe(
                           Effect.withSpan(`sendNoTransferableResponse:${packet.source}→${packet.target}`, {
                             attributes: packetAsOtelAttributes(noTransferableResponse),
                           }),
@@ -422,31 +411,31 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           Effect.forkScoped,
         )
 
-        connectionChannels.set(targetNodeName, { channel: connectionChannel, listenFiber })
+        edgeChannels.set(targetNodeName, { channel: edgeChannel, listenFiber })
 
-        const connectionAddedPacket = WebmeshSchema.NetworkConnectionAdded.make({
+        const edgeAddedPacket = WebmeshSchema.NetworkEdgeAdded.make({
           source: nodeName,
           target: targetNodeName,
         })
-        yield* sendPacket(connectionAddedPacket).pipe(Effect.orDie)
+        yield* sendPacket(edgeAddedPacket).pipe(Effect.orDie)
       }).pipe(
-        Effect.withSpan(`addConnection:${nodeName}→${targetNodeName}`, {
-          attributes: { supportsTransferables: connectionChannel.supportsTransferables },
+        Effect.withSpan(`addEdge:${nodeName}→${targetNodeName}`, {
+          attributes: { supportsTransferables: edgeChannel.supportsTransferables },
         }),
       ) as any // any-cast needed for error/never overload
 
-    const removeConnection: MeshNode['removeConnection'] = (targetNodeName) =>
+    const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
-        if (!connectionChannels.has(targetNodeName)) {
-          yield* new Cause.NoSuchElementException(`No connection found for ${targetNodeName}`)
+        if (!edgeChannels.has(targetNodeName)) {
+          yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
         }
 
-        yield* Fiber.interrupt(connectionChannels.get(targetNodeName)!.listenFiber)
+        yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
 
-        connectionChannels.delete(targetNodeName)
+        edgeChannels.delete(targetNodeName)
       })
 
-    // TODO add heartbeat to detect dead connections (for both e2e and proxying)
+    // TODO add heartbeat to detect dead edges (for both e2e and proxying)
     // TODO when a channel is established in the same origin, we can use a weblock to detect disconnects
     const makeChannel: MeshNode['makeChannel'] = ({
       target,
@@ -491,26 +480,26 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           )
 
           // NOTE already retries internally when transferables are required
-          const { webChannel, initialConnectionDeferred } = yield* makeMessageChannel({
+          const { webChannel, initialEdgeDeferred } = yield* makeMessageChannel({
             nodeName,
             incomingPacketsQueue,
-            newConnectionAvailablePubSub,
+            newEdgeAvailablePubSub,
             target,
             channelName,
             schema,
             sendPacket,
-            checkTransferableConnections,
+            checkTransferableEdges,
           })
 
           channelMap.set(channelKey, { queue, debugInfo: { channel: webChannel, target } })
 
-          yield* initialConnectionDeferred
+          yield* initialEdgeDeferred
 
           return webChannel
         } else {
           const channel = yield* makeProxyChannel({
             nodeName,
-            newConnectionAvailablePubSub,
+            newEdgeAvailablePubSub,
             target,
             channelName,
             schema,
@@ -579,7 +568,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         }),
       )
 
-    const connectionKeys: MeshNode['connectionKeys'] = Effect.sync(() => new Set(connectionChannels.keys()))
+    const edgeKeys: MeshNode['edgeKeys'] = Effect.sync(() => new Set(edgeChannels.keys()))
 
     const runtime = yield* Effect.runtime()
 
@@ -587,8 +576,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       print: () => {
         console.log('Webmesh debug info for node:', nodeName)
 
-        console.log('Connections:', connectionChannels.size)
-        for (const [key, value] of connectionChannels) {
+        console.log('Edges:', edgeChannels.size)
+        for (const [key, value] of edgeChannels) {
           console.log(`  ${key}: supportsTransferables=${value.channel.supportsTransferables}`)
         }
 
@@ -620,11 +609,11 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       ping: (payload) => {
         Effect.gen(function* () {
           const msg = (via: string) =>
-            WebChannel.DebugPingMessage.make({ message: `ping from ${nodeName} via connection ${via}`, payload })
+            WebChannel.DebugPingMessage.make({ message: `ping from ${nodeName} via edge ${via}`, payload })
 
-          for (const [channelName, con] of connectionChannels) {
-            yield* Effect.logDebug(`sending ping via connection ${channelName}`)
-            yield* con.channel.send(msg(`connection ${channelName}`) as any)
+          for (const [channelName, con] of edgeChannels) {
+            yield* Effect.logDebug(`sending ping via edge ${channelName}`)
+            yield* con.channel.send(msg(`edge ${channelName}`) as any)
           }
 
           for (const [channelKey, channel] of channelMap) {
@@ -636,14 +625,14 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       },
       requestTopology: (timeoutMs = 1000) =>
         Effect.gen(function* () {
-          const packet = WebmeshSchema.NetworkConnectionTopologyRequest.make({
+          const packet = WebmeshSchema.NetworkTopologyRequest.make({
             source: nodeName,
             target: '-',
             hops: [],
           })
 
           const item = new Map<MeshNodeName, Set<MeshNodeName>>()
-          item.set(nodeName, new Set(connectionChannels.keys()))
+          item.set(nodeName, new Set(edgeChannels.keys()))
           topologyRequestsMap.set(packet.id, item)
 
           yield* sendPacket(packet)
@@ -659,11 +648,11 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     return {
       nodeName,
-      addConnection,
-      removeConnection,
+      addEdge,
+      removeEdge,
       makeChannel,
       makeBroadcastChannel,
-      connectionKeys,
+      edgeKeys,
       debug,
     } satisfies MeshNode
   }).pipe(Effect.withSpan(`makeMeshNode:${nodeName}`))

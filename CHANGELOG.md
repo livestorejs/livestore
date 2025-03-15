@@ -109,6 +109,7 @@
 - After release:
   - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+  - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
 - Examples:
   - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
   - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
@@ -120,7 +121,6 @@
     - What if I want got my initial container design wrong and I want to change it?
       - Comparables: document databases, kafka streams, 
 - Fix linting
-- Webmesh: rename connection to "edge"
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations
   - Enable auth setup
@@ -133,7 +133,6 @@
   - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
   - Remaining issues:
     - [#283](https://github.com/livestorejs/livestore/issues/283)
-  - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - the app doesn't show a shutdown screen

@@ -28,7 +28,7 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
 
       const messagePortChannel = yield* WebChannel.messagePortChannel({ port, schema: WebmeshSchema.Packet })
 
-      yield* node.addConnection({ target: from, connectionChannel: messagePortChannel, replaceIfExists: true })
+      yield* node.addEdge({ target: from, edgeChannel: messagePortChannel, replaceIfExists: true })
 
       if (LS_DEV) {
         yield* Effect.logDebug(`@livestore/devtools-web-common: accepted connection: ${node.nodeName} ← ${from}`)
@@ -36,7 +36,7 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
 
       emit.single({})
 
-      yield* Effect.spanEvent({ connectedTo: [...node.connectionKeys] })
+      yield* Effect.spanEvent({ connectedTo: [...node.edgeKeys] })
 
       // Keep connection alive
       // yield* Effect.never

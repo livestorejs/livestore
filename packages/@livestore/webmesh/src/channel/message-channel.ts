@@ -20,7 +20,7 @@ import { makeMessageChannelInternal } from './message-channel-internal.js'
 
 /**
  * Behaviour:
- * - Waits until there is an initial connection
+ * - Waits until there is an initial edge
  * - Automatically reconnects on disconnect
  *
  * Implementation notes:
@@ -28,16 +28,16 @@ import { makeMessageChannelInternal } from './message-channel-internal.js'
  * - The wrapper channel is responsible for:
  *   - Forwarding send/listen messages to the internal channel (via a queue)
  *   - Establishing the initial channel and reconnecting on disconnect
- *     - Listening for new connections as a hint to reconnect if not already connected
- *     - The wrapper channel maintains a connection counter which is used as the channel version
+ *     - Listening for new edges as a hint to reconnect if not already connected
+ *     - The wrapper channel maintains a edge counter which is used as the channel version
  *
  * If needed we can also implement further functionality (like heartbeat) in this wrapper channel.
  */
 export const makeMessageChannel = ({
   schema,
-  newConnectionAvailablePubSub,
+  newEdgeAvailablePubSub,
   channelName,
-  checkTransferableConnections,
+  checkTransferableEdges,
   nodeName,
   incomingPacketsQueue,
   target,
@@ -51,7 +51,7 @@ export const makeMessageChannel = ({
       const listenQueue = yield* Queue.unbounded<any>()
       const sendQueue = yield* TQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
-      const initialConnectionDeferred = yield* Deferred.make<void>()
+      const initialEdgeDeferred = yield* Deferred.make<void>()
 
       const debugInfo = {
         pendingSends: 0,
@@ -81,24 +81,24 @@ export const makeMessageChannel = ({
 
           /**
            * Expected concurrency behaviour:
-           * - We're concurrently running the connection setup and the waitForNewConnectionFiber
+           * - We're concurrently running the edge setup and the waitForNewEdgeFiber
            * - Happy path:
-           *   - The connection setup succeeds and we can interrupt the waitForNewConnectionFiber
+           *   - The edge setup succeeds and we can interrupt the waitForNewEdgeFiber
            * - Tricky paths:
-           *   - While a connection is still being setup, we want to re-try when there is a new connection
-           *   - If the connection setup returns a `MessageChannelResponseNoTransferables` error,
-           *     we want to wait for a new connection and then re-try
+           *   - While a edge is still being setup, we want to re-try when there is a new edge
+           *   - If the edge setup returns a `MessageChannelResponseNoTransferables` error,
+           *     we want to wait for a new edge and then re-try
            * - Further notes:
-           *   - If the parent scope closes, we want to also interrupt both the connection setup and the waitForNewConnectionFiber
-           *   - We're creating a separate scope for each connection attempt, which
+           *   - If the parent scope closes, we want to also interrupt both the edge setup and the waitForNewEdgeFiber
+           *   - We're creating a separate scope for each edge attempt, which
            *     - we'll use to fork the message channel in which allows us to interrupt it later
            *   - We need to make sure that "interruption" isn't "bubbling out"
            */
-          const waitForNewConnectionFiber = yield* Stream.fromPubSub(newConnectionAvailablePubSub).pipe(
-            Stream.tap((connectionName) => Effect.spanEvent(`new-conn:${connectionName}`)),
+          const waitForNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+            Stream.tap((edgeName) => Effect.spanEvent(`new-conn:${edgeName}`)),
             Stream.take(1),
             Stream.runDrain,
-            Effect.as('new-connection' as const),
+            Effect.as('new-edge' as const),
             Effect.fork,
           )
 
@@ -107,11 +107,11 @@ export const makeMessageChannel = ({
             sourceId,
             incomingPacketsQueue,
             target,
-            checkTransferableConnections,
+            checkTransferableEdges,
             channelName,
             schema,
             channelVersion,
-            newConnectionAvailablePubSub,
+            newEdgeAvailablePubSub,
             sendPacket,
             scope: makeMessageChannelScope,
           }).pipe(
@@ -122,10 +122,10 @@ export const makeMessageChannel = ({
             Effect.withUnhandledErrorLogLevel(Option.none()),
           )
 
-          const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewConnectionFiber.pipe(Effect.disconnect))
+          const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewEdgeFiber.pipe(Effect.disconnect))
 
-          if (raceResult === 'new-connection') {
-            yield* Scope.close(makeMessageChannelScope, Exit.fail('new-connection'))
+          if (raceResult === 'new-edge') {
+            yield* Scope.close(makeMessageChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
             const channelExit = yield* raceResult.pipe(Effect.exit)
@@ -136,8 +136,8 @@ export const makeMessageChannel = ({
                 Cause.isFailType(channelExit.cause) &&
                 Schema.is(WebmeshSchema.MessageChannelResponseNoTransferables)(channelExit.cause.error)
               ) {
-                // Only retry when there is a new connection available
-                yield* waitForNewConnectionFiber.pipe(Effect.exit)
+                // Only retry when there is a new edge available
+                yield* waitForNewEdgeFiber.pipe(Effect.exit)
               }
             } else {
               const channel = channelExit.value
@@ -155,7 +155,7 @@ export const makeMessageChannel = ({
         debugInfo.isConnected = true
         debugInfo.innerChannelRef.current = channel
 
-        yield* Deferred.succeed(initialConnectionDeferred, void 0)
+        yield* Deferred.succeed(initialEdgeDeferred, void 0)
 
         // We'll now forward all incoming messages to the listen queue
         yield* channel.listen.pipe(
@@ -228,7 +228,7 @@ export const makeMessageChannel = ({
 
       return {
         webChannel: webChannel as WebChannel.WebChannel<any, any>,
-        initialConnectionDeferred,
+        initialEdgeDeferred,
       }
     }),
   )

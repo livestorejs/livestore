@@ -94,7 +94,7 @@ export const makeChannelForConnectedMeshNode = <MsgListen, MsgSend, MsgListenEnc
   })
 
 /** Via Expo devtools websocket server which acts as message relay */
-const makeExpoDevtoolsConnectionChannel = ({
+const makeExpoDevtoolsEdgeChannel = ({
   channelName,
 }: {
   channelName: string
@@ -163,9 +163,9 @@ export const connectViaExpoDevtools = ({
   target: string
 }): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const connectionChannel = yield* makeExpoDevtoolsConnectionChannel({
+    const edgeChannel = yield* makeExpoDevtoolsEdgeChannel({
       channelName: [node.nodeName, target].sort().join('_'),
     })
 
-    yield* node.addConnection({ target, connectionChannel, replaceIfExists: true })
+    yield* node.addEdge({ target, edgeChannel, replaceIfExists: true })
   }).pipe(Effect.catchTag('LiveStore.UnexpectedError', Effect.orDie))

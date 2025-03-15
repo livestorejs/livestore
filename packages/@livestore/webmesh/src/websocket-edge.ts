@@ -16,18 +16,18 @@ import type * as NodeWebSocket from 'ws'
 import * as WebmeshSchema from './mesh-schema.js'
 import type { MeshNode } from './node.js'
 
-export class WSConnectionInit extends Schema.TaggedStruct('WSConnectionInit', {
+export class WSEdgeInit extends Schema.TaggedStruct('WSEdgeInit', {
   from: Schema.String,
 }) {}
 
-export class WSConnectionPayload extends Schema.TaggedStruct('WSConnectionPayload', {
+export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
   from: Schema.String,
   payload: Schema.Any,
 }) {}
 
-export class WSConnectionMessage extends Schema.Union(WSConnectionInit, WSConnectionPayload) {}
+export class WSEdgeMessage extends Schema.Union(WSEdgeInit, WSEdgePayload) {}
 
-export const MessageMsgPack = Schema.MsgPack(WSConnectionMessage)
+export const MessageMsgPack = Schema.MsgPack(WSEdgeMessage)
 
 export type SocketType =
   | {
@@ -54,14 +54,14 @@ export const connectViaWebSocket = ({
 
     socket.addEventListener('close', () => Deferred.unsafeDone(disconnected, Exit.void))
 
-    const connection = yield* makeWebSocketConnection(socket, { _tag: 'leaf', from: node.nodeName })
+    const edgeChannel = yield* makeWebSocketEdge(socket, { _tag: 'leaf', from: node.nodeName })
 
-    yield* node.addConnection({ target: 'ws', connectionChannel: connection.webChannel, replaceIfExists: true })
+    yield* node.addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
 
     yield* disconnected
   }).pipe(Effect.scoped, Effect.forever, Effect.catchTag('WebSocketError', Effect.orDie))
 
-export const makeWebSocketConnection = (
+export const makeWebSocketEdge = (
   socket: globalThis.WebSocket | NodeWebSocket.WebSocket,
   socketType: SocketType,
 ): Effect.Effect<
@@ -89,7 +89,7 @@ export const makeWebSocketConnection = (
         Stream.flatten(),
         Stream.tap((msg) =>
           Effect.gen(function* () {
-            if (msg._tag === 'WSConnectionInit') {
+            if (msg._tag === 'WSEdgeInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
               const decodedPayload = yield* Schema.decode(schema.listen)(msg.payload)
@@ -104,7 +104,7 @@ export const makeWebSocketConnection = (
       )
 
       const initHandshake = (from: string) =>
-        socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionInit', from }))
+        socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
         initHandshake(socketType.from)
@@ -136,12 +136,12 @@ export const makeWebSocketConnection = (
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encode(schema.send)(message)
-          socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionPayload', payload, from }))
+          socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
         })
 
       const listen = Stream.fromQueue(listenQueue).pipe(
         Stream.map(Either.right),
-        WebChannel.listenToDebugPing('websocket-connection'),
+        WebChannel.listenToDebugPing('websocket-edge'),
       )
 
       const webChannel = {
@@ -155,5 +155,5 @@ export const makeWebSocketConnection = (
       } satisfies WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
       return { webChannel, from }
-    }).pipe(Effect.withSpanScoped('makeWebSocketConnection')),
+    }).pipe(Effect.withSpanScoped('makeWebSocketEdge')),
   )

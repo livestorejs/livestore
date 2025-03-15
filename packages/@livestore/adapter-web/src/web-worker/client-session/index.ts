@@ -499,9 +499,9 @@ export const makeAdapter =
               ids: { own: webmeshNode.nodeName, other: contentscriptMainNodeName },
             })
 
-            yield* webmeshNode.addConnection({
+            yield* webmeshNode.addEdge({
               target: contentscriptMainNodeName,
-              connectionChannel: contentscriptMainChannel,
+              edgeChannel: contentscriptMainChannel,
             })
             // yield* Effect.logDebug(
             //   `[@livestore/adapter-web:client-session] initiated connection: ${webmeshNode.nodeName} → contentscript-main`,

@@ -20,11 +20,11 @@ export interface MakeMessageChannelArgs {
   nodeName: MeshNodeName
   /** Queue of incoming messages for this channel */
   incomingPacketsQueue: Queue.Queue<MessageQueueItem>
-  newConnectionAvailablePubSub: PubSub.PubSub<MeshNodeName>
+  newEdgeAvailablePubSub: PubSub.PubSub<MeshNodeName>
   channelName: ChannelName
   target: MeshNodeName
   sendPacket: (packet: typeof MeshSchema.MessageChannelPacket.Type) => Effect.Effect<void>
-  checkTransferableConnections: (
+  checkTransferableEdges: (
     packet: typeof MeshSchema.MessageChannelPacket.Type,
   ) => typeof MeshSchema.MessageChannelResponseNoTransferables.Type | undefined
   schema: WebChannel.OutputSchema<any, any, any, any>
@@ -43,7 +43,7 @@ export const makeMessageChannelInternal = ({
   nodeName,
   incomingPacketsQueue,
   target,
-  checkTransferableConnections,
+  checkTransferableEdges,
   channelName,
   schema: schema_,
   sendPacket,
@@ -203,7 +203,7 @@ export const makeMessageChannelInternal = ({
               const mc = new MessageChannel()
 
               // We're using a message channel with acks here to make sure messages are not lost
-              // which might happen during re-connection scenarios.
+              // which might happen during re-edge scenarios.
               // Also we need to eagerly start listening since we're using the channel "ourselves"
               // for the initial ping-pong sequence.
               const channel = yield* WebChannel.messagePortChannelWithAck({
@@ -323,7 +323,7 @@ export const makeMessageChannelInternal = ({
       return shouldNeverHappen(`Expected channel to be in Initial state, but was in ${channelState._tag} state`)
     }
 
-    const connectionRequest = Effect.gen(function* () {
+    const edgeRequest = Effect.gen(function* () {
       const packet = MeshSchema.MessageChannelRequest.make({
         source: nodeName,
         sourceId,
@@ -336,19 +336,19 @@ export const makeMessageChannelInternal = ({
 
       channelStateRef.current = { _tag: 'RequestSent', reqPacketId: packet.id }
 
-      // yield* Effect.log(`${nodeName}→${channelName}→${target}:connectionRequest [${channelVersion}]`)
+      // yield* Effect.log(`${nodeName}→${channelName}→${target}:edgeRequest [${channelVersion}]`)
 
-      const noTransferableResponse = checkTransferableConnections(packet)
+      const noTransferableResponse = checkTransferableEdges(packet)
       if (noTransferableResponse !== undefined) {
-        yield* Effect.spanEvent(`No transferable connections found for ${packet.source}→${packet.target}`)
+        yield* Effect.spanEvent(`No transferable edges found for ${packet.source}→${packet.target}`)
         return yield* Effect.fail(noTransferableResponse)
       }
 
       yield* sendPacket(packet)
-      span?.addEvent(`initial connection request sent (${packet.id})`)
+      span?.addEvent(`initial edge request sent (${packet.id})`)
     })
 
-    yield* connectionRequest
+    yield* edgeRequest
 
     const channel = yield* deferred
 

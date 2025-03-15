@@ -4,7 +4,7 @@ import { Effect, FiberSet } from '@livestore/utils/effect'
 import * as WebSocket from 'ws'
 
 import { makeMeshNode } from './node.js'
-import { makeWebSocketConnection } from './websocket-connection.js'
+import { makeWebSocketEdge } from './websocket-edge.js'
 
 export const makeWebSocketServer = ({
   relayNodeName,
@@ -37,15 +37,15 @@ export const makeWebSocketServer = ({
     // TODO handle node disconnects (i.e. remove respective connection)
     server.on('connection', (socket) => {
       Effect.gen(function* () {
-        const { webChannel, from } = yield* makeWebSocketConnection(socket, { _tag: 'relay' })
+        const { webChannel, from } = yield* makeWebSocketEdge(socket, { _tag: 'relay' })
 
-        yield* node.addConnection({ target: from, connectionChannel: webChannel, replaceIfExists: true })
-        yield* Effect.log(`WS Relay ${relayNodeName}: added connection from '${from}'`)
+        yield* node.addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
+        yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
 
         socket.addEventListener('close', () =>
           Effect.gen(function* () {
-            yield* node.removeConnection(from)
-            yield* Effect.log(`WS Relay ${relayNodeName}: removed connection from '${from}'`)
+            yield* node.removeEdge(from)
+            yield* Effect.log(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
           }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runFork),
         )
 
