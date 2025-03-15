@@ -1,6 +1,6 @@
 {
   "name": "@livestore/react",
-  "version": "0.3.0-dev.20",
+  "version": "0.3.0-dev.21",
   "type": "module",
   "sideEffects": false,
   "exports": {

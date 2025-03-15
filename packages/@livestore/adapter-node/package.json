@@ -1,6 +1,6 @@
 {
   "name": "@livestore/adapter-node",
-  "version": "0.3.0-dev.20",
+  "version": "0.3.0-dev.21",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -29,7 +29,7 @@
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-node-common": "workspace:*",
-    "@livestore/devtools-vite": "0.3.0-dev.20",
+    "@livestore/devtools-vite": "0.3.0-dev.21",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
