@@ -111,6 +111,19 @@ export class NetworkConnectionTopologyResponse extends Schema.TaggedStruct('Netw
   target: Schema.Literal('-'),
 }) {}
 
+export const BroadcastChannelPacket = Schema.TaggedStruct('BroadcastChannelPacket', {
+  id,
+  channelName: Schema.String,
+  /**
+   * The payload is expected to be encoded/decoded by the send/listen schema.
+   * Transferables are not supported.
+   */
+  payload: Schema.Any,
+  hops: Schema.Array(Schema.String),
+  source: Schema.String,
+  target: Schema.Literal('-'),
+})
+
 export class MessageChannelPacket extends Schema.Union(
   MessageChannelRequest,
   MessageChannelResponseSuccess,
@@ -130,6 +143,7 @@ export class Packet extends Schema.Union(
   NetworkConnectionAdded,
   NetworkConnectionTopologyRequest,
   NetworkConnectionTopologyResponse,
+  BroadcastChannelPacket,
 ) {}
 
 export class MessageChannelPing extends Schema.TaggedStruct('MessageChannelPing', {}) {}

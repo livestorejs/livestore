@@ -1,4 +1,5 @@
 import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
 import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
@@ -72,20 +73,37 @@ const listenToDevtools = ({
       devtools,
     } = yield* LeaderThreadCtx
 
+    type SubscriptionId = string
+    const subscriptionFiberMap = yield* FiberMap.make<SubscriptionId>()
+
     type RequestId = string
-    const subscriptionFiberMap = yield* FiberMap.make<RequestId>()
+    const handledRequestIds = new Set<RequestId>()
 
     yield* incomingMessages.pipe(
       Stream.tap((decodedEvent) =>
         Effect.gen(function* () {
-          // yield* Effect.logDebug('[@livestore/common:leader-thread:devtools] incomingMessage', decodedEvent)
+          const { requestId } = decodedEvent
+          const reqPayload = { requestId, liveStoreVersion, clientId }
+
+          // yield* Effect.logDebug(
+          //   `[@livestore/common:leader-thread:devtools] incomingMessage: ${decodedEvent._tag} (${requestId})`,
+          //   decodedEvent,
+          // )
 
           if (decodedEvent._tag === 'LSD.Leader.Disconnect') {
             return
           }
 
-          const { requestId } = decodedEvent
-          const reqPayload = { requestId, liveStoreVersion, clientId }
+          // TODO we should try to move the duplicate message handling on the webmesh layer
+          // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
+          // Proof: https://share.cleanshot.com/V9G87B0B
+          // Also see `store/devtools.ts` for same problem
+          if (handledRequestIds.has(requestId)) {
+            // yield* Effect.logWarning(`Duplicate message`, decodedEvent)
+            return
+          }
+
+          handledRequestIds.add(requestId)
 
           switch (decodedEvent._tag) {
             case 'LSD.Leader.Ping': {
@@ -222,7 +240,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.SyncHistorySubscribe': {
-              const { requestId } = decodedEvent
+              const { subscriptionId } = decodedEvent
 
               if (syncBackend !== undefined) {
                 // TODO consider piggybacking on the existing leader-thread sync-pulling
@@ -230,13 +248,20 @@ const listenToDevtools = ({
                   Stream.map((_) => _.batch),
                   Stream.flattenIterables,
                   Stream.tap(({ mutationEventEncoded, metadata }) =>
-                    sendMessage(Devtools.Leader.SyncHistoryRes.make({ mutationEventEncoded, metadata, ...reqPayload })),
+                    sendMessage(
+                      Devtools.Leader.SyncHistoryRes.make({
+                        mutationEventEncoded,
+                        metadata,
+                        subscriptionId,
+                        ...reqPayload,
+                        requestId: nanoid(10),
+                      }),
+                    ),
                   ),
                   Stream.runDrain,
-                  Effect.acquireRelease(() => Effect.log('syncHistorySubscribe done')),
                   Effect.interruptible,
                   Effect.tapCauseLogPretty,
-                  FiberMap.run(subscriptionFiberMap, requestId),
+                  FiberMap.run(subscriptionFiberMap, subscriptionId),
                 )
               }
 
@@ -262,7 +287,7 @@ const listenToDevtools = ({
             }
             case 'LSD.Leader.NetworkStatusSubscribe': {
               if (syncBackend !== undefined) {
-                const { requestId } = decodedEvent
+                const { subscriptionId } = decodedEvent
 
                 // TODO investigate and fix bug. seems that when sending messages right after
                 // the devtools have connected get sometimes lost
@@ -277,14 +302,16 @@ const listenToDevtools = ({
                     sendMessage(
                       Devtools.Leader.NetworkStatusRes.make({
                         networkStatus: { isConnected, timestampMs: Date.now(), latchClosed },
+                        subscriptionId,
                         ...reqPayload,
+                        requestId: nanoid(10),
                       }),
                     ),
                   ),
                   Stream.runDrain,
                   Effect.interruptible,
                   Effect.tapCauseLogPretty,
-                  FiberMap.run(subscriptionFiberMap, requestId),
+                  FiberMap.run(subscriptionFiberMap, subscriptionId),
                 )
               }
 
@@ -298,7 +325,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.SyncHeadSubscribe': {
-              const { requestId } = decodedEvent
+              const { subscriptionId } = decodedEvent
 
               yield* syncProcessor.syncState.changes.pipe(
                 Stream.tap((syncState) =>
@@ -306,22 +333,24 @@ const listenToDevtools = ({
                     Devtools.Leader.SyncHeadRes.make({
                       local: syncState.localHead,
                       upstream: syncState.upstreamHead,
+                      subscriptionId,
                       ...reqPayload,
+                      requestId: nanoid(10),
                     }),
                   ),
                 ),
                 Stream.runDrain,
                 Effect.interruptible,
                 Effect.tapCauseLogPretty,
-                FiberMap.run(subscriptionFiberMap, requestId),
+                FiberMap.run(subscriptionFiberMap, subscriptionId),
               )
 
               return
             }
             case 'LSD.Leader.SyncHeadUnsubscribe': {
-              const { requestId } = decodedEvent
+              const { subscriptionId } = decodedEvent
 
-              yield* FiberMap.remove(subscriptionFiberMap, requestId)
+              yield* FiberMap.remove(subscriptionFiberMap, subscriptionId)
 
               return
             }

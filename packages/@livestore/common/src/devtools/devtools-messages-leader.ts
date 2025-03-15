@@ -22,11 +22,16 @@ export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFi
   mutationLog: DatabaseFileInfo,
 }) {}
 
-export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {}) {}
-export class NetworkStatusUnsubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusUnsubscribe', {}) {}
+export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {
+  subscriptionId: Schema.String,
+}) {}
+export class NetworkStatusUnsubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusUnsubscribe', {
+  subscriptionId: Schema.String,
+}) {}
 
 export class NetworkStatusRes extends LSDReqResMessage('LSD.Leader.NetworkStatusRes', {
   networkStatus: NetworkStatus,
+  subscriptionId: Schema.String,
 }) {}
 
 export class SyncingInfoReq extends LSDReqResMessage('LSD.Leader.SyncingInfoReq', {}) {}
@@ -40,18 +45,28 @@ export class SyncingInfoRes extends LSDReqResMessage('LSD.Leader.SyncingInfoRes'
   syncingInfo: SyncingInfo,
 }) {}
 
-export class SyncHistorySubscribe extends LSDReqResMessage('LSD.Leader.SyncHistorySubscribe', {}) {}
-export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHistoryUnsubscribe', {}) {}
+export class SyncHistorySubscribe extends LSDReqResMessage('LSD.Leader.SyncHistorySubscribe', {
+  subscriptionId: Schema.String,
+}) {}
+export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHistoryUnsubscribe', {
+  subscriptionId: Schema.String,
+}) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
   mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
   metadata: Schema.Option(Schema.JsonValue),
+  subscriptionId: Schema.String,
 }) {}
 
-export class SyncHeadSubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadSubscribe', {}) {}
-export class SyncHeadUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadUnsubscribe', {}) {}
+export class SyncHeadSubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadSubscribe', {
+  subscriptionId: Schema.String,
+}) {}
+export class SyncHeadUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadUnsubscribe', {
+  subscriptionId: Schema.String,
+}) {}
 export class SyncHeadRes extends LSDReqResMessage('LSD.Leader.SyncHeadRes', {
   local: EventId.EventId,
   upstream: EventId.EventId,
+  subscriptionId: Schema.String,
 }) {}
 
 export class SnapshotReq extends LSDReqResMessage('LSD.Leader.SnapshotReq', {}) {}

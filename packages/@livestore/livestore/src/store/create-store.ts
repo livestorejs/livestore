@@ -95,6 +95,13 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
   disableDevtools?: boolean
   onBootStatus?: (status: BootStatus) => void
   shutdownDeferred?: ShutdownDeferred
+  /**
+   * Currently only used in the web adapter:
+   * If true, registers a beforeunload event listener to confirm unsaved changes.
+   *
+   * @default true
+   */
+  confirmUnsavedChanges?: boolean
   params?: {
     leaderPushBatchSize?: number
   }
@@ -130,7 +137,7 @@ export const createStorePromise = async <TSchema extends LiveStoreSchema = LiveS
     provideOtel({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer }),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
-    Effect.provide(Logger.pretty),
+    Effect.provide(Logger.prettyWithThread('window')),
     Logger.withMinimumLogLevel(LogLevel.Debug),
     Effect.runPromise,
   )
@@ -147,6 +154,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
   shutdownDeferred,
   params,
   debug,
+  confirmUnsavedChanges = true,
 }: CreateStoreOptions<TSchema, TContext>): Effect.Effect<
   Store<TSchema, TContext>,
   UnexpectedError,
@@ -244,6 +252,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         unsyncedMutationEvents,
         lifetimeScope,
         runtime,
+        confirmUnsavedChanges,
         // NOTE during boot we're not yet executing mutations in a batched context
         // but only set the provided `batchUpdates` function after boot
         batchUpdates: (run) => run(),

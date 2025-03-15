@@ -11,10 +11,7 @@ import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-t
 import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
-import {
-  makeChannelForConnectedMeshNode,
-  makeExpoDevtoolsConnectedMeshNode,
-} from '@livestore/devtools-expo-common/web-channel'
+import * as DevtoolsExpo from '@livestore/devtools-expo-common/web-channel'
 import type { Scope } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
@@ -65,7 +62,7 @@ export const makeAdapter =
       )
 
       const devtoolsWebmeshNode = devtoolsEnabled
-        ? yield* makeExpoDevtoolsConnectedMeshNode({
+        ? yield* DevtoolsExpo.makeExpoDevtoolsConnectedMeshNode({
             nodeName: `expo-${storeId}-${clientId}-${sessionId}`,
             target: `devtools-${storeId}-${clientId}-${sessionId}`,
           })
@@ -99,12 +96,23 @@ export const makeAdapter =
 
       if (devtoolsEnabled) {
         yield* Effect.gen(function* () {
-          const storeDevtoolsChannel = yield* makeChannelForConnectedMeshNode({
+          const sessionInfoChannel = yield* DevtoolsExpo.makeExpoDevtoolsBroadcastChannel({
+            channelName: 'devtools-expo-session-info',
+            schema: Devtools.SessionInfo.Message,
+          })
+
+          yield* Devtools.SessionInfo.provideSessionInfo({
+            webChannel: sessionInfoChannel,
+            sessionInfo: Devtools.SessionInfo.SessionInfo.make({ clientId, sessionId, storeId }),
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+          const storeDevtoolsChannel = yield* DevtoolsExpo.makeChannelForConnectedMeshNode({
             target: `devtools-${storeId}-${clientId}-${sessionId}`,
             node: devtoolsWebmeshNode!,
             schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
             channelType: 'clientSession',
           })
+
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
@@ -258,18 +266,15 @@ const makeDevtoolsOptions = ({
     return {
       enabled: true,
       makeBootContext: Effect.gen(function* () {
+        const devtoolsWebChannel = yield* DevtoolsExpo.makeChannelForConnectedMeshNode({
+          node: devtoolsWebmeshNode!,
+          target: `devtools-${storeId}-${clientId}-${sessionId}`,
+          schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
+          channelType: 'leader',
+        })
+
         return {
-          // devtoolsWebChannel: yield* makeExpoDevtoolsChannel({
-          // nodeName: `leader-${storeId}-${clientId}`,
-          devtoolsWebChannel: yield* makeChannelForConnectedMeshNode({
-            node: devtoolsWebmeshNode!,
-            target: `devtools-${storeId}-${clientId}-${sessionId}`,
-            schema: {
-              listen: Devtools.Leader.MessageToApp,
-              send: Devtools.Leader.MessageFromApp,
-            },
-            channelType: 'leader',
-          }),
+          devtoolsWebChannel,
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,
             mutationLog: dbMutationLog.metadata.persistenceInfo,

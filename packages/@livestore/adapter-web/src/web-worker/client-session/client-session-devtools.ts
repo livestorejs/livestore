@@ -5,20 +5,15 @@ import { Effect } from '@livestore/utils/effect'
 export const logDevtoolsUrl = ({ clientSession, storeId }: { clientSession: ClientSession; storeId: string }) =>
   Effect.gen(function* () {
     if (isDevEnv()) {
-      const searchParams = new URLSearchParams()
-      searchParams.set('clientId', clientSession.clientId)
-      searchParams.set('sessionId', clientSession.sessionId)
-      searchParams.set('storeId', storeId)
-      const url = `${location.origin}/_livestore?${searchParams.toString()}`
+      const devtoolsBaseUrl = `${location.origin}/_livestore`
 
       // Check whether devtools are available and then log the URL
-      const response = yield* Effect.promise(() => fetch(url))
+      const response = yield* Effect.promise(() => fetch(devtoolsBaseUrl))
       if (response.ok) {
         const text = yield* Effect.promise(() => response.text())
         if (text.includes('<meta name="livestore-devtools" content="true" />')) {
-          // NOTE the trailing `&` is intentional to avoid Chrome opening the URL in the sources pane
-          // as the browser already fetched it
-          yield* Effect.log(`[@livestore/adapter-web] Devtools ready on ${url}&`)
+          const url = `${devtoolsBaseUrl}/web/${storeId}/${clientSession.clientId}/${clientSession.sessionId}`
+          yield* Effect.log(`[@livestore/adapter-web] Devtools ready on ${url}`)
         }
       }
     }

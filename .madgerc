@@ -2,7 +2,7 @@
   "excludeRegExp": [
     // NOTE there seems to be some kind of issue where it detects circular dependencies but there doesn't seem to be any
     "utils\/src\/effect",
-    "livestore\/src\/live-queries\/graphql",
+    "@livestore\/graphql\/src\/graphql",
     "graphology",
     "nanoid\/index.browser.ts"
   ],

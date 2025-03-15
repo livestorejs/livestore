@@ -845,6 +845,41 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(withCtx(test)),
     )
   })
+
+  Vitest.describe('broadcast channel', () => {
+    Vitest.scopedLive('should work', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+        const nodeB = yield* makeMeshNode('B')
+        const nodeC = yield* makeMeshNode('C')
+
+        yield* connectNodesViaMessageChannel(nodeA, nodeB)
+        yield* connectNodesViaMessageChannel(nodeB, nodeC)
+
+        const channelOnA = yield* nodeA.makeBroadcastChannel({ channelName: 'test', schema: Schema.String })
+        const channelOnC = yield* nodeC.makeBroadcastChannel({ channelName: 'test', schema: Schema.String })
+
+        const listenOnAFiber = yield* channelOnA.listen.pipe(
+          Stream.flatten(),
+          Stream.runHead,
+          Effect.flatten,
+          Effect.fork,
+        )
+        const listenOnCFiber = yield* channelOnC.listen.pipe(
+          Stream.flatten(),
+          Stream.runHead,
+          Effect.flatten,
+          Effect.fork,
+        )
+
+        yield* channelOnA.send('A1')
+        yield* channelOnC.send('C1')
+
+        expect(yield* listenOnAFiber).toEqual('C1')
+        expect(yield* listenOnCFiber).toEqual('A1')
+      }).pipe(withCtx(test)),
+    )
+  })
 })
 
 const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'webmesh-node-test', skipLogUrl: false })

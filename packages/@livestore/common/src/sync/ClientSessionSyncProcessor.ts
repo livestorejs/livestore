@@ -27,6 +27,7 @@ export const makeClientSessionSyncProcessor = ({
   refreshTables,
   span,
   params,
+  confirmUnsavedChanges,
 }: {
   schema: LiveStoreSchema
   clientSession: ClientSession
@@ -44,6 +45,11 @@ export const makeClientSessionSyncProcessor = ({
   params: {
     leaderPushBatchSize: number
   }
+  /**
+   * Currently only used in the web adapter:
+   * If true, registers a beforeunload event listener to confirm unsaved changes.
+   */
+  confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
   const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
@@ -132,7 +138,7 @@ export const makeClientSessionSyncProcessor = ({
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     // eslint-disable-next-line unicorn/prefer-global-this
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (confirmUnsavedChanges && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog

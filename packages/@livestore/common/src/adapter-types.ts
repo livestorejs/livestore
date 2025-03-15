@@ -1,7 +1,7 @@
 import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
-import type * as Devtools from './devtools/index.js'
+import type * as Devtools from './devtools/mod.js'
 import type { EventId, LiveStoreSchema, MutationEvent } from './schema/mod.js'
 import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'

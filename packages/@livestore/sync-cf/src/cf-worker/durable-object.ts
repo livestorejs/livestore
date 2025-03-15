@@ -265,7 +265,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         }),
         Effect.tapCauseLogPretty,
         Logger.withMinimumLogLevel(LogLevel.Debug),
-        Effect.provide(Logger.pretty),
+        Effect.provide(Logger.prettyWithThread('durable-object')),
         Effect.runPromise,
       )
     }

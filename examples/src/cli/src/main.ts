@@ -109,5 +109,5 @@ cli(process.argv).pipe(
   Effect.annotateLogs({ thread: 'cli-main' }),
   Logger.withMinimumLogLevel(LogLevel.Debug),
   Effect.provide(layer),
-  PlatformNode.NodeRuntime.runMain,
+  PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
 )

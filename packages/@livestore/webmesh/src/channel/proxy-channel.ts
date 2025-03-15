@@ -166,7 +166,7 @@ export const makeProxyChannel = ({
                   channelState.combinedChannelId !== packet.combinedChannelId
                 ) {
                   return shouldNeverHappen(
-                    `Expected proxy channel to have the same combinedChannelId as the packet:\n${channelState.combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
+                    `ProxyChannel[${channelKey}]: Expected proxy channel to have the same combinedChannelId as the packet:\n${channelState.combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
                   )
                 } else {
                   // for now just ignore it but should be looked into (there seems to be some kind of race condition/inefficiency)
@@ -176,7 +176,7 @@ export const makeProxyChannel = ({
               const combinedChannelId = getCombinedChannelId(packet.channelIdCandidate)
               if (combinedChannelId !== packet.combinedChannelId) {
                 return yield* Effect.die(
-                  `Expected proxy channel to have the same combinedChannelId as the packet:\n${combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
+                  `ProxyChannel[${channelKey}]: Expected proxy channel to have the same combinedChannelId as the packet:\n${combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
                 )
               }
 
@@ -193,7 +193,7 @@ export const makeProxyChannel = ({
 
               if (channelState.combinedChannelId !== packet.combinedChannelId) {
                 return yield* Effect.die(
-                  `Expected proxy channel to have the same combinedChannelId as the packet:\n${channelState.combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
+                  `ProxyChannel[${channelKey}]: Expected proxy channel to have the same combinedChannelId as the packet:\n${channelState.combinedChannelId} (channel) === ${packet.combinedChannelId} (packet)`,
                 )
               }
 
@@ -222,7 +222,7 @@ export const makeProxyChannel = ({
 
               const ack =
                 channelState.ackMap.get(packet.reqId) ??
-                shouldNeverHappen(`Expected ack for ${packet.reqId} in proxy channel ${channelKey}`)
+                shouldNeverHappen(`[ProxyChannel[${channelKey}]] Expected ack for ${packet.reqId}`)
 
               yield* Deferred.succeed(ack, void 0)
 
@@ -305,6 +305,8 @@ export const makeProxyChannel = ({
                 target,
                 combinedChannelId,
               })
+              // TODO consider handling previous ackMap entries which might leak/fill-up memory
+              // as only successful acks are removed from the map
               ackMap.set(packet.id, ack)
 
               yield* sendPacket(packet)
@@ -315,7 +317,9 @@ export const makeProxyChannel = ({
               debugInfo.pendingSends--
             })
 
-            yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(100)), Effect.orDie)
+            // TODO make this configurable
+            // Schedule.exponential(10): 10, 20, 40, 80, 160, 320, ...
+            yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(10)), Effect.orDie)
           }).pipe(Effect.tapErrorCause(Effect.logError))
 
           const rerunOnNewChannelFiber = yield* connectedStateRef.changes.pipe(

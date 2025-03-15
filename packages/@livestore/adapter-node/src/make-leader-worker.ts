@@ -207,6 +207,7 @@ const makeLeaderThread = ({
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled: devtools.enabled,
       devtoolsPort: devtools.port,
+      devtoolsHost: devtools.host,
       dbReadModel,
       dbMutationLog,
       storeId,
@@ -243,6 +244,7 @@ const makeDevtoolsOptions = ({
   storeId,
   clientId,
   devtoolsPort,
+  devtoolsHost,
   schemaPath,
 }: {
   devtoolsEnabled: boolean
@@ -251,6 +253,7 @@ const makeDevtoolsOptions = ({
   storeId: string
   clientId: string
   devtoolsPort: number
+  devtoolsHost: string
   schemaPath: string
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
@@ -270,18 +273,18 @@ const makeDevtoolsOptions = ({
           clientId,
           sessionId: 'static', // TODO make this dynamic
           port: devtoolsPort,
+          host: devtoolsHost,
+        })
+
+        const devtoolsWebChannel = yield* makeNodeDevtoolsChannel({
+          nodeName: `leader-${storeId}-${clientId}`,
+          target: `devtools-${storeId}-${clientId}-static`,
+          url: `ws://localhost:${devtoolsPort}`,
+          schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
         })
 
         return {
-          devtoolsWebChannel: yield* makeNodeDevtoolsChannel({
-            nodeName: `leader-${storeId}-${clientId}`,
-            target: `devtools`,
-            url: `ws://localhost:${devtoolsPort}`,
-            schema: {
-              listen: Devtools.Leader.MessageToApp,
-              send: Devtools.Leader.MessageFromApp,
-            },
-          }),
+          devtoolsWebChannel,
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,
             mutationLog: dbMutationLog.metadata.persistenceInfo,

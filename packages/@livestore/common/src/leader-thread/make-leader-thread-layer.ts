@@ -3,7 +3,7 @@ import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/util
 
 import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '../adapter-types.js'
 import { UnexpectedError } from '../adapter-types.js'
-import type * as Devtools from '../devtools/index.js'
+import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import { EventId, MutationEvent, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
 import { migrateTable } from '../schema-management/migrations.js'

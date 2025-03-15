@@ -39,6 +39,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   disableDevtools?: boolean
   lifetimeScope: Scope.Scope
   runtime: Runtime.Runtime<Scope.Scope>
+  confirmUnsavedChanges: boolean
   batchUpdates: (runUpdates: () => void) => void
   // TODO validate whether we still need this
   unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId.EventId, MutationEvent.ForSchema<TSchema>>

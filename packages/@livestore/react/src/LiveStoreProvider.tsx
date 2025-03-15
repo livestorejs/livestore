@@ -66,6 +66,13 @@ export interface LiveStoreProviderProps {
   batchUpdates: (run: () => void) => void
   disableDevtools?: boolean
   signal?: AbortSignal
+  /**
+   * Currently only used in the web adapter:
+   * If true, registers a beforeunload event listener to confirm unsaved changes.
+   *
+   * @default true
+   */
+  confirmUnsavedChanges?: boolean
 }
 
 const defaultRenderError = (error: UnexpectedError | unknown) => (
@@ -99,6 +106,7 @@ export const LiveStoreProvider = ({
   batchUpdates,
   disableDevtools,
   signal,
+  confirmUnsavedChanges = true,
 }: LiveStoreProviderProps & { children?: ReactNode }): React.ReactElement => {
   const storeCtx = useCreateStore({
     storeId,
@@ -109,6 +117,7 @@ export const LiveStoreProvider = ({
     batchUpdates,
     disableDevtools,
     signal,
+    confirmUnsavedChanges,
   })
 
   if (storeCtx.stage === 'error') {
@@ -153,6 +162,9 @@ const useCreateStore = ({
   batchUpdates,
   disableDevtools,
   signal,
+  context,
+  params,
+  confirmUnsavedChanges,
 }: CreateStoreOptions<LiveStoreSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
@@ -180,6 +192,9 @@ const useCreateStore = ({
     batchUpdates,
     disableDevtools,
     signal,
+    context,
+    params,
+    confirmUnsavedChanges,
   })
 
   const interrupt = (
@@ -203,7 +218,10 @@ const useCreateStore = ({
     inputPropsCacheRef.current.adapter !== adapter ||
     inputPropsCacheRef.current.batchUpdates !== batchUpdates ||
     inputPropsCacheRef.current.disableDevtools !== disableDevtools ||
-    inputPropsCacheRef.current.signal !== signal
+    inputPropsCacheRef.current.signal !== signal ||
+    inputPropsCacheRef.current.context !== context ||
+    inputPropsCacheRef.current.params !== params ||
+    inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges
   ) {
     inputPropsCacheRef.current = {
       schema,
@@ -213,6 +231,9 @@ const useCreateStore = ({
       batchUpdates,
       disableDevtools,
       signal,
+      context,
+      params,
+      confirmUnsavedChanges,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
       interrupt(
@@ -275,6 +296,9 @@ const useCreateStore = ({
           batchUpdates,
           disableDevtools,
           shutdownDeferred,
+          context,
+          params,
+          confirmUnsavedChanges,
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
             // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
@@ -323,7 +347,19 @@ const useCreateStore = ({
         ctxValueRef.current.shutdownDeferred = undefined
       }
     }
-  }, [schema, otelOptions, boot, adapter, batchUpdates, disableDevtools, signal, storeId])
+  }, [
+    schema,
+    otelOptions,
+    boot,
+    adapter,
+    batchUpdates,
+    disableDevtools,
+    signal,
+    storeId,
+    context,
+    params,
+    confirmUnsavedChanges,
+  ])
 
   return ctxValueRef.current.value
 }

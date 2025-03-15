@@ -13,16 +13,21 @@ export class DebugInfoRes extends LSDClientSessionReqResMessage('LSD.ClientSessi
 
 export class DebugInfoHistorySubscribe extends LSDClientSessionReqResMessage(
   'LSD.ClientSession.DebugInfoHistorySubscribe',
-  {},
+  {
+    subscriptionId: Schema.String,
+  },
 ) {}
 
 export class DebugInfoHistoryRes extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoHistoryRes', {
   debugInfoHistory: Schema.Array(DebugInfo),
+  subscriptionId: Schema.String,
 }) {}
 
 export class DebugInfoHistoryUnsubscribe extends LSDClientSessionReqResMessage(
   'LSD.ClientSession.DebugInfoHistoryUnsubscribe',
-  {},
+  {
+    subscriptionId: Schema.String,
+  },
 ) {}
 
 export class DebugInfoResetReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoResetReq', {}) {}
@@ -40,35 +45,45 @@ export class DebugInfoRerunQueryRes extends LSDClientSessionReqResMessage(
   {},
 ) {}
 
-export class SyncHeadSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadSubscribe', {}) {}
-export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadUnsubscribe', {}) {}
+export class SyncHeadSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadSubscribe', {
+  subscriptionId: Schema.String,
+}) {}
+export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadUnsubscribe', {
+  subscriptionId: Schema.String,
+}) {}
 export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
   local: EventId.EventId,
   upstream: EventId.EventId,
+  subscriptionId: Schema.String,
 }) {}
 
 export class ReactivityGraphSubscribe extends LSDClientSessionReqResMessage(
   'LSD.ClientSession.ReactivityGraphSubscribe',
   {
     includeResults: Schema.Boolean,
+    subscriptionId: Schema.String,
   },
 ) {}
 
 export class ReactivityGraphUnsubscribe extends LSDClientSessionReqResMessage(
   'LSD.ClientSession.ReactivityGraphUnsubscribe',
-  {},
+  {
+    subscriptionId: Schema.String,
+  },
 ) {}
 
 export class ReactivityGraphRes extends LSDClientSessionReqResMessage('LSD.ClientSession.ReactivityGraphRes', {
   reactivityGraph: Schema.Any,
+  subscriptionId: Schema.String,
 }) {}
 
-export class LiveQueriesSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesSubscribe', {}) {}
+export class LiveQueriesSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesSubscribe', {
+  subscriptionId: Schema.String,
+}) {}
 
-export class LiveQueriesUnsubscribe extends LSDClientSessionReqResMessage(
-  'LSD.ClientSession.LiveQueriesUnsubscribe',
-  {},
-) {}
+export class LiveQueriesUnsubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesUnsubscribe', {
+  subscriptionId: Schema.String,
+}) {}
 
 export class SerializedLiveQuery extends Schema.Struct({
   _tag: Schema.Literal('computed', 'db', 'graphql'),
@@ -84,6 +99,7 @@ export class SerializedLiveQuery extends Schema.Struct({
 
 export class LiveQueriesRes extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesRes', {
   liveQueries: Schema.Array(SerializedLiveQuery),
+  subscriptionId: Schema.String,
 }) {}
 
 export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {}) {}

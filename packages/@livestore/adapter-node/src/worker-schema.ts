@@ -67,6 +67,7 @@ export namespace LeaderWorkerInner {
       schemaPath: Schema.String,
       devtools: Schema.Struct({
         port: Schema.Number,
+        host: Schema.String,
         enabled: Schema.Boolean,
       }),
     },

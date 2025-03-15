@@ -30,7 +30,7 @@
     "typescript": "^5.8.2",
     "vite": "^6.2.1",
     "vite-plugin-pwa": "^0.21.1",
-    "wrangler": "^3.114.0"
+    "wrangler": "^4.0.0"
   },
   "scripts": {
     "build": "vite build",

@@ -11,7 +11,7 @@ import type {
   NetworkStatus,
 } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
-import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
+import * as DevtoolsNode from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
@@ -51,6 +51,10 @@ export interface NodeAdapterOptions {
      * @default 4242
      */
     port: number
+    /**
+     * @default 'localhost'
+     */
+    host: string
   }
 }
 
@@ -61,7 +65,7 @@ export const makeNodeAdapter = ({
   workerUrl,
   schemaPath,
   baseDirectory,
-  devtools: devtoolsOptions = { port: 4242 },
+  devtools: devtoolsOptions = { port: 4242, host: 'localhost' },
   clientId = hostname(),
   // TODO make this dynamic and actually support multiple sessions
   sessionId = 'static',
@@ -114,14 +118,27 @@ export const makeNodeAdapter = ({
 
       if (devtoolsEnabled) {
         yield* Effect.gen(function* () {
-          const storeDevtoolsChannel = yield* makeNodeDevtoolsChannel({
+          const webmeshNode = yield* DevtoolsNode.makeNodeDevtoolsConnectedMeshNode({
+            url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
             nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
-            target: `devtools`,
-            url: `ws://localhost:${devtoolsOptions.port}`,
-            schema: {
-              listen: Devtools.ClientSession.MessageToApp,
-              send: Devtools.ClientSession.MessageFromApp,
-            },
+          })
+
+          const sessionsChannel = yield* webmeshNode.makeBroadcastChannel({
+            channelName: 'session-info',
+            schema: Devtools.SessionInfo.Message,
+          })
+
+          yield* Devtools.SessionInfo.provideSessionInfo({
+            webChannel: sessionsChannel,
+            sessionInfo: Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId }),
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+          webmeshNode.debug.print()
+
+          const storeDevtoolsChannel = yield* DevtoolsNode.makeChannelForConnectedMeshNode({
+            node: webmeshNode,
+            target: `devtools-${storeId}-${clientId}-${sessionId}`,
+            schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
           })
 
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
@@ -168,7 +185,7 @@ const makeLeaderThread = ({
   workerUrl: URL
   baseDirectory: string | undefined
   devtoolsEnabled: boolean
-  devtoolsOptions: { port: number }
+  devtoolsOptions: { port: number; host: string }
   schemaPath: string
   bootStatusQueue: Queue.Queue<BootStatus>
 }) =>
@@ -186,7 +203,7 @@ const makeLeaderThread = ({
           storeId,
           clientId,
           baseDirectory,
-          devtools: { enabled: devtoolsEnabled, port: devtoolsOptions.port },
+          devtools: { enabled: devtoolsEnabled, port: devtoolsOptions.port, host: devtoolsOptions.host },
           schemaPath,
         }),
     }).pipe(

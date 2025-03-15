@@ -4,6 +4,7 @@
  * @since 2.0.0
  */
 
+import type { SubscriptionRef } from 'effect'
 import { Effect, Effectable, Readable, Stream } from 'effect'
 import { dual } from 'effect/Function'
 import { hasProperty } from 'effect/Predicate'
@@ -73,6 +74,12 @@ export const make = <A, E, R>(options: {
   readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
 }): Subscribable<A, E, R> => new SubscribableImpl(options.get as any, options.changes as any) as Subscribable<A, E, R>
+
+export const fromSubscriptionRef = <A>(ref: SubscriptionRef.SubscriptionRef<A>): Subscribable<A> =>
+  make({
+    get: ref.get,
+    changes: ref.changes,
+  })
 
 /**
  * @since 2.0.0

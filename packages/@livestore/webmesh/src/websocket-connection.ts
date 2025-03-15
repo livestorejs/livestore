@@ -82,6 +82,8 @@ export const makeWebSocketConnection = (
         Effect.acquireRelease(Queue.shutdown),
       )
 
+      const schema = WebChannel.mapSchema(WebmeshSchema.Packet)
+
       yield* Stream.fromEventListener<MessageEvent>(socket as any, 'message').pipe(
         Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg.data))),
         Stream.flatten(),
@@ -90,7 +92,7 @@ export const makeWebSocketConnection = (
             if (msg._tag === 'WSConnectionInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
-              const decodedPayload = yield* Schema.decode(WebmeshSchema.Packet)(msg.payload)
+              const decodedPayload = yield* Schema.decode(schema.listen)(msg.payload)
               yield* Queue.offer(listenQueue, decodedPayload)
             }
           }),
@@ -133,18 +135,21 @@ export const makeWebSocketConnection = (
       const send = (message: typeof WebmeshSchema.Packet.Type) =>
         Effect.gen(function* () {
           yield* isConnectedLatch.await
-          const payload = yield* Schema.encode(WebmeshSchema.Packet)(message)
+          const payload = yield* Schema.encode(schema.send)(message)
           socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSConnectionPayload', payload, from }))
         })
 
-      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue).pipe(
+        Stream.map(Either.right),
+        WebChannel.listenToDebugPing('websocket-connection'),
+      )
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
         send,
         listen,
         closedDeferred,
-        schema: { listen: WebmeshSchema.Packet, send: WebmeshSchema.Packet },
+        schema,
         supportsTransferables: false,
         shutdown: Scope.close(scope, Exit.void),
       } satisfies WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>

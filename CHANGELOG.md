@@ -5,46 +5,6 @@
 
 ## 0.3.0
 
-### Still todo:
-- After release: Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-- Examples:
-  - for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
-  - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
-  - Add peer-deps package to each example and update docs
-- Docs
-  - Notes on deployment (when to deploy what)
-  - Embrace term "containers"
-    - Unit of sharing/collaboration/auth
-    - What if I want got my initial container design wrong and I want to change it?
-      - Comparables: document databases, kafka streams, 
-- Fix linting
-- Webmesh: rename connection to "edge"
-- Syncing
-  - Fix: mutation log unique constraint violation during concurrent mutations
-  - Enable auth setup
-  - cf sync:
-    - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
-      - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
-    - Bring back "broadcast" pull res terminology
-  - Electric:
-    - fix: connectivity state + offline handling
-  - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
-  - Remaining issues:
-    - [#283](https://github.com/livestorejs/livestore/issues/283)
-  - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-- Devtools
-  - Fix: When resetting the database but keeping the eventlog
-    - the app doesn't show a shutdown screen
-    - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
-  - Expo: Dynamic storeId support
-  - chrome extension
-    - Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
-  - Fix: Support multiple leader <> devtools connections
-    - Refactor according to ARCHITECTURE.md
-  - Refactor: share more code between devtools bridges
-- Expo:
-  - Fix: Implement proper SQLite rollback via session extension once landed in expo-sqlite
-
 ### New features
 
 - New sync implementation (based on git-like push/pull semantics)
@@ -143,6 +103,47 @@
   - Now supports React 19
   - `effect` (needs to be 3.13.7 or higher)
   - `@livestore/wa-sqlite` (needs to be 1.0.5-dev.2)
+
+### Still todo:
+
+- After release:
+  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+- Examples:
+  - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+  - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+  - Add peer-deps package to each example and update docs
+- Docs
+  - Notes on deployment (when to deploy what)
+  - Embrace term "containers"
+    - Unit of sharing/collaboration/auth
+    - What if I want got my initial container design wrong and I want to change it?
+      - Comparables: document databases, kafka streams, 
+- Fix linting
+- Webmesh: rename connection to "edge"
+- Syncing
+  - Fix: mutation log unique constraint violation during concurrent mutations
+  - Enable auth setup
+  - cf sync:
+    - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
+      - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
+    - Bring back "broadcast" pull res terminology
+  - Electric:
+    - fix: connectivity state + offline handling
+  - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
+  - Remaining issues:
+    - [#283](https://github.com/livestorejs/livestore/issues/283)
+  - Testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+- Devtools
+  - Fix: When resetting the database but keeping the eventlog
+    - the app doesn't show a shutdown screen
+    - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
+- Expo:
+  - Fix: Implement proper SQLite rollback via session extension once landed in expo-sqlite
+- Release
+  - Write blog post
+  - Prepare X/Bluesky thread
+
 
 ## 0.2.0
 

@@ -103,6 +103,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     lifetimeScope,
     runtime,
     params,
+    confirmUnsavedChanges,
   }: StoreOptions<TSchema, TContext>) {
     super()
 
@@ -173,6 +174,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       params: {
         leaderPushBatchSize: params.leaderPushBatchSize,
       },
+      confirmUnsavedChanges,
     })
 
     this.__mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)

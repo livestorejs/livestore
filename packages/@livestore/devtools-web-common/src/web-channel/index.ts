@@ -1,7 +1,7 @@
-import { UnexpectedError } from '@livestore/common'
+import { Devtools, UnexpectedError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
 import type { Scope, Worker } from '@livestore/utils/effect'
-import { Deferred, Effect, Stream, WebChannel } from '@livestore/utils/effect'
+import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
 
@@ -11,8 +11,20 @@ export * as WorkerSchema from '../worker/schema.js'
 
 declare global {
   // eslint-disable-next-line no-var
-  var __debugWebMeshNode: any
+  var __debugWebmeshNode: any
 }
+
+export const makeSessionsChannel = WebChannel.broadcastChannel({
+  channelName: 'session-info',
+  schema: Devtools.SessionInfo.Message,
+})
+
+export const ClientSessionRequestContentscriptMain = Schema.TaggedStruct('ClientSessionRequestContentscriptMain', {
+  storeId: Schema.String,
+  clientId: Schema.String,
+  sessionId: Schema.String,
+})
+export type ClientSessionRequestContentscriptMain = typeof ClientSessionRequestContentscriptMain.Type
 
 export const makeWebDevtoolsConnectedMeshNode = ({
   nodeName,
@@ -63,7 +75,7 @@ export const makeWebDevtoolsChannel = <MsgListen, MsgSend, MsgListenEncoded, Msg
   Effect.gen(function* () {
     const node = yield* makeWebDevtoolsConnectedMeshNode({ nodeName, target: workerTargetName, worker })
 
-    globalThis.__debugWebMeshNode = node
+    globalThis.__debugWebmeshNode = node
 
     const channel = yield* makeChannelForConnectedMeshNode({ node, target, schema })
 

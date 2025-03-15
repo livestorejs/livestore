@@ -20,11 +20,13 @@ export const startDevtoolsServer = ({
   clientId,
   sessionId,
   port,
+  host,
 }: {
   schemaPath: string
   storeId: string
   clientId: string
   sessionId: string
+  host: string
   port: number
 }): Effect.Effect<void, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
@@ -59,7 +61,7 @@ export const startDevtoolsServer = ({
           cb(UnexpectedError.make({ cause: err }))
         })
 
-        httpServer.listen(port, '0.0.0.0', () => {
+        httpServer.listen(port, host, () => {
           cb(Effect.succeed(undefined))
         })
       })
@@ -67,11 +69,12 @@ export const startDevtoolsServer = ({
     yield* startServer(port)
 
     yield* Effect.logDebug(
-      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://localhost:${port}/_livestore`,
+      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}`,
     )
 
+    const clientSessionInfo = { storeId, clientId, sessionId }
     const viteServer = yield* makeViteServer({
-      mode: { _tag: 'node', storeId, clientId, sessionId, url: `ws://localhost:${port}` },
+      mode: { _tag: 'node', clientSessionInfo, url: `ws://localhost:${port}` },
       schemaPath: path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
         if (LS_DEV) {
@@ -91,7 +94,7 @@ export const startDevtoolsServer = ({
 
     httpServer.on('request', (req, res) => {
       if (req.url === '/' || req.url === '') {
-        res.writeHead(302, { Location: '/_livestore' })
+        res.writeHead(302, { Location: '/_livestore/node' })
         res.end()
       } else if (req.url?.startsWith('/_livestore')) {
         return viteServer.middlewares(req, res as any)

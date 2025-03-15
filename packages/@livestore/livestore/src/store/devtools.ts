@@ -3,6 +3,7 @@ import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 import type { LiveQuery, ReactivityGraph } from '../live-queries/base-class.js'
 import { NOT_REFRESHED_YET } from '../reactive.js'
@@ -58,6 +59,8 @@ export const connectDevtoolsToStore = ({
       }),
     )
 
+    const handledRequestIds = new Set<RequestId>()
+
     const sendToDevtools = (message: Devtools.ClientSession.MessageFromApp) =>
       storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runFork)
 
@@ -76,11 +79,22 @@ export const connectDevtoolsToStore = ({
 
       const requestId = decodedMessage.requestId
 
+      // TODO we should try to move the duplicate message handling on the webmesh layer
+      // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
+      // Proof: https://share.cleanshot.com/V9G87B0B
+      // Also see `leader-worker-devtools.ts` for same problem
+      if (handledRequestIds.has(requestId)) {
+        return
+      }
+
+      handledRequestIds.add(requestId)
+
       const requestIdleCallback = globalThis.requestIdleCallback ?? ((cb: () => void) => cb())
 
       switch (decodedMessage._tag) {
         case 'LSD.ClientSession.ReactivityGraphSubscribe': {
           const includeResults = decodedMessage.includeResults
+          const { subscriptionId } = decodedMessage
 
           const send = () =>
             // In order to not add more work to the current tick, we use requestIdleCallback
@@ -90,10 +104,11 @@ export const connectDevtoolsToStore = ({
                 sendToDevtools(
                   Devtools.ClientSession.ReactivityGraphRes.make({
                     reactivityGraph: store.reactivityGraph.getSnapshot({ includeResults }),
-                    requestId,
+                    requestId: nanoid(10),
                     clientId,
                     sessionId,
                     liveStoreVersion,
+                    subscriptionId,
                   }),
                 ),
               { timeout: 500 },
@@ -106,7 +121,7 @@ export const connectDevtoolsToStore = ({
           // This might need to be tweaked further and possibly be exposed to the user in some way.
           const throttledSend = throttle(send, 20)
 
-          reactivityGraphSubcriptions.set(requestId, store.reactivityGraph.subscribeToRefresh(throttledSend))
+          reactivityGraphSubcriptions.set(subscriptionId, store.reactivityGraph.subscribeToRefresh(throttledSend))
 
           break
         }
@@ -123,6 +138,7 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.DebugInfoHistorySubscribe': {
+          const { subscriptionId } = decodedMessage
           const buffer: DebugInfo[] = []
           let hasStopped = false
           let tickHandle: number | undefined
@@ -140,10 +156,11 @@ export const connectDevtoolsToStore = ({
               sendToDevtools(
                 Devtools.ClientSession.DebugInfoHistoryRes.make({
                   debugInfoHistory: buffer,
-                  requestId,
+                  requestId: nanoid(10),
                   clientId,
                   sessionId,
                   liveStoreVersion,
+                  subscriptionId,
                 }),
               )
               buffer.length = 0
@@ -164,15 +181,16 @@ export const connectDevtoolsToStore = ({
             }
           }
 
-          debugInfoHistorySubscriptions.set(requestId, unsub)
+          debugInfoHistorySubscriptions.set(subscriptionId, unsub)
 
           break
         }
         case 'LSD.ClientSession.DebugInfoHistoryUnsubscribe': {
+          const { subscriptionId } = decodedMessage
           // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
           // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
-          debugInfoHistorySubscriptions.get(requestId)?.()
-          debugInfoHistorySubscriptions.delete(requestId)
+          debugInfoHistorySubscriptions.get(subscriptionId)?.()
+          debugInfoHistorySubscriptions.delete(subscriptionId)
           break
         }
         case 'LSD.ClientSession.DebugInfoResetReq': {
@@ -191,12 +209,15 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.ReactivityGraphUnsubscribe': {
+          const { subscriptionId } = decodedMessage
           // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
           // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
-          reactivityGraphSubcriptions.get(requestId)?.()
+          reactivityGraphSubcriptions.get(subscriptionId)?.()
+          reactivityGraphSubcriptions.delete(subscriptionId)
           break
         }
         case 'LSD.ClientSession.LiveQueriesSubscribe': {
+          const { subscriptionId } = decodedMessage
           const send = () =>
             requestIdleCallback(
               () =>
@@ -214,10 +235,11 @@ export const connectDevtoolsToStore = ({
                           : q.results$.previousResult,
                       activeSubscriptions: Array.from(q.activeSubscriptions),
                     })),
-                    requestId,
+                    requestId: nanoid(10),
                     liveStoreVersion,
                     clientId,
                     sessionId,
+                    subscriptionId,
                   }),
                 ),
               { timeout: 500 },
@@ -228,34 +250,37 @@ export const connectDevtoolsToStore = ({
           // Same as in the reactivity graph subscription case above, we need to throttle the updates
           const throttledSend = throttle(send, 20)
 
-          liveQueriesSubscriptions.set(requestId, store.reactivityGraph.subscribeToRefresh(throttledSend))
+          liveQueriesSubscriptions.set(subscriptionId, store.reactivityGraph.subscribeToRefresh(throttledSend))
 
           break
         }
         case 'LSD.ClientSession.LiveQueriesUnsubscribe': {
+          const { subscriptionId } = decodedMessage
           // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
           // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
-          liveQueriesSubscriptions.get(requestId)?.()
-          liveQueriesSubscriptions.delete(requestId)
+          liveQueriesSubscriptions.get(subscriptionId)?.()
+          liveQueriesSubscriptions.delete(subscriptionId)
           break
         }
         case 'LSD.ClientSession.SyncHeadSubscribe': {
+          const { subscriptionId } = decodedMessage
           const send = (syncState: SyncState.SyncState) =>
             sendToDevtools(
               Devtools.ClientSession.SyncHeadRes.make({
                 local: syncState.localHead,
                 upstream: syncState.upstreamHead,
-                requestId,
+                requestId: nanoid(10),
                 clientId,
                 sessionId,
                 liveStoreVersion,
+                subscriptionId,
               }),
             )
 
           send(store.syncProcessor.syncState.pipe(Effect.runSync))
 
           syncHeadClientSessionSubscriptions.set(
-            requestId,
+            subscriptionId,
             store.syncProcessor.syncState.changes.pipe(
               Stream.tap((syncState) => send(syncState)),
               Stream.runDrain,
@@ -268,8 +293,11 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.SyncHeadUnsubscribe': {
-          syncHeadClientSessionSubscriptions.get(requestId)?.()
-          syncHeadClientSessionSubscriptions.delete(requestId)
+          const { subscriptionId } = decodedMessage
+          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
+          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          syncHeadClientSessionSubscriptions.get(subscriptionId)?.()
+          syncHeadClientSessionSubscriptions.delete(subscriptionId)
           break
         }
         default: {

@@ -22,6 +22,7 @@ export const Filters: React.FC = () => {
       <Tag isActive={filter === 'completed'} onPress={() => setFilter('completed')}>
         Completed
       </Tag>
+      <Text style={{ alignSelf: 'center', color: '#BBB', fontSize: 12 }}>StoreId: {store.storeId}</Text>
     </View>
   )
 }

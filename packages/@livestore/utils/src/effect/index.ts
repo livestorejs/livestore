@@ -59,7 +59,10 @@ export {
   ExecutionStrategy,
   PrimaryKey,
   Types,
+  Cache,
 } from 'effect'
+
+export * as StandardSchema from '@standard-schema/spec'
 
 export { dual } from 'effect/Function'
 

@@ -47,8 +47,6 @@ export const makeNodeDevtoolsChannel = <MsgListen, MsgSend, MsgListenEncoded, Ms
   /** Example: `ws://localhost:1234` */
   url: string
   schema: WebChannel.InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-  // listenSchema: Schema.Schema<MsgListen, MsgListenEncoded>
-  // sendSchema: Schema.Schema<MsgSend, MsgSendEncoded>
 }): Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const node = yield* makeNodeDevtoolsConnectedMeshNode({ nodeName, url })

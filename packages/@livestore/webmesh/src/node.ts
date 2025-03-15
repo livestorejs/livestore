@@ -1,14 +1,16 @@
 import { indent, LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
+  Deferred,
   Duration,
   Effect,
+  Exit,
   Fiber,
   Option,
   PubSub,
   Queue,
   Schema,
+  Scope,
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
@@ -22,8 +24,8 @@ import { TimeoutSet } from './utils.js'
 
 type ConnectionChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
-export interface MeshNode {
-  nodeName: MeshNodeName
+export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
+  nodeName: TName
 
   connectionKeys: Effect.Effect<Set<MeshNodeName>>
 
@@ -99,9 +101,20 @@ export interface MeshNode {
      */
     timeout?: Duration.DurationInput
   }) => Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
+
+  /**
+   * Creates a WebChannel that is broadcasted to all connected nodes.
+   * Messages won't be buffered for nodes that join the network after the broadcast channel has been created.
+   */
+  makeBroadcastChannel: <Msg>(args: {
+    channelName: string
+    schema: Schema.Schema<Msg, any>
+  }) => Effect.Effect<WebChannel.WebChannel<Msg, Msg>, never, Scope.Scope>
 }
 
-export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, never, Scope.Scope> =>
+export const makeMeshNode = <TName extends MeshNodeName>(
+  nodeName: TName,
+): Effect.Effect<MeshNode<TName>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const connectionChannels = new Map<
       MeshNodeName,
@@ -136,6 +149,9 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
 
     type RequestId = string
     const topologyRequestsMap = new Map<RequestId, Map<MeshNodeName, Set<MeshNodeName>>>()
+
+    type BroadcastChannelName = string
+    const broadcastChannelListenQueueMap = new Map<BroadcastChannelName, Queue.Queue<any>>()
 
     const checkTransferableConnections = (packet: typeof WebmeshSchema.MessageChannelPacket.Type) => {
       if (
@@ -174,6 +190,32 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             .map(([_, con]) => con.channel)
 
           yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(packet), { concurrency: 'unbounded' })
+          return
+        }
+
+        if (Schema.is(WebmeshSchema.BroadcastChannelPacket)(packet)) {
+          const connectionsToForwardTo = Array.from(connectionChannels)
+            .filter(([name]) => !packet.hops.includes(name))
+            .map(([_, con]) => con.channel)
+
+          const adjustedPacket = {
+            ...packet,
+            hops: [...packet.hops, nodeName],
+          }
+
+          yield* Effect.forEach(connectionsToForwardTo, (con) => con.send(adjustedPacket), { concurrency: 'unbounded' })
+
+          // Don't emit the packet to the own node listen queue
+          if (packet.source === nodeName) {
+            return
+          }
+
+          const queue = broadcastChannelListenQueueMap.get(packet.channelName)
+          // In case this node is listening to this channel, add the packet to the listen queue
+          if (queue !== undefined) {
+            yield* Queue.offer(queue, packet)
+          }
+
           return
         }
 
@@ -488,6 +530,55 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         Effect.annotateLogs({ nodeName }),
       )
 
+    const makeBroadcastChannel: MeshNode['makeBroadcastChannel'] = ({ channelName, schema }) =>
+      Effect.scopeWithCloseable((scope) =>
+        Effect.gen(function* () {
+          if (broadcastChannelListenQueueMap.has(channelName)) {
+            return shouldNeverHappen(
+              `Broadcast channel ${channelName} already exists`,
+              broadcastChannelListenQueueMap.get(channelName),
+            )
+          }
+
+          const debugInfo = {}
+
+          const queue = yield* Queue.unbounded<any>().pipe(Effect.acquireRelease(Queue.shutdown))
+          broadcastChannelListenQueueMap.set(channelName, queue)
+
+          const send = (message: any) =>
+            Effect.gen(function* () {
+              const payload = yield* Schema.encode(schema)(message)
+              const packet = WebmeshSchema.BroadcastChannelPacket.make({
+                channelName,
+                payload,
+                source: nodeName,
+                target: '-',
+                hops: [],
+              })
+
+              yield* sendPacket(packet)
+            })
+
+          const listen = Stream.fromQueue(queue).pipe(
+            Stream.filter(Schema.is(WebmeshSchema.BroadcastChannelPacket)),
+            Stream.map((_) => Schema.decodeEither(schema)(_.payload)),
+          )
+
+          const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+
+          return {
+            [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
+            send,
+            listen,
+            closedDeferred,
+            supportsTransferables: true,
+            schema: { listen: schema, send: schema },
+            shutdown: Scope.close(scope, Exit.void),
+            debugInfo,
+          } satisfies WebChannel.WebChannel<any, any>
+        }),
+      )
+
     const connectionKeys: MeshNode['connectionKeys'] = Effect.sync(() => new Set(connectionChannels.keys()))
 
     const runtime = yield* Effect.runtime()
@@ -519,6 +610,11 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
             indent(`Queue: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`, 4),
             value.queue,
           )
+        }
+
+        console.log('Broadcast channels:', broadcastChannelListenQueueMap.size)
+        for (const [key, _value] of broadcastChannelListenQueueMap) {
+          console.log(indent(key, 2))
         }
       },
       ping: (payload) => {
@@ -561,5 +657,13 @@ export const makeMeshNode = (nodeName: MeshNodeName): Effect.Effect<MeshNode, ne
         }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runPromise),
     }
 
-    return { nodeName, addConnection, removeConnection, makeChannel, connectionKeys, debug } satisfies MeshNode
+    return {
+      nodeName,
+      addConnection,
+      removeConnection,
+      makeChannel,
+      makeBroadcastChannel,
+      connectionKeys,
+      debug,
+    } satisfies MeshNode
   }).pipe(Effect.withSpan(`makeMeshNode:${nodeName}`))

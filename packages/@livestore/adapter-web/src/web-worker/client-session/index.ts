@@ -4,7 +4,12 @@ import { Devtools, IntentionalShutdownCause, StoreInterrupted, UnexpectedError }
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventId, SESSION_CHANGESET_META_TABLE } from '@livestore/common/schema'
-import { connectViaWorker, makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
+import {
+  ClientSessionRequestContentscriptMain,
+  connectViaWorker,
+  makeChannelForConnectedMeshNode,
+  makeSessionsChannel,
+} from '@livestore/devtools-web-common/web-channel'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
@@ -461,25 +466,56 @@ export const makeAdapter =
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
 
           const webmeshNode = yield* Webmesh.makeMeshNode(`client-session-${storeId}-${clientId}-${sessionId}`)
-          globalThis.__debugWebMeshNode = webmeshNode
+          globalThis.__debugWebmeshNode = webmeshNode
 
           yield* logDevtoolsUrl({ clientSession, storeId })
 
+          const sessionsChannel = yield* makeSessionsChannel
+          const sessionInfoMessage = Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId })
+
+          yield* Devtools.SessionInfo.provideSessionInfo({
+            webChannel: sessionsChannel,
+            sessionInfo: sessionInfoMessage,
+          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
           yield* Effect.gen(function* () {
+            const clientSessionStaticChannel = yield* WebChannel.windowChannel2({
+              listenWindow: window,
+              sendWindow: window,
+              schema: { listen: Schema.Void, send: ClientSessionRequestContentscriptMain },
+              ids: { own: 'client-session-static', other: 'contentscript-main-static' },
+            })
+
+            yield* clientSessionStaticChannel.send(
+              ClientSessionRequestContentscriptMain.make({ clientId, sessionId, storeId }),
+            )
+
+            const contentscriptMainNodeName = `contentscript-main-${storeId}-${clientId}-${sessionId}`
+
             const contentscriptMainChannel = yield* WebChannel.windowChannel2({
               listenWindow: window,
               sendWindow: window,
               schema: Webmesh.WebmeshSchema.Packet,
-              ids: { own: webmeshNode.nodeName, other: 'contentscript-main' },
+              ids: { own: webmeshNode.nodeName, other: contentscriptMainNodeName },
             })
 
             yield* webmeshNode.addConnection({
-              target: 'contentscript-main',
+              target: contentscriptMainNodeName,
               connectionChannel: contentscriptMainChannel,
             })
             // yield* Effect.logDebug(
             //   `[@livestore/adapter-web:client-session] initiated connection: ${webmeshNode.nodeName} → contentscript-main`,
             // )
+
+            const extensionWorkerChannel = yield* webmeshNode.makeBroadcastChannel({
+              channelName: 'session-info',
+              schema: Devtools.SessionInfo.Message,
+            })
+
+            yield* Devtools.SessionInfo.provideSessionInfo({
+              webChannel: extensionWorkerChannel,
+              sessionInfo: sessionInfoMessage,
+            })
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           yield* connectViaWorker({ node: webmeshNode, target: 'shared-worker', worker: sharedWorker })
