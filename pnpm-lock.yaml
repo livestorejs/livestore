@@ -12,7 +12,7 @@ overrides:
   '@livestore/devtools-expo': workspace:*
   '@livestore/devtools-expo-common': workspace:*
   '@livestore/devtools-node-common': workspace:*
-  '@livestore/devtools-vite': 0.3.0-dev.22
+  '@livestore/devtools-vite': 0.3.0-dev.23
   '@livestore/devtools-web-common': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/react': workspace:*
@@ -370,8 +370,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -539,8 +539,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -612,8 +612,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -673,8 +673,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -759,8 +759,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
@@ -780,8 +780,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -865,8 +865,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
@@ -956,8 +956,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1113,8 +1113,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1183,14 +1183,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1352,14 +1352,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1425,14 +1425,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1486,14 +1486,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1550,8 +1550,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/solid':
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
@@ -1572,8 +1572,8 @@ importers:
         version: 11.0.5
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       solid-devtools:
         specifier: ^0.33.0
         version: 0.33.0(solid-js@1.9.4)(vite@6.2.1(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
@@ -1593,14 +1593,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/adapter-web
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1678,14 +1678,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
@@ -1788,8 +1788,8 @@ importers:
         specifier: workspace:*
         version: link:../devtools-node-common
       '@livestore/devtools-vite':
-        specifier: 0.3.0-dev.22
-        version: 0.3.0-dev.22
+        specifier: 0.3.0-dev.23
+        version: 0.3.0-dev.23
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -4064,11 +4064,11 @@ packages:
       react: '*'
       react-native: 0.76.7
 
-  '@livestore/devtools-vite@0.3.0-dev.22':
-    resolution: {integrity: sha512-dCOlV/krIw+VMF1455KXDWC7bI6y/q7wuaGFftgfQj//X1Zi4i1UUnjKJGqPjgfoQXpkq4SaR+/9onqBWE+C1Q==}
+  '@livestore/devtools-vite@0.3.0-dev.23':
+    resolution: {integrity: sha512-CowgB9Z+K69lAdMEjnGOFzJTUvja0TUgfwdqrjpo/8/uWeIaD+NAK+Q+b6bxPg82ar+rGL7/oS9nWaICTqYvjQ==}
 
-  '@livestore/peer-deps@0.3.0-dev.22':
-    resolution: {integrity: sha512-UkyVIltRmLu4Gad+3tmRvTV5K9iJGnFMungNVKGNMNY0tVNzN2xoDj7dWtp0hrdq+fVFQ5ceZ/3i9aEq9qfZYA==}
+  '@livestore/peer-deps@0.3.0-dev.23':
+    resolution: {integrity: sha512-HdEcp1W8mOgvW0aY5LA7eFWbbeeElgVFVLH9P4ZsUlxprT6YMZkbad0Jn77K07XLqnvMsR2eWD5HOo4scl+D8w==}
 
   '@livestore/wa-sqlite@1.0.5-dev.2':
     resolution: {integrity: sha512-i7tKFEp0m3+4tGLV9Z5eAr/3RZPuNOyuf4NaQ/ygF2KwzlHc3TnqouPuE2sMH06r3soXIilWYND/x0eT8x6D6Q==}
@@ -15802,9 +15802,9 @@ snapshots:
       react: 19.0.0
       react-native: 0.76.7(@babel/core@7.26.9)(@babel/preset-env@7.26.9(@babel/core@7.26.9))(@types/react@19.0.10)(react@19.0.0)
 
-  '@livestore/devtools-vite@0.3.0-dev.22': {}
+  '@livestore/devtools-vite@0.3.0-dev.23': {}
 
-  '@livestore/peer-deps@0.3.0-dev.22(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)':
+  '@livestore/peer-deps@0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)':
     dependencies:
       '@effect/cli': 0.57.1(@effect/platform@0.78.1(effect@3.13.8))(@effect/printer-ansi@0.41.8(@effect/typeclass@0.32.8(effect@3.13.8))(effect@3.13.8))(@effect/printer@0.41.8(@effect/typeclass@0.32.8(effect@3.13.8))(effect@3.13.8))(effect@3.13.8)
       '@effect/experimental': 0.42.1(@effect/platform-node@0.74.1(@effect/platform@0.78.1(effect@3.13.8))(effect@3.13.8))(@effect/platform@0.78.1(effect@3.13.8))(effect@3.13.8)(ioredis@5.5.0)(ws@8.18.0)
