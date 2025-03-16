@@ -47,6 +47,19 @@ export default defineConfig({
               tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
               output: 'api/adapter-expo',
             }),
+            starlightTypeDoc({
+              entryPoints: [
+                '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
+                '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
+              ],
+              tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
+              output: 'api/sync-cf',
+            }),
+            starlightTypeDoc({
+              entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
+              tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
+              output: 'api/sync-electric',
+            }),
           ]
         : [],
 

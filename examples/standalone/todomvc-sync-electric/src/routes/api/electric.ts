@@ -4,12 +4,20 @@ import { Schema } from 'effect'
 
 import { makeDb } from '@/server/db.js'
 
+// You can change this to your own ElectricSQL endpoint
 const electricHost = 'http://localhost:30000'
 
 export const APIRoute = createAPIFileRoute('/api/electric')({
   // Client pulls from the server to get the latest mutation events
   GET: async ({ request }) => {
-    const { url, storeId, needsInit } = makeElectricUrl(electricHost, new URL(request.url).searchParams)
+    const searchParams = new URL(request.url).searchParams
+    const { url, storeId, needsInit } = makeElectricUrl({
+      electricHost,
+      searchParams,
+      // You can also provide a sourceId and sourceSecret for Electric Cloud
+      // sourceId: 'your-source-id',
+      // sourceSecret: 'your-source-secret',
+    })
 
     // Here we initialize the database if it doesn't exist yet. You might not need this if you
     // already have the necessary tables created in the database.

@@ -101,22 +101,53 @@ export const syncBackend = {} as any
 
 export const syncBackendOptions = <TOptions extends SyncBackendOptions>(options: TOptions) => options
 
-export const makeElectricUrl = (electricHost: string, searchParams: URLSearchParams) => {
+export const makeElectricUrl = ({
+  electricHost,
+  searchParams: providedSearchParams,
+  sourceId,
+  sourceSecret,
+}: {
+  electricHost: string
+  /**
+   * Needed to extract information from the search params which the `@livestore/sync-electric`
+   * client implementation automatically adds:
+   * - `handle`: the ElectricSQL handle
+   * - `storeId`: the Livestore storeId
+   */
+  searchParams: URLSearchParams
+  /** Needed for Electric Cloud */
+  sourceId?: string
+  /** Needed for Electric Cloud */
+  sourceSecret?: string
+}) => {
   const endpointUrl = `${electricHost}/v1/shape`
   const argsResult = Schema.decodeUnknownEither(Schema.Struct({ args: Schema.parseJson(ApiSchema.PullPayload) }))(
-    Object.fromEntries(searchParams.entries()),
+    Object.fromEntries(providedSearchParams.entries()),
   )
 
   if (argsResult._tag === 'Left') {
-    return shouldNeverHappen('Invalid search params', searchParams)
+    return shouldNeverHappen('Invalid search params provided to makeElectricUrl', providedSearchParams)
   }
 
   const args = argsResult.right.args
   const tableName = toTableName(args.storeId)
-  const url =
-    args.handle._tag === 'None'
-      ? `${endpointUrl}?table=${tableName}&offset=-1`
-      : `${endpointUrl}?table=${tableName}&offset=${args.handle.value.offset}&handle=${args.handle.value.handle}&live=true`
+  const searchParams = new URLSearchParams()
+  searchParams.set('table', tableName)
+  if (sourceId !== undefined) {
+    searchParams.set('source_id', sourceId)
+  }
+  if (sourceSecret !== undefined) {
+    searchParams.set('source_secret', sourceSecret)
+  }
+  if (args.handle._tag === 'None') {
+    searchParams.set('offset', '-1')
+  } else {
+    searchParams.set('offset', args.handle.value.offset)
+    searchParams.set('handle', args.handle.value.handle)
+    searchParams.set('live', 'true')
+  }
+
+  const url = `${endpointUrl}?${searchParams.toString()}`
 
   return { url, storeId: args.storeId, needsInit: args.handle._tag === 'None' }
 }
