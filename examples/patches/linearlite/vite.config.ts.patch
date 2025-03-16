@@ -1,6 +1,6 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -15,7 +15,6 @@
+@@ -16,7 +16,6 @@
  export default defineConfig({
    server: {
      port: 60_000,

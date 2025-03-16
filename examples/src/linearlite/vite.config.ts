@@ -8,6 +8,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import svgr from 'vite-plugin-svgr'
+import tailwindcss from '@tailwindcss/vite'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -29,6 +30,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    tailwindcss(),
     livestoreDevtoolsPlugin({ schemaPath: './src/lib/livestore/schema/index.ts' }),
     VitePWA({
       registerType: 'prompt',

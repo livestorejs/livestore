@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@config "../../tailwind.config.cjs";
 
 body {
   @apply bg-white text-xs text-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 antialiased;

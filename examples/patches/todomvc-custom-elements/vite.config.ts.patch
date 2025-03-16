@@ -1,6 +1,14 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -25,16 +25,11 @@
+@@ -7,7 +7,6 @@
+ import { visualizer } from 'rollup-plugin-visualizer'
+ import { defineConfig } from 'vite'
+ import { VitePWA } from 'vite-plugin-pwa'
+-
+ // Needed for OPFS Sqlite to work
+ // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
+ const credentiallessHeaders = {
+@@ -26,16 +25,11 @@
    server: {
      port: 60_002,
      headers: credentiallessHeaders,

@@ -2,11 +2,11 @@
 import path from 'node:path'
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
-
 // Needed for OPFS Sqlite to work
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
 const credentiallessHeaders = {
@@ -42,6 +42,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    tailwindcss(),
     livestoreDevtoolsPlugin({ schemaPath: './src/schema.ts' }),
     VitePWA({
       registerType: 'prompt',
