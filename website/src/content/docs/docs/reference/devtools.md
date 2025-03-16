@@ -28,11 +28,14 @@ sidebar:
 Requires the `@livestore/devtools-vite` package to be installed and configured in your Vite config:
 
 ```ts
-// vite.config.ts
-import { liveStoreDevtoolsVite } from '@livestore/devtools-vite'
+// vite.config.js
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 export default defineConfig({
-  plugins: [liveStoreDevtoolsVite()],
+  // ...
+  plugins: [
+    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+  ],
 })
 ```
 
