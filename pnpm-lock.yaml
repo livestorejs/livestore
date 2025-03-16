@@ -961,9 +961,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@opentelemetry/api':
-        specifier: 1.9.0
-        version: 1.9.0
       '@react-native-segmented-control/segmented-control':
         specifier: 2.5.7
         version: 2.5.7(react-native@0.76.7(@babel/core@7.26.9)(@babel/preset-env@7.26.9(@babel/core@7.26.9))(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -1561,9 +1558,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
-      '@opentelemetry/api':
-        specifier: 1.9.0
-        version: 1.9.0
       effect:
         specifier: 3.13.8
         version: 3.13.8
