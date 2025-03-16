@@ -1,10 +1,10 @@
 /// <reference lib="dom" />
 
 import type { SyncBackend } from '@livestore/common'
-import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
 import { EventId } from '@livestore/common/schema'
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
@@ -15,22 +15,32 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
+  UrlParams,
   WebSocket,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { WSMessage } from '../common/mod.js'
+import { SearchParamsSchema, WSMessage } from '../common/mod.js'
 import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface WsSyncOptions {
   url: string
   storeId: string
+  /** Payload can be used to implement custom business logic (e.g. authentication). */
+  payload?: Schema.JsonValue
 }
 
-export const makeWsSync = (options: WsSyncOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>
+export const makeWsSync = (
+  options: WsSyncOptions,
+): Effect.Effect<SyncBackend<SyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    // TODO also allow for auth scenarios
-    const wsUrl = `${options.url}/websocket?storeId=${options.storeId}`
+    const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      storeId: options.storeId,
+      payload: options.payload,
+    }).pipe(UnexpectedError.mapToUnexpectedError)
+
+    const urlParams = UrlParams.fromInput(urlParamsData)
+    const wsUrl = `${options.url}/websocket?${UrlParams.toString(urlParams)}`
 
     const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
 

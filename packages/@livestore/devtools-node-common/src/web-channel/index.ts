@@ -1,5 +1,5 @@
 import type { UnexpectedError } from '@livestore/common'
-import type { Scope, WebChannel } from '@livestore/utils/effect'
+import type { HttpClient, Scope, WebChannel } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 import { connectViaWebSocket, makeMeshNode } from '@livestore/webmesh'
@@ -47,7 +47,7 @@ export const makeNodeDevtoolsChannel = <MsgListen, MsgSend, MsgListenEncoded, Ms
   /** Example: `ws://localhost:1234` */
   url: string
   schema: WebChannel.InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-}): Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const node = yield* makeNodeDevtoolsConnectedMeshNode({ nodeName, url })
 

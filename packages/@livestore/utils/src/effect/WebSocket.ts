@@ -1,3 +1,4 @@
+import { HttpClient } from '@effect/platform'
 import type { Schedule, Scope } from 'effect'
 import { Effect, Exit, identity, Schema } from 'effect'
 
@@ -20,7 +21,7 @@ export const makeWebSocket = ({
 }: {
   url: string
   reconnect?: Schedule.Schedule<unknown> | false
-}): Effect.Effect<globalThis.WebSocket, WebSocketError, Scope.Scope> =>
+}): Effect.Effect<globalThis.WebSocket, WebSocketError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     yield* validateUrl(url)
 
@@ -60,7 +61,10 @@ export const makeWebSocket = ({
       } catch (error) {
         cb(Effect.fail(new WebSocketError({ cause: error })))
       }
-    }).pipe(reconnect ? Effect.retry(reconnect) : identity)
+    }).pipe(
+      Effect.tapErrorTag('WebSocketError', () => tryLogWebsocketConnectError(url)),
+      reconnect ? Effect.retry(reconnect) : identity,
+    )
 
     /**
      * Common WebSocket close codes: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
@@ -97,3 +101,11 @@ const validateUrl = (url: string) =>
     try: () => new URL(url),
     catch: (error) => new WebSocketError({ cause: error }),
   })
+
+const tryLogWebsocketConnectError = (url: string) =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+    const res = yield* client.get(url)
+    const responseBody = yield* res.text
+    yield* Effect.logError(`Failed to connect to '${url}' (status: ${res.status}). Error:`, responseBody)
+  }).pipe(Effect.ignore)

@@ -101,6 +101,7 @@ export {
   HttpClientResponse,
   FetchHttpClient,
   Socket,
+  UrlParams,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 

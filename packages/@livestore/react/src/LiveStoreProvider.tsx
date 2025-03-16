@@ -73,6 +73,12 @@ export interface LiveStoreProviderProps {
    * @default true
    */
   confirmUnsavedChanges?: boolean
+  /**
+   * Payload that will be passed to the sync backend when connecting
+   *
+   * @default undefined
+   */
+  syncPayload?: Schema.JsonValue
 }
 
 const defaultRenderError = (error: UnexpectedError | unknown) => (
@@ -107,6 +113,7 @@ export const LiveStoreProvider = ({
   disableDevtools,
   signal,
   confirmUnsavedChanges = true,
+  syncPayload,
 }: LiveStoreProviderProps & { children?: ReactNode }): React.ReactElement => {
   const storeCtx = useCreateStore({
     storeId,
@@ -118,6 +125,7 @@ export const LiveStoreProvider = ({
     disableDevtools,
     signal,
     confirmUnsavedChanges,
+    syncPayload,
   })
 
   if (storeCtx.stage === 'error') {
@@ -165,6 +173,7 @@ const useCreateStore = ({
   context,
   params,
   confirmUnsavedChanges,
+  syncPayload,
 }: CreateStoreOptions<LiveStoreSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
@@ -195,6 +204,7 @@ const useCreateStore = ({
     context,
     params,
     confirmUnsavedChanges,
+    syncPayload,
   })
 
   const interrupt = (
@@ -221,7 +231,8 @@ const useCreateStore = ({
     inputPropsCacheRef.current.signal !== signal ||
     inputPropsCacheRef.current.context !== context ||
     inputPropsCacheRef.current.params !== params ||
-    inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges
+    inputPropsCacheRef.current.confirmUnsavedChanges !== confirmUnsavedChanges ||
+    inputPropsCacheRef.current.syncPayload !== syncPayload
   ) {
     inputPropsCacheRef.current = {
       schema,
@@ -234,6 +245,7 @@ const useCreateStore = ({
       context,
       params,
       confirmUnsavedChanges,
+      syncPayload,
     }
     if (ctxValueRef.current.componentScope !== undefined && ctxValueRef.current.shutdownDeferred !== undefined) {
       interrupt(
@@ -299,6 +311,7 @@ const useCreateStore = ({
           context,
           params,
           confirmUnsavedChanges,
+          syncPayload,
           onBootStatus: (status) => {
             if (ctxValueRef.current.value.stage === 'running' || ctxValueRef.current.value.stage === 'error') return
             // NOTE sometimes when status come in in rapid succession, only the last value will be rendered by React
@@ -359,6 +372,7 @@ const useCreateStore = ({
     context,
     params,
     confirmUnsavedChanges,
+    syncPayload,
   ])
 
   return ctxValueRef.current.value

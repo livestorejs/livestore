@@ -12,7 +12,7 @@ import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@li
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import * as DevtoolsExpo from '@livestore/devtools-expo-common/web-channel'
-import type { Scope } from '@livestore/utils/effect'
+import type { Schema, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 import * as SQLite from 'expo-sqlite'
@@ -42,7 +42,7 @@ export type MakeDbOptions = {
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makeAdapter =
   (options: MakeDbOptions = {}): Adapter =>
-  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue }) =>
+  ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload }) =>
     Effect.gen(function* () {
       const { storage, clientId = 'expo', sessionId = 'expo', sync: syncOptions } = options
 
@@ -79,6 +79,7 @@ export const makeAdapter =
         devtoolsEnabled,
         devtoolsWebmeshNode,
         bootStatusQueue,
+        syncPayload,
       })
 
       const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
@@ -134,6 +135,7 @@ const makeLeaderThread = ({
   devtoolsEnabled,
   devtoolsWebmeshNode,
   bootStatusQueue: bootStatusQueueClientSession,
+  syncPayload,
 }: {
   storeId: string
   clientId: string
@@ -147,6 +149,7 @@ const makeLeaderThread = ({
   devtoolsEnabled: boolean
   devtoolsWebmeshNode: MeshNode | undefined
   bootStatusQueue: Queue.Queue<BootStatus>
+  syncPayload: Schema.JsonValue | undefined
 }) =>
   Effect.gen(function* () {
     const subDirectory = storage.subDirectory ? storage.subDirectory.replace(/\/$/, '') + '/' : ''
@@ -181,6 +184,7 @@ const makeLeaderThread = ({
         shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
+        syncPayload,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )
 

@@ -1,4 +1,4 @@
-import type { HttpClient, Scope } from '@livestore/utils/effect'
+import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
 
 import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '../adapter-types.js'
@@ -28,6 +28,7 @@ export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
+  syncPayload,
   makeSqliteDb,
   syncOptions,
   dbReadModel,
@@ -36,6 +37,7 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
 }: {
   storeId: string
+  syncPayload: Schema.JsonValue | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -54,7 +56,9 @@ export const makeLeaderThreadLayer = ({
       dbReadModel.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
     const syncBackend =
-      syncOptions?.makeBackend === undefined ? undefined : yield* syncOptions.makeBackend({ storeId, clientId })
+      syncOptions?.makeBackend === undefined
+        ? undefined
+        : yield* syncOptions.makeBackend({ storeId, clientId, payload: syncPayload })
 
     const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({
       initialSyncOptions: syncOptions?.initialSyncOptions ?? { _tag: 'Skip' },

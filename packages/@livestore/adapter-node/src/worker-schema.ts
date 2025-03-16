@@ -65,6 +65,7 @@ export namespace LeaderWorkerInner {
       clientId: Schema.String,
       baseDirectory: Schema.optional(Schema.String),
       schemaPath: Schema.String,
+      syncPayload: Schema.UndefinedOr(Schema.JsonValue),
       devtools: Schema.Struct({
         port: Schema.Number,
         host: Schema.String,

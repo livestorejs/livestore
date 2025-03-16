@@ -1,5 +1,5 @@
 import { UnexpectedError } from '@livestore/common'
-import type { Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
 import { Effect, FiberSet } from '@livestore/utils/effect'
 import * as WebSocket from 'ws'
 
@@ -10,7 +10,7 @@ export const makeWebSocketServer = ({
   relayNodeName,
 }: {
   relayNodeName: string
-}): Effect.Effect<WebSocket.WebSocketServer, never, Scope.Scope> =>
+}): Effect.Effect<WebSocket.WebSocketServer, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const server = new WebSocket.WebSocketServer({ noServer: true })
 
@@ -30,7 +30,7 @@ export const makeWebSocketServer = ({
 
     const node = yield* makeMeshNode(relayNodeName)
 
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime<HttpClient.HttpClient>()
 
     const fiberSet = yield* FiberSet.make()
 

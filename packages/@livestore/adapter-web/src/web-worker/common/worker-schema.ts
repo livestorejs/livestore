@@ -62,6 +62,7 @@ export namespace LeaderWorkerInner {
       storeId: Schema.String,
       clientId: Schema.String,
       debugInstanceId: Schema.String,
+      syncPayload: Schema.UndefinedOr(Schema.JsonValue),
     },
     success: Schema.Void,
     failure: UnexpectedError,

@@ -7,7 +7,8 @@ import { makeTracer } from './otel.js'
 makeWorker({
   schema,
   sync: {
-    makeBackend: ({ storeId }) => makeWsSync({ url: import.meta.env.VITE_LIVESTORE_SYNC_URL, storeId }),
+    makeBackend: ({ storeId, payload }) =>
+      makeWsSync({ url: import.meta.env.VITE_LIVESTORE_SYNC_URL, storeId, payload }),
     initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
   },
   otelOptions: { tracer: makeTracer('todomvc-sync-cf-worker') },

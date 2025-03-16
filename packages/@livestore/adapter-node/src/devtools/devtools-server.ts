@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { UnexpectedError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
 import { makeWebSocketServer } from '@livestore/webmesh/websocket-server'
 
@@ -28,7 +28,7 @@ export const startDevtoolsServer = ({
   sessionId: string
   host: string
   port: number
-}): Effect.Effect<void, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<void, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const httpServer = yield* Effect.sync(() => http.createServer()).pipe(
       Effect.acquireRelease((httpServer) =>

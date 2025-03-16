@@ -239,6 +239,12 @@ export type Adapter = (opts: {
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (cause: Cause.Cause<any>) => void
   connectDevtoolsToStore: ConnectDevtoolsToStore
+  /**
+   * Payload that will be passed to the sync backend when connecting
+   *
+   * @default undefined
+   */
+  syncPayload: Schema.JsonValue | undefined
 }) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
 
 export const MigrationsReportEntry = Schema.Struct({

@@ -12,10 +12,13 @@ import type * as MutationEvent from '../schema/MutationEvent.js'
 export type MakeBackendArgs = {
   storeId: string
   clientId: string
+  payload: Schema.JsonValue | undefined
 }
 
 export type SyncOptions = {
-  makeBackend?: (args: MakeBackendArgs) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope>
+  makeBackend?: (
+    args: MakeBackendArgs,
+  ) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
 }

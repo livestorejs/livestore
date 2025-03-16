@@ -1,3 +1,4 @@
+import type { HttpClient } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
@@ -46,7 +47,7 @@ export const connectViaWebSocket = ({
   node: MeshNode
   url: string
   reconnect?: Schedule.Schedule<unknown> | false
-}): Effect.Effect<void, never, Scope.Scope> =>
+}): Effect.Effect<void, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const disconnected = yield* Deferred.make<void>()
 
@@ -70,7 +71,7 @@ export const makeWebSocketEdge = (
     from: string
   },
   never,
-  Scope.Scope
+  Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {

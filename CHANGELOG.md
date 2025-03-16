@@ -98,7 +98,7 @@
   - Should improve reliability of devtools connection (particularly during app reloads)
 - Large refactoring to share more code between adapters
 - Renamed `SynchronousDatabase` to `SqliteDb`
-- Upgrade to TypeScript 5.7
+- Upgrade to TypeScript 5.8
 - Upgraded dependencies
   - Now supports React 19
   - `effect` (needs to be 3.13.7 or higher)
@@ -122,13 +122,13 @@
 - Fix linting
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations
-  - Enable auth setup
   - cf sync:
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
       - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
     - Bring back "broadcast" pull res terminology
   - Electric:
     - fix: connectivity state + offline handling
+    - implement sync payload
   - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
   - Remaining issues:
     - [#283](https://github.com/livestorejs/livestore/issues/283)

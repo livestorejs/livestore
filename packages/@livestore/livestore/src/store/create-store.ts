@@ -9,7 +9,7 @@ import type {
 import { provideOtel, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
 import { LS_DEV } from '@livestore/utils'
-import type { Cause } from '@livestore/utils/effect'
+import type { Cause, Schema } from '@livestore/utils/effect'
 import {
   Context,
   Deferred,
@@ -102,6 +102,12 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
    * @default true
    */
   confirmUnsavedChanges?: boolean
+  /**
+   * Payload that will be passed to the sync backend when connecting
+   *
+   * @default undefined
+   */
+  syncPayload?: Schema.JsonValue
   params?: {
     leaderPushBatchSize?: number
   }
@@ -155,6 +161,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
   params,
   debug,
   confirmUnsavedChanges = true,
+  syncPayload,
 }: CreateStoreOptions<TSchema, TContext>): Effect.Effect<
   Store<TSchema, TContext>,
   UnexpectedError,
@@ -227,6 +234,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         shutdown,
         connectDevtoolsToStore: connectDevtoolsToStore_,
         debugInstanceId,
+        syncPayload,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
       if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {

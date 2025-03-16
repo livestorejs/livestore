@@ -107,7 +107,7 @@ const makeWorkerRunnerOuter = (
 
 const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
   WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInner.Request, {
-    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId }) =>
+    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayload }) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
@@ -147,6 +147,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           dbMutationLog,
           devtoolsOptions,
           shutdownChannel,
+          syncPayload,
         })
       }).pipe(
         Effect.tapCauseLogPretty,

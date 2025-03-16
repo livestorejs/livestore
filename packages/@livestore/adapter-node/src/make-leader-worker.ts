@@ -175,6 +175,7 @@ const makeLeaderThread = ({
   baseDirectory,
   devtools,
   schemaPath,
+  syncPayload,
 }: WorkerSchema.LeaderWorkerInner.InitialMessage & {
   syncOptions: SyncOptions | undefined
   schemaPath: string
@@ -227,6 +228,7 @@ const makeLeaderThread = ({
       dbMutationLog,
       devtoolsOptions,
       shutdownChannel,
+      syncPayload,
     })
   }).pipe(
     Effect.tapCauseLogPretty,
@@ -290,6 +292,6 @@ const makeDevtoolsOptions = ({
             mutationLog: dbMutationLog.metadata.persistenceInfo,
           },
         }
-      }),
+      }).pipe(Effect.provide(FetchHttpClient.layer)),
     }
   })

@@ -95,7 +95,16 @@ export type WebAdapterOptions = {
 
 export const makeAdapter =
   (options: WebAdapterOptions): Adapter =>
-  ({ schema, storeId, devtoolsEnabled, debugInstanceId, bootStatusQueue, shutdown, connectDevtoolsToStore }) =>
+  ({
+    schema,
+    storeId,
+    devtoolsEnabled,
+    debugInstanceId,
+    bootStatusQueue,
+    shutdown,
+    connectDevtoolsToStore,
+    syncPayload,
+  }) =>
     Effect.gen(function* () {
       yield* ensureBrowserRequirements
 
@@ -151,6 +160,7 @@ export const makeAdapter =
                 clientId,
                 devtoolsEnabled,
                 debugInstanceId,
+                syncPayload,
               }),
             },
           }),

@@ -12,6 +12,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import type { Schema } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Layer, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
@@ -38,6 +39,7 @@ export const makeInMemoryAdapter =
     schema,
     storeId,
     shutdown,
+    syncPayload,
     // devtoolsEnabled, bootStatusQueue, shutdown, connectDevtoolsToStore
   }) =>
     Effect.gen(function* () {
@@ -65,6 +67,7 @@ export const makeInMemoryAdapter =
         schema,
         makeSqliteDb,
         syncOptions,
+        syncPayload,
       })
 
       sqliteDb.import(initialSnapshot)
@@ -88,12 +91,14 @@ const makeLeaderThread = ({
   schema,
   makeSqliteDb,
   syncOptions,
+  syncPayload,
 }: {
   storeId: string
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
+  syncPayload: Schema.JsonValue | undefined
 }) =>
   Effect.gen(function* () {
     const layer = yield* Layer.memoize(
@@ -108,6 +113,7 @@ const makeLeaderThread = ({
         shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
+        syncPayload,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )
 

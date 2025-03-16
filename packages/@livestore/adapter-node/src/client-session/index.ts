@@ -17,6 +17,7 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import {
   Cause,
   Effect,
+  FetchHttpClient,
   Fiber,
   ParseResult,
   Queue,
@@ -70,7 +71,7 @@ export const makeNodeAdapter = ({
   // TODO make this dynamic and actually support multiple sessions
   sessionId = 'static',
 }: NodeAdapterOptions): Adapter =>
-  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore, bootStatusQueue }) =>
+  (({ storeId, devtoolsEnabled, shutdown, connectDevtoolsToStore, bootStatusQueue, syncPayload }) =>
     Effect.gen(function* () {
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -112,6 +113,7 @@ export const makeNodeAdapter = ({
         devtoolsOptions,
         schemaPath,
         bootStatusQueue,
+        syncPayload,
       })
 
       syncInMemoryDb.import(initialSnapshot)
@@ -164,6 +166,7 @@ export const makeNodeAdapter = ({
       Effect.withSpan('@livestore/adapter-node:adapter'),
       Effect.parallelFinalizers,
       Effect.provide(PlatformNode.NodeFileSystem.layer),
+      Effect.provide(FetchHttpClient.layer),
     )) satisfies Adapter
 
 const makeLeaderThread = ({
@@ -177,6 +180,7 @@ const makeLeaderThread = ({
   devtoolsOptions,
   schemaPath,
   // bootStatusQueue,
+  syncPayload,
 }: {
   shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => void
   storeId: string
@@ -188,6 +192,7 @@ const makeLeaderThread = ({
   devtoolsOptions: { port: number; host: string }
   schemaPath: string
   bootStatusQueue: Queue.Queue<BootStatus>
+  syncPayload: Schema.JsonValue | undefined
 }) =>
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
@@ -205,6 +210,7 @@ const makeLeaderThread = ({
           baseDirectory,
           devtools: { enabled: devtoolsEnabled, port: devtoolsOptions.port, host: devtoolsOptions.host },
           schemaPath,
+          syncPayload,
         }),
     }).pipe(
       Effect.provide(PlatformNode.NodeWorker.layer(() => nodeWorker)),
