@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,12 +1,12 @@
+@@ -1,13 +1,13 @@
  {
 -  "name": "livestore-example-src-todomvc-custom-elements",
 +  "name": "livestore-example-standalone-todomvc-custom-elements",
@@ -12,7 +12,9 @@
 +    "@livestore/adapter-web": "0.3.0-dev.22",
      "@livestore/devtools-vite": "0.3.0-dev.22",
 -    "@livestore/livestore": "workspace:*",
+-    "@livestore/peer-deps": "workspace:*",
 +    "@livestore/livestore": "0.3.0-dev.22",
++    "@livestore/peer-deps": "0.3.0-dev.22",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "effect": "3.13.8",
      "react": "19.0.0",

@@ -110,10 +110,9 @@
   - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
   - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-- Examples:
-  - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
-  - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
-  - Add peer-deps package to each example and update docs
+  - Examples:
+    - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
 - Docs
   - Notes on deployment (when to deploy what)
   - Embrace term "containers"
@@ -135,7 +134,6 @@
     - [#283](https://github.com/livestorejs/livestore/issues/283)
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
-    - the app doesn't show a shutdown screen
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
 - Expo:
   - Fix: Implement proper SQLite rollback via session extension once landed in expo-sqlite

@@ -28,27 +28,20 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
-       ```shell
+       ```bash
        bun install
        ```
 
-        You can ignore the peer-dependency warnings.
      </TabItem>
      <TabItem label="pnpm">
-       ```shell
+       ```bash
        pnpm install
        ```
-
-       You can ignore the peer-dependency warnings.
      </TabItem>
      <TabItem label="npm">
-       Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
-
-       ```shell
-       npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @opentelemetry/api effect
-       ```
-
-       Going forward you can use `npm install` again to install the dependencies.
+        ```bash
+        npm install
+        ```
      </TabItem>
    </Tabs>
 

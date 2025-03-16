@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,14 +1,14 @@
+@@ -1,15 +1,15 @@
  {
 -  "name": "livestore-example-src-expo-linearlite",
 +  "name": "livestore-example-standalone-expo-linearlite",
@@ -12,11 +12,20 @@
 -    "@livestore/adapter-expo": "workspace:*",
 -    "@livestore/devtools-expo": "workspace:*",
 -    "@livestore/livestore": "workspace:*",
+-    "@livestore/peer-deps": "workspace:*",
 -    "@livestore/react": "workspace:*",
 +    "@livestore/adapter-expo": "0.3.0-dev.22",
 +    "@livestore/devtools-expo": "0.3.0-dev.22",
 +    "@livestore/livestore": "0.3.0-dev.22",
++    "@livestore/peer-deps": "0.3.0-dev.22",
 +    "@livestore/react": "0.3.0-dev.22",
-     "@opentelemetry/api": "1.9.0",
      "@react-native-segmented-control/segmented-control": "2.5.7",
      "@react-native/assets-registry": "0.77.1",
+     "@react-navigation/native": "7.0.14",
+@@ -68,4 +68,4 @@
+     "lint": "expo lint",
+     "start": "expo start"
+   }
+-}
++}
+\ No newline at end of file

@@ -29,49 +29,40 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
     It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/docs/getting-started/package-management) for more details).
 
-            <Tabs syncKey="package-manager">
+    <Tabs syncKey="package-manager">
+      <TabItem label="bun">
+        ```bash
+        bun install
+        ```
+      </TabItem>
+      <TabItem label="pnpm">
+        ```bash
+        pnpm install --node-linker=hoisted
+        ```
 
-        <TabItem label="bun">
+        Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
+        ```
+        # .npmrc
+        nodeLinker=hoisted
+        ```
 
-    `bun install`
+        Hopefully Expo will also support non-hoisted setups in the future.
+      </TabItem>
+      <TabItem label="npm">
+        ```bash
+        npm install
+        ```
+      </TabItem>
+      <TabItem label="yarn">
+        When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
 
-                	You can ignore the peer-dependency warnings.
-                </TabItem>
-                <TabItem label="pnpm">
-                	`pnpm install --node-linker=hoisted`
-
-                	Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
-                	```
-                	# .npmrc
-                	nodeLinker=hoisted
-                	```
-
-                	Hopefully Expo will also support non-hoisted setups in the future.
-                </TabItem>
-                <TabItem label="npm">
-                	Given `npm` doesn't automatically install peer dependencies you'll also need to also install the following peer dependencies:
-                	```
-                	npm install @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @opentelemetry/api effect
-                	```
-
-                	Going forward you can use `npm install` again to install the dependencies.
-                </TabItem>
-                <TabItem label="yarn">
-                	When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
-
-                	```
-                	yarn set version stable
-                	yarn config set nodeLinker node-modules
-                	yarn install
-                	```
-
-                	Additionally, given `yarn` doesn't automatically install peer dependencies you'll also need to install the following peer dependencies:
-                	```
-                	yarn add @effect/experimental @effect/opentelemetry @effect/platform @effect/platform-browser @opentelemetry/api effect
-                	```
-                </TabItem>
-
-            </Tabs>
+        ```bash
+        yarn set version stable
+        yarn config set nodeLinker node-modules
+        yarn install
+        ```
+      </TabItem>
+    </Tabs>
 
     Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
 

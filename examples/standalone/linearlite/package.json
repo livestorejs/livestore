@@ -8,6 +8,7 @@
     "@livestore/adapter-web": "0.3.0-dev.22",
     "@livestore/devtools-vite": "0.3.0-dev.22",
     "@livestore/livestore": "0.3.0-dev.22",
+    "@livestore/peer-deps": "0.3.0-dev.22",
     "@livestore/react": "0.3.0-dev.22",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "@overengineering/fps-meter": "0.1.2",

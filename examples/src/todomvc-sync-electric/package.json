@@ -8,6 +8,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/devtools-vite": "0.3.0-dev.22",
     "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
