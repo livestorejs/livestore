@@ -18,4 +18,8 @@ Events are stored in a table following the pattern `mutation_log_${PERSISTENCE_F
 
 Unless the database is already modelled as a mutation log following the `@livestore/sync-electric` storage format, you won't be able to easily use your existing database with this sync backend implementation.
 
+We might support this use case in the future, you can follow the progress [here](https://github.com/livestorejs/livestore/issues/286). Please share any feedback you have on this use case there.
 
+### Why do I need my own API endpoint in front of the ElectricSQL server?
+
+The API endpoint is used to proxy pull/push requests to the ElectricSQL server in order to implement any custom logic you might need, e.g. auth, rate limiting, etc.

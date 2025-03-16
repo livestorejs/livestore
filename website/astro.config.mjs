@@ -16,12 +16,12 @@ export default defineConfig({
         discord: 'https://discord.gg/RbMcjUAPd7',
         'x.com': 'https://x.com/livestoredev',
       },
+
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
       },
-      plugins: process.env.STARLIGHT_SKIP_API_DOCS
-        ? []
-        : [
+      plugins: process.env.STARLIGHT_INCLUDE_API_DOCS
+        ? [
             starlightTypeDoc({
               entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
               tsconfig: '../packages/@livestore/livestore/tsconfig.json',
@@ -47,7 +47,8 @@ export default defineConfig({
               tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
               output: 'api/adapter-expo',
             }),
-          ],
+          ]
+        : [],
 
       sidebar: [
         // {
@@ -59,19 +60,19 @@ export default defineConfig({
         // },
         {
           label: 'Getting Started',
-          autogenerate: { directory: 'getting-started' },
+          autogenerate: { directory: 'docs/getting-started' },
         },
         {
           label: 'Evaluating LiveStore',
-          autogenerate: { directory: 'evaluation' },
+          autogenerate: { directory: 'docs/evaluation' },
         },
         {
           label: 'Reference',
-          autogenerate: { directory: 'reference' },
+          autogenerate: { directory: 'docs/reference' },
         },
         {
           label: 'Miscellaneous',
-          autogenerate: { directory: 'misc' },
+          autogenerate: { directory: 'docs/misc' },
         },
         {
           label: 'Changelog',
@@ -79,7 +80,7 @@ export default defineConfig({
         },
         {
           label: 'API Reference (generated)',
-          autogenerate: { directory: 'api' },
+          autogenerate: { directory: 'docs/api' },
           collapsed: true,
         },
       ],
@@ -94,6 +95,7 @@ export default defineConfig({
   vite: {
     server: {
       fs: {
+        // Needed to load the CHANGELOG.md file which is outside this package
         strict: false,
       },
     },

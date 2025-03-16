@@ -10,8 +10,8 @@ description: Considerations when deciding to use LiveStore.
 - On a high level, LiveStore can be a good fit if ...
   - you are looking for a principled data layer that works across platforms
   - you want to use SQLite for your queries
-  - you like [event sourcing](/reference/event-sourcing) to model data changes
-  - the current [state of the project](/evaluation/state-of-the-project) aligns with your own timeline and requirements
+  - you like [event sourcing](/docs/reference/event-sourcing) to model data changes
+  - the current [state of the project](/docs/evaluation/state-of-the-project) aligns with your own timeline and requirements
 
 ## Database
 

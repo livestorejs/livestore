@@ -7,6 +7,7 @@ import { makeDb } from '@/server/db.js'
 const electricHost = 'http://localhost:30000'
 
 export const APIRoute = createAPIFileRoute('/api/electric')({
+  // Client pulls from the server to get the latest mutation events
   GET: async ({ request }) => {
     const { url, storeId, needsInit } = makeElectricUrl(electricHost, new URL(request.url).searchParams)
 
@@ -22,6 +23,7 @@ export const APIRoute = createAPIFileRoute('/api/electric')({
     // any custom logic here, e.g. auth, rate limiting, etc.
     return fetch(url)
   },
+  // Client pushes new mutation events to the server
   POST: async ({ request }) => {
     const payload = await request.json()
     const parsedPayload = Schema.decodeUnknownSync(ApiSchema.PushPayload)(payload)
