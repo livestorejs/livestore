@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.3.0-dev.21",
-    "@livestore/devtools-vite": "0.3.0-dev.21",
-    "@livestore/livestore": "0.3.0-dev.21",
+    "@livestore/adapter-web": "0.3.0-dev.22",
+    "@livestore/devtools-vite": "0.3.0-dev.22",
+    "@livestore/livestore": "0.3.0-dev.22",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "effect": "3.13.8",
     "react": "19.0.0",
