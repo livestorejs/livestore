@@ -128,6 +128,17 @@ export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 
 - Either update the versions manually in each `package.json` file or use `bunx syncpack update`.
 
+### Notes on packages
+
+- The `@livestore/utils` package re-exports many common modules/functions (e.g. from `effect`) in order to
+  - Reduce the number of direct dependencies for other packages
+  - Allows for convenient extension of modules (e.g. adding methods to `Effect.___`, `Schema.___`, ...)
+
+## Effect
+
+- LiveStore makes heavy use of the [Effect](https://effect.website) library and ecosystem throughout the implementation of the various packages.
+- Effect is not imposed on the app developers using LiveStore but where it makes sense, LiveStore is also exposing a Effect-based API (e.g. `createStore`).
+
 ## Devtools
 
 - The source code of the devtools is currently not part of this monorepo but in a separate private repo.
