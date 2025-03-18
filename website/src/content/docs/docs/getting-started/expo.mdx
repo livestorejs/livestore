@@ -27,7 +27,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 2.  **Install dependencies**
 
-    It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/docs/getting-started/package-management) for more details).
+    It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/docs/misc/package-management) for more details).
 
     <Tabs syncKey="package-manager">
       <TabItem label="bun">
@@ -127,7 +127,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
     // Add LiveStore Devtools middleware only in a local development environment
     if (!process.env.CI && process.stdout.isTTY) {
-      addLiveStoreDevtoolsMiddleware(config, { schemaPath: './schema/index.ts' })
+      addLiveStoreDevtoolsMiddleware(config, { schemaPath: './livestore/schema.ts' })
     }
 
     module.exports = config
@@ -168,10 +168,7 @@ export const tables = {
 
 export const schema = makeSchema({
   tables,
-  mutations: {
-    // Add more mutations
-    ...mutations,
-  },
+  mutations,
   migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
 })
 
@@ -180,7 +177,7 @@ export * as mutations from './mutations'
 
 ## Mutations
 
-Create a file named `mutations.ts` inside the `schema` folder. This file stores the mutations your app uses to interact with the database.
+Create a file named `mutations.ts` inside the `livestore` folder. This file stores the mutations your app uses to interact with the database.
 
 A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
 
@@ -226,7 +223,7 @@ import { LiveStoreProvider } from '@livestore/react'
 import { cuid } from '@livestore/utils/cuid'
 import { Button, Text, unstable_batchedUpdates as batchUpdates } from 'react-native'
 
-import { mutations, schema } from '../schema/index'
+import { mutations, schema } from '../livestore/schema'
 
 const adapter = makeAdapter()
 
@@ -270,7 +267,7 @@ Here's an example:
 
 ```ts
 import { useStore } from '@livestore/react'
-import { todoDeleted } from '@/schema/mutations'
+import { todoDeleted } from '@/livestore/mutations'
 
 export default function HomeScreen() {
   const { store } = useStore()
@@ -298,7 +295,7 @@ import { View, Text } from 'react-native'
 import { useQuery } from '@livestore/react'
 import { querySQL, sql } from '@livestore/livestore'
 import { Schema } from 'effect'
-import { tables } from '@/schema'
+import { tables } from '@/livestore/schema'
 
 export default function HomeScreen() {
   // Define a query

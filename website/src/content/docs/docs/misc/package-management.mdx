@@ -1,6 +1,12 @@
----
-title: Note on package management
----
+export const catalog = `\
+catalog:
+  effect: ${EFFECT_VERSION} # As LiveStore depends on \`effect\`
+	# also \`react\`, \`react-dom\` etc based on your project
+`
+
+import { EFFECT_VERSION } from '../../../../../../CONSTANTS.js'
+import { Code } from '@astrojs/starlight/components';
+
 
 ## Recommended
 
@@ -14,10 +20,4 @@ Since LiveStore has a few peer dependencies, you either should manually add them
 
 When using `pnpm`, we recommend specifying the following packages in your [PNPM Catalog](https://pnpm.io/catalogs):
 
-```
-# pnpm-workspace.yaml
-# ...
-catalog:
-  effect: 3.13.7 # As LiveStore depends on `effect`
-	# also `react`, `react-dom` etc based on your project
-```
+<Code code={catalog} lang="yaml" title="pnpm-workspace.yaml" />

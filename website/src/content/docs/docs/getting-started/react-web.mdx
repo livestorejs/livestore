@@ -24,7 +24,7 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
 2. **Install dependencies**
 
-   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/docs/getting-started/package-management) for more details).
+   It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/docs/misc/package-management) for more details).
 
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
@@ -84,17 +84,17 @@ For existing projects, see [Existing project setup](#existing-project-setup).
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
        ```shell
-       bun add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       bun add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite effect
        ```
      </TabItem>
      <TabItem label="pnpm">
        ```shell
-       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite effect
        ```
      </TabItem>
      <TabItem label="npm">
        ```shell
-       npm install @livestore/livestore @livestore/wa-sqlite @livestore/web @livestore/react @livestore/utils @livestore/devtools-vite effect
+       npm install @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite effect
        ```
      </TabItem>
    </Tabs>
@@ -106,10 +106,14 @@ For existing projects, see [Existing project setup](#existing-project-setup).
    ```ts
    import { defineConfig } from 'vite'
    import react from '@vitejs/plugin-react'
+   import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
    // https://vite.dev/config/
    export default defineConfig({
-     plugins: [react()],
+     plugins: [
+      react(),
+      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    ],
      optimizeDeps: {
        exclude: ['@livestore/wa-sqlite'] // Needed until https://github.com/vitejs/vite/issues/8427 is resolved
      },
@@ -121,15 +125,15 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
 To define the data structure for your app, set up a schema that specifies the tables and fields your app uses.
 
-- In `src`, create a `schema` folder and inside it create a file named `index.ts`. This file defines the tables and data structures for your app.
+- In `src`, create a `livestore` folder and inside it create a file named `schema.ts`. This file defines the tables and data structures for your app.
 
-- In `index.ts`, define a table to represent a data model, such as a `todos`.
+- In `schema.ts`, define a table to represent a data model, such as a `todos`.
 
 Here's an example:
 
 ```ts
 import { DbSchema, makeSchema } from '@livestore/livestore'
-import * as mutations from './mutations'
+import * as mutations from './mutations.js'
 
 const todos = DbSchema.table(
   'todos',
@@ -150,19 +154,16 @@ export const tables = {
 
 export const schema = makeSchema({
   tables,
-  mutations: {
-    // Add more mutations
-    ...mutations,
-  },
+  mutations,
   migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
 })
 
-export * as mutations from './mutations'
+export * as mutations from './mutations.js'
 ```
 
 ## Mutations
 
-Create a file named `mutations.ts` inside the `schema` folder. This file stores the mutations your app uses to interact with the database.
+Create a file named `mutations.ts` inside the `livestore` folder. This file stores the mutations your app uses to interact with the database.
 
 A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
 
@@ -198,8 +199,8 @@ export const deleteTodo = defineMutation(
 Create a file named `livestore.worker.ts` inside the `src` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
 ```ts
-import { makeWorker } from '@livestore/web/worker';
-import { schema } from './schema';
+import { makeWorker } from '@livestore/adapter-web/worker';
+import { schema } from './livestore/schema.js';
 
 makeWorker({ schema });
 ```
@@ -217,12 +218,12 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom';
 import { createRoot } from 'react-dom/client'
 import { Store } from '@livestore/livestore';
 import { LiveStoreProvider } from '@livestore/react';
-import { makeAdapter } from '@livestore/web';
+import { makeAdapter } from '@livestore/adapter-web';
 import { nanoid } from '@livestore/utils/nanoid';
-import LiveStoreSharedWorker from '@livestore/web/shared-worker?sharedworker';
+import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker';
 import LiveStoreWorker from './livestore.worker?worker';
-import { schema, tables, mutations } from './schema';
-import App from './App.tsx'
+import { schema, tables, mutations } from './livestore/schema.js';
+import { App } from './App.jsx'
 
 const adapter = makeAdapter({
   worker: LiveStoreWorker,
@@ -262,11 +263,11 @@ After wrapping your app with the `LiveStoreProvider`, you can use the `useStore`
 
 Here's an example:
 
-```ts
+```tsx
 import { useStore } from '@livestore/react';
-import { deleteTodo } from './schema/mutations.ts';
+import { deleteTodo } from './livestore/mutations.js';
 
-export default function App() {
+export const App = () => {
   const { store } = useStore()
 
   return (
@@ -290,7 +291,7 @@ Here's an example:
 ```ts
 import { queryDb } from '@livestore/livestore';
 import { useQuery } from '@livestore/react';
-import { tables } from './schema';
+import { tables } from './livestore/schema.js';
 
 export default function App() {
   // Define a query
