@@ -3,4 +3,5 @@ import { defineCollection } from 'astro:content'
 
 export const collections = {
   docs: defineCollection({ schema: docsSchema() }),
+  examples: defineCollection({ schema: docsSchema() }),
 }

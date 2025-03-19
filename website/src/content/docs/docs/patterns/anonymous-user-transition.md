@@ -1,5 +1,6 @@
 ---
-title: How to transition an anonymous user to a logged in user
+title: Anonymous user transition
+description: How to transition an anonymous user to a logged in user
 ---
 
 ## Basic idea

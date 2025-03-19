@@ -1,0 +1,16 @@
+---
+import { Content, getHeadings } from '../content/examples/index.mdx'
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
+---
+
+<StarlightPage frontmatter={{ title: 'Examples' }} headings={getHeadings()}>
+	<div class="examples-content">
+		<Content />
+	</div>
+</StarlightPage>
+
+<style>
+	.examples-content :global(h1:first-of-type) {
+		display: none;
+	}
+</style>

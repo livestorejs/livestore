@@ -10,8 +10,22 @@ const IS_MAIN_BRANCH = process.env.GITHUB_REF_NAME
 
 const nextUrl = 'https://dev.livestore.dev'
 const latestUrl = 'https://livestore.dev'
+
+const links = Object.entries({
+	Docs: '/docs/',
+	Examples: '/examples/',
+})
 ---
 
+<div class="nav-link-container">
+	{
+		links.map(([text, href]) => (
+			<a href={href} class="nav-link">
+				<span>{text}</span>
+			</a>
+		))
+	}
+</div>
 <div class="version-selector">
 	<div class="version-select-wrapper">
 		<select id="version-select">
@@ -21,10 +35,42 @@ const latestUrl = 'https://livestore.dev'
 			<option value={nextUrl} selected={!IS_MAIN_BRANCH}>Version: {IS_MAIN_BRANCH ? 'dev' : liveStoreVersion}</option>
 		</select>
 	</div>
-	<SocialIcons_ />
 </div>
+<SocialIcons_ />
 
 <style>
+	.nav-link-container {
+		display: flex;
+		align-items: center;
+		margin-left: auto;
+		margin-right: auto;
+		visibility: hidden;
+	}
+
+	@media (min-width: 50rem) {
+		.nav-link-container {
+			visibility: visible;
+		}
+
+		.nav-link-container .nav-link {
+			padding-left: 0.25rem;
+			padding-right: 0.25rem;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.nav-link-container .nav-link {
+			padding-left: 0.5rem;
+			padding-right: 0.5rem;
+		}
+	}
+
+	.nav-link-container .nav-link {
+		color: var(--sl-color-text);
+		font-weight: 500;
+		text-decoration: none;
+	}
+
 	.version-selector {
 		display: flex;
 		align-items: center;
