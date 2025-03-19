@@ -84,6 +84,10 @@ export default defineConfig({
           autogenerate: { directory: 'docs/reference' },
         },
         {
+          label: 'Patterns',
+          autogenerate: { directory: 'docs/patterns' },
+        },
+        {
           label: 'Miscellaneous',
           autogenerate: { directory: 'docs/misc' },
         },
