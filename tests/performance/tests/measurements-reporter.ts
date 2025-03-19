@@ -1,7 +1,8 @@
-// MeasurementsReporter.ts
 import os from 'node:os'
 
+import { ReadonlyArray, Schema } from '@livestore/utils/effect'
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter'
+import { Pretty } from 'effect'
 
 type MeasurementUnit = 'ms' | 'bytes'
 type DisplayUnit = 'ms' | 'MB'
@@ -16,23 +17,77 @@ type Measurement = {
   warmupCount?: number
 }
 
-type SystemInfo = {
-  os: {
-    type: string
-    platform: string
-    release: string
-    arch: string
-  }
-  cpus: {
-    model: string
-    count: number
-    speed: string
-  }
-  memory: {
-    total: string
-    free: string
-  }
-}
+const Cpus = Schema.NonEmptyArray(
+  Schema.Struct({
+    model: Schema.String,
+    speed: Schema.Number,
+  }),
+).pipe(
+  Schema.transform(
+    Schema.Struct({
+      model: Schema.String,
+      count: Schema.Number,
+      speed: Schema.Number.annotations({
+        pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
+      }),
+    }),
+    {
+      encode: ({ count, ...value }) => {
+        return ReadonlyArray.replicate(value, count)
+      },
+      decode: (cpus) => ({
+        model: cpus[0].model,
+        speed: cpus[0].speed,
+        count: cpus.length,
+      }),
+      strict: false,
+    },
+  ),
+)
+
+const SystemInfo = Schema.Struct({
+  os: Schema.Struct({
+    type: Schema.String,
+    platform: Schema.String,
+    release: Schema.String,
+    arch: Schema.String,
+  }),
+  cpus: Cpus,
+  memory: Schema.Struct({
+    total: Schema.Number.annotations({
+      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+    }),
+    free: Schema.Number.annotations({
+      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+    }),
+  }),
+}).annotations({
+  pretty: () => (value) => {
+    return `
+🖥️  System Information:
+
+Operating System:
+  Type: ${value.os.type}
+  Platform: ${value.os.platform}
+  Release: ${value.os.release}
+  Architecture: ${value.os.arch}
+  
+CPU:
+  Model: ${value.cpus.model}
+  Count: ${value.cpus.count}
+  Speed: ${value.cpus.speed}
+  
+Memory:
+  Total: ${value.memory.total}
+  Free: ${value.memory.free}`
+  },
+})
+
+type SystemInfo = typeof SystemInfo.Type
+
+const decodeSystemInfo = Schema.decodeUnknownSync(SystemInfo)
+
+const PrettySystemInfo = Pretty.make(SystemInfo)
 
 const measurementUnitToDisplayUnit: Record<MeasurementUnit, DisplayUnit> = {
   ms: 'ms',
@@ -48,23 +103,19 @@ const isMeasurementUnit = (unit: string): unit is MeasurementUnit => unit in mea
 
 const collectSystemInfo = (): SystemInfo => {
   const cpus = os.cpus()
-  return {
+  return decodeSystemInfo({
     os: {
       type: os.type(),
       platform: os.platform(),
       release: os.release(),
       arch: os.arch(),
     },
-    cpus: {
-      model: cpus.length > 0 ? cpus[0]!.model : 'Unknown',
-      count: cpus.length,
-      speed: cpus.length > 0 ? `${(cpus[0]!.speed / 1000).toFixed(2)} GHz` : 'Unknown',
-    },
+    cpus,
     memory: {
-      total: `${(os.totalmem() / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-      free: `${(os.freemem() / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+      total: os.totalmem(),
+      free: os.freemem(),
     },
-  }
+  })
 }
 
 class MeasurementsReporter implements Reporter {
@@ -135,27 +186,7 @@ class MeasurementsReporter implements Reporter {
   }
 
   private printSystemInfo = (): void => {
-    console.log('\n🖥️  System Information:')
-
-    // OS Information
-    console.log('\nOperating System:')
-    console.log(`  Type: ${this.systemInfo.os.type}`)
-    console.log(`  Platform: ${this.systemInfo.os.platform}`)
-    console.log(`  Release: ${this.systemInfo.os.release}`)
-    console.log(`  Architecture: ${this.systemInfo.os.arch}`)
-
-    // CPU Information
-    console.log('\nCPU:')
-    console.log(`  Model: ${this.systemInfo.cpus.model}`)
-    console.log(`  Count: ${this.systemInfo.cpus.count}`)
-    console.log(`  Speed: ${this.systemInfo.cpus.speed}`)
-
-    // Memory Information
-    console.log('\nMemory:')
-    console.log(`  Total: ${this.systemInfo.memory.total}`)
-    console.log(`  Free: ${this.systemInfo.memory.free}`)
-
-    console.log('') // Add an empty line for better readability
+    console.log(PrettySystemInfo(this.systemInfo))
   }
 
   private printMeasurements = (): void => {
@@ -286,13 +317,13 @@ class TableRenderer {
     console.log('┌' + columnWidths.map((width) => '─'.repeat(width)).join('┬') + '┐')
 
     const headerRow = headers
-    .map((header, i) => {
-      // First column left-aligned if specified, others right-aligned
-      return i === 0 && firstColumnLeftAligned
-        ? header.padEnd(columnWidths[i]!)
-        : header.padStart(columnWidths[i]! - 1).padEnd(columnWidths[i]!)
-    })
-    .join('│')
+      .map((header, i) => {
+        // First column left-aligned if specified, others right-aligned
+        return i === 0 && firstColumnLeftAligned
+          ? header.padEnd(columnWidths[i]!)
+          : header.padStart(columnWidths[i]! - 1).padEnd(columnWidths[i]!)
+      })
+      .join('│')
 
     console.log('│' + headerRow + '│')
     console.log('├' + columnWidths.map((width) => '─'.repeat(width)).join('┼') + '┤')
@@ -301,16 +332,16 @@ class TableRenderer {
   private static printTableRows = (rows: string[][], columnWidths: number[], firstColumnLeftAligned: boolean): void => {
     for (const row of rows) {
       const formattedRow = row
-      .map((cell, i) => {
-        // First column left-aligned if specified, others right-aligned
-        return i === 0 && firstColumnLeftAligned
-          ? cell.toString().padEnd(columnWidths[i]!)
-          : cell
-          .toString()
-          .padStart(columnWidths[i]! - 1)
-          .padEnd(columnWidths[i]!)
-      })
-      .join('│')
+        .map((cell, i) => {
+          // First column left-aligned if specified, others right-aligned
+          return i === 0 && firstColumnLeftAligned
+            ? cell.toString().padEnd(columnWidths[i]!)
+            : cell
+                .toString()
+                .padStart(columnWidths[i]! - 1)
+                .padEnd(columnWidths[i]!)
+        })
+        .join('│')
       console.log('│' + formattedRow + '│')
     }
   }
