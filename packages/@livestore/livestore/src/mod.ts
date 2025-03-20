@@ -1,6 +1,8 @@
 export { Store } from './store/store.js'
 export { createStore, createStorePromise, type CreateStoreOptions } from './store/create-store.js'
 export type { QueryDebugInfo, RefreshReason, OtelOptions } from './store/store-types.js'
+// We're re-exporting `Schema` from `effect` for convenience
+export { Schema } from '@livestore/utils/effect'
 
 export { type LiveStoreContext, type ShutdownDeferred, type LiveStoreContextRunning } from './store/store-types.js'
 

@@ -8,7 +8,7 @@ import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf'
-import { Effect, Layer, Logger, LogLevel, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, LogLevel, Option, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
@@ -18,6 +18,11 @@ const enableDevtoolsOption = Cli.Options.boolean('enable-devtools').pipe(Cli.Opt
 const adapterTypeOption = Cli.Options.text('adapter-type').pipe(
   Cli.Options.withSchema(Schema.Literal('file', 'in-memory')),
   Cli.Options.withDefault('file'),
+)
+
+const syncPayloadOption = Cli.Options.text('sync-payload').pipe(
+  Cli.Options.withSchema(Schema.parseJson(Schema.JsonValue)),
+  Cli.Options.optional,
 )
 
 const pull = Cli.Command.make('pull', {}, () => Effect.log('Pulling...'))
@@ -30,8 +35,9 @@ const live = Cli.Command.make(
     schemaPath: schemaPathOption,
     enableDevtools: enableDevtoolsOption,
     adapterType: adapterTypeOption,
+    syncPayload: syncPayloadOption,
   },
-  ({ baseDirectory, storeId, schemaPath, enableDevtools, adapterType }) =>
+  ({ baseDirectory, storeId, schemaPath, enableDevtools, adapterType, syncPayload }) =>
     Effect.gen(function* () {
       const relativeSchemaPath = path.isAbsolute(schemaPath) ? schemaPath : path.resolve(process.cwd(), schemaPath)
       // console.log('relativeSchemaPath', relativeSchemaPath)
@@ -46,11 +52,17 @@ const live = Cli.Command.make(
             })
           : makeInMemoryAdapter({
               sync: {
-                makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8787', storeId }),
+                makeBackend: ({ storeId, payload }) => makeWsSync({ url: 'ws://localhost:8787', storeId, payload }),
               },
             })
 
-      const store = yield* createStore({ adapter, schema, storeId, disableDevtools: !enableDevtools })
+      const store = yield* createStore({
+        adapter,
+        schema,
+        storeId,
+        disableDevtools: !enableDevtools,
+        syncPayload: Option.getOrUndefined(syncPayload),
+      })
 
       const firstTable = schema.tables.values().next().value as DbSchema.TableDef
 

@@ -54,6 +54,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
           )
 
           if (result._tag === 'Left') {
+            console.error('Invalid payload', result.left)
             return new Response(result.left.toString(), { status: 400, headers: corsHeaders })
           }
         }
@@ -70,6 +71,7 @@ export const makeWorker = (options: MakeWorkerOptions = {}): CFWorker => {
           return durableObject.fetch(request)
         }
 
+        console.error('Invalid path', url.pathname)
         return new Response(null, {
           status: 400,
           statusText: 'Bad Request',

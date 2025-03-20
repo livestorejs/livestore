@@ -179,7 +179,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         if (deferredAlreadyDone) {
           const previousInitialMessage = yield* Deferred.await(initialMessagePayloadDeferred)
           const messageSchema = WorkerSchema.LeaderWorkerInner.InitialMessage.pipe(
-            Schema.pick('devtoolsEnabled', 'debugInstanceId'),
+            Schema.omit('devtoolsEnabled', 'debugInstanceId'),
           )
           const isEqual = Schema.equivalence(messageSchema)
           if (isEqual(initialMessage, previousInitialMessage.initialMessage) === false) {
@@ -189,7 +189,7 @@ const makeWorkerRunner = Effect.gen(function* () {
               cause: 'Initial message already sent and was different now',
               payload: {
                 diff,
-                previousInitialMessage,
+                previousInitialMessage: previousInitialMessage.initialMessage,
                 newInitialMessage: initialMessage,
               },
             })

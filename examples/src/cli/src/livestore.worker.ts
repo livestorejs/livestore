@@ -7,6 +7,6 @@ const argv = getWorkerArgs()
 
 makeWorkerEffect({
   sync: {
-    makeBackend: ({ storeId }) => makeWsSync({ url: 'ws://localhost:8787', storeId }),
+    makeBackend: ({ storeId, payload }) => makeWsSync({ url: 'ws://localhost:8787', storeId, payload }),
   },
 }).pipe(Effect.provide(OtelLiveHttp({ serviceName: `cli-worker-${argv.storeId}`, skipLogUrl: true })), Effect.runFork)

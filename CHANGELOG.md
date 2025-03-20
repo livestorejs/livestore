@@ -120,9 +120,12 @@
     - What if I want got my initial container design wrong and I want to change it?
       - Comparables: document databases, kafka streams, 
 - Fix linting
+- Re-expose `Schema` from `@livestore/utils/effect`
+- Make `makeBackend` syncing function curried so `payload`, `storeId` is automatically passed through
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations
   - cf sync:
+    - use http for initial pull while WS connection is established
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
       - We will "downgrade" the purpose of the `remaining` field to be only used for UX purposes but not for correctness purposes. For correctness we will only stop pull-walking when we get an empty array back.
     - Bring back "broadcast" pull res terminology
