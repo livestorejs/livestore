@@ -232,7 +232,7 @@ const listenToDevtools = ({
               yield* syncProcessor.pushPartial({
                 mutationEvent: decodedEvent.mutationEventEncoded,
                 clientId: `devtools-${clientId}`,
-                sessionId: undefined,
+                sessionId: `devtools-${clientId}`,
               })
 
               yield* sendMessage(Devtools.Leader.RunMutationRes.make({ ...reqPayload }))

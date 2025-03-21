@@ -224,7 +224,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
         ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)({
           ...event,
           clientId: leaderThreadCtx.clientId,
-          sessionId: undefined,
+          sessionId: 'static-session-id',
         }),
         meta,
       })

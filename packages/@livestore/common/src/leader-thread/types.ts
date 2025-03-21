@@ -143,7 +143,7 @@ export interface LeaderSyncProcessor {
   pushPartial: (args: {
     mutationEvent: MutationEvent.PartialAnyEncoded
     clientId: string
-    sessionId: string | undefined
+    sessionId: string
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
   boot: (args: {
     dbReady: Deferred.Deferred<void>

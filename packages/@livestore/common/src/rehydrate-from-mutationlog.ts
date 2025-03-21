@@ -65,7 +65,7 @@ This likely means the schema has changed in an incompatible way.
           mutation: row.mutation,
           args,
           clientId: row.clientId,
-          sessionId: row.sessionId ?? undefined,
+          sessionId: row.sessionId,
         } satisfies MutationEvent.AnyEncoded
 
         yield* applyMutation(mutationEventEncoded, { skipMutationLog: true })

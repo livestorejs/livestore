@@ -122,7 +122,7 @@ const insertIntoMutationLog = (
   dbMutationLog: SqliteDb,
   mutationDefSchemaHashMap: Map<string, number>,
   clientId: string,
-  sessionId: string | undefined,
+  sessionId: string,
 ) =>
   Effect.gen(function* () {
     const mutationName = mutationEventEncoded.mutation
@@ -157,7 +157,7 @@ const insertIntoMutationLog = (
           mutation: mutationEventEncoded.mutation,
           argsJson: mutationEventEncoded.args ?? {},
           clientId,
-          sessionId: sessionId ?? null,
+          sessionId,
           schemaHash: mutationDefSchemaHash,
           syncMetadataJson: Option.none(),
         },

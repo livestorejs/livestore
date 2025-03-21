@@ -48,6 +48,7 @@ Vitest.describe('Store', () => {
           id: EventId.globalEventId(0),
           parentId: EventId.ROOT.global,
           clientId: 'other-client',
+          sessionId: 'static-session-id',
         })
 
         yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
@@ -74,6 +75,7 @@ Vitest.describe('Store', () => {
             id: EventId.globalEventId(i),
             parentId: EventId.globalEventId(i - 1),
             clientId: 'other-client',
+            sessionId: 'static-session-id',
           })
           .pipe(Effect.fork)
       }

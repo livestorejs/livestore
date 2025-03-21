@@ -26,7 +26,7 @@ export const getMutationEventsSince = (
         id: { global: _.idGlobal, client: _.idClient },
         parentId: { global: _.parentIdGlobal, client: _.parentIdClient },
         clientId: _.clientId,
-        sessionId: _.sessionId ?? undefined,
+        sessionId: _.sessionId,
       }))
       .filter((_) => EventId.compare(_.id, since) > 0)
   })

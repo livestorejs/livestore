@@ -79,8 +79,7 @@ export const mutationLogMetaTable = table(
     mutation: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
-    /** Only available for mutations which were executed in this client */
-    sessionId: SqliteDsl.text({ nullable: true }),
+    sessionId: SqliteDsl.text({}),
     schemaHash: SqliteDsl.integer({}),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },

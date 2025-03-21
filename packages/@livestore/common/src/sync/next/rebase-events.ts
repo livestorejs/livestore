@@ -51,7 +51,7 @@ export const rebaseEvents = ({
   rebaseFn: RebaseFn
   currentFactsSnapshot: MutationEventFactsSnapshot
   clientId: string
-  sessionId: string | undefined
+  sessionId: string
 }): ReadonlyArray<MutationEvent.AnyDecoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(

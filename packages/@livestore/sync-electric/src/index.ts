@@ -12,6 +12,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   Option,
+  pipe,
   Schema,
   Stream,
   SubscriptionRef,
@@ -67,7 +68,7 @@ const MutationEventGlobalFromStringRecord = Schema.Struct({
   mutation: Schema.String,
   args: Schema.parseJson(Schema.Any),
   clientId: Schema.String,
-  sessionId: Schema.optional(Schema.String),
+  sessionId: Schema.String,
 }).pipe(
   Schema.transform(MutationEvent.AnyEncodedGlobal, {
     decode: (_) => _,
@@ -328,7 +329,7 @@ export const makeSyncBackend = ({
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 3
+export const PERSISTENCE_FORMAT_VERSION = 4
 
 export const toTableName = (storeId: string) => {
   const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')

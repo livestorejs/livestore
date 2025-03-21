@@ -19,7 +19,7 @@ class TestEvent extends MutationEvent.EncodedWithMeta {
       args: payload,
 
       clientId: 'static-local-id',
-      sessionId: undefined,
+      sessionId: 'static-session-id',
     })
   }
 
