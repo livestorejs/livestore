@@ -1,4 +1,4 @@
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
@@ -23,7 +23,7 @@ const AppBody: React.FC = () => (
 
 const storeId = getStoreId()
 
-const adapter = makeAdapter({
+const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,

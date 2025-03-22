@@ -3,6 +3,7 @@ import process from 'node:process'
 
 import { WorkerError } from '@effect/platform/WorkerError'
 import * as Runner from '@effect/platform/WorkerRunner'
+import * as Cause from 'effect/Cause'
 import * as Context from 'effect/Context'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
@@ -36,7 +37,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
         const runFork = Runtime.runFork(runtime)
         const onExit = (exit: Exit.Exit<any, E>) => {
-          if (exit._tag === 'Failure') {
+          if (exit._tag === 'Failure' && !Cause.isInterruptedOnly(exit.cause)) {
             // Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
             Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
           }

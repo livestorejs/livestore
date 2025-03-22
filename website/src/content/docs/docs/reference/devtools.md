@@ -75,6 +75,6 @@ You can open the devtools by pressing `Shift+m` in the Expo CLI process and then
   
 ### `@livestore/adapter-node`:
 
-Devtools are configured out of the box for the `makeNodeAdapter` variant (note currently not supported for the `makeInMemoryAdapter` variant).
+Devtools are configured out of the box for the `makePersistedAdapter` variant (note currently not supported for the `makeInMemoryAdapter` variant).
 
 You should see the Devtools URL logged when running the app.

@@ -40,7 +40,7 @@ export type MakeDbOptions = {
 }
 
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
-export const makeAdapter =
+export const makePersistedAdapter =
   (options: MakeDbOptions = {}): Adapter =>
   ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload }) =>
     Effect.gen(function* () {

@@ -1,5 +1,5 @@
 /* eslint-disable unicorn/prefer-global-this */
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
@@ -29,7 +29,7 @@ if (resetPersistence) {
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
 }
 
-const adapter = makeAdapter({
+const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,

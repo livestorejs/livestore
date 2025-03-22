@@ -2,7 +2,7 @@
 // import 'todomvc-app-css/index.css'
 // import './index.css'
 
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { createStorePromise, nanoid, queryDb } from '@livestore/livestore'
 
@@ -17,7 +17,11 @@ export const css = (strings: TemplateStringsArray, ...values: unknown[]) => Stri
 
 const store = await createStorePromise({
   schema,
-  adapter: makeAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, sharedWorker: LiveStoreSharedWorker }),
+  adapter: makePersistedAdapter({
+    storage: { type: 'opfs' },
+    worker: LiveStoreWorker,
+    sharedWorker: LiveStoreSharedWorker,
+  }),
   storeId: 'todomvc',
 })
 

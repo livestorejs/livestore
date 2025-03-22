@@ -1,4 +1,4 @@
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
@@ -10,7 +10,7 @@ export const test = () =>
   Effect.gen(function* () {
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
 
-    const _adapter = yield* makeAdapter({
+    const _adapter = yield* makePersistedAdapter({
       storage: { type: 'opfs' },
       worker: LiveStoreWorker,
       sharedWorker: LiveStoreSharedWorker,

@@ -21,7 +21,7 @@
 
 - New: `@livestore/adapter-expo` now supports syncing:
   ```ts
-  const adapter = makeAdapter({
+  const adapter = makePersistedAdapter({
     sync: { makeBackend: ({ storeId }) => makeWsSync({ url: `...`, storeId }) },
   })
   ```
@@ -47,6 +47,8 @@
   const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: `issue-${issueId}` }))
   ```
 
+- Breaking `@livestore/adapter-web`: Renamed `makeAdapter` to `makePersistedAdapter`
+- Breaking `@livestore/adapter-expo`: Renamed `makeAdapter` to `makePersistedAdapter`
 - Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
 - Breaking `@livestore/react`: `useRow` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
@@ -249,7 +251,7 @@
 - Breaking: Changed syncing adapter interface:
 
   ```ts
-  const adapter = makeAdapter({
+  const adapter = makePersistedAdapter({
     storage: { type: 'opfs' },
     worker: LiveStoreWorker,
     sharedWorker: LiveStoreSharedWorker,

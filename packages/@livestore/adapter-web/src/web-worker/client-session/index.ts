@@ -61,7 +61,7 @@ export type WebAdapterOptions = {
    * ```ts
    * import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
    *
-   * const adapter = makeAdapter({
+   * const adapter = makePersistedAdapter({
    *   sharedWorker: LiveStoreSharedWorker,
    *   // ...
    * })
@@ -93,7 +93,7 @@ export type WebAdapterOptions = {
   sessionId?: string
 }
 
-export const makeAdapter =
+export const makePersistedAdapter =
   (options: WebAdapterOptions): Adapter =>
   ({
     schema,

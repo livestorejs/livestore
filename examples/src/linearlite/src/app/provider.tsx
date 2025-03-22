@@ -4,7 +4,7 @@ import { renderBootStatus } from '@/lib/livestore/utils'
 import LiveStoreWorker from '@/lib/livestore/worker?worker'
 import { Status } from '@/types/status'
 import { LiveStoreProvider } from '@livestore/react'
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import React from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
@@ -18,7 +18,7 @@ if (resetPersistence) {
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
 }
 
-const adapter = makeAdapter({
+const adapter = makePersistedAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   storage: { type: 'opfs' },

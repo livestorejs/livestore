@@ -102,6 +102,11 @@ export {
   FetchHttpClient,
   Socket,
   UrlParams,
+  HttpServerRequest,
+  Headers,
+  HttpMiddleware,
+  HttpRouter,
+  HttpServerResponse,
 } from '@effect/platform'
 export { BrowserWorker, BrowserWorkerRunner } from '@effect/platform-browser'
 

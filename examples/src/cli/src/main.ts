@@ -3,7 +3,7 @@
 
 import path from 'node:path'
 
-import { makeInMemoryAdapter, makeNodeAdapter } from '@livestore/adapter-node'
+import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
@@ -16,8 +16,8 @@ const baseDirectoryOption = Cli.Options.text('directory').pipe(Cli.Options.withD
 const schemaPathOption = Cli.Options.text('schema-path')
 const enableDevtoolsOption = Cli.Options.boolean('enable-devtools').pipe(Cli.Options.withDefault(false))
 const adapterTypeOption = Cli.Options.text('adapter-type').pipe(
-  Cli.Options.withSchema(Schema.Literal('file', 'in-memory')),
-  Cli.Options.withDefault('file'),
+  Cli.Options.withSchema(Schema.Literal('persisted', 'in-memory')),
+  Cli.Options.withDefault('persisted'),
 )
 
 const syncPayloadOption = Cli.Options.text('sync-payload').pipe(
@@ -45,7 +45,7 @@ const live = Cli.Command.make(
 
       const adapter =
         adapterType === 'file'
-          ? makeNodeAdapter({
+          ? makePersistedAdapter({
               schemaPath: relativeSchemaPath,
               workerUrl: new URL('./livestore.worker.js', import.meta.url),
               baseDirectory,

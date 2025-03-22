@@ -2,7 +2,7 @@ import './thread-polyfill.js'
 
 import path from 'node:path'
 
-import { makeInMemoryAdapter, makeNodeAdapter } from '@livestore/adapter-node'
+import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
 import type { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { ShutdownDeferred, Store, StoreInterrupted } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
@@ -40,7 +40,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
     Effect.gen(function* () {
       const adapter =
         adapterType === 'file'
-          ? makeNodeAdapter({
+          ? makePersistedAdapter({
               schemaPath: new URL('./schema.js', import.meta.url).toString(),
               workerUrl: new URL('./livestore.worker.js', import.meta.url),
               baseDirectory: path.resolve(

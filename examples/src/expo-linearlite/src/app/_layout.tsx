@@ -2,7 +2,7 @@ import '../global.css'
 import '../polyfill.ts'
 import 'react-native-reanimated'
 
-import { makeAdapter } from '@livestore/adapter-expo'
+import { makePersistedAdapter } from '@livestore/adapter-expo'
 import type { Store } from '@livestore/livestore'
 import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
@@ -24,7 +24,7 @@ import { schema, tables, userMutations } from '../livestore/schema.ts'
 LogBox.ignoreAllLogs()
 
 const RootLayout = () => {
-  const adapter = makeAdapter()
+  const adapter = makePersistedAdapter()
   const [, rerender] = React.useState({})
 
   return (

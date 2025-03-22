@@ -1,6 +1,6 @@
 import 'todomvc-app-css/index.css'
 
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
@@ -14,7 +14,7 @@ import LiveStoreWorker from '../livestore/livestore.worker?worker'
 
 const RootComponent = () => {
   const storeId = getStoreId()
-  const adapter = makeAdapter({
+  const adapter = makePersistedAdapter({
     storage: { type: 'opfs' },
     worker: LiveStoreWorker,
     sharedWorker: LiveStoreSharedWorker,

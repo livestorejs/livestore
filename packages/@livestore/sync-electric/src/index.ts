@@ -12,7 +12,6 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   Option,
-  pipe,
   Schema,
   Stream,
   SubscriptionRef,

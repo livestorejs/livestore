@@ -1,4 +1,4 @@
-import { makeAdapter } from '@livestore/adapter-expo'
+import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { makeWsSync } from '@livestore/sync-cf'
@@ -15,7 +15,7 @@ import { mutations, schema, tables } from './livestore/schema.ts'
 const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID ?? nanoid(6)
 const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL
 
-const adapter = makeAdapter({
+const adapter = makePersistedAdapter({
   sync: { makeBackend: syncUrl ? ({ storeId }) => makeWsSync({ url: syncUrl, storeId }) : undefined },
 })
 

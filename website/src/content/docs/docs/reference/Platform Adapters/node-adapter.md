@@ -7,9 +7,9 @@ Works with Node.js, Bun and Deno.
 ## Example
 
 ```ts
-import { makeNodeAdapter } from '@livestore/adapter-node'
+import { makePersistedAdapter } from '@livestore/adapter-node'
 
-const adapter = makeNodeAdapter({
+const adapter = makePersistedAdapter({
 	schemaPath: new URL('./schema.ts', import.meta.url),
 	workerUrl: new URL('./livestore.worker.js', import.meta.url),
 })

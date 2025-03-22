@@ -6,11 +6,11 @@ description: Information about LiveStore's web adapter
 ## Example
 
 ```ts
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import LiveStoreWorker from './livestore.worker?worker'
 
-const adapter = makeAdapter({
+const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,

@@ -217,7 +217,7 @@ Here's an example:
 ```tsx
 import React from 'react'
 import { Stack } from 'expo-router'
-import { makeAdapter } from '@livestore/adapter-expo'
+import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { sql, Store } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
 import { cuid } from '@livestore/utils/cuid'
@@ -225,7 +225,7 @@ import { Button, Text, unstable_batchedUpdates as batchUpdates } from 'react-nat
 
 import { mutations, schema } from '../livestore/schema'
 
-const adapter = makeAdapter()
+const adapter = makePersistedAdapter()
 
 export default function RootLayout() {
   const [, rerender] = React.useState({})
