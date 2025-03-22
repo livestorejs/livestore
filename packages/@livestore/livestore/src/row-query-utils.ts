@@ -66,9 +66,9 @@ export const makeExecBeforeFirstRun =
         )
       }
 
-      // It's important that we only mutate and don't refresh here, as this function might be called during a render
+      // It's important that we only commit and don't refresh here, as this function might be called during a render
       // and otherwise we might end up in a "reactive loop"
-      store.mutate(
+      store.commit(
         { otelContext, skipRefresh: true, label: `rowQuery:${table.sqliteDef.name}:${idVal}` },
         table.insert({ id, ...insertValues }),
       )

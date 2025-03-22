@@ -138,11 +138,11 @@ export const useRow: {
 
         // NOTE we need to account for the short-hand syntax for single-column+singleton tables
         if (table.options.isSingleton) {
-          store.mutate(table.update(newValue))
+          store.commit(table.update(newValue))
         } else {
-          store.mutate(table.update({ where: { id }, values: { value: newValue } }))
+          store.commit(table.update({ where: { id }, values: { value: newValue } }))
         }
-        // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue }))
+        // store.commit(updateMutationForQueryInfo(query$.queryInfo!, { value: newValue }))
       }
     } else {
       const setState = // TODO: do we have a better type for the values that can go in SQLite?
@@ -155,8 +155,8 @@ export const useRow: {
           // @ts-expect-error TODO fix typing
           if (queryRef.valueRef.current[columnName] === newValue) return
 
-          store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: { [columnName]: newValue } }))
-          // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
+          store.commit(table.update({ where: { id: id ?? 'singleton' }, values: { [columnName]: newValue } }))
+          // store.commit(updateMutationForQueryInfo(query$.queryInfo!, { [columnName]: newValue }))
         })
 
       setState.setMany = (columnValuesOrFn: Partial<TComponentState>) => {
@@ -173,8 +173,8 @@ export const useRow: {
           return
         }
 
-        store.mutate(table.update({ where: { id: id ?? 'singleton' }, values: columnValues }))
-        // store.mutate(updateMutationForQueryInfo(query$.queryInfo!, columnValues))
+        store.commit(table.update({ where: { id: id ?? 'singleton' }, values: columnValues }))
+        // store.commit(updateMutationForQueryInfo(query$.queryInfo!, columnValues))
       }
 
       return setState as any

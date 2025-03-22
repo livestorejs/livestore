@@ -63,7 +63,7 @@ const EditIssueScreen = () => {
             value={issue.title}
             multiline
             autoFocus
-            onChangeText={(text: string) => store.mutate(updateIssueTitle({ id: issue.id, title: text }))}
+            onChangeText={(text: string) => store.commit(updateIssueTitle({ id: issue.id, title: text }))}
           />
 
           <View className="flex-row border my-2 border-zinc-200 dark:border-zinc-700 rounded-md p-1 px-2 gap-2">
@@ -88,7 +88,7 @@ const EditIssueScreen = () => {
             value={issue.description!}
             placeholder="Description..."
             multiline
-            onChangeText={(text: string) => store.mutate(updateIssueDescription({ id: issue.id, description: text }))}
+            onChangeText={(text: string) => store.commit(updateIssueDescription({ id: issue.id, description: text }))}
           />
         </View>
       </ScrollView>

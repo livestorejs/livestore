@@ -20,7 +20,7 @@ const NewIssueScreen = () => {
     if (!newIssueText) return
 
     const id = nanoid()
-    store.mutate(
+    store.commit(
       createIssue({
         id,
         title: newIssueText,
@@ -36,8 +36,8 @@ const NewIssueScreen = () => {
     router.push(`/issue-details?issueId=${id}`)
 
     // reset state
-    store.mutate(updateNewIssueText({ text: '' }))
-    store.mutate(updateNewIssueDescription({ text: '' }))
+    store.commit(updateNewIssueText({ text: '' }))
+    store.commit(updateNewIssueDescription({ text: '' }))
   }
 
   return (
@@ -62,12 +62,12 @@ const NewIssueScreen = () => {
         <TextInput
           value={newIssueText}
           className="font-bold text-2xl mb-3 dark:text-zinc-50"
-          onChangeText={(text: string) => store.mutate(updateNewIssueText({ text }))}
+          onChangeText={(text: string) => store.commit(updateNewIssueText({ text }))}
           placeholder="Issue title"
         />
         <TextInput
           value={newIssueDescription}
-          onChangeText={(text: string) => store.mutate(updateNewIssueDescription({ text }))}
+          onChangeText={(text: string) => store.commit(updateNewIssueDescription({ text }))}
           className="dark:text-zinc-50"
           placeholder="Description..."
           multiline

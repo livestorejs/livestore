@@ -21,7 +21,7 @@ Vitest.describe('Store', () => {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore
 
-        store.mutate(tables.todos.insert({ id: '1', text: 't1', completed: false }))
+        store.commit(tables.todos.insert({ id: '1', text: 't1', completed: false }))
 
         yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
       }).pipe(withCtx(test)),
@@ -41,7 +41,7 @@ Vitest.describe('Store', () => {
 
         const store = yield* makeStore
 
-        store.mutate(tables.todos.insert({ id: '2', text: 't2', completed: false }))
+        store.commit(tables.todos.insert({ id: '2', text: 't2', completed: false }))
 
         yield* mockSyncBackend.advance({
           ...encoded,
@@ -81,7 +81,7 @@ Vitest.describe('Store', () => {
       }
 
       for (let i = 0; i < 5; i++) {
-        store.mutate(tables.todos.insert({ id: `local_${i}`, text: '', completed: false }))
+        store.commit(tables.todos.insert({ id: `local_${i}`, text: '', completed: false }))
       }
 
       yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(5), Stream.runDrain)

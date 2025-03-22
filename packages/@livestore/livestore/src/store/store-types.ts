@@ -51,7 +51,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
 export type RefreshReason =
   | DebugRefreshReasonBase
   | {
-      _tag: 'mutate'
+      _tag: 'commit'
       /** The mutations that were applied */
       mutations: ReadonlyArray<MutationEvent.AnyDecoded | MutationEvent.PartialAnyDecoded>
 

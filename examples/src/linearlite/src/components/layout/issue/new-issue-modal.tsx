@@ -41,7 +41,7 @@ export const NewIssueModal = () => {
         .first({ fallback: () => 'a1' }),
     )
     const kanbanorder = generateKeyBetween(highestKanbanOrder, null)
-    store.mutate(
+    store.commit(
       mutations.createIssueWithDescription({
         id: highestIssueId + 1,
         title,

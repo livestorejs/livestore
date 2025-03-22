@@ -35,7 +35,7 @@ exports[`otel > otel 3`] = `
       "_name": "LiveStore:mutations",
       "children": [
         {
-          "_name": "LiveStore:mutate",
+          "_name": "LiveStore:commit",
           "attributes": {
             "livestore.mutationEventTags": [
               "livestore.RawSql",
@@ -303,7 +303,7 @@ exports[`otel > with thunks 7`] = `
       "_name": "LiveStore:mutations",
       "children": [
         {
-          "_name": "LiveStore:mutate",
+          "_name": "LiveStore:commit",
           "attributes": {
             "livestore.mutationEventTags": [
               "livestore.RawSql",
@@ -405,7 +405,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "_name": "LiveStore:mutations",
       "children": [
         {
-          "_name": "LiveStore:mutate",
+          "_name": "LiveStore:commit",
           "attributes": {
             "livestore.mutationEventTags": [
               "livestore.RawSql",

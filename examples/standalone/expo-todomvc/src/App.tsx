@@ -38,7 +38,7 @@ export const App = () => {
         }}
         boot={(store) => {
           if (store.query(tables.todos.query.count()) === 0) {
-            store.mutate(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))
+            store.commit(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))
           }
         }}
         adapter={adapter}

@@ -69,7 +69,7 @@ Vitest.describe('otel', () => {
       })
       expect(store.query(query$)).toMatchInlineSnapshot('[]')
 
-      store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       [
@@ -117,7 +117,7 @@ Vitest.describe('otel', () => {
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-      store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
@@ -157,7 +157,7 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      store.mutate(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {

@@ -16,10 +16,10 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
   const navigate = useNavigate()
   const { store } = useStore()
 
-  const handleChangeStatus = (status: Status) => store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
+  const handleChangeStatus = (status: Status) => store.commit(mutations.updateIssueStatus({ id: issue.id, status }))
 
   const handleChangePriority = (priority: Priority) =>
-    store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
+    store.commit(mutations.updateIssuePriority({ id: issue.id, priority }))
 
   return (
     <div

@@ -44,6 +44,6 @@ This page is needs to be rewritten. Please reach out in Discord if you have any 
 
 ### Non-persisted mutations
 
-Sometimes it can be useful to not persist mutations but still sync them across clients (e.g. for frequent in-progress updates like position updates during a drag & drop interaction). Calling `store.mutate({ persisted: false }, myMutation)` will still apply and sync the mutation but won't persist it in the mutation log and in the sync server.
+Sometimes it can be useful to not persist mutations but still sync them across clients (e.g. for frequent in-progress updates like position updates during a drag & drop interaction). Calling `store.commit({ persisted: false }, myMutation)` will still apply and sync the mutation but won't persist it in the mutation log and in the sync server.
 
 It's important that the "final mutation" sets explicit values (and e.g. doesn't increment an existing value) i.e. shouldn't care about what the current value is.

@@ -82,7 +82,7 @@ const FilterSettingsScreen = () => {
               ? 'completedIssues'
               : query]: event,
       }
-      store.mutate(updateFunction(payload))
+      store.commit(updateFunction(payload))
     }
   }
 

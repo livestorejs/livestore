@@ -9,9 +9,9 @@ export const Header: React.FC = () => {
   const sessionId = store.sessionId
   const { newTodoText } = useQuery(app$)
 
-  const updatedNewTodoText = (text: string) => store.mutate(mutations.updatedNewTodoText({ text, sessionId }))
+  const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text, sessionId }))
   const todoCreated = () =>
-    store.mutate(
+    store.commit(
       mutations.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
       mutations.updatedNewTodoText({ text: '', sessionId }),
     )

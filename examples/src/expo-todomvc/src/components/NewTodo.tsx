@@ -10,17 +10,17 @@ export const NewTodo: React.FC = () => {
   const { store } = useStore()
   const { newTodoText } = useQuery(app$)
 
-  const updatedNewTodoText = (text: string) => store.mutate(mutations.updatedNewTodoText({ text }))
+  const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text }))
   const todoCreated = () =>
-    store.mutate(
+    store.commit(
       mutations.todoCreated({ id: new Date().toISOString(), text: newTodoText }),
       mutations.updatedNewTodoText({ text: '' }),
     )
   const addRandom50 = () => {
     const todos = Array.from({ length: 50 }, (_, i) => ({ id: nanoid(), text: `Todo ${i}` }))
-    store.mutate(...todos.map((todo) => mutations.todoCreated(todo)))
+    store.commit(...todos.map((todo) => mutations.todoCreated(todo)))
   }
-  const reset = () => store.mutate(mutations.clearAll({ deleted: Date.now() }))
+  const reset = () => store.commit(mutations.clearAll({ deleted: Date.now() }))
 
   const inputRef = React.useRef<TextInput>(null)
 

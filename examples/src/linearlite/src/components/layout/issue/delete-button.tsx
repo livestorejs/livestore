@@ -19,7 +19,7 @@ export const DeleteButton = ({
   const onClick = () => {
     if (confirm) {
       const deleted = Date.now()
-      store.mutate(
+      store.commit(
         mutations.deleteIssue({ id: issueId, deleted }),
         mutations.deleteDescription({ id: issueId, deleted }),
         mutations.deleteCommentsByIssueId({ issueId, deleted }),

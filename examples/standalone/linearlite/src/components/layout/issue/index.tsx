@@ -32,11 +32,11 @@ export const Issue = () => {
   }
 
   const handleChangeStatus = (status: Status) => {
-    store.mutate(mutations.updateIssueStatus({ id: issue.id, status }))
+    store.commit(mutations.updateIssueStatus({ id: issue.id, status }))
   }
 
   const handleChangePriority = (priority: Priority) => {
-    store.mutate(mutations.updateIssuePriority({ id: issue.id, priority }))
+    store.commit(mutations.updateIssuePriority({ id: issue.id, priority }))
   }
 
   return (

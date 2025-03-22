@@ -29,7 +29,7 @@ export const NavigationHistoryTracker = () => {
     if (pathname === '/' && navigationHistory === '/') return
 
     if (navigationHistory !== pathname) {
-      store.mutate(
+      store.commit(
         updateNavigationHistory({
           history: constructPathWithParams(pathname, globalParams),
         }),

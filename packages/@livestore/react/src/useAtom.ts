@@ -40,17 +40,17 @@ export const useAtom = <
 
       if (query$.queryInfo._tag === 'Row') {
         if (table.options.isSingleton && table.options.isSingleColumn) {
-          store.mutate(table.update(newValue))
+          store.commit(table.update(newValue))
         } else if (table.options.isSingleColumn) {
-          store.mutate(table.update({ where: { id: query$.queryInfo.id }, values: { value: newValue } }))
+          store.commit(table.update({ where: { id: query$.queryInfo.id }, values: { value: newValue } }))
         } else {
-          store.mutate(table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
+          store.commit(table.update({ where: { id: query$.queryInfo.id }, values: newValue }))
         }
       } else {
         if (table.options.isSingleton && table.options.isSingleColumn) {
-          store.mutate(table.update({ [query$.queryInfo.column]: newValue }))
+          store.commit(table.update({ [query$.queryInfo.column]: newValue }))
         } else {
-          store.mutate(
+          store.commit(
             table.update({
               where: { id: query$.queryInfo.id },
               values: { [query$.queryInfo.column]: newValue },

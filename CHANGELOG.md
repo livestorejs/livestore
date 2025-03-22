@@ -37,6 +37,8 @@
   - `@livestore/web` now is `@livestore/adapter-web`
   - `@livestore/expo` now is `@livestore/adapter-expo`
 - Breaking: Removed `@livestore/db-schema` package and moved to `@livestore/common/schema`
+- Breaking: Renamed `store.mutate` to `store.commit`
+  - Reason: Make it more clear that committing mutations is also syncing them across other clients
 
 - Breaking `@livestore/react`: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
@@ -52,9 +54,9 @@
 - Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
 - Breaking `@livestore/react`: `useRow` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
-- Breaking: Removed `store.__execute` from `Store`. Please use `store.mutate(rawSqlMutation({ sql }))` instead.
+- Breaking: Removed `store.__execute` from `Store`. Please use `store.commit(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
-- Breaking: Removed `persisted` option from `store.mutate`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
+- Breaking: Removed `persisted` option from `store.commit`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
 - Breaking: Moved `queryGraphQL` to `@livestore/graphql` and thus removing `graphql` from peer dependencies of `@livestore/livestore`.
 - Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
@@ -123,7 +125,6 @@
       - Comparables: document databases, kafka streams, 
 - Fix linting
 - Re-expose `Schema` from `@livestore/utils/effect`
-- rename `store.mutate` to `store.commit`
 - Make `makeBackend` syncing function curried so `payload`, `storeId` is automatically passed through
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations

@@ -77,7 +77,7 @@ const live = Cli.Command.make(
       //   const prompt = yield* Cli.Prompt.text({ message: 'run mutation\n' })
       //   Effect.log('prompt', prompt).pipe(Effect.provide(runtime), Effect.runSync)
       //   // console.log('res', res)
-      //   store.mutate(tables.todo.insert({ id: nanoid(), title: prompt }))
+      //   store.commit(tables.todo.insert({ id: nanoid(), title: prompt }))
       // }
 
       // yield* Effect.sleep(400)

@@ -197,7 +197,7 @@ const HomeScreen = () => {
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
-              store.mutate(updateSelectedHomeTab({ tab: 'Assigned' }))
+              store.commit(updateSelectedHomeTab({ tab: 'Assigned' }))
             }}
             style={{
               opacity: selectedHomeTab === 'Assigned' ? 1 : 0.5,
@@ -211,7 +211,7 @@ const HomeScreen = () => {
           <Pressable
             onPressIn={async () => {
               await Haptics.selectionAsync()
-              store.mutate(updateSelectedHomeTab({ tab: 'Created' }))
+              store.commit(updateSelectedHomeTab({ tab: 'Created' }))
             }}
             style={{
               opacity: selectedHomeTab === 'Created' ? 1 : 0.5,

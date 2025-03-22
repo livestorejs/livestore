@@ -71,14 +71,14 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
     onReorder: (e: DroppableCollectionReorderEvent) => {
       const items = [...e.keys]
       const kanbanorder = getNewCanbanOrder(e.target.key as string, e.target.dropPosition)
-      store.mutate(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
+      store.commit(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
     },
     onInsert: async (e) => {
       const items = await Promise.all(
         e.items.filter(isTextDropItem).map(async (item) => JSON.parse(await item.getText('text/plain')).toString()),
       )
       const kanbanorder = getNewCanbanOrder(e.target.key as string, e.target.dropPosition)
-      store.mutate(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
+      store.commit(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
     },
     onRootDrop: async (e) => {
       const items = await Promise.all(
@@ -88,7 +88,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         tables.issue.query.select('kanbanorder').where({ status }).orderBy('kanbanorder', 'asc').limit(1),
       )[0]?.kanbanorder
       const kanbanorder = lowestKanbanOrder ? generateKeyBetween(null, lowestKanbanOrder) : 'a1'
-      store.mutate(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
+      store.commit(mutations.updateIssueKanbanOrder({ id: Number(items[0]), status, kanbanorder }))
     },
     renderDropIndicator: (target) => {
       return <DropIndicator target={target} className="h-1 mx-3.5 rounded-full bg-orange-500" />

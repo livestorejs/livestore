@@ -440,8 +440,59 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     ref.deref()
   }
 
-  // #region mutate
-  mutate: {
+  // #region commit
+  /**
+   * Commit a list of mutations to the store which will immediately update the local database
+   * and sync the mutations across other clients (similar to a `git commit`).
+   *
+   * @example
+   * ```ts
+   * store.commit(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))
+   * ```
+   *
+   * You can call `commit` with multiple mutations to apply them in a single database transaction.
+   *
+   * @example
+   * ```ts
+   * const todoId = nanoid()
+   * store.commit(
+   *   mutations.todoCreated({ id: todoId, text: 'Make coffee' }),
+   *   mutations.todoCompleted({ id: todoId }))
+   * ```
+   *
+   * For more advanced transaction scenarios, you can pass a synchronous function to `commit` which will receive a callback
+   * to which you can pass multiple mutations to be committed in the same database transaction.
+   * Under the hood this will simply collect all mutations and apply them in a single database transaction.
+   *
+   * @example
+   * ```ts
+   * store.commit((commit) => {
+   *   const todoId = nanoid()
+   *   if (Math.random() > 0.5) {
+   *     commit(mutations.todoCreated({ id: todoId, text: 'Make coffee' }))
+   *   } else {
+   *     commit(mutations.todoCompleted({ id: todoId }))
+   *   }
+   * })
+   * ```
+   *
+   * When committing a large batch of mutations, you can also skip the database refresh to improve performance
+   * and call `store.manualRefresh()` after all mutations have been committed.
+   *
+   * @example
+   * ```ts
+   * const todos = [
+   *   { id: nanoid(), text: 'Make coffee' },
+   *   { id: nanoid(), text: 'Buy groceries' },
+   *   // ... 1000 more todos
+   * ]
+   * for (const todo of todos) {
+   *   store.commit({ skipRefresh: true }, mutations.todoCreated({ id: todo.id, text: todo.text }))
+   * }
+   * store.manualRefresh()
+   * ```
+   */
+  commit: {
     <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(...list: TMutationArg): void
     (
       txn: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
@@ -470,21 +521,21 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     const skipRefresh = options?.skipRefresh ?? false
 
     const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
-    mutationsSpan.addEvent('mutate')
+    mutationsSpan.addEvent('commit')
 
-    // console.group('LiveStore.mutate', { skipRefresh, wasSyncMessage, label })
+    // console.group('LiveStore.commit', { skipRefresh, wasSyncMessage, label })
     // mutationsEvents.forEach((_) => console.debug(_.mutation, _.id, _.args))
     // console.groupEnd()
 
     let durationMs: number
 
     return this.otel.tracer.startActiveSpan(
-      'LiveStore:mutate',
+      'LiveStore:commit',
       {
         attributes: {
           'livestore.mutationEventsCount': mutationsEvents.length,
           'livestore.mutationEventTags': mutationsEvents.map((_) => _.mutation),
-          'livestore.mutateLabel': options?.label,
+          'livestore.commitLabel': options?.label,
         },
         links: options?.spanLinks,
       },
@@ -520,7 +571,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           }
 
           const debugRefreshReason = {
-            _tag: 'mutate' as const,
+            _tag: 'commit' as const,
             mutations: mutationsEvents,
             writeTables: Array.from(writeTables),
           }
@@ -541,7 +592,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       },
     )
   }
-  // #endregion mutate
+  // #endregion commit
 
   /**
    * This can be used in combination with `skipRefresh` when applying mutations.
@@ -643,7 +694,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       options = firstMutationOrTxnFnOrOptions
       mutationsEvents = restMutations
     } else if (firstMutationOrTxnFnOrOptions === undefined) {
-      // When `mutate` is called with no arguments (which sometimes happens when dynamically filtering mutations)
+      // When `commit` is called with no arguments (which sometimes happens when dynamically filtering mutations)
       mutationsEvents = []
     } else {
       mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]

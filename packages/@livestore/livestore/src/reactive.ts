@@ -102,7 +102,7 @@ export type DebugThunkInfo<T extends string = string> = {
 }
 
 export type DebugRefreshReasonBase =
-  /** Usually in response to some `mutate` calls with `skipRefresh: true` */
+  /** Usually in response to some `commit` calls with `skipRefresh: true` */
   | {
       _tag: 'runDeferredEffects'
       originalRefreshReasons?: ReadonlyArray<DebugRefreshReasonBase>

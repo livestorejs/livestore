@@ -84,7 +84,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       Effect.withSpan(`@livestore/adapter-node-sync:test:init-${clientId}`),
       Layer.unwrapScoped,
     ),
-  CreateTodos: ({ count, mutateBatchSize = 1 }) =>
+  CreateTodos: ({ count, commitBatchSize = 1 }) =>
     Effect.gen(function* () {
       // TODO check sync connection status
       const { store } = yield* WorkerContext
@@ -92,11 +92,11 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       const mutationEventBatches = pipe(
         ReadonlyArray.range(0, count - 1),
         ReadonlyArray.map((i) => tables.todo.insert({ id: nanoid(), title: `todo ${i} (${clientId})` })),
-        ReadonlyArray.chunksOf(mutateBatchSize),
+        ReadonlyArray.chunksOf(commitBatchSize),
       )
       const spanLinks = [{ context: otelSpan.spanContext() }]
       for (const batch of mutationEventBatches) {
-        store.mutate({ spanLinks }, ...batch)
+        store.commit({ spanLinks }, ...batch)
       }
     }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count } }), Effect.orDie),
   StreamTodos: () =>

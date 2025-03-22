@@ -31,7 +31,7 @@ describe('LiveStoreProvider', () => {
     const Root = ({ forceUpdate }: { forceUpdate: number }) => {
       const bootCb = React.useCallback(
         (store: Store) =>
-          store.mutate(
+          store.commit(
             rawSqlMutation({
               sql: sql`INSERT OR IGNORE INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
             }),
@@ -88,7 +88,7 @@ describe('LiveStoreProvider', () => {
     const Root = ({ forceUpdate }: { forceUpdate: number }) => {
       const bootCb = React.useCallback(
         (store: Store) =>
-          store.mutate(
+          store.commit(
             rawSqlMutation({
               sql: sql`INSERT OR IGNORE INTO todos_missing_table (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
             }),

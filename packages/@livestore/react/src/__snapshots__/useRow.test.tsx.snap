@@ -27,7 +27,7 @@ exports[`useRow > otel > should update the data based on component key strictMod
       "_name": "LiveStore:mutations",
       "children": [
         {
-          "_name": "LiveStore:mutate",
+          "_name": "LiveStore:commit",
           "attributes": {
             "livestore.mutationEventTags": [
               "_Derived_Create_UserInfo",
@@ -64,9 +64,9 @@ exports[`useRow > otel > should update the data based on component key strictMod
               },
             },
             {
-              "_name": "LiveStore:mutate",
+              "_name": "LiveStore:commit",
               "attributes": {
-                "livestore.mutateLabel": "rowQuery:UserInfo:u1",
+                "livestore.commitLabel": "rowQuery:UserInfo:u1",
                 "livestore.mutationEventTags": [
                   "_Derived_Create_UserInfo",
                 ],
@@ -109,7 +109,7 @@ exports[`useRow > otel > should update the data based on component key strictMod
                 {
                   "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
-                    "livestore.debugRefreshReason": "mutate",
+                    "livestore.debugRefreshReason": "commit",
                     "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },
@@ -223,7 +223,7 @@ exports[`useRow > otel > should update the data based on component key strictMod
       "_name": "LiveStore:mutations",
       "children": [
         {
-          "_name": "LiveStore:mutate",
+          "_name": "LiveStore:commit",
           "attributes": {
             "livestore.mutationEventTags": [
               "_Derived_Create_UserInfo",
@@ -260,9 +260,9 @@ exports[`useRow > otel > should update the data based on component key strictMod
               },
             },
             {
-              "_name": "LiveStore:mutate",
+              "_name": "LiveStore:commit",
               "attributes": {
-                "livestore.mutateLabel": "rowQuery:UserInfo:u1",
+                "livestore.commitLabel": "rowQuery:UserInfo:u1",
                 "livestore.mutationEventTags": [
                   "_Derived_Create_UserInfo",
                 ],
@@ -305,7 +305,7 @@ exports[`useRow > otel > should update the data based on component key strictMod
                 {
                   "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
                   "attributes": {
-                    "livestore.debugRefreshReason": "mutate",
+                    "livestore.debugRefreshReason": "commit",
                     "sql.query": "SELECT * FROM 'UserInfo' WHERE id = ?",
                     "sql.rowsCount": 1,
                   },

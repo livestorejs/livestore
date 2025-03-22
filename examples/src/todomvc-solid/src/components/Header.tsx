@@ -23,7 +23,7 @@ export const Header: Component = () => {
         autofocus={true}
         value={newRow()?.newTodoText ?? ''}
         onChange={(e) => {
-          store()?.mutate(
+          store()?.commit(
             mutations.updatedNewTodoText({
               text: e.target.value,
               sessionId,
@@ -32,7 +32,7 @@ export const Header: Component = () => {
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-            store()?.mutate(
+            store()?.commit(
               mutations.todoCreated({ id: crypto.randomUUID(), text: e.currentTarget.value }),
               mutations.updatedNewTodoText({ text: '', sessionId }),
             )

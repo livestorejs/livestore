@@ -29,7 +29,7 @@ export const DescriptionInput = ({
   )
 
   const handleDescriptionChange = (body: string) => {
-    if (issue) store.mutate(mutations.updateDescription({ id: issue.id, body }))
+    if (issue) store.commit(mutations.updateDescription({ id: issue.id, body }))
     if (setDescription) setDescription(body)
   }
 

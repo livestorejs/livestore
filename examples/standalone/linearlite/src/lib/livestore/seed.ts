@@ -16,7 +16,7 @@ export const seed = (store: Store, count: number) => {
     if (existingCount >= count) return
     count -= existingCount
     console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')
-    store.mutate(
+    store.commit(
       ...Array.from(createIssues(count, highestId?.id, highestKanbanOrder?.kanbanorder)).map((_) =>
         mutations.createIssueWithDescription(_),
       ),

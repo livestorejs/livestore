@@ -83,7 +83,7 @@ const RootLayout = () => {
  */
 const boot = (store: Store) => {
   if (store.query(tables.users.query.count()) === 0) {
-    store.mutate(
+    store.commit(
       userMutations.createUser({
         id: nanoid(),
         name: 'Beto',

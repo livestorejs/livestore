@@ -8,7 +8,7 @@ export const Filters: React.FC = () => {
   const { store } = useStore()
   const [{ filter }] = useRow(tables.app)
 
-  const setFilter = (filter: Filter) => store.mutate(mutations.filterUpdated({ filter }))
+  const setFilter = (filter: Filter) => store.commit(mutations.filterUpdated({ filter }))
 
   return (
     <View style={styles.container}>

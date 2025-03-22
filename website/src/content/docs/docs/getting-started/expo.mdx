@@ -254,7 +254,7 @@ export default function RootLayout() {
 const boot = (store: Store) => {
   // If the todos table is empty, add an initial todo
   if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
-    store.mutate(mutations.todoCreated({ id: cuid(), text: '☕ Make coffee' }))
+    store.commit(mutations.todoCreated({ id: cuid(), text: '☕ Make coffee' }))
   }
 }
 ```
@@ -275,7 +275,7 @@ export default function HomeScreen() {
     <Button
       title="Delete my todo"
       onPress={() => {
-        store.mutate(todoDeleted({ id: '1', deleted: Date.now() }))
+        store.commit(todoDeleted({ id: '1', deleted: Date.now() }))
       }}
     />
   )

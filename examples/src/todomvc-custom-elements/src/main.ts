@@ -28,23 +28,23 @@ const store = await createStorePromise({
 const appState$ = queryDb(tables.app.query.row())
 const todos$ = queryDb(tables.todos.query.where({ deleted: null }))
 
-const updatedNewTodoText = (text: string) => store.mutate(mutations.updatedNewTodoText({ text }))
+const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text }))
 
 const todoCreated = (newTodoText: string) => {
-  store.mutate(mutations.todoCreated({ id: nanoid(), text: newTodoText }))
-  store.mutate(mutations.updatedNewTodoText({ text: '' }))
+  store.commit(mutations.todoCreated({ id: nanoid(), text: newTodoText }))
+  store.commit(mutations.updatedNewTodoText({ text: '' }))
 }
 
 const toggleTodo = (todo: Todo) => {
   if (todo.completed) {
-    store.mutate(mutations.todoUncompleted({ id: todo.id }))
+    store.commit(mutations.todoUncompleted({ id: todo.id }))
   } else {
-    store.mutate(mutations.todoCompleted({ id: todo.id }))
+    store.commit(mutations.todoCompleted({ id: todo.id }))
   }
 }
 
 const todoDeleted = (todo: Todo) => {
-  store.mutate(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
+  store.commit(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
 }
 
 const TodoItemTemplate = html`

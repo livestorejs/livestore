@@ -27,7 +27,7 @@ export const MainSection: React.FC = () => {
   // If another user toggled concurrently, we shouldn't toggle it back
   const toggleTodo = React.useCallback(
     (todo: Todo) =>
-      store.mutate(
+      store.commit(
         todo.completed ? mutations.todoUncompleted({ id: todo.id }) : mutations.todoCompleted({ id: todo.id }),
       ),
     [store],
@@ -74,7 +74,7 @@ const Item = ({
         // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
         // Since using the `setState` doesn't seem to happen "quickly enough"
         if (state === 'deleting' && todo.deleted === null && !isDeletedRef.current) {
-          store.mutate(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
+          store.commit(mutations.todoDeleted({ id: todo.id, deleted: new Date() }))
           isDeletedRef.current = true
         }
       }}

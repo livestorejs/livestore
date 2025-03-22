@@ -108,7 +108,7 @@ const IssueDetailsScreen = () => {
                   })}{' '}
                 </ThemedText>
                 <Pressable
-                  onPress={() => store.store.mutate(issuesMutations.restoreIssue({ id: issue.id }))}
+                  onPress={() => store.store.commit(issuesMutations.restoreIssue({ id: issue.id }))}
                   className="flex-row items-center gap-2 active:bg-zinc-100 dark:active:bg-zinc-800"
                 >
                   <Undo2Icon size={18} />

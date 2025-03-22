@@ -57,11 +57,11 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
     DEBUGGER_ACTIVE
       ? [Schema.Literal('file'), Schema.Literal(500), Schema.Literal(500), Schema.Literal(1), Schema.Literal(1)]
       : [WorkerSchema.AdapterType, CreateCount, CreateCount, MutateBatchSize, LEADER_PUSH_BATCH_SIZE],
-    ([adapterType, todoCountA, todoCountB, mutateBatchSize, leaderPushBatchSize], test) =>
+    ([adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize], test) =>
       Effect.gen(function* () {
         const storeId = nanoid(10)
         const totalCount = todoCountA + todoCountB
-        console.log('concurrent push', { adapterType, todoCountA, todoCountB, mutateBatchSize, leaderPushBatchSize })
+        console.log('concurrent push', { adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize })
 
         const [clientA, clientB] = yield* Effect.all(
           [
@@ -73,11 +73,11 @@ Vitest.describe('node-sync', { timeout: testTimeout }, () => {
 
         // TODO also alternate the order and delay of todo creation as part of prop testing
         yield* clientA
-          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, mutateBatchSize }))
+          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, commitBatchSize }))
           .pipe(Effect.fork)
 
         yield* clientB
-          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, mutateBatchSize }))
+          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, commitBatchSize }))
           .pipe(Effect.fork)
 
         const test = Effect.all(

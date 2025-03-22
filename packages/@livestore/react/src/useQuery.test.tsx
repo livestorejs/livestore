@@ -42,7 +42,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         console.log('before mutation')
 
-        ReactTesting.act(() => store.mutate(todos.insert({ id: 't1', text: 'buy milk', completed: false })))
+        ReactTesting.act(() => store.commit(todos.insert({ id: 't1', text: 'buy milk', completed: false })))
 
         console.log('after mutation')
 
@@ -66,7 +66,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
           { label: 'libraryTracksView2' },
         )
 
-        store.mutate(
+        store.commit(
           todos.insert({ id: 't1', text: 'buy milk', completed: false }),
           todos.insert({ id: 't2', text: 'buy eggs', completed: false }),
         )
@@ -86,7 +86,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(1)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('1: after first render')
 
-        ReactTesting.act(() => store.mutate(todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
+        ReactTesting.act(() => store.commit(todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
@@ -108,7 +108,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         const todo$ = queryDb((get) => tables.todos.query.where('id', get(filter$)), { label: 'todo' })
 
-        store.mutate(
+        store.commit(
           todos.insert({ id: 't1', text: 'buy milk', completed: false }),
           todos.insert({ id: 't2', text: 'buy eggs', completed: false }),
         )
@@ -126,7 +126,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(1)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-        ReactTesting.act(() => store.mutate(todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
+        ReactTesting.act(() => store.commit(todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)

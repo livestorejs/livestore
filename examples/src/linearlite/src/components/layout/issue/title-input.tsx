@@ -19,7 +19,7 @@ export const TitleInput = ({
   const { store } = useStore()
 
   const handleTitleChange = (title: string) => {
-    if (issue) store.mutate(mutations.updateIssueTitle({ id: issue.id, title }))
+    if (issue) store.commit(mutations.updateIssueTitle({ id: issue.id, title }))
     if (setTitle) setTitle(title)
   }
 

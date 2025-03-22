@@ -58,7 +58,7 @@ const InboxScreen = () => {
       }
     }
     // Add generated data to the store
-    store.mutate(
+    store.commit(
       ...users.map((user) => userMutations.createUser(user)),
       ...issues.map((issue) => issuesMutations.createIssue(issue)),
       ...comments.map((comment) => issuesMutations.createComment(comment)),
@@ -89,14 +89,14 @@ const InboxScreen = () => {
       }
     }
 
-    store.mutate(
+    store.commit(
       ...issues.map((issue) => issuesMutations.createIssue(issue)),
       ...comments.map((comment) => issuesMutations.createComment(comment)),
       ...reactions.map((reaction) => issuesMutations.createReaction(reaction)),
     )
   }
 
-  const reset = () => store.mutate(issuesMutations.clearAll({ deleted: Date.now() }))
+  const reset = () => store.commit(issuesMutations.clearAll({ deleted: Date.now() }))
 
   const issuesCount$ = queryDb(tables.issues.query.count().where({ deletedAt: null }))
   const issuesCount = useQuery(issuesCount$)

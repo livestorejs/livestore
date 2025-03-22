@@ -238,7 +238,7 @@ const adapter = makePersistedAdapter({
 const boot = (store: Store) => {
   // If the todos table is empty, add an initial todo
   if (store.query(tables.todos.query.count()) === 0) {
-    store.mutate(mutations.addTodo({ id: nanoid(), text: '☕ Make coffee' }))
+    store.commit(mutations.addTodo({ id: nanoid(), text: '☕ Make coffee' }))
   }
 }
 
@@ -273,7 +273,7 @@ export const App = () => {
   return (
     <button
       onClick={() => {
-        store.mutate(deleteTodo({ id: '1', deleted: Date.now() }))
+        store.commit(deleteTodo({ id: '1', deleted: Date.now() }))
       }}
     >Delete my todo</button>
   )

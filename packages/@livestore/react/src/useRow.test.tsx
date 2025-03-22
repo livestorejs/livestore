@@ -38,7 +38,7 @@ Vitest.describe('useRow', () => {
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
-      store.mutate(tables.userInfo.insert({ id: 'u2', username: 'username_u2' }))
+      store.commit(tables.userInfo.insert({ id: 'u2', username: 'username_u2' }))
 
       rerender('u2')
 
@@ -96,7 +96,7 @@ Vitest.describe('useRow', () => {
       expect(renderCount.val).toBe(1)
 
       ReactTesting.act(() =>
-        store.mutate(tables.userInfo.update({ where: { id: 'u1' }, values: { username: 'username_u1_hello' } })),
+        store.commit(tables.userInfo.update({ where: { id: 'u1' }, values: { username: 'username_u1_hello' } })),
       )
 
       expect(result.current.state.id).toBe('u1')
@@ -155,7 +155,7 @@ Vitest.describe('useRow', () => {
       expect(renderCount.val).toBe(1)
 
       ReactTesting.act(() =>
-        store.mutate(
+        store.commit(
           LiveStore.rawSqlMutation({
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
           }),
@@ -175,7 +175,7 @@ Vitest.describe('useRow', () => {
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
       ReactTesting.act(() =>
-        store.mutate(
+        store.commit(
           LiveStore.rawSqlMutation({
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
           }),
@@ -195,7 +195,7 @@ Vitest.describe('useRow', () => {
     Effect.gen(function* () {
       const { store, wrapper, renderCount } = yield* makeTodoMvcReact({})
 
-      store.mutate(
+      store.commit(
         todos.insert({ id: 't1', text: 'buy milk', completed: false }),
         todos.insert({ id: 't2', text: 'buy bread', completed: false }),
       )
@@ -220,7 +220,7 @@ Vitest.describe('useRow', () => {
         { wrapper, initialProps: 'u1' },
       )
 
-      ReactTesting.act(() => store.mutate(tables.userInfo.insert({ id: 'u2', username: 'username_u2', text: 'milk' })))
+      ReactTesting.act(() => store.commit(tables.userInfo.insert({ id: 'u2', username: 'username_u2', text: 'milk' })))
 
       expect(result.current.todos.length).toBe(2)
       expect(renderCount.val).toBe(1)
@@ -274,7 +274,7 @@ Vitest.describe('useRow', () => {
 
           // For u2 we'll make sure that the row already exists,
           // so the lazy `insert` will be skipped
-          ReactTesting.act(() => store.mutate(tables.userInfo.insert({ id: 'u2', username: 'username_u2' })))
+          ReactTesting.act(() => store.commit(tables.userInfo.insert({ id: 'u2', username: 'username_u2' })))
 
           rerender('u2')
 

@@ -23,7 +23,7 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
 
   const submitComment = () => {
     if (!commentDraft) return
-    store.mutate(
+    store.commit(
       mutations.createComment({
         id: crypto.randomUUID(),
         body: commentDraft,

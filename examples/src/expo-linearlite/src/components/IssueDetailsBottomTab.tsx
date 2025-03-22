@@ -30,7 +30,7 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
   const [visible, setVisible] = React.useState(false)
 
   const handleDelete = () => {
-    store.mutate(issuesMutations.deleteIssue({ id: issueId }))
+    store.commit(issuesMutations.deleteIssue({ id: issueId }))
     setVisible(false)
   }
 

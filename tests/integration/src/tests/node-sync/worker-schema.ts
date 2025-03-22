@@ -21,7 +21,7 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('Init
 export class CreateTodos extends Schema.TaggedRequest<CreateTodos>()('CreateTodos', {
   payload: {
     count: Schema.Number,
-    mutateBatchSize: Schema.optional(Schema.Number),
+    commitBatchSize: Schema.optional(Schema.Number),
   },
   success: Schema.Void,
   failure: Schema.Never,
