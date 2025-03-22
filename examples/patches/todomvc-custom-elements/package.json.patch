@@ -16,5 +16,5 @@
 +    "@livestore/livestore": "0.3.0-dev.23",
 +    "@livestore/peer-deps": "0.3.0-dev.23",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
-     "effect": "3.13.8",
+     "effect": "3.13.12",
      "react": "19.0.0",

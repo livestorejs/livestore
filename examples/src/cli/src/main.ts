@@ -44,7 +44,7 @@ const live = Cli.Command.make(
       const schema: LiveStoreSchema = yield* Effect.promise(() => import(relativeSchemaPath).then((m) => m.schema))
 
       const adapter =
-        adapterType === 'file'
+        adapterType === 'persisted'
           ? makePersistedAdapter({
               schemaPath: relativeSchemaPath,
               workerUrl: new URL('./livestore.worker.js', import.meta.url),

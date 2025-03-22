@@ -16,11 +16,9 @@
   "types": "./dist/mod.d.ts",
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "ws": "8.18.0"
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.0",
     "vitest": "^3.0.8"
   },
   "publishConfig": {

@@ -1,13 +1,22 @@
 import http from 'node:http'
 import path from 'node:path'
 
-import { UnexpectedError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
-import type { HttpClient, Scope } from '@livestore/utils/effect'
-import { Effect } from '@livestore/utils/effect'
-import { makeWebSocketServer } from '@livestore/webmesh/websocket-server'
+import {
+  Deferred,
+  Effect,
+  Exit,
+  Headers,
+  HttpMiddleware,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse,
+  Layer,
+} from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
+import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 
-import { makeViteServer } from './vite-dev-server.js'
+import { makeViteMiddleware } from './vite-dev-server.js'
 
 /**
  * Starts a devtools HTTP/WS server which serves ...
@@ -28,52 +37,10 @@ export const startDevtoolsServer = ({
   sessionId: string
   host: string
   port: number
-}): Effect.Effect<void, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
+}) =>
   Effect.gen(function* () {
-    const httpServer = yield* Effect.sync(() => http.createServer()).pipe(
-      Effect.acquireRelease((httpServer) =>
-        Effect.async<void, UnexpectedError>((cb) => {
-          httpServer.removeAllListeners()
-          httpServer.closeAllConnections()
-          httpServer.close((err) => {
-            if (err) {
-              cb(Effect.fail(UnexpectedError.make({ cause: err })))
-            } else {
-              cb(Effect.succeed(undefined))
-            }
-          })
-        }).pipe(Effect.orDie),
-      ),
-    )
-
-    const webSocketServer = yield* makeWebSocketServer({ relayNodeName: 'ws' })
-
-    // Handle upgrade manually
-    httpServer.on('upgrade', (request, socket, head) => {
-      webSocketServer.handleUpgrade(request, socket, head, (ws) => {
-        webSocketServer.emit('connection', ws, request)
-      })
-    })
-
-    const startServer = (port: number) =>
-      Effect.async<void, UnexpectedError>((cb) => {
-        httpServer.on('error', (err: any) => {
-          cb(UnexpectedError.make({ cause: err }))
-        })
-
-        httpServer.listen(port, host, () => {
-          cb(Effect.succeed(undefined))
-        })
-      })
-
-    yield* startServer(port)
-
-    yield* Effect.logDebug(
-      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}`,
-    )
-
     const clientSessionInfo = { storeId, clientId, sessionId }
-    const viteServer = yield* makeViteServer({
+    const viteMiddleware = yield* makeViteMiddleware({
       mode: { _tag: 'node', clientSessionInfo, url: `ws://localhost:${port}` },
       schemaPath: path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
@@ -88,16 +55,68 @@ export const startDevtoolsServer = ({
 
         return viteConfig
       },
-    })
+    }).pipe(Effect.acquireRelease((viteMiddleware) => Effect.promise(() => viteMiddleware.close())))
 
-    yield* Effect.addFinalizer(() => Effect.promise(() => viteServer.close()))
+    const relayNodeName = 'ws'
 
-    httpServer.on('request', (req, res) => {
-      if (req.url === '/' || req.url === '') {
-        res.writeHead(302, { Location: '/_livestore/node' })
-        res.end()
-      } else if (req.url?.startsWith('/_livestore')) {
-        return viteServer.middlewares(req, res as any)
+    const node = yield* makeMeshNode(relayNodeName)
+
+    const handler = Effect.gen(function* () {
+      const req = yield* HttpServerRequest.HttpServerRequest
+
+      if (Headers.has(req.headers, 'upgrade')) {
+        yield* Effect.log(`WS Relay ${relayNodeName}: request ${req.url}`)
+
+        const socket = yield* req.upgrade
+        const { webChannel, from } = yield* makeWebSocketEdge({ socket, socketType: { _tag: 'relay' } })
+
+        yield* node.addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
+        if (LS_DEV) {
+          yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
+        }
+
+        yield* Effect.addFinalizer(
+          Effect.fn(function* () {
+            if (LS_DEV) {
+              yield* Effect.log(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
+            }
+            yield* node.removeEdge(from).pipe(Effect.orDie)
+          }),
+        )
+
+        yield* Effect.never
+
+        return HttpServerResponse.empty({ status: 101 })
+      } else {
+        if (req.url === '/' || req.url === '') {
+          return HttpServerResponse.redirect('/_livestore/node')
+        } else if (req.url.startsWith('/_livestore')) {
+          // Here we're delegating to the Vite middleware
+
+          // TODO replace this once @effect/platform-node supports Node HTTP middlewares
+          const nodeReq = PlatformNode.NodeHttpServerRequest.toIncomingMessage(req)
+          const nodeRes = PlatformNode.NodeHttpServerRequest.toServerResponse(req)
+          const deferred = yield* Deferred.make()
+          viteMiddleware.middlewares(nodeReq, nodeRes, () => Deferred.unsafeDone(deferred, Exit.void))
+          yield* deferred
+
+          // The response is already sent, so we need to return an empty response (which won't be sent)
+          return HttpServerResponse.empty()
+        }
       }
+
+      return HttpServerResponse.text('Not found')
     })
-  }).pipe(Effect.withSpan('@livestore/adapter-node:devtools:startDevtoolsServer'))
+
+    yield* Effect.logDebug(
+      `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}`,
+    )
+
+    return HttpServer.serve(handler, HttpMiddleware.logger)
+  }).pipe(
+    Layer.unwrapScoped,
+    // HttpServer.withLogAddress,
+    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port, host })),
+    Layer.launch,
+    Effect.orDie,
+  )

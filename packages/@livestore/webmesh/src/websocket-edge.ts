@@ -4,15 +4,15 @@ import {
   Effect,
   Either,
   Exit,
+  Layer,
   Queue,
   Schedule,
   Schema,
   Scope,
+  Socket,
   Stream,
   WebChannel,
-  WebSocket,
 } from '@livestore/utils/effect'
-import type * as NodeWebSocket from 'ws'
 
 import * as WebmeshSchema from './mesh-schema.js'
 import type { MeshNode } from './node.js'
@@ -42,30 +42,38 @@ export type SocketType =
 export const connectViaWebSocket = ({
   node,
   url,
-  reconnect = Schedule.exponential(100),
 }: {
   node: MeshNode
   url: string
-  reconnect?: Schedule.Schedule<unknown> | false
 }): Effect.Effect<void, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const disconnected = yield* Deferred.make<void>()
 
-    const socket = yield* WebSocket.makeWebSocket({ url, reconnect })
+    const socket = yield* Socket.makeWebSocket(url, { openTimeout: 50 })
 
-    socket.addEventListener('close', () => Deferred.unsafeDone(disconnected, Exit.void))
-
-    const edgeChannel = yield* makeWebSocketEdge(socket, { _tag: 'leaf', from: node.nodeName })
+    const edgeChannel = yield* makeWebSocketEdge({
+      socket,
+      socketType: { _tag: 'leaf', from: node.nodeName },
+    })
 
     yield* node.addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
 
     yield* disconnected
-  }).pipe(Effect.scoped, Effect.forever, Effect.catchTag('WebSocketError', Effect.orDie))
+  }).pipe(Effect.scoped, Effect.forever, Effect.provide(binaryWebSocketConstructorLayer))
 
-export const makeWebSocketEdge = (
-  socket: globalThis.WebSocket | NodeWebSocket.WebSocket,
-  socketType: SocketType,
-): Effect.Effect<
+const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructor, (url, protocols) => {
+  const socket = new globalThis.WebSocket(url, protocols)
+  socket.binaryType = 'arraybuffer'
+  return socket
+})
+
+export const makeWebSocketEdge = ({
+  socket,
+  socketType,
+}: {
+  socket: Socket.Socket
+  socketType: SocketType
+}): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
     from: string
@@ -75,8 +83,6 @@ export const makeWebSocketEdge = (
 > =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
-      socket.binaryType = 'arraybuffer'
-
       const fromDeferred = yield* Deferred.make<string>()
 
       const listenQueue = yield* Queue.unbounded<typeof WebmeshSchema.Packet.Type>().pipe(
@@ -85,8 +91,29 @@ export const makeWebSocketEdge = (
 
       const schema = WebChannel.mapSchema(WebmeshSchema.Packet)
 
-      yield* Stream.fromEventListener<MessageEvent>(socket as any, 'message').pipe(
-        Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg.data))),
+      const isConnectedLatch = yield* Effect.makeLatch(true)
+
+      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+
+      yield* Stream.never.pipe(
+        Stream.pipeThroughChannel(Socket.toChannel(socket)),
+        Stream.catchTag(
+          'SocketError',
+          Effect.fn(function* (error) {
+            if (error.reason === 'Close') {
+              console.log('socket closed', error)
+              yield* isConnectedLatch.close
+              yield* Deferred.succeed(closedDeferred, undefined)
+              return yield* Effect.interrupt
+            } else {
+              return yield* Effect.fail(error)
+            }
+          }),
+        ),
+        Stream.retry(
+          Schedule.exponential(100).pipe(Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout')),
+        ),
+        Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg))),
         Stream.flatten(),
         Stream.tap((msg) =>
           Effect.gen(function* () {
@@ -100,45 +127,33 @@ export const makeWebSocketEdge = (
         ),
         Stream.runDrain,
         Effect.interruptible,
+        Effect.withSpan('makeWebSocketEdge:listen'),
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
+      const sendToSocket = yield* socket.writer
+
       const initHandshake = (from: string) =>
-        socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
+        sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
-        initHandshake(socketType.from)
+        yield* initHandshake(socketType.from)
       }
 
       const deferredResult = yield* fromDeferred
       const from = socketType._tag === 'leaf' ? socketType.from : deferredResult
 
       if (socketType._tag === 'relay') {
-        initHandshake(from)
+        yield* initHandshake(from)
       }
-
-      const isConnectedLatch = yield* Effect.makeLatch(true)
-
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
-
-      yield* Effect.eventListener<any>(
-        socket,
-        'close',
-        () =>
-          Effect.gen(function* () {
-            yield* isConnectedLatch.close
-            yield* Deferred.succeed(closedDeferred, undefined)
-          }),
-        { once: true },
-      )
 
       const send = (message: typeof WebmeshSchema.Packet.Type) =>
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encode(schema.send)(message)
-          socket.send(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
-        })
+          yield* sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
+        }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(
         Stream.map(Either.right),
@@ -156,5 +171,5 @@ export const makeWebSocketEdge = (
       } satisfies WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
       return { webChannel, from }
-    }).pipe(Effect.withSpanScoped('makeWebSocketEdge')),
+    }).pipe(Effect.withSpanScoped('makeWebSocketEdge'), Effect.orDie),
   )

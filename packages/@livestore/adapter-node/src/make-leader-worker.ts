@@ -276,7 +276,7 @@ const makeDevtoolsOptions = ({
           sessionId: 'static', // TODO make this dynamic
           port: devtoolsPort,
           host: devtoolsHost,
-        })
+        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
         const devtoolsWebChannel = yield* makeNodeDevtoolsChannel({
           nodeName: `leader-${storeId}-${clientId}`,

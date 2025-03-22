@@ -910,6 +910,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.114.17
         version: 1.114.17(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.13.10
       '@types/react':
         specifier: ^19.0.10
         version: 19.0.10
@@ -1723,6 +1726,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.114.17
         version: 1.114.17(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.13.10
       '@types/react':
         specifier: ^19.0.10
         version: 19.0.10
@@ -2277,13 +2283,7 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-      ws:
-        specifier: 8.18.0
-        version: 8.18.0
     devDependencies:
-      '@types/ws':
-        specifier: ^8.18.0
-        version: 8.18.0
       vitest:
         specifier: ^3.0.8
         version: 3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)

@@ -16,12 +16,5 @@
 +    "@livestore/peer-deps": "0.3.0-dev.23",
 +    "@livestore/solid": "0.3.0-dev.23",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
-     "effect": "3.13.8",
+     "effect": "3.13.12",
      "solid-js": "1.9.4",
-@@ -27,4 +27,4 @@
-     "serve": "vite preview",
-     "start": "vite"
-   }
--}
-+}
-\ No newline at end of file

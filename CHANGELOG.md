@@ -123,7 +123,7 @@
       - Comparables: document databases, kafka streams, 
 - Fix linting
 - Re-expose `Schema` from `@livestore/utils/effect`
-- rename `store.mutate` to `store.emit`
+- rename `store.mutate` to `store.commit`
 - Make `makeBackend` syncing function curried so `payload`, `storeId` is automatically passed through
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations

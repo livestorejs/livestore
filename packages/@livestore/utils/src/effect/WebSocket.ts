@@ -79,8 +79,8 @@ export const makeWebSocket = ({
      *   3000-3999: Available for libraries and frameworks
      *   4000-4999: Available for applications
      */
-    yield* Effect.addFinalizer((exit) =>
-      Effect.async<void, WebSocketError>((cb) => {
+    yield* Effect.addFinalizer(
+      Effect.fn(function* (exit) {
         try {
           if (Exit.isFailure(exit)) {
             socket.close(3000)
@@ -88,9 +88,9 @@ export const makeWebSocket = ({
             socket.close(1000)
           }
         } catch (error) {
-          cb(Effect.fail(new WebSocketError({ cause: error })))
+          yield* Effect.die(new WebSocketError({ cause: error }))
         }
-      }).pipe(Effect.orDie),
+      }),
     )
 
     return socket

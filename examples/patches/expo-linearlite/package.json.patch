@@ -22,10 +22,3 @@
      "@react-native-segmented-control/segmented-control": "2.5.7",
      "@react-native/assets-registry": "0.77.1",
      "@react-navigation/native": "7.0.14",
-@@ -68,4 +68,4 @@
-     "lint": "expo lint",
-     "start": "expo start"
-   }
--}
-+}
-\ No newline at end of file

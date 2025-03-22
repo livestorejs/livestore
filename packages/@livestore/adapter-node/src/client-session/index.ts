@@ -18,7 +18,7 @@ import {
   Cause,
   Effect,
   FetchHttpClient,
-  Fiber,
+  Layer,
   ParseResult,
   Queue,
   Schema,
@@ -62,7 +62,7 @@ export interface NodeAdapterOptions {
 /**
  * Warning: This adapter doesn't currently support multiple client sessions for the same client (i.e. same storeId + clientId)
  */
-export const makeNodeAdapter = ({
+export const makePersistedAdapter = ({
   workerUrl,
   schemaPath,
   baseDirectory,
@@ -124,25 +124,20 @@ export const makeNodeAdapter = ({
             url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
             nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
           })
-
           const sessionsChannel = yield* webmeshNode.makeBroadcastChannel({
             channelName: 'session-info',
             schema: Devtools.SessionInfo.Message,
           })
-
           yield* Devtools.SessionInfo.provideSessionInfo({
             webChannel: sessionsChannel,
             sessionInfo: Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId }),
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-
           webmeshNode.debug.print()
-
           const storeDevtoolsChannel = yield* DevtoolsNode.makeChannelForConnectedMeshNode({
             node: webmeshNode,
             target: `devtools-${storeId}-${clientId}-${sessionId}`,
             schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
           })
-
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }
@@ -199,8 +194,9 @@ const makeLeaderThread = ({
       execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
       argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId })],
     })
+    const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 
-    const leaderThreadFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInner.Request.Type>({
+    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInner.Request.Type>({
       size: 1,
       concurrency: 100,
       initialMessage: () =>
@@ -213,12 +209,10 @@ const makeLeaderThread = ({
           syncPayload,
         }),
     }).pipe(
-      Effect.provide(PlatformNode.NodeWorker.layer(() => nodeWorker)),
+      Effect.provide(nodeWorkerLayer),
       UnexpectedError.mapToUnexpectedError,
       Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
-      Effect.tapCauseLogPretty,
-      Effect.forkScoped,
     )
 
     yield* Effect.addFinalizer(() =>
@@ -240,8 +234,7 @@ const makeLeaderThread = ({
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
       ? Effect.Effect<A, UnexpectedError, R>
       : never =>
-      Fiber.join(leaderThreadFiber).pipe(
-        Effect.flatMap((worker) => worker.executeEffect(req) as any),
+      (worker.executeEffect(req) as any).pipe(
         Effect.logWarnIfTakesLongerThan({
           label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
           duration: 2000,
@@ -262,19 +255,16 @@ const makeLeaderThread = ({
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
       ? Stream.Stream<A, UnexpectedError, R>
       : never =>
-      Effect.gen(function* () {
-        const sharedWorker = yield* Fiber.join(leaderThreadFiber)
-        return sharedWorker.execute(req as any).pipe(
-          Stream.mapError((cause) =>
-            Schema.is(UnexpectedError)(cause)
-              ? cause
-              : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-                ? new UnexpectedError({ cause })
-                : cause,
-          ),
-          Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-        )
-      }).pipe(Stream.unwrap) as any
+      worker.execute(req as any).pipe(
+        Stream.mapError((cause) =>
+          Schema.is(UnexpectedError)(cause)
+            ? cause
+            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+              ? new UnexpectedError({ cause })
+              : cause,
+        ),
+        Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
+      ) as any
 
     const _bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
       // TODO bring back when fixed https://github.com/Effect-TS/effect/issues/4576

@@ -28,7 +28,7 @@ export type ViteDevtoolsOptions = {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // NOTE this is currently also used in @livestore/devtools-expo
-export const makeViteServer = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
+export const makeViteMiddleware = (options: ViteDevtoolsOptions): Effect.Effect<Vite.ViteDevServer, UnexpectedError> =>
   Effect.gen(function* () {
     const hmrPort = yield* getFreePort
 
