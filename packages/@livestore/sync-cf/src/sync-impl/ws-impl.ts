@@ -1,10 +1,9 @@
 /// <reference lib="dom" />
 
-import type { SyncBackend } from '@livestore/common'
+import type { SyncBackend, SyncBackendConstructor } from '@livestore/common'
 import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
 import { EventId } from '@livestore/common/schema'
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
@@ -25,130 +24,127 @@ import type { SyncMetadata } from '../common/ws-message-types.js'
 
 export interface WsSyncOptions {
   url: string
-  storeId: string
-  /** Payload can be used to implement custom business logic (e.g. authentication). */
-  payload?: Schema.JsonValue
 }
 
-export const makeWsSync = (
-  options: WsSyncOptions,
-): Effect.Effect<SyncBackend<SyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
-  Effect.gen(function* () {
-    const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
-      storeId: options.storeId,
-      payload: options.payload,
-    }).pipe(UnexpectedError.mapToUnexpectedError)
+export const makeCfSync =
+  (options: WsSyncOptions): SyncBackendConstructor<SyncMetadata> =>
+  ({ storeId, payload }) =>
+    Effect.gen(function* () {
+      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+        storeId,
+        payload,
+      }).pipe(UnexpectedError.mapToUnexpectedError)
 
-    const urlParams = UrlParams.fromInput(urlParamsData)
-    const wsUrl = `${options.url}/websocket?${UrlParams.toString(urlParams)}`
+      const urlParams = UrlParams.fromInput(urlParamsData)
+      const wsUrl = `${options.url}/websocket?${UrlParams.toString(urlParams)}`
 
-    const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
+      const { isConnected, incomingMessages, send } = yield* connect(wsUrl)
 
-    /**
-     * We need to account for the scenario where push-caused PullRes message arrive before the pull-caused PullRes message.
-     * i.e. a scenario where the WS connection is created but before the server processed the initial pull, a push from
-     * another client triggers a PullRes message sent to this client which we need to stash until our pull-caused
-     * PullRes message arrives at which point we can combine the stashed events with the pull-caused events and continue.
-     */
-    const stashedPullBatch: WSMessage.PullRes['batch'][number][] = []
+      /**
+       * We need to account for the scenario where push-caused PullRes message arrive before the pull-caused PullRes message.
+       * i.e. a scenario where the WS connection is created but before the server processed the initial pull, a push from
+       * another client triggers a PullRes message sent to this client which we need to stash until our pull-caused
+       * PullRes message arrives at which point we can combine the stashed events with the pull-caused events and continue.
+       */
+      const stashedPullBatch: WSMessage.PullRes['batch'][number][] = []
 
-    // We currently only support one pull stream for a sync backend.
-    let pullStarted = false
+      // We currently only support one pull stream for a sync backend.
+      let pullStarted = false
 
-    const api = {
-      isConnected,
-      pull: (args) =>
-        Effect.gen(function* () {
-          if (pullStarted) {
-            return shouldNeverHappen(`Pull already started for this sync backend.`)
-          }
+      const api = {
+        isConnected,
+        pull: (args) =>
+          Effect.gen(function* () {
+            if (pullStarted) {
+              return shouldNeverHappen(`Pull already started for this sync backend.`)
+            }
 
-          pullStarted = true
+            pullStarted = true
 
-          let pullResponseReceived = false
+            let pullResponseReceived = false
 
-          const requestId = nanoid()
-          const cursor = Option.getOrUndefined(args)?.cursor.global
+            const requestId = nanoid()
+            const cursor = Option.getOrUndefined(args)?.cursor.global
 
-          yield* send(WSMessage.PullReq.make({ cursor, requestId }))
+            yield* send(WSMessage.PullReq.make({ cursor, requestId }))
 
-          return Stream.fromPubSub(incomingMessages).pipe(
-            Stream.tap((_) =>
-              _._tag === 'WSMessage.Error' && _.requestId === requestId
-                ? new InvalidPullError({ message: _.message })
-                : Effect.void,
-            ),
-            Stream.filterMap((msg) => {
-              if (msg._tag === 'WSMessage.PullRes') {
-                if (msg.requestId.context === 'pull') {
-                  if (msg.requestId.requestId === requestId) {
-                    pullResponseReceived = true
+            return Stream.fromPubSub(incomingMessages).pipe(
+              Stream.tap((_) =>
+                _._tag === 'WSMessage.Error' && _.requestId === requestId
+                  ? new InvalidPullError({ message: _.message })
+                  : Effect.void,
+              ),
+              Stream.filterMap((msg) => {
+                if (msg._tag === 'WSMessage.PullRes') {
+                  if (msg.requestId.context === 'pull') {
+                    if (msg.requestId.requestId === requestId) {
+                      pullResponseReceived = true
 
-                    if (stashedPullBatch.length > 0 && msg.remaining === 0) {
-                      const pullResHead = msg.batch.at(-1)?.mutationEventEncoded.id ?? EventId.ROOT.global
-                      // Index where stashed events are greater than pullResHead
-                      const newPartialBatchIndex = stashedPullBatch.findIndex(
-                        (batchItem) => batchItem.mutationEventEncoded.id > pullResHead,
-                      )
-                      const batchWithNewStashedEvents =
-                        newPartialBatchIndex === -1 ? [] : stashedPullBatch.slice(newPartialBatchIndex)
-                      const combinedBatch = [...msg.batch, ...batchWithNewStashedEvents]
-                      return Option.some({ ...msg, batch: combinedBatch, remaining: 0 })
+                      if (stashedPullBatch.length > 0 && msg.remaining === 0) {
+                        const pullResHead = msg.batch.at(-1)?.mutationEventEncoded.id ?? EventId.ROOT.global
+                        // Index where stashed events are greater than pullResHead
+                        const newPartialBatchIndex = stashedPullBatch.findIndex(
+                          (batchItem) => batchItem.mutationEventEncoded.id > pullResHead,
+                        )
+                        const batchWithNewStashedEvents =
+                          newPartialBatchIndex === -1 ? [] : stashedPullBatch.slice(newPartialBatchIndex)
+                        const combinedBatch = [...msg.batch, ...batchWithNewStashedEvents]
+                        return Option.some({ ...msg, batch: combinedBatch, remaining: 0 })
+                      } else {
+                        return Option.some(msg)
+                      }
                     } else {
-                      return Option.some(msg)
+                      // Ignore
+                      return Option.none()
                     }
                   } else {
-                    // Ignore
-                    return Option.none()
-                  }
-                } else {
-                  if (pullResponseReceived) {
-                    return Option.some(msg)
-                  } else {
-                    stashedPullBatch.push(...msg.batch)
-                    return Option.none()
+                    if (pullResponseReceived) {
+                      return Option.some(msg)
+                    } else {
+                      stashedPullBatch.push(...msg.batch)
+                      return Option.none()
+                    }
                   }
                 }
-              }
 
-              return Option.none()
-            }),
-            // This call is mostly here to for type narrowing
-            Stream.filter(Schema.is(WSMessage.PullRes)),
-          )
-        }).pipe(Stream.unwrap),
+                return Option.none()
+              }),
+              // This call is mostly here to for type narrowing
+              Stream.filter(Schema.is(WSMessage.PullRes)),
+            )
+          }).pipe(Stream.unwrap),
 
-      push: (batch) =>
-        Effect.gen(function* () {
-          const ready = yield* Deferred.make<void, InvalidPushError>()
-          const requestId = nanoid()
+        push: (batch) =>
+          Effect.gen(function* () {
+            const ready = yield* Deferred.make<void, InvalidPushError>()
+            const requestId = nanoid()
 
-          yield* Stream.fromPubSub(incomingMessages).pipe(
-            Stream.tap((_) =>
-              _._tag === 'WSMessage.Error' && _.requestId === requestId
-                ? Deferred.fail(ready, new InvalidPushError({ reason: { _tag: 'Unexpected', message: _.message } }))
-                : Effect.void,
-            ),
-            Stream.filter((_) => _._tag === 'WSMessage.PushAck' && _.requestId === requestId),
-            Stream.take(1),
-            Stream.tap(() => Deferred.succeed(ready, void 0)),
-            Stream.runDrain,
-            Effect.tapCauseLogPretty,
-            Effect.fork,
-          )
+            yield* Stream.fromPubSub(incomingMessages).pipe(
+              Stream.tap((_) =>
+                _._tag === 'WSMessage.Error' && _.requestId === requestId
+                  ? Deferred.fail(ready, new InvalidPushError({ reason: { _tag: 'Unexpected', message: _.message } }))
+                  : Effect.void,
+              ),
+              Stream.filter((_) => _._tag === 'WSMessage.PushAck' && _.requestId === requestId),
+              Stream.take(1),
+              Stream.tap(() => Deferred.succeed(ready, void 0)),
+              Stream.runDrain,
+              Effect.tapCauseLogPretty,
+              Effect.fork,
+            )
 
-          yield* send(WSMessage.PushReq.make({ batch, requestId }))
+            yield* send(WSMessage.PushReq.make({ batch, requestId }))
 
-          yield* ready
+            yield* ready
 
-          const createdAt = new Date().toISOString()
+            const createdAt = new Date().toISOString()
 
-          return { metadata: Array.from({ length: batch.length }, () => Option.some({ createdAt })) }
-        }),
-    } satisfies SyncBackend<SyncMetadata>
+            return { metadata: Array.from({ length: batch.length }, () => Option.some({ createdAt })) }
+          }),
+      } satisfies SyncBackend<SyncMetadata>
 
-    return api
-  })
+      return api
+    })
 
 const connect = (wsUrl: string) =>
   Effect.gen(function* () {

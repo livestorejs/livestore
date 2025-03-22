@@ -6,7 +6,7 @@ import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-no
 import type { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
 import type { ShutdownDeferred, Store, StoreInterrupted } from '@livestore/livestore'
 import { createStore, queryDb } from '@livestore/livestore'
-import { makeWsSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf'
 import { IS_CI } from '@livestore/utils'
 import {
   Context,
@@ -54,10 +54,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
             })
           : makeInMemoryAdapter({
               clientId,
-              sync: {
-                makeBackend: ({ storeId }) =>
-                  makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}`, storeId }),
-              },
+              sync: { backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) },
             })
 
       const shutdownDeferred = yield* Deferred.make<

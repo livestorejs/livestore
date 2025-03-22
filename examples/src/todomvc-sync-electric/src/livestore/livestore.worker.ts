@@ -7,6 +7,6 @@ makeWorker({
   schema,
   sync: {
     // See src/routes/api/electric.ts for the endpoint implementation
-    makeBackend: ({ storeId }) => makeSyncBackend({ storeId, endpoint: '/api/electric' }),
+    backend: makeSyncBackend({ endpoint: '/api/electric' }),
   },
 })

@@ -6,10 +6,10 @@ title: 'Cloudflare Workers'
 
 ### Web adapter
 
-In your `livestore.worker.ts` file, you can use the `makeWsSync` function to create a sync backend.
+In your `livestore.worker.ts` file, you can use the `makeCfSync` function to create a sync backend.
 
 ```ts
-import { makeWsSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf'
 import { makeWorker } from '@livestore/adapter-web/worker'
 
 import { schema } from './livestore/schema.js'
@@ -19,7 +19,7 @@ const url = 'ws://localhost:8787'
 
 makeWorker({
   schema,
-  sync: { makeBackend: ({ storeId }) => makeWsSync({ url, storeId }) },
+  sync: { backend: makeCfSync({ url }) },
 })
 ```
 

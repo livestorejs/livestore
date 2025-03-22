@@ -56,9 +56,9 @@ export const makeLeaderThreadLayer = ({
       dbReadModel.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
     const syncBackend =
-      syncOptions?.makeBackend === undefined
+      syncOptions?.backend === undefined
         ? undefined
-        : yield* syncOptions.makeBackend({ storeId, clientId, payload: syncPayload })
+        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload })
 
     const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({
       initialSyncOptions: syncOptions?.initialSyncOptions ?? { _tag: 'Skip' },

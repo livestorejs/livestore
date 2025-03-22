@@ -22,7 +22,7 @@
 - New: `@livestore/adapter-expo` now supports syncing:
   ```ts
   const adapter = makePersistedAdapter({
-    sync: { makeBackend: ({ storeId }) => makeWsSync({ url: `...`, storeId }) },
+    sync: { makeBackend: ({ storeId }) => makeCfSync({ url: `...`, storeId }) },
   })
   ```
 
@@ -52,6 +52,7 @@
 - Breaking `@livestore/adapter-web`: Renamed `makeAdapter` to `makePersistedAdapter`
 - Breaking `@livestore/adapter-expo`: Renamed `makeAdapter` to `makePersistedAdapter`
 - Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
+- Breaking: Renamed `makeBackend` to `backend` in sync options.
 - Breaking `@livestore/react`: `useRow` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.commit(rawSqlMutation({ sql }))` instead.
@@ -60,6 +61,7 @@
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
 - Breaking: Moved `queryGraphQL` to `@livestore/graphql` and thus removing `graphql` from peer dependencies of `@livestore/livestore`.
 - Moved dev helper methods from e.g. `store.__devDownloadDb()` to `store._dev.downloadDb()`
+- Breaking `@livestore/sync-cf`: Renamed `makeWsSync` to `makeCfSync`
 
 ### Notable improvements & fixes
 

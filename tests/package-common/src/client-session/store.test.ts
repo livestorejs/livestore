@@ -102,7 +102,7 @@ const TestContextLive = Layer.scoped(
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend
 
-    const adapter = makeInMemoryAdapter({ sync: { makeBackend: () => mockSyncBackend.makeSyncBackend } })
+    const adapter = makeInMemoryAdapter({ sync: { backend: () => mockSyncBackend.makeSyncBackend } })
     const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test' })
 
     return { makeStore, mockSyncBackend }

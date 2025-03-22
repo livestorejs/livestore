@@ -1,5 +1,5 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
-import { makeWsSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf'
 import { IS_CI } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { OtelLiveDummy, OtelLiveHttp } from '@livestore/utils/node'
@@ -8,7 +8,7 @@ const argv = getWorkerArgs()
 
 makeWorkerEffect({
   sync: {
-    makeBackend: ({ storeId }) => makeWsSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}`, storeId }),
+    backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }),
   },
 }).pipe(
   Effect.provide(

@@ -7,7 +7,7 @@ import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-no
 import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
-import { makeWsSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf'
 import { Effect, Layer, Logger, LogLevel, Option, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
@@ -51,9 +51,7 @@ const live = Cli.Command.make(
               baseDirectory,
             })
           : makeInMemoryAdapter({
-              sync: {
-                makeBackend: ({ storeId, payload }) => makeWsSync({ url: 'ws://localhost:8787', storeId, payload }),
-              },
+              sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
             })
 
       const store = yield* createStore({

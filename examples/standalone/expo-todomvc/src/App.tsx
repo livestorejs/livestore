@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { nanoid } from '@livestore/livestore'
 import { LiveStoreProvider } from '@livestore/react'
-import { makeWsSync } from '@livestore/sync-cf'
+import { makeCfSync } from '@livestore/sync-cf'
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import { Button, StyleSheet, Text, unstable_batchedUpdates as batchUpdates, View } from 'react-native'
@@ -16,7 +16,7 @@ const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID ?? nanoid(6)
 const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL
 
 const adapter = makePersistedAdapter({
-  sync: { makeBackend: syncUrl ? ({ storeId }) => makeWsSync({ url: syncUrl, storeId }) : undefined },
+  sync: { backend: syncUrl ? makeCfSync({ url: syncUrl }) : undefined },
 })
 
 export const App = () => {

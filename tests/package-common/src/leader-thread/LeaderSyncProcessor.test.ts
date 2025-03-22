@@ -206,7 +206,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     clientId: 'test',
     syncPayload: undefined,
     makeSqliteDb,
-    syncOptions: { makeBackend: () => mockSyncBackend.makeSyncBackend },
+    syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
     dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
     dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
     devtoolsOptions: { enabled: false },

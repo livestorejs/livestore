@@ -16,12 +16,14 @@ export type MakeBackendArgs = {
 }
 
 export type SyncOptions = {
-  makeBackend?: (
-    args: MakeBackendArgs,
-  ) => Effect.Effect<SyncBackend<any>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
+  backend?: SyncBackendConstructor<any>
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
 }
+
+export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
+  args: MakeBackendArgs,
+) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
 
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   pull: (

@@ -1,4 +1,4 @@
-import type { IsOfflineError, SyncBackend } from '@livestore/common'
+import type { IsOfflineError, SyncBackend, SyncBackendConstructor } from '@livestore/common'
 import { InvalidPullError, InvalidPushError } from '@livestore/common'
 import type { EventId } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
@@ -153,7 +153,6 @@ export const makeElectricUrl = ({
 }
 
 export interface SyncBackendOptions {
-  storeId: string
   /**
    * The endpoint to pull/push events. Pull is a `GET` request, push is a `POST` request.
    * Usually this endpoint is part of your API layer to proxy requests to the Electric server
@@ -182,146 +181,148 @@ type SyncMetadata = {
   handle: string
 }
 
-export const makeSyncBackend = ({
-  storeId,
-  endpoint,
-}: SyncBackendOptions): Effect.Effect<SyncBackend<SyncMetadata>, never, Scope.Scope> =>
-  Effect.gen(function* () {
-    const isConnected = yield* SubscriptionRef.make(true)
-    const pullEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.pull
-    const pushEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.push
+export const makeSyncBackend =
+  ({ endpoint }: SyncBackendOptions): SyncBackendConstructor<SyncMetadata> =>
+  ({ storeId, payload }) =>
+    Effect.gen(function* () {
+      const isConnected = yield* SubscriptionRef.make(true)
+      const pullEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.pull
+      const pushEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.push
 
-    // TODO check whether we still need this
-    const pendingPushDeferredMap = new Map<EventId.GlobalEventId, Deferred.Deferred<SyncMetadata>>()
+      // TODO check whether we still need this
+      const pendingPushDeferredMap = new Map<EventId.GlobalEventId, Deferred.Deferred<SyncMetadata>>()
 
-    const pull = (
-      handle: Option.Option<SyncMetadata>,
-    ): Effect.Effect<
-      Option.Option<
-        readonly [
-          Chunk.Chunk<{ metadata: Option.Option<SyncMetadata>; mutationEventEncoded: MutationEvent.AnyEncodedGlobal }>,
-          Option.Option<SyncMetadata>,
-        ]
-      >,
-      InvalidPullError | IsOfflineError,
-      HttpClient.HttpClient
-    > =>
-      Effect.gen(function* () {
-        const argsJson = yield* Schema.encode(Schema.parseJson(ApiSchema.PullPayload))(
-          ApiSchema.PullPayload.make({ storeId, handle }),
-        )
-        const url = `${pullEndpoint}?args=${argsJson}`
-
-        const resp = yield* HttpClient.get(url)
-
-        const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
-        const nextHandle = {
-          offset: headers['electric-offset'],
-          handle: headers['electric-handle'],
-        }
-
-        // TODO handle case where Electric shape is not found for a given handle
-        // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
-        // {
-        // "message": "The shape associated with this shape_handle and offset was not found. Resync to fetch the latest shape",
-        // "shape_handle": "2494_84241",
-        // "offset": "-1"
-        // }
-        if (resp.status === 409) {
-          // TODO: implementation plan:
-          // start pulling events from scratch with the new handle and ignore the "old events"
-          // until we found a new event, then, continue with the new handle
-          return notYetImplemented(`Electric shape not found for handle ${nextHandle.handle}`)
-        }
-
-        // Electric completes the long-poll request after ~20 seconds with a 204 status
-        // In this case we just retry where we left off
-        if (resp.status === 204) {
-          return Option.some([Chunk.empty(), Option.some(nextHandle)] as const)
-        }
-
-        const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
-          onExcessProperty: 'preserve',
-        })(resp)
-
-        const items = body
-          .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
-          .map((item) => ({
-            metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
-            mutationEventEncoded: item.value! as MutationEvent.AnyEncodedGlobal,
-          }))
-
-        // // TODO implement proper `remaining` handling
-        // remaining: 0,
-
-        // if (listenForNew === false && items.length === 0) {
-        //   return Option.none()
-        // }
-
-        for (const item of items) {
-          const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)
-          if (deferred !== undefined) {
-            yield* Deferred.succeed(deferred, Option.getOrThrow(item.metadata))
-          }
-        }
-
-        return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
-      }).pipe(
-        Effect.scoped,
-        Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
-      )
-
-    return {
-      pull: (args) =>
-        Stream.unfoldChunkEffect(
-          args.pipe(
-            Option.map((_) => _.metadata),
-            Option.flatten,
-          ),
-          (metadataOption) => pull(metadataOption),
-        ).pipe(
-          Stream.chunks,
-          Stream.map((chunk) => ({ batch: [...chunk], remaining: 0 })),
-        ),
-
-      push: (batch) =>
+      const pull = (
+        handle: Option.Option<SyncMetadata>,
+      ): Effect.Effect<
+        Option.Option<
+          readonly [
+            Chunk.Chunk<{
+              metadata: Option.Option<SyncMetadata>
+              mutationEventEncoded: MutationEvent.AnyEncodedGlobal
+            }>,
+            Option.Option<SyncMetadata>,
+          ]
+        >,
+        InvalidPullError | IsOfflineError,
+        HttpClient.HttpClient
+      > =>
         Effect.gen(function* () {
-          const deferreds: Deferred.Deferred<SyncMetadata>[] = []
-          for (const mutationEventEncoded of batch) {
-            const deferred = yield* Deferred.make<SyncMetadata>()
-            pendingPushDeferredMap.set(mutationEventEncoded.id, deferred)
-            deferreds.push(deferred)
+          const argsJson = yield* Schema.encode(Schema.parseJson(ApiSchema.PullPayload))(
+            ApiSchema.PullPayload.make({ storeId, handle }),
+          )
+          const url = `${pullEndpoint}?args=${argsJson}`
+
+          const resp = yield* HttpClient.get(url)
+
+          const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
+          const nextHandle = {
+            offset: headers['electric-offset'],
+            handle: headers['electric-handle'],
           }
 
-          const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
-            HttpClientRequest.post(pushEndpoint),
-            ApiSchema.PushPayload.make({ storeId, batch }),
-          ).pipe(
-            Effect.andThen(HttpClient.execute),
-            Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
-            Effect.scoped,
-            Effect.mapError((cause) =>
-              InvalidPushError.make({ reason: { _tag: 'Unexpected', message: cause.toString() } }),
+          // TODO handle case where Electric shape is not found for a given handle
+          // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
+          // {
+          // "message": "The shape associated with this shape_handle and offset was not found. Resync to fetch the latest shape",
+          // "shape_handle": "2494_84241",
+          // "offset": "-1"
+          // }
+          if (resp.status === 409) {
+            // TODO: implementation plan:
+            // start pulling events from scratch with the new handle and ignore the "old events"
+            // until we found a new event, then, continue with the new handle
+            return notYetImplemented(`Electric shape not found for handle ${nextHandle.handle}`)
+          }
+
+          // Electric completes the long-poll request after ~20 seconds with a 204 status
+          // In this case we just retry where we left off
+          if (resp.status === 204) {
+            return Option.some([Chunk.empty(), Option.some(nextHandle)] as const)
+          }
+
+          const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
+            onExcessProperty: 'preserve',
+          })(resp)
+
+          const items = body
+            .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
+            .map((item) => ({
+              metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
+              mutationEventEncoded: item.value! as MutationEvent.AnyEncodedGlobal,
+            }))
+
+          // // TODO implement proper `remaining` handling
+          // remaining: 0,
+
+          // if (listenForNew === false && items.length === 0) {
+          //   return Option.none()
+          // }
+
+          for (const item of items) {
+            const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)
+            if (deferred !== undefined) {
+              yield* Deferred.succeed(deferred, Option.getOrThrow(item.metadata))
+            }
+          }
+
+          return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
+        }).pipe(
+          Effect.scoped,
+          Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
+        )
+
+      return {
+        pull: (args) =>
+          Stream.unfoldChunkEffect(
+            args.pipe(
+              Option.map((_) => _.metadata),
+              Option.flatten,
             ),
-          )
+            (metadataOption) => pull(metadataOption),
+          ).pipe(
+            Stream.chunks,
+            Stream.map((chunk) => ({ batch: [...chunk], remaining: 0 })),
+          ),
 
-          if (!resp.success) {
-            yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
-          }
+        push: (batch) =>
+          Effect.gen(function* () {
+            const deferreds: Deferred.Deferred<SyncMetadata>[] = []
+            for (const mutationEventEncoded of batch) {
+              const deferred = yield* Deferred.make<SyncMetadata>()
+              pendingPushDeferredMap.set(mutationEventEncoded.id, deferred)
+              deferreds.push(deferred)
+            }
 
-          const metadata = yield* Effect.all(deferreds, { concurrency: 'unbounded' }).pipe(
-            Effect.map((_) => _.map(Option.some)),
-          )
+            const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
+              HttpClientRequest.post(pushEndpoint),
+              ApiSchema.PushPayload.make({ storeId, batch }),
+            ).pipe(
+              Effect.andThen(HttpClient.execute),
+              Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
+              Effect.scoped,
+              Effect.mapError((cause) =>
+                InvalidPushError.make({ reason: { _tag: 'Unexpected', message: cause.toString() } }),
+              ),
+            )
 
-          for (const mutationEventEncoded of batch) {
-            pendingPushDeferredMap.delete(mutationEventEncoded.id)
-          }
+            if (!resp.success) {
+              yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
+            }
 
-          return { metadata }
-        }),
-      isConnected,
-    } satisfies SyncBackend<SyncMetadata>
-  })
+            const metadata = yield* Effect.all(deferreds, { concurrency: 'unbounded' }).pipe(
+              Effect.map((_) => _.map(Option.some)),
+            )
+
+            for (const mutationEventEncoded of batch) {
+              pendingPushDeferredMap.delete(mutationEventEncoded.id)
+            }
+
+            return { metadata }
+          }),
+        isConnected,
+      } satisfies SyncBackend<SyncMetadata>
+    })
 
 /**
  * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
