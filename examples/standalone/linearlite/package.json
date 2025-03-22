@@ -36,8 +36,7 @@
     "react-router-dom": "6.25.1",
     "react-virtualized-auto-sizer": "1.0.25",
     "react-window": "1.8.11",
-    "tiptap-markdown": "0.8.10",
-    "workbox-window": "7.3.0"
+    "tiptap-markdown": "0.8.10"
   },
   "devDependencies": {
     "@svgr/plugin-jsx": "^8.1.0",
@@ -60,7 +59,6 @@
     "tailwindcss": "^4.0.12",
     "typescript": "^5.8.2",
     "vite": "^6.2.1",
-    "vite-plugin-pwa": "^0.21.1",
     "vite-plugin-svgr": "^4.3.0"
   },
   "scripts": {

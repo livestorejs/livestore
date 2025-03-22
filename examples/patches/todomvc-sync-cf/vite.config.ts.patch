@@ -1,6 +1,6 @@
 --- vite.config.ts
 +++ vite.config.ts
-@@ -25,17 +25,9 @@
+@@ -24,17 +24,9 @@
    server: {
      port: process.env.PORT ? Number(process.env.PORT) : 60_001,
      headers: credentiallessHeaders,

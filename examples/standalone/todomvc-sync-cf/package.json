@@ -19,8 +19,7 @@
     "effect": "3.13.12",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "todomvc-app-css": "2.4.3",
-    "workbox-window": "7.3.0"
+    "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
@@ -30,7 +29,6 @@
     "rollup-plugin-visualizer": "^5.14.0",
     "typescript": "^5.8.2",
     "vite": "^6.2.1",
-    "vite-plugin-pwa": "^0.21.1",
     "wrangler": "^4.0.0"
   },
   "scripts": {

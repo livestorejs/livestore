@@ -6,7 +6,6 @@ import process from 'node:process'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import { VitePWA } from 'vite-plugin-pwa'
 import svgr from 'vite-plugin-svgr'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -31,13 +30,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     livestoreDevtoolsPlugin({ schemaPath: './src/lib/livestore/schema/index.ts' }),
-    VitePWA({
-      registerType: 'prompt',
-      workbox: {
-        maximumFileSizeToCacheInBytes: 4_000_000, // ~4MB
-        globPatterns: ['**/*.{js,html,wasm,css,ico,db,lz4,blob}'],
-      },
-    }),
     svgr({
       svgrOptions: {
         svgo: true,

@@ -5,7 +5,6 @@ import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
-import { VitePWA } from 'vite-plugin-pwa'
 
 // Needed for OPFS Sqlite to work
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
@@ -41,13 +40,6 @@ export default defineConfig({
   plugins: [
     react(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-    VitePWA({
-      registerType: 'prompt',
-      workbox: {
-        maximumFileSizeToCacheInBytes: 4_000_000, // ~4MB
-        globPatterns: ['**/*.{js,html,wasm,css,ico,db,lz4,blob}'],
-      },
-    }),
     // Needed for OPFS Sqlite to work
     {
       name: 'configure-response-headers',

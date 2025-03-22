@@ -77,6 +77,7 @@
     "deploy:examples:src": "bun scripts/deploy-examples.ts",
     "dev:ts": "tsc --build tsconfig.dev.json --watch",
     "generate:examples:standalone": "bun scripts/generate-examples.ts sync --direction src-to-standalone",
+    "generate:examples:update-patches": "bun scripts/generate-examples.ts update-patches",
     "lint:check": "eslint examples packages website --ext .ts,.tsx --max-warnings=0 && syncpack lint",
     "lint:fix": "eslint examples packages website --ext .ts,.tsx --fix",
     "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",

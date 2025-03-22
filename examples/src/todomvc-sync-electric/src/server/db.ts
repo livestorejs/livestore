@@ -19,7 +19,8 @@ export const makeDb = (storeId: string) => {
       "parentId" INTEGER,
 			"mutation" TEXT NOT NULL,
 			"args" JSONB NOT NULL,
-      "clientId" TEXT NOT NULL
+      "clientId" TEXT NOT NULL,
+      "sessionId" TEXT NOT NULL
     );
 	`
   // -- schema_hash INTEGER NOT NULL,

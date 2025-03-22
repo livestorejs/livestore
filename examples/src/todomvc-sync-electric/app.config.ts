@@ -4,7 +4,6 @@ import path from 'node:path'
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { defineConfig } from '@tanstack/start/config'
 import { visualizer } from 'rollup-plugin-visualizer'
-import { VitePWA } from 'vite-plugin-pwa'
 
 const __dirname = import.meta.dirname
 
@@ -53,13 +52,6 @@ export default defineConfig({
     plugins: [
       // NOTE vinxi causes the devtools to be served on: http://localhost:3000/_build/_livestore
       livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-      VitePWA({
-        registerType: 'prompt',
-        workbox: {
-          maximumFileSizeToCacheInBytes: 4_000_000, // ~4MB
-          globPatterns: ['**/*.{js,html,wasm,css,ico,db,lz4,blob}'],
-        },
-      }),
       // Needed for OPFS Sqlite to work
       {
         name: 'configure-response-headers',

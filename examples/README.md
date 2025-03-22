@@ -5,4 +5,4 @@
 
 ## For contributors
 
-- Please use the `bun ./scripts/generate-examples.ts` script to keep the `src`, `patches` and `standalone` directories in sync.
+- Please use the `pnpm -w generate:examples:standalone` command to keep the `src`, `patches` and `standalone` directories in sync.

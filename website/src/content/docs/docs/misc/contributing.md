@@ -81,7 +81,7 @@ pnpm build
 - Once you've set up the monorepo locally, you'll notice both the `src` and `standalone` directories in `/examples`.
 - The `/examples/standalone` directory is meant as a starting point for app developers evaluating LiveStore and looking for a ready-to-run example app.
 - The `/examples/src` directory is meant for LiveStore maintainers and to run as part of the LiveStore monorepo. Compared to `/examples/standalone` it makes use of local linking features such a `workspace:*`, TypeScript `references` etc.
-- Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/standalone` version via `pnpm generate:examples:standalone`.
+- Both directories are kept in sync via `/examples/patches` and `/scripts/generate-examples.ts`. Usually it's recommended to work in `/examples/src` and generate the `/examples/standalone` version via `pnpm -w generate:examples:standalone`.
 
 #### Making changes to examples
 
