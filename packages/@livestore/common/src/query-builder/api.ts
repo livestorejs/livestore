@@ -7,10 +7,16 @@ import type { SqliteDsl } from '../schema/db-schema/mod.js'
 import type { DbSchema } from '../schema/mod.js'
 import type { SqlValue } from '../util.js'
 
-export type QueryBuilderAst = QueryBuilderAst.SelectQuery | QueryBuilderAst.CountQuery | QueryBuilderAst.RowQuery
+export type QueryBuilderAst =
+  | QueryBuilderAst.SelectQuery
+  | QueryBuilderAst.CountQuery
+  | QueryBuilderAst.RowQuery
+  | QueryBuilderAst.InsertQuery
+  | QueryBuilderAst.UpdateQuery
+  | QueryBuilderAst.DeleteQuery
 
 export namespace QueryBuilderAst {
-  export type SelectQuery = {
+  export interface SelectQuery {
     readonly _tag: 'SelectQuery'
     readonly columns: string[]
     readonly pickFirst: false | { fallback: () => any }
@@ -25,27 +31,67 @@ export namespace QueryBuilderAst {
     readonly resultSchemaSingle: Schema.Schema<any>
   }
 
-  export type CountQuery = {
+  export interface CountQuery {
     readonly _tag: 'CountQuery'
     readonly tableDef: DbSchema.TableDefBase
     readonly where: ReadonlyArray<QueryBuilderAst.Where>
     readonly resultSchema: Schema.Schema<number, ReadonlyArray<{ count: number }>>
   }
 
-  export type RowQuery = {
+  export interface RowQuery {
     readonly _tag: 'RowQuery'
     readonly tableDef: DbSchema.TableDefBase
     readonly id: string | SessionIdSymbol | number
     readonly insertValues: Record<string, unknown>
   }
 
-  export type Where = {
+  export interface InsertQuery {
+    readonly _tag: 'InsertQuery'
+    readonly tableDef: DbSchema.TableDefBase
+    readonly values: Record<string, unknown>
+    readonly onConflict: OnConflict | undefined
+    readonly returning: string[] | undefined
+    readonly resultSchema: Schema.Schema<any>
+  }
+
+  export interface OnConflict {
+    /** Conflicting column name */
+    readonly target: string
+    readonly action:
+      | { readonly _tag: 'ignore' }
+      | { readonly _tag: 'replace' }
+      | {
+          readonly _tag: 'update'
+          readonly update: Record<string, unknown>
+        }
+  }
+
+  export interface UpdateQuery {
+    readonly _tag: 'UpdateQuery'
+    readonly tableDef: DbSchema.TableDefBase
+    readonly values: Record<string, unknown>
+    readonly where: ReadonlyArray<QueryBuilderAst.Where>
+    readonly returning: string[] | undefined
+    readonly resultSchema: Schema.Schema<any>
+  }
+
+  export interface DeleteQuery {
+    readonly _tag: 'DeleteQuery'
+    readonly tableDef: DbSchema.TableDefBase
+    readonly where: ReadonlyArray<QueryBuilderAst.Where>
+    readonly returning: string[] | undefined
+    readonly resultSchema: Schema.Schema<any>
+  }
+
+  export type WriteQuery = InsertQuery | UpdateQuery | DeleteQuery
+
+  export interface Where {
     readonly col: string
     readonly op: QueryBuilder.WhereOps
     readonly value: unknown
   }
 
-  export type OrderBy = {
+  export interface OrderBy {
     readonly col: string
     readonly direction: 'asc' | 'desc'
   }
@@ -86,7 +132,20 @@ export namespace QueryBuilder {
     export type MultiValue = In
   }
 
-  export type ApiFeature = 'select' | 'where' | 'count' | 'orderBy' | 'offset' | 'limit' | 'first' | 'row'
+  export type ApiFeature =
+    | 'select'
+    | 'where'
+    | 'count'
+    | 'orderBy'
+    | 'offset'
+    | 'limit'
+    | 'first'
+    | 'row'
+    | 'insert'
+    | 'update'
+    | 'delete'
+    | 'returning'
+    | 'onConflict'
 
   export type WhereParams<TTableDef extends DbSchema.TableDefBase> = Partial<{
     [K in keyof TTableDef['sqliteDef']['columns']]:
@@ -130,7 +189,7 @@ export namespace QueryBuilder {
               readonly [K in TColumn]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
             }>,
         TTableDef,
-        TWithout | 'row' | 'select',
+        TWithout | 'row' | 'select' | 'returning' | 'onConflict',
         TQueryInfo
       >
       <TColumns extends keyof TTableDef['sqliteDef']['columns'] & string>(
@@ -142,7 +201,7 @@ export namespace QueryBuilder {
           readonly [K in TColumns]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
         }>,
         TTableDef,
-        TWithout | 'row' | 'select' | 'count',
+        TWithout | 'row' | 'select' | 'count' | 'returning' | 'onConflict',
         TQueryInfo
       >
     }
@@ -187,7 +246,7 @@ export namespace QueryBuilder {
     readonly count: () => QueryBuilder<
       number,
       TTableDef,
-      TWithout | 'row' | 'count' | 'select' | 'orderBy' | 'first' | 'offset' | 'limit',
+      TWithout | 'row' | 'count' | 'select' | 'orderBy' | 'first' | 'offset' | 'limit' | 'returning' | 'onConflict',
       TQueryInfo
     >
 
@@ -201,10 +260,10 @@ export namespace QueryBuilder {
       <TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
         col: TColName,
         direction: 'asc' | 'desc',
-      ): QueryBuilder<TResult, TTableDef, TWithout, TQueryInfo>
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict', TQueryInfo>
       <TParams extends QueryBuilder.OrderByParams<TTableDef>>(
         params: TParams,
-      ): QueryBuilder<TResult, TTableDef, TWithout, TQueryInfo>
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict', TQueryInfo>
     }
 
     /**
@@ -215,7 +274,12 @@ export namespace QueryBuilder {
      */
     readonly offset: (
       offset: number,
-    ) => QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'offset' | 'orderBy', TQueryInfo>
+    ) => QueryBuilder<
+      TResult,
+      TTableDef,
+      TWithout | 'row' | 'offset' | 'orderBy' | 'returning' | 'onConflict',
+      TQueryInfo
+    >
 
     /**
      * Example:
@@ -225,7 +289,12 @@ export namespace QueryBuilder {
      */
     readonly limit: (
       limit: number,
-    ) => QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'limit' | 'offset' | 'first' | 'orderBy', TQueryInfo>
+    ) => QueryBuilder<
+      TResult,
+      TTableDef,
+      TWithout | 'row' | 'limit' | 'offset' | 'first' | 'orderBy' | 'returning' | 'onConflict',
+      TQueryInfo
+    >
 
     /**
      * Example:
@@ -238,7 +307,7 @@ export namespace QueryBuilder {
     }) => QueryBuilder<
       TFallback | GetSingle<TResult>,
       TTableDef,
-      TWithout | 'row' | 'first' | 'orderBy' | 'select' | 'limit' | 'offset' | 'where',
+      TWithout | 'row' | 'first' | 'orderBy' | 'select' | 'limit' | 'offset' | 'where' | 'returning' | 'onConflict',
       TQueryInfo
     >
 
@@ -258,6 +327,114 @@ export namespace QueryBuilder {
               id: string | SessionIdSymbol | number,
               opts: TOptions,
             ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+
+    /**
+     * Insert a new row into the table
+     *
+     * Example:
+     * ```ts
+     * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' })
+     * ```
+     */
+    readonly insert: (
+      values: TTableDef['insertSchema']['Type'],
+    ) => QueryBuilder<
+      TResult,
+      TTableDef,
+      TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where',
+      QueryInfo.Write
+    >
+
+    /**
+     * Example: If the row already exists, it will be ignored.
+     * ```ts
+     * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')
+     * ```
+     *
+     * Example: If the row already exists, it will be replaced.
+     * ```ts
+     * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')
+     * ```
+     *
+     * Example: If the row already exists, it will be updated.
+     * ```ts
+     * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'update', { text: 'Buy soy milk' })
+     * ```
+     *
+     * NOTE This API doesn't yet support composite primary keys.
+     */
+    readonly onConflict: {
+      (
+        target: string,
+        action: 'ignore' | 'replace',
+      ): QueryBuilder<
+        TResult,
+        TTableDef,
+        TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where',
+        TQueryInfo
+      >
+      <TTarget extends keyof TTableDef['sqliteDef']['columns'] & string>(
+        target: TTarget,
+        action: 'update',
+        updateValues: Partial<TTableDef['schema']['Type']>,
+      ): QueryBuilder<
+        TResult,
+        TTableDef,
+        TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where',
+        TQueryInfo
+      >
+    }
+
+    /**
+     * Similar to the `.select` API but for write queries (insert, update, delete).
+     *
+     * Example:
+     * ```ts
+     * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')
+     * ```
+     */
+    readonly returning: <TColumns extends keyof TTableDef['sqliteDef']['columns'] & string>(
+      ...columns: TColumns[]
+    ) => QueryBuilder<
+      ReadonlyArray<{
+        readonly [K in TColumns]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
+      }>,
+      TTableDef
+    >
+
+    /**
+     * Update rows in the table that match the where clause
+     *
+     * Example:
+     * ```ts
+     * db.todos.update({ status: 'completed' }).where({ id: '123' })
+     * ```
+     */
+    readonly update: (
+      values: Partial<TTableDef['schema']['Type']>,
+    ) => QueryBuilder<
+      TResult,
+      TTableDef,
+      TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'onConflict',
+      QueryInfo.Write
+    >
+
+    /**
+     * Delete rows from the table that match the where clause
+     *
+     * Example:
+     * ```ts
+     * db.todos.delete().where({ status: 'completed' })
+     * ```
+     *
+     * Note that it's generally recommended to do soft-deletes for synced apps.
+     */
+    readonly delete: () => QueryBuilder<
+      TResult,
+      TTableDef,
+      TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'onConflict',
+      QueryInfo.Write
+    >
   }
 }
 

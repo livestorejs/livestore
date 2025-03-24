@@ -52,14 +52,33 @@ export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : 
 export type EmptyObjIfConstained<In> = '__constrained' extends keyof In ? {} : In
 
 export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
-  AnyIfConstained<TCols, { readonly [K in keyof TCols]: TCols[K]['schema']['Type'] }>,
-  AnyIfConstained<TCols, { readonly [K in keyof TCols]: TCols[K]['schema']['Encoded'] }>
+  AnyIfConstained<TCols, FromColumns.RowDecoded<TCols>>,
+  AnyIfConstained<TCols, FromColumns.RowEncoded<TCols>>
+>
+
+export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+  AnyIfConstained<TCols, FromColumns.InsertRowDecoded<TCols>>,
+  AnyIfConstained<TCols, FromColumns.InsertRowEncoded<TCols>>
 >
 
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,
 ): StructSchemaForColumns<TTableDefinition['columns']> =>
   Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotations({
+    title: tableDef.name,
+  }) as any
+
+export const insertStructSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
+  tableDef: TTableDefinition,
+): InsertStructSchemaForColumns<TTableDefinition['columns']> =>
+  Schema.Struct(
+    Object.fromEntries(
+      tableDef.ast.columns.map((column) => [
+        column.name,
+        column.nullable === true || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
+      ]),
+    ),
+  ).annotations({
     title: tableDef.name,
   }) as any
 
@@ -161,6 +180,10 @@ export namespace FromColumns {
     readonly [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
   }
 
+  export type RowEncodedAll<TColumns extends Columns> = {
+    readonly [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+  }
+
   export type RowEncoded<TColumns extends Columns> = Types.Simplify<
     Nullable<Pick<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>> &
       Omit<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>
@@ -191,5 +214,10 @@ export namespace FromColumns {
   export type InsertRowDecoded<TColumns extends Columns> = Types.Simplify<
     Pick<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>> &
       Partial<Omit<RowDecodedAll<TColumns>, RequiredInsertColumnNames<TColumns>>>
+  >
+
+  export type InsertRowEncoded<TColumns extends Columns> = Types.Simplify<
+    Pick<RowEncodedAll<TColumns>, RequiredInsertColumnNames<TColumns>> &
+      Partial<Omit<RowEncodedAll<TColumns>, RequiredInsertColumnNames<TColumns>>>
   >
 }

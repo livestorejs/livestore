@@ -1,5 +1,6 @@
 import { Schema } from '@livestore/utils/effect'
 
+import type { QueryBuilder } from '../query-builder/mod.js'
 import type { BindValues } from '../sql-queries/sql-queries.js'
 
 export type MutationDefMap = {
@@ -20,7 +21,10 @@ export type InternalMutationSchema<TRecord extends MutationDefRecord = MutationD
 
 export type MutationDefSqlResult<TTo> =
   | SingleOrReadonlyArray<string>
-  | ((args: TTo) => SingleOrReadonlyArray<
+  | ((
+      args: TTo,
+      context: { currentFacts: MutationEventFacts; clientOnly: boolean },
+    ) => SingleOrReadonlyArray<
       | string
       | {
           sql: string
@@ -28,7 +32,14 @@ export type MutationDefSqlResult<TTo> =
           bindValues: BindValues
           writeTables?: ReadonlySet<string>
         }
+      | QueryBuilder.Any
     >)
+
+export type MutationHandlerResult = {
+  sql: string
+  bindValues: BindValues
+  writeTables?: ReadonlySet<string>
+}
 
 export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
 

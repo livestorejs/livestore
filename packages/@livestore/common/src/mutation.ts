@@ -1,8 +1,11 @@
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from './adapter-types.js'
+import type { QueryBuilder } from './query-builder/api.js'
+import { isQueryBuilder } from './query-builder/api.js'
 import type * as MutationEvent from './schema/MutationEvent.js'
-import type { MutationDef } from './schema/mutations.js'
+import type { MutationDef, MutationHandlerResult } from './schema/mutations.js'
+import type { BindValues } from './sql-queries/sql-queries.js'
 import type { PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
@@ -34,8 +37,22 @@ export const getExecArgsFromMutation = ({
     case 'function': {
       const mutationArgsDecoded =
         mutationEvent.decoded?.args ?? Schema.decodeUnknownSync(mutationDef.schema)(mutationEvent.encoded!.args)
-      const res = mutationDef.sql(mutationArgsDecoded)
-      statementRes = Array.isArray(res) ? res : [res]
+
+      const res = mutationDef.sql(mutationArgsDecoded, {
+        clientOnly: mutationDef.options.clientOnly,
+        // TODO properly implement this
+        currentFacts: new Map(),
+      })
+
+      statementRes = (Array.isArray(res) ? res : [res]).map((_: QueryBuilder.Any | MutationHandlerResult) => {
+        if (isQueryBuilder(_)) {
+          const { query, bindValues } = _.asSql()
+          return { sql: query, bindValues: bindValues as BindValues }
+        }
+
+        return _
+      })
+
       break
     }
     case 'string': {

@@ -40,7 +40,13 @@ sidebar:
 - Changes to the devtools
 - Rewriting the core library in a different language
 
-## Requirements
+## Requirements (for code contributions)
+
+### Recommended software experience
+
+- Deep experience with TypeScript (incl. type-level programming)
+- Experience with distributed systems
+- Effect (with some experience with functional programming)
 
 ### Recommended: Use Nix + direnv for a consistent development setup
 

@@ -40,7 +40,7 @@ export const Footer: React.FC = () => {
       </ul>
       <button
         className="clear-completed"
-        onClick={() => store.commit(mutations.todoClearedCompleted({ deleted: Date.now() }))}
+        onClick={() => store.commit(mutations.todoClearedCompleted({ deleted: new Date() }))}
       >
         Clear completed
       </button>

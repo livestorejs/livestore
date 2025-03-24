@@ -9,7 +9,7 @@ import type { DbSchema } from './schema/mod.js'
  *
  * This information is currently only used for derived mutations.
  */
-export type QueryInfo = QueryInfo.None | QueryInfo.Row | QueryInfo.Col | QueryInfo.ColJsonValue
+export type QueryInfo = QueryInfo.None | QueryInfo.Row | QueryInfo.Col | QueryInfo.ColJsonValue | QueryInfo.Write
 // export type QueryInfo<TTableDef extends DbSchema.TableDefBase = DbSchema.TableDefBase> =
 // | QueryInfo.None
 // | QueryInfo.Row<TTableDef>
@@ -43,6 +43,11 @@ export namespace QueryInfo {
      * example: `$.tabs[3].items[2]` (`$` referring to the column value)
      */
     jsonPath: string
+  }
+
+  // NOTE Not yet used but we might want to use this in order to avoid write queries in read-only situations
+  export type Write = {
+    _tag: 'Write'
   }
 
   // NOTE maybe we want to bring back type-params back like below

@@ -1,9 +1,11 @@
-import { Option, Predicate, Schema } from '@livestore/utils/effect'
+import { casesHandled } from '@livestore/utils'
+import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
 
 import type { QueryInfo } from '../query-info.js'
 import type { DbSchema } from '../schema/mod.js'
 import type { QueryBuilder, QueryBuilderAst } from './api.js'
 import { QueryBuilderAstSymbol, TypeId } from './api.js'
+import { astToSql } from './astToSql.js'
 
 export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBase>(
   tableDef: TTableDef,
@@ -12,7 +14,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
   const api = {
     // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
     select() {
-      assertQueryBuilderAst(ast)
+      assertSelectQueryBuilderAst(ast)
 
       // eslint-disable-next-line prefer-rest-params
       const params = [...arguments]
@@ -36,8 +38,9 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
       }) as any
     },
     // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-    where() {
-      if (isRowQuery(ast)) return invalidQueryBuilder()
+    where: function () {
+      if (ast._tag === 'InsertQuery') return invalidQueryBuilder('Cannot use where with insert')
+      if (ast._tag === 'RowQuery') return invalidQueryBuilder('Cannot use where with row')
 
       if (arguments.length === 1) {
         // eslint-disable-next-line prefer-rest-params
@@ -50,24 +53,45 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
               : { col, op: '=', value },
           )
 
-        return makeQueryBuilder(tableDef, {
-          ...ast,
-          where: [...ast.where, ...newOps],
-        }) as any
+        switch (ast._tag) {
+          case 'CountQuery':
+          case 'SelectQuery':
+          case 'UpdateQuery':
+          case 'DeleteQuery': {
+            return makeQueryBuilder(tableDef, {
+              ...ast,
+              where: [...ast.where, ...newOps],
+            }) as any
+          }
+          default: {
+            return casesHandled(ast)
+          }
+        }
       }
 
       // eslint-disable-next-line prefer-rest-params
       const [col, opOrValue, valueOrUndefined] = arguments
       const op = valueOrUndefined === undefined ? '=' : opOrValue
       const value = valueOrUndefined === undefined ? opOrValue : valueOrUndefined
-      return makeQueryBuilder(tableDef, {
-        ...ast,
-        where: [...ast.where, { col, op, value }],
-      })
+
+      switch (ast._tag) {
+        case 'CountQuery':
+        case 'SelectQuery':
+        case 'UpdateQuery':
+        case 'DeleteQuery': {
+          return makeQueryBuilder(tableDef, {
+            ...ast,
+            where: [...ast.where, { col, op, value }],
+          }) as any
+        }
+        default: {
+          return casesHandled(ast)
+        }
+      }
     },
     // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
     orderBy() {
-      assertQueryBuilderAst(ast)
+      assertSelectQueryBuilderAst(ast)
 
       if (arguments.length === 0 || arguments.length > 2) return invalidQueryBuilder()
 
@@ -89,12 +113,12 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
       }) as any
     },
     limit: (limit) => {
-      assertQueryBuilderAst(ast)
+      assertSelectQueryBuilderAst(ast)
 
       return makeQueryBuilder(tableDef, { ...ast, limit: Option.some(limit) })
     },
     offset: (offset) => {
-      assertQueryBuilderAst(ast)
+      assertSelectQueryBuilderAst(ast)
 
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
@@ -102,17 +126,18 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
       if (isRowQuery(ast)) return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {
-        ...ast,
+        _tag: 'CountQuery',
+        tableDef,
+        where: [],
         resultSchema: Schema.Struct({ count: Schema.Number }).pipe(
           Schema.pluck('count'),
           Schema.Array,
           Schema.headOrElse(),
         ),
-        _tag: 'CountQuery',
       })
     },
     first: (options) => {
-      assertQueryBuilderAst(ast)
+      assertSelectQueryBuilderAst(ast)
 
       if (ast.limit._tag === 'Some') return invalidQueryBuilder(`.first() can't be called after .limit()`)
 
@@ -149,6 +174,65 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
         insertValues,
       }) as any
     },
+    insert: (values) => {
+      return makeQueryBuilder(tableDef, {
+        _tag: 'InsertQuery',
+        tableDef,
+        values: values as any,
+        onConflict: undefined,
+        returning: undefined,
+        resultSchema: Schema.Void,
+      }) as any
+    },
+    onConflict: (target: string, action: 'ignore' | 'replace' | 'update', updateValues?: Record<string, unknown>) => {
+      assertInsertQueryBuilderAst(ast)
+
+      const onConflict = Match.value(action).pipe(
+        Match.when('ignore', () => ({ target, action: { _tag: 'ignore' } }) satisfies QueryBuilderAst.OnConflict),
+        Match.when('replace', () => ({ target, action: { _tag: 'replace' } }) satisfies QueryBuilderAst.OnConflict),
+        Match.when(
+          'update',
+          () => ({ target, action: { _tag: 'update', update: updateValues! } }) satisfies QueryBuilderAst.OnConflict,
+        ),
+        Match.exhaustive,
+      )
+
+      return makeQueryBuilder(tableDef, {
+        ...ast,
+        onConflict,
+      }) as any
+    },
+
+    returning: (...columns) => {
+      assertWriteQueryBuilderAst(ast)
+
+      return makeQueryBuilder(tableDef, {
+        ...ast,
+        returning: columns,
+        resultSchema: tableDef.schema.pipe(Schema.pick(...columns), Schema.Array),
+      }) as any
+    },
+
+    update: (values) => {
+      return makeQueryBuilder(tableDef, {
+        _tag: 'UpdateQuery',
+        tableDef,
+        values: values as any,
+        where: [],
+        returning: undefined,
+        resultSchema: Schema.Void,
+      }) as any
+    },
+
+    delete: () => {
+      return makeQueryBuilder(tableDef, {
+        _tag: 'DeleteQuery',
+        tableDef,
+        where: [],
+        returning: undefined,
+        resultSchema: Schema.Void,
+      }) as any
+    },
   } satisfies QueryBuilder.ApiFull<TResult, TTableDef, never, QueryInfo.None>
 
   return {
@@ -167,94 +251,38 @@ export const makeQueryBuilder = <TResult, TTableDef extends DbSchema.TableDefBas
   } satisfies QueryBuilder<TResult, TTableDef>
 }
 
-const emptyAst = (tableDef: DbSchema.TableDefBase) =>
-  ({
-    _tag: 'SelectQuery',
-    columns: [],
-    pickFirst: false,
-    select: { columns: [] },
-    orderBy: [],
-    offset: Option.none(),
-    limit: Option.none(),
-    tableDef,
-    where: [],
-    resultSchemaSingle: tableDef.schema,
-  }) satisfies QueryBuilderAst
+const emptyAst = (tableDef: DbSchema.TableDefBase): QueryBuilderAst.SelectQuery => ({
+  _tag: 'SelectQuery',
+  columns: [],
+  pickFirst: false,
+  select: { columns: [] },
+  orderBy: [],
+  offset: Option.none(),
+  limit: Option.none(),
+  tableDef,
+  where: [],
+  resultSchemaSingle: tableDef.schema,
+})
 
-const astToSql = (ast: QueryBuilderAst) => {
-  if (isRowQuery(ast)) {
-    // TODO
-    return { query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE id = ?`, bindValues: [ast.id as TODO] }
+// Helper functions
+// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+function assertSelectQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.SelectQuery {
+  if (ast._tag !== 'SelectQuery') {
+    throw new Error('Expected SelectQuery but got ' + ast._tag)
   }
-
-  const bindValues: unknown[] = []
-
-  // TODO bind values
-  const whereStmt =
-    ast.where.length > 0
-      ? `WHERE ${ast.where
-          .map(({ col, op, value }) => {
-            if (value === null) {
-              if (op !== '=' && op !== '!=') {
-                throw new Error(`Unsupported operator for NULL value: ${op}`)
-              }
-              const opStmt = op === '=' ? 'IS' : 'IS NOT'
-              return `${col} ${opStmt} NULL`
-            } else {
-              const colDef = ast.tableDef.sqliteDef.columns[col]
-              if (colDef === undefined) {
-                throw new Error(`Column ${col} not found`)
-              }
-              const isArray = op === 'IN' || op === 'NOT IN'
-              const colSchema = isArray ? Schema.Array(colDef.schema) : colDef.schema
-              const encodedValue = Schema.encodeSync(colSchema)(value)
-
-              if (isArray) {
-                bindValues.push(...encodedValue)
-                const placeholders = Array.from({ length: encodedValue.length }, () => '?').join(', ')
-                return `${col} ${op} (${placeholders})`
-              } else {
-                bindValues.push(encodedValue)
-                return `${col} ${op} ?`
-              }
-            }
-          })
-          .join(' AND ')}`
-      : ''
-
-  if (ast._tag === 'CountQuery') {
-    const selectFromStmt = `SELECT COUNT(*) as count FROM '${ast.tableDef.sqliteDef.name}'`
-    const query = [selectFromStmt, whereStmt].filter((_) => _.length > 0).join(' ')
-    return { query, bindValues }
-  }
-  const columnsStmt = ast.select.columns.length === 0 ? '*' : ast.select.columns.join(', ')
-  const selectStmt = `SELECT ${columnsStmt}`
-  const fromStmt = `FROM '${ast.tableDef.sqliteDef.name}'`
-
-  const orderByStmt =
-    ast.orderBy.length > 0
-      ? `ORDER BY ${ast.orderBy.map(({ col, direction }) => `${col} ${direction}`).join(', ')}`
-      : ''
-
-  const limitStmt = ast.limit._tag === 'Some' ? `LIMIT ?` : ''
-  if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
-
-  const offsetStmt = ast.offset._tag === 'Some' ? `OFFSET ?` : ''
-  if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
-
-  const query = [selectStmt, fromStmt, whereStmt, orderByStmt, offsetStmt, limitStmt]
-    .map((_) => _.trim())
-    .filter((_) => _.length > 0)
-    .join(' ')
-
-  // TODO bind values
-  return { query, bindValues }
 }
 
 // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-function assertQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.SelectQuery {
-  if (ast._tag !== 'SelectQuery') {
-    throw new Error('Expected SelectQuery but got ' + ast._tag)
+function assertInsertQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.InsertQuery {
+  if (ast._tag !== 'InsertQuery') {
+    throw new Error('Expected InsertQuery but got ' + ast._tag)
+  }
+}
+
+// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+function assertWriteQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.WriteQuery {
+  if (ast._tag !== 'InsertQuery' && ast._tag !== 'UpdateQuery' && ast._tag !== 'DeleteQuery') {
+    throw new Error('Expected WriteQuery but got ' + ast._tag)
   }
 }
 
@@ -264,22 +292,38 @@ export const invalidQueryBuilder = (msg?: string) => {
   throw new Error('Invalid query builder' + (msg ? `: ${msg}` : ''))
 }
 
-export const getResultSchema = (qb: QueryBuilder<any, any, any>) => {
+export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<any> => {
   const queryAst = qb[QueryBuilderAstSymbol]
-  if (queryAst._tag === 'SelectQuery') {
-    const arraySchema = Schema.Array(queryAst.resultSchemaSingle)
-    if (queryAst.pickFirst !== false) {
-      return arraySchema.pipe(Schema.headOrElse(queryAst.pickFirst.fallback))
-    }
+  switch (queryAst._tag) {
+    case 'SelectQuery': {
+      const arraySchema = Schema.Array(queryAst.resultSchemaSingle)
+      if (queryAst.pickFirst !== false) {
+        return arraySchema.pipe(Schema.headOrElse(queryAst.pickFirst.fallback))
+      }
 
-    return arraySchema
-  } else if (queryAst._tag === 'CountQuery') {
-    return Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse())
-  } else {
-    if (queryAst.tableDef.options.isSingleColumn) {
-      return queryAst.tableDef.schema.pipe(Schema.pluck('value'), Schema.Array, Schema.headOrElse())
-    } else {
-      return queryAst.tableDef.schema.pipe(Schema.Array, Schema.headOrElse())
+      return arraySchema
+    }
+    case 'CountQuery': {
+      return Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse())
+    }
+    case 'InsertQuery':
+    case 'UpdateQuery':
+    case 'DeleteQuery': {
+      // For write operations with RETURNING clause, we need to return the appropriate schema
+      if (queryAst.returning && queryAst.returning.length > 0) {
+        // Create a schema for the returned columns
+        return queryAst.tableDef.schema.pipe(Schema.pick(...queryAst.returning), Schema.Array)
+      }
+
+      // For write operations without RETURNING, the result is the number of affected rows
+      return Schema.Number
+    }
+    default: {
+      if (queryAst.tableDef.options.isSingleColumn) {
+        return queryAst.tableDef.schema.pipe(Schema.pluck('value'), Schema.Array, Schema.headOrElse())
+      } else {
+        return queryAst.tableDef.schema.pipe(Schema.Array, Schema.headOrElse())
+      }
     }
   }
 }

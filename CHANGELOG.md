@@ -65,6 +65,15 @@
 
 ### Notable improvements & fixes
 
+- Added support for write queries in the query builder
+  ```ts
+  table.query.insert({ id: '123', name: 'Alice' })
+  table.query.insert({ id: '123', name: 'Alice' }).onConflict('id', 'ignore')
+  table.query.insert({ id: '123', name: 'Alice' }).returning('id')
+  table.query.update({ name: 'Bob' }).where({ id: '123' })
+  table.query.delete().where({ id: '123' })
+  ```
+
 - Introduced `@livestore/peer-deps` package to simplify dependency management for Livestore packages if you don't want to manually install all the peer dependencies yourself.
 - Improved [documentation](https://livestore.dev/) (still a lot of work to do here)
 - Shows a browser dialog when trying to close a tab/window with unsaved changes
@@ -127,7 +136,8 @@
       - Comparables: document databases, kafka streams, 
 - Fix linting
 - Re-expose `Schema` from `@livestore/utils/effect`
-- Make `makeBackend` syncing function curried so `payload`, `storeId` is automatically passed through
+- docs: `llms.txt`
+- Separate mutation handler from mutation definition
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations
   - cf sync:

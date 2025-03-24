@@ -19,12 +19,12 @@ export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string,
 export type TableDefBase<
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
-  TSchema = SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>,
 > = {
   sqliteDef: TSqliteDef
   options: TOptions
   // Derived from `sqliteDef`, so only exposed for convenience
-  schema: TSchema
+  schema: SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>
+  insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
 }
 
 export type TableDef<
@@ -47,7 +47,8 @@ export type TableDef<
   options: TOptions
   // Derived from `sqliteDef`, so only exposed for convenience
   schema: TSchema
-  query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDef<TSqliteDef & {}, TOptions>>
+  insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
+  query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
   readonly Type: Schema.Schema.Type<TSchema>
   readonly Encoded: Schema.Schema.Encoded<TSchema>
 } & (TOptions['deriveMutations']['enabled'] extends true
@@ -197,7 +198,14 @@ export const table = <
   const isSingleColumn = SqliteDsl.isColumnDefinition(columnOrColumns) === true
 
   const schema = SqliteDsl.structSchemaForTable(sqliteDef)
-  const tableDef = { sqliteDef, options: options_, schema } satisfies TableDefBase
+  const insertSchema = SqliteDsl.insertStructSchemaForTable(sqliteDef)
+  const tableDef = {
+    sqliteDef,
+    options: options_,
+    schema,
+    insertSchema,
+  } satisfies TableDefBase
+
   const query = makeQueryBuilder(tableDef)
   // const tableDef = { ...tableDefBase, query } satisfies TableDef
 

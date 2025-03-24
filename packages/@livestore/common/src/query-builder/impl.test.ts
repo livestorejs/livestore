@@ -226,6 +226,110 @@ describe('query builder', () => {
       `)
     })
   })
+
+  describe('write operations', () => {
+    it('should handle INSERT queries', () => {
+      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+          ],
+          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?)",
+        }
+      `)
+    })
+
+    it('should handle UPDATE queries', () => {
+      expect(db.todos.update({ status: 'completed' }).where({ id: '123' }).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
+        }
+      `)
+    })
+
+    it('should handle DELETE queries', () => {
+      expect(db.todos.delete().where({ status: 'completed' }).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+          ],
+          "query": "DELETE FROM 'todos' WHERE status = ?",
+        }
+      `)
+    })
+
+    it('should handle INSERT with ON CONFLICT', () => {
+      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore').asSql())
+        .toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+          ],
+          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING",
+        }
+      `)
+
+      expect(
+        db.todos
+          .insert({ id: '123', text: 'Buy milk', status: 'active' })
+          .onConflict('id', 'update', { text: 'Buy soy milk', status: 'active' })
+          .asSql(),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+            "Buy soy milk",
+            "active",
+          ],
+          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET text = ?, status = ?",
+        }
+      `)
+    })
+
+    it('should handle RETURNING clause', () => {
+      expect(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id').asSql())
+        .toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "123",
+            "Buy milk",
+            "active",
+          ],
+          "query": "INSERT INTO 'todos' (id, text, status) VALUES (?, ?, ?) RETURNING id",
+        }
+      `)
+
+      expect(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id').asSql())
+        .toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+            "123",
+          ],
+          "query": "UPDATE 'todos' SET status = ? WHERE id = ? RETURNING id",
+        }
+      `)
+
+      expect(db.todos.delete().where({ status: 'completed' }).returning('id').asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "completed",
+          ],
+          "query": "DELETE FROM 'todos' WHERE status = ? RETURNING id",
+        }
+      `)
+    })
+  })
 })
 
 // TODO nested queries

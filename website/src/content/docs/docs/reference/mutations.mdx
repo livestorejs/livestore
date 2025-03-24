@@ -16,6 +16,7 @@ This page is needs to be rewritten. Please reach out in Discord if you have any 
 - TODO: write down more best practices
 - TODO: mention AI linting (either manually or via a CI step)
   - core idea: feed list of best practices to AI and check if mutations adhere to them + get suggestions if not
+- It's recommended to avoid `DELETE` mutations and instead use soft-deletes (e.g. add a `deleted` date/boolean column with a default value of `null`). This helps avoid some common concurrency issues.
 
 ## Rules of Mutations
 
