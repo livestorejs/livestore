@@ -1,9 +1,9 @@
 --- app.config.ts
 +++ app.config.ts
-@@ -30,9 +30,6 @@
+@@ -19,9 +19,6 @@
+     // @ts-expect-error TODO
      server: {
        port: process.env.PORT ? Number(process.env.PORT) : 60_001,
-       headers: credentiallessHeaders,
 -      fs: {
 -        strict: false,
 -      },

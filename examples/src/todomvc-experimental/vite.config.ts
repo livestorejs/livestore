@@ -6,16 +6,6 @@ import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 
-// Needed for OPFS Sqlite to work
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
-const credentiallessHeaders = {
-  // https://developer.chrome.com/blog/coep-credentialless-origin-trial/
-  // 'Cross-Origin-Embedder-Policy': 'credentialless',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Service-Worker-Allowed': '/',
-}
-
 const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
 const isProdBuild = process.env.NODE_ENV === 'production'
 
@@ -23,14 +13,10 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 export default defineConfig({
   server: {
     port: 60_001,
-    headers: credentiallessHeaders,
     fs: {
       // NOTE currently needed for embedding the `LiveStore` monorepo in another monorepo (e.g. under `/other-monorepo/submodules/livestore`)
       allow: process.env.MONOREPO_ROOT ? [process.env.MONOREPO_ROOT] : [process.env.WORKSPACE_ROOT!],
     },
-  },
-  preview: {
-    headers: credentiallessHeaders,
   },
   build: {
     //   sourcemap: true,
@@ -44,16 +30,6 @@ export default defineConfig({
   plugins: [
     react(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
-    // Needed for OPFS Sqlite to work
-    {
-      name: 'configure-response-headers',
-      configureServer: (server) => {
-        server.middlewares.use((_req, res, next) => {
-          Object.entries(credentiallessHeaders).forEach(([key, value]) => res.setHeader(key, value))
-          next()
-        })
-      },
-    },
     // @ts-expect-error plugin types seem to be wrong
     shouldAnalyze
       ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })

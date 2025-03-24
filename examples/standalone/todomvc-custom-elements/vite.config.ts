@@ -6,15 +6,6 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
-// Needed for OPFS Sqlite to work
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
-const credentiallessHeaders = {
-  // https://developer.chrome.com/blog/coep-credentialless-origin-trial/
-  // 'Cross-Origin-Embedder-Policy': 'credentialless',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Service-Worker-Allowed': '/',
-}
 
 const shouldAnalyze = process.env.VITE_ANALYZE !== undefined
 const isProdBuild = process.env.NODE_ENV === 'production'
@@ -23,10 +14,6 @@ const isProdBuild = process.env.NODE_ENV === 'production'
 export default defineConfig({
   server: {
     port: 60_002,
-    headers: credentiallessHeaders,
-  },
-  preview: {
-    headers: credentiallessHeaders,
   },
   build: {
     target: ['es2022'], // Needed for top-level await to work
@@ -43,17 +30,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     livestoreDevtoolsPlugin({ schemaPath: './src/schema.ts' }),
-    // Needed for OPFS Sqlite to work
-    {
-      name: 'configure-response-headers',
-      configureServer: (server) => {
-        server.middlewares.use((_req, res, next) => {
-          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
-          next()
-        })
-      },
-    },
     // @ts-expect-error plugin types seem to be wrong
     shouldAnalyze
       ? visualizer({ filename: path.resolve('./tmp/stats/index.html'), gzipSize: true, brotliSize: true })
