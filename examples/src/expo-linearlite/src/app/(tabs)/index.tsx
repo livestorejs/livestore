@@ -1,7 +1,6 @@
 import { LegendList } from '@legendapp/list'
-import { queryDb, sql } from '@livestore/livestore'
+import { queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useRow, useStore } from '@livestore/react'
-import { Schema } from '@livestore/utils/effect'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { Pressable, View } from 'react-native'

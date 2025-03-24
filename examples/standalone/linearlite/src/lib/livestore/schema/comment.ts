@@ -1,5 +1,4 @@
-import { DbSchema } from '@livestore/livestore'
-import { Schema } from '@livestore/utils/effect'
+import { DbSchema, Schema } from '@livestore/livestore'
 export const comment = DbSchema.table(
   'comment',
   {

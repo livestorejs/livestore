@@ -148,9 +148,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@react-native-segmented-control/segmented-control':
         specifier: 2.5.7
         version: 2.5.7(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -308,9 +305,6 @@ importers:
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 12.0.9
         version: 12.0.9(@babel/core@7.26.9)
@@ -381,9 +375,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -544,9 +535,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -608,9 +596,6 @@ importers:
       '@livestore/peer-deps':
         specifier: workspace:*
         version: link:../../../packages/@livestore/peer-deps
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -666,9 +651,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -718,9 +700,6 @@ importers:
       '@livestore/solid':
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -770,9 +749,6 @@ importers:
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -849,9 +825,6 @@ importers:
       '@livestore/sync-electric':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-electric
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -928,9 +901,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@react-native-segmented-control/segmented-control':
         specifier: 2.5.7
         version: 2.5.7(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -1088,9 +1058,6 @@ importers:
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       babel-preset-expo:
         specifier: 12.0.9
         version: 12.0.9(@babel/core@7.26.9)
@@ -1161,9 +1128,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1324,9 +1288,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1388,9 +1349,6 @@ importers:
       '@livestore/peer-deps':
         specifier: 0.3.0-dev.23
         version: 0.3.0-dev.23(@opentelemetry/resources@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)(ioredis@5.5.0)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.4.2)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))(ws@8.18.0)
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1446,9 +1404,6 @@ importers:
       '@livestore/react':
         specifier: workspace:*
         version: link:../../../packages/@livestore/react
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1498,9 +1453,6 @@ importers:
       '@livestore/solid':
         specifier: workspace:*
         version: link:../../../packages/@livestore/solid
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1550,9 +1502,6 @@ importers:
       '@livestore/sync-cf':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-cf
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2
@@ -1629,9 +1578,6 @@ importers:
       '@livestore/sync-electric':
         specifier: workspace:*
         version: link:../../../packages/@livestore/sync-electric
-      '@livestore/utils':
-        specifier: workspace:*
-        version: link:../../../packages/@livestore/utils
       '@livestore/wa-sqlite':
         specifier: 1.0.5-dev.2
         version: 1.0.5-dev.2

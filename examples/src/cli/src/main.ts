@@ -6,9 +6,9 @@ import path from 'node:path'
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
 import type { DbSchema, LiveStoreSchema } from '@livestore/common/schema'
-import { createStore, queryDb } from '@livestore/livestore'
+import { createStore, queryDb, Schema } from '@livestore/livestore'
 import { makeCfSync } from '@livestore/sync-cf'
-import { Effect, Layer, Logger, LogLevel, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, LogLevel, Option, Stream } from '@livestore/utils/effect'
 import { Cli, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))

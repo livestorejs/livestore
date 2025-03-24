@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-todomvc",
 +  "name": "livestore-example-standalone-todomvc",
@@ -14,11 +14,9 @@
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/peer-deps": "workspace:*",
 -    "@livestore/react": "workspace:*",
--    "@livestore/utils": "workspace:*",
 +    "@livestore/livestore": "0.3.0-dev.23",
 +    "@livestore/peer-deps": "0.3.0-dev.23",
 +    "@livestore/react": "0.3.0-dev.23",
-+    "@livestore/utils": "0.3.0-dev.23",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@opentelemetry/exporter-trace-otlp-http": "0.57.2",
      "@opentelemetry/resources": "1.30.1",

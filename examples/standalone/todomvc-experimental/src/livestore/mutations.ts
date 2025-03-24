@@ -1,5 +1,4 @@
-import { defineMutation, sql } from '@livestore/livestore'
-import { Schema } from '@livestore/utils/effect'
+import { defineMutation, Schema, sql } from '@livestore/livestore'
 
 import { Filter } from '../types.js'
 

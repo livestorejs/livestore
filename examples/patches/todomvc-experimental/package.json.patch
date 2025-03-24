@@ -1,6 +1,6 @@
 --- package.json
 +++ package.json
-@@ -1,15 +1,15 @@
+@@ -1,14 +1,14 @@
  {
 -  "name": "livestore-example-src-todomvc-experimental",
 +  "name": "livestore-example-standalone-todomvc-experimental",
@@ -14,11 +14,9 @@
 -    "@livestore/livestore": "workspace:*",
 -    "@livestore/peer-deps": "workspace:*",
 -    "@livestore/react": "workspace:*",
--    "@livestore/utils": "workspace:*",
 +    "@livestore/livestore": "0.3.0-dev.23",
 +    "@livestore/peer-deps": "0.3.0-dev.23",
 +    "@livestore/react": "0.3.0-dev.23",
-+    "@livestore/utils": "0.3.0-dev.23",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
      "@overengineering/fps-meter": "0.1.2",
      "react": "19.0.0",

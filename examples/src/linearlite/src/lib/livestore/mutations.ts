@@ -1,7 +1,6 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { defineMutation, sql } from '@livestore/livestore'
-import { Schema } from '@livestore/utils/effect'
+import { defineMutation, Schema, sql } from '@livestore/livestore'
 
 export const createIssueWithDescription = defineMutation(
   'createIssueWithDescription',

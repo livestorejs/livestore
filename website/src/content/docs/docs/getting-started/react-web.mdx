@@ -167,13 +167,12 @@ Create a file named `mutations.ts` inside the `livestore` folder. This file stor
 
 A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
 
-Use the `Schema`, `defineMutation` and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
+Use the `defineMutation`, `Schema`, and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
 
 Here's an example:
 
 ```ts
-import { Schema } from '@livestore/livestore'
-import { defineMutation, sql } from '@livestore/livestore'
+import { defineMutation, Schema, sql } from '@livestore/livestore'
 
 export const addTodo = defineMutation(
   'addTodo',

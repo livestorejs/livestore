@@ -1,6 +1,6 @@
+import { Schema } from '@livestore/livestore'
 import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
 import { createAPIFileRoute } from '@tanstack/start/api'
-import { Schema } from '@livestore/utils/effect'
 
 import { makeDb } from '@/server/db.js'
 

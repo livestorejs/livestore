@@ -10,7 +10,6 @@
     "@livestore/peer-deps": "0.3.0-dev.23",
     "@livestore/react": "0.3.0-dev.23",
     "@livestore/sync-cf": "0.3.0-dev.23",
-    "@livestore/utils": "0.3.0-dev.23",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "@opentelemetry/exporter-trace-otlp-http": "0.57.2",
     "@opentelemetry/resources": "1.30.1",

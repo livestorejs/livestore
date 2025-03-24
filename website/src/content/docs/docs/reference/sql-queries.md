@@ -9,8 +9,7 @@ sidebar:
 LiveStore supports arbitrary SQL queries on top of SQLite. In order for LiveStore to handle the query results correctly, you need to provide the result schema.
 
 ```ts
-import { queryDb, DbSchema, sql } from '@livestore/livestore'
-import { Schema } from '@livestore/livestore'
+import { queryDb, DbSchema, Schema, sql } from '@livestore/livestore'
 
 const table = DbSchema.table('my_table', {
 	id: DbSchema.text({ primaryKey: true }),
