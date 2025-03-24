@@ -1,5 +1,5 @@
 import { DbSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Schema } from '@livestore/utils/effect'
 
 export const SrollState = Schema.Struct({
   list: Schema.optional(Schema.Number),

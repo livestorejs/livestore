@@ -1,7 +1,7 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { DbSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Schema } from '@livestore/utils/effect'
 export const issue = DbSchema.table(
   'issue',
   {
