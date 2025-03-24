@@ -412,6 +412,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         otelContext: options?.otelContext,
         queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
       })
+
       return Schema.decodeSync(schema)(rawRes)
     } else if (query._tag === 'def') {
       const query$ = query.make(this.reactivityGraph.context!)

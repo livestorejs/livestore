@@ -65,25 +65,22 @@ export const startDevtoolsServer = ({
       const req = yield* HttpServerRequest.HttpServerRequest
 
       if (Headers.has(req.headers, 'upgrade')) {
-        yield* Effect.log(`WS Relay ${relayNodeName}: request ${req.url}`)
+        // yield* Effect.log(`WS Relay ${relayNodeName}: request ${req.url}`)
 
         const socket = yield* req.upgrade
+
         const { webChannel, from } = yield* makeWebSocketEdge({ socket, socketType: { _tag: 'relay' } })
 
-        yield* node.addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
+        yield* node
+          .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
+          .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
+
         if (LS_DEV) {
           yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
+          yield* Effect.addFinalizerLog(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
         }
 
-        yield* Effect.addFinalizer(
-          Effect.fn(function* () {
-            if (LS_DEV) {
-              yield* Effect.log(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
-            }
-            yield* node.removeEdge(from).pipe(Effect.orDie)
-          }),
-        )
-
+        // We want to keep the websocket open until the client disconnects or the server shuts down
         yield* Effect.never
 
         return HttpServerResponse.empty({ status: 101 })
@@ -106,7 +103,7 @@ export const startDevtoolsServer = ({
       }
 
       return HttpServerResponse.text('Not found')
-    })
+    }).pipe(Effect.interruptible)
 
     yield* Effect.logDebug(
       `[@livestore/adapter-node:devtools] LiveStore devtools are available at http://${host}:${port}/_livestore/node/${storeId}/${clientId}/${sessionId}`,

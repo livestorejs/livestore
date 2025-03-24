@@ -48,6 +48,8 @@ export type TableDef<
   // Derived from `sqliteDef`, so only exposed for convenience
   schema: TSchema
   query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDef<TSqliteDef & {}, TOptions>>
+  readonly Type: Schema.Schema.Type<TSchema>
+  readonly Encoded: Schema.Schema.Encoded<TSchema>
 } & (TOptions['deriveMutations']['enabled'] extends true
   ? DerivedMutationHelperFns<TSqliteDef['columns'], TOptions>
   : {})

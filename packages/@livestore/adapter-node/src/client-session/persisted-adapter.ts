@@ -125,20 +125,23 @@ export const makePersistedAdapter = ({
             url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
             nodeName: `client-session-${storeId}-${clientId}-${sessionId}`,
           })
+
           const sessionsChannel = yield* webmeshNode.makeBroadcastChannel({
             channelName: 'session-info',
             schema: Devtools.SessionInfo.Message,
           })
+
           yield* Devtools.SessionInfo.provideSessionInfo({
             webChannel: sessionsChannel,
             sessionInfo: Devtools.SessionInfo.SessionInfo.make({ storeId, clientId, sessionId }),
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
-          webmeshNode.debug.print()
+
           const storeDevtoolsChannel = yield* DevtoolsNode.makeChannelForConnectedMeshNode({
             node: webmeshNode,
             target: `devtools-${storeId}-${clientId}-${sessionId}`,
             schema: { listen: Devtools.ClientSession.MessageToApp, send: Devtools.ClientSession.MessageFromApp },
           })
+
           yield* connectDevtoolsToStore(storeDevtoolsChannel)
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
       }

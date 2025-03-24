@@ -119,7 +119,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const edgeChannels = new Map<MeshNodeName, { channel: EdgeChannel; listenFiber: Fiber.RuntimeFiber<void> }>()
 
     // To avoid unbounded memory growth, we automatically forget about packet ids after a while
-    const handledPacketIds = new TimeoutSet<string>({ timeout: Duration.minutes(1) })
+    const handledPacketIds = yield* TimeoutSet.make(Duration.minutes(1))
 
     const newEdgeAvailablePubSub = yield* PubSub.unbounded<MeshNodeName>().pipe(Effect.acquireRelease(PubSub.shutdown))
 
@@ -164,7 +164,6 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           // even though we're already handling it here.
           // TODO we should clean this up at some point
           source: packet.target,
-          // source: nodeName,
           target: packet.source,
           remainingHops: packet.hops,
           hops: [],
@@ -330,8 +329,6 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         if (edgeChannels.has(targetNodeName)) {
           if (replaceIfExists) {
             yield* removeEdge(targetNodeName).pipe(Effect.orDie)
-            // console.log('interrupting', targetNodeName)
-            // yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
           } else {
             return yield* new EdgeAlreadyExistsError({ target: targetNodeName })
           }
@@ -406,6 +403,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             }),
           ),
           Stream.runDrain,
+          Effect.interruptible,
           Effect.orDie,
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -419,6 +417,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         })
         yield* sendPacket(edgeAddedPacket).pipe(Effect.orDie)
       }).pipe(
+        Effect.annotateLogs({ 'addEdge:target': targetNodeName }),
         Effect.withSpan(`addEdge:${nodeName}→${targetNodeName}`, {
           attributes: { supportsTransferables: edgeChannel.supportsTransferables },
         }),
@@ -475,6 +474,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           yield* Queue.takeBetween(queue, 1, 10).pipe(
             Effect.tap((_) => Queue.offerAll(incomingPacketsQueue, _)),
             Effect.forever,
+            Effect.interruptible,
             Effect.tapCauseLogPretty,
             Effect.forkScoped,
           )
@@ -655,4 +655,4 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       edgeKeys,
       debug,
     } satisfies MeshNode
-  }).pipe(Effect.withSpan(`makeMeshNode:${nodeName}`))
+  }).pipe(Effect.withSpan(`makeMeshNode:${nodeName}`), Effect.annotateLogs({ 'makeMeshNode.nodeName': nodeName }))

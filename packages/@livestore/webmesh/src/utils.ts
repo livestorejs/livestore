@@ -1,5 +1,5 @@
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
-import { Duration } from '@livestore/utils/effect'
+import { Duration, Effect } from '@livestore/utils/effect'
 
 /**
  * A set of values that expire after a given timeout
@@ -10,9 +10,18 @@ export class TimeoutSet<V> {
   private timeoutHandle: NodeJS.Timeout | undefined
   private readonly timeoutMs: number
 
-  constructor({ timeout }: { timeout: Duration.DurationInput }) {
+  private constructor({ timeout }: { timeout: Duration.DurationInput }) {
     this.timeoutMs = Duration.toMillis(timeout)
   }
+
+  static make = (timeout: Duration.DurationInput) =>
+    Effect.gen(function* () {
+      const timeoutSet = new TimeoutSet({ timeout })
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => timeoutSet.onShutdown()))
+
+      return timeoutSet
+    })
 
   add(value: V): void {
     this.values.set(value, Date.now())
@@ -44,4 +53,6 @@ export class TimeoutSet<V> {
       }
     }
   }
+
+  onShutdown = () => clearTimeout(this.timeoutHandle)
 }

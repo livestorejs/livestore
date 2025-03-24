@@ -101,13 +101,8 @@ const server = Cli.Command.make('server').pipe(Cli.Command.withSubcommands([star
 
 const otelLayer = OtelLiveHttp({ serviceName: 'livestore-cli', skipLogUrl: false })
 
-// const DevToolsLive = EffectDevtools.layerWebSocket().pipe(
-//   Layer.provide(PlatformNode.NodeSocket.layerWebSocketConstructor),
-// )
-
 const command = Cli.Command.make('livestore').pipe(
   Cli.Command.withSubcommands([client, server]),
-  // Cli.Command.provide(DevToolsLive),
   Cli.Command.provide(otelLayer),
 )
 

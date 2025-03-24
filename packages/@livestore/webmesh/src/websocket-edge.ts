@@ -56,10 +56,12 @@ export const connectViaWebSocket = ({
       socketType: { _tag: 'leaf', from: node.nodeName },
     })
 
-    yield* node.addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
+    yield* node
+      .addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
+      .pipe(Effect.acquireRelease(() => node.removeEdge('ws').pipe(Effect.orDie)))
 
     yield* disconnected
-  }).pipe(Effect.scoped, Effect.forever, Effect.provide(binaryWebSocketConstructorLayer))
+  }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
 
 const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructor, (url, protocols) => {
   const socket = new globalThis.WebSocket(url, protocols)
@@ -95,13 +97,16 @@ export const makeWebSocketEdge = ({
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
+      const retryOpenTimeoutSchedule = Schedule.exponential(100).pipe(
+        Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout'),
+      )
+
       yield* Stream.never.pipe(
         Stream.pipeThroughChannel(Socket.toChannel(socket)),
         Stream.catchTag(
           'SocketError',
           Effect.fn(function* (error) {
             if (error.reason === 'Close') {
-              console.log('socket closed', error)
               yield* isConnectedLatch.close
               yield* Deferred.succeed(closedDeferred, undefined)
               return yield* Effect.interrupt
@@ -110,13 +115,10 @@ export const makeWebSocketEdge = ({
             }
           }),
         ),
-        Stream.retry(
-          Schedule.exponential(100).pipe(Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout')),
-        ),
-        Stream.map((msg) => Schema.decodeUnknownEither(MessageMsgPack)(new Uint8Array(msg))),
-        Stream.flatten(),
-        Stream.tap((msg) =>
-          Effect.gen(function* () {
+        Stream.retry(retryOpenTimeoutSchedule),
+        Stream.tap(
+          Effect.fn(function* (bytes) {
+            const msg = yield* Schema.decode(MessageMsgPack)(new Uint8Array(bytes))
             if (msg._tag === 'WSEdgeInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
