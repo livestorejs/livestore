@@ -10,7 +10,7 @@ LiveStore supports arbitrary SQL queries on top of SQLite. In order for LiveStor
 
 ```ts
 import { queryDb, DbSchema, sql } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Schema } from '@livestore/livestore'
 
 const table = DbSchema.table('my_table', {
 	id: DbSchema.text({ primaryKey: true }),

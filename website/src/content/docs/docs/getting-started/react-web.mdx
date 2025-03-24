@@ -84,17 +84,17 @@ For existing projects, see [Existing project setup](#existing-project-setup).
    <Tabs syncKey="package-manager">
      <TabItem label="bun">
        ```shell
-       bun add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite effect
+       bun add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
        ```
      </TabItem>
      <TabItem label="pnpm">
        ```shell
-       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite effect
+       pnpm add @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
        ```
      </TabItem>
      <TabItem label="npm">
        ```shell
-       npm install @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite effect
+       npm install @livestore/livestore @livestore/wa-sqlite @livestore/adapter-web @livestore/react @livestore/utils @livestore/peer-deps @livestore/devtools-vite
        ```
      </TabItem>
    </Tabs>
@@ -167,12 +167,12 @@ Create a file named `mutations.ts` inside the `livestore` folder. This file stor
 
 A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
 
-Use the `Schema` module from `effect` along with `defineMutation` and `sql` from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
+Use the `Schema`, `defineMutation` and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
 
 Here's an example:
 
 ```ts
-import { Schema } from 'effect'
+import { Schema } from '@livestore/livestore'
 import { defineMutation, sql } from '@livestore/livestore'
 
 export const addTodo = defineMutation(

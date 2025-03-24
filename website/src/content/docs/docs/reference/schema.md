@@ -16,7 +16,7 @@ LiveStore provides a schema definition language for defining your database table
 
 ```ts
 import { DbSchema, makeSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Schema } from '@livestore/livestore'
 
 export const Filter = Schema.Literal('all', 'active', 'completed')
 
@@ -61,7 +61,7 @@ Migration strategies:
 
 ```ts
 import { defineMutation, sql } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Schema } from '@livestore/livestore'
 
 export const todoCreated = defineMutation(
   'todoCreated',
@@ -101,7 +101,7 @@ You can also provide a custom schema for a column which is used to automatically
 
 ```ts
 import { DbSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Schema } from '@livestore/livestore'
 
 export const UserMetadata = Schema.Struct({ 
   petName: Schema.String,
