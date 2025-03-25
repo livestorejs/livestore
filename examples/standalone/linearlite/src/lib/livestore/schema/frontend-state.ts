@@ -1,5 +1,4 @@
-import { DbSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { DbSchema, Schema } from '@livestore/livestore'
 
 const Theme = Schema.Literal('dark', 'light', 'system').annotations({ title: 'Theme' })
 export type Theme = typeof Theme.Type

@@ -1,6 +1,5 @@
-import { queryDb, sql } from '@livestore/livestore'
+import { queryDb, Schema, sql } from '@livestore/livestore'
 import { useQuery, useStore } from '@livestore/react'
-import { Schema } from 'effect'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
 import React from 'react'

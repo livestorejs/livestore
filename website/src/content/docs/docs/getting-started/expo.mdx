@@ -84,7 +84,7 @@ For existing projects see [Existing project setup](#existing-project-setup).
 1.  **Install dependencies**
 
     ```bash
-    bunx expo install @livestore/devtools-expo @livestore/adapter-expo @livestore/livestore @livestore/react @livestore/utils effect expo-sqlite
+    bunx expo install @livestore/devtools-expo @livestore/adapter-expo @livestore/livestore @livestore/react @livestore/utils expo-sqlite
     ```
 
 2.  **Add Vite meta plugin to babel config file**
@@ -181,13 +181,12 @@ Create a file named `mutations.ts` inside the `livestore` folder. This file stor
 
 A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
 
-Use the `Schema` module from `effect` along with `defineMutation` and `sql` from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
+Use the `defineMutation`, `Schema`, and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
 
 Here's an example:
 
 ```ts
-import { Schema } from 'effect'
-import { defineMutation, sql } from '@livestore/livestore'
+import { defineMutation, Schema, sql } from '@livestore/livestore'
 
 export const todoCreated = defineMutation(
   'todoCreated',
@@ -293,8 +292,7 @@ Here's an example:
 ```ts
 import { View, Text } from 'react-native'
 import { useQuery } from '@livestore/react'
-import { querySQL, sql } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { querySQL, Schema, sql } from '@livestore/livestore'
 import { tables } from '@/livestore/schema'
 
 export default function HomeScreen() {

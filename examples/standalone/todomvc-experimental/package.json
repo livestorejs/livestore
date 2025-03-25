@@ -11,7 +11,6 @@
     "@livestore/react": "0.3.0-dev.23",
     "@livestore/wa-sqlite": "1.0.5-dev.2",
     "@overengineering/fps-meter": "0.1.2",
-    "effect": "3.13.12",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "todomvc-app-css": "2.4.3"

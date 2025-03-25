@@ -1,7 +1,6 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { DbSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { DbSchema, Schema } from '@livestore/livestore'
 
 const OrderDirection = Schema.Literal('asc', 'desc').annotations({ title: 'OrderDirection' })
 export type OrderDirection = typeof OrderDirection.Type

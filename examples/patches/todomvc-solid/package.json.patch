@@ -16,5 +16,5 @@
 +    "@livestore/peer-deps": "0.3.0-dev.23",
 +    "@livestore/solid": "0.3.0-dev.23",
      "@livestore/wa-sqlite": "1.0.5-dev.2",
-     "effect": "3.13.12",
      "solid-js": "1.9.4",
+     "todomvc-app-css": "2.4.3",

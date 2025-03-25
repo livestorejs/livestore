@@ -1,5 +1,4 @@
-import { DbSchema, makeSchema } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { DbSchema, makeSchema, Schema } from '@livestore/livestore'
 
 import { Filter } from '../types.js'
 import * as mutations from './mutations.js'
