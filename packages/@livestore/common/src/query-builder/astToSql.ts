@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../index.js'
+import { SessionIdSymbol } from '../adapter-types.js'
 import type { DbSchema } from '../schema/mod.js'
 import type { SqlValue } from '../util.js'
 import type { QueryBuilderAst } from './api.js'
