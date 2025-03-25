@@ -50,7 +50,7 @@ export const makeInMemoryAdapter =
             push: () => Effect.void,
           },
           initialState: { leaderHead: EventId.ROOT, migrationsReport },
-          export: Effect.dieMessage('Not implemented'),
+          export: Effect.sync(() => sqliteDb.export()),
           getMutationLogData: Effect.succeed(new Uint8Array()),
           getSyncState: Effect.dieMessage('Not implemented'),
           networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
