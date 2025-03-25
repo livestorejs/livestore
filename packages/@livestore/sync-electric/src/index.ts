@@ -321,6 +321,12 @@ export const makeSyncBackend =
             return { metadata }
           }),
         isConnected,
+        metadata: {
+          name: '@livestore/sync-electric',
+          description: 'LiveStore sync backend implementation using ElectricSQL',
+          protocol: 'http',
+          endpoint,
+        },
       } satisfies SyncBackend<SyncMetadata>
     })
 

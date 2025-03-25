@@ -17,6 +17,6 @@ description: How to use an ORM with LiveStore
 ## Example
 
 ```ts
-// TODO
+// TODO (contribution welcome)
 ```
 

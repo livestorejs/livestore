@@ -59,6 +59,10 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
     HttpClient.HttpClient
   >
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
+  /**
+   * Metadata describing the sync backend.
+   */
+  metadata: { name: string; description: string } & Record<string, Schema.JsonValue>
 }
 
 export class IsOfflineError extends Schema.TaggedError<IsOfflineError>()('IsOfflineError', {}) {}

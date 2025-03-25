@@ -278,7 +278,7 @@ const listenToDevtools = ({
             case 'LSD.Leader.SyncingInfoReq': {
               const syncingInfo = Devtools.Leader.SyncingInfo.make({
                 enabled: syncBackend !== undefined,
-                metadata: {},
+                metadata: syncBackend?.metadata ?? {},
               })
 
               yield* sendMessage(Devtools.Leader.SyncingInfoRes.make({ syncingInfo, ...reqPayload }))

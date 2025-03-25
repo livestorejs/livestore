@@ -141,6 +141,12 @@ export const makeCfSync =
 
             return { metadata: Array.from({ length: batch.length }, () => Option.some({ createdAt })) }
           }),
+        metadata: {
+          name: '@livestore/cf-sync',
+          description: 'LiveStore sync backend implementation using Cloudflare Workers & Durable Objects',
+          protocol: 'ws',
+          url: options.url,
+        },
       } satisfies SyncBackend<SyncMetadata>
 
       return api

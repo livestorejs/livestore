@@ -57,6 +57,10 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
             }),
             semaphore.withPermits(1),
           ),
+        metadata: {
+          name: '@livestore/mock-sync',
+          description: 'Just a mock sync backend',
+        },
       } satisfies SyncBackend
     })
 
