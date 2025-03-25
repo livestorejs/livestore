@@ -159,8 +159,8 @@ const makeLeaderThread = ({
     const readModelDatabaseName = `${'livestore-'}${schema.hash}@${liveStoreStorageFormatVersion}.db`
     const dbMutationLogPath = `${'livestore-'}mutationlog@${liveStoreStorageFormatVersion}.db`
 
-    const dbReadModel = yield* makeSqliteDb({ _tag: 'expo', databaseName: readModelDatabaseName, directory })
-    const dbMutationLog = yield* makeSqliteDb({ _tag: 'expo', databaseName: dbMutationLogPath, directory })
+    const dbReadModel = yield* makeSqliteDb({ _tag: 'file', databaseName: readModelDatabaseName, directory })
+    const dbMutationLog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbMutationLogPath, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,

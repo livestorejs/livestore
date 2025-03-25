@@ -191,8 +191,8 @@ importers:
         specifier: 0.29.22
         version: 0.29.22(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))
       expo-sqlite:
-        specifier: 15.1.2
-        version: 15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
+        specifier: 15.2.0-canary-20250325-0a15ab6
+        version: 15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
       expo-status-bar:
         specifier: 2.0.1
         version: 2.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -318,8 +318,8 @@ importers:
         specifier: 14.0.2
         version: 14.0.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))
       expo-sqlite:
-        specifier: 15.1.2
-        version: 15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
+        specifier: 15.2.0-canary-20250325-0a15ab6
+        version: 15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
       expo-status-bar:
         specifier: 2.0.1
         version: 2.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -944,8 +944,8 @@ importers:
         specifier: 0.29.22
         version: 0.29.22(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))
       expo-sqlite:
-        specifier: 15.1.2
-        version: 15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
+        specifier: 15.2.0-canary-20250325-0a15ab6
+        version: 15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
       expo-status-bar:
         specifier: 2.0.1
         version: 2.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -1071,8 +1071,8 @@ importers:
         specifier: 14.0.2
         version: 14.0.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))
       expo-sqlite:
-        specifier: 15.1.2
-        version: 15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
+        specifier: 15.2.0-canary-20250325-0a15ab6
+        version: 15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
       expo-status-bar:
         specifier: 2.0.1
         version: 2.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
@@ -1653,8 +1653,8 @@ importers:
         specifier: '*'
         version: 18.0.11(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))
       expo-sqlite:
-        specifier: ^15.1.2
-        version: 15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0)
+        specifier: ^15.2.0-canary-20250325-0a15ab6
+        version: 15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0)
 
   packages/@livestore/adapter-node:
     dependencies:
@@ -3422,7 +3422,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@0.22.18':
     resolution: {integrity: sha512-TWGKHWTYU9xE7YETPk2zQzLPl+bldpzZCa0Cqg0QeENpu03ZEnMxUqrgHwrbWGTf7ONTYC1tODBkFCFw/qgPGA==}
@@ -8099,8 +8099,8 @@ packages:
     peerDependencies:
       expo: '*'
 
-  expo-sqlite@15.1.2:
-    resolution: {integrity: sha512-xe+v56ts6GWJoNXLpWBQJmIPd7K1Bk9tmWc2b0nV5yUjqXZX3lbTYm8QhXEqUJxYu87o2GSkNqAqNKeDbMUXGQ==}
+  expo-sqlite@15.2.0-canary-20250325-0a15ab6:
+    resolution: {integrity: sha512-jTrNsvrrKtO/0jpB8O2LrWu/kViv4Y2Grez/Lrb90EoelLIhXzdl4gTdFaG8W/1M85rDlulFzVv2MJORySoF7g==}
     peerDependencies:
       expo: '*'
       react: '*'
@@ -21268,13 +21268,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  expo-sqlite@15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0):
+  expo-sqlite@15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0):
     dependencies:
       expo: 52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-native: 0.76.7(@babel/core@7.26.9)(@types/react@19.0.10)(react@19.0.0)
 
-  expo-sqlite@15.1.2(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0):
+  expo-sqlite@15.2.0-canary-20250325-0a15ab6(expo@52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0))(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0):
     dependencies:
       expo: 52.0.37(@babel/core@7.26.9)(@expo/metro-runtime@4.0.1(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0)))(graphql@16.10.0)(react-native@0.76.7(@babel/core@7.26.9)(react@19.0.0))(react@19.0.0)
       react: 19.0.0

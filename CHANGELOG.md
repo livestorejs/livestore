@@ -154,8 +154,6 @@
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
-- Expo:
-  - Fix: Implement proper SQLite rollback via session extension once landed in expo-sqlite
 - Release
   - Write blog post
   - Prepare X/Bluesky thread

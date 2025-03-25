@@ -14,7 +14,7 @@ import * as ExpoFs from 'expo-file-system/src/next'
 import * as SQLite from 'expo-sqlite'
 
 type Metadata = {
-  _tag: 'expo'
+  _tag: 'file'
   dbPointer: number
   persistenceInfo: PersistenceInfo
   input: ExpoDatabaseInput
@@ -22,7 +22,7 @@ type Metadata = {
 
 type ExpoDatabaseInput =
   | {
-      _tag: 'expo'
+      _tag: 'file'
       databaseName: string
       directory: string
     }
@@ -36,13 +36,12 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
   Effect.gen(function* () {
     // console.log('makeSqliteDb', input)
     if (input._tag === 'in-memory') {
-      // const db = SQLite.openDatabaseSync(':memory:')
+      const db = SQLite.openDatabaseSync(':memory:')
 
       return makeSqliteDb_({
-        // db,
-        makeDb: () => SQLite.openDatabaseSync(':memory:'),
+        db,
         metadata: {
-          _tag: 'expo',
+          _tag: 'file',
           dbPointer: 0,
           persistenceInfo: { fileName: ':memory:' },
           input,
@@ -50,14 +49,13 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
       }) as any
     }
 
-    if (input._tag === 'expo') {
-      // const db = SQLite.openDatabaseSync(input.databaseName, {}, input.directory)
+    if (input._tag === 'file') {
+      const db = SQLite.openDatabaseSync(input.databaseName, {}, input.directory)
 
       return makeSqliteDb_({
-        // db,
-        makeDb: () => SQLite.openDatabaseSync(input.databaseName, {}, input.directory),
+        db,
         metadata: {
-          _tag: 'expo',
+          _tag: 'file',
           dbPointer: 0,
           persistenceInfo: { fileName: `${input.directory}/${input.databaseName}` },
           input,
@@ -67,23 +65,19 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
   })
 
 const makeSqliteDb_ = <TMetadata extends Metadata>({
-  // db,
-  makeDb,
+  db,
   metadata,
 }: {
-  // db: SQLite.SQLiteDatabase
-  makeDb: () => SQLite.SQLiteDatabase
+  db: SQLite.SQLiteDatabase
   metadata: TMetadata
 }): SqliteDb<TMetadata> => {
   const stmts: Set<PreparedStatement> = new Set()
-  const dbRef = { current: makeDb(), count: 0 }
 
   const sqliteDb: SqliteDb<TMetadata> = {
     metadata,
     _tag: 'SqliteDb',
     prepare: (queryStr) => {
       try {
-        const db = dbRef.current
         const dbStmt = db.prepareSync(queryStr)
         const stmt = {
           execute: (bindValues) => {
@@ -114,7 +108,6 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       }
     },
     execute: (queryStr, bindValues) => {
-      const db = dbRef.current
       const stmt = db.prepareSync(queryStr)
       try {
         const res = stmt.executeSync(bindValues ?? ([] as any))
@@ -124,7 +117,6 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       }
     },
     export: () => {
-      const db = dbRef.current
       return db.serializeSync()
     },
     select: (queryStr, bindValues) => {
@@ -134,14 +126,14 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       return res as any
     },
     destroy: () => {
-      if (metadata.input._tag === 'expo') {
-        sqliteDb.close()
+      sqliteDb.close()
+
+      if (metadata.input._tag === 'file') {
         SQLite.deleteDatabaseSync(metadata.input.databaseName, metadata.input.directory)
       }
     },
     close: () => {
       try {
-        const db = dbRef.current
         for (const stmt of stmts) {
           stmt.finalize()
         }
@@ -151,7 +143,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       } catch (cause) {
         throw new SqliteError({
           cause,
-          note: `Error closing database ${metadata.input._tag === 'expo' ? metadata.input.databaseName : 'in-memory'}`,
+          note: `Error closing database ${metadata.input._tag === 'file' ? metadata.input.databaseName : 'in-memory'}`,
         })
         // console.error('Error closing database', metadata.input, e, dbCount)
       }
@@ -161,37 +153,36 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         throw new TypeError('importing from an existing database is not yet supported in expo')
       }
 
-      const prevDb = dbRef.current
-      for (const stmt of stmts) {
-        stmt.finalize()
-      }
-      stmts.clear()
-      prevDb.closeSync()
-
-      if (metadata.input._tag === 'expo') {
-        const file = new ExpoFs.File(metadata.input.directory, metadata.input.databaseName)
-        file.write(data)
-
-        dbRef.count++
-        dbRef.current = makeDb()
-      } else {
-        dbRef.count++
-        dbRef.current = SQLite.deserializeDatabaseSync(data)
+      try {
+        const tmpDb = SQLite.deserializeDatabaseSync(data)
+        SQLite.backupDatabaseSync({ sourceDatabase: tmpDb, destDatabase: db })
+        tmpDb.closeSync()
+      } catch (cause) {
+        throw new SqliteError({
+          cause,
+          note: `Error importing database ${metadata.input._tag === 'file' ? metadata.input.databaseName : 'in-memory'}`,
+        })
       }
     },
     session: () => {
+      const session = db.createSessionSync()
+      session.attachSync(null)
       return {
-        changeset: () => new Uint8Array(),
-        finish: () => {},
+        changeset: () => session.createChangesetSync(),
+        finish: () => session.closeSync(),
       }
     },
     makeChangeset: (data) => {
+      const session = db.createSessionSync()
+      // NOTE we're not actually attaching this particular session as we only need it to create and
+      // apply an inverted changeset
       return {
         invert: () => {
-          return sqliteDb.makeChangeset(data)
+          const inverted = session.invertChangesetSync(data)
+          return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {
-          // TODO
+          session.applyChangesetSync(data)
         },
       }
     },

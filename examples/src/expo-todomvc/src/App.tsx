@@ -44,6 +44,7 @@ export const App = () => {
         adapter={adapter}
         batchUpdates={batchUpdates}
         storeId={storeId}
+        syncPayload={{ authToken: 'insecure-token-change-me' }}
       >
         <InnerApp />
       </LiveStoreProvider>

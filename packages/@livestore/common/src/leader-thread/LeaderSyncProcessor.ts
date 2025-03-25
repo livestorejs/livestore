@@ -707,7 +707,9 @@ const rollback = ({
         sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
       )
       .map((_) => ({ id: { global: _.idGlobal, client: _.idClient }, changeset: _.changeset, debug: _.debug }))
-      .toSorted((a, b) => EventId.compare(a.id, b.id))
+      .sort((a, b) => EventId.compare(a.id, b.id))
+    // TODO bring back `.toSorted` once Expo supports it
+    // .toSorted((a, b) => EventId.compare(a.id, b.id))
 
     // Apply changesets in reverse order
     for (let i = rollbackEvents.length - 1; i >= 0; i--) {
