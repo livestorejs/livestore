@@ -3,14 +3,12 @@ import './thread-polyfill.js'
 import path from 'node:path'
 
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-node'
-import type { IntentionalShutdownCause, UnexpectedError } from '@livestore/common'
-import type { ShutdownDeferred, Store, StoreInterrupted } from '@livestore/livestore'
-import { createStore, queryDb } from '@livestore/livestore'
+import type { ShutdownDeferred, Store } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
 import { makeCfSync } from '@livestore/sync-cf'
 import { IS_CI } from '@livestore/utils'
 import {
   Context,
-  Deferred,
   Effect,
   Layer,
   Logger,
@@ -57,10 +55,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
               sync: { backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) },
             })
 
-      const shutdownDeferred = yield* Deferred.make<
-        void,
-        UnexpectedError | IntentionalShutdownCause | StoreInterrupted
-      >()
+      const shutdownDeferred = yield* makeShutdownDeferred
 
       const store = yield* createStore({
         adapter,

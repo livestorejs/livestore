@@ -1,3 +1,5 @@
+import './polyfill.js'
+
 import type {
   Adapter,
   BootStatus,
@@ -39,11 +41,26 @@ export type MakeDbOptions = {
   sessionId?: string
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var RN$Bridgeless: boolean | undefined
+}
+
+const IS_NEW_ARCH = globalThis.RN$Bridgeless === true
+
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makePersistedAdapter =
   (options: MakeDbOptions = {}): Adapter =>
   ({ schema, connectDevtoolsToStore, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload }) =>
     Effect.gen(function* () {
+      if (IS_NEW_ARCH === false) {
+        return yield* UnexpectedError.make({
+          cause: new Error(
+            'The LiveStore Expo adapter requires the new React Native architecture (aka Fabric). See https://docs.expo.dev/guides/new-architecture',
+          ),
+        })
+      }
+
       const { storage, clientId = 'expo', sessionId = 'expo', sync: syncOptions } = options
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })

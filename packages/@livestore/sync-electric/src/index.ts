@@ -126,7 +126,11 @@ export const makeElectricUrl = ({
   )
 
   if (argsResult._tag === 'Left') {
-    return shouldNeverHappen('Invalid search params provided to makeElectricUrl', providedSearchParams)
+    return shouldNeverHappen(
+      'Invalid search params provided to makeElectricUrl',
+      providedSearchParams,
+      Object.fromEntries(providedSearchParams.entries()),
+    )
   }
 
   const args = argsResult.right.args

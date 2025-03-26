@@ -1,6 +1,6 @@
 # Changelog
 
-> NOTE: LiveStore is still in alpha and releases can include breaking changes. See [state of the project](https://preview.livestore.dev/reference/state-of-the-project/) for more info.
+> NOTE: LiveStore is still in alpha and releases can include breaking changes. See [state of the project](https://preview.livestore.dev/docs/reference/state-of-the-project/) for more info.
 > LiveStore is following a semver-like release strategy where breaking changes are released in minor versions before the 1.0 release.
 
 ## 0.3.0
@@ -8,7 +8,7 @@
 ### New features
 
 - New sync implementation (based on git-like push/pull semantics)
-  - See [Syncing docs page](https://livestore.dev/reference/syncing/syncing/) for more details
+  - See [Syncing docs page](https://livestore.dev/docs/reference/syncing/syncing/) for more details
   - `sync-cf` backend: More reliable websocket connection handling
   - Configurable sync semantics when app starts (either skip initial sync or block with timeout)
 
@@ -17,14 +17,18 @@
   - Still lacks a few devtools-related flows (e.g. graceful import/reset)
 
 - New: `@livestore/sync-electric` backend (experimental)
-  - See [docs page](https://livestore.dev/reference/syncing/electricsql/) for more details
+  - See [docs page](https://livestore.dev/docs/reference/syncing/electricsql/) for more details
 
 - New: `@livestore/adapter-expo` now supports syncing:
   ```ts
   const adapter = makePersistedAdapter({
-    sync: { makeBackend: ({ storeId }) => makeCfSync({ url: `...`, storeId }) },
+    sync: { backend: makeCfSync({ url: `https://...` }) },
   })
   ```
+
+  Note: Until Expo 53 is released:
+    - Expo Go won't work, so please build and run the app manually (e.g. via Xcode)
+    - Please make sure you're using the canary version of `"expo-sqlite": "^15.2.0-canary-20250325-0a15ab6"`
 
 - New: Solid integration `@livestore/solid` (experimental)
   - Still very early stage and probably lacks some features. Feedback wanted!
@@ -140,6 +144,11 @@
 - Separate mutation handler from mutation definition
 - Syncing
   - Fix: mutation log unique constraint violation during concurrent mutations
+  - More graceful handling when receiving a mutation event that doesn't exist in the local schema
+    - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
+    - 2 solution paths:
+      - Render "upgrade app" screen
+      - Go offline until user upgrades the app
   - cf sync:
     - use http for initial pull while WS connection is established
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead
@@ -154,6 +163,8 @@
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
+  - Devtools lose connection to client session (https://share.cleanshot.com/dK2rvyyj)
+  - Expo devtools: use node adapter ws server
 - Release
   - Write blog post
   - Prepare X/Bluesky thread

@@ -42,10 +42,12 @@ export const updatedNewTodoText = defineMutation(
   'updatedNewTodoText',
   Schema.Struct({ text: Schema.String }),
   sql`UPDATE app SET newTodoText = $text`,
+  { clientOnly: true },
 )
 
 export const filterUpdated = defineMutation(
   'setFilter',
   Schema.Struct({ filter: Filter }),
   sql`UPDATE app SET filter = $filter`,
+  { clientOnly: true },
 )

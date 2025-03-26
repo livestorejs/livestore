@@ -4,7 +4,12 @@ export type { QueryDebugInfo, RefreshReason, OtelOptions } from './store/store-t
 // We're re-exporting `Schema` from `effect` for convenience
 export { Schema } from '@livestore/utils/effect'
 
-export { type LiveStoreContext, type ShutdownDeferred, type LiveStoreContextRunning } from './store/store-types.js'
+export {
+  type LiveStoreContext,
+  type LiveStoreContextRunning,
+  type ShutdownDeferred,
+  makeShutdownDeferred,
+} from './store/store-types.js'
 
 export { SqliteDbWrapper, emptyDebugInfo } from './SqliteDbWrapper.js'
 

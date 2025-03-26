@@ -8,7 +8,7 @@ import type {
   ShutdownDeferred,
   Store,
 } from '@livestore/livestore'
-import { createStore, StoreInterrupted } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred, StoreInterrupted } from '@livestore/livestore'
 import { errorToString, LS_DEV } from '@livestore/utils'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
@@ -291,10 +291,7 @@ const useCreateStore = ({
 
     Effect.gen(function* () {
       const componentScope = yield* Scope.make()
-      const shutdownDeferred = yield* Deferred.make<
-        void,
-        UnexpectedError | IntentionalShutdownCause | StoreInterrupted
-      >()
+      const shutdownDeferred = yield* makeShutdownDeferred
 
       ctxValueRef.current.componentScope = componentScope
       ctxValueRef.current.shutdownDeferred = shutdownDeferred

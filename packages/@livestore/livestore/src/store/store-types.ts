@@ -1,6 +1,7 @@
 import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
 import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import type { Deferred, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
+import type { Effect, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
+import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
 import type { DebugRefreshReasonBase } from '../reactive.js'
@@ -19,6 +20,10 @@ export type LiveStoreContext =
     }
 
 export type ShutdownDeferred = Deferred.Deferred<void, UnexpectedError | IntentionalShutdownCause | StoreInterrupted>
+export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
+  void,
+  UnexpectedError | IntentionalShutdownCause | StoreInterrupted
+>()
 
 export type LiveStoreContextRunning = {
   stage: 'running'

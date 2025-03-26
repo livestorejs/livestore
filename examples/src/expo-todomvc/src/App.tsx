@@ -12,7 +12,7 @@ import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 import { mutations, schema, tables } from './livestore/schema.ts'
 
-const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID ?? nanoid(6)
+const storeId = process.env.EXPO_PUBLIC_LIVESTORE_STORE_ID
 const syncUrl = process.env.EXPO_PUBLIC_LIVESTORE_SYNC_URL
 
 const adapter = makePersistedAdapter({

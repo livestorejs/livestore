@@ -1,4 +1,4 @@
-import { type IntentionalShutdownCause, provideOtel, StoreInterrupted, type UnexpectedError } from '@livestore/common'
+import { type IntentionalShutdownCause, provideOtel, StoreInterrupted } from '@livestore/common'
 import type {
   BootStatus,
   CreateStoreOptions,
@@ -8,7 +8,7 @@ import type {
   ShutdownDeferred,
   Store,
 } from '@livestore/livestore'
-import { createStore } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { LS_DEV } from '@livestore/utils'
 import { Cause, Deferred, Effect, Exit, identity, Logger, LogLevel, Scope, TaskTracing } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
@@ -100,10 +100,7 @@ const setupStore = async ({
 
     Effect.gen(function* () {
       const componentScope = yield* Scope.make()
-      const shutdownDeferred = yield* Deferred.make<
-        void,
-        UnexpectedError | IntentionalShutdownCause | StoreInterrupted
-      >()
+      const shutdownDeferred = yield* makeShutdownDeferred
 
       yield* Effect.gen(function* () {
         const store = yield* createStore({
