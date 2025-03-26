@@ -40,7 +40,9 @@ export interface ClientSession {
 
 export interface ClientSessionLeaderThreadProxy {
   mutations: {
-    pull: Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
+    pull: (args: {
+      cursor: EventId.EventId
+    }) => Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }
@@ -164,7 +166,7 @@ export class UnexpectedError extends Schema.TaggedError<UnexpectedError>()('Live
 export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
   'LiveStore.IntentionalShutdownCause',
   {
-    reason: Schema.Literal('devtools-reset', 'devtools-import', 'manual'),
+    reason: Schema.Literal('devtools-reset', 'devtools-import', 'adapter-reset', 'manual'),
   },
 ) {}
 

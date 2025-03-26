@@ -166,7 +166,7 @@ export const makeClientSessionSyncProcessor = ({
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
-    yield* clientSession.leaderThread.mutations.pull.pipe(
+    yield* clientSession.leaderThread.mutations.pull({ cursor: syncStateRef.current.localHead }).pipe(
       Stream.tap(({ payload, remaining }) =>
         Effect.gen(function* () {
           // console.log('pulled payload from leader', { payload, remaining })

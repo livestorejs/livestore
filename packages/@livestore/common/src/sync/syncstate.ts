@@ -1,4 +1,4 @@
-import { casesHandled } from '@livestore/utils'
+import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.js'
@@ -24,6 +24,9 @@ import * as MutationEvent from '../schema/MutationEvent.js'
  *   - Can be confirmed or rejected by the upstream.
  *   - Subject to rebase if rejected.
  * - **Rollback Tail**: Events that are kept around temporarily for potential rollback until confirmed by upstream.
+ *   - Currently only needed for ClientSessionSyncProcessor.
+ *   - Note: Confirmation of an event is stronger than acknowledgment of an event and can only be done by the
+ *     absolute authority in the sync hierarchy (i.e. the sync backend in our case).
  *
  * Payloads:
  * - `PayloadUpstreamRebase`: Upstream has performed a rebase, so downstream must roll back to the specified event
@@ -37,12 +40,19 @@ import * as MutationEvent from '../schema/MutationEvent.js'
  * 2. **Head Ordering**: Upstream Head ≤ Local Head.
  * 3. **ID Sequence**: Must follow the pattern (1,0)→(1,1)→(1,2)→(2,0).
  *
+ * A few further notes to help form an intuition:
+ * - The goal is to keep the pending events as small as possible (i.e. to have synced with the next upstream node)
+ * - There are 2 cases for rebasing:
+ *   - The conflicting event only conflicts with the pending events -> only (some of) the pending events need to be rolled back
+ *   - The conflicting event conflicts even with the rollback tail (additionally to the pending events) -> events from both need to be rolled back
+ *
  * The `updateSyncState` function processes updates to the sync state based on incoming payloads,
  * handling cases such as upstream rebase, advance, local push, and rollback tail trimming.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
   pending: Schema.Array(MutationEvent.EncodedWithMeta),
   rollbackTail: Schema.Array(MutationEvent.EncodedWithMeta),
+  /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventId.EventId,
   localHead: EventId.EventId,
 }) {
@@ -193,6 +203,8 @@ export const updateSyncState = ({
   /** This is used in the leader which should ignore local events when receiving an upstream-advance payload */
   ignoreLocalEvents?: boolean
 }): typeof UpdateResult.Type => {
+  validateSyncState(syncState)
+
   const trimRollbackTail = (
     rollbackTail: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ): ReadonlyArray<MutationEvent.EncodedWithMeta> => {
@@ -243,6 +255,7 @@ export const updateSyncState = ({
       })
     }
 
+    // #region upstream-advance
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
         return UpdateResultAdvance.make({
@@ -268,9 +281,23 @@ export const updateSyncState = ({
       }
 
       // Validate that incoming events are larger than upstream head
-      if (EventId.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.id)) {
+      if (
+        EventId.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.id) ||
+        EventId.isEqual(syncState.upstreamHead, payload.newEvents[0]!.id)
+      ) {
         return unexpectedError(
-          `Incoming events must be greater than upstream head. Expected greater than: [${syncState.upstreamHead.global},${syncState.upstreamHead.client}]. Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
+          `Incoming events must be greater than upstream head. Expected greater than: (${syncState.upstreamHead.global},${syncState.upstreamHead.client}). Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
+        )
+      }
+
+      // Validate that the parent id of the first incoming event is known
+      const knownEventIds = [...syncState.rollbackTail, ...syncState.pending].map((e) => e.id)
+      knownEventIds.push(syncState.upstreamHead)
+      const firstNewEvent = payload.newEvents[0]!
+      const hasUnknownParentId = knownEventIds.every((id) => EventId.isEqual(id, firstNewEvent.parentId) === false)
+      if (hasUnknownParentId) {
+        return unexpectedError(
+          `Incoming events must have a known parent id. Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
         )
       }
 
@@ -284,6 +311,7 @@ export const updateSyncState = ({
         ignoreLocalEvents,
       })
 
+      // No divergent pending events, thus we can just advance (some of) the pending events
       if (divergentPendingIndex === -1) {
         const pendingEventIds = new Set(syncState.pending.map((e) => `${e.id.global},${e.id.client}`))
         const newEvents = payload.newEvents.filter((e) => !pendingEventIds.has(`${e.id.global},${e.id.client}`))
@@ -361,6 +389,7 @@ export const updateSyncState = ({
         })
       }
     }
+    // #endregion
 
     case 'local-push': {
       if (payload.newEvents.length === 0) {
@@ -470,3 +499,54 @@ const rebaseEvents = ({
  * can process more efficiently which avoids push-threshing
  */
 const _flattenUpdateResults = (_updateResults: ReadonlyArray<UpdateResult>) => {}
+
+const validateSyncState = (syncState: SyncState) => {
+  // Validate that the rollback tail and pending events together form a continuous chain of events / linked list via the parentId
+  const chain = [...syncState.rollbackTail, ...syncState.pending]
+  for (let i = 0; i < chain.length; i++) {
+    const event = chain[i]!
+    const nextEvent = chain[i + 1]
+    if (nextEvent === undefined) break // Reached end of chain
+
+    if (EventId.isGreaterThan(event.id, nextEvent.id)) {
+      shouldNeverHappen('Events must be sorted in ascending order by eventId', chain, {
+        event,
+        nextEvent,
+      })
+    }
+
+    // If the global id has increased, then the client id must be 0
+    const globalIdHasIncreased = nextEvent.id.global > event.id.global
+    if (globalIdHasIncreased) {
+      if (nextEvent.id.client !== 0) {
+        shouldNeverHappen(
+          `New global events must point to clientId 0 in the parentId. Received: (${nextEvent.id.global},${nextEvent.id.client})`,
+          chain,
+          {
+            event,
+            nextEvent,
+          },
+        )
+      }
+    } else {
+      // Otherwise, the parentId must be the same as the previous event's id
+      if (EventId.isEqual(nextEvent.parentId, event.id) === false) {
+        shouldNeverHappen('Events must be linked in a continuous chain via the parentId', chain, {
+          event,
+          nextEvent,
+        })
+      }
+    }
+  }
+
+  // The parent of the first rollback tail event ("oldest event") must be the upstream head (if there is a rollback tail)
+  if (syncState.rollbackTail.length > 0) {
+    const firstRollbackTailEvent = syncState.rollbackTail[0]!
+    if (EventId.isEqual(firstRollbackTailEvent.parentId, syncState.upstreamHead) === false) {
+      shouldNeverHappen('The parent of the first rollback tail event must be the upstream head', chain, {
+        event: firstRollbackTailEvent,
+        upstreamHead: syncState.upstreamHead,
+      })
+    }
+  }
+}

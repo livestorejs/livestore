@@ -92,9 +92,11 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
         ? 'devtools import'
         : cause.reason === 'devtools-reset'
           ? 'devtools reset'
-          : cause.reason === 'manual'
-            ? 'manual shutdown'
-            : 'unknown reason'
+          : cause.reason === 'adapter-reset'
+            ? 'adapter reset'
+            : cause.reason === 'manual'
+              ? 'manual shutdown'
+              : 'unknown reason'
 
   return <>LiveStore Shutdown due to {reason}</>
 }

@@ -178,10 +178,26 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
     }
   }
 
-  rebase = (parentId: EventId.EventId, isLocal: boolean) =>
+  /**
+   * Example: (global event)
+   * For event id (2,0) → (1,0) which should be rebased on event id (3,1) → (3,0)
+   * the resulting event id will be (4,0) → (3,0)
+   *
+   * Example: (client event)
+   * For event id (2,1) → (2,0) which should be rebased on event id (3,0) → (2,0)
+   * the resulting event id will be (3,1) → (3,0)
+   *
+   * Syntax: (2,1) → (2,0)
+   *          ^ ^     ^ ^
+   *          | |     | +- client parent id
+   *          | |     +--- global parent id
+   *          | +-- client id
+   *          +---- global id
+   */
+  rebase = (parentId: EventId.EventId, isClient: boolean) =>
     new EncodedWithMeta({
       ...this,
-      ...EventId.nextPair(parentId, isLocal),
+      ...EventId.nextPair(parentId, isClient),
     })
 
   static fromGlobal = (mutationEvent: AnyEncodedGlobal) =>

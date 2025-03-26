@@ -46,7 +46,7 @@ export const makeInMemoryAdapter =
         sessionId: nanoid(6),
         leaderThread: {
           mutations: {
-            pull: Stream.never,
+            pull: () => Stream.never,
             push: () => Effect.void,
           },
           initialState: { leaderHead: EventId.ROOT, migrationsReport },

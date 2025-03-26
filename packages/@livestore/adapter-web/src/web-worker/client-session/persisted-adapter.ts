@@ -116,7 +116,11 @@ export const makePersistedAdapter =
 
       const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
 
+      const shutdownChannel = yield* makeShutdownChannel(storeId)
+
       if (options.resetPersistence === true) {
+        yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
+
         yield* resetPersistedDataFromClientSession({ storageOptions, storeId })
       }
 
@@ -133,7 +137,6 @@ export const makePersistedAdapter =
       // Unique per client session (i.e. tab, window)
       const sessionId = options.sessionId ?? getPersistedId(`sessionId:${storeId}`, 'session')
 
-      const shutdownChannel = yield* makeShutdownChannel(storeId)
       const workerDisconnectChannel = yield* makeWorkerDisconnectChannel(storeId)
 
       yield* shutdownChannel.listen.pipe(
@@ -435,9 +438,8 @@ export const makePersistedAdapter =
           ),
 
           mutations: {
-            pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialLeaderHead })).pipe(
-              Stream.orDie,
-            ),
+            pull: ({ cursor }) =>
+              runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
             push: (batch) =>
               runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
                 Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {

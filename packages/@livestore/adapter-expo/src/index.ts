@@ -234,7 +234,7 @@ const makeLeaderThread = ({
 
       const leaderThread = {
         mutations: {
-          pull: Stream.fromQueue(pullQueue),
+          pull: () => Stream.fromQueue(pullQueue),
           push: (batch) =>
             syncProcessor
               .push(

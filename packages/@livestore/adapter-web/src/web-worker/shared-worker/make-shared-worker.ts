@@ -15,7 +15,6 @@ import {
   Logger,
   LogLevel,
   ParseResult,
-  Queue,
   Ref,
   Schema,
   Scope,
@@ -80,57 +79,20 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.tapCauseLogPretty,
     ) as any
 
-  // const forwardRequestStream = <TReq extends WorkerSchema.DedicatedWorkerInner.Request>(
-  //   req: TReq,
-  // ): TReq extends Serializable.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
-  //   ? Stream.Stream<A, UnexpectedError, never>
-  //   : never =>
-  //   waitForWorker.pipe(
-  //     Effect.logBefore(`forwardRequestStream: ${req._tag}`),
-  //     Effect.andThen((worker) => worker.execute(req) as Stream.Stream<unknown, unknown, never>),
-  //     Effect.interruptible,
-  //     UnexpectedError.mapToUnexpectedError,
-  //     Effect.tapCauseLogPretty,
-  //     Stream.unwrap,
-  //     Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-  //     UnexpectedError.mapToUnexpectedErrorStream,
-  //   ) as any
-
-  // TODO bring back the `forwardRequestStream` impl above. Needs debugging with Tim Smart
-  // It seems the in-progress streams are not being closed properly if the worker is closed (e.g. by closing the leader tab)
   const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInner.Request>(
     req: TReq,
   ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Stream.Stream<A, UnexpectedError, never>
     : never =>
-    Effect.gen(function* () {
-      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const queue = yield* Queue.unbounded()
-
-      yield* Scope.addFinalizer(scope, Queue.shutdown(queue))
-
-      const workerStream = worker.execute(req) as Stream.Stream<unknown, unknown, never>
-
-      yield* workerStream.pipe(
-        Stream.tap((_) => Queue.offer(queue, _)),
-        Stream.runDrain,
-        Effect.interruptible,
-        Effect.forkIn(scope),
-      )
-
-      return Stream.fromQueue(queue)
-    }).pipe(
+    waitForWorker.pipe(
+      Effect.logBefore(`forwardRequestStream: ${req._tag}`),
+      Effect.andThen((worker) => worker.execute(req) as Stream.Stream<unknown, unknown, never>),
+      Effect.interruptible,
       UnexpectedError.mapToUnexpectedError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
-      Stream.mapError((cause) =>
-        Schema.is(UnexpectedError)(cause)
-          ? cause
-          : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-            ? new UnexpectedError({ cause })
-            : cause,
-      ),
-      // Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
+      Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
+      UnexpectedError.mapToUnexpectedErrorStream,
     ) as any
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {

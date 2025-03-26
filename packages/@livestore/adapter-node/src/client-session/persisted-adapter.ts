@@ -304,9 +304,8 @@ const makeLeaderThread = ({
     const leaderThread = {
       networkStatus,
       mutations: {
-        pull: runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor: initialLeaderHead })).pipe(
-          Stream.orDie,
-        ),
+        pull: ({ cursor }) =>
+          runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
         push: (batch) =>
           runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
             Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {

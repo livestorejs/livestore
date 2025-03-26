@@ -1,14 +1,17 @@
+import '@livestore/utils/node-vitest-polyfill'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-node'
-import type { UnexpectedError } from '@livestore/common'
+import { SyncState, type UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventId, MutationEvent } from '@livestore/common/schema'
-import type { Store } from '@livestore/livestore'
-import { createStore } from '@livestore/livestore'
+import type { ShutdownDeferred, Store } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { IS_CI } from '@livestore/utils'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Logger, Schema, Stream } from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, Logger, Queue, Schema, Stream } from '@livestore/utils/effect'
 import { OtelLiveDummy, OtelLiveHttp, PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils/node-vitest'
+import { expect } from 'vitest'
 
 import { schema, tables } from '../leader-thread/fixture.js'
 import type { MockSyncBackend } from '../mock-sync-backend.js'
@@ -87,6 +90,59 @@ Vitest.describe('Store', () => {
       yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(5), Stream.runDrain)
     }).pipe(withCtx(test)),
   )
+
+  Vitest.scopedLive('should fail for event that is not larger than expected upstream', (test) =>
+    Effect.gen(function* () {
+      const shutdownDeferred = yield* makeShutdownDeferred
+      const pullQueue = yield* Queue.unbounded<MutationEvent.EncodedWithMeta>()
+
+      const adapter = makeInMemoryAdapter({
+        testing: {
+          overrides: {
+            leaderThread: {
+              mutations: {
+                pull: () =>
+                  Stream.fromQueue(pullQueue).pipe(
+                    Stream.map((item) => ({
+                      payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
+                      remaining: 0,
+                    })),
+                  ),
+                push: () => Effect.void,
+              },
+            },
+          },
+        },
+      })
+
+      const _store = yield* createStore({
+        schema: schema as LiveStoreSchema,
+        adapter,
+        storeId: 'test',
+        shutdownDeferred,
+      })
+
+      const mutationEventSchema = MutationEvent.makeMutationEventPartialSchema(
+        schema,
+      ) as TODO as Schema.Schema<MutationEvent.PartialAnyEncoded>
+      const encode = Schema.encodeSync(mutationEventSchema)
+
+      yield* Queue.offer(
+        pullQueue,
+        MutationEvent.EncodedWithMeta.make({
+          ...encode(tables.todos.insert({ id: `id_0`, text: '', completed: false })),
+          id: EventId.make({ global: 0, client: 0 }),
+          parentId: EventId.ROOT,
+          clientId: 'other-client',
+          sessionId: 'static-session-id',
+        }),
+      ).pipe(Effect.repeatN(1))
+
+      const exit = yield* shutdownDeferred.pipe(Effect.exit)
+
+      expect(exit._tag).toEqual('Failure')
+    }).pipe(withCtx(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
@@ -94,6 +150,7 @@ class TestContext extends Context.Tag('TestContext')<
   {
     makeStore: Effect.Effect<Store, UnexpectedError, Scope.Scope | OtelTracer.OtelTracer>
     mockSyncBackend: MockSyncBackend
+    shutdownDeferred: ShutdownDeferred
   }
 >() {}
 
@@ -101,11 +158,12 @@ const TestContextLive = Layer.scoped(
   TestContext,
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend
+    const shutdownDeferred = yield* makeShutdownDeferred
 
     const adapter = makeInMemoryAdapter({ sync: { backend: () => mockSyncBackend.makeSyncBackend } })
-    const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test' })
+    const makeStore = createStore({ schema: schema as LiveStoreSchema, adapter, storeId: 'test', shutdownDeferred })
 
-    return { makeStore, mockSyncBackend }
+    return { makeStore, mockSyncBackend, shutdownDeferred }
   }),
 )
 
@@ -119,7 +177,7 @@ const withCtx =
       Effect.provide(TestContextLive),
       Effect.provide(FetchHttpClient.layer),
       Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Effect.provide(Logger.pretty),
+      Effect.provide(Logger.prettyWithThread('test-main-thread')),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
       Effect.provide(otelLayer),

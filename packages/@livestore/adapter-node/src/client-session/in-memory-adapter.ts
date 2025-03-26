@@ -30,11 +30,18 @@ export interface InMemoryAdapterOptions {
    * @default nanoid(6)
    */
   sessionId?: string
+
+  /** Only used internally for testing */
+  testing?: {
+    overrides?: {
+      leaderThread?: Partial<ClientSessionLeaderThreadProxy>
+    }
+  }
 }
 
 /** NOTE: This adapter is currently only used for testing */
 export const makeInMemoryAdapter =
-  ({ sync: syncOptions, clientId = 'in-memory', sessionId = nanoid(6) }: InMemoryAdapterOptions): Adapter =>
+  ({ sync: syncOptions, clientId = 'in-memory', sessionId = nanoid(6), testing }: InMemoryAdapterOptions): Adapter =>
   ({
     schema,
     storeId,
@@ -68,6 +75,7 @@ export const makeInMemoryAdapter =
         makeSqliteDb,
         syncOptions,
         syncPayload,
+        testing,
       })
 
       sqliteDb.import(initialSnapshot)
@@ -92,6 +100,7 @@ const makeLeaderThread = ({
   makeSqliteDb,
   syncOptions,
   syncPayload,
+  testing,
 }: {
   storeId: string
   clientId: string
@@ -99,6 +108,11 @@ const makeLeaderThread = ({
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
   syncPayload: Schema.JsonValue | undefined
+  testing?: {
+    overrides?: {
+      leaderThread?: Partial<ClientSessionLeaderThreadProxy>
+    }
+  }
 }) =>
   Effect.gen(function* () {
     const layer = yield* Layer.memoize(
@@ -132,7 +146,7 @@ const makeLeaderThread = ({
 
       const leaderThread = {
         mutations: {
-          pull: Stream.fromQueue(pullQueue),
+          pull: testing?.overrides?.leaderThread?.mutations?.pull ?? (() => Stream.fromQueue(pullQueue)),
           push: (batch) =>
             syncProcessor
               .push(

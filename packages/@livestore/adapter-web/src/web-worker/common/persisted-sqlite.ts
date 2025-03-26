@@ -1,7 +1,7 @@
-import { liveStoreStorageFormatVersion } from '@livestore/common'
+import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Schedule, Schema } from '@livestore/utils/effect'
 
 import * as OpfsUtils from '../../opfs-utils.js'
 import type * as WorkerSchema from './worker-schema.js'
@@ -87,7 +87,12 @@ export const resetPersistedDataFromClientSession = ({
   Effect.gen(function* () {
     const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* opfsDeleteAbs(directory)
-  }).pipe(Effect.withSpan('@livestore/adapter-web:resetPersistedDataFromClientSession'))
+  }).pipe(
+    Effect.retry({
+      schedule: Schedule.exponentialBackoff10Sec,
+    }),
+    Effect.withSpan('@livestore/adapter-web:resetPersistedDataFromClientSession'),
+  )
 
 const opfsDeleteAbs = (absPath: string) =>
   Effect.promise(async () => {
@@ -114,7 +119,10 @@ const opfsDeleteAbs = (absPath: string) =>
         throw error
       }
     }
-  }).pipe(Effect.withSpan('@livestore/adapter-web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }))
+  }).pipe(
+    UnexpectedError.mapToUnexpectedError,
+    Effect.withSpan('@livestore/adapter-web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }),
+  )
 
 export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
   // Root dir should be `''` not `/`
