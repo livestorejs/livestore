@@ -46,7 +46,7 @@ import * as MutationEvent from '../schema/MutationEvent.js'
  *   - The conflicting event only conflicts with the pending events -> only (some of) the pending events need to be rolled back
  *   - The conflicting event conflicts even with the rollback tail (additionally to the pending events) -> events from both need to be rolled back
  *
- * The `updateSyncState` function processes updates to the sync state based on incoming payloads,
+ * The `merge` function processes updates to the sync state based on incoming payloads,
  * handling cases such as upstream rebase, advance, local push, and rollback tail trimming.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
@@ -118,7 +118,7 @@ export class UpdateContext extends Schema.Class<UpdateContext>('UpdateContext')(
   }
 }
 
-export class UpdateResultAdvance extends Schema.Class<UpdateResultAdvance>('UpdateResultAdvance')({
+export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
   newSyncState: SyncState,
   /** Events which weren't pending before the update */
@@ -135,7 +135,7 @@ export class UpdateResultAdvance extends Schema.Class<UpdateResultAdvance>('Upda
   }
 }
 
-export class UpdateResultRebase extends Schema.Class<UpdateResultRebase>('UpdateResultRebase')({
+export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
   newSyncState: SyncState,
   /** Events which weren't pending before the update */
@@ -154,7 +154,7 @@ export class UpdateResultRebase extends Schema.Class<UpdateResultRebase>('Update
   }
 }
 
-export class UpdateResultReject extends Schema.Class<UpdateResultReject>('UpdateResultReject')({
+export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeResultReject')({
   _tag: Schema.Literal('reject'),
   /** The minimum id that the new events must have */
   expectedMinimumId: EventId.EventId,
@@ -169,27 +169,25 @@ export class UpdateResultReject extends Schema.Class<UpdateResultReject>('Update
   }
 }
 
-export class UpdateResultUnexpectedError extends Schema.Class<UpdateResultUnexpectedError>(
-  'UpdateResultUnexpectedError',
-)({
+export class MergeResultUnexpectedError extends Schema.Class<MergeResultUnexpectedError>('MergeResultUnexpectedError')({
   _tag: Schema.Literal('unexpected-error'),
   cause: UnexpectedError,
 }) {}
 
-export class UpdateResult extends Schema.Union(
-  UpdateResultAdvance,
-  UpdateResultRebase,
-  UpdateResultReject,
-  UpdateResultUnexpectedError,
+export class MergeResult extends Schema.Union(
+  MergeResultAdvance,
+  MergeResultRebase,
+  MergeResultReject,
+  MergeResultUnexpectedError,
 ) {}
 
-const unexpectedError = (cause: unknown): UpdateResultUnexpectedError =>
-  UpdateResultUnexpectedError.make({
+const unexpectedError = (cause: unknown): MergeResultUnexpectedError =>
+  MergeResultUnexpectedError.make({
     _tag: 'unexpected-error',
     cause: new UnexpectedError({ cause }),
   })
 
-export const updateSyncState = ({
+export const merge = ({
   syncState,
   payload,
   isClientEvent,
@@ -202,7 +200,7 @@ export const updateSyncState = ({
   isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
   /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
   ignoreClientEvents?: boolean
-}): typeof UpdateResult.Type => {
+}): typeof MergeResult.Type => {
   validateSyncState(syncState)
 
   const trimRollbackTail = (
@@ -241,7 +239,7 @@ export const updateSyncState = ({
         isClientEvent,
       })
 
-      return UpdateResultRebase.make({
+      return MergeResultRebase.make({
         _tag: 'rebase',
         newSyncState: new SyncState({
           pending: rebasedPending,
@@ -258,7 +256,7 @@ export const updateSyncState = ({
     // #region upstream-advance
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
-        return UpdateResultAdvance.make({
+        return MergeResultAdvance.make({
           _tag: 'advance',
           newSyncState: new SyncState({
             pending: syncState.pending,
@@ -348,7 +346,7 @@ export const updateSyncState = ({
           return true
         })
 
-        return UpdateResultAdvance.make({
+        return MergeResultAdvance.make({
           _tag: 'advance',
           newSyncState: new SyncState({
             pending: pendingRemaining,
@@ -375,7 +373,7 @@ export const updateSyncState = ({
           ignoreClientEvents,
         })
 
-        return UpdateResultRebase.make({
+        return MergeResultRebase.make({
           _tag: 'rebase',
           newSyncState: new SyncState({
             pending: rebasedPending,
@@ -393,7 +391,7 @@ export const updateSyncState = ({
 
     case 'local-push': {
       if (payload.newEvents.length === 0) {
-        return UpdateResultAdvance.make({
+        return MergeResultAdvance.make({
           _tag: 'advance',
           newSyncState: syncState,
           newEvents: [],
@@ -406,13 +404,13 @@ export const updateSyncState = ({
 
       if (invalidEventId) {
         const expectedMinimumId = EventId.nextPair(syncState.localHead, true).id
-        return UpdateResultReject.make({
+        return MergeResultReject.make({
           _tag: 'reject',
           expectedMinimumId,
           updateContext,
         })
       } else {
-        return UpdateResultAdvance.make({
+        return MergeResultAdvance.make({
           _tag: 'advance',
           newSyncState: new SyncState({
             pending: [...syncState.pending, ...payload.newEvents],
@@ -498,7 +496,7 @@ const rebaseEvents = ({
  * it could make sense to "flatten" update results into a single update result which the client session
  * can process more efficiently which avoids push-threshing
  */
-const _flattenUpdateResults = (_updateResults: ReadonlyArray<UpdateResult>) => {}
+const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 
 const validateSyncState = (syncState: SyncState) => {
   // Validate that the rollback tail and pending events together form a continuous chain of events / linked list via the parentId

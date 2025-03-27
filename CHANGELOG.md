@@ -149,6 +149,7 @@
     - 2 solution paths:
       - Render "upgrade app" screen
       - Go offline until user upgrades the app
+  - introduce a way to know when a mutation is confirmed by the sync backend
   - cf sync:
     - use http for initial pull while WS connection is established
     - Adjust networking protocol to embrace a "walk" flow similar to how ElectricSQL's protocol works. i.e. instead of doing 1 pull-req and getting n pull-res back, we will adjust this to be 1:1 at the expense of slightly higher round tripping overhead

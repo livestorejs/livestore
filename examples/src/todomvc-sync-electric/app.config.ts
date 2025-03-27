@@ -37,7 +37,7 @@ export default defineConfig({
     },
     plugins: [
       // NOTE vinxi causes the devtools to be served on: http://localhost:3000/_build/_livestore
-      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+      livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts', experimental: { vinxi: true } }),
       shouldAnalyze
         ? visualizer({ filename: path.resolve('./node_modules/.stats/index.html'), gzipSize: true, brotliSize: true })
         : undefined,

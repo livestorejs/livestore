@@ -370,20 +370,20 @@ const backgroundApplyLocalPushes = ({
       const syncState = yield* syncStateSref
       if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-      const updateResult = SyncState.updateSyncState({
+      const mergeResult = SyncState.merge({
         syncState,
         payload: { _tag: 'local-push', newEvents },
         isClientEvent,
         isEqualEvent: MutationEvent.isEqualEncoded,
       })
 
-      switch (updateResult._tag) {
+      switch (mergeResult._tag) {
         case 'unexpected-error': {
           otelSpan?.addEvent('local-push:unexpected-error', {
             batchSize: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* Effect.fail(updateResult.cause)
+          return yield* Effect.fail(mergeResult.cause)
         }
         case 'rebase': {
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
@@ -391,7 +391,7 @@ const backgroundApplyLocalPushes = ({
         case 'reject': {
           otelSpan?.addEvent('local-push:reject', {
             batchSize: newEvents.length,
-            updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+            mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
           /*
@@ -425,7 +425,7 @@ const backgroundApplyLocalPushes = ({
             Deferred.fail(
               deferred,
               LeaderAheadError.make({
-                minimumExpectedId: updateResult.expectedMinimumId,
+                minimumExpectedId: mergeResult.expectedMinimumId,
                 providedId,
                 // nextGeneration,
               }),
@@ -443,28 +443,28 @@ const backgroundApplyLocalPushes = ({
           break
         }
         default: {
-          casesHandled(updateResult)
+          casesHandled(mergeResult)
         }
       }
 
-      yield* SubscriptionRef.set(syncStateSref, updateResult.newSyncState)
+      yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
       if (clientId === 'client-b') {
         // yield* Effect.log('offer upstream-advance due to local-push')
         // debugger
       }
       yield* connectedClientSessionPullQueues.offer({
-        payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents },
+        payload: { _tag: 'upstream-advance', newEvents: mergeResult.newEvents },
         remaining: 0,
       })
 
       otelSpan?.addEvent('local-push', {
         batchSize: newEvents.length,
-        updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+        mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
       })
 
       // Don't sync clientOnly mutations
-      const filteredBatch = updateResult.newEvents.filter((mutationEventEncoded) => {
+      const filteredBatch = mergeResult.newEvents.filter((mutationEventEncoded) => {
         const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
         return mutationDef.options.clientOnly === false
       })
@@ -588,7 +588,7 @@ const backgroundBackendPulling = ({
 
         const trimRollbackUntil = newEvents.at(-1)!.id
 
-        const updateResult = SyncState.updateSyncState({
+        const mergeResult = SyncState.merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents, trimRollbackUntil },
           isClientEvent,
@@ -596,43 +596,43 @@ const backgroundBackendPulling = ({
           ignoreClientEvents: true,
         })
 
-        if (updateResult._tag === 'reject') {
+        if (mergeResult._tag === 'reject') {
           return shouldNeverHappen('The leader thread should never reject upstream advances')
-        } else if (updateResult._tag === 'unexpected-error') {
+        } else if (mergeResult._tag === 'unexpected-error') {
           otelSpan?.addEvent('backend-pull:unexpected-error', {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
-          return yield* Effect.fail(updateResult.cause)
+          return yield* Effect.fail(mergeResult.cause)
         }
 
         const newBackendHead = newEvents.at(-1)!.id
 
         updateBackendHead(dbMutationLog, newBackendHead)
 
-        if (updateResult._tag === 'rebase') {
+        if (mergeResult._tag === 'rebase') {
           otelSpan?.addEvent('backend-pull:rebase', {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
-            rollbackCount: updateResult.eventsToRollback.length,
-            updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+            rollbackCount: mergeResult.eventsToRollback.length,
+            mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
-          const filteredRebasedPending = updateResult.newSyncState.pending.filter((mutationEvent) => {
+          const filteredRebasedPending = mergeResult.newSyncState.pending.filter((mutationEvent) => {
             const mutationDef = getMutationDef(schema, mutationEvent.mutation)
             return mutationDef.options.clientOnly === false
           })
           yield* restartBackendPushing(filteredRebasedPending)
 
-          if (updateResult.eventsToRollback.length > 0) {
-            yield* rollback({ db, dbMutationLog, eventIdsToRollback: updateResult.eventsToRollback.map((_) => _.id) })
+          if (mergeResult.eventsToRollback.length > 0) {
+            yield* rollback({ db, dbMutationLog, eventIdsToRollback: mergeResult.eventsToRollback.map((_) => _.id) })
           }
 
           yield* connectedClientSessionPullQueues.offer({
             payload: {
               _tag: 'upstream-rebase',
-              newEvents: updateResult.newEvents,
-              rollbackUntil: updateResult.eventsToRollback.at(0)!.id,
+              newEvents: mergeResult.newEvents,
+              rollbackUntil: mergeResult.eventsToRollback.at(0)!.id,
               trimRollbackUntil,
             },
             remaining,
@@ -640,23 +640,23 @@ const backgroundBackendPulling = ({
         } else {
           otelSpan?.addEvent('backend-pull:advance', {
             newEventsCount: newEvents.length,
-            updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+            mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
           if (clientId === 'client-b') {
             // yield* Effect.log('offer upstream-advance due to pull')
           }
           yield* connectedClientSessionPullQueues.offer({
-            payload: { _tag: 'upstream-advance', newEvents: updateResult.newEvents, trimRollbackUntil },
+            payload: { _tag: 'upstream-advance', newEvents: mergeResult.newEvents, trimRollbackUntil },
             remaining,
           })
         }
 
         trimChangesetRows(db, newBackendHead)
 
-        yield* applyMutationItems({ batchItems: updateResult.newEvents, deferreds: undefined })
+        yield* applyMutationItems({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
-        yield* SubscriptionRef.set(syncStateSref, updateResult.newSyncState)
+        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         if (remaining === 0) {
           // Allow local pushes to be processed again

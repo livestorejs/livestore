@@ -90,31 +90,31 @@ export const makeClientSessionSyncProcessor = ({
       )
     })
 
-    const updateResult = SyncState.updateSyncState({
+    const mergeResult = SyncState.merge({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
       isClientEvent,
       isEqualEvent: MutationEvent.isEqualEncoded,
     })
 
-    if (updateResult._tag === 'unexpected-error') {
-      return shouldNeverHappen('Unexpected error in client-session-sync-processor', updateResult.cause)
+    if (mergeResult._tag === 'unexpected-error') {
+      return shouldNeverHappen('Unexpected error in client-session-sync-processor', mergeResult.cause)
     }
 
     span.addEvent('local-push', {
       batchSize: encodedMutationEvents.length,
-      updateResult: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+      mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
     })
 
-    if (updateResult._tag !== 'advance') {
-      return shouldNeverHappen(`Expected advance, got ${updateResult._tag}`)
+    if (mergeResult._tag !== 'advance') {
+      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
     }
 
-    syncStateRef.current = updateResult.newSyncState
-    syncStateUpdateQueue.offer(updateResult.newSyncState).pipe(Effect.runSync)
+    syncStateRef.current = mergeResult.newSyncState
+    syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
     const writeTables = new Set<string>()
-    for (const mutationEvent of updateResult.newEvents) {
+    for (const mutationEvent of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
       const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
       const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
@@ -179,29 +179,29 @@ export const makeClientSessionSyncProcessor = ({
             yield* clientSession.devtools.pullLatch.await
           }
 
-          const updateResult = SyncState.updateSyncState({
+          const mergeResult = SyncState.merge({
             syncState: syncStateRef.current,
             payload,
             isClientEvent,
             isEqualEvent: MutationEvent.isEqualEncoded,
           })
 
-          if (updateResult._tag === 'unexpected-error') {
-            return yield* Effect.fail(updateResult.cause)
-          } else if (updateResult._tag === 'reject') {
-            return shouldNeverHappen('Unexpected reject in client-session-sync-processor', updateResult)
+          if (mergeResult._tag === 'unexpected-error') {
+            return yield* Effect.fail(mergeResult.cause)
+          } else if (mergeResult._tag === 'reject') {
+            return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
 
-          syncStateRef.current = updateResult.newSyncState
-          syncStateUpdateQueue.offer(updateResult.newSyncState).pipe(Effect.runSync)
+          syncStateRef.current = mergeResult.newSyncState
+          syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
-          if (updateResult._tag === 'rebase') {
+          if (mergeResult._tag === 'rebase') {
             span.addEvent('pull:rebase', {
               payloadTag: payload._tag,
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
-              newEventsCount: updateResult.newEvents.length,
-              rollbackCount: updateResult.eventsToRollback.length,
-              res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+              newEventsCount: mergeResult.newEvents.length,
+              rollbackCount: mergeResult.eventsToRollback.length,
+              res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
               remaining,
             })
 
@@ -217,36 +217,36 @@ export const makeClientSessionSyncProcessor = ({
             if (LS_DEV) {
               Effect.logDebug(
                 'pull:rebase: rollback',
-                updateResult.eventsToRollback.length,
-                ...updateResult.eventsToRollback.slice(0, 10).map((_) => _.toJSON()),
+                mergeResult.eventsToRollback.length,
+                ...mergeResult.eventsToRollback.slice(0, 10).map((_) => _.toJSON()),
               ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
-            for (let i = updateResult.eventsToRollback.length - 1; i >= 0; i--) {
-              const event = updateResult.eventsToRollback[i]!
+            for (let i = mergeResult.eventsToRollback.length - 1; i >= 0; i--) {
+              const event = mergeResult.eventsToRollback[i]!
               if (event.meta.sessionChangeset) {
                 rollback(event.meta.sessionChangeset)
                 event.meta.sessionChangeset = undefined
               }
             }
 
-            yield* BucketQueue.offerAll(leaderPushQueue, updateResult.newSyncState.pending)
+            yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
           } else {
             span.addEvent('pull:advance', {
               payloadTag: payload._tag,
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
-              newEventsCount: updateResult.newEvents.length,
-              res: TRACE_VERBOSE ? JSON.stringify(updateResult) : undefined,
+              newEventsCount: mergeResult.newEvents.length,
+              res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
               remaining,
             })
 
             debugInfo.advanceCount++
           }
 
-          if (updateResult.newEvents.length === 0) return
+          if (mergeResult.newEvents.length === 0) return
 
           const writeTables = new Set<string>()
-          for (const mutationEvent of updateResult.newEvents) {
+          for (const mutationEvent of mergeResult.newEvents) {
             const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
             const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
             for (const table of res.writeTables) {

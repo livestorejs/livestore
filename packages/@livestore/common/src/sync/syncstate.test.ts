@@ -46,7 +46,7 @@ const isEqualEvent = MutationEvent.isEqualEncoded
 const isClientEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEvent).isLocal
 
 describe('syncstate', () => {
-  describe('updateSyncState', () => {
+  describe('merge', () => {
     const update = ({
       syncState,
       payload,
@@ -55,7 +55,7 @@ describe('syncstate', () => {
       syncState: SyncState.SyncState
       payload: typeof SyncState.Payload.Type
       ignoreClientEvents?: boolean
-    }) => SyncState.updateSyncState({ syncState, payload, isClientEvent, isEqualEvent, ignoreClientEvents })
+    }) => SyncState.merge({ syncState, payload, isClientEvent, isEqualEvent, ignoreClientEvents })
 
     describe.each([{ trimRollbackUntil: false }, { trimRollbackUntil: true }])(
       'upstream-rebase (trimRollbackUntil: $trimRollbackUntil)',
@@ -560,19 +560,19 @@ const expectEventArraysEqual = (
 }
 
 function expectAdvance(
-  result: typeof SyncState.UpdateResult.Type,
-): asserts result is typeof SyncState.UpdateResultAdvance.Type {
+  result: typeof SyncState.MergeResult.Type,
+): asserts result is typeof SyncState.MergeResultAdvance.Type {
   expect(result._tag).toBe('advance')
 }
 
 function expectRebase(
-  result: typeof SyncState.UpdateResult.Type,
-): asserts result is typeof SyncState.UpdateResultRebase.Type {
+  result: typeof SyncState.MergeResult.Type,
+): asserts result is typeof SyncState.MergeResultRebase.Type {
   expect(result._tag).toBe('rebase')
 }
 
 function expectReject(
-  result: typeof SyncState.UpdateResult.Type,
-): asserts result is typeof SyncState.UpdateResultReject.Type {
+  result: typeof SyncState.MergeResult.Type,
+): asserts result is typeof SyncState.MergeResultReject.Type {
   expect(result._tag).toBe('reject')
 }
