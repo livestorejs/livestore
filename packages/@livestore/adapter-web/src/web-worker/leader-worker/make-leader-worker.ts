@@ -10,7 +10,7 @@ import {
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
-import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
+import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
@@ -97,7 +97,7 @@ const makeWorkerRunnerOuter = (
           Effect.scoped,
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
-          Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: `leader-${storeId}-${clientId}` })),
+          Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: `leader-${storeId}-${clientId}` })),
           Effect.forkScoped,
         )
 
@@ -242,7 +242,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
-    'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
+    'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
   })
 
 const makeDevtoolsOptions = ({
@@ -253,12 +253,12 @@ const makeDevtoolsOptions = ({
   devtoolsEnabled: boolean
   dbReadModel: SqliteDb
   dbMutationLog: SqliteDb
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebMeshWorker.CacheService> =>
+}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {
       return { enabled: false }
     }
-    const { node } = yield* WebMeshWorker.CacheService
+    const { node } = yield* WebmeshWorker.CacheService
 
     return {
       enabled: true,

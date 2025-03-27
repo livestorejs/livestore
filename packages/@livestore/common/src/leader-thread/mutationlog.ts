@@ -7,6 +7,7 @@ import { MUTATION_LOG_META_TABLE, mutationLogMetaTable, SYNC_STATUS_TABLE } from
 import { prepareBindValues, sql } from '../util.js'
 import { LeaderThreadCtx } from './types.js'
 
+/** Exclusive of the "since event" */
 export const getMutationEventsSince = (
   since: EventId.EventId,
 ): Effect.Effect<ReadonlyArray<MutationEvent.AnyEncoded>, never, LeaderThreadCtx> =>

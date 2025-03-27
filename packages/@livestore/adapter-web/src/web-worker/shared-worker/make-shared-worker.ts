@@ -1,12 +1,11 @@
 import { UnexpectedError } from '@livestore/common'
 import { connectViaWorker } from '@livestore/devtools-web-common/web-channel'
-import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
+import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
   BrowserWorker,
   BrowserWorkerRunner,
   Deferred,
-  Duration,
   Effect,
   Exit,
   FetchHttpClient,
@@ -64,6 +63,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.andThen((worker) => worker.executeEffect(req) as Effect.Effect<unknown, unknown, never>),
       // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
       // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
+      Effect.interruptible,
       Effect.logWarnIfTakesLongerThan({
         label: `@livestore/adapter-web:shared-worker:forwardRequest:${req._tag}`,
         duration: 500,
@@ -84,9 +84,24 @@ const makeWorkerRunner = Effect.gen(function* () {
   ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer _R>
     ? Stream.Stream<A, UnexpectedError, never>
     : never =>
-    waitForWorker.pipe(
-      Effect.logBefore(`forwardRequestStream: ${req._tag}`),
-      Effect.andThen((worker) => worker.execute(req) as Stream.Stream<unknown, unknown, never>),
+    Effect.gen(function* () {
+      yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
+      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
+      const stream = worker.execute(req) as Stream.Stream<unknown, unknown, never>
+
+      // It seems the request stream is not automatically interrupted when the scope shuts down
+      // so we need to manually interrupt it when the scope shuts down
+      const shutdownDeferred = yield* Deferred.make<void>()
+      yield* Scope.addFinalizer(scope, Deferred.succeed(shutdownDeferred, undefined))
+
+      // Here we're creating an empty stream that will finish when the scope shuts down
+      const scopeShutdownStream = Effect.gen(function* () {
+        yield* shutdownDeferred
+        return Stream.empty
+      }).pipe(Stream.unwrap)
+
+      return Stream.merge(stream, scopeShutdownStream, { haltStrategy: 'either' })
+    }).pipe(
       Effect.interruptible,
       UnexpectedError.mapToUnexpectedError,
       Effect.tapCauseLogPretty,
@@ -104,14 +119,10 @@ const makeWorkerRunner = Effect.gen(function* () {
       yield* Effect.yieldNow()
 
       yield* Scope.close(prevWorker.scope, Exit.void).pipe(
-        // TODO there still seem to be scenarios where it takes longer than 1 second which is leading to problems
-        Effect.timeout(Duration.seconds(1)),
         Effect.logWarnIfTakesLongerThan({
           label: '@livestore/adapter-web:shared-worker:close-previous-worker',
           duration: 500,
         }),
-        // Effect.catchTag('TimeoutException', () => Scope.close(prevWorker.scope, Exit.fail('boom'))),
-        Effect.ignoreLogged,
       )
     }
   }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:resetCurrentWorkerCtx'))
@@ -170,26 +181,6 @@ const makeWorkerRunner = Effect.gen(function* () {
 
         const scope = yield* Scope.make()
 
-        const workerDeferred = yield* Deferred.make<
-          Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInner.Request>,
-          UnexpectedError
-        >()
-        // TODO we could also keep the pool instance around to re-use it by removing the previous worker and adding a new one
-        yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInner.Request>({
-          size: 1,
-          concurrency: 100,
-          initialMessage: () => initialMessagePayload.initialMessage,
-        }).pipe(
-          Effect.tap((worker) => Deferred.succeed(workerDeferred, worker)),
-          Effect.provide(BrowserWorker.layer(() => port)),
-          Effect.catchAllCause((cause) => new UnexpectedError({ cause })),
-          Effect.tapError((cause) => Deferred.fail(workerDeferred, cause)),
-          Effect.withSpan('@livestore/adapter-web:shared-worker:makeWorkerProxyFromPort'),
-          Effect.tapCauseLogPretty,
-          Scope.extend(scope),
-          Effect.forkIn(scope),
-        )
-
         yield* Effect.gen(function* () {
           const shutdownChannel = yield* makeShutdownChannel(initialMessagePayload.initialMessage.storeId)
 
@@ -197,22 +188,32 @@ const makeWorkerRunner = Effect.gen(function* () {
             Stream.flatten(),
             Stream.tap(() => reset),
             Stream.runDrain,
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
           )
+
+          const workerLayer = yield* Layer.build(BrowserWorker.layer(() => port))
+
+          const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInner.Request>({
+            size: 1,
+            concurrency: 100,
+            initialMessage: () => initialMessagePayload.initialMessage,
+          }).pipe(
+            Effect.provide(workerLayer),
+            Effect.withSpan('@livestore/adapter-web:shared-worker:makeWorkerProxyFromPort'),
+          )
+
+          // Prepare the web mesh connection for leader worker to be able to connect to the devtools
+          const { node } = yield* WebmeshWorker.CacheService
+          const { storeId, clientId } = initialMessagePayload.initialMessage
+
+          yield* connectViaWorker({ node, worker, target: `leader-${storeId}-${clientId}` }).pipe(
+            Effect.tapCauseLogPretty,
+            Effect.forkScoped,
+          )
+
+          yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
         }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
-
-        const worker = yield* workerDeferred
-
-        // Prepare the web mesh connection for leader worker to be able to connect to the devtools
-        const { node } = yield* WebMeshWorker.CacheService
-        const { storeId, clientId } = initialMessagePayload.initialMessage
-
-        yield* connectViaWorker({ node, worker, target: `leader-${storeId}-${clientId}` }).pipe(
-          Effect.tapCauseLogPretty,
-          Scope.extend(scope),
-          Effect.forkIn(scope),
-        )
-
-        yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
       }).pipe(
         Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'),
         UnexpectedError.mapToUnexpectedError,
@@ -234,9 +235,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     ExtraDevtoolsMessage: forwardRequest,
 
     // Accept devtools connections (from leader and client sessions)
-    'DevtoolsWebCommon.CreateConnection': WebMeshWorker.CreateConnection,
-
-    // ...devtoolsWebBridge.handlers,
+    'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
   })
 }).pipe(Layer.unwrapScoped)
 
@@ -250,7 +249,7 @@ export const makeWorker = () => {
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(Logger.prettyWithThread(self.name)),
     Effect.provide(FetchHttpClient.layer),
-    Effect.provide(WebMeshWorker.CacheService.layer({ nodeName: 'shared-worker' })),
+    Effect.provide(WebmeshWorker.CacheService.layer({ nodeName: 'shared-worker' })),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     (_) => _ as any as Effect.Effect<void, any>,

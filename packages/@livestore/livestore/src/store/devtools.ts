@@ -187,8 +187,8 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoHistoryUnsubscribe': {
           const { subscriptionId } = decodedMessage
-          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
-          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          // NOTE given Webmesh channels have persistent retry behaviour, it can happen that a previous
+          // Webmesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           debugInfoHistorySubscriptions.get(subscriptionId)?.()
           debugInfoHistorySubscriptions.delete(subscriptionId)
           break
@@ -210,8 +210,8 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.ReactivityGraphUnsubscribe': {
           const { subscriptionId } = decodedMessage
-          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
-          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          // NOTE given Webmesh channels have persistent retry behaviour, it can happen that a previous
+          // Webmesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           reactivityGraphSubcriptions.get(subscriptionId)?.()
           reactivityGraphSubcriptions.delete(subscriptionId)
           break
@@ -256,8 +256,8 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.LiveQueriesUnsubscribe': {
           const { subscriptionId } = decodedMessage
-          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
-          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          // NOTE given Webmesh channels have persistent retry behaviour, it can happen that a previous
+          // Webmesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           liveQueriesSubscriptions.get(subscriptionId)?.()
           liveQueriesSubscriptions.delete(subscriptionId)
           break
@@ -294,8 +294,8 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.SyncHeadUnsubscribe': {
           const { subscriptionId } = decodedMessage
-          // NOTE given WebMesh channels have persistent retry behaviour, it can happen that a previous
-          // WebMesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
+          // NOTE given Webmesh channels have persistent retry behaviour, it can happen that a previous
+          // Webmesh channel will send a unsubscribe message for an old requestId. Thus the `?.()` handling.
           syncHeadClientSessionSubscriptions.get(subscriptionId)?.()
           syncHeadClientSessionSubscriptions.delete(subscriptionId)
           break

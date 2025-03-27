@@ -8,7 +8,7 @@ import {
   UnexpectedError,
 } from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
-import * as WebMeshWorker from '@livestore/devtools-web-common/worker'
+import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const StorageTypeOpfs = Schema.Struct({
@@ -159,7 +159,7 @@ export namespace LeaderWorkerInner {
     NetworkStatusStream,
     Shutdown,
     ExtraDevtoolsMessage,
-    WebMeshWorker.Schema.CreateConnection,
+    WebmeshWorker.Schema.CreateConnection,
   )
   export type Request = typeof Request.Type
 }
@@ -202,6 +202,6 @@ export namespace SharedWorker {
     LeaderWorkerInner.Shutdown,
     LeaderWorkerInner.ExtraDevtoolsMessage,
 
-    WebMeshWorker.Schema.CreateConnection,
+    WebmeshWorker.Schema.CreateConnection,
   ) {}
 }

@@ -168,7 +168,10 @@ export const makeClientSessionSyncProcessor = ({
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
-    yield* clientSession.leaderThread.mutations.pull({ cursor: syncStateRef.current.localHead }).pipe(
+    // NOTE We need to lazily call `.pull` as we want the cursor to be updated
+    yield* Stream.suspend(() =>
+      clientSession.leaderThread.mutations.pull({ cursor: syncStateRef.current.localHead }),
+    ).pipe(
       Stream.tap(({ payload, remaining }) =>
         Effect.gen(function* () {
           // console.log('pulled payload from leader', { payload, remaining })
@@ -261,6 +264,7 @@ export const makeClientSessionSyncProcessor = ({
       ),
       Stream.runDrain,
       Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
+      Effect.interruptible,
       Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
