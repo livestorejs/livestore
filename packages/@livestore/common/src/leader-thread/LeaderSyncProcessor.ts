@@ -89,7 +89,7 @@ export const makeLeaderSyncProcessor = ({
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
+    const isClientEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
       const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
       return mutationDef.options.clientOnly
     }
@@ -249,7 +249,7 @@ export const makeLeaderSyncProcessor = ({
           syncStateSref,
           syncBackendQueue,
           schema,
-          isLocalEvent,
+          isClientEvent,
           otelSpan,
           currentLocalPushGenerationRef,
         }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
@@ -269,7 +269,7 @@ export const makeLeaderSyncProcessor = ({
         yield* backgroundBackendPulling({
           dbReady,
           initialBackendHead,
-          isLocalEvent,
+          isClientEvent,
           restartBackendPushing: (filteredRebasedPending) =>
             Effect.gen(function* () {
               // Stop current pushing fiber
@@ -323,7 +323,7 @@ const backgroundApplyLocalPushes = ({
   syncStateSref,
   syncBackendQueue,
   schema,
-  isLocalEvent,
+  isClientEvent,
   otelSpan,
   currentLocalPushGenerationRef,
 }: {
@@ -333,7 +333,7 @@ const backgroundApplyLocalPushes = ({
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
   schema: LiveStoreSchema
-  isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
   otelSpan: otel.Span | undefined
   currentLocalPushGenerationRef: { current: number }
 }) =>
@@ -373,7 +373,7 @@ const backgroundApplyLocalPushes = ({
       const updateResult = SyncState.updateSyncState({
         syncState,
         payload: { _tag: 'local-push', newEvents },
-        isLocalEvent,
+        isClientEvent,
         isEqualEvent: MutationEvent.isEqualEncoded,
       })
 
@@ -531,7 +531,7 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
 const backgroundBackendPulling = ({
   dbReady,
   initialBackendHead,
-  isLocalEvent,
+  isClientEvent,
   restartBackendPushing,
   otelSpan,
   syncStateSref,
@@ -542,7 +542,7 @@ const backgroundBackendPulling = ({
 }: {
   dbReady: Deferred.Deferred<void>
   initialBackendHead: EventId.GlobalEventId
-  isLocalEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<MutationEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
@@ -591,9 +591,9 @@ const backgroundBackendPulling = ({
         const updateResult = SyncState.updateSyncState({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents, trimRollbackUntil },
-          isLocalEvent,
+          isClientEvent,
           isEqualEvent: MutationEvent.isEqualEncoded,
-          ignoreLocalEvents: true,
+          ignoreClientEvents: true,
         })
 
         if (updateResult._tag === 'reject') {

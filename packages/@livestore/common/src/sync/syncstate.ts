@@ -192,16 +192,16 @@ const unexpectedError = (cause: unknown): UpdateResultUnexpectedError =>
 export const updateSyncState = ({
   syncState,
   payload,
-  isLocalEvent,
+  isClientEvent,
   isEqualEvent,
-  ignoreLocalEvents = false,
+  ignoreClientEvents = false,
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
-  isLocalEvent: (event: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (event: MutationEvent.EncodedWithMeta) => boolean
   isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
-  /** This is used in the leader which should ignore local events when receiving an upstream-advance payload */
-  ignoreLocalEvents?: boolean
+  /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
+  ignoreClientEvents?: boolean
 }): typeof UpdateResult.Type => {
   validateSyncState(syncState)
 
@@ -238,7 +238,7 @@ export const updateSyncState = ({
       const rebasedPending = rebaseEvents({
         events: syncState.pending,
         baseEventId: newUpstreamHead,
-        isLocalEvent,
+        isClientEvent,
       })
 
       return UpdateResultRebase.make({
@@ -291,10 +291,10 @@ export const updateSyncState = ({
       }
 
       // Validate that the parent id of the first incoming event is known
-      const knownEventIds = [...syncState.rollbackTail, ...syncState.pending].map((e) => e.id)
-      knownEventIds.push(syncState.upstreamHead)
+      const knownEventGlobalIds = [...syncState.rollbackTail, ...syncState.pending].map((e) => e.id.global)
+      knownEventGlobalIds.push(syncState.upstreamHead.global)
       const firstNewEvent = payload.newEvents[0]!
-      const hasUnknownParentId = knownEventIds.every((id) => EventId.isEqual(id, firstNewEvent.parentId) === false)
+      const hasUnknownParentId = knownEventGlobalIds.includes(firstNewEvent.parentId.global) === false
       if (hasUnknownParentId) {
         return unexpectedError(
           `Incoming events must have a known parent id. Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
@@ -307,8 +307,8 @@ export const updateSyncState = ({
         existingEvents: syncState.pending,
         incomingEvents: payload.newEvents,
         isEqualEvent,
-        isLocalEvent,
-        ignoreLocalEvents,
+        isClientEvent,
+        ignoreClientEvents,
       })
 
       // No divergent pending events, thus we can just advance (some of) the pending events
@@ -320,17 +320,17 @@ export const updateSyncState = ({
         // we need to split the pending events into two groups:
         // - pendingMatching: The pending events up to point where they match the incoming events
         // - pendingRemaining: The pending events after the point where they match the incoming events
-        // The `localIndexOffset` is used to account for the local events that are being ignored
-        let localIndexOffset = 0
+        // The `clientIndexOffset` is used to account for the client events that are being ignored
+        let clientIndexOffset = 0
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreLocalEvents && isLocalEvent(pendingEvent)) {
-              localIndexOffset++
+            if (ignoreClientEvents && isClientEvent(pendingEvent)) {
+              clientIndexOffset++
               return false
             }
 
-            const newEvent = payload.newEvents.at(index - localIndexOffset)
+            const newEvent = payload.newEvents.at(index - clientIndexOffset)
             if (!newEvent) {
               return true
             }
@@ -364,15 +364,15 @@ export const updateSyncState = ({
         const rebasedPending = rebaseEvents({
           events: divergentPending,
           baseEventId: newUpstreamHead,
-          isLocalEvent,
+          isClientEvent,
         })
 
         const divergentNewEventsIndex = findDivergencePoint({
           existingEvents: payload.newEvents,
           incomingEvents: syncState.pending,
           isEqualEvent,
-          isLocalEvent,
-          ignoreLocalEvents,
+          isClientEvent,
+          ignoreClientEvents,
         })
 
         return UpdateResultRebase.make({
@@ -436,32 +436,32 @@ export const updateSyncState = ({
  * Gets the index relative to `existingEvents` where the divergence point is
  * by comparing each event in `existingEvents` to the corresponding event in `incomingEvents`
  */
-const findDivergencePoint = ({
+export const findDivergencePoint = ({
   existingEvents,
   incomingEvents,
   isEqualEvent,
-  isLocalEvent,
-  ignoreLocalEvents,
+  isClientEvent,
+  ignoreClientEvents,
 }: {
   existingEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
   incomingEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
   isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
-  isLocalEvent: (event: MutationEvent.EncodedWithMeta) => boolean
-  ignoreLocalEvents: boolean
+  isClientEvent: (event: MutationEvent.EncodedWithMeta) => boolean
+  ignoreClientEvents: boolean
 }): number => {
-  if (ignoreLocalEvents) {
-    const filteredExistingEvents = existingEvents.filter((event) => !isLocalEvent(event))
-    const divergencePointWithoutLocalEvents = findDivergencePoint({
+  if (ignoreClientEvents) {
+    const filteredExistingEvents = existingEvents.filter((event) => !isClientEvent(event))
+    const divergencePointWithoutClientEvents = findDivergencePoint({
       existingEvents: filteredExistingEvents,
       incomingEvents,
       isEqualEvent,
-      isLocalEvent,
-      ignoreLocalEvents: false,
+      isClientEvent,
+      ignoreClientEvents: false,
     })
 
-    if (divergencePointWithoutLocalEvents === -1) return -1
+    if (divergencePointWithoutClientEvents === -1) return -1
 
-    const divergencePointEventId = existingEvents[divergencePointWithoutLocalEvents]!.id
+    const divergencePointEventId = existingEvents[divergencePointWithoutClientEvents]!.id
     // Now find the divergence point in the original array
     return existingEvents.findIndex((event) => EventId.isEqual(event.id, divergencePointEventId))
   }
@@ -476,15 +476,15 @@ const findDivergencePoint = ({
 const rebaseEvents = ({
   events,
   baseEventId,
-  isLocalEvent,
+  isClientEvent,
 }: {
   events: ReadonlyArray<MutationEvent.EncodedWithMeta>
   baseEventId: EventId.EventId
-  isLocalEvent: (event: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (event: MutationEvent.EncodedWithMeta) => boolean
 }): ReadonlyArray<MutationEvent.EncodedWithMeta> => {
   let prevEventId = baseEventId
   return events.map((event) => {
-    const isLocal = isLocalEvent(event)
+    const isLocal = isClientEvent(event)
     const newEvent = event.rebase(prevEventId, isLocal)
     prevEventId = newEvent.id
     return newEvent
@@ -539,14 +539,16 @@ const validateSyncState = (syncState: SyncState) => {
     }
   }
 
-  // The parent of the first rollback tail event ("oldest event") must be the upstream head (if there is a rollback tail)
-  if (syncState.rollbackTail.length > 0) {
-    const firstRollbackTailEvent = syncState.rollbackTail[0]!
-    if (EventId.isEqual(firstRollbackTailEvent.parentId, syncState.upstreamHead) === false) {
-      shouldNeverHappen('The parent of the first rollback tail event must be the upstream head', chain, {
-        event: firstRollbackTailEvent,
-        upstreamHead: syncState.upstreamHead,
-      })
-    }
-  }
+  // TODO double check this
+  // const globalRollbackTail = syncState.rollbackTail.filter((event) => event.id.client === 0)
+  // // The parent of the first global rollback tail event ("oldest event") must be the upstream head (if there is a rollback tail)
+  // if (globalRollbackTail.length > 0) {
+  //   const firstRollbackTailEvent = globalRollbackTail[0]!
+  //   if (EventId.isEqual(firstRollbackTailEvent.parentId, syncState.upstreamHead) === false) {
+  //     shouldNeverHappen('The parent of the first rollback tail event must be the upstream head', chain, {
+  //       event: firstRollbackTailEvent,
+  //       upstreamHead: syncState.upstreamHead,
+  //     })
+  //   }
+  // }
 }

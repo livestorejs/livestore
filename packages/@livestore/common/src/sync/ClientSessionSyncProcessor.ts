@@ -66,7 +66,7 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
-  const isLocalEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) =>
+  const isClientEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) =>
     getMutationDef(schema, mutationEventEncoded.mutation).options.clientOnly
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
@@ -93,7 +93,7 @@ export const makeClientSessionSyncProcessor = ({
     const updateResult = SyncState.updateSyncState({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
-      isLocalEvent,
+      isClientEvent,
       isEqualEvent: MutationEvent.isEqualEncoded,
     })
 
@@ -182,7 +182,7 @@ export const makeClientSessionSyncProcessor = ({
           const updateResult = SyncState.updateSyncState({
             syncState: syncStateRef.current,
             payload,
-            isLocalEvent,
+            isClientEvent,
             isEqualEvent: MutationEvent.isEqualEncoded,
           })
 

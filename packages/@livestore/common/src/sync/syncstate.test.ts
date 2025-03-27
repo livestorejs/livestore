@@ -43,19 +43,19 @@ const e_2_0 = new TestEvent({ global: 2, client: 0 }, e_1_0.id, 'a', false)
 
 const isEqualEvent = MutationEvent.isEqualEncoded
 
-const isLocalEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEvent).isLocal
+const isClientEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEvent).isLocal
 
 describe('syncstate', () => {
   describe('updateSyncState', () => {
     const update = ({
       syncState,
       payload,
-      ignoreLocalEvents = false,
+      ignoreClientEvents = false,
     }: {
       syncState: SyncState.SyncState
       payload: typeof SyncState.Payload.Type
-      ignoreLocalEvents?: boolean
-    }) => SyncState.updateSyncState({ syncState, payload, isLocalEvent, isEqualEvent, ignoreLocalEvents })
+      ignoreClientEvents?: boolean
+    }) => SyncState.updateSyncState({ syncState, payload, isClientEvent, isEqualEvent, ignoreClientEvents })
 
     describe.each([{ trimRollbackUntil: false }, { trimRollbackUntil: true }])(
       'upstream-rebase (trimRollbackUntil: $trimRollbackUntil)',
@@ -314,7 +314,7 @@ describe('syncstate', () => {
         const result = update({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0] },
-          ignoreLocalEvents: true,
+          ignoreClientEvents: true,
         })
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [])
@@ -334,7 +334,7 @@ describe('syncstate', () => {
         const result = update({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0] },
-          ignoreLocalEvents: true,
+          ignoreClientEvents: true,
         })
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [e_1_0])
@@ -354,7 +354,7 @@ describe('syncstate', () => {
         const result = update({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_1_0] },
-          ignoreLocalEvents: true,
+          ignoreClientEvents: true,
         })
 
         expectAdvance(result)
