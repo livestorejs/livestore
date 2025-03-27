@@ -23,7 +23,7 @@
   },
   "peerDependencies": {
     "expo-file-system": "*",
-    "expo-sqlite": "~15.2.0-canary-20250325-0a15ab6"
+    "expo-sqlite": "^15.2.0-canary-20250325-0a15ab6"
   },
   "publishConfig": {
     "access": "public"

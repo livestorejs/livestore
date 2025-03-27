@@ -101,11 +101,16 @@ export const syncBackend = {} as any
 
 export const syncBackendOptions = <TOptions extends SyncBackendOptions>(options: TOptions) => options
 
+/**
+ * This function should be called in a trusted environment (e.g. a proxy server) as it
+ * requires access to senstive information (e.g. `apiSecret` / `sourceSecret`).
+ */
 export const makeElectricUrl = ({
   electricHost,
   searchParams: providedSearchParams,
   sourceId,
   sourceSecret,
+  apiSecret,
 }: {
   electricHost: string
   /**
@@ -119,6 +124,8 @@ export const makeElectricUrl = ({
   sourceId?: string
   /** Needed for Electric Cloud */
   sourceSecret?: string
+  /** For self-hosted ElectricSQL */
+  apiSecret?: string
 }) => {
   const endpointUrl = `${electricHost}/v1/shape`
   const argsResult = Schema.decodeUnknownEither(Schema.Struct({ args: Schema.parseJson(ApiSchema.PullPayload) }))(
@@ -142,6 +149,9 @@ export const makeElectricUrl = ({
   }
   if (sourceSecret !== undefined) {
     searchParams.set('source_secret', sourceSecret)
+  }
+  if (apiSecret !== undefined) {
+    searchParams.set('api_secret', apiSecret)
   }
   if (args.handle._tag === 'None') {
     searchParams.set('offset', '-1')
@@ -218,6 +228,12 @@ export const makeSyncBackend =
           const url = `${pullEndpoint}?args=${argsJson}`
 
           const resp = yield* HttpClient.get(url)
+
+          if (resp.status === 401) {
+            return yield* InvalidPullError.make({
+              message: `Unauthorized (401): Couldn't connect to ElectricSQL`,
+            })
+          }
 
           const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
           const nextHandle = {

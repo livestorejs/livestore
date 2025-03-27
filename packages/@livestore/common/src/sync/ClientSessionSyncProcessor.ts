@@ -17,6 +17,8 @@ import * as SyncState from './syncstate.js'
  * - The goal is to never block the UI, so we'll interrupt rebasing if a new mutations is pushed by the client session.
  * - We also want to avoid "backwards-jumping" in the UI, so we'll transactionally apply a read model changes during a rebase.
  * - We might need to make the rebase behaviour configurable e.g. to let users manually trigger a rebase
+ *
+ * Longer term we should evalutate whether we can unify the ClientSessionSyncProcessor with the LeaderSyncProcessor.
  */
 export const makeClientSessionSyncProcessor = ({
   schema,

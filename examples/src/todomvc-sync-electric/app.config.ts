@@ -2,7 +2,7 @@
 import path from 'node:path'
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 const __dirname = import.meta.dirname

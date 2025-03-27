@@ -74,6 +74,7 @@ export const makeLeaderSyncProcessor = ({
   dbMutationLog,
   clientId,
   initialBlockingSyncContext,
+  onError,
 }: {
   schema: LiveStoreSchema
   /** Only used to know whether we can safely query dbMutationLog during setup execution */
@@ -81,6 +82,7 @@ export const makeLeaderSyncProcessor = ({
   dbMutationLog: SqliteDb
   clientId: string
   initialBlockingSyncContext: InitialBlockingSyncContext
+  onError: 'shutdown' | 'ignore'
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
@@ -234,8 +236,10 @@ export const makeLeaderSyncProcessor = ({
 
         const shutdownOnError = (cause: unknown) =>
           Effect.gen(function* () {
-            yield* shutdownChannel.send(UnexpectedError.make({ cause }))
-            yield* Effect.die(cause)
+            if (onError === 'shutdown') {
+              yield* shutdownChannel.send(UnexpectedError.make({ cause }))
+              yield* Effect.die(cause)
+            }
           })
 
         yield* backgroundApplyLocalPushes({

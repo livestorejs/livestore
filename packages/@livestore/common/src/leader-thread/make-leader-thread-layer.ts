@@ -71,6 +71,7 @@ export const makeLeaderThreadLayer = ({
       dbMutationLog,
       initialBlockingSyncContext,
       clientId,
+      onError: syncOptions?.onSyncError ?? 'ignore',
     })
 
     const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(

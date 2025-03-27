@@ -19,6 +19,16 @@ export type SyncOptions = {
   backend?: SyncBackendConstructor<any>
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
+  /**
+   * What to do if there is an error during sync.
+   *
+   * Options:
+   * `shutdown` will stop the sync processor and cause the app to crash.
+   * `ignore` will log the error and let the app continue running acting as if it was offline.
+   *
+   * @default 'ignore'
+   * */
+  onSyncError?: 'shutdown' | 'ignore'
 }
 
 export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
