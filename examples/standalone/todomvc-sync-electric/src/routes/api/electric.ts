@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/livestore'
 import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 import { makeDb } from '@/server/db.js'
 
@@ -17,6 +17,7 @@ export const APIRoute = createAPIFileRoute('/api/electric')({
       // You can also provide a sourceId and sourceSecret for Electric Cloud
       // sourceId: 'your-source-id',
       // sourceSecret: 'your-source-secret',
+      apiSecret: 'change-me-electric-secret',
     })
 
     // Here we initialize the database if it doesn't exist yet. You might not need this if you
