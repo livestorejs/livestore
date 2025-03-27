@@ -1,5 +1,14 @@
 --- app.config.ts
 +++ app.config.ts
+@@ -2,7 +2,7 @@
+ import path from 'node:path'
+ 
+ import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+-import { defineConfig } from '@tanstack/react-start/config'
++import { defineConfig } from '@tanstack/start/config'
+ import { visualizer } from 'rollup-plugin-visualizer'
+ 
+ const __dirname = import.meta.dirname
 @@ -19,9 +19,6 @@
      // @ts-expect-error TODO
      server: {
