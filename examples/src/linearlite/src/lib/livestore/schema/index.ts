@@ -24,4 +24,4 @@ export {
 }
 
 export const tables = { issue, description, comment, filterState, frontendState, scrollState }
-export const schema = makeSchema({ tables, mutations, migrations: { strategy: 'from-mutation-log' } })
+export const schema = makeSchema({ tables, mutations })

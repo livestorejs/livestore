@@ -112,7 +112,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     _MutationDefMapType: Symbol.for('livestore.MutationDefMapType') as any,
     tables,
     mutations,
-    migrationOptions: inputSchema.migrations ?? { strategy: 'hard-reset' },
+    migrationOptions: inputSchema.migrations ?? { strategy: 'from-mutation-log' },
     hash,
   } satisfies LiveStoreSchema
 }
