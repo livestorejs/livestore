@@ -6,8 +6,14 @@ import tailwind from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import starlightTypeDoc from 'starlight-typedoc'
 
+const VERCEL_PREVIEW_DOMAIN = process.env.VERCEL_ENV !== 'production' && process.env.VERCEL_BRANCH_URL
+const domain = VERCEL_PREVIEW_DOMAIN ?? 'livestore.dev'
+
+const site = `https://${domain}`
+
 // https://astro.build/config
 export default defineConfig({
+  site,
   integrations: [
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
