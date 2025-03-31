@@ -47,7 +47,7 @@ const isClientEvent = (event: MutationEvent.EncodedWithMeta) => (event as TestEv
 
 describe('syncstate', () => {
   describe('merge', () => {
-    const update = ({
+    const merge = ({
       syncState,
       payload,
       ignoreClientEvents = false,
@@ -69,7 +69,7 @@ describe('syncstate', () => {
           })
           const e_0_0_e_1_0 = e_0_0.rebase_(e_1_0.id)
           const e_0_1_e_1_1 = e_0_1.rebase_(e_0_0_e_1_0.id)
-          const result = update({
+          const result = merge({
             syncState,
             payload: {
               _tag: 'upstream-rebase',
@@ -100,7 +100,7 @@ describe('syncstate', () => {
             localHead: e_1_0.id,
           })
           const e_0_1_e_1_0 = e_0_1.rebase_(e_0_0.id)
-          const result = update({
+          const result = merge({
             syncState,
             payload: {
               _tag: 'upstream-rebase',
@@ -130,7 +130,7 @@ describe('syncstate', () => {
             upstreamHead: EventId.ROOT,
             localHead: e_0_0.id,
           })
-          const result = update({
+          const result = merge({
             syncState,
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [e_1_0] },
           })
@@ -149,7 +149,7 @@ describe('syncstate', () => {
             upstreamHead: EventId.ROOT,
             localHead: e_0_0.id,
           })
-          const result = update({
+          const result = merge({
             syncState,
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [e_1_0] },
           })
@@ -163,7 +163,7 @@ describe('syncstate', () => {
             upstreamHead: EventId.ROOT,
             localHead: e_0_0.id,
           })
-          const result = update({
+          const result = merge({
             syncState,
             payload: { _tag: 'upstream-rebase', rollbackUntil: e_0_0.id, newEvents: [] },
           })
@@ -185,7 +185,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_0] } })
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
@@ -196,7 +196,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0, e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0, e_0_0] } })
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
@@ -207,7 +207,7 @@ describe('syncstate', () => {
           upstreamHead: e_1_0.id,
           localHead: e_1_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
@@ -218,7 +218,7 @@ describe('syncstate', () => {
           upstreamHead: e_1_0.id,
           localHead: e_1_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0] } })
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
@@ -229,7 +229,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_2_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_2_0] } })
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
@@ -240,7 +240,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [])
@@ -257,7 +257,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_1_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [e_1_0])
@@ -274,7 +274,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_1] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_1] } })
 
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [])
@@ -291,7 +291,7 @@ describe('syncstate', () => {
           upstreamHead: e_0_0.id,
           localHead: e_0_1.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0, e_1_1] },
         })
@@ -311,7 +311,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0] },
           ignoreClientEvents: true,
@@ -331,7 +331,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0] },
           ignoreClientEvents: true,
@@ -351,7 +351,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_1.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_1_0] },
           ignoreClientEvents: true,
@@ -372,7 +372,7 @@ describe('syncstate', () => {
           upstreamHead: e_1_0.id,
           localHead: e_1_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
     })
@@ -385,7 +385,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_1] } })
 
         const e_0_0_e_0_2 = e_0_0.rebase_(e_0_1.id)
 
@@ -406,7 +406,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0_b.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_0_0] } })
 
         const e_0_0_e_1_0 = e_0_0_b.rebase_(e_0_0.id)
 
@@ -427,7 +427,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_1_0_b.id,
         })
-        const result = update({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e_1_0] } })
         const e_1_0_e_2_0 = e_1_0_b.rebase_(e_1_0.id)
 
         expectRebase(result)
@@ -446,7 +446,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] },
         })
@@ -467,7 +467,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_0.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_0, e_0_2, e_0_3, e_1_0] },
         })
@@ -490,7 +490,7 @@ describe('syncstate', () => {
           upstreamHead: EventId.ROOT,
           localHead: e_0_1.id,
         })
-        const result = update({
+        const result = merge({
           syncState,
           payload: { _tag: 'upstream-advance', newEvents: [e_0_1, e_0_2, e_0_3, e_1_0] },
         })
@@ -516,7 +516,7 @@ describe('syncstate', () => {
               upstreamHead: EventId.ROOT,
               localHead: e_0_0.id,
             })
-            const result = update({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2, e_0_3] } })
+            const result = merge({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2, e_0_3] } })
 
             expectAdvance(result)
             expectEventArraysEqual(result.newSyncState.pending, [e_0_0, e_0_1, e_0_2, e_0_3])
@@ -535,7 +535,7 @@ describe('syncstate', () => {
               upstreamHead: EventId.ROOT,
               localHead: e_0_1.id,
             })
-            const result = update({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2] } })
+            const result = merge({ syncState, payload: { _tag: 'local-push', newEvents: [e_0_1, e_0_2] } })
 
             expectReject(result)
             expect(result.expectedMinimumId).toMatchObject(e_0_2.id)

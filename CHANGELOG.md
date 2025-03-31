@@ -125,24 +125,14 @@
 
 ### Still todo:
 
-- After release:
-  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
-  - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
-  - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
-  - Examples:
-    - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
-    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
-- Docs
-  - Notes on deployment (when to deploy what)
-  - Embrace term "containers"
-    - Unit of sharing/collaboration/auth
-    - What if I want got my initial container design wrong and I want to change it?
-      - Comparables: document databases, kafka streams, 
 - Fix linting
-- Re-expose `Schema` from `@livestore/utils/effect`
-- docs: `llms.txt`
 - Separate mutation handler from mutation definition
 - Syncing
+  - Refactor: Rename `EventId` to `EventSeq` / `EventClock` / `EventGen`
+  - Get rid of rollback tail in sync state and propagate rebase result from client leader to client session to avoid this error which can happen after reloading a failed instance:
+    `Rollback event not found in rollback tail`: https://share.cleanshot.com/pssHwKSz
+  - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
+    - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
   - Fix: mutation log unique constraint violation during concurrent mutations
   - More graceful handling when receiving a mutation event that doesn't exist in the local schema
     - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
@@ -159,16 +149,36 @@
     - fix: connectivity state + offline handling
     - implement sync payload
   - Clients should detect and gracefully handle when a sync backend resets its mutation log (e.g. during debugging)
-  - Remaining issues:
-    - [#283](https://github.com/livestorejs/livestore/issues/283)
 - Devtools
   - Fix: When resetting the database but keeping the eventlog
     - on next app start, the app doesn't re-hydrate properly (somehow seems to "double hydrate")
   - Devtools lose connection to client session (https://share.cleanshot.com/dK2rvyyj)
   - Expo devtools: use node adapter ws server
+  - sync session appears for wrong storeid
+  - sync view:
+    - different colors for when a node pulled/pushed
+    - show status indicators in each node: uptodate/syncing/error
+      - syncing should include the number of events still pending to push/pull
+      - maybe we can also figure out how to get the sync backend status?
+  - mutations explorer:
+    - show client events as tree
+    - always show root event s0
 - Release
   - Write blog post
   - Prepare X/Bluesky thread
+- After release:
+  - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
+  - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
+  - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
+  - Examples:
+    - setup: for todomvc, have a shared source of truth for the livestore definitions and have some scripts which copy them to the various example apps
+    - add some docs/comments to the mutations / schema definitions + link to mutation best practices (+ mention of AI linting)
+  - Docs
+    - Notes on deployment (when to deploy what)
+    - Embrace term "containers"
+      - Unit of sharing/collaboration/auth
+      - What if I want got my initial container design wrong and I want to change it?
+        - Comparables: document databases, kafka streams, 
 
 
 ## 0.2.0

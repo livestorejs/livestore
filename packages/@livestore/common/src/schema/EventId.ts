@@ -20,6 +20,7 @@ export type EventId = { global: GlobalEventId; client: ClientEventId }
 
 export const EventId = Schema.Struct({
   global: GlobalEventId,
+  /** Only increments for clientOnly mutations */
   client: ClientEventId,
 }).annotations({ title: 'LiveStore.EventId' })
 
@@ -36,7 +37,7 @@ export const compare = (a: EventId, b: EventId) => {
 /**
  * Convert an event id to a string representation.
  */
-export const toString = (id: EventId) => `(${id.global},${id.client})`
+export const toString = (id: EventId) => (id.client === 0 ? `s${id.global}` : `s${id.global} (+${id.client})`)
 
 /**
  * Convert a string representation of an event id to an event id.

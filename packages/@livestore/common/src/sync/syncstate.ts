@@ -50,8 +50,9 @@ import * as MutationEvent from '../schema/MutationEvent.js'
  * handling cases such as upstream rebase, advance, local push, and rollback tail trimming.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(MutationEvent.EncodedWithMeta),
+  // TODO Idea: Get rid of rollback tail and include rebase events in `upstream-rebase` payload including rollback metadata
   rollbackTail: Schema.Array(MutationEvent.EncodedWithMeta),
+  pending: Schema.Array(MutationEvent.EncodedWithMeta),
   /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventId.EventId,
   localHead: EventId.EventId,
@@ -60,12 +61,15 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
     return {
       pending: this.pending.map((e) => e.toJSON()),
       rollbackTail: this.rollbackTail.map((e) => e.toJSON()),
-      upstreamHead: `(${this.upstreamHead.global},${this.upstreamHead.client})`,
-      localHead: `(${this.localHead.global},${this.localHead.client})`,
+      upstreamHead: EventId.toString(this.upstreamHead),
+      localHead: EventId.toString(this.localHead),
     }
   }
 }
 
+/**
+ * This payload propagates a rebase from the upstream node
+ */
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Rollback until this event in the rollback tail (inclusive). Starting from the end of the rollback tail. */
   rollbackUntil: EventId.EventId,
@@ -91,7 +95,7 @@ export const PayloadUpstream = Schema.Union(PayloadUpstreamRebase, PayloadUpstre
 export type PayloadUpstream = typeof PayloadUpstream.Type
 
 /** Only used for debugging purposes */
-export class UpdateContext extends Schema.Class<UpdateContext>('UpdateContext')({
+export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
   payload: Payload,
   syncState: SyncState,
 }) {
@@ -123,14 +127,14 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
   newSyncState: SyncState,
   /** Events which weren't pending before the update */
   newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
-  updateContext: UpdateContext,
+  mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
     return {
       _tag: this._tag,
       newSyncState: this.newSyncState.toJSON(),
       newEvents: this.newEvents.map((e) => e.toJSON()),
-      updateContext: this.updateContext.toJSON(),
+      mergeContext: this.mergeContext.toJSON(),
     }
   }
 }
@@ -141,7 +145,7 @@ export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeRes
   /** Events which weren't pending before the update */
   newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
   eventsToRollback: Schema.Array(MutationEvent.EncodedWithMeta),
-  updateContext: UpdateContext,
+  mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
     return {
@@ -149,7 +153,7 @@ export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeRes
       newSyncState: this.newSyncState.toJSON(),
       newEvents: this.newEvents.map((e) => e.toJSON()),
       eventsToRollback: this.eventsToRollback.map((e) => e.toJSON()),
-      updateContext: this.updateContext.toJSON(),
+      mergeContext: this.mergeContext.toJSON(),
     }
   }
 }
@@ -158,13 +162,13 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   _tag: Schema.Literal('reject'),
   /** The minimum id that the new events must have */
   expectedMinimumId: EventId.EventId,
-  updateContext: UpdateContext,
+  mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
     return {
       _tag: this._tag,
       expectedMinimumId: `(${this.expectedMinimumId.global},${this.expectedMinimumId.client})`,
-      updateContext: this.updateContext.toJSON(),
+      mergeContext: this.mergeContext.toJSON(),
     }
   }
 }
@@ -187,6 +191,13 @@ const unexpectedError = (cause: unknown): MergeResultUnexpectedError =>
     cause: new UnexpectedError({ cause }),
   })
 
+// TODO Idea: call merge recursively through hierarchy levels
+/*
+Idea: have a map that maps from `globalEventId` to Array<ClientEvents>
+The same applies to even further hierarchy levels
+
+TODO: possibly even keep the client events in a separate table in the client leader
+*/
 export const merge = ({
   syncState,
   payload,
@@ -213,7 +224,7 @@ export const merge = ({
     return rollbackTail.slice(index + 1)
   }
 
-  const updateContext = UpdateContext.make({ payload, syncState })
+  const mergeContext = MergeContext.make({ payload, syncState })
 
   switch (payload._tag) {
     case 'upstream-rebase': {
@@ -249,7 +260,7 @@ export const merge = ({
         }),
         newEvents: [...payload.newEvents, ...rebasedPending],
         eventsToRollback,
-        updateContext,
+        mergeContext,
       })
     }
 
@@ -265,7 +276,7 @@ export const merge = ({
             localHead: syncState.localHead,
           }),
           newEvents: [],
-          updateContext,
+          mergeContext: mergeContext,
         })
       }
 
@@ -355,7 +366,7 @@ export const merge = ({
             localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
           }),
           newEvents,
-          updateContext,
+          mergeContext: mergeContext,
         })
       } else {
         const divergentPending = syncState.pending.slice(divergentPendingIndex)
@@ -383,19 +394,20 @@ export const merge = ({
           }),
           newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
           eventsToRollback: [...syncState.rollbackTail, ...divergentPending],
-          updateContext,
+          mergeContext,
         })
       }
     }
     // #endregion
 
+    // This is the same as what's running in the sync backend
     case 'local-push': {
       if (payload.newEvents.length === 0) {
         return MergeResultAdvance.make({
           _tag: 'advance',
           newSyncState: syncState,
           newEvents: [],
-          updateContext,
+          mergeContext: mergeContext,
         })
       }
 
@@ -407,7 +419,7 @@ export const merge = ({
         return MergeResultReject.make({
           _tag: 'reject',
           expectedMinimumId,
-          updateContext,
+          mergeContext,
         })
       } else {
         return MergeResultAdvance.make({
@@ -419,7 +431,7 @@ export const merge = ({
             localHead: payload.newEvents.at(-1)!.id,
           }),
           newEvents: payload.newEvents,
-          updateContext,
+          mergeContext: mergeContext,
         })
       }
     }

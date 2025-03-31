@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ site }) => {
 
 ${docs
   .map((doc) => {
-    const path = doc.id.replace(/\.(md|mdx)$/, '').replace(/\index$/, '')
+    const path = doc.id.replace(/\.(md|mdx)$/, '').replace(/\/index$/, '')
     const url = new URL(path, site)
     return `- [${doc.data.title}](${url.href}/): ${doc.data.description ?? ''}\n`
   })

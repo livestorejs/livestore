@@ -49,6 +49,14 @@ export default makeWorker({
 
 ```
 
+## Deployment
+
+The sync backend can be deployed to Cloudflare using the following command:
+
+```bash
+wrangler deploy
+```
+
 ## How the sync backend works
 
 - A Cloudflare worker is used to open a websocket connection between the client and a durable object.
