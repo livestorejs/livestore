@@ -146,6 +146,7 @@ export interface LeaderSyncProcessor {
     sessionId: string
   }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
   boot: (args: {
+    /** This deferred is needed to wait for the DB to be initially created before starting to write to it */
     dbReady: Deferred.Deferred<void>
   }) => Effect.Effect<
     { initialLeaderHead: EventId.EventId },

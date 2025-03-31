@@ -24,7 +24,7 @@ export type ApplyMutation = (
     /** Needed for rehydrateFromMutationLog */
     skipMutationLog?: boolean
   },
-) => Effect.Effect<void, SqliteError | UnexpectedError>
+) => Effect.Effect<{ sessionChangeset: Uint8Array | 'no-op' }, SqliteError | UnexpectedError>
 
 export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> = Effect.gen(
   function* () {
@@ -84,7 +84,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
               idClient: mutationEventEncoded.id.client,
               // NOTE the changeset will be empty (i.e. null) for no-op mutations
               changeset: changeset ?? null,
-              debug: execArgsArr,
+              debug: LS_DEV ? execArgsArr : null,
             },
           }),
         )
@@ -104,12 +104,14 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
         }
+
+        return { sessionChangeset: changeset ?? ('no-op' as const) }
       }).pipe(
         Effect.withSpan(`@livestore/common:leader-thread:applyMutation`, {
           attributes: {
             mutationName: mutationEventEncoded.mutation,
             mutationId: mutationEventEncoded.id,
-            'span.label': `(${mutationEventEncoded.id.global},${mutationEventEncoded.id.client}) ${mutationEventEncoded.mutation}`,
+            'span.label': `${EventId.toString(mutationEventEncoded.id)} ${mutationEventEncoded.mutation}`,
           },
         }),
         // Effect.logDuration('@livestore/common:leader-thread:applyMutation'),

@@ -2,17 +2,22 @@ import { Effect, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
-import type * as MutationEvent from '../schema/MutationEvent.js'
-import { MUTATION_LOG_META_TABLE, mutationLogMetaTable, SYNC_STATUS_TABLE } from '../schema/system-tables.js'
+import * as MutationEvent from '../schema/MutationEvent.js'
+import {
+  MUTATION_LOG_META_TABLE,
+  mutationLogMetaTable,
+  sessionChangesetMetaTable,
+  SYNC_STATUS_TABLE,
+} from '../schema/system-tables.js'
 import { prepareBindValues, sql } from '../util.js'
 import { LeaderThreadCtx } from './types.js'
 
 /** Exclusive of the "since event" */
 export const getMutationEventsSince = (
   since: EventId.EventId,
-): Effect.Effect<ReadonlyArray<MutationEvent.AnyEncoded>, never, LeaderThreadCtx> =>
+): Effect.Effect<ReadonlyArray<MutationEvent.EncodedWithMeta>, never, LeaderThreadCtx> =>
   Effect.gen(function* () {
-    const { dbMutationLog } = yield* LeaderThreadCtx
+    const { dbMutationLog, dbReadModel } = yield* LeaderThreadCtx
 
     const query = mutationLogMetaTable.query.where('idGlobal', '>=', since.global).asSql()
     const pendingMutationEventsRaw = dbMutationLog.select(query.query, prepareBindValues(query.bindValues, query.query))
@@ -20,16 +25,33 @@ export const getMutationEventsSince = (
       pendingMutationEventsRaw,
     )
 
+    const sessionChangesetRows = sessionChangesetMetaTable.query.where('idGlobal', '>=', since.global).asSql()
+    const sessionChangesetRowsRaw = dbReadModel.select(
+      sessionChangesetRows.query,
+      prepareBindValues(sessionChangesetRows.bindValues, sessionChangesetRows.query),
+    )
+    const sessionChangesetRowsDecoded = Schema.decodeUnknownSync(sessionChangesetMetaTable.schema.pipe(Schema.Array))(
+      sessionChangesetRowsRaw,
+    )
+
     return pendingMutationEvents
-      .map((_) => ({
-        mutation: _.mutation,
-        args: _.argsJson,
-        id: { global: _.idGlobal, client: _.idClient },
-        parentId: { global: _.parentIdGlobal, client: _.parentIdClient },
-        clientId: _.clientId,
-        sessionId: _.sessionId,
-      }))
+      .map((_) =>
+        MutationEvent.EncodedWithMeta.make({
+          mutation: _.mutation,
+          args: _.argsJson,
+          id: { global: _.idGlobal, client: _.idClient },
+          parentId: { global: _.parentIdGlobal, client: _.parentIdClient },
+          clientId: _.clientId,
+          sessionId: _.sessionId,
+          meta: {
+            sessionChangeset:
+              sessionChangesetRowsDecoded.find((_) => _.idGlobal === _.idGlobal && _.idClient === _.idClient)
+                ?.changeset ?? 'unset',
+          },
+        }),
+      )
       .filter((_) => EventId.compare(_.id, since) > 0)
+      .sort((a, b) => EventId.compare(a.id, b.id))
   })
 
 export const getClientHeadFromDb = (dbMutationLog: SqliteDb): EventId.EventId => {

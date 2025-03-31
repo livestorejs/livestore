@@ -67,12 +67,13 @@ type LocalPushQueueItem = [
  * - The latch closes on pull receipt and re-opens post-pull completion.
  * - Processes up to `maxBatchSize` events per cycle.
  *
+ * Currently we're advancing the db read model and mutation log in lockstep, but we could also decouple this in the future
+ *
  */
 export const makeLeaderSyncProcessor = ({
   schema,
   dbMissing,
   dbMutationLog,
-  clientId,
   initialBlockingSyncContext,
   onError,
 }: {
@@ -80,7 +81,6 @@ export const makeLeaderSyncProcessor = ({
   /** Only used to know whether we can safely query dbMutationLog during setup execution */
   dbMissing: boolean
   dbMutationLog: SqliteDb
-  clientId: string
   initialBlockingSyncContext: InitialBlockingSyncContext
   onError: 'shutdown' | 'ignore'
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
@@ -127,13 +127,6 @@ export const makeLeaderSyncProcessor = ({
         //   return
         // }
 
-        if (clientId === 'client-b') {
-          // console.log(
-          //   'push from client session',
-          //   newEvents.map((item) => item.toJSON()),
-          // )
-        }
-
         const waitForProcessing = options?.waitForProcessing ?? false
         const generation = currentLocalPushGenerationRef.current
 
@@ -154,7 +147,7 @@ export const makeLeaderSyncProcessor = ({
           yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
-        Effect.withSpan('@livestore/common:leader-thread:syncing:local-push', {
+        Effect.withSpan('@livestore/common:LeaderSyncProcessor:local-push', {
           attributes: {
             batchSize: newEvents.length,
             batch: TRACE_VERBOSE ? newEvents : undefined,
@@ -164,7 +157,7 @@ export const makeLeaderSyncProcessor = ({
       )
 
     const pushPartial: LeaderSyncProcessor['pushPartial'] = ({
-      mutationEvent: partialMutationEvent,
+      mutationEvent: { mutation, args },
       clientId,
       sessionId,
     }) =>
@@ -172,10 +165,11 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const mutationDef = getMutationDef(schema, partialMutationEvent.mutation)
+        const mutationDef = getMutationDef(schema, mutation)
 
         const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
-          ...partialMutationEvent,
+          mutation,
+          args,
           clientId,
           sessionId,
           ...EventId.nextPair(syncState.localHead, mutationDef.options.clientOnly),
@@ -206,15 +200,12 @@ export const makeLeaderSyncProcessor = ({
           )
         }
 
-        const pendingMutationEvents = yield* getMutationEventsSince({
-          global: initialBackendHead,
-          client: EventId.clientDefault,
-        }).pipe(Effect.map(ReadonlyArray.map((_) => new MutationEvent.EncodedWithMeta(_))))
+        const pendingMutationEvents = dbMissing
+          ? []
+          : yield* getMutationEventsSince({ global: initialBackendHead, client: EventId.clientDefault })
 
         const initialSyncState = new SyncState.SyncState({
           pending: pendingMutationEvents,
-          // On the leader we don't need a rollback tail beyond `pending` items
-          rollbackTail: [],
           upstreamHead: { global: initialBackendHead, client: EventId.clientDefault },
           localHead: initialLocalHead,
         })
@@ -224,14 +215,16 @@ export const makeLeaderSyncProcessor = ({
 
         // Rehydrate sync queue
         if (pendingMutationEvents.length > 0) {
-          const filteredBatch = pendingMutationEvents
+          const globalPendingMutationEvents = pendingMutationEvents
             // Don't sync clientOnly mutations
             .filter((mutationEventEncoded) => {
               const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
               return mutationDef.options.clientOnly === false
             })
 
-          yield* BucketQueue.offerAll(syncBackendQueue, filteredBatch)
+          if (globalPendingMutationEvents.length > 0) {
+            yield* BucketQueue.offerAll(syncBackendQueue, globalPendingMutationEvents)
+          }
         }
 
         const shutdownOnError = (cause: unknown) =>
@@ -299,7 +292,7 @@ export const makeLeaderSyncProcessor = ({
         }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
         return { initialLeaderHead: initialLocalHead }
-      }).pipe(Effect.withSpanScoped('@livestore/common:leader-thread:syncing'))
+      }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
     return {
       push,
@@ -338,7 +331,7 @@ const backgroundApplyLocalPushes = ({
   currentLocalPushGenerationRef: { current: number }
 }) =>
   Effect.gen(function* () {
-    const { connectedClientSessionPullQueues, clientId } = yield* LeaderThreadCtx
+    const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
 
     const applyMutationItems = yield* makeApplyMutationItems
 
@@ -394,10 +387,7 @@ const backgroundApplyLocalPushes = ({
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
-          /*
-
-          TODO: how to test this?
-          */
+          // TODO: how to test this?
           currentLocalPushGenerationRef.current++
 
           const nextGeneration = currentLocalPushGenerationRef.current
@@ -449,12 +439,8 @@ const backgroundApplyLocalPushes = ({
 
       yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
-      if (clientId === 'client-b') {
-        // yield* Effect.log('offer upstream-advance due to local-push')
-        // debugger
-      }
       yield* connectedClientSessionPullQueues.offer({
-        payload: { _tag: 'upstream-advance', newEvents: mergeResult.newEvents },
+        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
         remaining: 0,
       })
 
@@ -480,7 +466,10 @@ const backgroundApplyLocalPushes = ({
 
 type ApplyMutationItems = (_: {
   batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  /** Indexes are aligned with `batchItems` */
+  /**
+   * The deferreds are used by the caller to know when the mutation has been processed.
+   * Indexes are aligned with `batchItems`
+   */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
 }) => Effect.Effect<void, UnexpectedError>
 
@@ -494,6 +483,7 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
 
     return ({ batchItems, deferreds }) =>
       Effect.gen(function* () {
+        // NOTE We always start a transaction to ensure consistency between db and mutation log (even for single-item batches)
         db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
         dbMutationLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
@@ -508,7 +498,8 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
         )
 
         for (let i = 0; i < batchItems.length; i++) {
-          yield* applyMutation(batchItems[i]!)
+          const { sessionChangeset } = yield* applyMutation(batchItems[i]!)
+          batchItems[i]!.meta.sessionChangeset = sessionChangeset
 
           if (deferreds?.[i] !== undefined) {
             yield* Deferred.succeed(deferreds[i]!, void 0)
@@ -520,8 +511,8 @@ const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError,
       }).pipe(
         Effect.uninterruptible,
         Effect.scoped,
-        Effect.withSpan('@livestore/common:leader-thread:syncing:applyMutationItems', {
-          attributes: { count: batchItems.length },
+        Effect.withSpan('@livestore/common:LeaderSyncProcessor:applyMutationItems', {
+          attributes: { batchSize: batchItems.length },
         }),
         Effect.tapCauseLogPretty,
         UnexpectedError.mapToUnexpectedError,
@@ -560,7 +551,6 @@ const backgroundBackendPulling = ({
       dbMutationLog,
       connectedClientSessionPullQueues,
       schema,
-      clientId,
     } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
@@ -586,11 +576,9 @@ const backgroundBackendPulling = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const trimRollbackUntil = newEvents.at(-1)!.id
-
         const mergeResult = SyncState.merge({
           syncState,
-          payload: { _tag: 'upstream-advance', newEvents, trimRollbackUntil },
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
           isClientEvent,
           isEqualEvent: MutationEvent.isEqualEncoded,
           ignoreClientEvents: true,
@@ -614,27 +602,25 @@ const backgroundBackendPulling = ({
           otelSpan?.addEvent('backend-pull:rebase', {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
-            rollbackCount: mergeResult.eventsToRollback.length,
+            rollbackCount: mergeResult.rollbackEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
-          const filteredRebasedPending = mergeResult.newSyncState.pending.filter((mutationEvent) => {
+          const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((mutationEvent) => {
             const mutationDef = getMutationDef(schema, mutationEvent.mutation)
             return mutationDef.options.clientOnly === false
           })
-          yield* restartBackendPushing(filteredRebasedPending)
+          yield* restartBackendPushing(globalRebasedPendingEvents)
 
-          if (mergeResult.eventsToRollback.length > 0) {
-            yield* rollback({ db, dbMutationLog, eventIdsToRollback: mergeResult.eventsToRollback.map((_) => _.id) })
+          if (mergeResult.rollbackEvents.length > 0) {
+            yield* rollback({ db, dbMutationLog, eventIdsToRollback: mergeResult.rollbackEvents.map((_) => _.id) })
           }
 
           yield* connectedClientSessionPullQueues.offer({
-            payload: {
-              _tag: 'upstream-rebase',
+            payload: SyncState.PayloadUpstreamRebase.make({
               newEvents: mergeResult.newEvents,
-              rollbackUntil: mergeResult.eventsToRollback.at(0)!.id,
-              trimRollbackUntil,
-            },
+              rollbackEvents: mergeResult.rollbackEvents,
+            }),
             remaining,
           })
         } else {
@@ -643,11 +629,8 @@ const backgroundBackendPulling = ({
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
 
-          if (clientId === 'client-b') {
-            // yield* Effect.log('offer upstream-advance due to pull')
-          }
           yield* connectedClientSessionPullQueues.offer({
-            payload: { _tag: 'upstream-advance', newEvents: mergeResult.newEvents, trimRollbackUntil },
+            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
             remaining,
           })
         }
@@ -675,13 +658,13 @@ const backgroundBackendPulling = ({
           //   },
           // })
 
-          // Wait for the db to be initially created
-          yield* dbReady
-
           // NOTE we only want to take process mutations when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+
+          // Wait for the db to be initially created
+          yield* dbReady
 
           yield* onNewPullChunk(
             batch.map((_) => MutationEvent.EncodedWithMeta.fromGlobal(_.mutationEventEncoded)),
@@ -694,7 +677,7 @@ const backgroundBackendPulling = ({
       Stream.runDrain,
       Effect.interruptible,
     )
-  }).pipe(Effect.withSpan('@livestore/common:leader-thread:syncing:backend-pulling'))
+  }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pulling'))
 
 const rollback = ({
   db,
@@ -741,7 +724,7 @@ const rollback = ({
       )
     }
   }).pipe(
-    Effect.withSpan('@livestore/common:leader-thread:syncing:rollback', {
+    Effect.withSpan('@livestore/common:LeaderSyncProcessor:rollback', {
       attributes: { count: eventIdsToRollback.length },
     }),
   )
@@ -766,7 +749,7 @@ const getCursorInfo = (remoteHead: EventId.GlobalEventId) =>
       cursor: { global: remoteHead, client: EventId.clientDefault },
       metadata: syncMetadataOption,
     }) satisfies InitialSyncInfo
-  }).pipe(Effect.withSpan('@livestore/common:leader-thread:syncing:getCursorInfo', { attributes: { remoteHead } }))
+  }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:getCursorInfo', { attributes: { remoteHead } }))
 
 const backgroundBackendPushing = ({
   dbReady,
@@ -830,7 +813,7 @@ const backgroundBackendPushing = ({
         )
       }
     }
-  }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:leader-thread:syncing:backend-pushing'))
+  }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pushing'))
 
 const trimChangesetRows = (db: SqliteDb, newHead: EventId.EventId) => {
   // Since we're using the session changeset rows to query for the current head,

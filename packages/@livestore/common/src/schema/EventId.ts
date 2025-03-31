@@ -18,6 +18,12 @@ export const clientDefault = 0 as any as ClientEventId
  */
 export type EventId = { global: GlobalEventId; client: ClientEventId }
 
+// export const EventSequenceNumber = Schema.Struct({})
+// export const EventNumber = Schema.Struct({})
+
+/**
+ * NOTE: Client mutation events with a non-0 client id, won't be synced to the sync backend.
+ */
 export const EventId = Schema.Struct({
   global: GlobalEventId,
   /** Only increments for clientOnly mutations */

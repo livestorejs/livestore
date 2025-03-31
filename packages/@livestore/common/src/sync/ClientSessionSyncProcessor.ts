@@ -39,7 +39,7 @@ export const makeClientSessionSyncProcessor = ({
     options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
     writeTables: Set<string>
-    sessionChangeset: Uint8Array | undefined
+    sessionChangeset: Uint8Array | 'no-op' | 'unset'
   }
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
@@ -56,12 +56,12 @@ export const makeClientSessionSyncProcessor = ({
   const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
 
   const syncStateRef = {
+    // The initial state is identical to the leader's initial state
     current: new SyncState.SyncState({
       localHead: clientSession.leaderThread.initialState.leaderHead,
       upstreamHead: clientSession.leaderThread.initialState.leaderHead,
+      // Given we're starting with the leader's snapshot, we don't have any pending mutations intially
       pending: [],
-      // TODO init rollbackTail from leader to be ready for backend rebasing
-      rollbackTail: [],
     }),
   }
 
@@ -76,13 +76,14 @@ export const makeClientSessionSyncProcessor = ({
     // TODO validate batch
 
     let baseEventId = syncStateRef.current.localHead
-    const encodedMutationEvents = batch.map((mutationEvent) => {
-      const mutationDef = getMutationDef(schema, mutationEvent.mutation)
+    const encodedMutationEvents = batch.map(({ mutation, args }) => {
+      const mutationDef = getMutationDef(schema, mutation)
       const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.clientOnly)
       baseEventId = nextIdPair.id
       return new MutationEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(mutationEventSchema)({
-          ...mutationEvent,
+          mutation,
+          args,
           ...nextIdPair,
           clientId: clientSession.clientId,
           sessionId: clientSession.sessionId,
@@ -200,7 +201,7 @@ export const makeClientSessionSyncProcessor = ({
               payloadTag: payload._tag,
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
               newEventsCount: mergeResult.newEvents.length,
-              rollbackCount: mergeResult.eventsToRollback.length,
+              rollbackCount: mergeResult.rollbackEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
               remaining,
             })
@@ -217,16 +218,16 @@ export const makeClientSessionSyncProcessor = ({
             if (LS_DEV) {
               Effect.logDebug(
                 'pull:rebase: rollback',
-                mergeResult.eventsToRollback.length,
-                ...mergeResult.eventsToRollback.slice(0, 10).map((_) => _.toJSON()),
+                mergeResult.rollbackEvents.length,
+                ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
               ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
-            for (let i = mergeResult.eventsToRollback.length - 1; i >= 0; i--) {
-              const event = mergeResult.eventsToRollback[i]!
-              if (event.meta.sessionChangeset) {
+            for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
+              const event = mergeResult.rollbackEvents[i]!
+              if (event.meta.sessionChangeset !== 'no-op' && event.meta.sessionChangeset !== 'unset') {
                 rollback(event.meta.sessionChangeset)
-                event.meta.sessionChangeset = undefined
+                event.meta.sessionChangeset = 'unset'
               }
             }
 
@@ -247,6 +248,7 @@ export const makeClientSessionSyncProcessor = ({
 
           const writeTables = new Set<string>()
           for (const mutationEvent of mergeResult.newEvents) {
+            // TODO apply changeset if available (will require tracking of write tables as well)
             const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
             const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
             for (const table of res.writeTables) {

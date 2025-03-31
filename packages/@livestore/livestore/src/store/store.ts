@@ -149,7 +149,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           }
         }
 
-        let sessionChangeset: Uint8Array | undefined
+        let sessionChangeset: Uint8Array | 'no-op' | 'unset' = 'unset'
         if (withChangeset === true) {
           sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
         } else {

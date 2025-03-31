@@ -70,7 +70,6 @@ export const makeLeaderThreadLayer = ({
       dbMissing,
       dbMutationLog,
       initialBlockingSyncContext,
-      clientId,
       onError: syncOptions?.onSyncError ?? 'ignore',
     })
 
@@ -122,6 +121,7 @@ export const makeLeaderThreadLayer = ({
     Effect.withSpan('@livestore/common:leader-thread:boot'),
     Effect.withSpanScoped('@livestore/common:leader-thread'),
     UnexpectedError.mapToUnexpectedError,
+    Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
   )
 

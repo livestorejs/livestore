@@ -1,6 +1,5 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
-import * as MutationEvent from '../schema/MutationEvent.js'
 import { getMutationEventsSince } from './mutationlog.js'
 import { LeaderThreadCtx, type PullQueueItem, type PullQueueSet } from './types.js'
 
@@ -23,10 +22,9 @@ export const makePullQueueSet = Effect.gen(function* () {
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
-      const mutationEvents = yield* getMutationEventsSince(since)
+      const newEvents = yield* getMutationEventsSince(since)
 
-      if (mutationEvents.length > 0) {
-        const newEvents = mutationEvents.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent))
+      if (newEvents.length > 0) {
         yield* queue.offer({ payload: { _tag: 'upstream-advance', newEvents }, remaining: 0 })
       }
 
@@ -38,11 +36,7 @@ export const makePullQueueSet = Effect.gen(function* () {
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
       // Short-circuit if the payload is an empty upstream advance
-      if (
-        item.payload._tag === 'upstream-advance' &&
-        item.payload.newEvents.length === 0 &&
-        item.payload.trimRollbackUntil === undefined
-      ) {
+      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
         return
       }
 

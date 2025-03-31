@@ -155,16 +155,21 @@ export const makeMutationEventSchemaMemo = memoizeByRef(makeMutationEventSchema)
 export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEvent.EncodedWithMeta')({
   mutation: Schema.String,
   args: Schema.Any,
+  // TODO rename to `.num` / `.parentNum`
   id: EventId.EventId,
   parentId: EventId.EventId,
   clientId: Schema.String,
   sessionId: Schema.String,
   // TODO get rid of `meta` again by cleaning up the usage implementations
-  meta: Schema.optionalWith(
-    Schema.Any as Schema.Schema<{
-      sessionChangeset?: Uint8Array
-    }>,
-    { default: () => ({}) },
+  meta: Schema.Struct({
+    sessionChangeset: Schema.Union(Schema.Uint8Array, Schema.Literal('no-op', 'unset')),
+  }).pipe(
+    Schema.mutable,
+    Schema.optional,
+    Schema.withDefaults({
+      constructor: () => ({ sessionChangeset: 'unset' as const }),
+      decoding: () => ({ sessionChangeset: 'unset' as const }),
+    }),
   ),
 }) {
   toJSON = (): any => {
@@ -172,7 +177,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
     // - More readable way to print the id + parentId
     // - not including `meta`, `clientId`, `sessionId`
     return {
-      id: `(${this.id.global},${this.id.client}) → (${this.parentId.global},${this.parentId.client})`,
+      id: `${EventId.toString(this.id)} → ${EventId.toString(this.parentId)}`,
       mutation: this.mutation,
       args: this.args,
     }
@@ -205,6 +210,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
       ...mutationEvent,
       id: { global: mutationEvent.id, client: EventId.clientDefault },
       parentId: { global: mutationEvent.parentId, client: EventId.clientDefault },
+      meta: { sessionChangeset: 'unset' as const },
     })
 
   toGlobal = (): AnyEncodedGlobal => ({
