@@ -244,10 +244,6 @@ const makeLeaderThread = ({
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => db.export()),
         getMutationLogData: Effect.sync(() => dbMutationLog.export()),
-        // TODO
-        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
-          Effect.runSync,
-        ),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
       } satisfies ClientSessionLeaderThreadProxy

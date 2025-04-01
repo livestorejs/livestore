@@ -1,10 +1,9 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-import { NetworkStatus } from '../adapter-types.js'
 import { EventId } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
 import * as SyncState from '../sync/syncstate.js'
-import { LeaderReqResMessage, LSDMessage, LSDReqResMessage } from './devtools-messages-common.js'
+import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.js'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
   mode: Schema.Literal('all-data', 'only-app-db'),

@@ -8,7 +8,7 @@ if (process.execArgv.includes('--inspect')) {
   inspector.waitForDebugger()
 }
 
-import type { NetworkStatus, SyncOptions } from '@livestore/common'
+import type { SyncOptions } from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import {
@@ -96,18 +96,6 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const workerCtx = yield* LeaderThreadCtx
         return getClientHeadFromDb(workerCtx.dbMutationLog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderHead')),
-    NetworkStatusStream: () =>
-      Effect.gen(function* (_) {
-        const ctx = yield* LeaderThreadCtx
-
-        if (ctx.syncBackend === undefined) {
-          return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now(), latchClosed: false })
-        }
-
-        return ctx.syncBackend.isConnected.changes.pipe(
-          Stream.map((isConnected) => ({ isConnected, timestampMs: Date.now(), latchClosed: false })),
-        )
-      }).pipe(Stream.unwrap),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx

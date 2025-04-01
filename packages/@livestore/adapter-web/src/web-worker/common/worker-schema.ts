@@ -1,12 +1,4 @@
-import {
-  BootStatus,
-  Devtools,
-  LeaderAheadError,
-  MigrationsReport,
-  NetworkStatus,
-  SyncState,
-  UnexpectedError,
-} from '@livestore/common'
+import { BootStatus, Devtools, LeaderAheadError, MigrationsReport, SyncState, UnexpectedError } from '@livestore/common'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -126,12 +118,6 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
-    payload: {},
-    success: NetworkStatus,
-    failure: UnexpectedError,
-  }) {}
-
   export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', {
     payload: {},
     success: Schema.Void,
@@ -156,7 +142,6 @@ export namespace LeaderWorkerInner {
     GetRecreateSnapshot,
     GetLeaderHead,
     GetLeaderSyncState,
-    NetworkStatusStream,
     Shutdown,
     ExtraDevtoolsMessage,
     WebmeshWorker.Schema.CreateConnection,
@@ -198,7 +183,6 @@ export namespace SharedWorker {
     LeaderWorkerInner.ExportMutationlog,
     LeaderWorkerInner.GetLeaderHead,
     LeaderWorkerInner.GetLeaderSyncState,
-    LeaderWorkerInner.NetworkStatusStream,
     LeaderWorkerInner.Shutdown,
     LeaderWorkerInner.ExtraDevtoolsMessage,
 

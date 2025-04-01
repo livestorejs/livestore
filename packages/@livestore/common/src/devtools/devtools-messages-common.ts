@@ -2,6 +2,15 @@ import { Schema } from '@livestore/utils/effect'
 
 import { liveStoreVersion as pkgVersion } from '../version.js'
 
+export const NetworkStatus = Schema.Struct({
+  isConnected: Schema.Boolean,
+  timestampMs: Schema.Number,
+  /** Whether the network status devtools latch is closed. Used to simulate network disconnection. */
+  latchClosed: Schema.Boolean,
+})
+
+export type NetworkStatus = typeof NetworkStatus.Type
+
 export const requestId = Schema.String
 export const clientId = Schema.String
 export const sessionId = Schema.String

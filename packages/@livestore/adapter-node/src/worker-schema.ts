@@ -134,15 +134,6 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class NetworkStatusStream extends Schema.TaggedRequest<NetworkStatusStream>()('NetworkStatusStream', {
-    payload: {},
-    success: Schema.Struct({
-      isConnected: Schema.Boolean,
-      timestampMs: Schema.Number,
-    }),
-    failure: UnexpectedError,
-  }) {}
-
   export class Shutdown extends Schema.TaggedRequest<Shutdown>()('Shutdown', {
     payload: {},
     success: Schema.Void,
@@ -167,7 +158,6 @@ export namespace LeaderWorkerInner {
     ExportMutationlog,
     GetLeaderHead,
     GetLeaderSyncState,
-    NetworkStatusStream,
     Shutdown,
     ExtraDevtoolsMessage,
   )

@@ -1,4 +1,4 @@
-import type { NetworkStatus, SqliteDb, SyncOptions } from '@livestore/common'
+import type { SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import {
@@ -215,19 +215,6 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState'),
       ),
-    NetworkStatusStream: () =>
-      Effect.gen(function* (_) {
-        const ctx = yield* LeaderThreadCtx
-
-        if (ctx.syncBackend === undefined) {
-          return Stream.make<[NetworkStatus]>({ isConnected: false, timestampMs: Date.now(), latchClosed: false })
-        }
-
-        return Stream.zipLatest(
-          ctx.syncBackend.isConnected.changes,
-          ctx.devtools.enabled ? ctx.devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
-        ).pipe(Stream.map(([isConnected, { latchClosed }]) => ({ isConnected, timestampMs: Date.now(), latchClosed })))
-      }).pipe(Stream.unwrap),
     Shutdown: () =>
       Effect.gen(function* () {
         yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')

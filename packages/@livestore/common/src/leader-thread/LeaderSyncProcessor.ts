@@ -861,9 +861,6 @@ const makePullQueueSet = Effect.gen(function* () {
 
       const newEvents = yield* getMutationEventsSince(since)
 
-      yield* Effect.log(`[@livestore/common:pull-queue-set] making queue for since ${since}`, newEvents)
-      yield* Effect.addFinalizerLog(`[@livestore/common:pull-queue-set] shutting down queue for since ${since}`)
-
       if (newEvents.length > 0) {
         yield* queue.offer({ payload: { _tag: 'upstream-advance', newEvents }, remaining: 0 })
       }
@@ -879,8 +876,6 @@ const makePullQueueSet = Effect.gen(function* () {
       if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
         return
       }
-
-      console.log('[@livestore/common:pull-queue-set] offering item', item)
 
       for (const queue of set) {
         yield* Queue.offer(queue, item)

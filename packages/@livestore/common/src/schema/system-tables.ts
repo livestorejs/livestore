@@ -72,6 +72,7 @@ export const MUTATION_LOG_META_TABLE = 'mutation_log'
 export const mutationLogMetaTable = table(
   MUTATION_LOG_META_TABLE,
   {
+    // Adjust modeling so a global event never needs a client id component
     idGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
     idClient: SqliteDsl.integer({ primaryKey: true, schema: EventId.ClientEventId }),
     parentIdGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),

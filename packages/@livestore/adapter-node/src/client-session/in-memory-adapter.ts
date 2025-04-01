@@ -148,20 +148,14 @@ const makeLeaderThread = ({
             testing?.overrides?.leaderThread?.mutations?.pull ??
             (({ cursor }) => syncProcessor.pull({ since: cursor })),
           push: (batch) =>
-            syncProcessor
-              .push(
-                batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
-                { waitForProcessing: true },
-              )
-              .pipe(Effect.provide(layer), Effect.scoped),
+            syncProcessor.push(
+              batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+              { waitForProcessing: true },
+            ),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => db.export()),
         getMutationLogData: Effect.sync(() => dbMutationLog.export()),
-        // TODO
-        networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
-          Effect.runSync,
-        ),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
       } satisfies ClientSessionLeaderThreadProxy

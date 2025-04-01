@@ -53,9 +53,6 @@ export const makeInMemoryAdapter =
           export: Effect.sync(() => sqliteDb.export()),
           getMutationLogData: Effect.succeed(new Uint8Array()),
           getSyncState: Effect.dieMessage('Not implemented'),
-          networkStatus: SubscriptionRef.make({ isConnected: false, timestampMs: Date.now(), latchClosed: false }).pipe(
-            Effect.runSync,
-          ),
           sendDevtoolsMessage: () => Effect.dieMessage('Not implemented'),
         },
         lockStatus,

@@ -1,4 +1,4 @@
-import type { Adapter, ClientSession, LockStatus, NetworkStatus } from '@livestore/common'
+import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
 import { Devtools, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
@@ -322,22 +322,6 @@ export const makePersistedAdapter =
           )
         }).pipe(Stream.unwrap) as any
 
-      const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
-        isConnected: false,
-        timestampMs: Date.now(),
-        latchClosed: false,
-      })
-
-      yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.NetworkStatusStream()).pipe(
-        Stream.tap((_) => SubscriptionRef.set(networkStatus, _)),
-        Stream.runDrain,
-        Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
-        Effect.tapErrorCause((cause) => Effect.sync(() => shutdown(cause))),
-        Effect.interruptible,
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
-
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
@@ -460,8 +444,6 @@ export const makePersistedAdapter =
             UnexpectedError.mapToUnexpectedError,
             Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
           ),
-
-          networkStatus,
 
           sendDevtoolsMessage: (message) =>
             runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(

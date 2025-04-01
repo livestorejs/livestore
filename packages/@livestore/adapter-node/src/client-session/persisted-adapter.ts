@@ -8,7 +8,6 @@ import type {
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
   LockStatus,
-  NetworkStatus,
 } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
 import * as DevtoolsNode from '@livestore/devtools-node-common/web-channel'
@@ -289,12 +288,6 @@ const makeLeaderThread = ({
 
     const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderHead())
 
-    const networkStatus = yield* SubscriptionRef.make<NetworkStatus>({
-      isConnected: true,
-      timestampMs: Date.now(),
-      latchClosed: false,
-    })
-
     const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
       Effect.timeout(10_000),
       UnexpectedError.mapToUnexpectedError,
@@ -302,7 +295,6 @@ const makeLeaderThread = ({
     )
 
     const leaderThread = {
-      networkStatus,
       mutations: {
         pull: ({ cursor }) =>
           runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),

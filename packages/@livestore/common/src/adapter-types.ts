@@ -56,7 +56,6 @@ export interface ClientSessionLeaderThreadProxy {
   export: Effect.Effect<Uint8Array, UnexpectedError>
   getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
   getSyncState: Effect.Effect<SyncState, UnexpectedError>
-  networkStatus: SubscriptionRef.SubscriptionRef<NetworkStatus>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
   sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
 }
@@ -107,15 +106,6 @@ export const PersistenceInfo = Schema.Struct(
 export type PersistenceInfo<With extends {} = {}> = typeof PersistenceInfo.Type & With
 
 export type ResetMode = 'all-data' | 'only-app-db'
-
-export const NetworkStatus = Schema.Struct({
-  isConnected: Schema.Boolean,
-  timestampMs: Schema.Number,
-  /** Whether the network status devtools latch is closed. Used to simulate network disconnection. */
-  latchClosed: Schema.Boolean,
-})
-
-export type NetworkStatus = typeof NetworkStatus.Type
 
 export const BootStateProgress = Schema.Struct({
   done: Schema.Number,
