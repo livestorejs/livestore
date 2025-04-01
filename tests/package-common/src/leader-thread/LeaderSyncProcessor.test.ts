@@ -211,13 +211,12 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
     dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
     devtoolsOptions: { enabled: false },
     shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
-  })
+  }).pipe(Layer.provide(FetchHttpClient.layer))
 
   const testContextLayer = Effect.gen(function* () {
     const leaderThreadCtx = yield* LeaderThreadCtx
 
     const encodeMutationEvent = ({
-      meta,
       ...event
     }: Omit<typeof MutationEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
       new MutationEvent.EncodedWithMeta({
@@ -226,12 +225,11 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
           clientId: leaderThreadCtx.clientId,
           sessionId: 'static-session-id',
         }),
-        meta,
       })
 
     const currentMutationEventId = { current: EventId.ROOT }
 
-    const pullQueue = yield* leaderThreadCtx.connectedClientSessionPullQueues.makeQueue(EventId.ROOT)
+    const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({ since: EventId.ROOT })
 
     const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAnyDecoded) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
@@ -261,7 +259,6 @@ const withCtx =
     self.pipe(
       Effect.timeout(IS_CI ? 60_000 : 10_000),
       Effect.provide(LeaderThreadCtxLive),
-      Effect.provide(FetchHttpClient.layer),
       Effect.provide(PlatformNode.NodeFileSystem.layer),
       Effect.provide(Logger.pretty),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed

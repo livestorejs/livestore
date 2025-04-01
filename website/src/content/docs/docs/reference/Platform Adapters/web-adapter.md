@@ -39,9 +39,10 @@ makeWorker({ schema })
 - Shared worker:
   - Needed to allow tabs to communicate with each other using a binary message channel.
   - The shared worker mostly acts as a proxy to the dedicated web worker.
-- Dedicated web worker (also called "leader worker"):
+- Dedicated web worker (also called "leader worker" via leader election mechanism using web locks):
   - Acts as the leader/single writer for the storage.
-  - Currently needed for synchronous OPFS API. (Hopefully won't be needed in the future anymore.)
+  - Also handles connection to sync backend.
+  - Currently needed for synchronous OPFS API which isn't supported in a shared worker. (Hopefully won't be needed in the future anymore.)
 
 ### Why not use a service worker?
 

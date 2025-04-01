@@ -17,47 +17,45 @@ import { schema, tables } from '../leader-thread/fixture.js'
 import type { MockSyncBackend } from '../mock-sync-backend.js'
 import { makeMockSyncBackend } from '../mock-sync-backend.js'
 
-Vitest.describe('Store', () => {
-  Vitest.describe('ClientSessionSyncProcessor', () => {
-    Vitest.scopedLive('from scratch', (test) =>
-      Effect.gen(function* () {
-        const { makeStore, mockSyncBackend } = yield* TestContext
-        const store = yield* makeStore
+Vitest.describe('ClientSessionSyncProcessor', () => {
+  Vitest.scopedLive('from scratch', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore
 
-        store.commit(tables.todos.insert({ id: '1', text: 't1', completed: false }))
+      store.commit(tables.todos.insert({ id: '1', text: 't1', completed: false }))
 
-        yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
-      }).pipe(withCtx(test)),
-    )
+      yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
+    }).pipe(withCtx(test)),
+  )
 
-    Vitest.scopedLive('sync backend is ahead', (test) =>
-      Effect.gen(function* () {
-        const { makeStore, mockSyncBackend } = yield* TestContext
-        const mutationEventSchema = MutationEvent.makeMutationEventPartialSchema(
-          schema,
-        ) as TODO as Schema.Schema<MutationEvent.PartialAnyEncoded>
-        const encoded = Schema.encodeSync(mutationEventSchema)(
-          tables.todos.insert({ id: '1', text: 't1', completed: false }),
-        )
+  Vitest.scopedLive('sync backend is ahead', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const mutationEventSchema = MutationEvent.makeMutationEventPartialSchema(
+        schema,
+      ) as TODO as Schema.Schema<MutationEvent.PartialAnyEncoded>
+      const encoded = Schema.encodeSync(mutationEventSchema)(
+        tables.todos.insert({ id: '1', text: 't1', completed: false }),
+      )
 
-        // yield* mockSyncBackend.connect
+      // yield* mockSyncBackend.connect
 
-        const store = yield* makeStore
+      const store = yield* makeStore
 
-        store.commit(tables.todos.insert({ id: '2', text: 't2', completed: false }))
+      store.commit(tables.todos.insert({ id: '2', text: 't2', completed: false }))
 
-        yield* mockSyncBackend.advance({
-          ...encoded,
-          id: EventId.globalEventId(0),
-          parentId: EventId.ROOT.global,
-          clientId: 'other-client',
-          sessionId: 'static-session-id',
-        })
+      yield* mockSyncBackend.advance({
+        ...encoded,
+        id: EventId.globalEventId(0),
+        parentId: EventId.ROOT.global,
+        clientId: 'other-client',
+        sessionId: 'static-session-id',
+      })
 
-        yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
-      }).pipe(withCtx(test)),
-    )
-  })
+      yield* mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
+    }).pipe(withCtx(test)),
+  )
 
   Vitest.scopedLive('race condition between client session and sync backend', (test) =>
     Effect.gen(function* () {

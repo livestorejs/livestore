@@ -136,17 +136,17 @@ const makeLeaderThread = ({
         dbReadModel: db,
         dbMutationLog,
         syncProcessor,
-        connectedClientSessionPullQueues,
         extraIncomingMessagesQueue,
         initialState,
       } = yield* LeaderThreadCtx
 
       const initialLeaderHead = getClientHeadFromDb(dbMutationLog)
-      const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(initialLeaderHead)
 
       const leaderThread = {
         mutations: {
-          pull: testing?.overrides?.leaderThread?.mutations?.pull ?? (() => Stream.fromQueue(pullQueue)),
+          pull:
+            testing?.overrides?.leaderThread?.mutations?.pull ??
+            (({ cursor }) => syncProcessor.pull({ since: cursor })),
           push: (batch) =>
             syncProcessor
               .push(

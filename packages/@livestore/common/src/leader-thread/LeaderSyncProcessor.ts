@@ -1,5 +1,5 @@
 import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import type { HttpClient, Scope, Tracer } from '@livestore/utils/effect'
+import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
   Deferred,
@@ -8,6 +8,7 @@ import {
   FiberHandle,
   Option,
   OtelTracer,
+  Queue,
   ReadonlyArray,
   Schema,
   Stream,
@@ -31,17 +32,18 @@ import { updateRows } from '../sql-queries/index.js'
 import { LeaderAheadError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
-import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
 import { getBackendHeadFromDb, getClientHeadFromDb, getMutationEventsSince, updateBackendHead } from './mutationlog.js'
-import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor } from './types.js'
+import type { InitialBlockingSyncContext, InitialSyncInfo, LeaderSyncProcessor, PullQueueItem } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
 export const BACKEND_PUSH_BATCH_SIZE = 50
+export const LOCAL_PUSH_BATCH_SIZE = 10
 
 type LocalPushQueueItem = [
   mutationEvent: MutationEvent.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
+  /** Used to determine whether the batch has become invalid due to a rejected local push batch */
   generation: number,
 ]
 
@@ -52,22 +54,26 @@ type LocalPushQueueItem = [
  * In the LeaderSyncProcessor, pulling always has precedence over pushing.
  *
  * Responsibilities:
- * - Queueing incoming local mutations in a localPushMailbox.
+ * - Queueing incoming local mutations in a localPushesQueue.
  * - Broadcasting mutations to client sessions via pull queues.
  * - Pushing mutations to the sync backend.
  *
  * Notes:
  *
  * local push processing:
- * - localPushMailbox:
+ * - localPushesQueue:
  *   - Maintains events in ascending order.
  *   - Uses `Deferred` objects to resolve/reject events based on application success.
- * - Processes events from the mailbox, applying mutations in batches.
+ * - Processes events from the queue, applying mutations in batches.
  * - Controlled by a `Latch` to manage execution flow.
  * - The latch closes on pull receipt and re-opens post-pull completion.
  * - Processes up to `maxBatchSize` events per cycle.
  *
  * Currently we're advancing the db read model and mutation log in lockstep, but we could also decouple this in the future
+ *
+ * Tricky concurrency scenarios:
+ * - Queued local push batches becoming invalid due to a prior local push item being rejected.
+ *   Solution: Introduce a generation number for local push batches which is used to filter out old batches items in case of rejection.
  *
  */
 export const makeLeaderSyncProcessor = ({
@@ -94,9 +100,11 @@ export const makeLeaderSyncProcessor = ({
       return mutationDef.options.clientOnly
     }
 
+    const connectedClientSessionPullQueues = yield* makePullQueueSet
+
     /**
      * Tracks generations of queued local push events.
-     * If a batch is rejected, all subsequent push queue items with the same generation are also rejected,
+     * If a local-push batch is rejected, all subsequent push queue items with the same generation are also rejected,
      * even if they would be valid on their own.
      */
     const currentLocalPushGenerationRef = { current: 0 }
@@ -109,6 +117,7 @@ export const makeLeaderSyncProcessor = ({
             otelSpan: otel.Span | undefined
             span: Tracer.Span
             devtoolsLatch: Effect.Latch | undefined
+            runtime: Runtime.Runtime<LeaderThreadCtx>
           },
     }
 
@@ -120,12 +129,6 @@ export const makeLeaderSyncProcessor = ({
       Effect.gen(function* () {
         // TODO validate batch
         if (newEvents.length === 0) return
-
-        // if (options.generation < currentLocalPushGenerationRef.current) {
-        //   debugger
-        //   // We can safely drop this batch as it's from a previous push generation
-        //   return
-        // }
 
         const waitForProcessing = options?.waitForProcessing ?? false
         const generation = currentLocalPushGenerationRef.current
@@ -184,11 +187,13 @@ export const makeLeaderSyncProcessor = ({
         const span = yield* Effect.currentSpan.pipe(Effect.orDie)
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
         const { devtools, shutdownChannel } = yield* LeaderThreadCtx
+        const runtime = yield* Effect.runtime<LeaderThreadCtx>()
 
         ctxRef.current = {
           otelSpan,
           span,
           devtoolsLatch: devtools.enabled ? devtools.syncBackendLatch : undefined,
+          runtime,
         }
 
         const initialBackendHead = dbMissing ? EventId.ROOT.global : getBackendHeadFromDb(dbMutationLog)
@@ -245,6 +250,7 @@ export const makeLeaderSyncProcessor = ({
           isClientEvent,
           otelSpan,
           currentLocalPushGenerationRef,
+          connectedClientSessionPullQueues,
         }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
         const backendPushingFiberHandle = yield* FiberHandle.make()
@@ -289,23 +295,42 @@ export const makeLeaderSyncProcessor = ({
           otelSpan,
           initialBlockingSyncContext,
           devtoolsLatch: ctxRef.current?.devtoolsLatch,
+          connectedClientSessionPullQueues,
         }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
         return { initialLeaderHead: initialLocalHead }
       }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
+    const pull: LeaderSyncProcessor['pull'] = ({ since }) => {
+      return Effect.gen(function* () {
+        const queue = yield* pullQueue({ since })
+        return Stream.fromQueue(queue)
+      }).pipe(Stream.unwrapScoped)
+    }
+
+    const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ since }) => {
+      const runtime = ctxRef.current?.runtime ?? shouldNeverHappen('Not initialized')
+      return Effect.gen(function* () {
+        return yield* connectedClientSessionPullQueues.makeQueue(since)
+      }).pipe(Effect.provide(runtime))
+    }
+
+    const syncState = Subscribable.make({
+      get: Effect.gen(function* () {
+        const syncState = yield* syncStateSref
+        if (syncState === undefined) return shouldNeverHappen('Not initialized')
+        return syncState
+      }),
+      changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
+    })
+
     return {
+      pull,
+      pullQueue,
       push,
       pushPartial,
       boot,
-      syncState: Subscribable.make({
-        get: Effect.gen(function* () {
-          const syncState = yield* syncStateSref
-          if (syncState === undefined) return shouldNeverHappen('Not initialized')
-          return syncState
-        }),
-        changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
-      }),
+      syncState,
     } satisfies LeaderSyncProcessor
   })
 
@@ -319,6 +344,7 @@ const backgroundApplyLocalPushes = ({
   isClientEvent,
   otelSpan,
   currentLocalPushGenerationRef,
+  connectedClientSessionPullQueues,
 }: {
   pullLatch: Effect.Latch
   localPushesLatch: Effect.Latch
@@ -329,15 +355,12 @@ const backgroundApplyLocalPushes = ({
   isClientEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
   otelSpan: otel.Span | undefined
   currentLocalPushGenerationRef: { current: number }
+  connectedClientSessionPullQueues: PullQueueSet
 }) =>
   Effect.gen(function* () {
-    const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
-
-    const applyMutationItems = yield* makeApplyMutationItems
-
     while (true) {
       // TODO make batch size configurable
-      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, 10)
+      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, LOCAL_PUSH_BATCH_SIZE)
 
       // Wait for the backend pulling to finish
       yield* localPushesLatch.await
@@ -401,7 +424,8 @@ const backgroundApplyLocalPushes = ({
             (item) => item[2] >= nextGeneration,
           )
 
-          if ((yield* BucketQueue.size(localPushesQueue)) > 0) {
+          // TODO we still need to better understand and handle this scenario
+          if (LS_DEV && (yield* BucketQueue.size(localPushesQueue)) > 0) {
             console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
             debugger
           }
@@ -471,53 +495,47 @@ type ApplyMutationItems = (_: {
    * Indexes are aligned with `batchItems`
    */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
-}) => Effect.Effect<void, UnexpectedError>
+}) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
-const makeApplyMutationItems: Effect.Effect<ApplyMutationItems, UnexpectedError, LeaderThreadCtx | Scope.Scope> =
+const applyMutationItems: ApplyMutationItems = ({ batchItems, deferreds }) =>
   Effect.gen(function* () {
-    const leaderThreadCtx = yield* LeaderThreadCtx
-    const { dbReadModel: db, dbMutationLog } = leaderThreadCtx
+    const { dbReadModel: db, dbMutationLog, applyMutation } = yield* LeaderThreadCtx
 
-    const applyMutation = yield* makeApplyMutation
+    // NOTE We always start a transaction to ensure consistency between db and mutation log (even for single-item batches)
+    db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+    dbMutationLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
-    return ({ batchItems, deferreds }) =>
+    yield* Effect.addFinalizer((exit) =>
       Effect.gen(function* () {
-        // NOTE We always start a transaction to ensure consistency between db and mutation log (even for single-item batches)
-        db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-        dbMutationLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+        if (Exit.isSuccess(exit)) return
 
-        yield* Effect.addFinalizer((exit) =>
-          Effect.gen(function* () {
-            if (Exit.isSuccess(exit)) return
+        // Rollback in case of an error
+        db.execute('ROLLBACK', undefined)
+        dbMutationLog.execute('ROLLBACK', undefined)
+      }),
+    )
 
-            // Rollback in case of an error
-            db.execute('ROLLBACK', undefined)
-            dbMutationLog.execute('ROLLBACK', undefined)
-          }),
-        )
+    for (let i = 0; i < batchItems.length; i++) {
+      const { sessionChangeset } = yield* applyMutation(batchItems[i]!)
+      batchItems[i]!.meta.sessionChangeset = sessionChangeset
 
-        for (let i = 0; i < batchItems.length; i++) {
-          const { sessionChangeset } = yield* applyMutation(batchItems[i]!)
-          batchItems[i]!.meta.sessionChangeset = sessionChangeset
+      if (deferreds?.[i] !== undefined) {
+        yield* Deferred.succeed(deferreds[i]!, void 0)
+      }
+    }
 
-          if (deferreds?.[i] !== undefined) {
-            yield* Deferred.succeed(deferreds[i]!, void 0)
-          }
-        }
-
-        db.execute('COMMIT', undefined) // Commit the transaction
-        dbMutationLog.execute('COMMIT', undefined) // Commit the transaction
-      }).pipe(
-        Effect.uninterruptible,
-        Effect.scoped,
-        Effect.withSpan('@livestore/common:LeaderSyncProcessor:applyMutationItems', {
-          attributes: { batchSize: batchItems.length },
-        }),
-        Effect.tapCauseLogPretty,
-        UnexpectedError.mapToUnexpectedError,
-      )
-  })
+    db.execute('COMMIT', undefined) // Commit the transaction
+    dbMutationLog.execute('COMMIT', undefined) // Commit the transaction
+  }).pipe(
+    Effect.uninterruptible,
+    Effect.scoped,
+    Effect.withSpan('@livestore/common:LeaderSyncProcessor:applyMutationItems', {
+      attributes: { batchSize: batchItems.length },
+    }),
+    Effect.tapCauseLogPretty,
+    UnexpectedError.mapToUnexpectedError,
+  )
 
 const backgroundBackendPulling = ({
   dbReady,
@@ -530,6 +548,7 @@ const backgroundBackendPulling = ({
   pullLatch,
   devtoolsLatch,
   initialBlockingSyncContext,
+  connectedClientSessionPullQueues,
 }: {
   dbReady: Deferred.Deferred<void>
   initialBackendHead: EventId.GlobalEventId
@@ -543,21 +562,14 @@ const backgroundBackendPulling = ({
   pullLatch: Effect.Latch
   devtoolsLatch: Effect.Latch | undefined
   initialBlockingSyncContext: InitialBlockingSyncContext
+  connectedClientSessionPullQueues: PullQueueSet
 }) =>
   Effect.gen(function* () {
-    const {
-      syncBackend,
-      dbReadModel: db,
-      dbMutationLog,
-      connectedClientSessionPullQueues,
-      schema,
-    } = yield* LeaderThreadCtx
+    const { syncBackend, dbReadModel: db, dbMutationLog, schema } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
     const cursorInfo = yield* getCursorInfo(initialBackendHead)
-
-    const applyMutationItems = yield* makeApplyMutationItems
 
     const onNewPullChunk = (newEvents: MutationEvent.EncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
@@ -820,3 +832,63 @@ const trimChangesetRows = (db: SqliteDb, newHead: EventId.EventId) => {
   // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
   db.execute(sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE idGlobal < ${newHead.global}`)
 }
+
+interface PullQueueSet {
+  makeQueue: (
+    since: EventId.EventId,
+  ) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope | LeaderThreadCtx>
+  offer: (item: PullQueueItem) => Effect.Effect<void, UnexpectedError>
+}
+
+const makePullQueueSet = Effect.gen(function* () {
+  const set = new Set<Queue.Queue<PullQueueItem>>()
+
+  yield* Effect.addFinalizer(() =>
+    Effect.gen(function* () {
+      for (const queue of set) {
+        yield* Queue.shutdown(queue)
+      }
+
+      set.clear()
+    }),
+  )
+
+  const makeQueue: PullQueueSet['makeQueue'] = (since) =>
+    Effect.gen(function* () {
+      const queue = yield* Queue.unbounded<PullQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
+
+      const newEvents = yield* getMutationEventsSince(since)
+
+      yield* Effect.log(`[@livestore/common:pull-queue-set] making queue for since ${since}`, newEvents)
+      yield* Effect.addFinalizerLog(`[@livestore/common:pull-queue-set] shutting down queue for since ${since}`)
+
+      if (newEvents.length > 0) {
+        yield* queue.offer({ payload: { _tag: 'upstream-advance', newEvents }, remaining: 0 })
+      }
+
+      set.add(queue)
+
+      return queue
+    })
+
+  const offer: PullQueueSet['offer'] = (item) =>
+    Effect.gen(function* () {
+      // Short-circuit if the payload is an empty upstream advance
+      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
+        return
+      }
+
+      console.log('[@livestore/common:pull-queue-set] offering item', item)
+
+      for (const queue of set) {
+        yield* Queue.offer(queue, item)
+      }
+    })
+
+  return {
+    makeQueue,
+    offer,
+  }
+})

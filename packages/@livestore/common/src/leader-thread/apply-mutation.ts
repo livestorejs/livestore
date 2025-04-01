@@ -1,8 +1,7 @@
 import { LS_DEV, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
-import type { PreparedBindValues, SqliteDb, SqliteError, UnexpectedError } from '../index.js'
+import type { PreparedBindValues, SqliteDb } from '../index.js'
 import { getExecArgsFromMutation } from '../mutation.js'
 import {
   EventId,
@@ -16,31 +15,29 @@ import {
 } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
 import { execSql, execSqlPrepared } from './connection.js'
-import { LeaderThreadCtx } from './types.js'
+import type { ApplyMutation } from './types.js'
 
-export type ApplyMutation = (
-  mutationEventEncoded: MutationEvent.AnyEncoded,
-  options?: {
-    /** Needed for rehydrateFromMutationLog */
-    skipMutationLog?: boolean
-  },
-) => Effect.Effect<{ sessionChangeset: Uint8Array | 'no-op' }, SqliteError | UnexpectedError>
-
-export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope | LeaderThreadCtx> = Effect.gen(
-  function* () {
-    const leaderThreadCtx = yield* LeaderThreadCtx
-    const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(leaderThreadCtx.schema)
+export const makeApplyMutation = ({
+  schema,
+  dbReadModel: db,
+  dbMutationLog,
+}: {
+  schema: LiveStoreSchema
+  dbReadModel: SqliteDb
+  dbMutationLog: SqliteDb
+}): Effect.Effect<ApplyMutation, never> =>
+  Effect.gen(function* () {
+    const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(schema)
 
     const mutationDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
       // Also see https://github.com/Effect-TS/effect/issues/2719
-      [...leaderThreadCtx.schema.mutations.map.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
+      [...schema.mutations.map.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
     return (mutationEventEncoded, options) =>
       Effect.gen(function* () {
-        const { schema, dbReadModel: db, dbMutationLog } = leaderThreadCtx
         const skipMutationLog = options?.skipMutationLog ?? false
 
         const mutationName = mutationEventEncoded.mutation
@@ -116,8 +113,7 @@ export const makeApplyMutation: Effect.Effect<ApplyMutation, never, Scope.Scope 
         }),
         // Effect.logDuration('@livestore/common:leader-thread:applyMutation'),
       )
-  },
-)
+  })
 
 const insertIntoMutationLog = (
   mutationEventEncoded: MutationEvent.AnyEncoded,

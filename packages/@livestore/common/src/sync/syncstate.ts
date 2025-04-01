@@ -95,9 +95,10 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
         _tag: 'upstream-advance',
         newEvents: this.payload.newEvents.map((e) => e.toJSON()),
       })),
-      Match.tag('upstream-rebase', () => ({
+      Match.tag('upstream-rebase', (payload) => ({
         _tag: 'upstream-rebase',
-        newEvents: this.payload.newEvents.map((e) => e.toJSON()),
+        newEvents: payload.newEvents.map((e) => e.toJSON()),
+        rollbackEvents: payload.rollbackEvents.map((e) => e.toJSON()),
       })),
       Match.exhaustive,
     )
@@ -247,7 +248,7 @@ export const merge = ({
       for (let i = 1; i < payload.newEvents.length; i++) {
         if (EventId.isGreaterThan(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
           return unexpectedError(
-            `Events must be sorted in ascending order by eventId. Received: [${payload.newEvents.map((e) => `(${e.id.global},${e.id.client})`).join(', ')}]`,
+            `Events must be sorted in ascending order by eventId. Received: [${payload.newEvents.map((e) => EventId.toString(e.id)).join(', ')}]`,
           )
         }
       }

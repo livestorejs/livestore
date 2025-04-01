@@ -15,7 +15,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
       return
     }
 
-    const { connectedClientSessionPullQueues, syncProcessor, extraIncomingMessagesQueue } = yield* LeaderThreadCtx
+    const { syncProcessor, extraIncomingMessagesQueue } = yield* LeaderThreadCtx
 
     yield* listenToDevtools({
       incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
@@ -35,10 +35,7 @@ export const bootDevtools = (options: DevtoolsOptions) =>
 
     const { localHead } = yield* syncProcessor.syncState
 
-    // TODO close queue when devtools disconnects
-    const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(localHead)
-
-    yield* Stream.fromQueue(pullQueue).pipe(
+    yield* syncProcessor.pull({ since: localHead }).pipe(
       Stream.tap((msg) => sendMessage(Devtools.Leader.SyncPull.make({ payload: msg.payload, liveStoreVersion }))),
       Stream.runDrain,
       Effect.forkScoped,

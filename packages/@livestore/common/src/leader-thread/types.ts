@@ -5,12 +5,14 @@ import type {
   Option,
   Queue,
   Scope,
+  Stream,
   Subscribable,
   SubscriptionRef,
   WebChannel,
 } from '@livestore/utils/effect'
 import { Context, Schema } from '@livestore/utils/effect'
 
+import type { SqliteError } from '../adapter-types.js'
 import type {
   BootStatus,
   Devtools,
@@ -97,7 +99,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
-    connectedClientSessionPullQueues: PullQueueSet
+    applyMutation: ApplyMutation
     initialState: {
       leaderHead: EventId.EventId
       migrationsReport: MigrationsReport
@@ -111,6 +113,14 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   }
 >() {}
 
+export type ApplyMutation = (
+  mutationEventEncoded: MutationEvent.AnyEncoded,
+  options?: {
+    /** Needed for rehydrateFromMutationLog */
+    skipMutationLog?: boolean
+  },
+) => Effect.Effect<{ sessionChangeset: Uint8Array | 'no-op' }, SqliteError | UnexpectedError>
+
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
   update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
@@ -122,16 +132,21 @@ export type PullQueueItem = {
 }
 
 export interface LeaderSyncProcessor {
+  // TODO rethink `since` cursor concept to allow for rebasing scenarios
+  /** Used by client sessions to subscribe to upstream sync state changes */
+  pull: ({ since }: { since: EventId.EventId }) => Stream.Stream<PullQueueItem, UnexpectedError>
+  /** The `pullQueue` API can be used instead of `pull` when more convenient */
+  pullQueue: ({
+    since,
+  }: {
+    since: EventId.EventId
+  }) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope>
+
+  /** Used by client sessions to push mutations to the leader thread */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
     options?: {
-      /**
-       * This generation number is used to automatically reject subsequent pushes
-       * of a previously rejected push from a client session. This might occur in
-       * certain concurrent scenarios.
-       */
-      // generation: number
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
        * @default false
@@ -140,11 +155,13 @@ export interface LeaderSyncProcessor {
     },
   ) => Effect.Effect<void, LeaderAheadError>
 
+  /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
     mutationEvent: MutationEvent.PartialAnyEncoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
+  }) => Effect.Effect<void, UnexpectedError>
+
   boot: (args: {
     /** This deferred is needed to wait for the DB to be initially created before starting to write to it */
     dbReady: Deferred.Deferred<void>
@@ -154,11 +171,4 @@ export interface LeaderSyncProcessor {
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-}
-
-export interface PullQueueSet {
-  makeQueue: (
-    since: EventId.EventId,
-  ) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope | LeaderThreadCtx>
-  offer: (item: PullQueueItem) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx>
 }

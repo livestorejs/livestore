@@ -5,7 +5,7 @@ import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import type { LazyArg } from 'effect/Function'
 
-import { isNonEmptyString, isPromise } from '../index.js'
+import { isPromise } from '../index.js'
 import { UnknownError } from './Error.js'
 
 export * from 'effect/Effect'
@@ -54,17 +54,6 @@ export const tryAll = <Res>(
     ),
   ) as any
 
-const getThreadName = () => {
-  // @ts-expect-error TODO fix types
-  const globalName = globalThis.name
-  return isNonEmptyString(globalName)
-    ? globalName
-    : // eslint-disable-next-line unicorn/prefer-global-this
-      typeof window === 'object'
-      ? 'Main Thread'
-      : 'unknown-thread'
-}
-
 export const acquireReleaseLog = (label: string) =>
   Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
 
@@ -88,9 +77,8 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
         Effect.catchTag('NoSuchElementException', (_) => Effect.succeed(undefined)),
       )
 
-      const threadName = getThreadName()
       const firstErrLine = cause.toString().split('\n')[0]
-      yield* Effect.logError(`Error on ${threadName}: ${firstErrLine}`, cause).pipe((_) =>
+      yield* Effect.logError(firstErrLine, cause).pipe((_) =>
         span === undefined
           ? _
           : Effect.annotateLogs({ spanId: span.spanContext().spanId, traceId: span.spanContext().traceId })(_),

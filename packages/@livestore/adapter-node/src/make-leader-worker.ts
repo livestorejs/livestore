@@ -78,9 +78,8 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
-        const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
-        const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
-        return Stream.fromQueue(pullQueue)
+        const { syncProcessor } = yield* LeaderThreadCtx
+        return syncProcessor.pull({ since: cursor })
       }).pipe(Stream.unwrapScoped),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbReadModel.export()).pipe(

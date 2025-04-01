@@ -175,9 +175,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
       ),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
-        const { connectedClientSessionPullQueues } = yield* LeaderThreadCtx
-        const pullQueue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
-        return Stream.fromQueue(pullQueue)
+        const { syncProcessor } = yield* LeaderThreadCtx
+        return syncProcessor.pull({ since: cursor })
       }).pipe(
         Stream.unwrapScoped,
         // For debugging purposes

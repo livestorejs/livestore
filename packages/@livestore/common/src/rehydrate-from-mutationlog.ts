@@ -2,7 +2,7 @@ import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'
-import { makeApplyMutation } from './leader-thread/apply-mutation.js'
+import type { ApplyMutation } from './leader-thread/mod.js'
 import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/mod.js'
 import { EventId, getMutationDef, MUTATION_LOG_META_TABLE } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
@@ -15,12 +15,14 @@ export const rehydrateFromMutationLog = ({
   schema,
   migrationOptions,
   onProgress,
+  applyMutation,
 }: {
   logDb: SqliteDb
   db: SqliteDb
   schema: LiveStoreSchema
   migrationOptions: MigrationOptionsFromMutationLog
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
+  applyMutation: ApplyMutation
 }) =>
   Effect.gen(function* () {
     const mutationsCount = logDb.select<{ count: number }>(
@@ -28,8 +30,6 @@ export const rehydrateFromMutationLog = ({
     )[0]!.count
 
     const hashMutation = memoizeByRef((mutation: MutationDef.Any) => Schema.hash(mutation.schema))
-
-    const applyMutation = yield* makeApplyMutation
 
     const processMutation = (row: MutationLogMetaRow) =>
       Effect.gen(function* () {

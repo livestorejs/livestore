@@ -9,10 +9,10 @@ import { EventId, MutationEvent, mutationLogMetaTable, SYNC_STATUS_TABLE, syncSt
 import { migrateTable } from '../schema-management/migrations.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
+import { makeApplyMutation } from './apply-mutation.js'
 import { execSql } from './connection.js'
 import { bootDevtools } from './leader-worker-devtools.js'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
-import { makePullQueueSet } from './pull-queue-set.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 import type {
@@ -85,6 +85,8 @@ export const makeLeaderThreadLayer = ({
         }
       : { enabled: false as const }
 
+    const applyMutation = yield* makeApplyMutation({ schema, dbReadModel, dbMutationLog })
+
     const ctx = {
       schema,
       bootStatusQueue,
@@ -98,7 +100,7 @@ export const makeLeaderThreadLayer = ({
       shutdownChannel,
       syncBackend,
       syncProcessor,
-      connectedClientSessionPullQueues: yield* makePullQueueSet,
+      applyMutation,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       // State will be set during `bootLeaderThread`

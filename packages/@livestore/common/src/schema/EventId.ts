@@ -43,7 +43,7 @@ export const compare = (a: EventId, b: EventId) => {
 /**
  * Convert an event id to a string representation.
  */
-export const toString = (id: EventId) => (id.client === 0 ? `s${id.global}` : `s${id.global} (+${id.client})`)
+export const toString = (id: EventId) => (id.client === 0 ? `e${id.global}` : `e${id.global} (+${id.client})`)
 
 /**
  * Convert a string representation of an event id to an event id.
