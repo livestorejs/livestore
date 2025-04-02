@@ -1,7 +1,6 @@
 import '@livestore/utils/node-vitest-polyfill'
 
-import type { LeaderAheadError, MakeSqliteDb, UnexpectedError } from '@livestore/common'
-import type { PullQueueItem } from '@livestore/common/leader-thread'
+import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -184,7 +183,7 @@ class TestContext extends Context.Tag('TestContext')<
     encodeMutationEvent: (
       event: Omit<MutationEvent.AnyDecoded, 'clientId' | 'sessionId'>,
     ) => MutationEvent.EncodedWithMeta
-    pullQueue: Queue.Queue<PullQueueItem>
+    pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>
     localPush: (
       ...partialEvents: MutationEvent.PartialAnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
@@ -229,7 +228,7 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
     const currentMutationEventId = { current: EventId.ROOT }
 
-    const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({ since: EventId.ROOT })
+    const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({ cursor: 0 })
 
     const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAnyDecoded) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)

@@ -91,6 +91,15 @@ export type WebAdapterOptions = {
    * store it in `sessionStorage` and restore it for subsequent client sessions in the same tab/window.
    */
   sessionId?: string
+  experimental?: {
+    /**
+     * When set to `true`, the adapter will always start with a snapshot from the leader
+     * instead of trying to load a snapshot from storage.
+     *
+     * @default false
+     */
+    disableFastPath?: boolean
+  }
 }
 
 export const makePersistedAdapter =
@@ -130,7 +139,10 @@ export const makePersistedAdapter =
       // we usually speeds up the boot process by a lot.
       // We need to be extra careful though to not run into any race conditions or inconsistencies.
       // TODO also verify persisted data
-      const dataFromFile = yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
+      const dataFromFile =
+        options.experimental?.disableFastPath === true
+          ? undefined
+          : yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
 
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
@@ -229,29 +241,6 @@ export const makePersistedAdapter =
         )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
-
-        yield* Effect.addFinalizer(() =>
-          Effect.gen(function* () {
-            // console.log('[@livestore/adapter-web:client-session] Shutting down leader worker')
-            // We first try to gracefully shutdown the leader worker and then forcefully terminate it
-            // yield* Effect.raceFirst(
-            //   sharedWorker
-            //     .executeEffect(new WorkerSchema.LeaderWorkerInner.Shutdown({}))
-            //     .pipe(Effect.andThen(() => worker.terminate())),
-            //   Effect.sync(() => {
-            //     console.warn(
-            //       '[@livestore/adapter-web:client-session] Worker did not gracefully shutdown in time, terminating it',
-            //     )
-            //     worker.terminate()
-            //   }).pipe(
-            //     // Seems like we still need to wait a bit for the worker to terminate
-            //     // TODO improve this implementation (possibly via another weblock?)
-            //     Effect.delay(1000),
-            //   ),
-            // )
-            // yield* Effect.logDebug('[@livestore/adapter-web:client-session] client-session shutdown. worker terminated')
-          }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:lock:shutdown'), Effect.ignoreLogged),
-        )
 
         yield* Effect.never
       }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:lock'))

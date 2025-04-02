@@ -206,9 +206,17 @@ export const makeSqliteDb = <
           return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {
-          sqlite3.changeset_apply(dbPointer, data)
-          // @ts-expect-error data should be garbage collected after use
-          data = undefined
+          try {
+            sqlite3.changeset_apply(dbPointer, data)
+            // @ts-expect-error data should be garbage collected after use
+            data = undefined
+          } catch (cause: any) {
+            throw new SqliteError({
+              code: cause.code ?? -1,
+              cause,
+              note: `Failed calling makeChangeset.apply`,
+            })
+          }
         },
       } satisfies SqliteDbChangeset
 

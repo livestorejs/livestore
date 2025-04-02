@@ -76,9 +76,7 @@ export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
 
 export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
 
-export const PayloadUpstream = Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance)
-
-export type PayloadUpstream = typeof PayloadUpstream.Type
+export class PayloadUpstream extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance) {}
 
 /** Only used for debugging purposes */
 export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
@@ -113,6 +111,8 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
   _tag: Schema.Literal('advance'),
   newSyncState: SyncState,
   newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  /** Events which were previously pending but are now confirmed */
+  confirmedEvents: Schema.Array(MutationEvent.EncodedWithMeta),
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
@@ -120,6 +120,7 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
       _tag: this._tag,
       newSyncState: this.newSyncState.toJSON(),
       newEvents: this.newEvents.map((e) => e.toJSON()),
+      confirmedEvents: this.confirmedEvents.map((e) => e.toJSON()),
       mergeContext: this.mergeContext.toJSON(),
     }
   }
@@ -240,6 +241,7 @@ export const merge = ({
             localHead: syncState.localHead,
           }),
           newEvents: [],
+          confirmedEvents: [],
           mergeContext: mergeContext,
         })
       }
@@ -295,7 +297,7 @@ export const merge = ({
         // - pendingRemaining: The pending events after the point where they match the incoming events
         // The `clientIndexOffset` is used to account for the client events that are being ignored
         let clientIndexOffset = 0
-        const [_pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
+        const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
             if (ignoreClientEvents && isClientEvent(pendingEvent)) {
@@ -319,6 +321,7 @@ export const merge = ({
             localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
           }),
           newEvents,
+          confirmedEvents: pendingMatching,
           mergeContext: mergeContext,
         })
       } else {
@@ -359,6 +362,7 @@ export const merge = ({
           _tag: 'advance',
           newSyncState: syncState,
           newEvents: [],
+          confirmedEvents: [],
           mergeContext: mergeContext,
         })
       }
@@ -382,6 +386,7 @@ export const merge = ({
             localHead: payload.newEvents.at(-1)!.id,
           }),
           newEvents: payload.newEvents,
+          confirmedEvents: [],
           mergeContext: mergeContext,
         })
       }

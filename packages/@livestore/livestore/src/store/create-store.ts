@@ -7,8 +7,8 @@ import type {
   MigrationsReport,
 } from '@livestore/common'
 import { provideOtel, UnexpectedError } from '@livestore/common'
-import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import { LS_DEV } from '@livestore/utils'
+import type { LiveStoreSchema } from '@livestore/common/schema'
+import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { Cause, Schema } from '@livestore/utils/effect'
 import {
   Context,
@@ -19,7 +19,6 @@ import {
   Layer,
   Logger,
   LogLevel,
-  MutableHashMap,
   OtelTracer,
   Queue,
   Runtime,
@@ -74,7 +73,12 @@ export type LiveStoreContextProps<TSchema extends LiveStoreSchema, TContext = {}
     store: Store<TSchema, TContext>,
   ) => Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   adapter: Adapter
-  disableDevtools?: boolean
+  /**
+   * Whether to disable devtools.
+   *
+   * @default 'auto'
+   */
+  disableDevtools?: boolean | 'auto'
   onBootStatus?: (status: BootStatus) => void
   batchUpdates: (run: () => void) => void
 }
@@ -92,7 +96,12 @@ export interface CreateStoreOptions<TSchema extends LiveStoreSchema, TContext = 
     },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
   batchUpdates?: (run: () => void) => void
-  disableDevtools?: boolean
+  /**
+   * Whether to disable devtools.
+   *
+   * @default 'auto'
+   */
+  disableDevtools?: boolean | 'auto'
   onBootStatus?: (status: BootStatus) => void
   shutdownDeferred?: ShutdownDeferred
   /**
@@ -229,7 +238,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
       const clientSession: ClientSession = yield* adapter({
         schema,
         storeId,
-        devtoolsEnabled: disableDevtools !== true,
+        devtoolsEnabled: getDevtoolsEnabled(disableDevtools),
         bootStatusQueue,
         shutdown,
         connectDevtoolsToStore: connectDevtoolsToStore_,
@@ -248,18 +257,15 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         )
       }
 
-      // TODO fill up with unsynced mutation events from the client session
-      const unsyncedMutationEvents = MutableHashMap.empty<EventId.EventId, MutationEvent.ForSchema<TSchema>>()
-
       const store = new Store<TSchema, TContext>({
         clientSession,
         schema,
         context,
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-        disableDevtools,
-        unsyncedMutationEvents,
-        lifetimeScope,
-        runtime,
+        effectContext: { lifetimeScope, runtime },
+        // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
+        // But for now this is a good enough approximation with little downsides
+        __runningInDevtools: getDevtoolsEnabled(disableDevtools) === false,
         confirmUnsavedChanges,
         // NOTE during boot we're not yet executing mutations in a batched context
         // but only set the provided `batchUpdates` function after boot
@@ -314,3 +320,15 @@ const validateStoreId = (storeId: string) =>
       })
     }
   })
+
+const getDevtoolsEnabled = (disableDevtools: boolean | 'auto' | undefined) => {
+  if (disableDevtools === true) {
+    return false
+  }
+
+  if (isDevEnv() === true) {
+    return true
+  }
+
+  return false
+}

@@ -3,13 +3,13 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'
 import type { ApplyMutation } from './leader-thread/mod.js'
-import type { LiveStoreSchema, MutationDef, MutationEvent, MutationLogMetaRow } from './schema/mod.js'
-import { EventId, getMutationDef, MUTATION_LOG_META_TABLE } from './schema/mod.js'
+import type { LiveStoreSchema, MutationDef, MutationLogMetaRow } from './schema/mod.js'
+import { EventId, getMutationDef, MUTATION_LOG_META_TABLE, MutationEvent } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
 export const rehydrateFromMutationLog = ({
-  logDb,
+  dbMutationLog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
   // db,
   schema,
@@ -17,15 +17,15 @@ export const rehydrateFromMutationLog = ({
   onProgress,
   applyMutation,
 }: {
-  logDb: SqliteDb
-  db: SqliteDb
+  dbMutationLog: SqliteDb
+  // db: SqliteDb
   schema: LiveStoreSchema
   migrationOptions: MigrationOptionsFromMutationLog
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   applyMutation: ApplyMutation
 }) =>
   Effect.gen(function* () {
-    const mutationsCount = logDb.select<{ count: number }>(
+    const mutationsCount = dbMutationLog.select<{ count: number }>(
       `SELECT COUNT(*) AS count FROM ${MUTATION_LOG_META_TABLE}`,
     )[0]!.count
 
@@ -59,21 +59,21 @@ This likely means the schema has changed in an incompatible way.
           ),
         )
 
-        const mutationEventEncoded = {
+        const mutationEventEncoded = MutationEvent.EncodedWithMeta.make({
           id: { global: row.idGlobal, client: row.idClient },
           parentId: { global: row.parentIdGlobal, client: row.parentIdClient },
           mutation: row.mutation,
           args,
           clientId: row.clientId,
           sessionId: row.sessionId,
-        } satisfies MutationEvent.AnyEncoded
+        })
 
         yield* applyMutation(mutationEventEncoded, { skipMutationLog: true })
       }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromMutationLog:processMutation`))
 
     const CHUNK_SIZE = 100
 
-    const stmt = logDb.prepare(sql`\
+    const stmt = dbMutationLog.prepare(sql`\
 SELECT * FROM ${MUTATION_LOG_META_TABLE} 
 WHERE idGlobal > $idGlobal OR (idGlobal = $idGlobal AND idClient > $idClient)
 ORDER BY idGlobal ASC, idClient ASC

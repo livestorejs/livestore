@@ -41,8 +41,9 @@ export interface ClientSession {
 export interface ClientSessionLeaderThreadProxy {
   mutations: {
     pull: (args: {
-      cursor: EventId.EventId
-    }) => Stream.Stream<{ payload: PayloadUpstream; remaining: number }, UnexpectedError>
+      /** The merge counter of the leader thread */
+      cursor: number
+    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }

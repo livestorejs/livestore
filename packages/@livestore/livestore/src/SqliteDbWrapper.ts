@@ -108,14 +108,20 @@ export class SqliteDbWrapper implements SqliteDb {
     return result
   }
 
-  withChangeset<TRes>(callback: () => TRes): { result: TRes; changeset: Uint8Array | 'no-op' } {
+  withChangeset<TRes>(callback: () => TRes): {
+    result: TRes
+    changeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+  } {
     const session = this.db.session()
     const result = callback()
     const changeset = session.changeset()
 
     session.finish()
 
-    return { result, changeset: changeset ?? ('no-op' as const) }
+    return {
+      result,
+      changeset: changeset ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
+    }
   }
 
   rollback(changeset: Uint8Array) {

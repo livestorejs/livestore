@@ -127,13 +127,11 @@
 
 - Fix linting
 - Separate mutation handler from mutation definition
+- Get rid of `excludeFromMutationLog` (etc)
 - Syncing
   - Refactor: Rename `EventId` to `EventSeq` / `EventClock` / `EventGen`
-  - Get rid of rollback tail in sync state and propagate rebase result from client leader to client session to avoid this error which can happen after reloading a failed instance:
-    `Rollback event not found in rollback tail`: https://share.cleanshot.com/pssHwKSz
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
     - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
-  - Fix: mutation log unique constraint violation during concurrent mutations
   - More graceful handling when receiving a mutation event that doesn't exist in the local schema
     - This can happen if a new app version with a new schema and an old client with the old schema tries to sync
     - 2 solution paths:

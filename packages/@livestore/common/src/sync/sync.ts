@@ -36,6 +36,10 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue> = (
 ) => Effect.Effect<SyncBackend<TSyncMetadata>, UnexpectedError, Scope.Scope | HttpClient.HttpClient>
 
 export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
+  /**
+   * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.
+   */
+  connect: Effect.Effect<void, IsOfflineError | UnexpectedError, HttpClient.HttpClient | Scope.Scope>
   pull: (
     args: Option.Option<{
       cursor: EventId.EventId
@@ -60,17 +64,10 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * - event ids must be in ascending order
      * */
     batch: ReadonlyArray<MutationEvent.AnyEncodedGlobal>,
-  ) => Effect.Effect<
-    {
-      /** Indexes are relative to `batch` */
-      metadata: ReadonlyArray<Option.Option<TSyncMetadata>>
-    },
-    IsOfflineError | InvalidPushError,
-    HttpClient.HttpClient
-  >
+  ) => Effect.Effect<void, IsOfflineError | InvalidPushError, HttpClient.HttpClient>
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   /**
-   * Metadata describing the sync backend.
+   * Metadata describing the sync backend. (Currently only used by devtools.)
    */
   metadata: { name: string; description: string } & Record<string, Schema.JsonValue>
 }

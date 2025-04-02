@@ -22,6 +22,7 @@ import {
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
   getMutationDef,
+  LEADER_MERGE_COUNTER_TABLE,
   MutationEvent,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
@@ -29,17 +30,7 @@ import {
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import {
-  Cause,
-  Data,
-  Effect,
-  Inspectable,
-  MutableHashMap,
-  OtelTracer,
-  Runtime,
-  Schema,
-  Stream,
-} from '@livestore/utils/effect'
+import { Cause, Effect, Inspectable, OtelTracer, Predicate, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -77,16 +68,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    */
   tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> }
 
-  private runtime: Runtime.Runtime<Scope.Scope>
+  private effectContext: {
+    runtime: Runtime.Runtime<Scope.Scope>
+    lifetimeScope: Scope.Scope
+  }
 
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
   // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
   readonly __mutationEventSchema
-  private unsyncedMutationEvents
   readonly syncProcessor: ClientSessionSyncProcessor
-  readonly lifetimeScope: Scope.Scope
 
   readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
 
@@ -96,27 +88,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     schema,
     otelOptions,
     context,
-    disableDevtools,
     batchUpdates,
-    unsyncedMutationEvents,
     storeId,
-    lifetimeScope,
-    runtime,
+    effectContext,
     params,
     confirmUnsavedChanges,
+    __runningInDevtools,
   }: StoreOptions<TSchema, TContext>) {
     super()
 
     this.storeId = storeId
-    this.unsyncedMutationEvents = unsyncedMutationEvents
 
     this.sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
     this.clientSession = clientSession
     this.schema = schema
     this.context = context
 
-    this.lifetimeScope = lifetimeScope
-    this.runtime = runtime
+    this.effectContext = effectContext
 
     const reactivityGraph = makeReactivityGraph()
 
@@ -125,7 +113,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     this.syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
-      runtime,
+      runtime: effectContext.runtime,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
         const mutationDef = getMutationDef(schema, mutationEventDecoded.mutation)
 
@@ -149,7 +137,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
           }
         }
 
-        let sessionChangeset: Uint8Array | 'no-op' | 'unset' = 'unset'
+        let sessionChangeset:
+          | { _tag: 'sessionChangeset'; data: Uint8Array; debug: any }
+          | { _tag: 'no-op' }
+          | { _tag: 'unset' } = { _tag: 'unset' }
         if (withChangeset === true) {
           sessionChangeset = this.sqliteDbWrapper.withChangeset(exec).changeset
         } else {
@@ -205,18 +196,18 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       queriesSpanContext: otelQueriesSpanContext,
     }
 
-    // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
-    // But for now this is a good enough approximation with little downsides
-    const isRunningInDevtools = disableDevtools === true
-
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
     const allTableNames = new Set(
       // NOTE we're excluding the LiveStore schema and mutations tables as they are not user-facing
       // unless LiveStore is running in the devtools
-      isRunningInDevtools
+      __runningInDevtools
         ? this.schema.tables.keys()
         : Array.from(this.schema.tables.keys()).filter(
-            (_) => _ !== SCHEMA_META_TABLE && _ !== SCHEMA_MUTATIONS_META_TABLE && _ !== SESSION_CHANGESET_META_TABLE,
+            (_) =>
+              _ !== SCHEMA_META_TABLE &&
+              _ !== SCHEMA_MUTATIONS_META_TABLE &&
+              _ !== SESSION_CHANGESET_META_TABLE &&
+              _ !== LEADER_MERGE_COUNTER_TABLE,
           ),
     )
     const existingTableRefs = new Map(
@@ -671,7 +662,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   })
 
   private runEffectFork = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
-    effect.pipe(Effect.forkIn(this.lifetimeScope), Effect.tapCauseLogPretty, Runtime.runFork(this.runtime))
+    effect.pipe(
+      Effect.forkIn(this.effectContext.lifetimeScope),
+      Effect.tapCauseLogPretty,
+      Runtime.runFork(this.effectContext.runtime),
+    )
 
   private getMutateArgs = (
     firstMutationOrTxnFnOrOptions: any,
@@ -701,10 +696,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
     }
 
-    mutationsEvents = mutationsEvents.filter(
-      // @ts-expect-error TODO
-      (_) => _.id === undefined || !MutableHashMap.has(this.unsyncedMutationEvents, Data.struct(_.id)),
-    )
+    mutationsEvents = mutationsEvents.filter((_) => Predicate.hasProperty(_, 'id') === false)
 
     return { mutationsEvents, options }
   }

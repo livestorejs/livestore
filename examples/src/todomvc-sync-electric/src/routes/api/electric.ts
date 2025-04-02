@@ -11,7 +11,7 @@ export const APIRoute = createAPIFileRoute('/api/electric')({
   // Client pulls from the server to get the latest mutation events
   GET: async ({ request }) => {
     const searchParams = new URL(request.url).searchParams
-    const { url, storeId, needsInit } = makeElectricUrl({
+    const { url, storeId, needsInit, payload } = makeElectricUrl({
       electricHost,
       searchParams,
       // You can also provide a sourceId and sourceSecret for Electric Cloud
@@ -19,6 +19,10 @@ export const APIRoute = createAPIFileRoute('/api/electric')({
       // sourceSecret: 'your-source-secret',
       apiSecret: 'change-me-electric-secret',
     })
+
+    if ((payload as any)?.authToken !== 'insecure-token-change-me') {
+      return new Response(JSON.stringify({ error: 'Invalid auth token' }), { status: 401 })
+    }
 
     // Here we initialize the database if it doesn't exist yet. You might not need this if you
     // already have the necessary tables created in the database.

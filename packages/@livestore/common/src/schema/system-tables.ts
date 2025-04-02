@@ -60,7 +60,25 @@ export const sessionChangesetMetaTable = table(
 
 export type SessionChangesetMetaRow = FromTable.RowDecoded<typeof sessionChangesetMetaTable>
 
-export const systemTables = [schemaMetaTable, schemaMutationsMetaTable, sessionChangesetMetaTable]
+export const LEADER_MERGE_COUNTER_TABLE = '__livestore_leader_merge_counter'
+
+export const leaderMergeCounterTable = table(
+  LEADER_MERGE_COUNTER_TABLE,
+  {
+    id: SqliteDsl.integer({ primaryKey: true, schema: Schema.Literal(0) }),
+    mergeCounter: SqliteDsl.integer({ primaryKey: true }),
+  },
+  { disableAutomaticIdColumn: true },
+)
+
+export type LeaderMergeCounterRow = FromTable.RowDecoded<typeof leaderMergeCounterTable>
+
+export const systemTables = [
+  schemaMetaTable,
+  schemaMutationsMetaTable,
+  sessionChangesetMetaTable,
+  leaderMergeCounterTable,
+]
 
 /// Mutation log DB
 
@@ -72,7 +90,7 @@ export const MUTATION_LOG_META_TABLE = 'mutation_log'
 export const mutationLogMetaTable = table(
   MUTATION_LOG_META_TABLE,
   {
-    // Adjust modeling so a global event never needs a client id component
+    // TODO Adjust modeling so a global event never needs a client id component
     idGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
     idClient: SqliteDsl.integer({ primaryKey: true, schema: EventId.ClientEventId }),
     parentIdGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),

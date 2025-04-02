@@ -29,6 +29,7 @@ const RootComponent = () => {
           renderLoading={() => <div>Loading...</div>}
           adapter={adapter}
           batchUpdates={batchUpdates}
+          syncPayload={{ authToken: 'insecure-token-change-me' }}
         >
           <Outlet />
         </LiveStoreProvider>

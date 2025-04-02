@@ -56,8 +56,8 @@ export const recreateDb: Effect.Effect<
       migrationsReport = initResult.migrationsReport
 
       yield* rehydrateFromMutationLog({
-        db: initResult.tmpDb,
-        logDb: dbMutationLog,
+        // db: initResult.tmpDb,
+        dbMutationLog,
         schema,
         migrationOptions,
         applyMutation,

@@ -76,11 +76,11 @@ export namespace LeaderWorkerInner {
 
   export class PullStream extends Schema.TaggedRequest<PullStream>()('PullStream', {
     payload: {
-      cursor: EventId.EventId,
+      cursor: Schema.Number,
     },
     success: Schema.Struct({
       payload: SyncState.PayloadUpstream,
-      remaining: Schema.Number,
+      mergeCounter: Schema.Number,
     }),
     failure: UnexpectedError,
   }) {}

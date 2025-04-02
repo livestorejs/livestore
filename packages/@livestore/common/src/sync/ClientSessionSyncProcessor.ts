@@ -5,8 +5,9 @@ import * as otel from '@opentelemetry/api'
 
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
-import { getMutationDef, type LiveStoreSchema } from '../schema/mod.js'
+import { getMutationDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
 import * as MutationEvent from '../schema/MutationEvent.js'
+import { sql } from '../util.js'
 import * as SyncState from './syncstate.js'
 
 /**
@@ -39,7 +40,7 @@ export const makeClientSessionSyncProcessor = ({
     options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
     writeTables: Set<string>
-    sessionChangeset: Uint8Array | 'no-op' | 'unset'
+    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } | { _tag: 'unset' }
   }
   rollback: (changeset: Uint8Array) => void
   refreshTables: (tables: Set<string>) => void
@@ -169,13 +170,17 @@ export const makeClientSessionSyncProcessor = ({
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
+    const getMergeCounter = () =>
+      clientSession.sqliteDb.select<{ mergeCounter: number }>(
+        sql`SELECT mergeCounter FROM ${LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
+      )[0]?.mergeCounter ?? 0
+
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
-    yield* Stream.suspend(() =>
-      clientSession.leaderThread.mutations.pull({ cursor: syncStateRef.current.localHead }),
-    ).pipe(
-      Stream.tap(({ payload, remaining }) =>
+    yield* Stream.suspend(() => clientSession.leaderThread.mutations.pull({ cursor: getMergeCounter() })).pipe(
+      Stream.tap(({ payload, mergeCounter: leaderMergeCounter }) =>
         Effect.gen(function* () {
-          // console.log('pulled payload from leader', { payload, remaining })
+          // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
+
           if (clientSession.devtools.enabled) {
             yield* clientSession.devtools.pullLatch.await
           }
@@ -197,13 +202,13 @@ export const makeClientSessionSyncProcessor = ({
           syncStateUpdateQueue.offer(mergeResult.newSyncState).pipe(Effect.runSync)
 
           if (mergeResult._tag === 'rebase') {
-            span.addEvent('pull:rebase', {
+            span.addEvent('merge:pull:rebase', {
               payloadTag: payload._tag,
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
               newEventsCount: mergeResult.newEvents.length,
               rollbackCount: mergeResult.rollbackEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-              remaining,
+              leaderMergeCounter,
             })
 
             debugInfo.rebaseCount++
@@ -217,28 +222,29 @@ export const makeClientSessionSyncProcessor = ({
 
             if (LS_DEV) {
               Effect.logDebug(
-                'pull:rebase: rollback',
+                'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
                 ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+                { leaderMergeCounter },
               ).pipe(Effect.provide(runtime), Effect.runSync)
             }
 
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
               const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset !== 'no-op' && event.meta.sessionChangeset !== 'unset') {
-                rollback(event.meta.sessionChangeset)
-                event.meta.sessionChangeset = 'unset'
+              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
+                rollback(event.meta.sessionChangeset.data)
+                event.meta.sessionChangeset = { _tag: 'unset' }
               }
             }
 
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
           } else {
-            span.addEvent('pull:advance', {
+            span.addEvent('merge:pull:advance', {
               payloadTag: payload._tag,
               payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
               newEventsCount: mergeResult.newEvents.length,
               res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-              remaining,
+              leaderMergeCounter,
             })
 
             debugInfo.advanceCount++

@@ -1,20 +1,20 @@
 import { LS_DEV, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import type { PreparedBindValues, SqliteDb } from '../index.js'
+import type { SqliteDb } from '../adapter-types.js'
 import { getExecArgsFromMutation } from '../mutation.js'
+import type { LiveStoreSchema, MutationEvent, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
   getMutationDef,
-  type LiveStoreSchema,
   MUTATION_LOG_META_TABLE,
-  type MutationEvent,
-  mutationLogMetaTable,
   SESSION_CHANGESET_META_TABLE,
   sessionChangesetMetaTable,
 } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
+import { sql } from '../util.js'
 import { execSql, execSqlPrepared } from './connection.js'
+import * as Mutationlog from './mutationlog.js'
 import type { ApplyMutation } from './types.js'
 
 export const makeApplyMutation = ({
@@ -91,10 +91,14 @@ export const makeApplyMutation = ({
         // write to mutation_log
         const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
         if (skipMutationLog === false && excludeFromMutationLog === false) {
-          yield* insertIntoMutationLog(
+          const mutationName = mutationEventEncoded.mutation
+          const mutationDefSchemaHash =
+            mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+
+          yield* Mutationlog.insertIntoMutationLog(
             mutationEventEncoded,
             dbMutationLog,
-            mutationDefSchemaHashMap,
+            mutationDefSchemaHash,
             mutationEventEncoded.clientId,
             mutationEventEncoded.sessionId,
           )
@@ -102,7 +106,15 @@ export const makeApplyMutation = ({
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
         }
 
-        return { sessionChangeset: changeset ?? ('no-op' as const) }
+        return {
+          sessionChangeset: changeset
+            ? {
+                _tag: 'sessionChangeset' as const,
+                data: changeset,
+                debug: LS_DEV ? execArgsArr : null,
+              }
+            : { _tag: 'no-op' as const },
+        }
       }).pipe(
         Effect.withSpan(`@livestore/common:leader-thread:applyMutation`, {
           attributes: {
@@ -115,53 +127,53 @@ export const makeApplyMutation = ({
       )
   })
 
-const insertIntoMutationLog = (
-  mutationEventEncoded: MutationEvent.AnyEncoded,
-  dbMutationLog: SqliteDb,
-  mutationDefSchemaHashMap: Map<string, number>,
-  clientId: string,
-  sessionId: string,
-) =>
+export const rollback = ({
+  db,
+  dbMutationLog,
+  eventIdsToRollback,
+}: {
+  db: SqliteDb
+  dbMutationLog: SqliteDb
+  eventIdsToRollback: EventId.EventId[]
+}) =>
   Effect.gen(function* () {
-    const mutationName = mutationEventEncoded.mutation
-    const mutationDefSchemaHash =
-      mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+    const rollbackEvents = db
+      .select<SessionChangesetMetaRow>(
+        sql`SELECT * FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
+      )
+      .map((_) => ({ id: { global: _.idGlobal, client: _.idClient }, changeset: _.changeset, debug: _.debug }))
+      .toSorted((a, b) => EventId.compare(a.id, b.id))
 
-    if (LS_DEV && mutationEventEncoded.parentId.global !== EventId.ROOT.global) {
-      const parentMutationExists =
-        dbMutationLog.select<{ count: number }>(
-          `SELECT COUNT(*) as count FROM ${MUTATION_LOG_META_TABLE} WHERE idGlobal = ? AND idClient = ?`,
-          [mutationEventEncoded.parentId.global, mutationEventEncoded.parentId.client] as any as PreparedBindValues,
-        )[0]!.count === 1
-
-      if (parentMutationExists === false) {
-        shouldNeverHappen(
-          `Parent mutation ${mutationEventEncoded.parentId.global},${mutationEventEncoded.parentId.client} does not exist`,
-        )
+    // Apply changesets in reverse order
+    for (let i = rollbackEvents.length - 1; i >= 0; i--) {
+      const { changeset } = rollbackEvents[i]!
+      if (changeset !== null) {
+        db.makeChangeset(changeset).invert().apply()
       }
     }
 
-    // TODO use prepared statements
-    yield* execSql(
-      dbMutationLog,
-      ...insertRow({
-        tableName: MUTATION_LOG_META_TABLE,
-        columns: mutationLogMetaTable.sqliteDef.columns,
-        values: {
-          idGlobal: mutationEventEncoded.id.global,
-          idClient: mutationEventEncoded.id.client,
-          parentIdGlobal: mutationEventEncoded.parentId.global,
-          parentIdClient: mutationEventEncoded.parentId.client,
-          mutation: mutationEventEncoded.mutation,
-          argsJson: mutationEventEncoded.args ?? {},
-          clientId,
-          sessionId,
-          schemaHash: mutationDefSchemaHash,
-          syncMetadataJson: Option.none(),
-        },
-      }),
+    const eventIdPairChunks = ReadonlyArray.chunksOf(100)(
+      eventIdsToRollback.map((id) => `(${id.global}, ${id.client})`),
     )
-  })
+
+    // Delete the changeset rows
+    for (const eventIdPairChunk of eventIdPairChunks) {
+      db.execute(
+        sql`DELETE FROM ${SESSION_CHANGESET_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+      )
+    }
+
+    // Delete the mutation log rows
+    for (const eventIdPairChunk of eventIdPairChunks) {
+      dbMutationLog.execute(
+        sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+      )
+    }
+  }).pipe(
+    Effect.withSpan('@livestore/common:LeaderSyncProcessor:rollback', {
+      attributes: { count: eventIdsToRollback.length },
+    }),
+  )
 
 // TODO let's consider removing this "should exclude" mechanism in favour of log compaction etc
 const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {

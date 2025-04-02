@@ -53,6 +53,8 @@ export const makeCfSync =
 
       const api = {
         isConnected,
+        // Currently we're already eagerly connecting when the sync backend is created but we might want to refactor this later to clean this up
+        connect: Effect.void,
         pull: (args) =>
           Effect.gen(function* () {
             if (pullStarted) {
@@ -109,25 +111,23 @@ export const makeCfSync =
 
                 return Option.none()
               }),
-              // This call is mostly here to for type narrowing
-              Stream.filter(Schema.is(WSMessage.PullRes)),
             )
           }).pipe(Stream.unwrap),
 
         push: (batch) =>
           Effect.gen(function* () {
-            const ready = yield* Deferred.make<void, InvalidPushError>()
+            const pushAck = yield* Deferred.make<void, InvalidPushError>()
             const requestId = nanoid()
 
             yield* Stream.fromPubSub(incomingMessages).pipe(
               Stream.tap((_) =>
                 _._tag === 'WSMessage.Error' && _.requestId === requestId
-                  ? Deferred.fail(ready, new InvalidPushError({ reason: { _tag: 'Unexpected', message: _.message } }))
+                  ? Deferred.fail(pushAck, new InvalidPushError({ reason: { _tag: 'Unexpected', message: _.message } }))
                   : Effect.void,
               ),
               Stream.filter((_) => _._tag === 'WSMessage.PushAck' && _.requestId === requestId),
               Stream.take(1),
-              Stream.tap(() => Deferred.succeed(ready, void 0)),
+              Stream.tap(() => Deferred.succeed(pushAck, void 0)),
               Stream.runDrain,
               Effect.tapCauseLogPretty,
               Effect.fork,
@@ -135,11 +135,7 @@ export const makeCfSync =
 
             yield* send(WSMessage.PushReq.make({ batch, requestId }))
 
-            yield* ready
-
-            const createdAt = new Date().toISOString()
-
-            return { metadata: Array.from({ length: batch.length }, () => Option.some({ createdAt })) }
+            yield* pushAck
           }),
         metadata: {
           name: '@livestore/cf-sync',

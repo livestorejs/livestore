@@ -1,5 +1,5 @@
 import { memoizeByRef } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Option, Schema } from '@livestore/utils/effect'
 
 import * as EventId from './EventId.js'
 import type { MutationDef, MutationDefRecord } from './mutations.js'
@@ -162,13 +162,21 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   sessionId: Schema.String,
   // TODO get rid of `meta` again by cleaning up the usage implementations
   meta: Schema.Struct({
-    sessionChangeset: Schema.Union(Schema.Uint8Array, Schema.Literal('no-op', 'unset')),
+    sessionChangeset: Schema.Union(
+      Schema.TaggedStruct('sessionChangeset', {
+        data: Schema.Uint8Array,
+        debug: Schema.Any.pipe(Schema.optional),
+      }),
+      Schema.TaggedStruct('no-op', {}),
+      Schema.TaggedStruct('unset', {}),
+    ),
+    syncMetadata: Schema.Option(Schema.JsonValue),
   }).pipe(
     Schema.mutable,
     Schema.optional,
     Schema.withDefaults({
-      constructor: () => ({ sessionChangeset: 'unset' as const }),
-      decoding: () => ({ sessionChangeset: 'unset' as const }),
+      constructor: () => ({ sessionChangeset: { _tag: 'unset' as const }, syncMetadata: Option.none() }),
+      decoding: () => ({ sessionChangeset: { _tag: 'unset' as const }, syncMetadata: Option.none() }),
     }),
   ),
 }) {
@@ -185,19 +193,20 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
 
   /**
    * Example: (global event)
-   * For event id (2,0) → (1,0) which should be rebased on event id (3,1) → (3,0)
-   * the resulting event id will be (4,0) → (3,0)
+   * For event id e2 → e1 which should be rebased on event id e3 → e2
+   * the resulting event id will be e4 → e3
    *
    * Example: (client event)
-   * For event id (2,1) → (2,0) which should be rebased on event id (3,0) → (2,0)
-   * the resulting event id will be (3,1) → (3,0)
+   * For event id e2+1 → e2 which should be rebased on event id e3 → e2
+   * the resulting event id will be e3+1 → e3
    *
-   * Syntax: (2,1) → (2,0)
-   *          ^ ^     ^ ^
-   *          | |     | +- client parent id
-   *          | |     +--- global parent id
+   * Syntax: e2+2 → e2+1
+   *          ^ ^    ^ ^
+   *          | |    | +- client parent id
+   *          | |    +--- global parent id
    *          | +-- client id
    *          +---- global id
+   * Client id is ommitted for global events
    */
   rebase = (parentId: EventId.EventId, isClient: boolean) =>
     new EncodedWithMeta({
@@ -205,12 +214,12 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
       ...EventId.nextPair(parentId, isClient),
     })
 
-  static fromGlobal = (mutationEvent: AnyEncodedGlobal) =>
+  static fromGlobal = (mutationEvent: AnyEncodedGlobal, syncMetadata: Option.Option<Schema.JsonValue>) =>
     new EncodedWithMeta({
       ...mutationEvent,
       id: { global: mutationEvent.id, client: EventId.clientDefault },
       parentId: { global: mutationEvent.parentId, client: EventId.clientDefault },
-      meta: { sessionChangeset: 'unset' as const },
+      meta: { sessionChangeset: { _tag: 'unset' as const }, syncMetadata },
     })
 
   toGlobal = (): AnyEncodedGlobal => ({
@@ -220,6 +229,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
   })
 }
 
+/** NOTE `meta` is not considered for equality */
 export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
   a.id.global === b.id.global &&
   a.id.client === b.id.client &&

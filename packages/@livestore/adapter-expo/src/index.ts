@@ -10,7 +10,7 @@ import type {
 } from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import { LeaderThreadCtx, makeLeaderThreadLayer, Mutationlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import * as DevtoolsExpo from '@livestore/devtools-expo-common/web-channel'
@@ -228,11 +228,11 @@ const makeLeaderThread = ({
         Effect.forkScoped,
       )
 
-      const initialLeaderHead = getClientHeadFromDb(dbMutationLog)
+      const initialLeaderHead = Mutationlog.getClientHeadFromDb(dbMutationLog)
 
       const leaderThread = {
         mutations: {
-          pull: ({ cursor }) => syncProcessor.pull({ since: cursor }),
+          pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
             syncProcessor
               .push(

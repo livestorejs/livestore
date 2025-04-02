@@ -8,6 +8,7 @@ export const PushPayload = Schema.TaggedStruct('@livestore/sync-electric.Push', 
 
 export const PullPayload = Schema.TaggedStruct('@livestore/sync-electric.Pull', {
   storeId: Schema.String,
+  payload: Schema.UndefinedOr(Schema.JsonValue),
   handle: Schema.Option(
     Schema.Struct({
       offset: Schema.String,

@@ -4,10 +4,11 @@ import type {
   ClientSessionLeaderThreadProxy,
   LockStatus,
   MakeSqliteDb,
+  SqliteDb,
   SyncOptions,
 } from '@livestore/common'
 import { UnexpectedError } from '@livestore/common'
-import { getClientHeadFromDb, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import { LeaderThreadCtx, makeLeaderThreadLayer, Mutationlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
@@ -33,9 +34,16 @@ export interface InMemoryAdapterOptions {
 
   /** Only used internally for testing */
   testing?: {
-    overrides?: {
-      leaderThread?: Partial<ClientSessionLeaderThreadProxy>
-    }
+    overrides?: TestingOverrides
+  }
+}
+
+export type TestingOverrides = {
+  clientSession?: {
+    leaderThreadProxy?: Partial<ClientSessionLeaderThreadProxy>
+  }
+  makeLeaderThread?: {
+    dbMutationLog?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<SqliteDb, UnexpectedError>
   }
 }
 
@@ -109,9 +117,7 @@ const makeLeaderThread = ({
   syncOptions: SyncOptions | undefined
   syncPayload: Schema.JsonValue | undefined
   testing?: {
-    overrides?: {
-      leaderThread?: Partial<ClientSessionLeaderThreadProxy>
-    }
+    overrides?: TestingOverrides
   }
 }) =>
   Effect.gen(function* () {
@@ -119,7 +125,9 @@ const makeLeaderThread = ({
       makeLeaderThreadLayer({
         clientId,
         dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
-        dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
+        dbMutationLog: testing?.overrides?.makeLeaderThread?.dbMutationLog
+          ? yield* testing.overrides.makeLeaderThread.dbMutationLog(makeSqliteDb)
+          : yield* makeSqliteDb({ _tag: 'in-memory' }),
         devtoolsOptions: { enabled: false },
         makeSqliteDb,
         schema,
@@ -132,21 +140,16 @@ const makeLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const {
-        dbReadModel: db,
-        dbMutationLog,
-        syncProcessor,
-        extraIncomingMessagesQueue,
-        initialState,
-      } = yield* LeaderThreadCtx
+      const { dbReadModel, dbMutationLog, syncProcessor, extraIncomingMessagesQueue, initialState } =
+        yield* LeaderThreadCtx
 
-      const initialLeaderHead = getClientHeadFromDb(dbMutationLog)
+      const initialLeaderHead = Mutationlog.getClientHeadFromDb(dbMutationLog)
 
       const leaderThread = {
         mutations: {
           pull:
-            testing?.overrides?.leaderThread?.mutations?.pull ??
-            (({ cursor }) => syncProcessor.pull({ since: cursor })),
+            testing?.overrides?.clientSession?.leaderThreadProxy?.mutations?.pull ??
+            (({ cursor }) => syncProcessor.pull({ cursor })),
           push: (batch) =>
             syncProcessor.push(
               batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
@@ -154,13 +157,13 @@ const makeLeaderThread = ({
             ),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
-        export: Effect.sync(() => db.export()),
+        export: Effect.sync(() => dbReadModel.export()),
         getMutationLogData: Effect.sync(() => dbMutationLog.export()),
         getSyncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
       } satisfies ClientSessionLeaderThreadProxy
 
-      const initialSnapshot = db.export()
+      const initialSnapshot = dbReadModel.export()
 
       return { leaderThread, initialSnapshot }
     }).pipe(Effect.provide(layer))

@@ -27,6 +27,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
     const makeSyncBackend = Effect.gen(function* () {
       return {
         isConnected: syncIsConnectedRef,
+        connect: Effect.void,
         pull: () =>
           Stream.fromQueue(syncPullQueue).pipe(
             Stream.chunks,
@@ -46,8 +47,6 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
             yield* syncPullQueue.offerAll(batch)
 
             syncEventIdRef.current = batch.at(-1)!.id
-
-            return { metadata: Array.from({ length: batch.length }, () => Option.none()) }
           }).pipe(
             Effect.withSpan('MockSyncBackend:push', {
               parent: span,

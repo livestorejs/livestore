@@ -1,12 +1,9 @@
 import type { IsOfflineError, SyncBackend, SyncBackendConstructor } from '@livestore/common'
-import { InvalidPullError, InvalidPushError } from '@livestore/common'
-import type { EventId } from '@livestore/common/schema'
+import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
 import { MutationEvent } from '@livestore/common/schema'
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import {
   Chunk,
-  Deferred,
   Effect,
   HttpClient,
   HttpClientRequest,
@@ -161,9 +158,11 @@ export const makeElectricUrl = ({
     searchParams.set('live', 'true')
   }
 
+  const payload = args.payload
+
   const url = `${endpointUrl}?${searchParams.toString()}`
 
-  return { url, storeId: args.storeId, needsInit: args.handle._tag === 'None' }
+  return { url, storeId: args.storeId, needsInit: args.handle._tag === 'None', payload }
 }
 
 export interface SyncBackendOptions {
@@ -203,9 +202,6 @@ export const makeSyncBackend =
       const pullEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.pull
       const pushEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.push
 
-      // TODO check whether we still need this
-      const pendingPushDeferredMap = new Map<EventId.GlobalEventId, Deferred.Deferred<SyncMetadata>>()
-
       const pull = (
         handle: Option.Option<SyncMetadata>,
       ): Effect.Effect<
@@ -223,15 +219,16 @@ export const makeSyncBackend =
       > =>
         Effect.gen(function* () {
           const argsJson = yield* Schema.encode(Schema.parseJson(ApiSchema.PullPayload))(
-            ApiSchema.PullPayload.make({ storeId, handle }),
+            ApiSchema.PullPayload.make({ storeId, handle, payload }),
           )
           const url = `${pullEndpoint}?args=${argsJson}`
 
           const resp = yield* HttpClient.get(url)
 
           if (resp.status === 401) {
+            const body = yield* resp.text.pipe(Effect.catchAll(() => Effect.succeed('-')))
             return yield* InvalidPullError.make({
-              message: `Unauthorized (401): Couldn't connect to ElectricSQL`,
+              message: `Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`,
             })
           }
 
@@ -279,20 +276,22 @@ export const makeSyncBackend =
           //   return Option.none()
           // }
 
-          for (const item of items) {
-            const deferred = pendingPushDeferredMap.get(item.mutationEventEncoded.id)
-            if (deferred !== undefined) {
-              yield* Deferred.succeed(deferred, Option.getOrThrow(item.metadata))
-            }
-          }
-
           return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
           Effect.mapError((cause) => InvalidPullError.make({ message: cause.toString() })),
         )
 
+      const pullEndpointHasSameOrigin =
+        pullEndpoint.startsWith('/') ||
+        (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
+
       return {
+        // If the pull endpoint has the same origin as the current page, we can assume that we already have a connection
+        // otherwise we send a HEAD request to speed up the connection process
+        connect: pullEndpointHasSameOrigin
+          ? Effect.void
+          : HttpClient.head(pullEndpoint).pipe(UnexpectedError.mapToUnexpectedError),
         pull: (args) =>
           Stream.unfoldChunkEffect(
             args.pipe(
@@ -307,13 +306,6 @@ export const makeSyncBackend =
 
         push: (batch) =>
           Effect.gen(function* () {
-            const deferreds: Deferred.Deferred<SyncMetadata>[] = []
-            for (const mutationEventEncoded of batch) {
-              const deferred = yield* Deferred.make<SyncMetadata>()
-              pendingPushDeferredMap.set(mutationEventEncoded.id, deferred)
-              deferreds.push(deferred)
-            }
-
             const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
               HttpClientRequest.post(pushEndpoint),
               ApiSchema.PushPayload.make({ storeId, batch }),
@@ -329,16 +321,6 @@ export const makeSyncBackend =
             if (!resp.success) {
               yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
             }
-
-            const metadata = yield* Effect.all(deferreds, { concurrency: 'unbounded' }).pipe(
-              Effect.map((_) => _.map(Option.some)),
-            )
-
-            for (const mutationEventEncoded of batch) {
-              pendingPushDeferredMap.delete(mutationEventEncoded.id)
-            }
-
-            return { metadata }
           }),
         isConnected,
         metadata: {

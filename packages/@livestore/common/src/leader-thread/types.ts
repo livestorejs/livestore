@@ -114,33 +114,35 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 >() {}
 
 export type ApplyMutation = (
-  mutationEventEncoded: MutationEvent.AnyEncoded,
+  mutationEventEncoded: MutationEvent.EncodedWithMeta,
   options?: {
     /** Needed for rehydrateFromMutationLog */
     skipMutationLog?: boolean
   },
-) => Effect.Effect<{ sessionChangeset: Uint8Array | 'no-op' }, SqliteError | UnexpectedError>
+) => Effect.Effect<
+  { sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } },
+  SqliteError | UnexpectedError
+>
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
   update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
 }
 
-export type PullQueueItem = {
-  payload: SyncState.PayloadUpstream
-  remaining: number
-}
-
 export interface LeaderSyncProcessor {
-  // TODO rethink `since` cursor concept to allow for rebasing scenarios
   /** Used by client sessions to subscribe to upstream sync state changes */
-  pull: ({ since }: { since: EventId.EventId }) => Stream.Stream<PullQueueItem, UnexpectedError>
+  pull: (args: {
+    /** Leader merge counter */
+    cursor: number
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
-  pullQueue: ({
-    since,
-  }: {
-    since: EventId.EventId
-  }) => Effect.Effect<Queue.Queue<PullQueueItem>, UnexpectedError, Scope.Scope>
+  pullQueue: (args: {
+    cursor: number
+  }) => Effect.Effect<
+    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
+    UnexpectedError,
+    Scope.Scope
+  >
 
   /** Used by client sessions to push mutations to the leader thread */
   push: (
@@ -162,13 +164,11 @@ export interface LeaderSyncProcessor {
     sessionId: string
   }) => Effect.Effect<void, UnexpectedError>
 
-  boot: (args: {
-    /** This deferred is needed to wait for the DB to be initially created before starting to write to it */
-    dbReady: Deferred.Deferred<void>
-  }) => Effect.Effect<
+  boot: Effect.Effect<
     { initialLeaderHead: EventId.EventId },
     UnexpectedError,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
+  getMergeCounter: () => number
 }

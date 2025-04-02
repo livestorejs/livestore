@@ -3,9 +3,9 @@ import { Devtools, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
-  getClientHeadFromDb,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
+  Mutationlog,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { MutationEvent } from '@livestore/common/schema'
@@ -176,7 +176,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx
-        return syncProcessor.pull({ since: cursor })
+        return syncProcessor.pull({ cursor })
       }).pipe(
         Stream.unwrapScoped,
         // For debugging purposes
@@ -205,7 +205,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
     GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return getClientHeadFromDb(workerCtx.dbMutationLog)
+        return Mutationlog.getClientHeadFromDb(workerCtx.dbMutationLog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {

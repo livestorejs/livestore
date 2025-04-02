@@ -1,3 +1,5 @@
+import '@livestore/utils/node-vitest-polyfill'
+
 import { makeRef, queryDb } from '@livestore/livestore'
 import * as LiveStore from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
@@ -40,11 +42,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(1)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-        console.log('before mutation')
-
         ReactTesting.act(() => store.commit(todos.insert({ id: 't1', text: 'buy milk', completed: false })))
-
-        console.log('after mutation')
 
         expect(result.current.length).toBe(1)
         expect(result.current[0]!.text).toBe('buy milk')

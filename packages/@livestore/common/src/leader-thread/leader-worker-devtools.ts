@@ -33,10 +33,8 @@ export const bootDevtools = (options: DevtoolsOptions) =>
           Effect.ignoreLogged,
         )
 
-    const { localHead } = yield* syncProcessor.syncState
-
-    yield* syncProcessor.pull({ since: localHead }).pipe(
-      Stream.tap((msg) => sendMessage(Devtools.Leader.SyncPull.make({ payload: msg.payload, liveStoreVersion }))),
+    yield* syncProcessor.pull({ cursor: syncProcessor.getMergeCounter() }).pipe(
+      Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
       Stream.runDrain,
       Effect.forkScoped,
     )

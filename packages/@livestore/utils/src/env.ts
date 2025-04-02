@@ -23,6 +23,11 @@ export const isDevEnv = () => {
     return import.meta.env.DEV
   }
 
+  // @ts-expect-error Only exists in Expo / RN
+  if (typeof globalThis !== 'undefined' && globalThis.__DEV__) {
+    return true
+  }
+
   return false
 }
 

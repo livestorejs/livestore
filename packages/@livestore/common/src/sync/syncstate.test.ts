@@ -135,7 +135,7 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.pending, [])
         expect(result.newSyncState.upstreamHead).toMatchObject(EventId.ROOT)
         expect(result.newSyncState.localHead).toMatchObject(EventId.ROOT)
-        expect(result.newEvents).toStrictEqual([])
+        expectEventArraysEqual(result.newEvents, [])
       })
     })
 
@@ -190,7 +190,7 @@ describe('syncstate', () => {
         expect(result).toMatchObject({ _tag: 'unexpected-error' })
       })
 
-      it('should acknowledge pending event when receiving matching event', () => {
+      it('should confirm pending event when receiving matching event', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0],
           upstreamHead: EventId.ROOT,
@@ -202,10 +202,11 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.pending, [])
         expect(result.newSyncState.upstreamHead).toMatchObject(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_0_0.id)
-        expect(result.newEvents).toStrictEqual([])
+        expectEventArraysEqual(result.newEvents, [])
+        expectEventArraysEqual(result.confirmedEvents, [e_0_0])
       })
 
-      it('should acknowledge partial pending event when receiving matching event', () => {
+      it('should confirm partial pending event when receiving matching event', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0, e_1_0],
           upstreamHead: EventId.ROOT,
@@ -217,10 +218,11 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.pending, [e_1_0])
         expect(result.newSyncState.upstreamHead).toMatchObject(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
-        expect(result.newEvents).toStrictEqual([])
+        expectEventArraysEqual(result.newEvents, [])
+        expectEventArraysEqual(result.confirmedEvents, [e_0_0])
       })
 
-      it('should acknowledge pending event and add new event', () => {
+      it('should confirm pending event and add new event', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_0],
           upstreamHead: EventId.ROOT,
@@ -233,9 +235,10 @@ describe('syncstate', () => {
         expect(result.newSyncState.upstreamHead).toMatchObject(e_0_1.id)
         expect(result.newSyncState.localHead).toMatchObject(e_0_1.id)
         expect(result.newEvents).toStrictEqual([e_0_1])
+        expectEventArraysEqual(result.confirmedEvents, [e_0_0])
       })
 
-      it('should acknowledge pending event and add multiple new events', () => {
+      it('should confirm pending event and add multiple new events', () => {
         const syncState = new SyncState.SyncState({
           pending: [e_0_1],
           upstreamHead: e_0_0.id,
@@ -251,6 +254,7 @@ describe('syncstate', () => {
         expect(result.newSyncState.upstreamHead).toMatchObject(e_1_1.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_1.id)
         expect(result.newEvents).toStrictEqual([e_0_2, e_0_3, e_1_0, e_1_1])
+        expectEventArraysEqual(result.confirmedEvents, [e_0_1])
       })
 
       it('should ignore client events (incoming is subset of pending)', () => {
@@ -268,7 +272,8 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.pending, [])
         expect(result.newSyncState.upstreamHead).toMatchObject(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_0_0.id)
-        expect(result.newEvents).toStrictEqual([])
+        expectEventArraysEqual(result.newEvents, [])
+        expectEventArraysEqual(result.confirmedEvents, [e_r_1, e_0_0])
       })
 
       it('should ignore client events (incoming is subset of pending case 2)', () => {
@@ -286,7 +291,8 @@ describe('syncstate', () => {
         expectEventArraysEqual(result.newSyncState.pending, [e_1_0])
         expect(result.newSyncState.upstreamHead).toMatchObject(e_0_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
-        expect(result.newEvents).toStrictEqual([])
+        expectEventArraysEqual(result.newEvents, [])
+        expectEventArraysEqual(result.confirmedEvents, [e_r_1, e_0_0])
       })
 
       it('should ignore client events (incoming goes beyond pending)', () => {
@@ -306,6 +312,7 @@ describe('syncstate', () => {
         expect(result.newSyncState.upstreamHead).toMatchObject(e_1_0.id)
         expect(result.newSyncState.localHead).toMatchObject(e_1_0.id)
         expect(result.newEvents).toStrictEqual([e_1_0])
+        expectEventArraysEqual(result.confirmedEvents, [e_r_1, e_0_0, e_0_1])
       })
 
       it('should fail if incoming event is ≤ local head', () => {
@@ -436,6 +443,7 @@ describe('syncstate', () => {
             expect(result.newSyncState.upstreamHead).toMatchObject(EventId.ROOT)
             expect(result.newSyncState.localHead).toMatchObject(e_0_3.id)
             expectEventArraysEqual(result.newEvents, [e_0_1, e_0_2, e_0_3])
+            expectEventArraysEqual(result.confirmedEvents, [])
           })
         })
 

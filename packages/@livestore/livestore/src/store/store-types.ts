@@ -1,6 +1,6 @@
 import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
-import type { EventId, LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
-import type { Effect, MutableHashMap, Runtime, Scope } from '@livestore/utils/effect'
+import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
@@ -41,16 +41,16 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema, TCon
   storeId: string
   context: TContext
   otelOptions: OtelOptions
-  disableDevtools?: boolean
-  lifetimeScope: Scope.Scope
-  runtime: Runtime.Runtime<Scope.Scope>
+  effectContext: {
+    runtime: Runtime.Runtime<Scope.Scope>
+    lifetimeScope: Scope.Scope
+  }
   confirmUnsavedChanges: boolean
   batchUpdates: (runUpdates: () => void) => void
-  // TODO validate whether we still need this
-  unsyncedMutationEvents: MutableHashMap.MutableHashMap<EventId.EventId, MutationEvent.ForSchema<TSchema>>
   params: {
     leaderPushBatchSize: number
   }
+  __runningInDevtools: boolean
 }
 
 export type RefreshReason =

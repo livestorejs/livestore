@@ -5,14 +5,13 @@ import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '..
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { EventId, MutationEvent, mutationLogMetaTable, SYNC_STATUS_TABLE, syncStatusTable } from '../schema/mod.js'
-import { migrateTable } from '../schema-management/migrations.js'
+import { MutationEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
 import { makeApplyMutation } from './apply-mutation.js'
-import { execSql } from './connection.js'
 import { bootDevtools } from './leader-worker-devtools.js'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
+import * as Mutationlog from './mutationlog.js'
 import { recreateDb } from './recreate-db.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 import type {
@@ -52,13 +51,21 @@ export const makeLeaderThreadLayer = ({
 
     // TODO do more validation here than just checking the count of tables
     // Either happens on initial boot or if schema changes
-    const dbMissing =
+    const dbMutationLogMissing =
+      dbMutationLog.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
+
+    const dbReadModelMissing =
       dbReadModel.select<{ count: number }>(sql`select count(*) as count from sqlite_master`)[0]!.count === 0
 
     const syncBackend =
       syncOptions?.backend === undefined
         ? undefined
         : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload })
+
+    if (syncBackend !== undefined) {
+      // We're already connecting to the sync backend concurrently
+      yield* syncBackend.connect.pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+    }
 
     const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({
       initialSyncOptions: syncOptions?.initialSyncOptions ?? { _tag: 'Skip' },
@@ -67,8 +74,10 @@ export const makeLeaderThreadLayer = ({
 
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
-      dbMissing,
+      dbMutationLogMissing,
       dbMutationLog,
+      dbReadModel,
+      dbReadModelMissing,
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
     })
@@ -113,7 +122,7 @@ export const makeLeaderThreadLayer = ({
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
     ctx.initialState = yield* bootLeaderThread({
-      dbMissing,
+      dbReadModelMissing,
       initialBlockingSyncContext,
       devtoolsOptions,
     }).pipe(Effect.provide(layer))
@@ -179,11 +188,11 @@ const makeInitialBlockingSyncContext = ({
  * It also starts various background processes (e.g. syncing)
  */
 const bootLeaderThread = ({
-  dbMissing,
+  dbReadModelMissing,
   initialBlockingSyncContext,
   devtoolsOptions,
 }: {
-  dbMissing: boolean
+  dbReadModelMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
@@ -194,44 +203,18 @@ const bootLeaderThread = ({
   Effect.gen(function* () {
     const { dbMutationLog, bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
 
-    yield* migrateTable({
-      db: dbMutationLog,
-      behaviour: 'create-if-not-exists',
-      tableAst: mutationLogMetaTable.sqliteDef.ast,
-      skipMetaTable: true,
-    })
-
-    yield* migrateTable({
-      db: dbMutationLog,
-      behaviour: 'create-if-not-exists',
-      tableAst: syncStatusTable.sqliteDef.ast,
-      skipMetaTable: true,
-    })
-
-    // Create sync status row if it doesn't exist
-    yield* execSql(
-      dbMutationLog,
-      sql`INSERT INTO ${SYNC_STATUS_TABLE} (head)
-          SELECT ${EventId.ROOT.global}
-          WHERE NOT EXISTS (SELECT 1 FROM ${SYNC_STATUS_TABLE})`,
-      {},
-    )
-
-    const dbReady = yield* Deferred.make<void>()
-
-    // We're already starting pulling from the sync backend concurrently but wait until the db is ready before
-    // processing any incoming mutations
-    const { initialLeaderHead } = yield* syncProcessor.boot({ dbReady })
+    yield* Mutationlog.initMutationLogDb(dbMutationLog)
 
     let migrationsReport: MigrationsReport
-    if (dbMissing) {
+    if (dbReadModelMissing) {
       const recreateResult = yield* recreateDb
       migrationsReport = recreateResult.migrationsReport
     } else {
       migrationsReport = { migrations: [] }
     }
 
-    yield* Deferred.succeed(dbReady, void 0)
+    // NOTE the sync processor depends on the dbs being initialized properly
+    const { initialLeaderHead } = yield* syncProcessor.boot
 
     if (initialBlockingSyncContext.blockingDeferred !== undefined) {
       // Provides a syncing status right away before the first pull response comes in
