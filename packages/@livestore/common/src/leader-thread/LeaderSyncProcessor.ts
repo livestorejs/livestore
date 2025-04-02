@@ -308,21 +308,35 @@ export const makeLeaderSyncProcessor = ({
       return { initialLeaderHead: initialLocalHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
-    const pull: LeaderSyncProcessor['pull'] = ({ cursor }) => {
-      return Effect.gen(function* () {
+    const pull: LeaderSyncProcessor['pull'] = ({ cursor }) =>
+      Effect.gen(function* () {
         const queue = yield* pullQueue({ cursor })
         return Stream.fromQueue(queue)
       }).pipe(Stream.unwrapScoped)
-    }
 
     const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) => {
       const runtime = ctxRef.current?.runtime ?? shouldNeverHappen('Not initialized')
       return Effect.gen(function* () {
-        const queue = yield* connectedClientSessionPullQueues.makeQueue(cursor)
+        const queue = yield* connectedClientSessionPullQueues.makeQueue
         const payloadsSinceCursor = Array.from(mergePayloads.entries())
           .map(([mergeCounter, payload]) => ({ payload, mergeCounter }))
-          .filter(({ mergeCounter }) => mergeCounter > cursor)
+          .filter(({ mergeCounter }) => mergeCounter > cursor.mergeCounter)
           .toSorted((a, b) => a.mergeCounter - b.mergeCounter)
+          .map(({ payload, mergeCounter }) => {
+            if (payload._tag === 'upstream-advance') {
+              return {
+                payload: {
+                  _tag: 'upstream-advance' as const,
+                  newEvents: ReadonlyArray.dropWhile(payload.newEvents, (mutationEventEncoded) =>
+                    EventId.isGreaterThanOrEqual(cursor.eventId, mutationEventEncoded.id),
+                  ),
+                },
+                mergeCounter,
+              }
+            } else {
+              return { payload, mergeCounter }
+            }
+          })
 
         yield* queue.offerAll(payloadsSinceCursor)
 
@@ -786,9 +800,7 @@ const trimChangesetRows = (db: SqliteDb, newHead: EventId.EventId) => {
 }
 
 interface PullQueueSet {
-  makeQueue: (
-    cursor: number,
-  ) => Effect.Effect<
+  makeQueue: Effect.Effect<
     Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
     UnexpectedError,
     Scope.Scope | LeaderThreadCtx
@@ -812,19 +824,18 @@ const makePullQueueSet = Effect.gen(function* () {
     }),
   )
 
-  const makeQueue: PullQueueSet['makeQueue'] = () =>
-    Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<{
-        payload: typeof SyncState.PayloadUpstream.Type
-        mergeCounter: number
-      }>().pipe(Effect.acquireRelease(Queue.shutdown))
+  const makeQueue: PullQueueSet['makeQueue'] = Effect.gen(function* () {
+    const queue = yield* Queue.unbounded<{
+      payload: typeof SyncState.PayloadUpstream.Type
+      mergeCounter: number
+    }>().pipe(Effect.acquireRelease(Queue.shutdown))
 
-      yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
+    yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
-      set.add(queue)
+    set.add(queue)
 
-      return queue
-    })
+    return queue
+  })
 
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {

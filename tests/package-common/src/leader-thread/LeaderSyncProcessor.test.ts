@@ -54,7 +54,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
       )
 
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-        Stream.takeUntil((_) => _.localHead.global === 1),
+        Stream.takeUntil((_) => _.localHead.global === 2),
         Stream.runDrain,
       )
 
@@ -84,7 +84,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
         testContext
           .encodeMutationEvent({
             ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
-            id: EventId.make({ global: 0, client: 0 }),
+            id: EventId.make({ global: 1, client: 0 }),
             parentId: EventId.ROOT,
           })
           .toGlobal(),
@@ -131,7 +131,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
       ).pipe(Effect.withSpan(`@livestore/common-tests:sync:mutations(${numberOfPushes})`))
 
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-        Stream.takeUntil((_) => _.localHead.global === numberOfPushes - 1),
+        Stream.takeUntil((_) => _.localHead.global === numberOfPushes),
         Stream.runDrain,
       )
 
@@ -153,8 +153,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
             testContext
               .encodeMutationEvent({
                 ...tables.todos.insert({ id: `backend_${i}`, text: '', completed: false }),
-                id: EventId.make({ global: i, client: 0 }),
-                parentId: EventId.make({ global: i - 1, client: 0 }),
+                id: EventId.make({ global: i + 1, client: 0 }),
+                parentId: EventId.make({ global: i, client: 0 }),
               })
               .toGlobal(),
           )
@@ -228,7 +228,9 @@ const LeaderThreadCtxLive = Effect.gen(function* () {
 
     const currentMutationEventId = { current: EventId.ROOT }
 
-    const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({ cursor: 0 })
+    const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
+      cursor: { mergeCounter: 0, eventId: EventId.ROOT },
+    })
 
     const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAnyDecoded) => {
       const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)

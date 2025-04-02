@@ -2,7 +2,8 @@ import type { Cause, Queue, Scope, SubscriptionRef, WebChannel } from '@livestor
 import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/mod.js'
-import type { EventId, LiveStoreSchema, MutationEvent } from './schema/mod.js'
+import * as EventId from './schema/EventId.js'
+import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
 import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
@@ -38,11 +39,17 @@ export interface ClientSession {
   leaderThread: ClientSessionLeaderThreadProxy
 }
 
+export const LeaderPullCursor = Schema.Struct({
+  mergeCounter: Schema.Number,
+  eventId: EventId.EventId,
+})
+
+export type LeaderPullCursor = typeof LeaderPullCursor.Type
+
 export interface ClientSessionLeaderThreadProxy {
   mutations: {
     pull: (args: {
-      /** The merge counter of the leader thread */
-      cursor: number
+      cursor: LeaderPullCursor
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>

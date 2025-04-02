@@ -57,7 +57,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
 
       yield* mockSyncBackend.advance({
         ...encoded,
-        id: EventId.globalEventId(0),
+        id: EventId.globalEventId(1),
         parentId: EventId.ROOT.global,
         clientId: 'other-client',
         sessionId: 'static-session-id',
@@ -77,8 +77,8 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         yield* mockSyncBackend
           .advance({
             ...encode(tables.todos.insert({ id: `backend_${i}`, text: '', completed: false })),
-            id: EventId.globalEventId(i),
-            parentId: EventId.globalEventId(i - 1),
+            id: EventId.globalEventId(i + 1),
+            parentId: EventId.globalEventId(i),
             clientId: 'other-client',
             sessionId: 'static-session-id',
           })
@@ -135,7 +135,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         pullQueue,
         MutationEvent.EncodedWithMeta.make({
           ...encode(tables.todos.insert({ id: `id_0`, text: '', completed: false })),
-          id: EventId.make({ global: 0, client: 0 }),
+          id: EventId.make({ global: 1, client: 0 }),
           parentId: EventId.ROOT,
           clientId: 'other-client',
           sessionId: 'static-session-id',
@@ -162,7 +162,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
       yield* mockSyncBackend.advance(
         MutationEvent.AnyEncodedGlobal.make({
           ...encode(tables.todos.insert({ id: `backend_0`, text: 't2', completed: false })),
-          id: EventId.globalEventId(0),
+          id: EventId.globalEventId(1),
           parentId: EventId.ROOT.global,
           clientId: 'other-client',
           sessionId: 'static-session-id',
@@ -186,7 +186,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
                   MutationEvent.EncodedWithMeta.make({
                     ...encode(tables.todos.insert({ id: `client_0`, text: 't1', completed: false })),
                     clientId: 'client',
-                    id: EventId.make({ global: 0, client: 0 }),
+                    id: EventId.make({ global: 1, client: 0 }),
                     parentId: EventId.ROOT,
                     sessionId: 'static-session-id',
                   }),

@@ -12,7 +12,7 @@ import type {
 } from '@livestore/utils/effect'
 import { Context, Schema } from '@livestore/utils/effect'
 
-import type { SqliteError } from '../adapter-types.js'
+import type { LeaderPullCursor, SqliteError } from '../adapter-types.js'
 import type {
   BootStatus,
   Devtools,
@@ -132,12 +132,11 @@ export type InitialBlockingSyncContext = {
 export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
-    /** Leader merge counter */
-    cursor: number
+    cursor: LeaderPullCursor
   }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
-    cursor: number
+    cursor: LeaderPullCursor
   }) => Effect.Effect<
     Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
     UnexpectedError,

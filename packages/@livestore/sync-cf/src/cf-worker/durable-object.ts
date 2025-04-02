@@ -175,7 +175,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const firstEvent = decodedMessage.batch[0]!
               if (firstEvent.parentId !== expectedParentId) {
                 const err = WSMessage.Error.make({
-                  message: `Invalid parent id. Received ${firstEvent.parentId} but expected ${expectedParentId}`,
+                  message: `Invalid parent id. Received e${firstEvent.parentId} but expected e${expectedParentId}`,
                   requestId,
                 })
 

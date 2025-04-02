@@ -60,7 +60,7 @@ export const isEqual = (a: EventId, b: EventId) => a.global === b.global && a.cl
 
 export type EventIdPair = { id: EventId; parentId: EventId }
 
-export const ROOT = { global: -1 as any as GlobalEventId, client: clientDefault } satisfies EventId
+export const ROOT = { global: 0 as any as GlobalEventId, client: clientDefault } satisfies EventId
 
 export const isGreaterThan = (a: EventId, b: EventId) => {
   return a.global > b.global || (a.global === b.global && a.client > b.client)
@@ -68,6 +68,17 @@ export const isGreaterThan = (a: EventId, b: EventId) => {
 
 export const isGreaterThanOrEqual = (a: EventId, b: EventId) => {
   return a.global > b.global || (a.global === b.global && a.client >= b.client)
+}
+
+export const max = (a: EventId, b: EventId) => {
+  return a.global > b.global || (a.global === b.global && a.client > b.client) ? a : b
+}
+
+export const diff = (a: EventId, b: EventId) => {
+  return {
+    global: a.global - b.global,
+    client: a.client - b.client,
+  }
 }
 
 export const make = (id: EventId | typeof EventId.Encoded): EventId => {

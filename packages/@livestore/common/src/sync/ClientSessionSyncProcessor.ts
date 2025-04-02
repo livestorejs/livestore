@@ -176,7 +176,11 @@ export const makeClientSessionSyncProcessor = ({
       )[0]?.mergeCounter ?? 0
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
-    yield* Stream.suspend(() => clientSession.leaderThread.mutations.pull({ cursor: getMergeCounter() })).pipe(
+    yield* Stream.suspend(() =>
+      clientSession.leaderThread.mutations.pull({
+        cursor: { mergeCounter: getMergeCounter(), eventId: syncStateRef.current.localHead },
+      }),
+    ).pipe(
       Stream.tap(({ payload, mergeCounter: leaderMergeCounter }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)

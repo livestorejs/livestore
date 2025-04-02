@@ -217,33 +217,37 @@ export const merge = ({
         isClientEvent,
       })
 
-      return MergeResultRebase.make({
-        _tag: 'rebase',
-        newSyncState: new SyncState({
-          pending: rebasedPending,
-          upstreamHead: newUpstreamHead,
-          localHead: rebasedPending.at(-1)?.id ?? newUpstreamHead,
+      return validateMergeResult(
+        MergeResultRebase.make({
+          _tag: 'rebase',
+          newSyncState: new SyncState({
+            pending: rebasedPending,
+            upstreamHead: newUpstreamHead,
+            localHead: rebasedPending.at(-1)?.id ?? newUpstreamHead,
+          }),
+          newEvents: [...payload.newEvents, ...rebasedPending],
+          rollbackEvents,
+          mergeContext,
         }),
-        newEvents: [...payload.newEvents, ...rebasedPending],
-        rollbackEvents,
-        mergeContext,
-      })
+      )
     }
 
     // #region upstream-advance
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
-        return MergeResultAdvance.make({
-          _tag: 'advance',
-          newSyncState: new SyncState({
-            pending: syncState.pending,
-            upstreamHead: syncState.upstreamHead,
-            localHead: syncState.localHead,
+        return validateMergeResult(
+          MergeResultAdvance.make({
+            _tag: 'advance',
+            newSyncState: new SyncState({
+              pending: syncState.pending,
+              upstreamHead: syncState.upstreamHead,
+              localHead: syncState.localHead,
+            }),
+            newEvents: [],
+            confirmedEvents: [],
+            mergeContext: mergeContext,
           }),
-          newEvents: [],
-          confirmedEvents: [],
-          mergeContext: mergeContext,
-        })
+        )
       }
 
       // Validate that newEvents are sorted in ascending order by eventId
@@ -313,17 +317,19 @@ export const merge = ({
           },
         )
 
-        return MergeResultAdvance.make({
-          _tag: 'advance',
-          newSyncState: new SyncState({
-            pending: pendingRemaining,
-            upstreamHead: newUpstreamHead,
-            localHead: pendingRemaining.at(-1)?.id ?? newUpstreamHead,
+        return validateMergeResult(
+          MergeResultAdvance.make({
+            _tag: 'advance',
+            newSyncState: new SyncState({
+              pending: pendingRemaining,
+              upstreamHead: newUpstreamHead,
+              localHead: pendingRemaining.at(-1)?.id ?? EventId.max(syncState.localHead, newUpstreamHead),
+            }),
+            newEvents,
+            confirmedEvents: pendingMatching,
+            mergeContext: mergeContext,
           }),
-          newEvents,
-          confirmedEvents: pendingMatching,
-          mergeContext: mergeContext,
-        })
+        )
       } else {
         const divergentPending = syncState.pending.slice(divergentPendingIndex)
         const rebasedPending = rebaseEvents({
@@ -340,17 +346,19 @@ export const merge = ({
           ignoreClientEvents,
         })
 
-        return MergeResultRebase.make({
-          _tag: 'rebase',
-          newSyncState: new SyncState({
-            pending: rebasedPending,
-            upstreamHead: newUpstreamHead,
-            localHead: rebasedPending.at(-1)!.id,
+        return validateMergeResult(
+          MergeResultRebase.make({
+            _tag: 'rebase',
+            newSyncState: new SyncState({
+              pending: rebasedPending,
+              upstreamHead: newUpstreamHead,
+              localHead: rebasedPending.at(-1)!.id,
+            }),
+            newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
+            rollbackEvents: divergentPending,
+            mergeContext,
           }),
-          newEvents: [...payload.newEvents.slice(divergentNewEventsIndex), ...rebasedPending],
-          rollbackEvents: divergentPending,
-          mergeContext,
-        })
+        )
       }
     }
     // #endregion
@@ -358,13 +366,15 @@ export const merge = ({
     // This is the same as what's running in the sync backend
     case 'local-push': {
       if (payload.newEvents.length === 0) {
-        return MergeResultAdvance.make({
-          _tag: 'advance',
-          newSyncState: syncState,
-          newEvents: [],
-          confirmedEvents: [],
-          mergeContext: mergeContext,
-        })
+        return validateMergeResult(
+          MergeResultAdvance.make({
+            _tag: 'advance',
+            newSyncState: syncState,
+            newEvents: [],
+            confirmedEvents: [],
+            mergeContext: mergeContext,
+          }),
+        )
       }
 
       const newEventsFirst = payload.newEvents.at(0)!
@@ -372,23 +382,27 @@ export const merge = ({
 
       if (invalidEventId) {
         const expectedMinimumId = EventId.nextPair(syncState.localHead, true).id
-        return MergeResultReject.make({
-          _tag: 'reject',
-          expectedMinimumId,
-          mergeContext,
-        })
-      } else {
-        return MergeResultAdvance.make({
-          _tag: 'advance',
-          newSyncState: new SyncState({
-            pending: [...syncState.pending, ...payload.newEvents],
-            upstreamHead: syncState.upstreamHead,
-            localHead: payload.newEvents.at(-1)!.id,
+        return validateMergeResult(
+          MergeResultReject.make({
+            _tag: 'reject',
+            expectedMinimumId,
+            mergeContext,
           }),
-          newEvents: payload.newEvents,
-          confirmedEvents: [],
-          mergeContext: mergeContext,
-        })
+        )
+      } else {
+        return validateMergeResult(
+          MergeResultAdvance.make({
+            _tag: 'advance',
+            newSyncState: new SyncState({
+              pending: [...syncState.pending, ...payload.newEvents],
+              upstreamHead: syncState.upstreamHead,
+              localHead: payload.newEvents.at(-1)!.id,
+            }),
+            newEvents: payload.newEvents,
+            confirmedEvents: [],
+            mergeContext: mergeContext,
+          }),
+        )
       }
     }
 
@@ -502,4 +516,42 @@ const validateSyncState = (syncState: SyncState) => {
       }
     }
   }
+}
+
+const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
+  if (mergeResult._tag === 'unexpected-error' || mergeResult._tag === 'reject') return mergeResult
+
+  // Ensure local head is always greater than or equal to upstream head
+  if (EventId.isGreaterThan(mergeResult.newSyncState.upstreamHead, mergeResult.newSyncState.localHead)) {
+    shouldNeverHappen('Local head must be greater than or equal to upstream head', {
+      localHead: mergeResult.newSyncState.localHead,
+      upstreamHead: mergeResult.newSyncState.upstreamHead,
+    })
+  }
+
+  // Ensure new local head is greater than or equal to the previous local head
+  if (
+    EventId.isGreaterThanOrEqual(mergeResult.newSyncState.localHead, mergeResult.mergeContext.syncState.localHead) ===
+    false
+  ) {
+    shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
+      localHead: mergeResult.newSyncState.localHead,
+      previousLocalHead: mergeResult.mergeContext.syncState.localHead,
+    })
+  }
+
+  // Ensure new upstream head is greater than or equal to the previous upstream head
+  if (
+    EventId.isGreaterThanOrEqual(
+      mergeResult.newSyncState.upstreamHead,
+      mergeResult.mergeContext.syncState.upstreamHead,
+    ) === false
+  ) {
+    shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
+      upstreamHead: mergeResult.newSyncState.upstreamHead,
+      previousUpstreamHead: mergeResult.mergeContext.syncState.upstreamHead,
+    })
+  }
+
+  return mergeResult
 }
