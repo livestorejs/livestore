@@ -129,7 +129,7 @@
 - Separate mutation handler from mutation definition
 - Get rid of `excludeFromMutationLog` (etc)
 - Syncing
-  - Refactor: Rename `EventId` to `EventSeq` / `EventClock` / `EventGen`
+  - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
     - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
   - More graceful handling when receiving a mutation event that doesn't exist in the local schema
