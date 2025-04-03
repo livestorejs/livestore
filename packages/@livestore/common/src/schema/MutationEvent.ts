@@ -185,7 +185,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('MutationEven
     // - More readable way to print the id + parentId
     // - not including `meta`, `clientId`, `sessionId`
     return {
-      id: `${EventId.toString(this.id)} → ${EventId.toString(this.parentId)}`,
+      id: `${EventId.toString(this.id)} → ${EventId.toString(this.parentId)} (${this.clientId}, ${this.sessionId})`,
       mutation: this.mutation,
       args: this.args,
     }

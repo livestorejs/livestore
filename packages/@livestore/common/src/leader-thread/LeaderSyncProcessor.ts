@@ -33,9 +33,6 @@ import * as Mutationlog from './mutationlog.js'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
-export const BACKEND_PUSH_BATCH_SIZE = 50
-export const LOCAL_PUSH_BATCH_SIZE = 10
-
 type LocalPushQueueItem = [
   mutationEvent: MutationEvent.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
@@ -80,6 +77,8 @@ export const makeLeaderSyncProcessor = ({
   dbReadModelMissing,
   initialBlockingSyncContext,
   onError,
+  params,
+  testing,
 }: {
   schema: LiveStoreSchema
   /** Only used to know whether we can safely query dbMutationLog during setup execution */
@@ -90,9 +89,26 @@ export const makeLeaderSyncProcessor = ({
   dbReadModelMissing: boolean
   initialBlockingSyncContext: InitialBlockingSyncContext
   onError: 'shutdown' | 'ignore'
+  params: {
+    /**
+     * @default 10
+     */
+    localPushBatchSize?: number
+    /**
+     * @default 50
+     */
+    backendPushBatchSize?: number
+  }
+  testing: {
+    delays?: {
+      localPushProcessing?: Effect.Effect<void>
+    }
+  }
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
+    const localPushBatchSize = params.localPushBatchSize ?? 10
+    const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
@@ -108,10 +124,12 @@ export const makeLeaderSyncProcessor = ({
      * If a local-push batch is rejected, all subsequent push queue items with the same generation are also rejected,
      * even if they would be valid on their own.
      */
+    // TODO get rid of this in favour of the `mergeGeneration` event id field
     const currentLocalPushGenerationRef = { current: 0 }
 
+    type MergeCounter = number
     const mergeCounterRef = { current: dbReadModelMissing ? 0 : yield* getMergeCounterFromDb(dbReadModel) }
-    const mergePayloads = new Map<number, typeof SyncState.PayloadUpstream.Type>()
+    const mergePayloads = new Map<MergeCounter, typeof SyncState.PayloadUpstream.Type>()
 
     // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
     const ctxRef = {
@@ -129,11 +147,28 @@ export const makeLeaderSyncProcessor = ({
     const localPushesLatch = yield* Effect.makeLatch(true)
     const pullLatch = yield* Effect.makeLatch(true)
 
+    /**
+     * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
+     * events from being pushed in a scenario like this:
+     * - client session A pushes e1
+     * - leader sync processor takes a bit and hasn't yet taken e1 from the localPushesQueue
+     * - client session B also pushes e1 (which should be rejected)
+     *
+     * Thus the purpoe of the pushHeadRef is the guard the integrity of the local push queue
+     */
+    const pushHeadRef = { current: EventId.ROOT }
+    const advancePushHead = (eventId: EventId.EventId) => {
+      pushHeadRef.current = EventId.max(pushHeadRef.current, eventId)
+    }
+
     // NOTE: New events are only pushed to sync backend after successful local push processing
     const push: LeaderSyncProcessor['push'] = (newEvents, options) =>
       Effect.gen(function* () {
-        // TODO validate batch
         if (newEvents.length === 0) return
+
+        yield* validatePushBatch(newEvents, pushHeadRef.current)
+
+        advancePushHead(newEvents.at(-1)!.id)
 
         const waitForProcessing = options?.waitForProcessing ?? false
         const generation = currentLocalPushGenerationRef.current
@@ -155,7 +190,7 @@ export const makeLeaderSyncProcessor = ({
           yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
-        Effect.withSpan('@livestore/common:LeaderSyncProcessor:local-push', {
+        Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
           attributes: {
             batchSize: newEvents.length,
             batch: TRACE_VERBOSE ? newEvents : undefined,
@@ -200,10 +235,11 @@ export const makeLeaderSyncProcessor = ({
         runtime,
       }
 
+      const initialLocalHead = dbMutationLogMissing ? EventId.ROOT : Mutationlog.getClientHeadFromDb(dbMutationLog)
+
       const initialBackendHead = dbMutationLogMissing
         ? EventId.ROOT.global
         : Mutationlog.getBackendHeadFromDb(dbMutationLog)
-      const initialLocalHead = dbMutationLogMissing ? EventId.ROOT : Mutationlog.getClientHeadFromDb(dbMutationLog)
 
       if (initialBackendHead > initialLocalHead.global) {
         return shouldNeverHappen(
@@ -259,18 +295,21 @@ export const makeLeaderSyncProcessor = ({
         connectedClientSessionPullQueues,
         mergeCounterRef,
         mergePayloads,
+        localPushBatchSize,
+        testing: {
+          delay: testing?.delays?.localPushProcessing,
+        },
       }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make()
+      const backendPushingEffect = backgroundBackendPushing({
+        syncBackendPushQueue,
+        otelSpan,
+        devtoolsLatch: ctxRef.current?.devtoolsLatch,
+        backendPushBatchSize,
+      }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError))
 
-      yield* FiberHandle.run(
-        backendPushingFiberHandle,
-        backgroundBackendPushing({
-          syncBackendPushQueue,
-          otelSpan,
-          devtoolsLatch: ctxRef.current?.devtoolsLatch,
-        }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError)),
-      )
+      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
         initialBackendHead,
@@ -285,14 +324,7 @@ export const makeLeaderSyncProcessor = ({
             yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
 
             // Restart pushing fiber
-            yield* FiberHandle.run(
-              backendPushingFiberHandle,
-              backgroundBackendPushing({
-                syncBackendPushQueue,
-                otelSpan,
-                devtoolsLatch: ctxRef.current?.devtoolsLatch,
-              }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError)),
-            )
+            yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
         syncStateSref,
         localPushesLatch,
@@ -303,6 +335,7 @@ export const makeLeaderSyncProcessor = ({
         connectedClientSessionPullQueues,
         mergeCounterRef,
         mergePayloads,
+        advancePushHead,
       }).pipe(Effect.tapCauseLogPretty, Effect.catchAllCause(shutdownOnError), Effect.forkScoped)
 
       return { initialLeaderHead: initialLocalHead }
@@ -377,6 +410,8 @@ const backgroundApplyLocalPushes = ({
   connectedClientSessionPullQueues,
   mergeCounterRef,
   mergePayloads,
+  localPushBatchSize,
+  testing,
 }: {
   pullLatch: Effect.Latch
   localPushesLatch: Effect.Latch
@@ -390,11 +425,18 @@ const backgroundApplyLocalPushes = ({
   connectedClientSessionPullQueues: PullQueueSet
   mergeCounterRef: { current: number }
   mergePayloads: Map<number, typeof SyncState.PayloadUpstream.Type>
+  localPushBatchSize: number
+  testing: {
+    delay: Effect.Effect<void> | undefined
+  }
 }) =>
   Effect.gen(function* () {
     while (true) {
-      // TODO make batch size configurable
-      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, LOCAL_PUSH_BATCH_SIZE)
+      if (testing.delay !== undefined) {
+        yield* testing.delay.pipe(Effect.withSpan('localPushProcessingDelay'))
+      }
+
+      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
 
       // Wait for the backend pulling to finish
       yield* localPushesLatch.await
@@ -431,7 +473,7 @@ const backgroundApplyLocalPushes = ({
 
       switch (mergeResult._tag) {
         case 'unexpected-error': {
-          otelSpan?.addEvent(`merge[${mergeCounter}]:local-push:unexpected-error`, {
+          otelSpan?.addEvent(`[${mergeCounter}]:push:unexpected-error`, {
             batchSize: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
@@ -441,7 +483,7 @@ const backgroundApplyLocalPushes = ({
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
         }
         case 'reject': {
-          otelSpan?.addEvent(`merge[${mergeCounter}]:local-push:reject`, {
+          otelSpan?.addEvent(`[${mergeCounter}]:push:reject`, {
             batchSize: newEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
@@ -505,7 +547,7 @@ const backgroundApplyLocalPushes = ({
       })
       mergePayloads.set(mergeCounter, SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }))
 
-      otelSpan?.addEvent(`merge[${mergeCounter}]:local-push:advance`, {
+      otelSpan?.addEvent(`[${mergeCounter}]:push:advance`, {
         batchSize: newEvents.length,
         mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
       })
@@ -518,7 +560,7 @@ const backgroundApplyLocalPushes = ({
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
 
-      yield* applyMutationsBatch({ batchItems: newEvents, deferreds })
+      yield* applyMutationsBatch({ batchItems: mergeResult.newEvents, deferreds })
 
       // Allow the backend pulling to start
       yield* pullLatch.open
@@ -587,6 +629,7 @@ const backgroundBackendPulling = ({
   connectedClientSessionPullQueues,
   mergeCounterRef,
   mergePayloads,
+  advancePushHead,
 }: {
   initialBackendHead: EventId.GlobalEventId
   isClientEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
@@ -602,6 +645,7 @@ const backgroundBackendPulling = ({
   connectedClientSessionPullQueues: PullQueueSet
   mergeCounterRef: { current: number }
   mergePayloads: Map<number, typeof SyncState.PayloadUpstream.Type>
+  advancePushHead: (eventId: EventId.EventId) => void
 }) =>
   Effect.gen(function* () {
     const { syncBackend, dbReadModel: db, dbMutationLog, schema } = yield* LeaderThreadCtx
@@ -638,7 +682,7 @@ const backgroundBackendPulling = ({
         if (mergeResult._tag === 'reject') {
           return shouldNeverHappen('The leader thread should never reject upstream advances')
         } else if (mergeResult._tag === 'unexpected-error') {
-          otelSpan?.addEvent(`merge[${mergeCounter}]:backend-pull:unexpected-error`, {
+          otelSpan?.addEvent(`[${mergeCounter}]:pull:unexpected-error`, {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
           })
@@ -650,7 +694,7 @@ const backgroundBackendPulling = ({
         Mutationlog.updateBackendHead(dbMutationLog, newBackendHead)
 
         if (mergeResult._tag === 'rebase') {
-          otelSpan?.addEvent(`merge[${mergeCounter}]:backend-pull:rebase`, {
+          otelSpan?.addEvent(`[${mergeCounter}]:pull:rebase`, {
             newEventsCount: newEvents.length,
             newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
             rollbackCount: mergeResult.rollbackEvents.length,
@@ -682,7 +726,7 @@ const backgroundBackendPulling = ({
             }),
           )
         } else {
-          otelSpan?.addEvent(`merge[${mergeCounter}]:backend-pull:advance`, {
+          otelSpan?.addEvent(`[${mergeCounter}]:pull:advance`, {
             newEventsCount: newEvents.length,
             mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
           })
@@ -707,6 +751,8 @@ const backgroundBackendPulling = ({
 
         // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
         trimChangesetRows(db, newBackendHead)
+
+        advancePushHead(mergeResult.newSyncState.localHead)
 
         yield* applyMutationsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
@@ -753,10 +799,12 @@ const backgroundBackendPushing = ({
   syncBackendPushQueue,
   otelSpan,
   devtoolsLatch,
+  backendPushBatchSize,
 }: {
   syncBackendPushQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
+  backendPushBatchSize: number
 }) =>
   Effect.gen(function* () {
     const { syncBackend } = yield* LeaderThreadCtx
@@ -765,8 +813,7 @@ const backgroundBackendPushing = ({
     while (true) {
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
-      // TODO make batch size configurable
-      const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, BACKEND_PUSH_BATCH_SIZE)
+      const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -871,4 +918,28 @@ const getMergeCounterFromDb = (dbReadModel: SqliteDb) =>
       sql`SELECT mergeCounter FROM ${LEADER_MERGE_COUNTER_TABLE} WHERE id = 0`,
     )
     return result[0]?.mergeCounter ?? 0
+  })
+
+const validatePushBatch = (batch: ReadonlyArray<MutationEvent.EncodedWithMeta>, pushHead: EventId.EventId) =>
+  Effect.gen(function* () {
+    if (batch.length === 0) {
+      return
+    }
+
+    // Make sure batch is monotonically increasing
+    for (let i = 1; i < batch.length; i++) {
+      if (EventId.isGreaterThanOrEqual(batch[i - 1]!.id, batch[i]!.id)) {
+        shouldNeverHappen(
+          `Events must be ordered in monotonically ascending order by eventId. Received: [${batch.map((e) => EventId.toString(e.id)).join(', ')}]`,
+        )
+      }
+    }
+
+    // Make sure smallest event id is > pushHead
+    if (EventId.isGreaterThanOrEqual(pushHead, batch[0]!.id)) {
+      return yield* LeaderAheadError.make({
+        minimumExpectedId: pushHead,
+        providedId: batch[0]!.id,
+      })
+    }
   })

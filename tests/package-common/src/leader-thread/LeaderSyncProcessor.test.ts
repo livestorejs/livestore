@@ -1,6 +1,7 @@
 import '@livestore/utils/node-vitest-polyfill'
 
 import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
+import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventId, MutationEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -15,6 +16,8 @@ import {
   identity,
   Layer,
   Logger,
+  LogLevel,
+  Predicate,
   Queue,
   Schema,
   Stream,
@@ -171,6 +174,35 @@ Vitest.describe('LeaderSyncProcessor', () => {
     }).pipe(withCtx(test)),
   )
 
+  // Duplicate local push events could e.g. caused by multiple client sessions
+  Vitest.scopedLive('handles duplicate local push events', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      for (let i = 0; i < 10; i++) {
+        const event = {
+          ...tables.todos.insert({ id: `session_1_${i}`, text: '', completed: false }),
+          id: EventId.make({ global: i + 1, client: 0 }),
+          parentId: EventId.make({ global: i, client: 0 }),
+        }
+        yield* testContext.localPush(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
+      }
+
+      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(10), Stream.runDrain)
+    }).pipe(
+      withCtx(test, {
+        syncProcessor: {
+          delays: {
+            localPushProcessing: Effect.sleep(10),
+          },
+        },
+        params: {
+          localPushBatchSize: 2,
+        },
+      }),
+    ),
+  )
+
   // TODO tests for
   // - aborting local pushes
   // - processHead works properly
@@ -185,82 +217,111 @@ class TestContext extends Context.Tag('TestContext')<
     ) => MutationEvent.EncodedWithMeta
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>
     localPush: (
-      ...partialEvents: MutationEvent.PartialAnyDecoded[]
+      ...events: MutationEvent.PartialAnyDecoded[] | MutationEvent.AnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
 
-const LeaderThreadCtxLive = Effect.gen(function* () {
-  const mockSyncBackend = yield* makeMockSyncBackend
+const LeaderThreadCtxLive = ({
+  syncProcessor,
+  params,
+}: {
+  syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
+  params?: MakeLeaderThreadLayerParams['params']
+}) =>
+  Effect.gen(function* () {
+    const mockSyncBackend = yield* makeMockSyncBackend
 
-  const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
-    Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
-  )
+    const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
+      Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
+    )
 
-  const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb
+    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb
 
-  const leaderContextLayer = makeLeaderThreadLayer({
-    schema,
-    storeId: 'test',
-    clientId: 'test',
-    syncPayload: undefined,
-    makeSqliteDb,
-    syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
-    dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
-    dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
-    devtoolsOptions: { enabled: false },
-    shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
-  }).pipe(Layer.provide(FetchHttpClient.layer))
+    const leaderContextLayer = makeLeaderThreadLayer({
+      schema,
+      storeId: 'test',
+      clientId: 'test',
+      syncPayload: undefined,
+      makeSqliteDb,
+      syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
+      dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
+      dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
+      devtoolsOptions: { enabled: false },
+      shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
+      testing: {
+        syncProcessor,
+      },
+      params,
+    }).pipe(Layer.provide(FetchHttpClient.layer))
 
-  const testContextLayer = Effect.gen(function* () {
-    const leaderThreadCtx = yield* LeaderThreadCtx
+    const testContextLayer = Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
 
-    const encodeMutationEvent = ({
-      ...event
-    }: Omit<typeof MutationEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
-      new MutationEvent.EncodedWithMeta({
-        ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)({
-          ...event,
-          clientId: leaderThreadCtx.clientId,
-          sessionId: 'static-session-id',
-        }),
+      const encodeMutationEvent = ({
+        ...event
+      }: Omit<typeof MutationEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
+        new MutationEvent.EncodedWithMeta({
+          ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)({
+            ...event,
+            clientId: leaderThreadCtx.clientId,
+            sessionId: 'static-session-id',
+          }),
+        })
+
+      const currentMutationEventId = { current: EventId.ROOT }
+
+      const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
+        cursor: { mergeCounter: 0, eventId: EventId.ROOT },
       })
 
-    const currentMutationEventId = { current: EventId.ROOT }
+      const toEncodedMutationEvent = (event: MutationEvent.PartialAnyDecoded | MutationEvent.AnyDecoded) => {
+        if (Predicate.hasProperty(event, 'id')) {
+          return encodeMutationEvent(event)
+        }
 
-    const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
-      cursor: { mergeCounter: 0, eventId: EventId.ROOT },
-    })
+        const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
+        currentMutationEventId.current = nextIdPair.id
+        return encodeMutationEvent({ ...event, ...nextIdPair })
+      }
 
-    const toEncodedMutationEvent = (partialEvent: MutationEvent.PartialAnyDecoded) => {
-      const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
-      currentMutationEventId.current = nextIdPair.id
-      return encodeMutationEvent({ ...partialEvent, ...nextIdPair })
-    }
+      const localPush = (...partialEvents: MutationEvent.PartialAnyDecoded[]) =>
+        leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedMutationEvent(partialEvent)))
 
-    const localPush = (...partialEvents: MutationEvent.PartialAnyDecoded[]) =>
-      leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedMutationEvent(partialEvent)))
+      return Layer.succeed(TestContext, {
+        mockSyncBackend,
+        encodeMutationEvent,
+        pullQueue,
+        localPush,
+      })
+    }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
 
-    return Layer.succeed(TestContext, {
-      mockSyncBackend,
-      encodeMutationEvent,
-      pullQueue,
-      localPush,
-    })
-  }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
-
-  return leaderContextLayer.pipe(Layer.merge(testContextLayer))
-}).pipe(Layer.unwrapScoped)
+    return leaderContextLayer.pipe(Layer.merge(testContextLayer))
+  }).pipe(Layer.unwrapScoped)
 
 const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'sync-test', skipLogUrl: false })
 
 const withCtx =
-  (testContext: Vitest.TaskContext, { suffix, skipOtel = false }: { suffix?: string; skipOtel?: boolean } = {}) =>
+  (
+    testContext: Vitest.TestContext,
+    {
+      suffix,
+      skipOtel = false,
+      params,
+      syncProcessor,
+    }: {
+      suffix?: string
+      params?: MakeLeaderThreadLayerParams['params']
+      syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
+      skipOtel?: boolean
+    } = {},
+  ) =>
   <A, E, R>(self: Effect.Effect<A, E, R>) =>
     self.pipe(
-      Effect.timeout(IS_CI ? 60_000 : 10_000),
-      Effect.provide(LeaderThreadCtxLive),
+      Effect.timeout(IS_CI ? 60_000 : 5000),
+      Effect.provide(LeaderThreadCtxLive({ syncProcessor, params })),
       Effect.provide(PlatformNode.NodeFileSystem.layer),
+      Logger.withMinimumLogLevel(LogLevel.Debug),
       Effect.provide(Logger.pretty),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),

@@ -1,4 +1,4 @@
-import { casesHandled, shouldNeverHappen } from '@livestore/utils'
+import { casesHandled, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.js'
@@ -172,11 +172,16 @@ export class MergeResult extends Schema.Union(
   MergeResultUnexpectedError,
 ) {}
 
-const unexpectedError = (cause: unknown): MergeResultUnexpectedError =>
-  MergeResultUnexpectedError.make({
+const unexpectedError = (cause: unknown): MergeResultUnexpectedError => {
+  if (LS_DEV) {
+    debugger
+  }
+
+  return MergeResultUnexpectedError.make({
     _tag: 'unexpected-error',
     cause: new UnexpectedError({ cause }),
   })
+}
 
 // TODO Idea: call merge recursively through hierarchy levels
 /*
@@ -200,6 +205,7 @@ export const merge = ({
   ignoreClientEvents?: boolean
 }): typeof MergeResult.Type => {
   validateSyncState(syncState)
+  validatePayload(payload)
 
   const mergeContext = MergeContext.make({ payload, syncState })
 
@@ -266,17 +272,6 @@ export const merge = ({
       ) {
         return unexpectedError(
           `Incoming events must be greater than upstream head. Expected greater than: ${EventId.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventId.toString(e.id)).join(', ')}]`,
-        )
-      }
-
-      // Validate that the parent id of the first incoming event is known
-      const knownEventGlobalIds = [...syncState.pending].flatMap((e) => [e.id.global, e.parentId.global])
-      knownEventGlobalIds.push(syncState.upstreamHead.global)
-      const firstNewEvent = payload.newEvents[0]!
-      const hasUnknownParentId = knownEventGlobalIds.includes(firstNewEvent.parentId.global) === false
-      if (hasUnknownParentId) {
-        return unexpectedError(
-          `Incoming events must have a known parent id. Received: [${payload.newEvents.map((e) => EventId.toString(e.id)).join(', ')}]`,
         )
       }
 
@@ -480,17 +475,30 @@ const rebaseEvents = ({
  */
 const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 
+const validatePayload = (payload: typeof Payload.Type) => {
+  for (let i = 1; i < payload.newEvents.length; i++) {
+    if (EventId.isGreaterThanOrEqual(payload.newEvents[i - 1]!.id, payload.newEvents[i]!.id)) {
+      return unexpectedError(
+        `Events must be ordered in monotonically ascending order by eventId. Received: [${payload.newEvents.map((e) => EventId.toString(e.id)).join(', ')}]`,
+      )
+    }
+  }
+}
+
 const validateSyncState = (syncState: SyncState) => {
   for (let i = 0; i < syncState.pending.length; i++) {
     const event = syncState.pending[i]!
     const nextEvent = syncState.pending[i + 1]
     if (nextEvent === undefined) break // Reached end of chain
 
-    if (EventId.isGreaterThan(event.id, nextEvent.id)) {
-      shouldNeverHappen('Events must be sorted in ascending order by eventId', {
-        event,
-        nextEvent,
-      })
+    if (EventId.isGreaterThanOrEqual(event.id, nextEvent.id)) {
+      shouldNeverHappen(
+        `Events must be ordered in monotonically ascending order by eventId. Received: [${syncState.pending.map((e) => EventId.toString(e.id)).join(', ')}]`,
+        {
+          event,
+          nextEvent,
+        },
+      )
     }
 
     // If the global id has increased, then the client id must be 0
@@ -520,6 +528,8 @@ const validateSyncState = (syncState: SyncState) => {
 
 const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
   if (mergeResult._tag === 'unexpected-error' || mergeResult._tag === 'reject') return mergeResult
+
+  validateSyncState(mergeResult.newSyncState)
 
   // Ensure local head is always greater than or equal to upstream head
   if (EventId.isGreaterThan(mergeResult.newSyncState.upstreamHead, mergeResult.newSyncState.localHead)) {

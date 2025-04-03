@@ -20,6 +20,8 @@ export type EventId = { global: GlobalEventId; client: ClientEventId }
 
 // export const EventSequenceNumber = Schema.Struct({})
 // export const EventNumber = Schema.Struct({})
+// export const ClientEventNumber = Schema.Struct({})
+// export const GlobalEventNumber = Schema.Struct({})
 
 /**
  * NOTE: Client mutation events with a non-0 client id, won't be synced to the sync backend.
@@ -28,6 +30,10 @@ export const EventId = Schema.Struct({
   global: GlobalEventId,
   /** Only increments for clientOnly mutations */
   client: ClientEventId,
+
+  // TODO: actually add this field
+  // Client only
+  // generation: Schema.Number.pipe(Schema.optional),
 }).annotations({ title: 'LiveStore.EventId' })
 
 /**

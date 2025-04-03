@@ -23,6 +23,30 @@ import type {
 } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
+export interface MakeLeaderThreadLayerParams {
+  storeId: string
+  syncPayload: Schema.JsonValue | undefined
+  clientId: string
+  schema: LiveStoreSchema
+  makeSqliteDb: MakeSqliteDb
+  syncOptions: SyncOptions | undefined
+  dbReadModel: LeaderSqliteDb
+  dbMutationLog: LeaderSqliteDb
+  devtoolsOptions: DevtoolsOptions
+  shutdownChannel: ShutdownChannel
+  params?: {
+    localPushBatchSize?: number
+    backendPushBatchSize?: number
+  }
+  testing?: {
+    syncProcessor?: {
+      delays?: {
+        localPushProcessing?: Effect.Effect<void>
+      }
+    }
+  }
+}
+
 export const makeLeaderThreadLayer = ({
   schema,
   storeId,
@@ -34,18 +58,9 @@ export const makeLeaderThreadLayer = ({
   dbMutationLog,
   devtoolsOptions,
   shutdownChannel,
-}: {
-  storeId: string
-  syncPayload: Schema.JsonValue | undefined
-  clientId: string
-  schema: LiveStoreSchema
-  makeSqliteDb: MakeSqliteDb
-  syncOptions: SyncOptions | undefined
-  dbReadModel: LeaderSqliteDb
-  dbMutationLog: LeaderSqliteDb
-  devtoolsOptions: DevtoolsOptions
-  shutdownChannel: ShutdownChannel
-}): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
+  params,
+  testing,
+}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
@@ -80,6 +95,13 @@ export const makeLeaderThreadLayer = ({
       dbReadModelMissing,
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
+      params: {
+        localPushBatchSize: params?.localPushBatchSize,
+        backendPushBatchSize: params?.backendPushBatchSize,
+      },
+      testing: {
+        delays: testing?.syncProcessor?.delays,
+      },
     })
 
     const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(
