@@ -1,4 +1,4 @@
-import { makeAdapter } from '@livestore/adapter-web'
+import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { queryDb, SessionIdSymbol } from '@livestore/livestore'
 import { LiveStoreProvider, useQuery, useStore } from '@livestore/react'
@@ -6,8 +6,8 @@ import React, { StrictMode } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 
-import LiveStoreWorker from './livestore.worker.ts?worker'
-import { type Items, type Item, schema, tables } from './schema.ts'
+import LiveStoreWorker from './livestore.worker.js?worker'
+import { type Item, type Items, schema, tables } from './schema.js'
 
 const A = [
   'pretty',
@@ -67,7 +67,7 @@ const buildItems = (count: number): Items => {
   return items
 }
 
-const adapter = makeAdapter({
+const adapter = makePersistedAdapter({
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
   storage: { type: 'opfs' },
@@ -87,7 +87,7 @@ const Row = React.memo(({ item }: { item: Item }) => {
           id={`select-${item.id}`}
           onClick={() => {
             // @ts-expect-error `id` is not typed correctly
-            store.mutate(tables.app.update({ where: { id: SessionIdSymbol }, values: { selected: item.id } }))
+            store.commit(tables.app.update({ where: { id: SessionIdSymbol }, values: { selected: item.id } }))
           }}
         >
           {item.label}
@@ -97,7 +97,7 @@ const Row = React.memo(({ item }: { item: Item }) => {
         <Button
           id={`remove-${item.id}`}
           onClick={() => {
-            store.mutate(tables.items.delete({ where: { id: item.id } }))
+            store.commit(tables.items.delete({ where: { id: item.id } }))
           }}
         >
           {RemoveIcon}
@@ -131,7 +131,7 @@ const Main = () => {
           <Button
             id="create1k"
             onClick={() => {
-              store.mutate(
+              store.commit(
                 tables.items.delete({ where: {} }),
                 ...buildItems(1000).map((item) => tables.items.insert(item)),
               ) // Should replace the entire table
@@ -142,7 +142,7 @@ const Main = () => {
           <Button
             id="create10k"
             onClick={() => {
-              store.mutate(...buildItems(10_000).map((item) => tables.items.insert(item)))
+              store.commit(...buildItems(10_000).map((item) => tables.items.insert(item)))
             }}
           >
             Create 10,000 rows
@@ -150,7 +150,7 @@ const Main = () => {
           <Button
             id="append1k"
             onClick={() => {
-              store.mutate(...buildItems(1000).map((item) => tables.items.insert(item)))
+              store.commit(...buildItems(1000).map((item) => tables.items.insert(item)))
             }}
           >
             Append 1,000 rows
@@ -167,7 +167,7 @@ const Main = () => {
                 )
               }
 
-              store.mutate(...updates)
+              store.commit(...updates)
             }}
           >
             Update every 10th row
@@ -175,7 +175,7 @@ const Main = () => {
           <Button
             id="clear"
             onClick={() => {
-              store.mutate(tables.items.delete({ where: {} }))
+              store.commit(tables.items.delete({ where: {} }))
             }}
           >
             Clear

@@ -17,6 +17,7 @@
     { "path": "./examples/src/web-todomvc-sync-electric" },
     { "path": "./tests/integration" },
     { "path": "./tests/package-common" },
+    { "path": "./tests/performance" },
     { "path": "./packages/@livestore/sync-electric" },
     { "path": "./packages/@livestore/sync-cf" }
   ]

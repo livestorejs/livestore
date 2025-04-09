@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 
-import { perfTest } from '../fixtures/perfTest.ts'
+import { perfTest } from '../fixtures/perfTest.js'
 
 perfTest.describe('Latency', { annotation: { type: 'measurement unit', description: 'ms' } }, () => {
   perfTest.beforeEach(async ({ page }) => {

@@ -1,6 +1,6 @@
 import { type CDPSession, expect } from '@playwright/test'
 
-import { perfTest } from '../fixtures/perfTest.ts'
+import { perfTest } from '../fixtures/perfTest.js'
 
 const getJsHeapUsedSize = async (cdpSession: CDPSession): Promise<number> => {
   const { usedSize } = await cdpSession.send('Runtime.getHeapUsage')
