@@ -31,7 +31,7 @@ perfTest.describe('Latency', { annotation: { type: 'measurement unit', descripti
     testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
   })
 
-  perfTest('for creating 1,000 rows', async ({ page }, testInfo) => {
+  perfTest.only('for creating 1,000 rows', async ({ page }, testInfo) => {
     const warmupCount = 5
 
     testInfo.annotations.push({ type: 'warmup runs', description: warmupCount.toString() })

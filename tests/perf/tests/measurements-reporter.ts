@@ -1,8 +1,10 @@
 import os from 'node:os'
 
-import { ReadonlyArray, Schema } from '@livestore/utils/effect'
-import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter'
-import { Pretty } from 'effect'
+import type { Layer, OtelTracer } from '@livestore/utils/effect'
+import { Duration, Effect, Metric, Pretty, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { OtelLiveHttp } from '@livestore/utils/node'
+import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+import type { ParentSpan } from 'effect/Tracer'
 
 type MeasurementUnit = 'ms' | 'bytes'
 type DisplayUnit = 'ms' | 'MB'
@@ -71,12 +73,12 @@ Operating System:
   Platform: ${value.os.platform}
   Release: ${value.os.release}
   Architecture: ${value.os.arch}
-  
+
 CPU:
   Model: ${value.cpus.model}
   Count: ${value.cpus.count}
   Speed: ${value.cpus.speed}
-  
+
 Memory:
   Total: ${value.memory.total}
   Free: ${value.memory.free}`
@@ -121,28 +123,66 @@ const collectSystemInfo = (): SystemInfo => {
 class MeasurementsReporter implements Reporter {
   private measurements: Measurement[] = []
   private systemInfo: SystemInfo
+  private metrics: Record<string, Metric.Metric.Summary<number>>
+  private otelLayer: Layer.Layer<OtelTracer.OtelTracer | ParentSpan, never, never>
+  private measurementProgram: Effect.Effect<void, never, never> = Effect.succeed(undefined)
 
   constructor() {
     this.systemInfo = collectSystemInfo()
+    this.metrics = {}
+    this.otelLayer = OtelLiveHttp({ serviceName: 'livestore-perf-tests', skipLogUrl: true })
   }
 
-  onBegin = (): void => {
-    console.log('Starting performance tests...')
+  onBegin = (config: FullConfig, suite: Suite): void => {
+    // Process all test cases recursively to initialize metrics
+    console.log('config', JSON.stringify(config, null, 2))
+    console.log(suite, JSON.stringify(suite, null, 2))
+    const processTest = (test: TestCase) => {
+      const measurementUnit = test.annotations.find((a) => a.type === 'measurement unit')?.description
+      if (measurementUnit && isMeasurementUnit(measurementUnit)) {
+        const metricKey = test.title
+        if (!this.metrics[metricKey]) {
+          this.metrics[metricKey] = Metric.summary({
+            name: `perf_test_${metricKey.replaceAll(/[^a-zA-Z0-9]/g, '_')}`,
+            maxAge: Duration.minutes(60),
+            maxSize: 100_000,
+            error: 0.01,
+            quantiles: [0.25, 0.5, 0.75],
+            description: `Performance measurement ${test.title}`,
+          })
+        }
+      }
+    }
+
+    // Process all suites recursively
+    const processSuite = (suite: Suite) => {
+      suite.tests.forEach(processTest)
+      suite.suites.forEach(processSuite)
+    }
+
+    processSuite(suite)
   }
 
   onTestEnd = (test: TestCase, result: TestResult): void => {
     if (result.status !== 'passed') return
 
     const measurement = this.extractMeasurement(test)
-    if (measurement) {
-      this.measurements.push(measurement)
-    }
+    if (!measurement) return
+
+    this.measurements.push(measurement)
+
+    const metric = this.metrics[measurement.testTitle]
+    if (!metric) return
+
+    const currentProgram = this.measurementProgram
+    this.measurementProgram = Effect.flatMap(currentProgram, () => metric(Effect.succeed(measurement.value)))
   }
 
-  onEnd = (): void => {
+  onEnd = async (): Promise<void> => {
     this.printSystemInfo()
     this.printMeasurements()
     this.printSummaryStatistics()
+    await this.measurementProgram.pipe(Effect.provide(this.otelLayer), Effect.runPromise)
   }
 
   printsToStdio = (): boolean => true
