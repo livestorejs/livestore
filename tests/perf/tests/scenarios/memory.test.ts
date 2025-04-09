@@ -1,6 +1,7 @@
 import { type CDPSession, expect } from '@playwright/test'
 
 import { test } from '../fixtures.js'
+import { repeatSuite } from '../utils.js'
 
 const getJsHeapUsedSize = async (cdpSession: CDPSession): Promise<number> => {
   const { usedSize } = await cdpSession.send('Runtime.getHeapUsage')
@@ -13,46 +14,55 @@ const getJsHeapUsedSize = async (cdpSession: CDPSession): Promise<number> => {
  * See {@link https://github.com/microsoft/playwright/issues/22992}.
  *
  */
-test.describe('Memory usage (main thread)', { annotation: { type: 'measurement unit', description: 'bytes' } }, () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-  })
+repeatSuite(
+  'Memory usage (main thread)',
+  1,
+  {
+    annotation: [{ type: 'measurement unit', description: 'bytes' }],
+  },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/')
+    })
 
-  test.afterEach(async ({ page, context }, testInfo) => {
-    const cdpSession = await context.newCDPSession(page)
-    await page.requestGC()
-    const measurement = await getJsHeapUsedSize(cdpSession)
-    testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
-  })
+    test.afterEach(async ({ page, context }, testInfo) => {
+      const cdpSession = await context.newCDPSession(page)
+      await page.requestGC()
+      const measurement = await getJsHeapUsedSize(cdpSession)
+      testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
+    })
 
-  test('after startup', async ({ page }) => {
-    await expect(page.locator('#create1k')).toBeVisible()
-  })
+    test.only('after startup', async ({ page }) => {
+      await expect(page.locator('#create1k')).toBeVisible()
+    })
 
-  test('after creating 1,000 rows', async ({ page }) => {
-    await page.locator('#create1k').click()
-    await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toBeVisible()
-  })
-
-  test('after creating 10,000 rows', async ({ page }) => {
-    await page.locator('#create10k').click()
-    await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>button')).toBeVisible()
-  })
-
-  test('after updating every 10th row 5 times', async ({ page }) => {
-    await page.locator('#create1k').click()
-    for (let i = 0; i < 5; i++) {
-      await page.locator('#updateEvery10th').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toContainText(' !!!'.repeat(i))
-    }
-  })
-
-  test('after creating and clearing 1,000 rows 5 times', async ({ page }) => {
-    for (let i = 0; i < 5; i++) {
+    test('after creating 1,000 rows', async ({ page }) => {
       await page.locator('#create1k').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText((1000 * (i + 1)).toFixed(0))
-      await page.locator('#clear').click()
-      await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).not.toBeVisible()
-    }
-  })
-})
+      await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toBeVisible()
+    })
+
+    test('after creating 10,000 rows', async ({ page }) => {
+      await page.locator('#create10k').click()
+      await expect(page.locator('tbody>tr:nth-of-type(10000)>td:nth-of-type(2)>button')).toBeVisible()
+    })
+
+    test('after updating every 10th row 5 times', async ({ page }) => {
+      await page.locator('#create1k').click()
+      for (let i = 0; i < 5; i++) {
+        await page.locator('#updateEvery10th').click()
+        await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toContainText(' !!!'.repeat(i))
+      }
+    })
+
+    test('after creating and clearing 1,000 rows 5 times', async ({ page }) => {
+      for (let i = 0; i < 5; i++) {
+        await page.locator('#create1k').click()
+        await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).toHaveText(
+          (1000 * (i + 1)).toFixed(0),
+        )
+        await page.locator('#clear').click()
+        await expect(page.locator('tbody>tr:nth-of-type(1000)>td:nth-of-type(1)')).not.toBeVisible()
+      }
+    })
+  },
+)

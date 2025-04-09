@@ -134,9 +134,6 @@ class MeasurementsReporter implements Reporter {
   }
 
   onBegin = (config: FullConfig, suite: Suite): void => {
-    // Process all test cases recursively to initialize metrics
-    console.log('config', JSON.stringify(config, null, 2))
-    console.log(suite, JSON.stringify(suite, null, 2))
     const processTest = (test: TestCase) => {
       const measurementUnit = test.annotations.find((a) => a.type === 'measurement unit')?.description
       if (measurementUnit && isMeasurementUnit(measurementUnit)) {
@@ -144,9 +141,9 @@ class MeasurementsReporter implements Reporter {
         if (!this.metrics[metricKey]) {
           this.metrics[metricKey] = Metric.summary({
             name: `perf_test_${metricKey.replaceAll(/[^a-zA-Z0-9]/g, '_')}`,
-            maxAge: Duration.minutes(60),
+            maxAge: '1 hour',
             maxSize: 100_000,
-            error: 0.01,
+            error: 0,
             quantiles: [0.25, 0.5, 0.75],
             description: `Performance measurement ${test.title}`,
           })
@@ -205,8 +202,8 @@ class MeasurementsReporter implements Reporter {
     }
 
     const measurement: Measurement = {
-      testSuiteTitle: test.parent.title,
-      testSuiteTitlePath: test.parent.titlePath().slice(1).join(' > '),
+      testSuiteTitle: test.parent.parent!.title,
+      testSuiteTitlePath: test.parent.titlePath().slice(1, -2).join(' > '),
       testTitle: test.title,
       value: Number.parseFloat(measurementValue),
       unit: measurementUnit,
