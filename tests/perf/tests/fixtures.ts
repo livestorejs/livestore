@@ -3,7 +3,7 @@ import { test as base } from '@playwright/test'
 const shouldRecordPerfProfile = process.env.PERF_PROFILER === '1'
 
 // We use a global beforeEach/afterEach instead of a global setup/teardown because the latter can't share a browser context
-export const perfTest = base.extend<{ forEachTest: void }>({
+export const test = base.extend<{ forEachTest: void }>({
   forEachTest: [
     async ({ page, browser }, use, testInfo) => {
       // This code runs before every test.
