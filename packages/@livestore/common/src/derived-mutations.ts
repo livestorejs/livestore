@@ -1,170 +1,216 @@
-import type { GetValForKey } from '@livestore/utils'
-import { ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { shouldNeverHappen } from '@livestore/utils'
+import { Schema } from '@livestore/utils/effect'
 
+import type { SessionIdSymbol } from './adapter-types.js'
 import type { SqliteDsl } from './schema/db-schema/mod.js'
-import type * as MutationEvent from './schema/MutationEvent.js'
-import { defineMutation } from './schema/mutations.js'
+import type { Materializer, MutationDef } from './schema/mutations.js'
+import { defineEvent, defineMaterializer } from './schema/mutations.js'
 import { getDefaultValuesDecoded } from './schema/schema-helpers.js'
 import type * as DbSchema from './schema/table-def.js'
-import { deleteRows, insertRow, updateRows } from './sql-queries/sql-queries.js'
+
+// export const makeClientDocumentSetLiveStoreEvent = <
+//   TTableDef extends DbSchema.TableDefBase & DbSchema.ClientDocumentTableDef.TraitAny,
+// >(
+//   tableDef: TTableDef,
+// ) => {
+//   return defineEvent({
+//     name: `${tableDef.sqliteDef.name}Set`,
+//     schema: tableDef.documentSchema,
+//     derived: true,
+//     clientOnly: true,
+//   })
+// }
+
+export const makeClientDocumentSetMaterializer = <
+  TTableDef extends DbSchema.ClientDocumentTableDef<any, any, any, any>,
+>(
+  tableDef: TTableDef,
+) => {
+  return defineMaterializer(tableDef.set, ({ id, ...values }) => {
+    const { query, bindValues } = tableDef
+      .insert({ id, ...values })
+      .onConflict('id', 'update', values)
+      .asSql()
+
+    return { sql: query, bindValues, writeTables: new Set([tableDef.sqliteDef.name]) }
+  })
+}
 
 export const makeDerivedMutationDefsForTable = <
   TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+    DbSchema.TableOptions & { deriveEvents: { enabled: true } }
   >,
 >(
   table: TTableDef,
 ) => ({
-  insert: deriveCreateMutationDef(table),
-  update: deriveUpdateMutationDef(table),
-  delete: deriveDeleteMutationDef(table),
+  [`${table.sqliteDef.name}Created`]: deriveCreateMutationDef(table),
+  [`${table.sqliteDef.name}Updated`]: deriveUpdateMutationDef(table),
+})
+
+export const makeDerivedMaterializersForTable = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    DbSchema.TableOptions & { deriveEvents: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) => ({
+  [`${table.sqliteDef.name}Created`]: deriveCreateMaterializer(table),
+  [`${table.sqliteDef.name}Updated`]: deriveUpdateMaterializer(table),
 })
 
 export const deriveCreateMutationDef = <
   TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+    DbSchema.TableOptions & { deriveEvents: { enabled: true } }
   >,
 >(
   table: TTableDef,
 ) => {
   const tableName = table.sqliteDef.name
 
-  const [optionalFields, requiredColumns] = ReadonlyRecord.partition(
-    (table.sqliteDef as DbSchema.DefaultSqliteTableDef).columns,
-    (col) => col.nullable === false && col.default._tag === 'None',
-  )
-
-  const insertSchema = Schema.Struct(ReadonlyRecord.map(requiredColumns, (col) => col.schema))
-    .pipe(Schema.extend(Schema.partial(Schema.Struct(ReadonlyRecord.map(optionalFields, (col) => col.schema)))))
-    .annotations({ title: `${tableName}:Insert` })
-
-  return defineMutation(
-    `_Derived_Create_${tableName}`,
-    insertSchema,
-    ({ id, ...explicitDefaultValues }) => {
-      const defaultValues = getDefaultValuesDecoded(table, explicitDefaultValues)
-
-      const [sql, bindValues] = insertRow({
-        tableName: table.sqliteDef.name,
-        columns: table.sqliteDef.columns,
-        values: { ...defaultValues, id },
-      })
-
-      return { sql, bindValues, writeTables: new Set([tableName]) }
-    },
-    { clientOnly: table.options.deriveMutations.clientOnly },
-  )
+  return defineEvent({
+    name: `${tableName}Created`,
+    schema: table.insertSchema,
+    derived: true,
+    clientOnly: true,
+  })
 }
+
+const deriveCreateMaterializer = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    DbSchema.TableOptions & { deriveEvents: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) =>
+  defineMaterializer(deriveCreateMutationDef(table), ({ id, ...explicitDefaultValues }) => {
+    const tableName = table.sqliteDef.name
+    const defaultValues = getDefaultValuesDecoded(table, explicitDefaultValues)
+
+    const { query, bindValues } = table.insert({ ...defaultValues, id }).asSql()
+
+    return { sql: query, bindValues, writeTables: new Set([tableName]) }
+  })
 
 export const deriveUpdateMutationDef = <
   TTableDef extends DbSchema.TableDefBase<
     DbSchema.DefaultSqliteTableDefConstrained,
-    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
+    DbSchema.TableOptions & { deriveEvents: { enabled: true } }
   >,
 >(
   table: TTableDef,
 ) => {
   const tableName = table.sqliteDef.name
 
-  return defineMutation(
-    `_Derived_Update_${tableName}`,
-    Schema.Struct({
-      where: Schema.partial(table.schema),
-      values: Schema.partial(table.schema),
-    }).annotations({ title: `${tableName}:Update` }),
-    ({ where, values }) => {
-      const [sql, bindValues] = updateRows({
-        tableName: table.sqliteDef.name,
-        columns: table.sqliteDef.columns,
-        where,
-        updateValues: values,
-      })
-
-      return { sql, bindValues, writeTables: new Set([tableName]) }
-    },
-    { clientOnly: table.options.deriveMutations.clientOnly },
-  )
-}
-
-export const deriveDeleteMutationDef = <
-  TTableDef extends DbSchema.TableDefBase<
-    DbSchema.DefaultSqliteTableDefConstrained,
-    DbSchema.TableOptions & { deriveMutations: { enabled: true } }
-  >,
->(
-  table: TTableDef,
-) => {
-  const tableName = table.sqliteDef.name
-
-  return defineMutation(
-    `_Derived_Delete_${tableName}`,
-    Schema.Struct({
-      where: Schema.partial(table.schema),
+  return defineEvent({
+    name: `${tableName}Updated`,
+    schema: Schema.extend(
+      table.rowSchema.pipe(Schema.omit('id'), Schema.partial),
+      table.rowSchema.pipe(Schema.pick('id')),
+    ).annotations({
+      title: `${tableName}Updated:Args`,
     }),
-    ({ where }) => {
-      const [sql, bindValues] = deleteRows({
-        tableName: table.sqliteDef.name,
-        columns: table.sqliteDef.columns,
-        where,
-      })
-
-      return { sql, bindValues, writeTables: new Set([tableName]) }
-    },
-    { clientOnly: table.options.deriveMutations.clientOnly },
-  )
+    derived: true,
+    clientOnly: true,
+  })
 }
+
+const deriveUpdateMaterializer = <
+  TTableDef extends DbSchema.TableDef<
+    DbSchema.DefaultSqliteTableDefConstrained,
+    DbSchema.TableOptions & { deriveEvents: { enabled: true } }
+  >,
+>(
+  table: TTableDef,
+) => {
+  const tableName = table.sqliteDef.name
+
+  return defineMaterializer(deriveUpdateMutationDef(table), ({ id, ...values }) => {
+    if (id === undefined) {
+      return shouldNeverHappen(`id is required for update mutation for table ${tableName}`)
+    }
+
+    const { query, bindValues } = table.update(values).where('id', id).asSql()
+
+    return { sql: query, bindValues, writeTables: new Set([tableName]) }
+  })
+}
+
+// export const deriveDeleteMutationDef = <
+//   TTableDef extends DbSchema.TableDefBase<
+//     DbSchema.DefaultSqliteTableDefConstrained,
+//     DbSchema.TableOptions & { deriveEvents: { enabled: true } }
+//   >,
+// >(
+//   table: TTableDef,
+// ) => {
+//   const tableName = table.sqliteDef.name
+
+//   return defineEvent({
+//     name: `${tableName}Deleted`,
+//     schema: Schema.Struct({
+//       where: Schema.partial(table.schema),
+//     }).annotations({ title: `${tableName}:Delete` }),
+//     derived: true,
+//     clientOnly: true,
+//   })
+// }
 
 /**
  * Convenience helper functions on top of the derived mutation definitions.
  */
 export type DerivedMutationHelperFns<
   TColumns extends SqliteDsl.ConstraintColumns,
-  TOptions extends DbSchema.TableOptions,
+  TTableName extends string = string,
 > = {
-  insert: DerivedMutationHelperFns.InsertMutationFn<TColumns, TOptions>
-  update: DerivedMutationHelperFns.UpdateMutationFn<TColumns, TOptions>
-  delete: DerivedMutationHelperFns.DeleteMutationFn<TColumns, TOptions>
-  // TODO also consider adding upsert and deep json mutations (like lenses)
+  derived: {
+    events: DerivedMutationHelperFns.DerivedEvents<TColumns, TTableName>
+    materializers: DerivedMutationHelperFns.DerivedMaterializers<TColumns, TTableName>
+  }
 }
 
 export namespace DerivedMutationHelperFns {
+  export type DerivedEvents<TColumns extends SqliteDsl.ConstraintColumns, TTableName extends string> = {
+    [K in `${TTableName}Created`]: DerivedMutationHelperFns.InsertMutationFn<TColumns, TTableName>
+  } & {
+    [K in `${TTableName}Updated`]: DerivedMutationHelperFns.UpdateMutationFn<TColumns, TTableName>
+  }
+
+  export type DerivedMaterializers<TColumns extends SqliteDsl.ConstraintColumns, TTableName extends string> = {
+    [K in `${TTableName}Created`]: Materializer<InsertMutationFn<TColumns, TTableName>>
+  } & {
+    [K in `${TTableName}Updated`]: Materializer<UpdateMutationFn<TColumns, TTableName>>
+  }
   export type InsertMutationFn<
     TColumns extends SqliteDsl.ConstraintColumns,
-    TOptions extends DbSchema.TableOptions,
+    TTableName extends string,
   > = SqliteDsl.AnyIfConstained<
     TColumns,
-    UseShortcut<TOptions> extends true
-      ? (
-          values?: GetValForKey<SqliteDsl.FromColumns.InsertRowDecoded<TColumns>, 'value'>,
-        ) => MutationEvent.PartialAnyDecoded
-      : (values: SqliteDsl.FromColumns.InsertRowDecoded<TColumns>) => MutationEvent.PartialAnyDecoded
+    MutationDef<
+      `${TTableName}Created`,
+      Omit<SqliteDsl.FromColumns.InsertRowDecoded<TColumns>, 'id'> & {
+        id: GetIdColumnType<TColumns> | SessionIdSymbol
+      }
+    >
   >
 
   export type UpdateMutationFn<
     TColumns extends SqliteDsl.ConstraintColumns,
-    TOptions extends DbSchema.TableOptions,
+    TTableName extends string,
   > = SqliteDsl.AnyIfConstained<
     TColumns,
-    UseShortcut<TOptions> extends true
-      ? (
-          values: Partial<GetValForKey<SqliteDsl.FromColumns.RowDecoded<TColumns>, 'value'>>,
-        ) => MutationEvent.PartialAnyDecoded
-      : (args: {
-          where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>>
-          values: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>>
-        }) => MutationEvent.PartialAnyDecoded
+    MutationDef<
+      `${TTableName}Updated`,
+      Partial<Omit<SqliteDsl.FromColumns.RowDecoded<TColumns>, 'id'>> & { id: string | SessionIdSymbol }
+    >
   >
 
-  export type DeleteMutationFn<
-    TColumns extends SqliteDsl.ConstraintColumns,
-    _TOptions extends DbSchema.TableOptions,
-  > = (args: { where: Partial<SqliteDsl.FromColumns.RowDecoded<TColumns>> }) => MutationEvent.PartialAnyDecoded
-
-  type UseShortcut<TOptions extends DbSchema.TableOptions> = TOptions['isSingleColumn'] extends true
-    ? TOptions['isSingleton'] extends true
-      ? true
-      : false
-    : false
+  type GetIdColumnType<TColumns extends SqliteDsl.Columns> = TColumns extends {
+    id: SqliteDsl.ColumnDefinition<infer _1, infer Type>
+  }
+    ? Type
+    : never
 }

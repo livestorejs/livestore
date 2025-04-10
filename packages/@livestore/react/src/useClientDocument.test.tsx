@@ -8,14 +8,14 @@ import * as ReactTesting from '@testing-library/react'
 import React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
-import { AppRouterSchema, makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
-import * as LiveStoreReact from './mod.js'
+import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
+import type * as LiveStoreReact from './mod.js'
 import { __resetUseRcResourceCache } from './useRcResource.js'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 
 // NOTE running tests concurrently doesn't work with the default global db graph
-Vitest.describe('useRow', () => {
+Vitest.describe('useClientDocument', () => {
   beforeEach(() => {
     __resetUseRcResourceCache()
   })
@@ -28,22 +28,22 @@ Vitest.describe('useRow', () => {
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
-          return { state, setState }
+          const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
+          return { state, setState, id }
         },
         { wrapper, initialProps: 'u1' },
       )
 
-      expect(result.current.state.id).toBe('u1')
+      expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
-      store.commit(tables.userInfo.insert({ id: 'u2', username: 'username_u2' }))
+      store.commit(tables.userInfo.set({ username: 'username_u2' }, 'u2'))
 
       rerender('u2')
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
-      expect(result.current.state.id).toBe('u2')
+      expect(result.current.id).toBe('u2')
       expect(result.current.state.username).toBe('username_u2')
       expect(renderCount.val).toBe(2)
     }),
@@ -53,25 +53,25 @@ Vitest.describe('useRow', () => {
 
   Vitest.scopedLive('should update the data reactively - via setState', () =>
     Effect.gen(function* () {
-      const { wrapper, renderCount } = yield* makeTodoMvcReact({})
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
       const { result } = ReactTesting.renderHook(
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
-          return { state, setState }
+          const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
+          return { state, setState, id }
         },
         { wrapper, initialProps: 'u1' },
       )
 
-      expect(result.current.state.id).toBe('u1')
+      expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
-      ReactTesting.act(() => result.current.setState.username('username_u1_hello'))
+      ReactTesting.act(() => result.current.setState({ username: 'username_u1_hello' }))
 
-      expect(result.current.state.id).toBe('u1')
+      expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('username_u1_hello')
       expect(renderCount.val).toBe(2)
     }),
@@ -85,21 +85,19 @@ Vitest.describe('useRow', () => {
         (userId: string) => {
           renderCount.inc()
 
-          const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
-          return { state, setState }
+          const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
+          return { state, setState, id }
         },
         { wrapper, initialProps: 'u1' },
       )
 
-      expect(result.current.state.id).toBe('u1')
+      expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
 
-      ReactTesting.act(() =>
-        store.commit(tables.userInfo.update({ where: { id: 'u1' }, values: { username: 'username_u1_hello' } })),
-      )
+      ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u1_hello' }, 'u1')))
 
-      expect(result.current.state.id).toBe('u1')
+      expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('username_u1_hello')
       expect(renderCount.val).toBe(2)
     }),
@@ -110,21 +108,21 @@ Vitest.describe('useRow', () => {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
       const allTodos$ = LiveStore.queryDb(
-        { query: `select * from todos`, schema: Schema.Array(tables.todos.schema) },
+        { query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) },
         { label: 'allTodos' },
       )
 
-      let globalSetState: LiveStoreReact.StateSetters<typeof AppRouterSchema> | undefined
+      let globalSetState: LiveStoreReact.StateSetters<typeof tables.AppRouterSchema> | undefined
       const AppRouter: React.FC = () => {
         renderCount.inc()
 
-        const [state, setState] = LiveStoreReact.useRow(AppRouterSchema)
+        const [state, setState] = store.useClientDocument(tables.AppRouterSchema, 'singleton')
 
         globalSetState = setState
 
         return (
           <div>
-            <TasksList setTaskId={setState.currentTaskId} />
+            <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
             {state.currentTaskId ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
           </div>
@@ -132,7 +130,7 @@ Vitest.describe('useRow', () => {
       }
 
       const TasksList: React.FC<{ setTaskId: (_: string) => void }> = ({ setTaskId }) => {
-        const allTodos = LiveStoreReact.useQuery(allTodos$)
+        const allTodos = store.useQuery(allTodos$)
 
         return (
           <div>
@@ -146,7 +144,7 @@ Vitest.describe('useRow', () => {
       }
 
       const TaskDetails: React.FC<{ id: string }> = ({ id }) => {
-        const [todo] = LiveStoreReact.useRow(todos, id)
+        const todo = store.useQuery(LiveStore.queryDb(tables.todos.where({ id }).first(), { deps: id }))
         return <div role="content">{JSON.stringify(todo)}</div>
       }
 
@@ -165,7 +163,7 @@ Vitest.describe('useRow', () => {
       expect(renderCount.val).toBe(1)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
 
-      ReactTesting.act(() => globalSetState!.currentTaskId('t1'))
+      ReactTesting.act(() => globalSetState!({ currentTaskId: 't1' }))
 
       expect(renderCount.val).toBe(2)
       expect(renderResult.getByRole('content').innerHTML).toMatchInlineSnapshot(
@@ -176,13 +174,9 @@ Vitest.describe('useRow', () => {
 
       ReactTesting.act(() =>
         store.commit(
-          LiveStore.rawSqlMutation({
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t2', 'buy eggs', 0)`,
-          }),
-          AppRouterSchema.update({ where: { id: 'singleton' }, values: { currentTaskId: 't2' } }),
-          LiveStore.rawSqlMutation({
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t3', 'buy bread', 0)`,
-          }),
+          events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
+          events.AppRouterSet({ currentTaskId: 't2' }),
+          events.todoCreated({ id: 't3', text: 'buy bread', completed: false }),
         ),
       )
 
@@ -191,23 +185,23 @@ Vitest.describe('useRow', () => {
     }),
   )
 
-  Vitest.scopedLive('should work for a useRow query chained with a useTemporary query', () =>
+  Vitest.scopedLive('should work for a useClientDocument query chained with a useTemporary query', () =>
     Effect.gen(function* () {
       const { store, wrapper, renderCount } = yield* makeTodoMvcReact({})
 
       store.commit(
-        todos.insert({ id: 't1', text: 'buy milk', completed: false }),
-        todos.insert({ id: 't2', text: 'buy bread', completed: false }),
+        events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+        events.todoCreated({ id: 't2', text: 'buy bread', completed: false }),
       )
 
       const { result, unmount, rerender } = ReactTesting.renderHook(
         (userId: string) => {
           renderCount.inc()
 
-          const [_row, _setRow, rowState$] = LiveStoreReact.useRow(tables.userInfo, userId)
-          const todos = LiveStoreReact.useQuery(
+          const [_row, _setRow, _id, rowState$] = store.useClientDocument(tables.userInfo, userId)
+          const todos = store.useQuery(
             LiveStore.queryDb(
-              (get) => tables.todos.query.where('text', 'LIKE', `%${get(rowState$).text}%`),
+              (get) => tables.todos.where('text', 'LIKE', `%${get(rowState$).text}%`),
               // TODO find a way where explicit `userId` is not needed here
               // possibly by automatically understanding the `get(rowState$)` dependency
               { label: 'todosFiltered', deps: userId },
@@ -220,7 +214,7 @@ Vitest.describe('useRow', () => {
         { wrapper, initialProps: 'u1' },
       )
 
-      ReactTesting.act(() => store.commit(tables.userInfo.insert({ id: 'u2', username: 'username_u2', text: 'milk' })))
+      ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u2', text: 'milk' }, 'u2')))
 
       expect(result.current.todos.length).toBe(2)
       expect(renderCount.val).toBe(1)
@@ -262,23 +256,23 @@ Vitest.describe('useRow', () => {
             (userId: string) => {
               renderCount.inc()
 
-              const [state, setState] = LiveStoreReact.useRow(tables.userInfo, userId)
-              return { state, setState }
+              const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
+              return { state, setState, id }
             },
             { wrapper, initialProps: 'u1' },
           )
 
-          expect(result.current.state.id).toBe('u1')
+          expect(result.current.id).toBe('u1')
           expect(result.current.state.username).toBe('')
           expect(renderCount.val).toBe(1)
 
           // For u2 we'll make sure that the row already exists,
           // so the lazy `insert` will be skipped
-          ReactTesting.act(() => store.commit(tables.userInfo.insert({ id: 'u2', username: 'username_u2' })))
+          ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u2' }, 'u2')))
 
           rerender('u2')
 
-          expect(result.current.state.id).toBe('u2')
+          expect(result.current.id).toBe('u2')
           expect(result.current.state.username).toBe('username_u2')
           expect(renderCount.val).toBe(2)
 

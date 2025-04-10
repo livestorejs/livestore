@@ -1,6 +1,6 @@
 import { LegendList } from '@legendapp/list'
 import { queryDb, Schema, sql } from '@livestore/livestore'
-import { useQuery, useRow, useStore } from '@livestore/react'
+import { useClientDocument, useQuery, useStore } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { Pressable, View } from 'react-native'
@@ -97,7 +97,7 @@ const getOrderingOptions = (
 const HomeScreen = () => {
   const user = useUser()
   const { store } = useStore()
-  const [appSettings] = useRow(tables.app)
+  const [appSettings] = useClientDocument(tables.app)
 
   // Memoize selected settings
   const {

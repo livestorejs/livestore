@@ -1,9 +1,9 @@
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
 export const PushPayload = Schema.TaggedStruct('@livestore/sync-electric.Push', {
   storeId: Schema.String,
-  batch: Schema.Array(MutationEvent.AnyEncodedGlobal),
+  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
 }).annotations({ title: '@livestore/sync-electric.PushPayload' })
 
 export const PullPayload = Schema.TaggedStruct('@livestore/sync-electric.Pull', {

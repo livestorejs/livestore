@@ -11,7 +11,7 @@ const todos = DbSchema.table(
     completed: DbSchema.boolean({ default: false }),
     deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 
 const app = DbSchema.table(
@@ -20,7 +20,7 @@ const app = DbSchema.table(
     newTodoText: DbSchema.text({ default: '' }),
     filter: DbSchema.text({ schema: Filter, default: 'all' }),
   },
-  { deriveMutations: { clientOnly: true } },
+  { deriveEvents: true },
 )
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>

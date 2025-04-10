@@ -11,7 +11,7 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
     const registeredMutationDefInfos = schemaManager.getMutationDefInfos()
 
     const missingMutationDefs = registeredMutationDefInfos.filter(
-      (registeredMutationDefInfo) => !schema.mutations.map.has(registeredMutationDefInfo.mutationName),
+      (registeredMutationDefInfo) => !schema.eventsDefsMap.has(registeredMutationDefInfo.mutationName),
     )
 
     if (missingMutationDefs.length > 0) {
@@ -20,19 +20,17 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
       })
     }
 
-    for (const [, mutationDef] of schema.mutations.map) {
-      const registeredMutationDefInfo = registeredMutationDefInfos.find(
-        (info) => info.mutationName === mutationDef.name,
-      )
+    for (const [, eventDef] of schema.eventsDefsMap) {
+      const registeredMutationDefInfo = registeredMutationDefInfos.find((info) => info.mutationName === eventDef.name)
 
-      validateMutationDef(mutationDef, schemaManager, registeredMutationDefInfo)
+      validateMutationDef(eventDef, schemaManager, registeredMutationDefInfo)
     }
 
     // Validate table schemas
   })
 
 export const validateMutationDef = (
-  mutationDef: MutationDef.Any,
+  mutationDef: MutationDef.AnyWithoutFn,
   schemaManager: SchemaManager,
   registeredMutationDefInfo: MutationDefInfo | undefined,
 ) => {

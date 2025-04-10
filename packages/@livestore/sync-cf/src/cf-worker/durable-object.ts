@@ -1,5 +1,5 @@
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
-import { DbSchema, EventId, type MutationEvent } from '@livestore/common/schema'
+import { DbSchema, EventId, type LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
@@ -19,16 +19,19 @@ const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Backe
 const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.ClientToBackendMessage))
 const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
-// NOTE actual table name is determined at runtime
-export const mutationLogTable = DbSchema.table('mutation_log_${PERSISTENCE_FORMAT_VERSION}_${storeId}', {
-  id: DbSchema.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
-  parentId: DbSchema.integer({ schema: EventId.GlobalEventId }),
-  mutation: DbSchema.text({}),
-  args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
-  /** ISO date format. Currently only used for debugging purposes. */
-  createdAt: DbSchema.text({}),
-  clientId: DbSchema.text({}),
-  sessionId: DbSchema.text({}),
+export const mutationLogTable = DbSchema.table({
+  // NOTE actual table name is determined at runtime
+  name: 'mutation_log_${PERSISTENCE_FORMAT_VERSION}_${storeId}',
+  columns: {
+    id: DbSchema.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
+    parentId: DbSchema.integer({ schema: EventId.GlobalEventId }),
+    mutation: DbSchema.text({}),
+    args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
+    /** ISO date format. Currently only used for debugging purposes. */
+    createdAt: DbSchema.text({}),
+    clientId: DbSchema.text({}),
+    sessionId: DbSchema.text({}),
+  },
 })
 
 const WebSocketAttachmentSchema = Schema.parseJson(
@@ -284,11 +287,11 @@ type SyncStorage = {
   getEvents: (
     cursor: number | undefined,
   ) => Effect.Effect<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    ReadonlyArray<{ mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
     UnexpectedError
   >
   appendEvents: (
-    batch: ReadonlyArray<MutationEvent.AnyEncodedGlobal>,
+    batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
     createdAt: string,
   ) => Effect.Effect<void, UnexpectedError>
   resetStore: Effect.Effect<void, UnexpectedError>
@@ -317,7 +320,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
   const getEvents = (
     cursor: number | undefined,
   ): Effect.Effect<
-    ReadonlyArray<{ mutationEventEncoded: MutationEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    ReadonlyArray<{ mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
     UnexpectedError
   > =>
     Effect.gen(function* () {
@@ -325,7 +328,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
       const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
       // TODO handle case where `cursor` was not found
       const rawEvents = yield* execDb((db) => db.prepare(sql).all())
-      const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.schema))(rawEvents).map(
+      const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.rowSchema))(rawEvents).map(
         ({ createdAt, ...mutationEventEncoded }) => ({
           mutationEventEncoded,
           metadata: Option.some({ createdAt }),

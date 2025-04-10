@@ -1,4 +1,4 @@
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
 export const PullReq = Schema.TaggedStruct('WSMessage.PullReq', {
@@ -19,7 +19,7 @@ export type SyncMetadata = typeof SyncMetadata.Type
 export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   batch: Schema.Array(
     Schema.Struct({
-      mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
+      mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal,
       metadata: Schema.Option(SyncMetadata),
     }),
   ),
@@ -31,7 +31,7 @@ export type PullRes = typeof PullRes.Type
 
 export const PushReq = Schema.TaggedStruct('WSMessage.PushReq', {
   requestId: Schema.String,
-  batch: Schema.Array(MutationEvent.AnyEncodedGlobal),
+  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
 }).annotations({ title: '@livestore/sync-cf:PushReq' })
 
 export type PushReq = typeof PushReq.Type

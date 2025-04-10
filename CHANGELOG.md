@@ -57,7 +57,7 @@
 - Breaking `@livestore/adapter-expo`: Renamed `makeAdapter` to `makePersistedAdapter`
 - Breaking: Renamed `localOnly` to `clientOnly` in table/mutation definitions.
 - Breaking: Renamed `makeBackend` to `backend` in sync options.
-- Breaking `@livestore/react`: `useRow` now only works with for tables with client-only derived mutations.
+- Breaking `@livestore/react`: `useClientDocument` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
 - Breaking: Removed `store.__execute` from `Store`. Please use `store.commit(rawSqlMutation({ sql }))` instead.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
@@ -220,7 +220,7 @@
 
 ### React integration
 
-- Fix: `useRow` now type-safe for non-nullable/non-default columns. Renamed `options.defaultValues` to `options.insertValues`
+- Fix: `useClientDocument` now type-safe for non-nullable/non-default columns. Renamed `options.defaultValues` to `options.insertValues`
 
 ### Misc
 

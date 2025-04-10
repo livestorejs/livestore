@@ -1,4 +1,4 @@
-import { useRow, useStore } from '@livestore/react'
+import { useClientDocument, useStore } from '@livestore/react'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
 import React from 'react'
@@ -45,7 +45,7 @@ const FilterSettingsScreen = () => {
       createdTabShowStatus,
       createdTabShowPriority,
     },
-  ] = useRow(tables.app)
+  ] = useClientDocument(tables.app)
 
   const handleUpdateFilter = (
     event: string | boolean,

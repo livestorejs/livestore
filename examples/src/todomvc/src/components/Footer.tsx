@@ -1,22 +1,20 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { app$ } from '../livestore/queries.js'
-import { mutations, tables } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.js'
+import { events, tables } from '../livestore/schema.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = queryDb(tables.todos.query.count().where({ completed: false, deleted: null }), {
+const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deleted: null }), {
   label: 'incompleteCount',
 })
 
 export const Footer: React.FC = () => {
   const { store } = useStore()
-  const sessionId = store.sessionId
-  const { filter } = useQuery(app$)
-  const incompleteCount = useQuery(incompleteCount$)
-
-  const setFilter = (filter: Filter) => store.commit(mutations.filterUpdated({ filter, sessionId }))
+  const { filter } = store.useQuery(uiState$)
+  const incompleteCount = store.useQuery(incompleteCount$)
+  const setFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
 
   return (
     <footer className="footer">
@@ -40,7 +38,7 @@ export const Footer: React.FC = () => {
       </ul>
       <button
         className="clear-completed"
-        onClick={() => store.commit(mutations.todoClearedCompleted({ deleted: new Date() }))}
+        onClick={() => store.commit(events.todoClearedCompleted({ deleted: new Date() }))}
       >
         Clear completed
       </button>

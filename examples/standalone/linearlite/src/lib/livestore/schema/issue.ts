@@ -19,7 +19,7 @@ export const issue = DbSchema.table(
       { name: 'issue_kanbanorder', columns: ['kanbanorder'] },
       { name: 'issue_created', columns: ['created'] },
     ],
-    deriveMutations: true,
+    deriveEvents: true,
   },
 )
 export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>

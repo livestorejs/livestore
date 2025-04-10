@@ -10,7 +10,7 @@ import type {
 import { UnexpectedError } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer, Mutationlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import type { Schema } from '@livestore/utils/effect'
@@ -152,7 +152,7 @@ const makeLeaderThread = ({
             (({ cursor }) => syncProcessor.pull({ cursor })),
           push: (batch) =>
             syncProcessor.push(
-              batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+              batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
               { waitForProcessing: true },
             ),
         },

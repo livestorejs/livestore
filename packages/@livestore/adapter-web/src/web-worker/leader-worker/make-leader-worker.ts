@@ -8,7 +8,7 @@ import {
   Mutationlog,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
@@ -185,7 +185,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
         syncProcessor.push(
-          batch.map((mutationEvent) => new MutationEvent.EncodedWithMeta(mutationEvent)),
+          batch.map((mutationEvent) => new LiveStoreEvent.EncodedWithMeta(mutationEvent)),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),

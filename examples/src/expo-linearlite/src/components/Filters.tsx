@@ -1,4 +1,4 @@
-import { useRow, useStore } from '@livestore/react'
+import { useClientDocument, useStore } from '@livestore/react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { mutations, tables } from '../livestore/schema.ts'
@@ -6,7 +6,7 @@ import type { Filter } from '../types.ts'
 
 export const Filters: React.FC = () => {
   const { store } = useStore()
-  const [{ filter }] = useRow(tables.app)
+  const [{ filter }] = useClientDocument(tables.app)
 
   const setFilter = (filter: Filter) => store.commit(mutations.filterUpdated({ filter }))
 

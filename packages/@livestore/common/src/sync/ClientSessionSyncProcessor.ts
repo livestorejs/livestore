@@ -5,8 +5,8 @@ import * as otel from '@opentelemetry/api'
 
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import { getMutationDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
 import { sql } from '../util.js'
 import * as SyncState from './syncstate.js'
 
@@ -36,7 +36,7 @@ export const makeClientSessionSyncProcessor = ({
   clientSession: ClientSession
   runtime: Runtime.Runtime<Scope.Scope>
   applyMutation: (
-    mutationEventDecoded: MutationEvent.PartialAnyDecoded,
+    mutationEventDecoded: LiveStoreEvent.PartialAnyDecoded,
     options: { otelContext: otel.Context; withChangeset: boolean },
   ) => {
     writeTables: Set<string>
@@ -54,7 +54,7 @@ export const makeClientSessionSyncProcessor = ({
    */
   confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
-  const mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
+  const mutationEventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -67,21 +67,21 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
-  const isClientEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) =>
-    getMutationDef(schema, mutationEventEncoded.mutation).options.clientOnly
+  const isClientEvent = (mutationEventEncoded: LiveStoreEvent.EncodedWithMeta) =>
+    getMutationDef(schema, mutationEventEncoded.mutation).eventDef.options.clientOnly
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = BucketQueue.make<MutationEvent.EncodedWithMeta>().pipe(Effect.runSync)
+  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
 
   const push: ClientSessionSyncProcessor['push'] = (batch, { otelContext }) => {
     // TODO validate batch
 
     let baseEventId = syncStateRef.current.localHead
-    const encodedMutationEvents = batch.map(({ mutation, args }) => {
+    const encodedEventDefs = batch.map(({ mutation, args }) => {
       const mutationDef = getMutationDef(schema, mutation)
-      const nextIdPair = EventId.nextPair(baseEventId, mutationDef.options.clientOnly)
+      const nextIdPair = EventId.nextPair(baseEventId, mutationDef.eventDef.options.clientOnly)
       baseEventId = nextIdPair.id
-      return new MutationEvent.EncodedWithMeta(
+      return new LiveStoreEvent.EncodedWithMeta(
         Schema.encodeUnknownSync(mutationEventSchema)({
           mutation,
           args,
@@ -94,9 +94,9 @@ export const makeClientSessionSyncProcessor = ({
 
     const mergeResult = SyncState.merge({
       syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedMutationEvents },
+      payload: { _tag: 'local-push', newEvents: encodedEventDefs },
       isClientEvent,
-      isEqualEvent: MutationEvent.isEqualEncoded,
+      isEqualEvent: LiveStoreEvent.isEqualEncoded,
     })
 
     if (mergeResult._tag === 'unexpected-error') {
@@ -104,7 +104,7 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     span.addEvent('local-push', {
-      batchSize: encodedMutationEvents.length,
+      batchSize: encodedEventDefs.length,
       mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
     })
 
@@ -118,16 +118,16 @@ export const makeClientSessionSyncProcessor = ({
     const writeTables = new Set<string>()
     for (const mutationEvent of mergeResult.newEvents) {
       // TODO avoid encoding and decoding here again
-      const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
-      const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
+      const decodedEventDef = Schema.decodeSync(mutationEventSchema)(mutationEvent)
+      const res = applyMutation(decodedEventDef, { otelContext, withChangeset: true })
       for (const table of res.writeTables) {
         writeTables.add(table)
       }
       mutationEvent.meta.sessionChangeset = res.sessionChangeset
     }
 
-    // console.debug('pushToLeader', encodedMutationEvents.length, ...encodedMutationEvents.map((_) => _.toJSON()))
-    BucketQueue.offerAll(leaderPushQueue, encodedMutationEvents).pipe(Effect.runSync)
+    // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
+    BucketQueue.offerAll(leaderPushQueue, encodedEventDefs).pipe(Effect.runSync)
 
     return { writeTables }
   }
@@ -193,7 +193,7 @@ export const makeClientSessionSyncProcessor = ({
             syncState: syncStateRef.current,
             payload,
             isClientEvent,
-            isEqualEvent: MutationEvent.isEqualEncoded,
+            isEqualEvent: LiveStoreEvent.isEqualEncoded,
           })
 
           if (mergeResult._tag === 'unexpected-error') {
@@ -259,8 +259,8 @@ export const makeClientSessionSyncProcessor = ({
           const writeTables = new Set<string>()
           for (const mutationEvent of mergeResult.newEvents) {
             // TODO apply changeset if available (will require tracking of write tables as well)
-            const decodedMutationEvent = Schema.decodeSync(mutationEventSchema)(mutationEvent)
-            const res = applyMutation(decodedMutationEvent, { otelContext, withChangeset: true })
+            const decodedEventDef = Schema.decodeSync(mutationEventSchema)(mutationEvent)
+            const res = applyMutation(decodedEventDef, { otelContext, withChangeset: true })
             for (const table of res.writeTables) {
               writeTables.add(table)
             }
@@ -314,7 +314,7 @@ export const makeClientSessionSyncProcessor = ({
 
 export interface ClientSessionSyncProcessor {
   push: (
-    batch: ReadonlyArray<MutationEvent.PartialAnyDecoded>,
+    batch: ReadonlyArray<LiveStoreEvent.PartialAnyDecoded>,
     options: { otelContext: otel.Context },
   ) => {
     writeTables: Set<string>

@@ -6,12 +6,12 @@ import { tables } from '@/lib/livestore/schema'
 import { filterStateToOrderBy, filterStateToWhere } from '@/lib/livestore/utils'
 import { Status } from '@/types/status'
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 
 const filteredIssueIds$ = queryDb(
   (get) =>
-    tables.issue.query
+    tables.issue
       .select('id', { pluck: true })
       .where({ ...filterStateToWhere(get(filterState$)), deleted: null })
       .orderBy(filterStateToOrderBy(get(filterState$))),
@@ -19,7 +19,8 @@ const filteredIssueIds$ = queryDb(
 )
 
 export const Board = () => {
-  const filteredIssueIds = useQuery(filteredIssueIds$)
+  const { store } = useStore()
+  const filteredIssueIds = store.useQuery(filteredIssueIds$)
 
   return (
     <>

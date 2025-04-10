@@ -72,9 +72,12 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   if (ast._tag === 'InsertQuery') {
     const columns = Object.keys(ast.values)
     const placeholders = columns.map(() => '?').join(', ')
-    const values = Object.values(Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)) as SqlValue[]
+    const encodedValues = Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)
 
-    bindValues.push(...values)
+    // Ensure bind values are added in the same order as columns
+    columns.forEach((col) => {
+      bindValues.push(encodedValues[col] as SqlValue)
+    })
 
     let query = `INSERT INTO '${ast.tableDef.sqliteDef.name}' (${columns.join(', ')}) VALUES (${placeholders})`
 
@@ -125,8 +128,12 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   // UPDATE query
   if (ast._tag === 'UpdateQuery') {
     const setColumns = Object.keys(ast.values)
-    const setValues = Object.values(Schema.encodeSync(Schema.partial(ast.tableDef.schema))(ast.values))
-    bindValues.push(...setValues)
+    const encodedValues = Schema.encodeSync(Schema.partial(ast.tableDef.rowSchema))(ast.values)
+
+    // Ensure bind values are added in the same order as columns
+    setColumns.forEach((col) => {
+      bindValues.push(encodedValues[col] as SqlValue)
+    })
 
     let query = `UPDATE '${ast.tableDef.sqliteDef.name}' SET ${setColumns.map((col) => `${col} = ?`).join(', ')}`
 
@@ -189,10 +196,11 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       : ''
 
   const limitStmt = ast.limit._tag === 'Some' ? `LIMIT ?` : ''
-  if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
-
   const offsetStmt = ast.offset._tag === 'Some' ? `OFFSET ?` : ''
+
+  // Push offset and limit values in the correct order matching the query string
   if (ast.offset._tag === 'Some') bindValues.push(ast.offset.value)
+  if (ast.limit._tag === 'Some') bindValues.push(ast.limit.value)
 
   const query = [selectStmt, fromStmt, whereStmt, orderByStmt, offsetStmt, limitStmt]
     .map((clause) => clause.trim())

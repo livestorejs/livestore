@@ -1,19 +1,19 @@
-import { useQuery, useStore } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { app$ } from '../livestore/queries.js'
-import { mutations } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.js'
+import { events } from '../livestore/schema.js'
 
 export const Header: React.FC = () => {
   const { store } = useStore()
-  const sessionId = store.sessionId
-  const { newTodoText } = useQuery(app$)
+  const { newTodoText } = store.useQuery(uiState$)
 
-  const updatedNewTodoText = (text: string) => store.commit(mutations.updatedNewTodoText({ text, sessionId }))
+  const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
+
   const todoCreated = () =>
     store.commit(
-      mutations.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
-      mutations.updatedNewTodoText({ text: '', sessionId }),
+      events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
+      events.uiStateSet({ newTodoText: '' }),
     )
 
   return (

@@ -5,7 +5,7 @@ import type { BootStatus, MakeSqliteDb, MigrationsReport, SqliteError } from '..
 import { UnexpectedError } from '../adapter-types.js'
 import type * as Devtools from '../devtools/mod.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import { MutationEvent } from '../schema/mod.js'
+import { LiveStoreEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
 import { makeApplyMutation } from './apply-mutation.js'
@@ -126,7 +126,7 @@ export const makeLeaderThreadLayer = ({
       dbReadModel,
       dbMutationLog,
       makeSqliteDb,
-      mutationEventSchema: MutationEvent.makeMutationEventSchema(schema),
+      mutationEventSchema: LiveStoreEvent.makeEventDefSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
       syncBackend,

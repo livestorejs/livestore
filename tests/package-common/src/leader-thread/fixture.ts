@@ -1,26 +1,39 @@
-import { DbSchema, makeSchema } from '@livestore/common/schema'
+import { DbSchema, Events, makeSchema, State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
-export const todos = DbSchema.table(
-  'todos',
-  {
+const todos = DbSchema.table({
+  name: 'todos',
+  columns: {
     id: DbSchema.text({ primaryKey: true }),
     text: DbSchema.text({ default: '', nullable: false }),
     completed: DbSchema.boolean({ default: false, nullable: false }),
   },
-  { deriveMutations: true },
-)
+})
 
 const Config = Schema.Struct({
   fontSize: Schema.Number,
   theme: Schema.Literal('light', 'dark'),
 })
 
-export const appConfig = DbSchema.table('app_config', DbSchema.json({ schema: Config, nullable: true }), {
-  isSingleton: true,
-  deriveMutations: true,
+const appConfig = DbSchema.clientDocument({
+  name: 'app_config',
+  schema: Config,
+  default: { value: { fontSize: 16, theme: 'light' } },
+})
+
+export const events = {
+  todoCreated: Events.global({
+    name: 'todoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean.pipe(Schema.optional) }),
+  }),
+}
+
+const materializers = State.SQLite.materializers(events, {
+  todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed: completed ?? false }),
 })
 
 export const tables = { todos, appConfig }
 
-export const schema = makeSchema({ tables })
+const state = State.SQLite.makeState({ tables, materializers })
+
+export const schema = makeSchema({ state, events })

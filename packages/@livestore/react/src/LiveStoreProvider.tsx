@@ -47,7 +47,7 @@ export interface LiveStoreProviderProps {
     ctx: { migrationsReport: MigrationsReport; parentSpan: otel.Span },
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   otelOptions?: Partial<OtelOptions>
-  renderLoading: (status: BootStatus) => ReactElement
+  renderLoading?: (status: BootStatus) => ReactElement
   renderError?: (error: UnexpectedError | unknown) => ReactElement
   renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted) => ReactElement
   adapter: Adapter
@@ -84,6 +84,7 @@ export interface LiveStoreProviderProps {
 const defaultRenderError = (error: UnexpectedError | unknown) => (
   <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
 )
+
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted) => {
   const reason =
     cause._tag === 'LiveStore.StoreInterrupted'
@@ -101,8 +102,10 @@ const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupte
   return <>LiveStore Shutdown due to {reason}</>
 }
 
+const defaultRenderLoading = (status: BootStatus) => <>LiveStore is loading ({status.stage})...</>
+
 export const LiveStoreProvider = ({
-  renderLoading,
+  renderLoading = defaultRenderLoading,
   renderError = defaultRenderError,
   renderShutdown = defaultRenderShutdown,
   otelOptions,
@@ -148,7 +151,7 @@ export const LiveStoreProvider = ({
   }
   globalThis.__debugLiveStore[storeId] = storeCtx.store
 
-  return <LiveStoreContext.Provider value={storeCtx}>{children}</LiveStoreContext.Provider>
+  return <LiveStoreContext.Provider value={storeCtx as TODO}>{children}</LiveStoreContext.Provider>
 }
 
 type SchemaKey = string

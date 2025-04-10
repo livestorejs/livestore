@@ -1,7 +1,7 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import { EventId } from '../schema/mod.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
 import * as SyncState from '../sync/syncstate.js'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.js'
 
@@ -51,7 +51,7 @@ export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHis
   subscriptionId: Schema.String,
 }) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
-  mutationEventEncoded: MutationEvent.AnyEncodedGlobal,
+  mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal,
   metadata: Schema.Option(Schema.JsonValue),
   subscriptionId: Schema.String,
 }) {}
@@ -95,7 +95,7 @@ export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
 
 // TODO refactor this to use push/pull semantics
 export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
-  mutationEventEncoded: MutationEvent.PartialAnyEncoded,
+  mutationEventEncoded: LiveStoreEvent.PartialAnyEncoded,
 }) {}
 
 export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}

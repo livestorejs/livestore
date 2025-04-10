@@ -1,5 +1,5 @@
 import { nanoid } from '@livestore/livestore'
-import { useRow, useStore } from '@livestore/react'
+import { useClientDocument, useStore } from '@livestore/react'
 import { Stack, useRouter } from 'expo-router'
 import React, { Fragment } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
@@ -14,7 +14,7 @@ const NewIssueScreen = () => {
   const user = useUser()
   const router = useRouter()
   const { store } = useStore()
-  const [{ newIssueText, newIssueDescription }] = useRow(tables.app)
+  const [{ newIssueText, newIssueDescription }] = useClientDocument(tables.app)
 
   const handleCreateIssue = () => {
     if (!newIssueText) return

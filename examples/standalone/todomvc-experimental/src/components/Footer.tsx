@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useRow, useStore } from '@livestore/react'
+import { useClientDocument, useQuery, useStore } from '@livestore/react'
 import React from 'react'
 
 import { mutations, tables } from '../livestore/schema.js'
@@ -12,7 +12,7 @@ const incompleteCount$ = queryDb(tables.todos.query.count().where({ completed: f
 export const Footer: React.FC = () => {
   const { store } = useStore()
   const sessionId = store.sessionId
-  const [{ filter }] = useRow(tables.app, sessionId)
+  const [{ filter }] = useClientDocument(tables.app, sessionId)
   const incompleteCount = useQuery(incompleteCount$)
 
   const setFilter = (filter: Filter) => store.commit(mutations.filterUpdated({ filter, sessionId }))

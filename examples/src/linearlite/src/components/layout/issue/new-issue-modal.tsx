@@ -5,7 +5,7 @@ import { StatusMenu } from '@/components/common/status-menu'
 import { DescriptionInput } from '@/components/layout/issue/description-input'
 import { TitleInput } from '@/components/layout/issue/title-input'
 import { highestIssueId$, useFrontendState } from '@/lib/livestore/queries'
-import { mutations, tables } from '@/lib/livestore/schema'
+import { events, tables } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { useStore } from '@livestore/react'
@@ -30,11 +30,11 @@ export const NewIssueModal = () => {
 
   const createIssue = () => {
     if (!title) return
-    const date = Date.now()
+    const date = new Date()
     // TODO make this "merge safe"
     const highestIssueId = store.query(highestIssueId$)[0]?.id ?? 0
     const highestKanbanOrder = store.query(
-      tables.issue.query
+      tables.issue
         .select('kanbanorder', { pluck: true })
         .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
         .orderBy('kanbanorder', 'desc')
@@ -42,7 +42,7 @@ export const NewIssueModal = () => {
     )
     const kanbanorder = generateKeyBetween(highestKanbanOrder, null)
     store.commit(
-      mutations.createIssueWithDescription({
+      events.createIssueWithDescription({
         id: highestIssueId + 1,
         title,
         priority,

@@ -7,7 +7,7 @@ import {
   SyncState,
   UnexpectedError,
 } from '@livestore/common'
-import { EventId, MutationEvent } from '@livestore/common/schema'
+import { EventId, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -76,7 +76,7 @@ export namespace LeaderWorkerInner {
 
   export class PushToLeader extends Schema.TaggedRequest<PushToLeader>()('PushToLeader', {
     payload: {
-      batch: Schema.Array(MutationEvent.AnyEncoded),
+      batch: Schema.Array(LiveStoreEvent.AnyEncoded),
     },
     success: Schema.Void,
     failure: Schema.Union(UnexpectedError, LeaderAheadError),

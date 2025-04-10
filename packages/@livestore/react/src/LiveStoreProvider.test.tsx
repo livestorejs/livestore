@@ -16,12 +16,13 @@ describe('LiveStoreProvider', () => {
   it('simple', async () => {
     let appRenderCount = 0
 
-    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.schema) })
+    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
 
     const App = () => {
       appRenderCount++
+      const { store } = LiveStoreReact.useStore()
 
-      const todos = LiveStoreReact.useQuery(allTodos$)
+      const todos = store.useQuery(allTodos$)
 
       return <div>{JSON.stringify(todos)}</div>
     }

@@ -1,4 +1,4 @@
-import { useRow, useStore } from '@livestore/react'
+import { useClientDocument, useStore } from '@livestore/react'
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useEffect } from 'react'
 
@@ -9,7 +9,7 @@ export const NavigationHistoryTracker = () => {
   const pathname = usePathname()
   const globalParams = useGlobalSearchParams()
   const { store } = useStore()
-  const [{ navigationHistory }] = useRow(tables.app)
+  const [{ navigationHistory }] = useClientDocument(tables.app)
   const router = useRouter()
 
   const constructPathWithParams = React.useCallback((path: string, params: any) => {

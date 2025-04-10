@@ -5,6 +5,7 @@ import type { SessionIdSymbol } from '../adapter-types.js'
 import type { QueryInfo } from '../query-info.js'
 import type { SqliteDsl } from '../schema/db-schema/mod.js'
 import type { DbSchema } from '../schema/mod.js'
+import type { ClientDocumentTableDef, TableDef } from '../schema/table-def.js'
 import type { SqlValue } from '../util.js'
 
 export type QueryBuilderAst =
@@ -42,7 +43,7 @@ export namespace QueryBuilderAst {
     readonly _tag: 'RowQuery'
     readonly tableDef: DbSchema.TableDefBase
     readonly id: string | SessionIdSymbol | number
-    readonly insertValues: Record<string, unknown>
+    readonly explicitDefaultValues: Record<string, unknown>
   }
 
   export interface InsertQuery {
@@ -99,11 +100,15 @@ export namespace QueryBuilderAst {
 
 export const QueryBuilderAstSymbol = Symbol.for('QueryBuilderAst')
 export type QueryBuilderAstSymbol = typeof QueryBuilderAstSymbol
-export const TypeId = Symbol.for('QueryBuilder')
-export type TypeId = typeof TypeId
+
+export const QueryBuilderResultSymbol = Symbol.for('QueryBuilderResult')
+export type QueryBuilderResultSymbol = typeof QueryBuilderResultSymbol
+
+export const QueryBuilderTypeId = Symbol.for('QueryBuilder')
+export type QueryBuilderTypeId = typeof QueryBuilderTypeId
 
 export const isQueryBuilder = (value: unknown): value is QueryBuilder<any, any, any> =>
-  Predicate.hasProperty(value, TypeId)
+  Predicate.hasProperty(value, QueryBuilderTypeId)
 
 export type QueryBuilder<
   TResult,
@@ -112,8 +117,9 @@ export type QueryBuilder<
   TWithout extends QueryBuilder.ApiFeature = never,
   TQueryInfo extends QueryInfo = QueryInfo.None,
 > = {
-  readonly [TypeId]: TypeId
+  readonly [QueryBuilderTypeId]: QueryBuilderTypeId
   readonly [QueryBuilderAstSymbol]: QueryBuilderAst
+  readonly ['ResultType']: TResult
   readonly asSql: () => { query: string; bindValues: SqlValue[] }
   readonly toString: () => string
 } & Omit<QueryBuilder.ApiFull<TResult, TTableDef, TWithout, TQueryInfo>, TWithout>
@@ -300,7 +306,10 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.first()
+     * db.todos.where('id', '123').first()
      * ```
+     *
+     * Query will fail if no rows are returned and no fallback is provided.
      */
     readonly first: <TFallback extends GetSingle<TResult> = never>(options?: {
       fallback?: () => TFallback
@@ -315,18 +324,40 @@ export namespace QueryBuilder {
      * Gets a single row from the table and will create it if it doesn't exist yet.
      */
     // TODO maybe call `getsert`?
-    readonly row: TTableDef['options']['isSingleton'] extends true
-      ? () => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
-      : TTableDef['options']['deriveMutations']['enabled'] extends false
-        ? (_: 'Error: Need to enable deriveMutations to use row()') => any
-        : TTableDef['options']['requiredInsertColumnNames'] extends never
-          ? (
-              id: string | SessionIdSymbol | number,
-            ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
-          : <TOptions extends RowQuery.RequiredColumnsOptions<TTableDef>>(
-              id: string | SessionIdSymbol | number,
-              opts: TOptions,
-            ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    // readonly getOrCreate: TTableDef['options']['isClientDocumentTable'] extends false
+    //   ? (_: 'Error: getOrCreate() is only supported for client document tables') => any
+    //   : <TOptions extends RowQuery.GetOrCreateOptions<TTableDef>>(
+    //       id: RowQuery.GetIdColumnType<TTableDef> | SessionIdSymbol,
+    //       opts?: TOptions,
+    //     ) => QueryBuilder<RowQuery.DocumentResult<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    // readonly getOrCreate: TTableDef['options']['isClientDocumentTable'] extends false
+    //   ? (_: 'Error: getOrCreate() is only supported for client document tables') => any
+    //   : TTableDef extends ClientDocumentTableDef.Trait<any, any, any, infer DOptions>
+    //     ? DOptions['default']['id'] extends string | SessionIdSymbol
+    //       ? <TOptions extends RowQuery.GetOrCreateOptions<TTableDef>>(
+    //           id: RowQuery.GetIdColumnType<TTableDef> | SessionIdSymbol,
+    //           opts?: TOptions,
+    //         ) => QueryBuilder<RowQuery.DocumentResult<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    //       : <TOptions extends RowQuery.GetOrCreateOptions<TTableDef>>(
+    //           id: RowQuery.GetIdColumnType<TTableDef> | SessionIdSymbol,
+    //           opts?: TOptions,
+    //         ) => QueryBuilder<RowQuery.DocumentResult<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    //     : <TOptions extends RowQuery.GetOrCreateOptions<TTableDef>>(
+    //         id: RowQuery.GetIdColumnType<TTableDef> | SessionIdSymbol,
+    //         opts?: TOptions,
+    //       ) => QueryBuilder<RowQuery.DocumentResult<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    // readonly getOrCreate: TTableDef['options']['isSingleton'] extends true
+    //   ? () => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    //   : TTableDef['options']['deriveEvents']['enabled'] extends false
+    //     ? (_: 'Error: Need to enable deriveEvents to use row()') => any
+    //     : TTableDef['options']['requiredInsertColumnNames'] extends never
+    //       ? (
+    //           id: string | SessionIdSymbol | number,
+    //         ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
+    //       : <TOptions extends RowQuery.RequiredColumnsOptions<TTableDef>>(
+    //           id: string | SessionIdSymbol | number,
+    //           opts: TOptions,
+    //         ) => QueryBuilder<RowQuery.Result<TTableDef>, TTableDef, QueryBuilder.ApiFeature, QueryInfo.Row>
 
     /**
      * Insert a new row into the table
@@ -376,7 +407,7 @@ export namespace QueryBuilder {
       <TTarget extends keyof TTableDef['sqliteDef']['columns'] & string>(
         target: TTarget,
         action: 'update',
-        updateValues: Partial<TTableDef['schema']['Type']>,
+        updateValues: Partial<TTableDef['rowSchema']['Type']>,
       ): QueryBuilder<
         TResult,
         TTableDef,
@@ -411,7 +442,7 @@ export namespace QueryBuilder {
      * ```
      */
     readonly update: (
-      values: Partial<TTableDef['schema']['Type']>,
+      values: Partial<TTableDef['rowSchema']['Type']>,
     ) => QueryBuilder<
       TResult,
       TTableDef,
@@ -439,28 +470,37 @@ export namespace QueryBuilder {
 }
 
 export namespace RowQuery {
+  export type GetOrCreateOptions<TTableDef extends DbSchema.ClientDocumentTableDef.TraitAny> = {
+    default: Partial<TTableDef['Value']>
+  }
+
+  // TODO get rid of this
   export type RequiredColumnsOptions<TTableDef extends DbSchema.TableDefBase> = {
     /**
      * Values to be inserted into the row if it doesn't exist yet
      */
-    insertValues: Pick<
+    explicitDefaultValues: Pick<
       SqliteDsl.FromColumns.RowDecodedAll<TTableDef['sqliteDef']['columns']>,
       SqliteDsl.FromColumns.RequiredInsertColumnNames<Omit<TTableDef['sqliteDef']['columns'], 'id'>>
     >
   }
 
-  export type Result<TTableDef extends DbSchema.TableDefBase> = TTableDef['options']['isSingleColumn'] extends true
-    ? GetValForKey<SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>, 'value'>
-    : SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>
+  export type Result<TTableDef extends DbSchema.TableDefBase> = SqliteDsl.FromColumns.RowDecoded<
+    TTableDef['sqliteDef']['columns']
+  >
+
+  export type DocumentResult<TTableDef extends DbSchema.ClientDocumentTableDef.Any> = GetValForKey<
+    SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>,
+    'value'
+  >
 
   export type ResultEncoded<TTableDef extends DbSchema.TableDefBase> =
-    TTableDef['options']['isSingleColumn'] extends true
+    TTableDef['options']['isClientDocumentTable'] extends true
       ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>, 'value'>
       : SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>
+
+  export type GetIdColumnType<TTableDef extends DbSchema.TableDefBase> =
+    TTableDef['sqliteDef']['columns']['id']['schema']['Type']
 }
 
 type GetSingle<T> = T extends ReadonlyArray<infer U> ? U : never
-
-// export type QueryBuilderParamRef = { _tag: 'QueryBuilderParamRef' }
-// export type QueryBuilderSelectParams = { [key: string]: QueryBuilderSelectParam }
-// export type QueryBuilderSelectParam = boolean | ((ref: QueryBuilderParamRef) => QueryBuilder<any, any>)

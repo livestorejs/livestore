@@ -3,26 +3,29 @@ import { Schema } from '@livestore/utils/effect'
 import { SessionIdSymbol } from './adapter-types.js'
 import type { QueryBuilder } from './query-builder/api.js'
 import { isQueryBuilder } from './query-builder/api.js'
-import type * as MutationEvent from './schema/MutationEvent.js'
-import type { MutationDef, MutationHandlerResult } from './schema/mutations.js'
+import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
+import type { Materializer, MutationDef, MutationHandlerResult } from './schema/mutations.js'
 import type { BindValues } from './sql-queries/sql-queries.js'
 import type { PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
 export const getExecArgsFromMutation = ({
-  mutationDef,
+  mutationDef: { eventDef, materializer },
   mutationEvent,
 }: {
-  mutationDef: MutationDef.Any
+  mutationDef: {
+    eventDef: MutationDef.AnyWithoutFn
+    materializer: Materializer
+  }
   /** Both encoded and decoded mutation events are supported to reduce the number of times we need to decode/encode */
   mutationEvent:
     | {
-        decoded: MutationEvent.AnyDecoded | MutationEvent.PartialAnyDecoded
+        decoded: LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded
         encoded: undefined
       }
     | {
         decoded: undefined
-        encoded: MutationEvent.AnyEncoded | MutationEvent.PartialAnyEncoded
+        encoded: LiveStoreEvent.AnyEncoded | LiveStoreEvent.PartialAnyEncoded
       }
 }): ReadonlyArray<{
   statementSql: string
@@ -33,13 +36,13 @@ export const getExecArgsFromMutation = ({
     string | { sql: string; bindValues: Record<string, unknown>; writeTables?: ReadonlySet<string> }
   >
 
-  switch (typeof mutationDef.sql) {
+  switch (typeof materializer) {
     case 'function': {
       const mutationArgsDecoded =
-        mutationEvent.decoded?.args ?? Schema.decodeUnknownSync(mutationDef.schema)(mutationEvent.encoded!.args)
+        mutationEvent.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(mutationEvent.encoded!.args)
 
-      const res = mutationDef.sql(mutationArgsDecoded, {
-        clientOnly: mutationDef.options.clientOnly,
+      const res = materializer(mutationArgsDecoded, {
+        clientOnly: eventDef.options.clientOnly,
         // TODO properly implement this
         currentFacts: new Map(),
       })
@@ -56,11 +59,11 @@ export const getExecArgsFromMutation = ({
       break
     }
     case 'string': {
-      statementRes = [mutationDef.sql]
+      statementRes = [materializer]
       break
     }
     default: {
-      statementRes = mutationDef.sql
+      statementRes = materializer
       break
     }
   }
@@ -69,7 +72,7 @@ export const getExecArgsFromMutation = ({
     const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
 
     const mutationArgsEncoded =
-      mutationEvent.encoded?.args ?? Schema.encodeUnknownSync(mutationDef.schema)(mutationEvent.decoded!.args)
+      mutationEvent.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(mutationEvent.decoded!.args)
     const bindValues = typeof statementRes === 'string' ? mutationArgsEncoded : statementRes.bindValues
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables

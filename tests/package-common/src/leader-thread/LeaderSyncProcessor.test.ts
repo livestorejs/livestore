@@ -3,7 +3,7 @@ import '@livestore/utils/node-vitest-polyfill'
 import type { LeaderAheadError, MakeSqliteDb, SyncState, UnexpectedError } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import { EventId, MutationEvent } from '@livestore/common/schema'
+import { EventId, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { IS_CI } from '@livestore/utils'
@@ -29,7 +29,7 @@ import { expect } from 'vitest'
 
 import type { MockSyncBackend } from '../mock-sync-backend.js'
 import { makeMockSyncBackend } from '../mock-sync-backend.js'
-import { schema, tables } from './fixture.js'
+import { events, schema, tables } from './fixture.js'
 
 /*
 TODO:
@@ -52,8 +52,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
       const testContext = yield* TestContext
 
       yield* testContext.localPush(
-        tables.todos.insert({ id: '1', text: 't1', completed: false }),
-        tables.todos.insert({ id: '2', text: 't2', completed: false }),
+        events.todoCreated({ id: '1', text: 't1' }),
+        events.todoCreated({ id: '2', text: 't2' }),
       )
 
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
@@ -61,14 +61,14 @@ Vitest.describe('LeaderSyncProcessor', () => {
         Stream.runDrain,
       )
 
-      const result = leaderThreadCtx.dbReadModel.select(tables.todos.query.asSql().query)
+      const result = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
 
       expect(result).toEqual([
         { id: '1', text: 't1', completed: 0 },
         { id: '2', text: 't2', completed: 0 },
       ])
 
-      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(2), Stream.runDrain)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withCtx(test)),
   )
 
@@ -85,27 +85,27 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       yield* testContext.mockSyncBackend.advance(
         testContext
-          .encodeMutationEvent({
-            ...tables.todos.insert({ id: '1', text: 't1', completed: false }),
+          .encodeLiveStoreEvent({
+            ...events.todoCreated({ id: '1', text: 't1' }),
             id: EventId.make({ global: 1, client: 0 }),
             parentId: EventId.ROOT,
           })
           .toGlobal(),
       )
 
-      yield* testContext.localPush(tables.todos.insert({ id: '2', text: 't2', completed: false }))
+      yield* testContext.localPush(events.todoCreated({ id: '2', text: 't2' }))
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
-      const result = leaderThreadCtx.dbReadModel.select(tables.todos.query.asSql().query)
+      const result = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
       expect(result).toEqual([{ id: '2', text: 't2', completed: 0 }])
 
       // This will cause a rebase given mismatch: local insert(id: '2') vs remote insert(id: '1')
       yield* testContext.mockSyncBackend.connect
 
-      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(1), Stream.runDrain)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
 
-      const rebasedResult = leaderThreadCtx.dbReadModel.select(tables.todos.query.asSql().query)
+      const rebasedResult = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
       expect(rebasedResult).toEqual([
         { id: '1', text: 't1', completed: 0 },
         { id: '2', text: 't2', completed: 0 },
@@ -128,7 +128,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
         Array.from({ length: numberOfPushes }, (_, i) => i),
         (i) =>
           testContext.localPush(
-            tables.todos.insert({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
+            events.todoCreated({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
           ),
         { concurrency: 'unbounded' },
       ).pipe(Effect.withSpan(`@livestore/common-tests:sync:mutations(${numberOfPushes})`))
@@ -138,7 +138,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
         Stream.runDrain,
       )
 
-      const result = leaderThreadCtx.dbReadModel.select(tables.todos.query.asSql().query)
+      const result = leaderThreadCtx.dbReadModel.select(tables.todos.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
       const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
@@ -154,8 +154,8 @@ Vitest.describe('LeaderSyncProcessor', () => {
         yield* testContext.mockSyncBackend
           .advance(
             testContext
-              .encodeMutationEvent({
-                ...tables.todos.insert({ id: `backend_${i}`, text: '', completed: false }),
+              .encodeLiveStoreEvent({
+                ...events.todoCreated({ id: `backend_${i}`, text: '', completed: false }),
                 id: EventId.make({ global: i + 1, client: 0 }),
                 parentId: EventId.make({ global: i, client: 0 }),
               })
@@ -166,11 +166,11 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       for (let i = 0; i < 5; i++) {
         yield* testContext
-          .localPush(tables.todos.insert({ id: `local_${i}`, text: '', completed: false }))
+          .localPush(events.todoCreated({ id: `local_${i}`, text: '', completed: false }))
           .pipe(Effect.tapCauseLogPretty, Effect.exit)
       }
 
-      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(2), Stream.runDrain)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withCtx(test)),
   )
 
@@ -181,14 +181,14 @@ Vitest.describe('LeaderSyncProcessor', () => {
 
       for (let i = 0; i < 10; i++) {
         const event = {
-          ...tables.todos.insert({ id: `session_1_${i}`, text: '', completed: false }),
+          ...events.todoCreated({ id: `session_1_${i}`, text: '', completed: false }),
           id: EventId.make({ global: i + 1, client: 0 }),
           parentId: EventId.make({ global: i, client: 0 }),
         }
         yield* testContext.localPush(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
       }
 
-      yield* testContext.mockSyncBackend.pushedMutationEvents.pipe(Stream.take(10), Stream.runDrain)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
     }).pipe(
       withCtx(test, {
         syncProcessor: {
@@ -212,12 +212,12 @@ class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
-    encodeMutationEvent: (
-      event: Omit<MutationEvent.AnyDecoded, 'clientId' | 'sessionId'>,
-    ) => MutationEvent.EncodedWithMeta
+    encodeLiveStoreEvent: (
+      event: Omit<LiveStoreEvent.AnyDecoded, 'clientId' | 'sessionId'>,
+    ) => LiveStoreEvent.EncodedWithMeta
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>
     localPush: (
-      ...events: MutationEvent.PartialAnyDecoded[] | MutationEvent.AnyDecoded[]
+      ...events: LiveStoreEvent.PartialAnyDecoded[] | LiveStoreEvent.AnyDecoded[]
     ) => Effect.Effect<void, UnexpectedError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
@@ -258,10 +258,10 @@ const LeaderThreadCtxLive = ({
     const testContextLayer = Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
 
-      const encodeMutationEvent = ({
+      const encodeLiveStoreEvent = ({
         ...event
-      }: Omit<typeof MutationEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
-        new MutationEvent.EncodedWithMeta({
+      }: Omit<typeof LiveStoreEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
+        new LiveStoreEvent.EncodedWithMeta({
           ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)({
             ...event,
             clientId: leaderThreadCtx.clientId,
@@ -269,28 +269,28 @@ const LeaderThreadCtxLive = ({
           }),
         })
 
-      const currentMutationEventId = { current: EventId.ROOT }
+      const currentLiveStoreEventId = { current: EventId.ROOT }
 
       const pullQueue = yield* leaderThreadCtx.syncProcessor.pullQueue({
         cursor: { mergeCounter: 0, eventId: EventId.ROOT },
       })
 
-      const toEncodedMutationEvent = (event: MutationEvent.PartialAnyDecoded | MutationEvent.AnyDecoded) => {
+      const toEncodedLiveStoreEvent = (event: LiveStoreEvent.PartialAnyDecoded | LiveStoreEvent.AnyDecoded) => {
         if (Predicate.hasProperty(event, 'id')) {
-          return encodeMutationEvent(event)
+          return encodeLiveStoreEvent(event)
         }
 
-        const nextIdPair = EventId.nextPair(currentMutationEventId.current, false)
-        currentMutationEventId.current = nextIdPair.id
-        return encodeMutationEvent({ ...event, ...nextIdPair })
+        const nextIdPair = EventId.nextPair(currentLiveStoreEventId.current, false)
+        currentLiveStoreEventId.current = nextIdPair.id
+        return encodeLiveStoreEvent({ ...event, ...nextIdPair })
       }
 
-      const localPush = (...partialEvents: MutationEvent.PartialAnyDecoded[]) =>
-        leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedMutationEvent(partialEvent)))
+      const localPush = (...partialEvents: LiveStoreEvent.PartialAnyDecoded[]) =>
+        leaderThreadCtx.syncProcessor.push(partialEvents.map((partialEvent) => toEncodedLiveStoreEvent(partialEvent)))
 
       return Layer.succeed(TestContext, {
         mockSyncBackend,
-        encodeMutationEvent,
+        encodeLiveStoreEvent,
         pullQueue,
         localPush,
       })

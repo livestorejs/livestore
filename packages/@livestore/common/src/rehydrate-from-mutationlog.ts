@@ -4,7 +4,7 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'
 import type { ApplyMutation } from './leader-thread/mod.js'
 import type { LiveStoreSchema, MutationDef, MutationLogMetaRow } from './schema/mod.js'
-import { EventId, getMutationDef, MUTATION_LOG_META_TABLE, MutationEvent } from './schema/mod.js'
+import { EventId, getMutationDef, LiveStoreEvent, MUTATION_LOG_META_TABLE } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
@@ -29,7 +29,7 @@ export const rehydrateFromMutationLog = ({
       `SELECT COUNT(*) AS count FROM ${MUTATION_LOG_META_TABLE}`,
     )[0]!.count
 
-    const hashMutation = memoizeByRef((mutation: MutationDef.Any) => Schema.hash(mutation.schema))
+    const hashMutation = memoizeByRef((mutation: MutationDef.AnyWithoutFn) => Schema.hash(mutation.schema))
 
     const processMutation = (row: MutationLogMetaRow) =>
       Effect.gen(function* () {
@@ -37,7 +37,7 @@ export const rehydrateFromMutationLog = ({
 
         if (migrationOptions.excludeMutations?.has(row.mutation) === true) return
 
-        if (hashMutation(mutationDef) !== row.schemaHash) {
+        if (hashMutation(mutationDef.eventDef) !== row.schemaHash) {
           yield* Effect.logWarning(
             `Schema hash mismatch for mutation ${row.mutation}. Trying to apply mutation anyway.`,
           )
@@ -46,7 +46,7 @@ export const rehydrateFromMutationLog = ({
         const args = JSON.parse(row.argsJson)
 
         // Checking whether the schema has changed in an incompatible way
-        yield* Schema.decodeUnknown(mutationDef.schema)(args).pipe(
+        yield* Schema.decodeUnknown(mutationDef.eventDef.schema)(args).pipe(
           Effect.mapError((cause) =>
             UnexpectedError.make({
               cause,
@@ -59,7 +59,7 @@ This likely means the schema has changed in an incompatible way.
           ),
         )
 
-        const mutationEventEncoded = MutationEvent.EncodedWithMeta.make({
+        const mutationEventEncoded = LiveStoreEvent.EncodedWithMeta.make({
           id: { global: row.idGlobal, client: row.idClient },
           parentId: { global: row.parentIdGlobal, client: row.parentIdClient },
           mutation: row.mutation,

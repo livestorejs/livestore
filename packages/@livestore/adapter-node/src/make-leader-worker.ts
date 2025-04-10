@@ -18,7 +18,7 @@ import {
   Mutationlog,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -69,7 +69,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
         _.syncProcessor.push(
-          batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+          batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),

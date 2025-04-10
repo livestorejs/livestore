@@ -86,7 +86,7 @@ Error:
     at Object.useMemo (/Users/schickling/Code/overtone/node_modules/.pnpm/react-dom@19.0.0_react@19.0.0/node_modules/react-dom/cjs/react-dom-client.development.js:22757:18)
     at Object.process.env.NODE_ENV.exports.useMemo (/Users/schickling/Code/overtone/node_modules/.pnpm/react@19.0.0/node_modules/react/cjs/react.development.js:1488:34)
     at Module.useQueryRef (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useQuery.ts:54:27)
-    at Module.useRow (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useRow.ts:111:20)
+    at Module.useClientDocument (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useClientDocument.ts:111:20)
     at TestComponent (/Users/schickling/Code/overtone/node_modules/.pnpm/@testing-library+react@16.1.0_@testing-library+dom@10.4.0_@types+react-dom@19.0.3_@types+reac_2jaiibiag2sxou3wtzbuqx3r5a/node_modules/@testing-library/react/dist/pure.js:309:27)
     at Object.react-stack-bottom-frame (/Users/schickling/Code/overtone/node_modules/.pnpm/react-dom@19.0.0_react@19.0.0/node_modules/react-dom/cjs/react-dom-client.development.js:22428:20)
     at renderWithHooks (/Users/schickling/Code/overtone/node_modules/.pnpm/react-dom@19.0.0_react@19.0.0/node_modules/react-dom/cjs/react-dom-client.development.js:5757:22)
@@ -101,8 +101,8 @@ Error:
           "name": "TestComponent",
         },
         {
-          "filePath": "/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useRow.ts:111:20",
-          "name": "useRow",
+          "filePath": "/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useClientDocument.ts:111:20",
+          "name": "useClientDocument",
         },
       ],
     }
@@ -117,7 +117,7 @@ Error:
     at Object.useMemo (/Users/schickling/Code/overtone/node_modules/.pnpm/react-dom@19.0.0_react@19.0.0/node_modules/react-dom/cjs/react-dom-client.development.js:22757:18)
     at Object.process.env.NODE_ENV.exports.useMemo (/Users/schickling/Code/overtone/node_modules/.pnpm/react@19.0.0/node_modules/react/cjs/react.development.js:1488:34)
     at Module.useQueryRef (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useQuery.ts:54:27)
-    at Module.useRow (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useRow.ts:111:20)
+    at Module.useClientDocument (/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useClientDocument.ts:111:20)
     at Object.react-stack-bottom-frame (/Users/schickling/Code/overtone/node_modules/.pnpm/react-dom@19.0.0_react@19.0.0/node_modules/react-dom/cjs/react-dom-client.development.js:22428:20)
     at renderWithHooks (/Users/schickling/Code/overtone/node_modules/.pnpm/react-dom@19.0.0_react@19.0.0/node_modules/react-dom/cjs/react-dom-client.development.js:5757:22)
   `
@@ -127,8 +127,8 @@ Error:
     {
       "frames": [
         {
-          "filePath": "/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useRow.ts:111:20",
-          "name": "useRow",
+          "filePath": "/Users/schickling/Code/overtone/submodules/livestore/packages/@livestore/react/src/useClientDocument.ts:111:20",
+          "name": "useClientDocument",
         },
       ],
     }

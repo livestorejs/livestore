@@ -5,6 +5,8 @@ import type { RefreshReason } from '../store/store-types.js'
 import type { ILiveQueryRef, ILiveQueryRefDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
 import { withRCMap } from './base-class.js'
 
+// TODO rename to `signal`
+
 export const makeRef = <T>(
   defaultValue: T,
   options?: {

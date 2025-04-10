@@ -3,7 +3,7 @@ import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
 import { getExecArgsFromMutation } from '../mutation.js'
-import type { LiveStoreSchema, MutationEvent, SessionChangesetMetaRow } from '../schema/mod.js'
+import type { LiveStoreEvent, LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
   getMutationDef,
@@ -33,7 +33,7 @@ export const makeApplyMutation = ({
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
       // Also see https://github.com/Effect-TS/effect/issues/2719
-      [...schema.mutations.map.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
+      [...schema.eventsDefsMap.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
     return (mutationEventEncoded, options) =>
@@ -183,7 +183,7 @@ const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) 
       ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
       : new Set(['livestore.RawSql'])
 
-  return (mutationName: string, mutationEventEncoded: MutationEvent.AnyEncoded): boolean => {
+  return (mutationName: string, mutationEventEncoded: LiveStoreEvent.AnyEncoded): boolean => {
     if (mutationLogExclude.has(mutationName)) return true
 
     const mutationDef = getMutationDef(schema, mutationName)

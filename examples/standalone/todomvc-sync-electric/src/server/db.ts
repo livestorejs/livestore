@@ -1,4 +1,4 @@
-import type { MutationEvent } from '@livestore/livestore'
+import type { LiveStoreEvent } from '@livestore/livestore'
 import { toTableName } from '@livestore/sync-electric'
 import postgres from 'postgres'
 
@@ -26,7 +26,7 @@ export const makeDb = (storeId: string) => {
   // -- schema_hash INTEGER NOT NULL,
   // -- created_at TEXT NOT NULL
 
-  const createEvents = async (events: ReadonlyArray<MutationEvent.AnyEncodedGlobal>) => {
+  const createEvents = async (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => {
     await sql`INSERT INTO ${sql(tableName)} ${sql(events)}`
   }
 

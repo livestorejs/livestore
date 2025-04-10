@@ -1,6 +1,6 @@
 import Editor from '@/components/common/editor'
-import { Issue, mutations, tables } from '@/lib/livestore/schema'
-import { useQuery, useStore } from '@livestore/react'
+import { Issue, events, tables } from '@/lib/livestore/schema'
+import { useStore } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
 import React from 'react'
 
@@ -18,9 +18,9 @@ export const DescriptionInput = ({
   className?: string
 }) => {
   const { store } = useStore()
-  description = useQuery(
+  description = store.useQuery(
     queryDb(
-      tables.description.query
+      tables.description
         .select('body', { pluck: true })
         .where({ id: issue?.id ?? 0 })
         .first(),
@@ -29,7 +29,7 @@ export const DescriptionInput = ({
   )
 
   const handleDescriptionChange = (body: string) => {
-    if (issue) store.commit(mutations.updateDescription({ id: issue.id, body }))
+    if (issue) store.commit(events.updateDescription({ id: issue.id, body }))
     if (setDescription) setDescription(body)
   }
 

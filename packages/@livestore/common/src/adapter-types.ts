@@ -3,7 +3,7 @@ import { Effect, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as Devtools from './devtools/mod.js'
 import * as EventId from './schema/EventId.js'
-import type { LiveStoreSchema, MutationEvent } from './schema/mod.js'
+import type { LiveStoreEvent, LiveStoreSchema } from './schema/mod.js'
 import type { LeaderAheadError } from './sync/sync.js'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.js'
 import type { PreparedBindValues } from './util.js'
@@ -52,7 +52,7 @@ export interface ClientSessionLeaderThreadProxy {
       cursor: LeaderPullCursor
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<MutationEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
+    push(batch: ReadonlyArray<LiveStoreEvent.AnyEncoded>): Effect.Effect<void, UnexpectedError | LeaderAheadError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

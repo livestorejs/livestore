@@ -3,7 +3,7 @@ import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 import {
   MUTATION_LOG_META_TABLE,
   mutationLogMetaTable,
@@ -46,35 +46,33 @@ export const initMutationLogDb = (dbMutationLog: SqliteDb) =>
   })
 
 /** Exclusive of the "since event" */
-export const getMutationEventsSince = (
+export const getEventsSince = (
   since: EventId.EventId,
-): Effect.Effect<ReadonlyArray<MutationEvent.EncodedWithMeta>, never, LeaderThreadCtx> =>
+): Effect.Effect<ReadonlyArray<LiveStoreEvent.EncodedWithMeta>, never, LeaderThreadCtx> =>
   Effect.gen(function* () {
     const { dbMutationLog, dbReadModel } = yield* LeaderThreadCtx
 
-    const query = mutationLogMetaTable.query.where('idGlobal', '>=', since.global).asSql()
-    const pendingMutationEventsRaw = dbMutationLog.select(query.query, prepareBindValues(query.bindValues, query.query))
-    const pendingMutationEvents = Schema.decodeUnknownSync(mutationLogMetaTable.schema.pipe(Schema.Array))(
-      pendingMutationEventsRaw,
-    )
+    const query = mutationLogMetaTable.where('idGlobal', '>=', since.global).asSql()
+    const pendingEventsRaw = dbMutationLog.select(query.query, prepareBindValues(query.bindValues, query.query))
+    const pendingEvents = Schema.decodeUnknownSync(mutationLogMetaTable.rowSchema.pipe(Schema.Array))(pendingEventsRaw)
 
-    const sessionChangesetRows = sessionChangesetMetaTable.query.where('idGlobal', '>=', since.global).asSql()
+    const sessionChangesetRows = sessionChangesetMetaTable.where('idGlobal', '>=', since.global).asSql()
     const sessionChangesetRowsRaw = dbReadModel.select(
       sessionChangesetRows.query,
       prepareBindValues(sessionChangesetRows.bindValues, sessionChangesetRows.query),
     )
-    const sessionChangesetRowsDecoded = Schema.decodeUnknownSync(sessionChangesetMetaTable.schema.pipe(Schema.Array))(
-      sessionChangesetRowsRaw,
-    )
+    const sessionChangesetRowsDecoded = Schema.decodeUnknownSync(
+      sessionChangesetMetaTable.rowSchema.pipe(Schema.Array),
+    )(sessionChangesetRowsRaw)
 
-    return pendingMutationEvents
+    return pendingEvents
       .map((mutationLogEvent) => {
         const sessionChangeset = sessionChangesetRowsDecoded.find(
           (readModelEvent) =>
             readModelEvent.idGlobal === mutationLogEvent.idGlobal &&
             readModelEvent.idClient === mutationLogEvent.idClient,
         )
-        return MutationEvent.EncodedWithMeta.make({
+        return LiveStoreEvent.EncodedWithMeta.make({
           mutation: mutationLogEvent.mutation,
           args: mutationLogEvent.argsJson,
           id: { global: mutationLogEvent.idGlobal, client: mutationLogEvent.idClient },
@@ -115,7 +113,7 @@ export const updateBackendHead = (dbMutationLog: SqliteDb, head: EventId.EventId
   dbMutationLog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head.global}`)
 
 export const insertIntoMutationLog = (
-  mutationEventEncoded: MutationEvent.EncodedWithMeta,
+  mutationEventEncoded: LiveStoreEvent.EncodedWithMeta,
   dbMutationLog: SqliteDb,
   mutationDefSchemaHash: number,
   clientId: string,
@@ -159,7 +157,7 @@ export const insertIntoMutationLog = (
     )
   })
 
-export const updateSyncMetadata = (items: ReadonlyArray<MutationEvent.EncodedWithMeta>) =>
+export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>) =>
   Effect.gen(function* () {
     const { dbMutationLog } = yield* LeaderThreadCtx
 

@@ -8,6 +8,6 @@ export const description = DbSchema.table(
     body: DbSchema.text({ default: '' }),
     deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 export type Description = DbSchema.FromTable.RowDecoded<typeof description>

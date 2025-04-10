@@ -1,5 +1,5 @@
 import type { ClientSession, IntentionalShutdownCause, StoreInterrupted, UnexpectedError } from '@livestore/common'
-import type { LiveStoreSchema, MutationEvent } from '@livestore/common/schema'
+import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Scope } from '@livestore/utils/effect'
 import { Deferred } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -58,7 +58,7 @@ export type RefreshReason =
   | {
       _tag: 'commit'
       /** The mutations that were applied */
-      mutations: ReadonlyArray<MutationEvent.AnyDecoded | MutationEvent.PartialAnyDecoded>
+      mutations: ReadonlyArray<LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>

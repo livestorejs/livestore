@@ -16,7 +16,7 @@ const app = DbSchema.table(
     newTodoText: DbSchema.text({ default: '' }),
     filter: DbSchema.text({ schema: Filter, default: 'all' }),
   },
-  { deriveMutations: { clientOnly: true } },
+  { deriveEvents: true },
 )
 
 export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>

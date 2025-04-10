@@ -1,11 +1,11 @@
-import type { MutationEventFacts } from '@livestore/common/schema'
+import type { EventDefFacts } from '@livestore/common/schema'
 import { describe, expect, it } from 'vitest'
 
 import { compactEvents } from '../compact-events.js'
 import { historyDagFromNodes } from '../history-dag.js'
 import type { HistoryDagNode } from '../history-dag-common.js'
 import { EMPTY_FACT_VALUE } from '../history-dag-common.js'
-import { mutations, toEventNodes } from './mutation-fixtures.js'
+import { events as eventDefs, toEventNodes } from './mutation-fixtures.js'
 
 const customStringify = (value: any): string => {
   if (value === null) {
@@ -58,7 +58,7 @@ const factsToString = (facts: HistoryDagNode['factsGroup']) =>
     .flat()
     .join(' ')
 
-const factsSetToString = (facts: MutationEventFacts, prefix: string) =>
+const factsSetToString = (facts: EventDefFacts, prefix: string) =>
   Array.from(facts.entries()).map(([key, value]) => prefix + key + (value === EMPTY_FACT_VALUE ? '' : `=${value}`))
 
 export const customSerializer = {
@@ -71,7 +71,7 @@ export const customSerializer = {
 expect.addSnapshotSerializer(customSerializer)
 
 const compact = (events: any[]) => {
-  const dag = historyDagFromNodes(toEventNodes(events, mutations, 'client-id', 'session-id'))
+  const dag = historyDagFromNodes(toEventNodes(events, eventDefs, 'client-id', 'session-id'))
   const compacted = compactEvents(dag)
 
   return Array.from(compacted.dag.nodeEntries())
@@ -83,90 +83,90 @@ const compact = (events: any[]) => {
 describe('compactEvents todo app', () => {
   it('todoCompleted', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.todoCompleted({ id: 'A' }), // 1
-      mutations.todoCompleted({ id: 'A' }), // 2
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.todoCompleted({ id: 'A' }), // 1
+      eventDefs.todoCompleted({ id: 'A' }), // 2
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 2, parentId: 0, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 3, parentId: 1, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
       ]
     `)
   })
 
   it('toggleTodo', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.toggleTodo({ id: 'A' }), // 1
-      mutations.toggleTodo({ id: 'A' }), // 2
-      mutations.toggleTodo({ id: 'A' }), // 3
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.toggleTodo({ id: 'A' }), // 1
+      eventDefs.toggleTodo({ id: 'A' }), // 2
+      eventDefs.toggleTodo({ id: 'A' }), // 3
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 1, parentId: 0, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=true" }
-        { id: 2, parentId: 1, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=false" }
-        { id: 3, parentId: 2, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=true" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 2, parentId: 1, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=true" }
+        { id: 3, parentId: 2, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=false" }
+        { id: 4, parentId: 3, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=true" }
       ]
     `)
   })
 
   it('todoCompleted / toggleTodo', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.toggleTodo({ id: 'A' }), // 1
-      mutations.toggleTodo({ id: 'A' }), // 2
-      mutations.todoCompleted({ id: 'A' }), // 3
-      mutations.todoCompleted({ id: 'A' }), // 4
-      mutations.toggleTodo({ id: 'A' }), // 5
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.toggleTodo({ id: 'A' }), // 1
+      eventDefs.toggleTodo({ id: 'A' }), // 2
+      eventDefs.todoCompleted({ id: 'A' }), // 3
+      eventDefs.todoCompleted({ id: 'A' }), // 4
+      eventDefs.toggleTodo({ id: 'A' }), // 5
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 4, parentId: 0, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
-        { id: 5, parentId: 4, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=false" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 5, parentId: 1, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
+        { id: 6, parentId: 5, mutation: "toggleTodo", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ?todo-completed-A +todo-completed-A=false" }
       ]
     `)
   })
 
   it('readonly setTextTodo', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.setReadonlyTodo({ id: 'A', readonly: false }), // 1
-      mutations.setTextTodo({ id: 'A', text: 'buy soy milk' }), // 2
-      mutations.setReadonlyTodo({ id: 'A', readonly: true }), // 3
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.setReadonlyTodo({ id: 'A', readonly: false }), // 1
+      eventDefs.setTextTodo({ id: 'A', text: 'buy soy milk' }), // 2
+      eventDefs.setReadonlyTodo({ id: 'A', readonly: true }), // 3
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 1, parentId: 0, mutation: "setReadonlyTodo", args: { id: "A", readonly: false }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=true" }
-        { id: 2, parentId: 1, mutation: "setTextTodo", args: { id: "A", text: "buy soy milk" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-text-updated-A" }
-        { id: 3, parentId: 2, mutation: "setReadonlyTodo", args: { id: "A", readonly: true }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=false" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 2, parentId: 1, mutation: "setReadonlyTodo", args: { id: "A", readonly: false }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=true" }
+        { id: 3, parentId: 2, mutation: "setTextTodo", args: { id: "A", text: "buy soy milk" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-text-updated-A" }
+        { id: 4, parentId: 3, mutation: "setReadonlyTodo", args: { id: "A", readonly: true }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=false" }
       ]
     `)
   })
 
   it('readonly setTextTodo 2', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.setReadonlyTodo({ id: 'A', readonly: false }), // 1
-      mutations.todoCompleted({ id: 'A' }), // 2
-      mutations.setTextTodo({ id: 'A', text: 'buy soy milk' }), // 3
-      mutations.setReadonlyTodo({ id: 'A', readonly: true }), // 4
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.setReadonlyTodo({ id: 'A', readonly: false }), // 1
+      eventDefs.todoCompleted({ id: 'A' }), // 2
+      eventDefs.setTextTodo({ id: 'A', text: 'buy soy milk' }), // 3
+      eventDefs.setReadonlyTodo({ id: 'A', readonly: true }), // 4
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 1, parentId: 0, mutation: "setReadonlyTodo", args: { id: "A", readonly: false }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=true" }
-        { id: 2, parentId: 1, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
-        { id: 3, parentId: 2, mutation: "setTextTodo", args: { id: "A", text: "buy soy milk" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-text-updated-A" }
-        { id: 4, parentId: 3, mutation: "setReadonlyTodo", args: { id: "A", readonly: true }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=false" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 2, parentId: 1, mutation: "setReadonlyTodo", args: { id: "A", readonly: false }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=true" }
+        { id: 3, parentId: 2, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
+        { id: 4, parentId: 3, mutation: "setTextTodo", args: { id: "A", text: "buy soy milk" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-text-updated-A" }
+        { id: 5, parentId: 4, mutation: "setReadonlyTodo", args: { id: "A", readonly: true }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A +todo-is-writeable-A=false" }
       ]
     `)
   })
@@ -174,11 +174,11 @@ describe('compactEvents todo app', () => {
   it('readonly setTextTodo - should fail', () => {
     const expected = () =>
       compact([
-        mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-        mutations.setReadonlyTodo({ id: 'A', readonly: false }), // 1
-        mutations.setTextTodo({ id: 'A', text: 'buy soy milk' }), // 2
-        mutations.setReadonlyTodo({ id: 'A', readonly: true }), // 3
-        mutations.setTextTodo({ id: 'A', text: 'buy oat milk' }), // 4
+        eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+        eventDefs.setReadonlyTodo({ id: 'A', readonly: false }), // 1
+        eventDefs.setTextTodo({ id: 'A', text: 'buy soy milk' }), // 2
+        eventDefs.setReadonlyTodo({ id: 'A', readonly: true }), // 3
+        eventDefs.setTextTodo({ id: 'A', text: 'buy oat milk' }), // 4
       ])
 
     expect(expected).toThrowErrorMatchingInlineSnapshot(`
@@ -190,43 +190,43 @@ describe('compactEvents todo app', () => {
 
   it('todoCompleteds', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.createTodo({ id: 'B', text: 'buy bread' }), // 1
-      mutations.createTodo({ id: 'C', text: 'buy cheese' }), // 2
-      mutations.todoCompleteds({ ids: ['A', 'B', 'C'] }), // 3
-      mutations.toggleTodo({ id: 'A' }), // 4
-      mutations.todoCompleted({ id: 'A' }), // 5
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.createTodo({ id: 'B', text: 'buy bread' }), // 1
+      eventDefs.createTodo({ id: 'C', text: 'buy cheese' }), // 2
+      eventDefs.todoCompleteds({ ids: ['A', 'B', 'C'] }), // 3
+      eventDefs.toggleTodo({ id: 'A' }), // 4
+      eventDefs.todoCompleted({ id: 'A' }), // 5
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "B", text: "buy bread" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-B +todo-is-writeable-B=true +todo-completed-B=false" }
-        { id: 2, parentId: 1, mutation: "createTodo", args: { id: "C", text: "buy cheese" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-C +todo-is-writeable-C=true +todo-completed-C=false" }
-        { id: 3, parentId: 2, mutation: "todoCompleteds", args: { ids: ["A", "B", "C"] }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ↖todo-exists-B ↖todo-is-writeable-B=true ↖todo-exists-C ↖todo-is-writeable-C=true +todo-completed-A=true +todo-completed-B=true +todo-completed-C=true" }
-        { id: 5, parentId: 3, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 2, parentId: 1, mutation: "createTodo", args: { id: "B", text: "buy bread" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-B +todo-is-writeable-B=true +todo-completed-B=false" }
+        { id: 3, parentId: 2, mutation: "createTodo", args: { id: "C", text: "buy cheese" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-C +todo-is-writeable-C=true +todo-completed-C=false" }
+        { id: 4, parentId: 3, mutation: "todoCompleteds", args: { ids: ["A", "B", "C"] }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ↖todo-exists-B ↖todo-is-writeable-B=true ↖todo-exists-C ↖todo-is-writeable-C=true +todo-completed-A=true +todo-completed-B=true +todo-completed-C=true" }
+        { id: 6, parentId: 4, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
       ]
     `)
   })
 
   it('todoCompleteds 2', () => {
     const expected = compact([
-      mutations.createTodo({ id: 'A', text: 'buy milk' }), // 0
-      mutations.createTodo({ id: 'B', text: 'buy bread' }), // 1
-      mutations.createTodo({ id: 'C', text: 'buy cheese' }), // 2
-      mutations.toggleTodo({ id: 'A' }), // 3
-      mutations.todoCompleteds({ ids: ['A', 'B', 'C'] }), // 4
-      mutations.toggleTodo({ id: 'A' }), // 5
-      mutations.todoCompleted({ id: 'A' }), // 6
+      eventDefs.createTodo({ id: 'A', text: 'buy milk' }), // 0
+      eventDefs.createTodo({ id: 'B', text: 'buy bread' }), // 1
+      eventDefs.createTodo({ id: 'C', text: 'buy cheese' }), // 2
+      eventDefs.toggleTodo({ id: 'A' }), // 3
+      eventDefs.todoCompleteds({ ids: ['A', 'B', 'C'] }), // 4
+      eventDefs.toggleTodo({ id: 'A' }), // 5
+      eventDefs.todoCompleted({ id: 'A' }), // 6
     ])
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
-        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "B", text: "buy bread" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-B +todo-is-writeable-B=true +todo-completed-B=false" }
-        { id: 2, parentId: 1, mutation: "createTodo", args: { id: "C", text: "buy cheese" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-C +todo-is-writeable-C=true +todo-completed-C=false" }
-        { id: 4, parentId: 2, mutation: "todoCompleteds", args: { ids: ["A", "B", "C"] }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ↖todo-exists-B ↖todo-is-writeable-B=true ↖todo-exists-C ↖todo-is-writeable-C=true +todo-completed-A=true +todo-completed-B=true +todo-completed-C=true" }
-        { id: 6, parentId: 4, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
+        { id: 1, parentId: 0, mutation: "createTodo", args: { id: "A", text: "buy milk" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-A +todo-is-writeable-A=true +todo-completed-A=false" }
+        { id: 2, parentId: 1, mutation: "createTodo", args: { id: "B", text: "buy bread" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-B +todo-is-writeable-B=true +todo-completed-B=false" }
+        { id: 3, parentId: 2, mutation: "createTodo", args: { id: "C", text: "buy cheese" }, clientId: "client-id", sessionId: "session-id", facts: "+todo-exists-C +todo-is-writeable-C=true +todo-completed-C=false" }
+        { id: 5, parentId: 3, mutation: "todoCompleteds", args: { ids: ["A", "B", "C"] }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true ↖todo-exists-B ↖todo-is-writeable-B=true ↖todo-exists-C ↖todo-is-writeable-C=true +todo-completed-A=true +todo-completed-B=true +todo-completed-C=true" }
+        { id: 7, parentId: 5, mutation: "todoCompleted", args: { id: "A" }, clientId: "client-id", sessionId: "session-id", facts: "↖todo-exists-A ↖todo-is-writeable-A=true +todo-completed-A=true" }
       ]
     `)
   })

@@ -11,8 +11,7 @@ import React from 'react'
 import * as ReactWindow from 'react-window'
 import { expect } from 'vitest'
 
-import { makeTodoMvcReact, tables, todos } from './__tests__/fixture.js'
-import * as LiveStoreReact from './mod.js'
+import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
 import { __resetUseRcResourceCache } from './useRcResource.js'
 
 Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
@@ -27,13 +26,13 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       Effect.gen(function* () {
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 
-        const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.schema) })
+        const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
 
         const { result } = ReactTesting.renderHook(
           () => {
             renderCount.inc()
 
-            return LiveStoreReact.useQuery(allTodos$)
+            return store.useQuery(allTodos$)
           },
           { wrapper },
         )
@@ -42,7 +41,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(1)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-        ReactTesting.act(() => store.commit(todos.insert({ id: 't1', text: 'buy milk', completed: false })))
+        ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
         expect(result.current.length).toBe(1)
         expect(result.current[0]!.text).toBe('buy milk')
@@ -56,17 +55,17 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 
         const todo1$ = queryDb(
-          { query: `select * from todos where id = 't1'`, schema: Schema.Array(tables.todos.schema) },
+          { query: `select * from todos where id = 't1'`, schema: Schema.Array(tables.todos.rowSchema) },
           { label: 'libraryTracksView1' },
         )
         const todo2$ = queryDb(
-          { query: `select * from todos where id = 't2'`, schema: Schema.Array(tables.todos.schema) },
+          { query: `select * from todos where id = 't2'`, schema: Schema.Array(tables.todos.rowSchema) },
           { label: 'libraryTracksView2' },
         )
 
         store.commit(
-          todos.insert({ id: 't1', text: 'buy milk', completed: false }),
-          todos.insert({ id: 't2', text: 'buy eggs', completed: false }),
+          events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+          events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
         )
 
         const { result, rerender } = ReactTesting.renderHook(
@@ -75,7 +74,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
             const query$ = React.useMemo(() => (todoId === 't1' ? todo1$ : todo2$), [todoId])
 
-            return LiveStoreReact.useQuery(query$)[0]!.text
+            return store.useQuery(query$)[0]!.text
           },
           { wrapper, initialProps: 't1' },
         )
@@ -84,7 +83,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(1)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('1: after first render')
 
-        ReactTesting.act(() => store.commit(todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
+        ReactTesting.act(() => store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
@@ -104,18 +103,18 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         const filter$ = makeRef('t1', { label: 'id-filter' })
 
-        const todo$ = queryDb((get) => tables.todos.query.where('id', get(filter$)), { label: 'todo' })
+        const todo$ = queryDb((get) => tables.todos.where('id', get(filter$)), { label: 'todo' })
 
         store.commit(
-          todos.insert({ id: 't1', text: 'buy milk', completed: false }),
-          todos.insert({ id: 't2', text: 'buy eggs', completed: false }),
+          events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+          events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
         )
 
         const { result } = ReactTesting.renderHook(
           () => {
             renderCount.inc()
 
-            return LiveStoreReact.useQuery(todo$)[0]!.text
+            return store.useQuery(todo$)[0]!.text
           },
           { wrapper },
         )
@@ -124,7 +123,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         expect(renderCount.val).toBe(1)
         expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-        ReactTesting.act(() => store.commit(todos.update({ where: { id: 't1' }, values: { text: 'buy soy milk' } })))
+        ReactTesting.act(() => store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
@@ -143,7 +142,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
     // To handle this properly we introduced the `_tag: 'destroyed'` state in the `spanAlreadyStartedCache`.
     Vitest.scopedLive('should work for a list with react-window', () =>
       Effect.gen(function* () {
-        const { wrapper } = yield* makeTodoMvcReact({ strictMode })
+        const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
 
         const ListWrapper: React.FC<{ numItems: number }> = ({ numItems }) => {
           return (
@@ -161,7 +160,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         const ListItem: React.FC<{ data: ReadonlyArray<number>; index: number }> = ({ data: ids, index }) => {
           const id = ids[index]!
-          const res = LiveStoreReact.useQuery(LiveStore.computed(() => id, { label: `ListItem.${id}`, deps: id }))
+          const res = store.useQuery(LiveStore.computed(() => id, { label: `ListItem.${id}`, deps: id }))
           return <div role="listitem">{res}</div>
         }
 

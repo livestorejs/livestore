@@ -1,6 +1,6 @@
 import type { IsOfflineError, SyncBackend, SyncBackendConstructor } from '@livestore/common'
 import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
 import {
   Chunk,
@@ -58,7 +58,7 @@ Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript
 
 */
 
-const MutationEventGlobalFromStringRecord = Schema.Struct({
+const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   id: Schema.NumberFromString,
   parentId: Schema.NumberFromString,
   mutation: Schema.String,
@@ -66,7 +66,7 @@ const MutationEventGlobalFromStringRecord = Schema.Struct({
   clientId: Schema.String,
   sessionId: Schema.String,
 }).pipe(
-  Schema.transform(MutationEvent.AnyEncodedGlobal, {
+  Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
     decode: (_) => _,
     encode: (_) => _,
   }),
@@ -75,7 +75,7 @@ const MutationEventGlobalFromStringRecord = Schema.Struct({
 const ResponseItem = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
-  value: Schema.optional(MutationEventGlobalFromStringRecord),
+  value: Schema.optional(LiveStoreEventGlobalFromStringRecord),
   headers: Schema.Union(
     Schema.Struct({
       operation: Schema.Union(Schema.Literal('insert'), Schema.Literal('update'), Schema.Literal('delete')),
@@ -209,7 +209,7 @@ export const makeSyncBackend =
           readonly [
             Chunk.Chunk<{
               metadata: Option.Option<SyncMetadata>
-              mutationEventEncoded: MutationEvent.AnyEncodedGlobal
+              mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal
             }>,
             Option.Option<SyncMetadata>,
           ]
@@ -266,7 +266,7 @@ export const makeSyncBackend =
             .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
             .map((item) => ({
               metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
-              mutationEventEncoded: item.value! as MutationEvent.AnyEncodedGlobal,
+              mutationEventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
             }))
 
           // // TODO implement proper `remaining` handling

@@ -3,7 +3,7 @@ import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
-import * as MutationEvent from '../schema/MutationEvent.js'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
 
 /**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
@@ -43,7 +43,7 @@ import * as MutationEvent from '../schema/MutationEvent.js'
  * handling cases such as upstream rebase, advance and local push.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(MutationEvent.EncodedWithMeta),
+  pending: Schema.Array(LiveStoreEvent.EncodedWithMeta),
   /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventId.EventId,
   /** Equivalent to `pending.at(-1)?.id` if there are pending events */
@@ -61,17 +61,17 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
  */
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  rollbackEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
-  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
 }) {}
 
 export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
@@ -110,9 +110,9 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
 export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
   /** Events which were previously pending but are now confirmed */
-  confirmedEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  confirmedEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
@@ -129,9 +129,9 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
 export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(MutationEvent.EncodedWithMeta),
+  rollbackEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
@@ -199,8 +199,8 @@ export const merge = ({
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
-  isClientEvent: (event: MutationEvent.EncodedWithMeta) => boolean
-  isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
+  isEqualEvent: (a: LiveStoreEvent.EncodedWithMeta, b: LiveStoreEvent.EncodedWithMeta) => boolean
   /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
   ignoreClientEvents?: boolean
 }): typeof MergeResult.Type => {
@@ -418,10 +418,10 @@ export const findDivergencePoint = ({
   isClientEvent,
   ignoreClientEvents,
 }: {
-  existingEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  incomingEvents: ReadonlyArray<MutationEvent.EncodedWithMeta>
-  isEqualEvent: (a: MutationEvent.EncodedWithMeta, b: MutationEvent.EncodedWithMeta) => boolean
-  isClientEvent: (event: MutationEvent.EncodedWithMeta) => boolean
+  existingEvents: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
+  incomingEvents: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
+  isEqualEvent: (a: LiveStoreEvent.EncodedWithMeta, b: LiveStoreEvent.EncodedWithMeta) => boolean
+  isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
   ignoreClientEvents: boolean
 }): number => {
   if (ignoreClientEvents) {
@@ -453,10 +453,10 @@ const rebaseEvents = ({
   baseEventId,
   isClientEvent,
 }: {
-  events: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  events: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
   baseEventId: EventId.EventId
-  isClientEvent: (event: MutationEvent.EncodedWithMeta) => boolean
-}): ReadonlyArray<MutationEvent.EncodedWithMeta> => {
+  isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
+}): ReadonlyArray<LiveStoreEvent.EncodedWithMeta> => {
   let prevEventId = baseEventId
   return events.map((event) => {
     const isLocal = isClientEvent(event)

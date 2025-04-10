@@ -23,14 +23,14 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
   getMutationDef,
   LEADER_MERGE_COUNTER_TABLE,
-  MutationEvent,
+  LiveStoreEvent,
   SCHEMA_META_TABLE,
   SCHEMA_MUTATIONS_META_TABLE,
   SESSION_CHANGESET_META_TABLE,
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Cause, Effect, Inspectable, OtelTracer, Predicate, Runtime, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Inspectable, OtelTracer, Runtime, Schema, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
@@ -168,7 +168,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       confirmUnsavedChanges,
     })
 
-    this.__mutationEventSchema = MutationEvent.makeMutationEventSchemaMemo(schema)
+    this.__mutationEventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
@@ -392,7 +392,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
         makeExecBeforeFirstRun({
           table: ast.tableDef,
           id: ast.id,
-          insertValues: ast.insertValues,
+          explicitDefaultValues: ast.explicitDefaultValues,
           otelContext: options?.otelContext,
         })(this.reactivityGraph.context!)
       }
@@ -414,6 +414,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       return query.run({ otelContext: options?.otelContext, debugRefreshReason: options?.debugRefreshReason })
     }
   }
+
+  atom = (): TODO => {}
 
   // makeLive: {
   //   <T>(def: LiveQueryDef<T, any>): LiveQuery<T, any>
@@ -485,24 +487,24 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   commit: {
-    <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(...list: TMutationArg): void
+    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(...list: TCommitArg): void
     (
-      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
-        ...list: TMutationArg
+      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+        ...list: TCommitArg
       ) => void,
     ): void
-    <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
+    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
       options: StoreMutateOptions,
-      ...list: TMutationArg
+      ...list: TCommitArg
     ): void
     (
       options: StoreMutateOptions,
-      txn: <const TMutationArg extends ReadonlyArray<MutationEvent.PartialForSchema<TSchema>>>(
-        ...list: TMutationArg
+      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+        ...list: TCommitArg
       ) => void,
     ): void
-  } = (firstMutationOrTxnFnOrOptions: any, ...restMutations: any[]) => {
-    const { mutationsEvents, options } = this.getMutateArgs(firstMutationOrTxnFnOrOptions, restMutations)
+  } = (firstEventOrTxnFnOrOptions: any, ...restMutations: any[]) => {
+    const { mutationsEvents, options } = this.getMutateArgs(firstEventOrTxnFnOrOptions, restMutations)
 
     for (const mutationEvent of mutationsEvents) {
       replaceSessionIdSymbol(mutationEvent.args, this.clientSession.sessionId)
@@ -669,34 +671,38 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     )
 
   private getMutateArgs = (
-    firstMutationOrTxnFnOrOptions: any,
+    firstEventOrTxnFnOrOptions: any,
     restMutations: any[],
   ): {
-    mutationsEvents: (MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>)[]
+    mutationsEvents: LiveStoreEvent.PartialForSchema<TSchema>[]
     options: StoreMutateOptions | undefined
   } => {
-    let mutationsEvents: (MutationEvent.ForSchema<TSchema> | MutationEvent.PartialForSchema<TSchema>)[]
+    let mutationsEvents: LiveStoreEvent.PartialForSchema<TSchema>[]
     let options: StoreMutateOptions | undefined
 
-    if (typeof firstMutationOrTxnFnOrOptions === 'function') {
+    if (typeof firstEventOrTxnFnOrOptions === 'function') {
       // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
-      mutationsEvents = firstMutationOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
+      mutationsEvents = firstEventOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
     } else if (
-      firstMutationOrTxnFnOrOptions?.label !== undefined ||
-      firstMutationOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstMutationOrTxnFnOrOptions?.otelContext !== undefined ||
-      firstMutationOrTxnFnOrOptions?.spanLinks !== undefined
+      firstEventOrTxnFnOrOptions?.label !== undefined ||
+      firstEventOrTxnFnOrOptions?.skipRefresh !== undefined ||
+      firstEventOrTxnFnOrOptions?.otelContext !== undefined ||
+      firstEventOrTxnFnOrOptions?.spanLinks !== undefined
     ) {
-      options = firstMutationOrTxnFnOrOptions
+      options = firstEventOrTxnFnOrOptions
       mutationsEvents = restMutations
-    } else if (firstMutationOrTxnFnOrOptions === undefined) {
+    } else if (firstEventOrTxnFnOrOptions === undefined) {
       // When `commit` is called with no arguments (which sometimes happens when dynamically filtering mutations)
       mutationsEvents = []
     } else {
-      mutationsEvents = [firstMutationOrTxnFnOrOptions, ...restMutations]
+      mutationsEvents = [firstEventOrTxnFnOrOptions, ...restMutations]
     }
 
-    mutationsEvents = mutationsEvents.filter((_) => Predicate.hasProperty(_, 'id') === false)
+    // for (const mutationEvent of mutationsEvents) {
+    //   if (mutationEvent.args.id === SessionIdSymbol) {
+    //     mutationEvent.args.id = this.clientSession.sessionId
+    //   }
+    // }
 
     return { mutationsEvents, options }
   }

@@ -64,7 +64,7 @@ Vitest.describe('otel', () => {
 
       const query$ = queryDb({
         query: `select * from todos`,
-        schema: Schema.Array(tables.todos.schema),
+        schema: Schema.Array(tables.todos.rowSchema),
         queriedTables: new Set(['todos']),
       })
       expect(store.query(query$)).toMatchInlineSnapshot('[]')
@@ -100,7 +100,7 @@ Vitest.describe('otel', () => {
       const query$ = queryDb(
         (get) => ({
           query: `select * from todos ${get(filter)}`,
-          schema: Schema.Array(tables.todos.schema).pipe(Schema.headOrElse(() => defaultTodo)),
+          schema: Schema.Array(tables.todos.rowSchema).pipe(Schema.headOrElse(() => defaultTodo)),
         }),
         { label: 'all todos' },
       )
@@ -147,7 +147,7 @@ Vitest.describe('otel', () => {
       const defaultTodo = { id: '', text: '', completed: false }
 
       const filter = computed(() => ({ completed: false }))
-      const query$ = queryDb((get) => tables.todos.query.where(get(filter)).first({ fallback: () => defaultTodo }))
+      const query$ = queryDb((get) => tables.todos.where(get(filter)).first({ fallback: () => defaultTodo }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {

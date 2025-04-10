@@ -1,5 +1,5 @@
 import * as EventId from '../../schema/EventId.js'
-import type { MutationEventFactsGroup } from '../../schema/mutations.js'
+import type { EventDefFactsGroup } from '../../schema/mutations.js'
 import { graphology } from './graphology_.js'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const
@@ -28,7 +28,7 @@ export type HistoryDagNode = {
   mutation: string
   args: any
   /** Facts are being used for conflict detection and history compaction */
-  factsGroup: MutationEventFactsGroup
+  factsGroup: EventDefFactsGroup
   meta?: any
   clientId: string
   sessionId: string | undefined

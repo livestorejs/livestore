@@ -122,7 +122,6 @@ export type IsSingleColumn<TColumns extends Columns | ColumnDefinition<any, any>
  *
  * Hopefully this can be removed in the future
  */
-
 export type ConstraintColumns = Record<string, ColumnDefinition<any, any>> & { __constrained?: never }
 
 export type Index = {

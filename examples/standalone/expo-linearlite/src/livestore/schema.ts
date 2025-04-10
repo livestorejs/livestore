@@ -32,7 +32,7 @@ const app = DbSchema.table(
 
     navigationHistory: DbSchema.text({ default: '/' }),
   },
-  { isSingleton: true, deriveMutations: { clientOnly: true } },
+  { isSingleton: true, deriveEvents: true },
 )
 
 // Linearlite ↓
@@ -45,7 +45,7 @@ const users = DbSchema.table(
     email: DbSchema.text({ nullable: true }),
     photoUrl: DbSchema.text({ nullable: true }),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 
 const issues = DbSchema.table(
@@ -62,7 +62,7 @@ const issues = DbSchema.table(
     createdAt: DbSchema.integer({ default: null, nullable: true }),
     updatedAt: DbSchema.integer({ default: null, nullable: true }),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 
 const comments = DbSchema.table(
@@ -75,7 +75,7 @@ const comments = DbSchema.table(
     createdAt: DbSchema.integer({ default: null, nullable: true }),
     updatedAt: DbSchema.integer({ default: null, nullable: true }),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 
 const reactions = DbSchema.table(
@@ -87,7 +87,7 @@ const reactions = DbSchema.table(
     userId: DbSchema.text({ nullable: false }),
     emoji: DbSchema.text(),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 
 // Activity related to a specific issue
@@ -102,7 +102,7 @@ const activity = DbSchema.table(
     commentId: DbSchema.text({ nullable: true }), // if it's a comment we can get it by id directly
     createdAt: DbSchema.integer({ default: null, nullable: true }),
   },
-  { deriveMutations: true },
+  { deriveEvents: true },
 )
 
 export type User = DbSchema.FromTable.RowDecoded<typeof users>

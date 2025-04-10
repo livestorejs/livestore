@@ -1,9 +1,9 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
-import { DbSchema, makeSchema } from '@livestore/common/schema'
-import type { LiveStoreContextRunning } from '@livestore/livestore'
+import { DbSchema, Events, makeSchema, State } from '@livestore/common/schema'
+import type { LiveStoreContextRunning, Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
-import { Effect } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
@@ -22,45 +22,70 @@ export type AppState = {
   filter: Filter
 }
 
-export const todos = DbSchema.table(
-  'todos',
-  {
+const todos = DbSchema.table({
+  name: 'todos',
+  columns: {
     id: DbSchema.text({ primaryKey: true }),
     text: DbSchema.text({ default: '', nullable: false }),
     completed: DbSchema.boolean({ default: false, nullable: false }),
   },
-  { deriveMutations: { clientOnly: true }, isSingleton: false },
-)
+})
 
-export const app = DbSchema.table(
-  'app',
-  {
+const app = DbSchema.table({
+  name: 'app',
+  columns: {
     id: DbSchema.text({ primaryKey: true, default: 'static' }),
     newTodoText: DbSchema.text({ default: '', nullable: true }),
     filter: DbSchema.text({ default: 'all', nullable: false }),
   },
-  { isSingleton: true },
-)
+})
 
-export const userInfo = DbSchema.table(
-  'UserInfo',
-  {
-    username: DbSchema.text({ default: '' }),
-    text: DbSchema.text({ default: '' }),
-  },
-  { deriveMutations: { clientOnly: true } },
-)
+const userInfo = DbSchema.clientDocument({
+  name: 'UserInfo',
+  schema: Schema.Struct({
+    username: Schema.String,
+    text: Schema.String,
+  }),
+  default: { value: { username: '', text: '' } },
+})
 
-export const AppRouterSchema = DbSchema.table(
-  'AppRouter',
-  {
-    currentTaskId: DbSchema.text({ default: null, nullable: true }),
+const AppRouterSchema = DbSchema.clientDocument({
+  name: 'AppRouter',
+  schema: Schema.Struct({
+    currentTaskId: Schema.String.pipe(Schema.NullOr),
+  }),
+  default: {
+    value: { currentTaskId: null },
+    id: 'singleton',
   },
-  { isSingleton: true, deriveMutations: { clientOnly: true } },
-)
+})
+
+export const events = {
+  todoCreated: Events.global({
+    name: 'todoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean }),
+  }),
+  todoUpdated: Events.global({
+    name: 'todoUpdated',
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String.pipe(Schema.optional),
+      completed: Schema.Boolean.pipe(Schema.optional),
+    }),
+  }),
+  AppRouterSet: AppRouterSchema.set,
+  UserInfoSet: userInfo.set,
+}
+
+const materializers = State.SQLite.materializers(events, {
+  todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed }),
+  todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
+})
 
 export const tables = { todos, app, userInfo, AppRouterSchema }
-export const schema = makeSchema({ tables })
+
+const state = State.SQLite.makeState({ tables, materializers })
+export const schema = makeSchema({ state, events })
 
 export const makeTodoMvcReact = ({
   otelTracer,
@@ -87,15 +112,20 @@ export const makeTodoMvcReact = ({
       }
     }
 
-    const store = yield* createStore({
+    const store: Store<any> = yield* createStore({
       schema,
       storeId: 'default',
       adapter: makeInMemoryAdapter(),
       debug: { instanceId: 'test' },
     })
 
+    const storeWithReactApi = LiveStoreReact.withReactApi(store)
+
     // TODO improve typing of `LiveStoreContext`
-    const storeContext = { stage: 'running', store } as any as LiveStoreContextRunning
+    const storeContext = {
+      stage: 'running',
+      store: storeWithReactApi,
+    } as any as LiveStoreContextRunning & LiveStoreReact.ReactApi
 
     const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
@@ -109,5 +139,5 @@ export const makeTodoMvcReact = ({
 
     const renderCount = makeRenderCount()
 
-    return { wrapper, store, renderCount }
+    return { wrapper, store: storeWithReactApi, renderCount }
   }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))

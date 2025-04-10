@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`useRow > otel > should update the data based on component key strictMode={ strictMode: false } 1`] = `
+exports[`useClientDocument > otel > should update the data based on component key strictMode={ strictMode: false } 1`] = `
 {
   "_name": "createStore",
   "attributes": {
@@ -49,9 +49,9 @@ exports[`useRow > otel > should update the data based on component key strictMod
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "LiveStore:useRow:UserInfo:u1",
+          "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
-            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
@@ -129,9 +129,9 @@ exports[`useRow > otel > should update the data based on component key strictMod
           ],
         },
         {
-          "_name": "LiveStore:useRow:UserInfo:u2",
+          "_name": "LiveStore:useClientDocument:UserInfo:u2",
           "attributes": {
-            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
@@ -196,7 +196,7 @@ exports[`useRow > otel > should update the data based on component key strictMod
 }
 `;
 
-exports[`useRow > otel > should update the data based on component key strictMode={ strictMode: true } 1`] = `
+exports[`useClientDocument > otel > should update the data based on component key strictMode={ strictMode: true } 1`] = `
 {
   "_name": "createStore",
   "attributes": {
@@ -245,9 +245,9 @@ exports[`useRow > otel > should update the data based on component key strictMod
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "LiveStore:useRow:UserInfo:u1",
+          "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
-            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useRow","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "firstStackInfo": "{"frames":[{"name":"renderHook.wrapper","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [
@@ -330,7 +330,7 @@ exports[`useRow > otel > should update the data based on component key strictMod
 }
 `;
 
-exports[`useRow > should update the data based on component key 1`] = `
+exports[`useClientDocument > should update the data based on component key 1`] = `
 {
   "atoms": [
     {
@@ -441,7 +441,7 @@ exports[`useRow > should update the data based on component key 1`] = `
 }
 `;
 
-exports[`useRow > should update the data based on component key 2`] = `
+exports[`useClientDocument > should update the data based on component key 2`] = `
 {
   "atoms": [
     {

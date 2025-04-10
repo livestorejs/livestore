@@ -195,7 +195,7 @@ export class LiveStoreDbQuery<
             ast._tag === 'RowQuery'
               ? makeExecBeforeFirstRun({
                   table: ast.tableDef,
-                  insertValues: ast.insertValues,
+                  explicitDefaultValues: ast.explicitDefaultValues,
                   id: ast.id,
                   otelContext,
                 })

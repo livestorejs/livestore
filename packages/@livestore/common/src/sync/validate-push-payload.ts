@@ -1,11 +1,11 @@
 import { Effect } from '@livestore/utils/effect'
 
-import type { EventId, MutationEvent } from '../schema/mod.js'
+import type { EventId, LiveStoreEvent } from '../schema/mod.js'
 import { InvalidPushError } from './sync.js'
 
 // TODO proper batch validation
 export const validatePushPayload = (
-  batch: ReadonlyArray<MutationEvent.AnyEncodedGlobal>,
+  batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
   currentEventId: EventId.GlobalEventId,
 ) =>
   Effect.gen(function* () {

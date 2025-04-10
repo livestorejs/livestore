@@ -2,7 +2,7 @@ import { type Store } from '@livestore/livestore'
 
 import { priorityOptions } from '@/data/priority-options'
 import { statusOptions } from '@/data/status-options'
-import { Issue, mutations } from '@/lib/livestore/schema'
+import { Issue, events } from '@/lib/livestore/schema'
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
 import { generateKeyBetween } from 'fractional-indexing'
@@ -16,11 +16,7 @@ export const seed = (store: Store, count: number) => {
     if (existingCount >= count) return
     count -= existingCount
     console.log('SEEDING WITH ', count, ' ADDITIONAL ROWS')
-    store.commit(
-      ...Array.from(createIssues(count, highestId?.id, highestKanbanOrder?.kanbanorder)).map((_) =>
-        mutations.createIssueWithDescription(_),
-      ),
-    )
+    store.commit(...Array.from(createIssues(count, highestId?.id, highestKanbanOrder?.kanbanorder)))
   } finally {
     const url = new URL(window.location.href)
     url.searchParams.delete('seed')
@@ -32,7 +28,7 @@ function* createIssues(
   numTasks: number,
   highestId?: number,
   highestKanbanOrder?: string,
-): Generator<Issue & { description: string }> {
+): Generator<typeof events.createIssueWithDescription.Event> {
   if (!highestId) highestId = 0
   let kanbanorder = highestKanbanOrder ?? 'a1'
 
@@ -50,18 +46,17 @@ function* createIssues(
   for (let i = 0; i < numTasks; i++) {
     kanbanorder = generateKeyBetween(kanbanorder, undefined)
     const [title, description] = generateText()
-    const issue = {
+    const issue = events.createIssueWithDescription({
       id: (highestId += 1),
       creator: 'John Doe',
       title,
-      created: now - (numTasks - i) * 5 * ONE_DAY,
-      modified: now - (numTasks - i) * 2 * ONE_DAY,
-      deleted: null,
+      created: new Date(now - (numTasks - i) * 5 * ONE_DAY),
+      modified: new Date(now - (numTasks - i) * 2 * ONE_DAY),
       status: getRandomItem(statuses),
       priority: getRandomItem(priorities),
       kanbanorder,
       description,
-    }
+    })
     yield issue
   }
 }

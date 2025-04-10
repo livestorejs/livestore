@@ -1,6 +1,6 @@
-import { DbSchema, Schema } from '@livestore/livestore'
+import { State, Schema } from '@livestore/livestore'
 
-export const SrollState = Schema.Struct({
+export const ScrollState = Schema.Struct({
   list: Schema.optional(Schema.Number),
   backlog: Schema.optional(Schema.Number),
   todo: Schema.optional(Schema.Number),
@@ -8,8 +8,11 @@ export const SrollState = Schema.Struct({
   done: Schema.optional(Schema.Number),
   canceled: Schema.optional(Schema.Number),
 })
-export type ScrollState = typeof SrollState.Type
 
-export const scrollState = DbSchema.table('scroll_state', DbSchema.json({ schema: SrollState, default: {} }), {
-  deriveMutations: { clientOnly: true },
+export type ScrollState = typeof ScrollState.Type
+
+export const scrollState = State.SQLite.clientDocument({
+  name: 'scroll_state',
+  schema: ScrollState,
+  default: { value: {} },
 })

@@ -37,40 +37,44 @@ export const deriveColQuery: {
 export const makeExecBeforeFirstRun =
   ({
     id,
-    insertValues,
+    explicitDefaultValues,
     table,
     otelContext: otelContext_,
   }: {
     id?: string | SessionIdSymbol | number
-    insertValues?: any
+    explicitDefaultValues?: any
     table: DbSchema.TableDefBase
     otelContext: otel.Context | undefined
   }) =>
   ({ store }: ReactivityGraphContext) => {
-    const otelContext = otelContext_ ?? store.otel.queriesSpanContext
-
-    if (table.options.isSingleton === false) {
-      const idVal = id === SessionIdSymbol ? store.sessionId : id!
-      const rowExists =
-        store.sqliteDbWrapper.select(
-          `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
-          [idVal] as any as PreparedBindValues,
-          { otelContext },
-        ).length === 1
-
-      if (rowExists) return
-
-      if (DbSchema.tableHasDerivedMutations(table) === false) {
-        return shouldNeverHappen(
-          `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveMutations: true' set`,
-        )
-      }
-
-      // It's important that we only commit and don't refresh here, as this function might be called during a render
-      // and otherwise we might end up in a "reactive loop"
-      store.commit(
-        { otelContext, skipRefresh: true, label: `rowQuery:${table.sqliteDef.name}:${idVal}` },
-        table.insert({ id, ...insertValues }),
+    if (DbSchema.tableIsClientDocumentTable(table) === false) {
+      return shouldNeverHappen(
+        `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveEvents: true' set`,
       )
     }
+
+    const otelContext = otelContext_ ?? store.otel.queriesSpanContext
+
+    const idVal = id === SessionIdSymbol ? store.sessionId : id!
+    const rowExists =
+      store.sqliteDbWrapper.select(
+        `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
+        [idVal] as any as PreparedBindValues,
+        { otelContext },
+      ).length === 1
+
+    if (rowExists) return
+
+    // const insertValues = mergeDefaultValues(
+    //   table[DbSchema.ClientDocumentTableDefSymbol].options.default.value,
+    //   explicitDefaultValues,
+    // )
+
+    // It's important that we only commit and don't refresh here, as this function might be called during a render
+    // and otherwise we might end up in a "reactive loop"
+
+    store.commit(
+      { otelContext, skipRefresh: true, label: `rowQuery:${table.sqliteDef.name}:${idVal}` },
+      table.set(explicitDefaultValues, idVal as TODO),
+    )
   }

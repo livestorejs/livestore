@@ -29,7 +29,7 @@ export class CreateTodos extends Schema.TaggedRequest<CreateTodos>()('CreateTodo
 
 export class StreamTodos extends Schema.TaggedRequest<StreamTodos>()('StreamTodos', {
   payload: {},
-  success: Schema.Array(tables.todo.schema),
+  success: Schema.Array(tables.todo.rowSchema),
   failure: Schema.Never,
 }) {}
 

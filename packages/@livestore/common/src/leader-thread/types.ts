@@ -24,7 +24,7 @@ import type {
   SyncBackend,
   UnexpectedError,
 } from '../index.js'
-import type { EventId, LiveStoreSchema, MutationEvent } from '../schema/mod.js'
+import type { EventId, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
 import type * as SyncState from '../sync/syncstate.js'
 import type { ShutdownChannel } from './shutdown-channel.js'
 
@@ -95,7 +95,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
-    mutationEventSchema: MutationEvent.ForMutationDefRecord<any>
+    mutationEventSchema: LiveStoreEvent.ForMutationDefRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
@@ -114,7 +114,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 >() {}
 
 export type ApplyMutation = (
-  mutationEventEncoded: MutationEvent.EncodedWithMeta,
+  mutationEventEncoded: LiveStoreEvent.EncodedWithMeta,
   options?: {
     /** Needed for rehydrateFromMutationLog */
     skipMutationLog?: boolean
@@ -146,7 +146,7 @@ export interface LeaderSyncProcessor {
   /** Used by client sessions to push mutations to the leader thread */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
-    batch: ReadonlyArray<MutationEvent.EncodedWithMeta>,
+    batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
     options?: {
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
@@ -158,7 +158,7 @@ export interface LeaderSyncProcessor {
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
-    mutationEvent: MutationEvent.PartialAnyEncoded
+    mutationEvent: LiveStoreEvent.PartialAnyEncoded
     clientId: string
     sessionId: string
   }) => Effect.Effect<void, UnexpectedError>

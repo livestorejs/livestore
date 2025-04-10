@@ -2,13 +2,14 @@ import { Avatar } from '@/components/common/avatar'
 import { tables } from '@/lib/livestore/schema'
 import { formatDate } from '@/utils/format-date'
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 
 export const Comments = ({ issueId }: { issueId: number }) => {
-  const comments = useQuery(
-    queryDb(tables.comment.query.where('issueId', issueId).orderBy('created', 'desc'), { deps: [issueId] }),
+  const { store } = useStore()
+  const comments = store.useQuery(
+    queryDb(tables.comment.where('issueId', issueId).orderBy('created', 'desc'), { deps: [issueId] }),
   )
 
   return (

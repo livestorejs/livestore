@@ -22,7 +22,7 @@ import {
   EventId,
   getMutationDef,
   LEADER_MERGE_COUNTER_TABLE,
-  MutationEvent,
+  LiveStoreEvent,
   SESSION_CHANGESET_META_TABLE,
 } from '../schema/mod.js'
 import { LeaderAheadError } from '../sync/sync.js'
@@ -34,7 +34,7 @@ import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.js
 import { LeaderThreadCtx } from './types.js'
 
 type LocalPushQueueItem = [
-  mutationEvent: MutationEvent.EncodedWithMeta,
+  mutationEvent: LiveStoreEvent.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
   /** Used to determine whether the batch has become invalid due to a rejected local push batch */
   generation: number,
@@ -106,15 +106,15 @@ export const makeLeaderSyncProcessor = ({
   }
 }): Effect.Effect<LeaderSyncProcessor, UnexpectedError, Scope.Scope> =>
   Effect.gen(function* () {
-    const syncBackendPushQueue = yield* BucketQueue.make<MutationEvent.EncodedWithMeta>()
+    const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.EncodedWithMeta>()
     const localPushBatchSize = params.localPushBatchSize ?? 10
     const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const isClientEvent = (mutationEventEncoded: MutationEvent.EncodedWithMeta) => {
+    const isClientEvent = (mutationEventEncoded: LiveStoreEvent.EncodedWithMeta) => {
       const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
-      return mutationDef.options.clientOnly
+      return mutationDef.eventDef.options.clientOnly
     }
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
@@ -210,12 +210,12 @@ export const makeLeaderSyncProcessor = ({
 
         const mutationDef = getMutationDef(schema, mutation)
 
-        const mutationEventEncoded = new MutationEvent.EncodedWithMeta({
+        const mutationEventEncoded = new LiveStoreEvent.EncodedWithMeta({
           mutation,
           args,
           clientId,
           sessionId,
-          ...EventId.nextPair(syncState.localHead, mutationDef.options.clientOnly),
+          ...EventId.nextPair(syncState.localHead, mutationDef.eventDef.options.clientOnly),
         })
 
         yield* push([mutationEventEncoded])
@@ -247,12 +247,12 @@ export const makeLeaderSyncProcessor = ({
         )
       }
 
-      const pendingMutationEvents = dbMutationLogMissing
+      const pendingEvents = dbMutationLogMissing
         ? []
-        : yield* Mutationlog.getMutationEventsSince({ global: initialBackendHead, client: EventId.clientDefault })
+        : yield* Mutationlog.getEventsSince({ global: initialBackendHead, client: EventId.clientDefault })
 
       const initialSyncState = new SyncState.SyncState({
-        pending: pendingMutationEvents,
+        pending: pendingEvents,
         upstreamHead: { global: initialBackendHead, client: EventId.clientDefault },
         localHead: initialLocalHead,
       })
@@ -261,16 +261,16 @@ export const makeLeaderSyncProcessor = ({
       yield* SubscriptionRef.set(syncStateSref, initialSyncState)
 
       // Rehydrate sync queue
-      if (pendingMutationEvents.length > 0) {
-        const globalPendingMutationEvents = pendingMutationEvents
+      if (pendingEvents.length > 0) {
+        const globalPendingEvents = pendingEvents
           // Don't sync clientOnly mutations
           .filter((mutationEventEncoded) => {
             const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
-            return mutationDef.options.clientOnly === false
+            return mutationDef.eventDef.options.clientOnly === false
           })
 
-        if (globalPendingMutationEvents.length > 0) {
-          yield* BucketQueue.offerAll(syncBackendPushQueue, globalPendingMutationEvents)
+        if (globalPendingEvents.length > 0) {
+          yield* BucketQueue.offerAll(syncBackendPushQueue, globalPendingEvents)
         }
       }
 
@@ -417,9 +417,9 @@ const backgroundApplyLocalPushes = ({
   localPushesLatch: Effect.Latch
   localPushesQueue: BucketQueue.BucketQueue<LocalPushQueueItem>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
-  syncBackendPushQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
+  syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.EncodedWithMeta>
   schema: LiveStoreSchema
-  isClientEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (mutationEventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   otelSpan: otel.Span | undefined
   currentLocalPushGenerationRef: { current: number }
   connectedClientSessionPullQueues: PullQueueSet
@@ -466,7 +466,7 @@ const backgroundApplyLocalPushes = ({
         syncState,
         payload: { _tag: 'local-push', newEvents },
         isClientEvent,
-        isEqualEvent: MutationEvent.isEqualEncoded,
+        isEqualEvent: LiveStoreEvent.isEqualEncoded,
       })
 
       const mergeCounter = yield* incrementMergeCounter(mergeCounterRef)
@@ -555,7 +555,7 @@ const backgroundApplyLocalPushes = ({
       // Don't sync clientOnly mutations
       const filteredBatch = mergeResult.newEvents.filter((mutationEventEncoded) => {
         const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
-        return mutationDef.options.clientOnly === false
+        return mutationDef.eventDef.options.clientOnly === false
       })
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
@@ -568,7 +568,7 @@ const backgroundApplyLocalPushes = ({
   })
 
 type ApplyMutationsBatch = (_: {
-  batchItems: ReadonlyArray<MutationEvent.EncodedWithMeta>
+  batchItems: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
   /**
    * The deferreds are used by the caller to know when the mutation has been processed.
    * Indexes are aligned with `batchItems`
@@ -632,9 +632,9 @@ const backgroundBackendPulling = ({
   advancePushHead,
 }: {
   initialBackendHead: EventId.GlobalEventId
-  isClientEvent: (mutationEventEncoded: MutationEvent.EncodedWithMeta) => boolean
+  isClientEvent: (mutationEventEncoded: LiveStoreEvent.EncodedWithMeta) => boolean
   restartBackendPushing: (
-    filteredRebasedPending: ReadonlyArray<MutationEvent.EncodedWithMeta>,
+    filteredRebasedPending: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
   ) => Effect.Effect<void, UnexpectedError, LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
@@ -652,7 +652,7 @@ const backgroundBackendPulling = ({
 
     if (syncBackend === undefined) return
 
-    const onNewPullChunk = (newEvents: MutationEvent.EncodedWithMeta[], remaining: number) =>
+    const onNewPullChunk = (newEvents: LiveStoreEvent.EncodedWithMeta[], remaining: number) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -673,7 +673,7 @@ const backgroundBackendPulling = ({
           syncState,
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
           isClientEvent,
-          isEqualEvent: MutationEvent.isEqualEncoded,
+          isEqualEvent: LiveStoreEvent.isEqualEncoded,
           ignoreClientEvents: true,
         })
 
@@ -703,7 +703,7 @@ const backgroundBackendPulling = ({
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((mutationEvent) => {
             const mutationDef = getMutationDef(schema, mutationEvent.mutation)
-            return mutationDef.options.clientOnly === false
+            return mutationDef.eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
@@ -783,7 +783,7 @@ const backgroundBackendPulling = ({
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
           yield* onNewPullChunk(
-            batch.map((_) => MutationEvent.EncodedWithMeta.fromGlobal(_.mutationEventEncoded, _.metadata)),
+            batch.map((_) => LiveStoreEvent.EncodedWithMeta.fromGlobal(_.mutationEventEncoded, _.metadata)),
             remaining,
           )
 
@@ -801,7 +801,7 @@ const backgroundBackendPushing = ({
   devtoolsLatch,
   backendPushBatchSize,
 }: {
-  syncBackendPushQueue: BucketQueue.BucketQueue<MutationEvent.EncodedWithMeta>
+  syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
   backendPushBatchSize: number
@@ -920,7 +920,7 @@ const getMergeCounterFromDb = (dbReadModel: SqliteDb) =>
     return result[0]?.mergeCounter ?? 0
   })
 
-const validatePushBatch = (batch: ReadonlyArray<MutationEvent.EncodedWithMeta>, pushHead: EventId.EventId) =>
+const validatePushBatch = (batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>, pushHead: EventId.EventId) =>
   Effect.gen(function* () {
     if (batch.length === 0) {
       return

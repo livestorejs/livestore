@@ -1,4 +1,4 @@
-import { defineMutation } from '@livestore/common/schema'
+import { defineEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
@@ -24,20 +24,20 @@ const facts = {
 }
 
 const mutations = {
-  add: defineMutation('add', Schema.Struct({ value: Schema.Number }), 'UPDATE values SET value = value + $value', {}),
-  multiply: defineMutation(
-    'multiply',
-    Schema.Struct({ value: Schema.Number }),
-    'UPDATE values SET value = value * $value',
-    {
-      facts: ({ value }, currentFacts) => ({
-        modify: {
-          set: value === 0 || currentFacts.has(facts.multiplyByZero) ? [facts.multiplyByZero] : [],
-          unset: value === 0 ? [] : [facts.multiplyByZero],
-        },
-      }),
-    },
-  ),
+  add: defineEvent({
+    name: 'add',
+    schema: Schema.Struct({ value: Schema.Number }),
+  }),
+  multiply: defineEvent({
+    name: 'multiply',
+    schema: Schema.Struct({ value: Schema.Number }),
+    facts: ({ value }, currentFacts) => ({
+      modify: {
+        set: value === 0 || currentFacts.has(facts.multiplyByZero) ? [facts.multiplyByZero] : [],
+        unset: value === 0 ? [] : [facts.multiplyByZero],
+      },
+    }),
+  }),
   // TODO divide by zero
 }
 
@@ -50,8 +50,8 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
         { id: 1, parentId: 0, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { id: 2, parentId: 1, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
       ]
     `)
   })
@@ -64,8 +64,8 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
         { id: 1, parentId: 0, mutation: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
+        { id: 2, parentId: 1, mutation: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero -multiplyByZero" }
       ]
     `)
   })
@@ -79,7 +79,7 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 2, parentId: -1, mutation: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
+        { id: 3, parentId: 0, mutation: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
       ]
     `)
   })
@@ -94,8 +94,8 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 2, parentId: -1, mutation: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
-        { id: 3, parentId: 2, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { id: 3, parentId: 0, mutation: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
+        { id: 4, parentId: 3, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
       ]
     `)
   })
@@ -111,10 +111,10 @@ describe('compactEvents calculator', () => {
 
     expect(expected).toMatchInlineSnapshot(`
       [
-        { id: 0, parentId: -1, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
-        { id: 2, parentId: 0, mutation: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
-        { id: 3, parentId: 2, mutation: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero +multiplyByZero -multiplyByZero" }
-        { id: 4, parentId: 3, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { id: 1, parentId: 0, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
+        { id: 3, parentId: 1, mutation: "multiply", args: { value: 0 }, clientId: "client-id", sessionId: "session-id", facts: "+multiplyByZero" }
+        { id: 4, parentId: 3, mutation: "multiply", args: { value: 2 }, clientId: "client-id", sessionId: "session-id", facts: "?multiplyByZero +multiplyByZero -multiplyByZero" }
+        { id: 5, parentId: 4, mutation: "add", args: { value: 1 }, clientId: "client-id", sessionId: "session-id", facts: "" }
       ]
     `)
   })

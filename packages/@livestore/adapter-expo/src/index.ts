@@ -12,7 +12,7 @@ import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@lives
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer, Mutationlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { MutationEvent } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsExpo from '@livestore/devtools-expo-common/web-channel'
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
@@ -236,7 +236,7 @@ const makeLeaderThread = ({
           push: (batch) =>
             syncProcessor
               .push(
-                batch.map((item) => new MutationEvent.EncodedWithMeta(item)),
+                batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               )
               .pipe(Effect.provide(layer), Effect.scoped),

@@ -31,6 +31,8 @@ export const EventId = Schema.Struct({
   /** Only increments for clientOnly mutations */
   client: ClientEventId,
 
+  // TODO also provide a way to see "confirmation level" of event (e.g. confirmed by leader/sync backend)
+
   // TODO: actually add this field
   // Client only
   // generation: Schema.Number.pipe(Schema.optional),
