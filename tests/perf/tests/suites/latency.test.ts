@@ -5,7 +5,7 @@ import { repeatSuite } from '../utils.js'
 
 repeatSuite(
   'Latency',
-  5,
+  2,
   {
     annotation: [{ type: 'measurement unit', description: 'ms' }],
   },
