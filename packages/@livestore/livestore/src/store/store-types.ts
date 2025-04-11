@@ -57,8 +57,8 @@ export type RefreshReason =
   | DebugRefreshReasonBase
   | {
       _tag: 'commit'
-      /** The mutations that were applied */
-      mutations: ReadonlyArray<LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded>
+      /** The events that were applied */
+      events: ReadonlyArray<LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -83,11 +83,11 @@ export type QueryDebugInfo = {
 
 export type StoreOtel = {
   tracer: otel.Tracer
-  mutationsSpanContext: otel.Context
+  commitsSpanContext: otel.Context
   queriesSpanContext: otel.Context
 }
 
-export type StoreMutateOptions = {
+export type StoreCommitOptions = {
   label?: string
   skipRefresh?: boolean
   spanLinks?: otel.Link[]

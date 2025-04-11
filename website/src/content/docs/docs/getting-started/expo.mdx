@@ -147,7 +147,7 @@ Here's an example:
 
 ```ts
 import { State, makeSchema } from '@livestore/livestore'
-import * as mutations from './mutations'
+import * as events from './events'
 
 const todos = State.SQLite.table({
   name: 'todos',
@@ -167,20 +167,20 @@ export const tables = {
 
 export const schema = makeSchema({
   tables,
-  mutations,
+  events,
   migrations: { strategy: 'from-mutation-log' }, // Define migration strategy
 })
 
-export * as mutations from './mutations'
+export * as events from './events'
 ```
 
 ## Mutations
 
-Create a file named `mutations.ts` inside the `livestore` folder. This file stores the mutations your app uses to interact with the database.
+Create a file named `events.ts` inside the `livestore` folder. This file stores the events your app uses to interact with the database.
 
 A "mutation" is a function that encapsulates raw database queries. It ensures updates to your LiveStore are made in a safe, consistent, and reliable way. Mutations help prevent errors and keep your database operations robust.
 
-Use the `defineMutation`, `Schema`, and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed mutations for secure and efficient database interactions.
+Use the `defineMutation`, `Schema`, and `sql` modules from `@livestore/livestore` to define these functions. These tools let you create fully typed events for secure and efficient database interactions.
 
 Here's an example:
 
@@ -221,7 +221,7 @@ import { LiveStoreProvider } from '@livestore/react'
 import { cuid } from '@livestore/utils/cuid'
 import { Button, Text, unstable_batchedUpdates as batchUpdates } from 'react-native'
 
-import { mutations, schema } from '../livestore/schema'
+import { events, schema } from '../livestore/schema'
 
 const adapter = makePersistedAdapter()
 
@@ -252,20 +252,20 @@ export default function RootLayout() {
 const boot = (store: Store) => {
   // If the todos table is empty, add an initial todo
   if (store.__select(sql`SELECT count(*) as count FROM todos`)[0]!.count === 0) {
-    store.commit(mutations.todoCreated({ id: cuid(), text: '☕ Make coffee' }))
+    store.commit(events.todoCreated({ id: cuid(), text: '☕ Make coffee' }))
   }
 }
 ```
 
 ### Use a mutation
 
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute mutations.
+After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to execute events.
 
 Here's an example:
 
 ```ts
 import { useStore } from '@livestore/react'
-import { todoDeleted } from '@/livestore/mutations'
+import { todoDeleted } from '@/livestore/events'
 
 export default function HomeScreen() {
   const { store } = useStore()
@@ -330,7 +330,7 @@ This will open the devtools in a new tab in your default browser.
 
 ![Devtools Browser Screenshot](../../../../assets/devtools-browser-view.png)
 
-Use the devtools to inspect the state of your LiveStore database, execute mutations, track performance, and more.
+Use the devtools to inspect the state of your LiveStore database, execute events, track performance, and more.
 
 ## Database location
 

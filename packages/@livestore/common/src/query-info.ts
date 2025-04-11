@@ -7,7 +7,7 @@ import type { State } from './schema/mod.js'
  * - a single column value
  * - a sub value in a JSON column
  *
- * This information is currently only used for derived mutations.
+ * This information is currently only used for derived events.
  */
 export type QueryInfo = QueryInfo.None | QueryInfo.Row | QueryInfo.Col | QueryInfo.ColJsonValue | QueryInfo.Write
 // export type QueryInfo<TTableDef extends State.SQLite.TableDefBase = State.SQLite.TableDefBase> =

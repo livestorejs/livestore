@@ -51,7 +51,7 @@ export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHis
   subscriptionId: Schema.String,
 }) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
-  mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal,
+  eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
   metadata: Schema.Option(Schema.JsonValue),
   subscriptionId: Schema.String,
 }) {}
@@ -94,11 +94,11 @@ export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
 }) {}
 
 // TODO refactor this to use push/pull semantics
-export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq', {
-  mutationEventEncoded: LiveStoreEvent.PartialAnyEncoded,
+export class CommitEventReq extends LSDReqResMessage('LSD.Leader.CommitEventReq', {
+  eventEncoded: LiveStoreEvent.PartialAnyEncoded,
 }) {}
 
-export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}
+export class CommitEventRes extends LSDReqResMessage('LSD.Leader.CommitEventRes', {}) {}
 
 export class EventlogReq extends LSDReqResMessage('LSD.Leader.EventlogReq', {}) {}
 
@@ -158,7 +158,7 @@ export const MessageToApp = Schema.Union(
   NetworkStatusSubscribe,
   NetworkStatusUnsubscribe,
   Disconnect,
-  RunMutationReq,
+  CommitEventReq,
   Ping,
   DatabaseFileInfoReq,
   SyncHistorySubscribe,
@@ -178,7 +178,7 @@ export const MessageFromApp = Schema.Union(
   Disconnect,
   SyncPull,
   NetworkStatusRes,
-  RunMutationRes,
+  CommitEventRes,
   Pong,
   DatabaseFileInfoRes,
   SyncHistoryRes,

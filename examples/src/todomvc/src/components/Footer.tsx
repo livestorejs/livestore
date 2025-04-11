@@ -6,7 +6,7 @@ import { uiState$ } from '../livestore/queries.js'
 import { events, tables } from '../livestore/schema.js'
 import type { Filter } from '../types.js'
 
-const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deleted: null }), {
+const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
   label: 'incompleteCount',
 })
 

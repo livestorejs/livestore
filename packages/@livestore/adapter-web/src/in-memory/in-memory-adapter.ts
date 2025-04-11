@@ -43,7 +43,7 @@ export const makeInMemoryAdapter =
         clientId: 'in-memory',
         sessionId: nanoid(6),
         leaderThread: {
-          mutations: {
+          events: {
             pull: () => Stream.never,
             push: () => Effect.void,
           },

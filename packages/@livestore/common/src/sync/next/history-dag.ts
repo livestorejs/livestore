@@ -14,7 +14,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
 
     if (validationResult.success === false) {
       throw new Error(
-        `Mutation ${dagNodes[validationResult.index]!.mutation} requires facts that have not been set yet.\nRequires: ${factsToString(validationResult.requiredFacts)}\nFacts Snapshot: ${factsToString(validationResult.currentSnapshot)}`,
+        `Event ${dagNodes[validationResult.index]!.name} requires facts that have not been set yet.\nRequires: ${factsToString(validationResult.requiredFacts)}\nFacts Snapshot: ${factsToString(validationResult.currentSnapshot)}`,
       )
     }
   }

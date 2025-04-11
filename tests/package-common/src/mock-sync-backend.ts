@@ -32,7 +32,7 @@ export const makeMockSyncBackend: Effect.Effect<MockSyncBackend, UnexpectedError
           Stream.fromQueue(syncPullQueue).pipe(
             Stream.chunks,
             Stream.map((chunk) => ({
-              batch: [...chunk].map((mutationEventEncoded) => ({ mutationEventEncoded, metadata: Option.none() })),
+              batch: [...chunk].map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
               remaining: 0,
             })),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),

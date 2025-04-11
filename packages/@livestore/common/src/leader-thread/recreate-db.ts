@@ -12,7 +12,7 @@ export const recreateDb: Effect.Effect<
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | HttpClient.HttpClient
 > = Effect.gen(function* () {
-  const { dbReadModel, dbEventlog, schema, bootStatusQueue, applyMutation } = yield* LeaderThreadCtx
+  const { dbReadModel, dbEventlog, schema, bootStatusQueue, applyEvent } = yield* LeaderThreadCtx
 
   const migrationOptions = schema.migrationOptions
   let migrationsReport: MigrationsReport
@@ -58,7 +58,7 @@ export const recreateDb: Effect.Effect<
         dbEventlog,
         schema,
         migrationOptions,
-        applyMutation,
+        applyEvent,
         onProgress: ({ done, total }) =>
           Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
       })

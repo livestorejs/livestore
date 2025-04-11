@@ -42,7 +42,7 @@ export type QueryInput<TDecoded, TEncoded, TQueryInfo extends QueryInfo> =
   | QueryBuilder<TDecoded, any, any, TQueryInfo>
 
 /**
- * NOTE `query` is only supposed to read data. Don't use it to insert/update/delete data but use mutations instead.
+ * NOTE `queryDb` is only supposed to read data. Don't use it to insert/update/delete data but use events instead.
  */
 export const queryDb: {
   <TResultSchema, TResult = TResultSchema, TQueryInfo extends QueryInfo = QueryInfo.None>(

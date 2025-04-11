@@ -14,17 +14,16 @@ export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
 
 export type LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
-  TMutationsDefRecord extends EventDefRecord = EventDefRecord,
+  TEventsDefRecord extends EventDefRecord = EventDefRecord,
 > = {
   readonly _Type: LiveStoreSchemaSymbol
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
-  readonly _EventDefMapType: TMutationsDefRecord
+  readonly _EventDefMapType: TEventsDefRecord
 
   // TODO remove in favour of `state`
   readonly tables: Map<string, TableDef>
-  // readonly mutations: EventDefMap
   /** Compound hash of all table defs etc */
   readonly hash: number
   readonly state: State
@@ -54,7 +53,7 @@ export type InputSchema = {
 }
 
 export const makeSchema = <TInputSchema extends InputSchema>(
-  /** Note when using the object-notation for tables/mutations, the object keys are ignored and not used as table/mutation names */
+  /** Note when using the object-notation for tables/events, the object keys are ignored and not used as table/mutation names */
   inputSchema: TInputSchema & {
     /** "hard-reset" is currently the default strategy */
     migrations?: MigrationOptions<FromInputSchema.DeriveSchema<TInputSchema>>
@@ -118,7 +117,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
     _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
     // tables,
-    // mutations,
+    // events,
     state,
     tables: state.tables,
     eventsDefsMap,
@@ -129,18 +128,18 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
 export const getEventDef = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
-  mutationName: string,
+  eventName: string,
 ): {
   eventDef: EventDef.AnyWithoutFn
   materializer: Materializer
 } => {
-  const eventDef = schema.eventsDefsMap.get(mutationName)
+  const eventDef = schema.eventsDefsMap.get(eventName)
   if (eventDef === undefined) {
-    return shouldNeverHappen(`No mutation definition found for \`${mutationName}\`.`)
+    return shouldNeverHappen(`No mutation definition found for \`${eventName}\`.`)
   }
-  const materializer = schema.state.materializers.get(mutationName)
+  const materializer = schema.state.materializers.get(eventName)
   if (materializer === undefined) {
-    return shouldNeverHappen(`No materializer found for \`${mutationName}\`.`)
+    return shouldNeverHappen(`No materializer found for \`${eventName}\`.`)
   }
   return { eventDef, materializer }
 }
@@ -148,7 +147,7 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
 export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
     DbSchemaFromInputSchemaTables<TInputSchema['state']['tables']>,
-    EventDefRecordFromInputSchemaMutations<TInputSchema['events']>
+    EventDefRecordFromInputSchemaEvents<TInputSchema['events']>
   >
 
   /**
@@ -163,10 +162,10 @@ export namespace FromInputSchema {
         ? { [K in keyof TTables as TTables[K]['sqliteDef']['name']]: TTables[K]['sqliteDef'] }
         : never
 
-  type EventDefRecordFromInputSchemaMutations<TMutations extends InputSchema['events']> =
-    TMutations extends ReadonlyArray<EventDef.Any>
-      ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlEvent }
-      : TMutations extends { [name: string]: EventDef.Any }
-        ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlEvent }
+  type EventDefRecordFromInputSchemaEvents<TEvents extends InputSchema['events']> =
+    TEvents extends ReadonlyArray<EventDef.Any>
+      ? { [K in TEvents[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlEvent }
+      : TEvents extends { [name: string]: EventDef.Any }
+        ? { [K in keyof TEvents as TEvents[K]['name']]: TEvents[K] } & { 'livestore.RawSql': RawSqlEvent }
         : never
 }

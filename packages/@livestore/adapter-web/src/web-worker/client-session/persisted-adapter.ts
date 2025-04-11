@@ -190,7 +190,7 @@ export const makePersistedAdapter =
 
       const lockDeferred = yield* Deferred.make<void>()
       // It's important that we resolve the leader election in a blocking way, so there's always a leader.
-      // Otherwise mutations could end up being dropped.
+      // Otherwise events could end up being dropped.
       //
       // Sorry for this pun ...
       let gotLocky = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK)
@@ -410,7 +410,7 @@ export const makePersistedAdapter =
             Effect.withSpan('@livestore/adapter-web:client-session:export'),
           ),
 
-          mutations: {
+          events: {
             pull: ({ cursor }) =>
               runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
             push: (batch) =>

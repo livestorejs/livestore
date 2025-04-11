@@ -11,17 +11,17 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
     const registeredEventDefInfos = schemaManager.getEventDefInfos()
 
     const missingEventDefs = registeredEventDefInfos.filter(
-      (registeredEventDefInfo) => !schema.eventsDefsMap.has(registeredEventDefInfo.mutationName),
+      (registeredEventDefInfo) => !schema.eventsDefsMap.has(registeredEventDefInfo.eventName),
     )
 
     if (missingEventDefs.length > 0) {
       yield* new UnexpectedError({
-        cause: `Missing mutation definitions: ${missingEventDefs.map((info) => info.mutationName).join(', ')}`,
+        cause: `Missing mutation definitions: ${missingEventDefs.map((info) => info.eventName).join(', ')}`,
       })
     }
 
     for (const [, eventDef] of schema.eventsDefsMap) {
-      const registeredEventDefInfo = registeredEventDefInfos.find((info) => info.mutationName === eventDef.name)
+      const registeredEventDefInfo = registeredEventDefInfos.find((info) => info.eventName === eventDef.name)
 
       validateEventDef(eventDef, schemaManager, registeredEventDefInfo)
     }
@@ -30,16 +30,16 @@ export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaMan
   })
 
 export const validateEventDef = (
-  mutationDef: EventDef.AnyWithoutFn,
+  eventDef: EventDef.AnyWithoutFn,
   schemaManager: SchemaManager,
   registeredEventDefInfo: EventDefInfo | undefined,
 ) => {
-  const schemaHash = Schema.hash(mutationDef.schema)
+  const schemaHash = Schema.hash(eventDef.schema)
 
   if (registeredEventDefInfo === undefined) {
     schemaManager.setEventDefInfo({
       schemaHash,
-      mutationName: mutationDef.name,
+      eventName: eventDef.name,
     })
 
     return
@@ -48,14 +48,14 @@ export const validateEventDef = (
   if (schemaHash === registeredEventDefInfo.schemaHash) return
 
   // TODO bring back some form of schema compatibility check (see https://github.com/livestorejs/livestore/issues/69)
-  // const newSchemaIsCompatibleWithOldSchema = Schema.isSubType(jsonSchemaDefFromMgmtStore, mutationDef.schema)
+  // const newSchemaIsCompatibleWithOldSchema = Schema.isSubType(jsonSchemaDefFromMgmtStore, eventDef.schema)
 
   // if (!newSchemaIsCompatibleWithOldSchema) {
-  //   shouldNeverHappen(`Schema for mutation ${mutationDef.name} has changed in an incompatible way`)
+  //   shouldNeverHappen(`Schema for mutation ${eventDef.name} has changed in an incompatible way`)
   // }
 
   schemaManager.setEventDefInfo({
     schemaHash,
-    mutationName: mutationDef.name,
+    eventName: eventDef.name,
   })
 }

@@ -24,8 +24,8 @@ import {
   getEventDef,
   LEADER_MERGE_COUNTER_TABLE,
   LiveStoreEvent,
+  SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
-  SCHEMA_MUTATIONS_META_TABLE,
   SESSION_CHANGESET_META_TABLE,
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv } from '@livestore/utils'
@@ -48,7 +48,7 @@ import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
 import type { StackInfo } from '../utils/stack-info.js'
-import type { RefreshReason, StoreMutateOptions, StoreOptions, StoreOtel, Unsubscribe } from './store-types.js'
+import type { RefreshReason, StoreCommitOptions, StoreOptions, StoreOtel, Unsubscribe } from './store-types.js'
 
 if (isDevEnv()) {
   exposeDebugUtils()
@@ -76,8 +76,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   /** RC-based set to see which queries are currently subscribed to */
   activeQueries: ReferenceCountedSet<LiveQuery<any>>
 
-  // NOTE this is currently exposed for the Devtools databrowser to emit mutation events
-  readonly __mutationEventSchema
+  // NOTE this is currently exposed for the Devtools databrowser to commit events
+  readonly __eventSchema
   readonly syncProcessor: ClientSessionSyncProcessor
 
   readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
@@ -114,12 +114,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       schema,
       clientSession,
       runtime: effectContext.runtime,
-      applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
-        const mutationDef = getEventDef(schema, mutationEventDecoded.mutation)
+      applyEvent: (eventDecoded, { otelContext, withChangeset }) => {
+        const eventDef = getEventDef(schema, eventDecoded.name)
 
         const execArgsArr = getExecArgsFromEvent({
-          mutationDef,
-          mutationEvent: { decoded: mutationEventDecoded, encoded: undefined },
+          eventDef,
+          event: { decoded: eventDecoded, encoded: undefined },
         })
 
         const writeTablesForEvent = new Set<string>()
@@ -168,14 +168,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       confirmUnsavedChanges,
     })
 
-    this.__mutationEventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
+    this.__eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(schema)
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     this.tableRefs = {}
     this.activeQueries = new ReferenceCountedSet()
 
-    const mutationsSpan = otelOptions.tracer.startSpan('LiveStore:mutations', {}, otelOptions.rootSpanContext)
-    const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
+    const commitsSpan = otelOptions.tracer.startSpan('LiveStore:commits', {}, otelOptions.rootSpanContext)
+    const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), commitsSpan)
 
     const queriesSpan = otelOptions.tracer.startSpan('LiveStore:queries', {}, otelOptions.rootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
@@ -192,20 +192,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
     this.otel = {
       tracer: otelOptions.tracer,
-      mutationsSpanContext: otelMuationsSpanContext,
+      commitsSpanContext: otelMuationsSpanContext,
       queriesSpanContext: otelQueriesSpanContext,
     }
 
     // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
     const allTableNames = new Set(
-      // NOTE we're excluding the LiveStore schema and mutations tables as they are not user-facing
+      // NOTE we're excluding the LiveStore schema and events tables as they are not user-facing
       // unless LiveStore is running in the devtools
       __runningInDevtools
         ? this.schema.tables.keys()
         : Array.from(this.schema.tables.keys()).filter(
             (_) =>
               _ !== SCHEMA_META_TABLE &&
-              _ !== SCHEMA_MUTATIONS_META_TABLE &&
+              _ !== SCHEMA_EVENT_DEFS_META_TABLE &&
               _ !== SESSION_CHANGESET_META_TABLE &&
               _ !== LEADER_MERGE_COUNTER_TABLE,
           ),
@@ -231,7 +231,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
           // End the otel spans
           syncSpan.end()
-          mutationsSpan.end()
+          commitsSpan.end()
           queriesSpan.end()
         }),
       )
@@ -436,42 +436,42 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
   // #region commit
   /**
-   * Commit a list of mutations to the store which will immediately update the local database
-   * and sync the mutations across other clients (similar to a `git commit`).
+   * Commit a list of events to the store which will immediately update the local database
+   * and sync the events across other clients (similar to a `git commit`).
    *
    * @example
    * ```ts
-   * store.commit(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))
+   * store.commit(events.todoCreated({ id: nanoid(), text: 'Make coffee' }))
    * ```
    *
-   * You can call `commit` with multiple mutations to apply them in a single database transaction.
+   * You can call `commit` with multiple events to apply them in a single database transaction.
    *
    * @example
    * ```ts
    * const todoId = nanoid()
    * store.commit(
-   *   mutations.todoCreated({ id: todoId, text: 'Make coffee' }),
-   *   mutations.todoCompleted({ id: todoId }))
+   *   events.todoCreated({ id: todoId, text: 'Make coffee' }),
+   *   events.todoCompleted({ id: todoId }))
    * ```
    *
    * For more advanced transaction scenarios, you can pass a synchronous function to `commit` which will receive a callback
-   * to which you can pass multiple mutations to be committed in the same database transaction.
-   * Under the hood this will simply collect all mutations and apply them in a single database transaction.
+   * to which you can pass multiple events to be committed in the same database transaction.
+   * Under the hood this will simply collect all events and apply them in a single database transaction.
    *
    * @example
    * ```ts
    * store.commit((commit) => {
    *   const todoId = nanoid()
    *   if (Math.random() > 0.5) {
-   *     commit(mutations.todoCreated({ id: todoId, text: 'Make coffee' }))
+   *     commit(events.todoCreated({ id: todoId, text: 'Make coffee' }))
    *   } else {
-   *     commit(mutations.todoCompleted({ id: todoId }))
+   *     commit(events.todoCompleted({ id: todoId }))
    *   }
    * })
    * ```
    *
-   * When committing a large batch of mutations, you can also skip the database refresh to improve performance
-   * and call `store.manualRefresh()` after all mutations have been committed.
+   * When committing a large batch of events, you can also skip the database refresh to improve performance
+   * and call `store.manualRefresh()` after all events have been committed.
    *
    * @example
    * ```ts
@@ -481,7 +481,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    *   // ... 1000 more todos
    * ]
    * for (const todo of todos) {
-   *   store.commit({ skipRefresh: true }, mutations.todoCreated({ id: todo.id, text: todo.text }))
+   *   store.commit({ skipRefresh: true }, events.todoCreated({ id: todo.id, text: todo.text }))
    * }
    * store.manualRefresh()
    * ```
@@ -494,31 +494,31 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       ) => void,
     ): void
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
-      options: StoreMutateOptions,
+      options: StoreCommitOptions,
       ...list: TCommitArg
     ): void
     (
-      options: StoreMutateOptions,
+      options: StoreCommitOptions,
       txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
         ...list: TCommitArg
       ) => void,
     ): void
-  } = (firstEventOrTxnFnOrOptions: any, ...restMutations: any[]) => {
-    const { mutationsEvents, options } = this.getMutateArgs(firstEventOrTxnFnOrOptions, restMutations)
+  } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
+    const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    for (const mutationEvent of mutationsEvents) {
-      replaceSessionIdSymbol(mutationEvent.args, this.clientSession.sessionId)
+    for (const event of events) {
+      replaceSessionIdSymbol(event.args, this.clientSession.sessionId)
     }
 
-    if (mutationsEvents.length === 0) return
+    if (events.length === 0) return
 
     const skipRefresh = options?.skipRefresh ?? false
 
-    const mutationsSpan = otel.trace.getSpan(this.otel.mutationsSpanContext)!
-    mutationsSpan.addEvent('commit')
+    const commitsSpan = otel.trace.getSpan(this.otel.commitsSpanContext)!
+    commitsSpan.addEvent('commit')
 
     // console.group('LiveStore.commit', { skipRefresh, wasSyncMessage, label })
-    // mutationsEvents.forEach((_) => console.debug(_.mutation, _.id, _.args))
+    // events.forEach((_) => console.debug(_.name, _.id, _.args))
     // console.groupEnd()
 
     let durationMs: number
@@ -527,26 +527,26 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       'LiveStore:commit',
       {
         attributes: {
-          'livestore.mutationEventsCount': mutationsEvents.length,
-          'livestore.mutationEventTags': mutationsEvents.map((_) => _.mutation),
+          'livestore.eventsCount': events.length,
+          'livestore.eventTags': events.map((_) => _.name),
           'livestore.commitLabel': options?.label,
         },
         links: options?.spanLinks,
       },
-      options?.otelContext ?? this.otel.mutationsSpanContext,
+      options?.otelContext ?? this.otel.commitsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
         try {
           const { writeTables } = (() => {
             try {
-              const applyMutations = () => this.syncProcessor.push(mutationsEvents, { otelContext })
+              const applyEvents = () => this.syncProcessor.push(events, { otelContext })
 
-              if (mutationsEvents.length > 1) {
+              if (events.length > 1) {
                 // TODO: what to do about leader transaction here?
-                return this.sqliteDbWrapper.txn(applyMutations)
+                return this.sqliteDbWrapper.txn(applyEvents)
               } else {
-                return applyMutations()
+                return applyEvents()
               }
             } catch (e: any) {
               console.error(e)
@@ -566,7 +566,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
 
           const debugRefreshReason = {
             _tag: 'commit' as const,
-            mutations: mutationsEvents,
+            events,
             writeTables: Array.from(writeTables),
           }
 
@@ -589,7 +589,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   // #endregion commit
 
   /**
-   * This can be used in combination with `skipRefresh` when applying mutations.
+   * This can be used in combination with `skipRefresh` when committing events.
    * We might need a better solution for this. Let's see.
    */
   manualRefresh = (options?: { label?: string }) => {
@@ -597,7 +597,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     this.otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
       { attributes: { 'livestore.manualRefreshLabel': label } },
-      this.otel.mutationsSpanContext,
+      this.otel.commitsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
         this.reactivityGraph.runDeferredEffects({ otelContext })
@@ -670,19 +670,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       Runtime.runFork(this.effectContext.runtime),
     )
 
-  private getMutateArgs = (
+  private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,
-    restMutations: any[],
+    restEvents: any[],
   ): {
-    mutationsEvents: LiveStoreEvent.PartialForSchema<TSchema>[]
-    options: StoreMutateOptions | undefined
+    events: LiveStoreEvent.PartialForSchema<TSchema>[]
+    options: StoreCommitOptions | undefined
   } => {
-    let mutationsEvents: LiveStoreEvent.PartialForSchema<TSchema>[]
-    let options: StoreMutateOptions | undefined
+    let events: LiveStoreEvent.PartialForSchema<TSchema>[]
+    let options: StoreCommitOptions | undefined
 
     if (typeof firstEventOrTxnFnOrOptions === 'function') {
       // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
-      mutationsEvents = firstEventOrTxnFnOrOptions((arg: any) => mutationsEvents.push(arg))
+      events = firstEventOrTxnFnOrOptions((arg: any) => events.push(arg))
     } else if (
       firstEventOrTxnFnOrOptions?.label !== undefined ||
       firstEventOrTxnFnOrOptions?.skipRefresh !== undefined ||
@@ -690,20 +690,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       firstEventOrTxnFnOrOptions?.spanLinks !== undefined
     ) {
       options = firstEventOrTxnFnOrOptions
-      mutationsEvents = restMutations
+      events = restEvents
     } else if (firstEventOrTxnFnOrOptions === undefined) {
-      // When `commit` is called with no arguments (which sometimes happens when dynamically filtering mutations)
-      mutationsEvents = []
+      // When `commit` is called with no arguments (which sometimes happens when dynamically filtering events)
+      events = []
     } else {
-      mutationsEvents = [firstEventOrTxnFnOrOptions, ...restMutations]
+      events = [firstEventOrTxnFnOrOptions, ...restEvents]
     }
 
-    // for (const mutationEvent of mutationsEvents) {
-    //   if (mutationEvent.args.id === SessionIdSymbol) {
-    //     mutationEvent.args.id = this.clientSession.sessionId
+    // for (const event of events) {
+    //   if (event.args.id === SessionIdSymbol) {
+    //     event.args.id = this.clientSession.sessionId
     //   }
     // }
 
-    return { mutationsEvents, options }
+    return { events, options }
   }
 }

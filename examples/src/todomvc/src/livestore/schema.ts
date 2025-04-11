@@ -26,11 +26,13 @@ const todos = State.SQLite.table({
   },
 })
 
-// For client-only state LiveStore offers a client-document concept which
+// LiveStore also offers a client-document concept which simplifies local-only state management
+// giving you the convenience of `React.useState` with a derived "setter" event / materializer.
 const uiState = State.SQLite.clientDocument({
   name: 'uiState',
   schema: Schema.Struct({ newTodoText: Schema.String, filter: Filter }),
   default: {
+    // Using the SessionIdSymbol as default id means the UiState will be scoped per client session (i.e. browser tab).
     id: SessionIdSymbol,
     value: { newTodoText: '', filter: 'all' },
   },

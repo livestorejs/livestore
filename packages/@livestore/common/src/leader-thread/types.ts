@@ -95,11 +95,11 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
-    mutationEventSchema: LiveStoreEvent.ForEventDefRecord<any>
+    eventSchema: LiveStoreEvent.ForEventDefRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
-    applyMutation: ApplyMutation
+    applyEvent: ApplyEvent
     initialState: {
       leaderHead: EventId.EventId
       migrationsReport: MigrationsReport
@@ -113,8 +113,8 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
   }
 >() {}
 
-export type ApplyMutation = (
-  mutationEventEncoded: LiveStoreEvent.EncodedWithMeta,
+export type ApplyEvent = (
+  eventEncoded: LiveStoreEvent.EncodedWithMeta,
   options?: {
     /** Needed for rehydrateFromEventlog */
     skipEventlog?: boolean
@@ -143,7 +143,7 @@ export interface LeaderSyncProcessor {
     Scope.Scope
   >
 
-  /** Used by client sessions to push mutations to the leader thread */
+  /** Used by client sessions to push events to the leader thread */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
@@ -158,7 +158,7 @@ export interface LeaderSyncProcessor {
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
-    mutationEvent: LiveStoreEvent.PartialAnyEncoded
+    event: LiveStoreEvent.PartialAnyEncoded
     clientId: string
     sessionId: string
   }) => Effect.Effect<void, UnexpectedError>

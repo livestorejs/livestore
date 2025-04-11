@@ -26,10 +26,10 @@ sidebar:
 - Live queries
   - Db queries `queryDb()`
   - Computed queries `computed()`
-- Mutation
-  - Mutation definition
-  - Mutation event
-  - Mutation eventlog
+- Events
+  - Event definition
+  - Event
+  - Eventlog
 - Devtools
 - Sync backend
   - A central server that is responsible for syncing the mutation eventlog between clients

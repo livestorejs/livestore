@@ -2,7 +2,7 @@ import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/ut
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { EVENTLOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
+import { EVENTLOG_META_TABLE, SCHEMA_EVENT_DEFS_META_TABLE, SCHEMA_META_TABLE } from '../schema/mod.js'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -150,7 +150,7 @@ const listenToDevtools = ({
                   dbEventlog.import(data)
 
                   dbReadModel.destroy()
-                } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
+                } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_EVENT_DEFS_META_TABLE)) {
                   // Is read model
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
@@ -226,14 +226,14 @@ const listenToDevtools = ({
 
               return
             }
-            case 'LSD.Leader.RunMutationReq': {
+            case 'LSD.Leader.CommitEventReq': {
               yield* syncProcessor.pushPartial({
-                mutationEvent: decodedEvent.mutationEventEncoded,
+                event: decodedEvent.eventEncoded,
                 clientId: `devtools-${clientId}`,
                 sessionId: `devtools-${clientId}`,
               })
 
-              yield* sendMessage(Devtools.Leader.RunMutationRes.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.CommitEventRes.make({ ...reqPayload }))
 
               return
             }
@@ -245,10 +245,10 @@ const listenToDevtools = ({
                 yield* syncBackend.pull(Option.none()).pipe(
                   Stream.map((_) => _.batch),
                   Stream.flattenIterables,
-                  Stream.tap(({ mutationEventEncoded, metadata }) =>
+                  Stream.tap(({ eventEncoded, metadata }) =>
                     sendMessage(
                       Devtools.Leader.SyncHistoryRes.make({
-                        mutationEventEncoded,
+                        eventEncoded,
                         metadata,
                         subscriptionId,
                         ...reqPayload,

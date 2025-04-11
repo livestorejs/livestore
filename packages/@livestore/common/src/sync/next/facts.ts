@@ -176,7 +176,7 @@ export const factsIntersect = (setA: EventDefFacts, setB: EventDefFacts): boolea
   return false
 }
 
-export const getFactsGroupForMutationArgs = ({
+export const getFactsGroupForEventArgs = ({
   factsCallback,
   args,
   currentFacts,
@@ -200,7 +200,7 @@ export const getFactsGroupForMutationArgs = ({
         }
       }
 
-      notYetImplemented(`getFactsGroupForMutationArgs: ${prop.toString()} is not yet implemented`)
+      notYetImplemented(`getFactsGroupForEventArgs: ${prop.toString()} is not yet implemented`)
     },
   })
 

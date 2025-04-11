@@ -305,7 +305,7 @@ export namespace ClientDocumentTableDef {
       readonly name: `${TName}Set`
       readonly schema: Schema.Schema<any>
       readonly Event: {
-        readonly mutation: `${TName}Set`
+        readonly name: `${TName}Set`
         readonly args: any
       }
       readonly options: { derived: true; clientOnly: true; facts: undefined }

@@ -51,12 +51,12 @@ export type EventDef<TName extends string, TType, TEncoded = TType, TDerived ext
 
   /** Helper function to construct a partial mutation event */
   (args: TType): {
-    mutation: TName
+    name: TName
     args: TType
   }
 
   readonly Event: {
-    mutation: TName
+    name: TName
     args: TType
   }
 }
@@ -140,7 +140,7 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
     if (res._tag === 'Left') {
       shouldNeverHappen(`Invalid event args for event '${name}':`, res.left.message, '\n')
     }
-    return { mutation: name, args }
+    return { name: name, args }
   }
 
   Object.defineProperty(makePartialEvent, 'name', { value: name })
@@ -192,7 +192,7 @@ export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(
 }
 
 export const materializers = <TInputRecord extends Record<string, EventDef.AnyWithoutFn>>(
-  mutationDefRecord: TInputRecord,
+  eventDefRecord: TInputRecord,
   handlers: {
     [TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
       TInputRecord[keyof TInputRecord],

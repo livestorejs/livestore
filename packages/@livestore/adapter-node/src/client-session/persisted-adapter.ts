@@ -295,7 +295,7 @@ const makeLeaderThread = ({
     )
 
     const leaderThread = {
-      mutations: {
+      events: {
         pull: ({ cursor }) =>
           runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie),
         push: (batch) =>

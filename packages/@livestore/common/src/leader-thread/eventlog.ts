@@ -72,7 +72,7 @@ export const getEventsSince = (
             readModelEvent.idGlobal === eventlogEvent.idGlobal && readModelEvent.idClient === eventlogEvent.idClient,
         )
         return LiveStoreEvent.EncodedWithMeta.make({
-          mutation: eventlogEvent.mutation,
+          name: eventlogEvent.name,
           args: eventlogEvent.argsJson,
           id: { global: eventlogEvent.idGlobal, client: eventlogEvent.idClient },
           parentId: { global: eventlogEvent.parentIdGlobal, client: eventlogEvent.parentIdClient },
@@ -112,24 +112,24 @@ export const updateBackendHead = (dbEventlog: SqliteDb, head: EventId.EventId) =
   dbEventlog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head.global}`)
 
 export const insertIntoEventlog = (
-  mutationEventEncoded: LiveStoreEvent.EncodedWithMeta,
+  eventEncoded: LiveStoreEvent.EncodedWithMeta,
   dbEventlog: SqliteDb,
-  mutationDefSchemaHash: number,
+  eventDefSchemaHash: number,
   clientId: string,
   sessionId: string,
 ) =>
   Effect.gen(function* () {
     // Check history consistency during LS_DEV
-    if (LS_DEV && mutationEventEncoded.parentId.global !== EventId.ROOT.global) {
-      const parentMutationExists =
+    if (LS_DEV && eventEncoded.parentId.global !== EventId.ROOT.global) {
+      const parentEventExists =
         dbEventlog.select<{ count: number }>(
           `SELECT COUNT(*) as count FROM ${EVENTLOG_META_TABLE} WHERE idGlobal = ? AND idClient = ?`,
-          [mutationEventEncoded.parentId.global, mutationEventEncoded.parentId.client] as any as PreparedBindValues,
+          [eventEncoded.parentId.global, eventEncoded.parentId.client] as any as PreparedBindValues,
         )[0]!.count === 1
 
-      if (parentMutationExists === false) {
+      if (parentEventExists === false) {
         shouldNeverHappen(
-          `Parent mutation ${mutationEventEncoded.parentId.global},${mutationEventEncoded.parentId.client} does not exist`,
+          `Parent mutation ${eventEncoded.parentId.global},${eventEncoded.parentId.client} does not exist`,
         )
       }
     }
@@ -141,16 +141,16 @@ export const insertIntoEventlog = (
         tableName: EVENTLOG_META_TABLE,
         columns: eventlogMetaTable.sqliteDef.columns,
         values: {
-          idGlobal: mutationEventEncoded.id.global,
-          idClient: mutationEventEncoded.id.client,
-          parentIdGlobal: mutationEventEncoded.parentId.global,
-          parentIdClient: mutationEventEncoded.parentId.client,
-          mutation: mutationEventEncoded.mutation,
-          argsJson: mutationEventEncoded.args ?? {},
+          idGlobal: eventEncoded.id.global,
+          idClient: eventEncoded.id.client,
+          parentIdGlobal: eventEncoded.parentId.global,
+          parentIdClient: eventEncoded.parentId.client,
+          name: eventEncoded.name,
+          argsJson: eventEncoded.args ?? {},
           clientId,
           sessionId,
-          schemaHash: mutationDefSchemaHash,
-          syncMetadataJson: mutationEventEncoded.meta.syncMetadata,
+          schemaHash: eventDefSchemaHash,
+          syncMetadataJson: eventEncoded.meta.syncMetadata,
         },
       }),
     )
@@ -162,15 +162,15 @@ export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.EncodedWi
 
     // TODO try to do this in a single query
     for (let i = 0; i < items.length; i++) {
-      const mutationEvent = items[i]!
+      const event = items[i]!
 
       yield* execSql(
         dbEventlog,
         ...updateRows({
           tableName: EVENTLOG_META_TABLE,
           columns: eventlogMetaTable.sqliteDef.columns,
-          where: { idGlobal: mutationEvent.id.global, idClient: mutationEvent.id.client },
-          updateValues: { syncMetadataJson: mutationEvent.meta.syncMetadata },
+          where: { idGlobal: event.id.global, idClient: event.id.client },
+          updateValues: { syncMetadataJson: event.meta.syncMetadata },
         }),
       )
     }

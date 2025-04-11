@@ -87,7 +87,7 @@ export type QueryableSingle<TTableDef extends TableDefBase> = QueryBuilder<
 export namespace FromInputState {
   // export type DeriveSchema<TInputSchema extends InputState> = <
   //   DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
-  //   EventDefRecordFromInputSchemaMutations<TInputSchema['materializers']>
+  //   EventDefRecordFromInputSchemaEvents<TInputSchema['materializers']>
   // >
 
   // export type FromInputState<TTables extends InputState['tables']> =

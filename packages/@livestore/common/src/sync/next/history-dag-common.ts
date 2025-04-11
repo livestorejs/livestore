@@ -25,7 +25,7 @@ export const rootParentId = EventId.make({ global: EventId.ROOT.global - 1, clie
 export type HistoryDagNode = {
   id: EventId.EventId
   parentId: EventId.EventId
-  mutation: string
+  name: string
   args: any
   /** Facts are being used for conflict detection and history compaction */
   factsGroup: EventDefFactsGroup
@@ -38,7 +38,7 @@ export const rootEventNode: HistoryDagNode = {
   id: EventId.ROOT,
   parentId: rootParentId,
   // unused below
-  mutation: '__Root__',
+  name: '__Root__',
   args: {},
   factsGroup: { modifySet: new Map(), modifyUnset: new Map(), depRequire: new Map(), depRead: new Map() },
   clientId: 'root',

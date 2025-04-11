@@ -231,7 +231,7 @@ const makeLeaderThread = ({
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
       const leaderThread = {
-        mutations: {
+        events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
             syncProcessor

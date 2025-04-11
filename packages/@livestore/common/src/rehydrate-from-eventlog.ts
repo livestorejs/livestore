@@ -2,7 +2,7 @@ import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type MigrationOptionsFromEventlog, type SqliteDb, UnexpectedError } from './adapter-types.js'
-import type { ApplyMutation } from './leader-thread/mod.js'
+import type { ApplyEvent } from './leader-thread/mod.js'
 import type { EventDef, EventlogMetaRow, LiveStoreSchema } from './schema/mod.js'
 import { EventId, EVENTLOG_META_TABLE, getEventDef, LiveStoreEvent } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
@@ -15,61 +15,58 @@ export const rehydrateFromEventlog = ({
   schema,
   migrationOptions,
   onProgress,
-  applyMutation,
+  applyEvent,
 }: {
   dbEventlog: SqliteDb
   // db: SqliteDb
   schema: LiveStoreSchema
   migrationOptions: MigrationOptionsFromEventlog
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
-  applyMutation: ApplyMutation
+  applyEvent: ApplyEvent
 }) =>
   Effect.gen(function* () {
-    const mutationsCount = dbEventlog.select<{ count: number }>(
-      `SELECT COUNT(*) AS count FROM ${EVENTLOG_META_TABLE}`,
-    )[0]!.count
+    const eventsCount = dbEventlog.select<{ count: number }>(`SELECT COUNT(*) AS count FROM ${EVENTLOG_META_TABLE}`)[0]!
+      .count
 
-    const hashMutation = memoizeByRef((mutation: EventDef.AnyWithoutFn) => Schema.hash(mutation.schema))
+    const hashEvent = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
 
-    const processMutation = (row: EventlogMetaRow) =>
+    const processEvent = (row: EventlogMetaRow) =>
       Effect.gen(function* () {
-        const mutationDef = getEventDef(schema, row.mutation)
+        const eventDef = getEventDef(schema, row.name)
 
-        if (migrationOptions.excludeMutations?.has(row.mutation) === true) return
+        if (migrationOptions.excludeEvents?.has(row.name) === true) return
 
-        if (hashMutation(mutationDef.eventDef) !== row.schemaHash) {
-          yield* Effect.logWarning(
-            `Schema hash mismatch for mutation ${row.mutation}. Trying to apply mutation anyway.`,
-          )
+        if (hashEvent(eventDef.eventDef) !== row.schemaHash) {
+          yield* Effect.logWarning(`Schema hash mismatch for mutation ${row.name}. Trying to apply mutation anyway.`)
         }
 
         const args = JSON.parse(row.argsJson)
 
         // Checking whether the schema has changed in an incompatible way
-        yield* Schema.decodeUnknown(mutationDef.eventDef.schema)(args).pipe(
+        yield* Schema.decodeUnknown(eventDef.eventDef.schema)(args).pipe(
           Effect.mapError((cause) =>
             UnexpectedError.make({
               cause,
               note: `\
 There was an error during rehydrating from the mutation log while decoding
-the persisted mutation event args for mutation "${row.mutation}".
+the persisted mutation event args for mutation "${row.name}".
 This likely means the schema has changed in an incompatible way.
 `,
             }),
           ),
         )
 
-        const mutationEventEncoded = LiveStoreEvent.EncodedWithMeta.make({
+        const eventEncoded = LiveStoreEvent.EncodedWithMeta.make({
           id: { global: row.idGlobal, client: row.idClient },
           parentId: { global: row.parentIdGlobal, client: row.parentIdClient },
-          mutation: row.mutation,
+          name: row.name,
           args,
           clientId: row.clientId,
           sessionId: row.sessionId,
         })
 
-        yield* applyMutation(mutationEventEncoded, { skipEventlog: true })
-      }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromEventlog:processMutation`))
+        yield* applyEvent(eventEncoded, { skipEventlog: true })
+      }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromEventlog:processEvent`))
 
     const CHUNK_SIZE = 100
 
@@ -80,7 +77,7 @@ ORDER BY idGlobal ASC, idClient ASC
 LIMIT ${CHUNK_SIZE}
 `)
 
-    let processedMutations = 0
+    let processedEvents = 0
 
     yield* Stream.unfoldChunk<Chunk.Chunk<EventlogMetaRow> | { _tag: 'Initial ' }, EventlogMetaRow>(
       { _tag: 'Initial ' },
@@ -107,10 +104,10 @@ LIMIT ${CHUNK_SIZE}
       Stream.bufferChunks({ capacity: 2 }),
       Stream.tap((row) =>
         Effect.gen(function* () {
-          yield* processMutation(row)
+          yield* processEvent(row)
 
-          processedMutations++
-          yield* onProgress({ done: processedMutations, total: mutationsCount })
+          processedEvents++
+          yield* onProgress({ done: processedEvents, total: eventsCount })
         }),
       ),
       Stream.runDrain,

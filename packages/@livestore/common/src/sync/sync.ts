@@ -48,7 +48,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   ) => Stream.Stream<
     {
       batch: ReadonlyArray<{
-        mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal
+        eventEncoded: LiveStoreEvent.AnyEncodedGlobal
         metadata: Option.Option<TSyncMetadata>
       }>
       remaining: number

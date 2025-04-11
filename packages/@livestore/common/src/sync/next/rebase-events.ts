@@ -5,7 +5,7 @@ import {
   applyFactGroups,
   factsIntersect,
   type FactValidationResult,
-  getFactsGroupForMutationArgs,
+  getFactsGroupForEventArgs,
   validateFacts,
 } from './facts.js'
 import type { HistoryDagNode } from './history-dag-common.js'
@@ -20,7 +20,7 @@ export type RebaseInput = {
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
     rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
-    mutationDefs: Record<string, EventDef.Any>
+    eventDefs: Record<string, EventDef.Any>
   }) => FactValidationResult
 }
 
@@ -76,11 +76,11 @@ export const rebaseEvents = ({
         factsIntersect(pending.factsGroup.modifySet, remote.factsGroup.modifySet),
       ),
     })),
-    validate: ({ rebasedLocalEvents, mutationDefs }) =>
+    validate: ({ rebasedLocalEvents, eventDefs }) =>
       validateFacts({
         factGroups: rebasedLocalEvents.map((event) =>
-          getFactsGroupForMutationArgs({
-            factsCallback: mutationDefs[event.mutation]!.options.facts,
+          getFactsGroupForEventArgs({
+            factsCallback: eventDefs[event.name]!.options.facts,
             args: event.args,
             currentFacts: new Map(),
           }),
@@ -95,7 +95,7 @@ export const rebaseEvents = ({
       ({
         id: EventId.make({ global: headGlobalId + index + 1, client: EventId.clientDefault }),
         parentId: EventId.make({ global: headGlobalId + index, client: EventId.clientDefault }),
-        mutation: event.mutation,
+        name: event.name,
         args: event.args,
         clientId,
         sessionId,

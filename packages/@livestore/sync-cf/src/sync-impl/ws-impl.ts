@@ -83,10 +83,10 @@ export const makeCfSync =
                       pullResponseReceived = true
 
                       if (stashedPullBatch.length > 0 && msg.remaining === 0) {
-                        const pullResHead = msg.batch.at(-1)?.mutationEventEncoded.id ?? EventId.ROOT.global
+                        const pullResHead = msg.batch.at(-1)?.eventEncoded.id ?? EventId.ROOT.global
                         // Index where stashed events are greater than pullResHead
                         const newPartialBatchIndex = stashedPullBatch.findIndex(
-                          (batchItem) => batchItem.mutationEventEncoded.id > pullResHead,
+                          (batchItem) => batchItem.eventEncoded.id > pullResHead,
                         )
                         const batchWithNewStashedEvents =
                           newPartialBatchIndex === -1 ? [] : stashedPullBatch.slice(newPartialBatchIndex)

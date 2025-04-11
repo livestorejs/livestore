@@ -8,7 +8,7 @@ import type { LiveStoreSchema } from '../schema/mod.js'
 import { LiveStoreEvent } from '../schema/mod.js'
 import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.js'
 import { sql } from '../util.js'
-import { makeApplyMutation } from './apply-mutation.js'
+import { makeApplyEvent } from './apply-event.js'
 import * as Eventlog from './eventlog.js'
 import { bootDevtools } from './leader-worker-devtools.js'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.js'
@@ -116,7 +116,7 @@ export const makeLeaderThreadLayer = ({
         }
       : { enabled: false as const }
 
-    const applyMutation = yield* makeApplyMutation({ schema, dbReadModel, dbEventlog })
+    const applyEvent = yield* makeApplyEvent({ schema, dbReadModel, dbEventlog })
 
     const ctx = {
       schema,
@@ -126,12 +126,12 @@ export const makeLeaderThreadLayer = ({
       dbReadModel,
       dbEventlog,
       makeSqliteDb,
-      mutationEventSchema: LiveStoreEvent.makeEventDefSchema(schema),
+      eventSchema: LiveStoreEvent.makeEventDefSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
       syncBackend,
       syncProcessor,
-      applyMutation,
+      applyEvent,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       // State will be set during `bootLeaderThread`
@@ -168,7 +168,7 @@ const makeInitialBlockingSyncContext = ({
   Effect.gen(function* () {
     const ctx = {
       isDone: false,
-      processedMutations: 0,
+      processedEvents: 0,
       total: -1,
     }
 
@@ -191,10 +191,10 @@ const makeInitialBlockingSyncContext = ({
             ctx.total = remaining + processed
           }
 
-          ctx.processedMutations += processed
+          ctx.processedEvents += processed
           yield* Queue.offer(bootStatusQueue, {
             stage: 'syncing',
-            progress: { done: ctx.processedMutations, total: ctx.total },
+            progress: { done: ctx.processedEvents, total: ctx.total },
           })
 
           if (remaining === 0 && blockingDeferred !== undefined) {

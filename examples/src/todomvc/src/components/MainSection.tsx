@@ -9,7 +9,7 @@ const visibleTodos$ = queryDb(
   (get) => {
     const { filter } = get(uiState$)
     return tables.todos.where({
-      deleted: null,
+      deletedAt: null,
       completed: filter === 'all' ? undefined : filter === 'completed',
     })
   },

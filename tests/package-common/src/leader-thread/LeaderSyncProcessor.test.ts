@@ -33,14 +33,14 @@ import { events, schema, tables } from './fixture.js'
 
 /*
 TODO:
-- batch queued mutations which are about to be pushed
+- batch queued events which are about to be pushed
 - rebase handling
 - throughput metrics
 - rebase thrashing tests
   - general idea: make rebase take 10ms but cause new pull events every 5ms
 - benchmarks
-  - 10.000 mutations
-  - 100.000 mutations
+  - 10.000 events
+  - 100.000 events
 - expose sync state: number of events left to pull + push
 - make connected state settable
 */
@@ -131,7 +131,7 @@ Vitest.describe('LeaderSyncProcessor', () => {
             events.todoCreated({ id: `local-push-${i}`, text: `local-push-${i}`, completed: false }),
           ),
         { concurrency: 'unbounded' },
-      ).pipe(Effect.withSpan(`@livestore/common-tests:sync:mutations(${numberOfPushes})`))
+      ).pipe(Effect.withSpan(`@livestore/common-tests:sync:events(${numberOfPushes})`))
 
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
         Stream.takeUntil((_) => _.localHead.global === numberOfPushes),
@@ -262,7 +262,7 @@ const LeaderThreadCtxLive = ({
         ...event
       }: Omit<typeof LiveStoreEvent.EncodedWithMeta.Encoded, 'clientId' | 'sessionId'>) =>
         new LiveStoreEvent.EncodedWithMeta({
-          ...Schema.encodeUnknownSync(leaderThreadCtx.mutationEventSchema)({
+          ...Schema.encodeUnknownSync(leaderThreadCtx.eventSchema)({
             ...event,
             clientId: leaderThreadCtx.clientId,
             sessionId: 'static-session-id',

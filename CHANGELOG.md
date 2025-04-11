@@ -59,7 +59,7 @@
 - Breaking: Renamed `makeBackend` to `backend` in sync options.
 - Breaking `@livestore/react`: `useClientDocument` now only works with for tables with client-only derived mutations.
 - Breaking: Instead of calling `query$.run()` / `query$.runAndDestroy()`, please use `store.query(query$)` instead.
-- Breaking: Removed `store.__execute` from `Store`. Please use `store.commit(rawSqlMutation({ sql }))` instead.
+- Breaking: Removed `store.__execute` from `Store`.
 - Breaking: Removed `globalReactivityGraph` and explicit passing of `reactivityGraph` to queries.
 - Breaking: Removed `persisted` option from `store.commit`. This will be superceded by [mutation log compaction](https://github.com/livestorejs/livestore/issues/136) in the future.
 - Breaking: The new syncing implementation required some changes to the storage format. The `liveStoreStorageFormatVersion` has been bumped to `3` which will create new database files.
@@ -127,7 +127,7 @@
 
 - Fix linting
 - Separate mutation handler from mutation definition
-- Get rid of `excludeFromMutationLog` (etc)
+- Get rid of `excludeFromEventlog` (etc)
 - Syncing
   - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)

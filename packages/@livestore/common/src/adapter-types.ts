@@ -47,7 +47,7 @@ export const LeaderPullCursor = Schema.Struct({
 export type LeaderPullCursor = typeof LeaderPullCursor.Type
 
 export interface ClientSessionLeaderThreadProxy {
-  mutations: {
+  events: {
     pull: (args: {
       cursor: LeaderPullCursor
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
@@ -213,11 +213,11 @@ export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effe
 export interface MigrationOptionsFromEventlog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   strategy: 'from-mutation-log'
   /**
-   * Mutations to exclude in the mutation log
+   * Events to exclude in the mutation log
    *
    * @default new Set(['livestore.RawSql'])
    */
-  excludeMutations?: ReadonlySet<keyof TSchema['_EventDefMapType'] & string>
+  excludeEvents?: ReadonlySet<keyof TSchema['_EventDefMapType'] & string>
   hooks?: Partial<MigrationHooks>
   logging?: {
     excludeAffectedRows?: (sqlStmt: string) => boolean

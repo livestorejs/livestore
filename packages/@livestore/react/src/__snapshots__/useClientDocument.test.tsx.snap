@@ -24,15 +24,15 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:mutations",
+      "_name": "LiveStore:commits",
       "children": [
         {
           "_name": "LiveStore:commit",
           "attributes": {
-            "livestore.mutationEventTags": [
+            "livestore.eventTags": [
               "UserInfoSet",
             ],
-            "livestore.mutationEventsCount": 1,
+            "livestore.eventsCount": 1,
           },
           "children": [
             {
@@ -72,10 +72,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
               "_name": "LiveStore:commit",
               "attributes": {
                 "livestore.commitLabel": "rowQuery:UserInfo:u1",
-                "livestore.mutationEventTags": [
+                "livestore.eventTags": [
                   "UserInfoSet",
                 ],
-                "livestore.mutationEventsCount": 1,
+                "livestore.eventsCount": 1,
               },
               "children": [
                 {
@@ -230,15 +230,15 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:mutations",
+      "_name": "LiveStore:commits",
       "children": [
         {
           "_name": "LiveStore:commit",
           "attributes": {
-            "livestore.mutationEventTags": [
+            "livestore.eventTags": [
               "UserInfoSet",
             ],
-            "livestore.mutationEventsCount": 1,
+            "livestore.eventsCount": 1,
           },
           "children": [
             {
@@ -278,10 +278,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
               "_name": "LiveStore:commit",
               "attributes": {
                 "livestore.commitLabel": "rowQuery:UserInfo:u1",
-                "livestore.mutationEventTags": [
+                "livestore.eventTags": [
                   "UserInfoSet",
                 ],
-                "livestore.mutationEventsCount": 1,
+                "livestore.eventsCount": 1,
               },
               "children": [
                 {

@@ -61,7 +61,7 @@ Also see: https://github.com/electric-sql/electric/blob/main/packages/typescript
 const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   id: Schema.NumberFromString,
   parentId: Schema.NumberFromString,
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.parseJson(Schema.Any),
   clientId: Schema.String,
   sessionId: Schema.String,
@@ -209,7 +209,7 @@ export const makeSyncBackend =
           readonly [
             Chunk.Chunk<{
               metadata: Option.Option<SyncMetadata>
-              mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal
+              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
             }>,
             Option.Option<SyncMetadata>,
           ]
@@ -266,7 +266,7 @@ export const makeSyncBackend =
             .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
             .map((item) => ({
               metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
-              mutationEventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
+              eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
             }))
 
           // // TODO implement proper `remaining` handling
@@ -337,7 +337,7 @@ export const makeSyncBackend =
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 4
+export const PERSISTENCE_FORMAT_VERSION = 5
 
 export const toTableName = (storeId: string) => {
   const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')

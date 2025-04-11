@@ -267,7 +267,7 @@ export const createStore = <TSchema extends LiveStoreSchema = LiveStoreSchema, T
         // But for now this is a good enough approximation with little downsides
         __runningInDevtools: getDevtoolsEnabled(disableDevtools) === false,
         confirmUnsavedChanges,
-        // NOTE during boot we're not yet executing mutations in a batched context
+        // NOTE during boot we're not yet executing events in a batched context
         // but only set the provided `batchUpdates` function after boot
         batchUpdates: (run) => run(),
         storeId,

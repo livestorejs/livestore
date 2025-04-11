@@ -3,7 +3,7 @@ import { Schema } from '@livestore/utils/effect'
 import type { EventDef } from '../../../schema/EventDef.js'
 import { defineEvent, defineFacts } from '../../../schema/EventDef.js'
 import * as EventId from '../../../schema/EventId.js'
-import { factsSnapshotForDag, getFactsGroupForMutationArgs } from '../facts.js'
+import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.js'
 import { historyDagFromNodes } from '../history-dag.js'
 import type { HistoryDagNode } from '../history-dag-common.js'
 import { rootEventNode } from '../history-dag-common.js'
@@ -121,11 +121,11 @@ export const events = {
   }),
 }
 
-export type PartialEvent = { mutation: string; args: any }
+export type PartialEvent = { name: string; args: any }
 
 export const toEventNodes = (
   partialEvents: PartialEvent[],
-  mutationDefs: Record<string, EventDef.Any>,
+  eventDefs: Record<string, EventDef.Any>,
   clientId: string,
   sessionId: string | undefined,
 ): HistoryDagNode[] => {
@@ -134,8 +134,8 @@ export const toEventNodes = (
   let currentEventId: EventId.EventId = EventId.ROOT
 
   const eventNodes = partialEvents.map((partialEvent) => {
-    const mutationDef = mutationDefs[partialEvent.mutation]!
-    const eventId = EventId.nextPair(currentEventId, mutationDef.options.clientOnly).id
+    const eventDef = eventDefs[partialEvent.name]!
+    const eventId = EventId.nextPair(currentEventId, eventDef.options.clientOnly).id
     currentEventId = eventId
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)
@@ -159,7 +159,7 @@ export const toEventNodes = (
     //   },
     // })
 
-    // const factsRes = mutationDef.options.facts?.(partialEvent.args, factsSnapshotProxy)
+    // const factsRes = eventDef.options.facts?.(partialEvent.args, factsSnapshotProxy)
     // console.log('factsRes', factsRes?.modify, factsRes?.require)
     // const iterableToMap = (iterable: Iterable<EventDefFactInput>) => {
     //   const map = new Map()
@@ -181,8 +181,8 @@ export const toEventNodes = (
 
     // applyFactGroup(facts, factsSnapshot)
 
-    const facts = getFactsGroupForMutationArgs({
-      factsCallback: mutationDef.options.facts,
+    const facts = getFactsGroupForEventArgs({
+      factsCallback: eventDef.options.facts,
       args: partialEvent.args,
       currentFacts: factsSnapshot,
     })
@@ -190,7 +190,7 @@ export const toEventNodes = (
     const node = {
       id: eventId,
       parentId: getParentId(eventId),
-      mutation: partialEvent.mutation,
+      name: partialEvent.name,
       args: partialEvent.args,
       factsGroup: facts,
       clientId,

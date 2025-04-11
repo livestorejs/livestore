@@ -20,19 +20,19 @@ export const schemaMetaTable = table({
 
 export type SchemaMetaRow = typeof schemaMetaTable.Type
 
-export const SCHEMA_MUTATIONS_META_TABLE = '__livestore_schema_mutations'
+export const SCHEMA_EVENT_DEFS_META_TABLE = '__livestore_schema_event_defs'
 
-export const schemaMutationsMetaTable = table({
-  name: SCHEMA_MUTATIONS_META_TABLE,
+export const schemaEventDefsMetaTable = table({
+  name: SCHEMA_EVENT_DEFS_META_TABLE,
   columns: {
-    mutationName: SqliteDsl.text({ primaryKey: true }),
+    eventName: SqliteDsl.text({ primaryKey: true }),
     schemaHash: SqliteDsl.integer({ nullable: false }),
     /** ISO date format */
     updatedAt: SqliteDsl.text({ nullable: false }),
   },
 })
 
-export type SchemaMutationsMetaRow = typeof schemaMutationsMetaTable.Type
+export type SchemaEventDefsMetaRow = typeof schemaEventDefsMetaTable.Type
 
 /**
  * Table which stores SQLite changeset blobs which is used for rolling back
@@ -68,7 +68,7 @@ export type LeaderMergeCounterRow = typeof leaderMergeCounterTable.Type
 
 export const systemTables = [
   schemaMetaTable,
-  schemaMutationsMetaTable,
+  schemaEventDefsMetaTable,
   sessionChangesetMetaTable,
   leaderMergeCounterTable,
 ]
@@ -88,7 +88,7 @@ export const eventlogMetaTable = table({
     idClient: SqliteDsl.integer({ primaryKey: true, schema: EventId.ClientEventId }),
     parentIdGlobal: SqliteDsl.integer({ schema: EventId.GlobalEventId }),
     parentIdClient: SqliteDsl.integer({ schema: EventId.ClientEventId }),
-    mutation: SqliteDsl.text({}),
+    name: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),

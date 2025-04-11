@@ -25,7 +25,7 @@ export const eventlogTable = State.SQLite.table({
   columns: {
     id: State.SQLite.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
     parentId: State.SQLite.integer({ schema: EventId.GlobalEventId }),
-    mutation: State.SQLite.text({}),
+    name: State.SQLite.text({}),
     args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any) }),
     /** ISO date format. Currently only used for debugging purposes. */
     createdAt: State.SQLite.text({}),
@@ -47,7 +47,7 @@ export const PULL_CHUNK_SIZE = 100
  *
  * Changing this version number will lead to a "soft reset".
  */
-export const PERSISTENCE_FORMAT_VERSION = 4
+export const PERSISTENCE_FORMAT_VERSION = 5
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: WSMessage.PushReq) => Effect.Effect<void> | Promise<void>
@@ -205,8 +205,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               if (connectedClients.length > 0) {
                 // TODO refactor to batch api
                 const pullRes = WSMessage.PullRes.make({
-                  batch: decodedMessage.batch.map((mutationEventEncoded) => ({
-                    mutationEventEncoded,
+                  batch: decodedMessage.batch.map((eventEncoded) => ({
+                    eventEncoded,
                     metadata: Option.some({ createdAt }),
                   })),
                   remaining: 0,
@@ -287,7 +287,7 @@ type SyncStorage = {
   getEvents: (
     cursor: number | undefined,
   ) => Effect.Effect<
-    ReadonlyArray<{ mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    ReadonlyArray<{ eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
     UnexpectedError
   >
   appendEvents: (
@@ -320,7 +320,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
   const getEvents = (
     cursor: number | undefined,
   ): Effect.Effect<
-    ReadonlyArray<{ mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
+    ReadonlyArray<{ eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }>,
     UnexpectedError
   > =>
     Effect.gen(function* () {
@@ -329,8 +329,8 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
       // TODO handle case where `cursor` was not found
       const rawEvents = yield* execDb((db) => db.prepare(sql).all())
       const events = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))(rawEvents).map(
-        ({ createdAt, ...mutationEventEncoded }) => ({
-          mutationEventEncoded,
+        ({ createdAt, ...eventEncoded }) => ({
+          eventEncoded,
           metadata: Option.some({ createdAt }),
         }),
       )
@@ -358,7 +358,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
           event.id,
           event.parentId,
           JSON.stringify(event.args),
-          event.mutation,
+          event.name,
           createdAt,
           event.clientId,
           event.sessionId,

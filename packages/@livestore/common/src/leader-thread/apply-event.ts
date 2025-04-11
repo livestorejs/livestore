@@ -2,7 +2,7 @@ import { LS_DEV, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
-import { getExecArgsFromEvent } from '../mutation.js'
+import { getExecArgsFromEvent } from '../materializer-helper.js'
 import type { LiveStoreEvent, LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
@@ -15,9 +15,9 @@ import { insertRow } from '../sql-queries/index.js'
 import { sql } from '../util.js'
 import { execSql, execSqlPrepared } from './connection.js'
 import * as Eventlog from './eventlog.js'
-import type { ApplyMutation } from './types.js'
+import type { ApplyEvent } from './types.js'
 
-export const makeApplyMutation = ({
+export const makeApplyEvent = ({
   schema,
   dbReadModel: db,
   dbEventlog,
@@ -25,44 +25,44 @@ export const makeApplyMutation = ({
   schema: LiveStoreSchema
   dbReadModel: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<ApplyMutation, never> =>
+}): Effect.Effect<ApplyEvent, never> =>
   Effect.gen(function* () {
-    const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(schema)
+    const shouldExcludeEventFromLog = makeShouldExcludeEventFromLog(schema)
 
-    const mutationDefSchemaHashMap = new Map(
+    const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
       // Also see https://github.com/Effect-TS/effect/issues/2719
       [...schema.eventsDefsMap.entries()].map(([k, v]) => [k, Schema.hash(v.schema)] as const),
     )
 
-    return (mutationEventEncoded, options) =>
+    return (eventEncoded, options) =>
       Effect.gen(function* () {
         const skipEventlog = options?.skipEventlog ?? false
 
-        const mutationName = mutationEventEncoded.mutation
-        const mutationDef = getEventDef(schema, mutationName)
+        const eventName = eventEncoded.name
+        const eventDef = getEventDef(schema, eventName)
 
         const execArgsArr = getExecArgsFromEvent({
-          mutationDef,
-          mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
+          eventDef,
+          event: { decoded: undefined, encoded: eventEncoded },
         })
 
-        // NOTE we might want to bring this back if we want to debug no-op mutations
+        // NOTE we might want to bring this back if we want to debug no-op events
         // const makeExecuteOptions = (statementSql: string, bindValues: any) => ({
         //   onRowsChanged: (rowsChanged: number) => {
         //     if (rowsChanged === 0) {
-        //       console.warn(`Mutation "${mutationDef.name}" did not affect any rows:`, statementSql, bindValues)
+        //       console.warn(`Event "${eventDef.name}" did not affect any rows:`, statementSql, bindValues)
         //     }
         //   },
         // })
 
-        // console.group('[@livestore/common:leader-thread:applyMutation]', { mutationName })
+        // console.group('[@livestore/common:leader-thread:applyEvent]', { eventName })
 
         const session = db.session()
 
         for (const { statementSql, bindValues } of execArgsArr) {
-          // console.debug(mutationName, statementSql, bindValues)
+          // console.debug(eventName, statementSql, bindValues)
           // TODO use cached prepared statements instead of exec
           yield* execSqlPrepared(db, statementSql, bindValues)
         }
@@ -77,9 +77,9 @@ export const makeApplyMutation = ({
             tableName: SESSION_CHANGESET_META_TABLE,
             columns: sessionChangesetMetaTable.sqliteDef.columns,
             values: {
-              idGlobal: mutationEventEncoded.id.global,
-              idClient: mutationEventEncoded.id.client,
-              // NOTE the changeset will be empty (i.e. null) for no-op mutations
+              idGlobal: eventEncoded.id.global,
+              idClient: eventEncoded.id.client,
+              // NOTE the changeset will be empty (i.e. null) for no-op events
               changeset: changeset ?? null,
               debug: LS_DEV ? execArgsArr : null,
             },
@@ -89,18 +89,18 @@ export const makeApplyMutation = ({
         // console.groupEnd()
 
         // write to eventlog
-        const excludeFromEventlog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
+        const excludeFromEventlog = shouldExcludeEventFromLog(eventName, eventEncoded)
         if (skipEventlog === false && excludeFromEventlog === false) {
-          const mutationName = mutationEventEncoded.mutation
-          const mutationDefSchemaHash =
-            mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
+          const eventName = eventEncoded.name
+          const eventDefSchemaHash =
+            eventDefSchemaHashMap.get(eventName) ?? shouldNeverHappen(`Unknown event definition: ${eventName}`)
 
           yield* Eventlog.insertIntoEventlog(
-            mutationEventEncoded,
+            eventEncoded,
             dbEventlog,
-            mutationDefSchemaHash,
-            mutationEventEncoded.clientId,
-            mutationEventEncoded.sessionId,
+            eventDefSchemaHash,
+            eventEncoded.clientId,
+            eventEncoded.sessionId,
           )
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping mutation log write', mutation, statementSql, bindValues)
@@ -116,14 +116,14 @@ export const makeApplyMutation = ({
             : { _tag: 'no-op' as const },
         }
       }).pipe(
-        Effect.withSpan(`@livestore/common:leader-thread:applyMutation`, {
+        Effect.withSpan(`@livestore/common:leader-thread:applyEvent`, {
           attributes: {
-            mutationName: mutationEventEncoded.mutation,
-            mutationId: mutationEventEncoded.id,
-            'span.label': `${EventId.toString(mutationEventEncoded.id)} ${mutationEventEncoded.mutation}`,
+            eventName: eventEncoded.name,
+            mutationId: eventEncoded.id,
+            'span.label': `${EventId.toString(eventEncoded.id)} ${eventEncoded.name}`,
           },
         }),
-        // Effect.logDuration('@livestore/common:leader-thread:applyMutation'),
+        // Effect.logDuration('@livestore/common:leader-thread:applyEvent'),
       )
   })
 
@@ -176,20 +176,20 @@ export const rollback = ({
   )
 
 // TODO let's consider removing this "should exclude" mechanism in favour of log compaction etc
-const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
+const makeShouldExcludeEventFromLog = memoizeByRef((schema: LiveStoreSchema) => {
   const migrationOptions = schema.migrationOptions
   const eventlogExclude =
     migrationOptions.strategy === 'from-mutation-log'
-      ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
+      ? (migrationOptions.excludeEvents ?? new Set(['livestore.RawSql']))
       : new Set(['livestore.RawSql'])
 
-  return (mutationName: string, mutationEventEncoded: LiveStoreEvent.AnyEncoded): boolean => {
-    if (eventlogExclude.has(mutationName)) return true
+  return (eventName: string, eventEncoded: LiveStoreEvent.AnyEncoded): boolean => {
+    if (eventlogExclude.has(eventName)) return true
 
-    const mutationDef = getEventDef(schema, mutationName)
+    const eventDef = getEventDef(schema, eventName)
     const execArgsArr = getExecArgsFromEvent({
-      mutationDef,
-      mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
+      eventDef,
+      event: { decoded: undefined, encoded: eventEncoded },
     })
 
     return execArgsArr.some((_) => _.statementSql.includes('__livestore'))

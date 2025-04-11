@@ -228,8 +228,8 @@ export namespace QueryBuilder {
      * TODO: Also support `OR`
      */
     readonly where: {
-      <TParams extends QueryBuilder.WhereParams<TTableDef>>(
-        params: TParams,
+      (
+        params: QueryBuilder.WhereParams<TTableDef>,
       ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select', TQueryInfo>
       <TColName extends keyof TTableDef['sqliteDef']['columns']>(
         col: TColName,

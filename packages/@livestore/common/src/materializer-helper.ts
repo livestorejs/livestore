@@ -10,15 +10,15 @@ import type { PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
 export const getExecArgsFromEvent = ({
-  mutationDef: { eventDef, materializer },
-  mutationEvent,
+  eventDef: { eventDef, materializer },
+  event,
 }: {
-  mutationDef: {
+  eventDef: {
     eventDef: EventDef.AnyWithoutFn
     materializer: Materializer
   }
   /** Both encoded and decoded mutation events are supported to reduce the number of times we need to decode/encode */
-  mutationEvent:
+  event:
     | {
         decoded: LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded
         encoded: undefined
@@ -38,8 +38,7 @@ export const getExecArgsFromEvent = ({
 
   switch (typeof materializer) {
     case 'function': {
-      const mutationArgsDecoded =
-        mutationEvent.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(mutationEvent.encoded!.args)
+      const mutationArgsDecoded = event.decoded?.args ?? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args)
 
       const res = materializer(mutationArgsDecoded, {
         clientOnly: eventDef.options.clientOnly,
@@ -71,8 +70,7 @@ export const getExecArgsFromEvent = ({
   return statementRes.map((statementRes) => {
     const statementSql = typeof statementRes === 'string' ? statementRes : statementRes.sql
 
-    const mutationArgsEncoded =
-      mutationEvent.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(mutationEvent.decoded!.args)
+    const mutationArgsEncoded = event.encoded?.args ?? Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
     const bindValues = typeof statementRes === 'string' ? mutationArgsEncoded : statementRes.bindValues
 
     const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables

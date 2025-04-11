@@ -28,11 +28,11 @@ import { events, schema, tables } from '../leader-thread/fixture.js'
 import type { MockSyncBackend } from '../mock-sync-backend.js'
 import { makeMockSyncBackend } from '../mock-sync-backend.js'
 
-// TODO fix type level - derived mutations are missing and thus infers to `never` currently
-const mutationEventSchema = LiveStoreEvent.makeEventDefPartialSchema(
+// TODO fix type level - derived events are missing and thus infers to `never` currently
+const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
   schema,
 ) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
-const encode = Schema.encodeSync(mutationEventSchema)
+const encode = Schema.encodeSync(eventSchema)
 
 Vitest.describe('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('from scratch', (test) =>
@@ -103,7 +103,7 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
           overrides: {
             clientSession: {
               leaderThreadProxy: {
-                mutations: {
+                events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
                       Stream.map((item) => ({
@@ -126,10 +126,10 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         shutdownDeferred,
       })
 
-      const mutationEventSchema = LiveStoreEvent.makeEventDefPartialSchema(
+      const eventSchema = LiveStoreEvent.makeEventDefPartialSchema(
         schema,
       ) as TODO as Schema.Schema<LiveStoreEvent.PartialAnyEncoded>
-      const encode = Schema.encodeSync(mutationEventSchema)
+      const encode = Schema.encodeSync(eventSchema)
 
       yield* Queue.offer(
         pullQueue,

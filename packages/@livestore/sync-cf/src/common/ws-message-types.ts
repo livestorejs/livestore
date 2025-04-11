@@ -19,7 +19,7 @@ export type SyncMetadata = typeof SyncMetadata.Type
 export const PullRes = Schema.TaggedStruct('WSMessage.PullRes', {
   batch: Schema.Array(
     Schema.Struct({
-      mutationEventEncoded: LiveStoreEvent.AnyEncodedGlobal,
+      eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
       metadata: Schema.Option(SyncMetadata),
     }),
   ),

@@ -81,13 +81,13 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       // TODO check sync connection status
       const { store } = yield* WorkerContext
       const otelSpan = yield* OtelTracer.currentOtelSpan
-      const mutationEventBatches = pipe(
+      const eventBatches = pipe(
         ReadonlyArray.range(0, count - 1),
         ReadonlyArray.map((i) => events.todoCreated({ id: nanoid(), title: `todo ${i} (${clientId})` })),
         ReadonlyArray.chunksOf(commitBatchSize),
       )
       const spanLinks = [{ context: otelSpan.spanContext() }]
-      for (const batch of mutationEventBatches) {
+      for (const batch of eventBatches) {
         store.commit({ spanLinks }, ...batch)
       }
     }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:create-todos', { attributes: { count } }), Effect.orDie),

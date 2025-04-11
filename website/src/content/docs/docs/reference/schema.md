@@ -126,7 +126,7 @@ export const todoCompleted = Events.synced({
 LiveStore uses the [Effect Schema](https://effect.website/docs/schema/introduction/) library to define schemas for the following:
 
 - Read model table column definitions
-- Mutation event payloads definitions
+- Event event payloads definitions
 - Query response types
 
 For convenience, LiveStore re-exports the `Schema` type from the `effect` package, which is the same as if you'd import it via `import { Schema } from 'effect'` directly.

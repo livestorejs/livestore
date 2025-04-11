@@ -6,17 +6,17 @@ import * as EventId from './EventId.js'
 import type { LiveStoreSchema } from './schema.js'
 
 export type EventDefPartial<TEventDef extends EventDef.Any> = {
-  mutation: TEventDef['name']
+  name: TEventDef['name']
   args: Schema.Schema.Type<TEventDef['schema']>
 }
 
 export type PartialEncoded<TEventDef extends EventDef.Any> = {
-  mutation: TEventDef['name']
+  name: TEventDef['name']
   args: Schema.Schema.Encoded<TEventDef['schema']>
 }
 
 export type ForEventDef<TEventDef extends EventDef.Any> = {
-  mutation: TEventDef['name']
+  name: TEventDef['name']
   args: Schema.Schema.Type<TEventDef['schema']>
   id: EventId.EventId
   parentId: EventId.EventId
@@ -25,7 +25,7 @@ export type ForEventDef<TEventDef extends EventDef.Any> = {
 }
 
 export type EventDefEncoded<TEventDef extends EventDef.Any> = {
-  mutation: TEventDef['name']
+  name: TEventDef['name']
   args: Schema.Schema.Encoded<TEventDef['schema']>
   id: EventId.EventId
   parentId: EventId.EventId
@@ -35,7 +35,7 @@ export type EventDefEncoded<TEventDef extends EventDef.Any> = {
 
 export type AnyDecoded = ForEventDef<EventDef.Any>
 export const AnyDecoded = Schema.Struct({
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.Any,
   id: EventId.EventId,
   parentId: EventId.EventId,
@@ -45,7 +45,7 @@ export const AnyDecoded = Schema.Struct({
 
 export type AnyEncoded = EventDefEncoded<EventDef.Any>
 export const AnyEncoded = Schema.Struct({
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.Any,
   id: EventId.EventId,
   parentId: EventId.EventId,
@@ -54,7 +54,7 @@ export const AnyEncoded = Schema.Struct({
 }).annotations({ title: 'LiveStoreEvent.AnyEncoded' })
 
 export const AnyEncodedGlobal = Schema.Struct({
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.Any,
   id: EventId.GlobalEventId,
   parentId: EventId.GlobalEventId,
@@ -67,7 +67,7 @@ export type PartialAnyDecoded = EventDefPartial<EventDef.Any>
 export type PartialAnyEncoded = PartialEncoded<EventDef.Any>
 
 export const PartialAnyEncoded = Schema.Struct({
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.Any,
 })
 
@@ -79,13 +79,13 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
   [K in keyof TSchema['_EventDefMapType']]: ForEventDef<TSchema['_EventDefMapType'][K]>
 }[keyof TSchema['_EventDefMapType']]
 
-export const isPartialEventDef = (mutationEvent: AnyDecoded | PartialAnyDecoded): mutationEvent is PartialAnyDecoded =>
-  'id' in mutationEvent === false && 'parentId' in mutationEvent === false
+export const isPartialEventDef = (event: AnyDecoded | PartialAnyDecoded): event is PartialAnyDecoded =>
+  'id' in event === false && 'parentId' in event === false
 
 export type ForEventDefRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
     [K in keyof TEventDefRecord]: {
-      mutation: K
+      name: K
       args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
       id: EventId.EventId
       parentId: EventId.EventId
@@ -95,7 +95,7 @@ export type ForEventDefRecord<TEventDefRecord extends EventDefRecord> = Schema.S
   }[keyof TEventDefRecord],
   {
     [K in keyof TEventDefRecord]: {
-      mutation: K
+      name: K
       args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
       id: EventId.EventId
       parentId: EventId.EventId
@@ -108,13 +108,13 @@ export type ForEventDefRecord<TEventDefRecord extends EventDefRecord> = Schema.S
 export type EventDefPartialSchema<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
     [K in keyof TEventDefRecord]: {
-      mutation: K
+      name: K
       args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
     }
   }[keyof TEventDefRecord],
   {
     [K in keyof TEventDefRecord]: {
-      mutation: K
+      name: K
       args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
     }
   }[keyof TEventDefRecord]
@@ -126,7 +126,7 @@ export const makeEventDefSchema = <TSchema extends LiveStoreSchema>(
   Schema.Union(
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
-        mutation: Schema.Literal(def.name),
+        name: Schema.Literal(def.name),
         args: def.schema,
         id: EventId.EventId,
         parentId: EventId.EventId,
@@ -142,7 +142,7 @@ export const makeEventDefPartialSchema = <TSchema extends LiveStoreSchema>(
   Schema.Union(
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
-        mutation: Schema.Literal(def.name),
+        name: Schema.Literal(def.name),
         args: def.schema,
       }),
     ),
@@ -152,7 +152,7 @@ export const makeEventDefSchemaMemo = memoizeByRef(makeEventDefSchema)
 
 /** Equivalent to AnyEncoded but with a meta field and some convenience methods */
 export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEvent.EncodedWithMeta')({
-  mutation: Schema.String,
+  name: Schema.String,
   args: Schema.Any,
   // TODO rename to `.num` / `.parentNum`
   id: EventId.EventId,
@@ -185,7 +185,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     // - not including `meta`, `clientId`, `sessionId`
     return {
       id: `${EventId.toString(this.id)} → ${EventId.toString(this.parentId)} (${this.clientId}, ${this.sessionId})`,
-      mutation: this.mutation,
+      name: this.name,
       args: this.args,
     }
   }
@@ -213,11 +213,11 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
       ...EventId.nextPair(parentId, isClient),
     })
 
-  static fromGlobal = (mutationEvent: AnyEncodedGlobal, syncMetadata: Option.Option<Schema.JsonValue>) =>
+  static fromGlobal = (event: AnyEncodedGlobal, syncMetadata: Option.Option<Schema.JsonValue>) =>
     new EncodedWithMeta({
-      ...mutationEvent,
-      id: { global: mutationEvent.id, client: EventId.clientDefault },
-      parentId: { global: mutationEvent.parentId, client: EventId.clientDefault },
+      ...event,
+      id: { global: event.id, client: EventId.clientDefault },
+      parentId: { global: event.parentId, client: EventId.clientDefault },
       meta: { sessionChangeset: { _tag: 'unset' as const }, syncMetadata },
     })
 
@@ -232,7 +232,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
 export const isEqualEncoded = (a: AnyEncoded, b: AnyEncoded) =>
   a.id.global === b.id.global &&
   a.id.client === b.id.client &&
-  a.mutation === b.mutation &&
+  a.name === b.name &&
   a.clientId === b.clientId &&
   a.sessionId === b.sessionId &&
   // TODO use schema equality here

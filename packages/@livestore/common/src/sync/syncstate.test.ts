@@ -15,7 +15,7 @@ class TestEvent extends LiveStoreEvent.EncodedWithMeta {
     super({
       id: EventId.make(id),
       parentId: EventId.make(parentId),
-      mutation: 'a',
+      name: 'a',
       args: payload,
       clientId: 'static-local-id',
       sessionId: 'static-session-id',
@@ -467,7 +467,7 @@ const expectEventArraysEqual = (
   actual.forEach((event, i) => {
     expect(event.id).toStrictEqual(expected[i]!.id)
     expect(event.parentId).toStrictEqual(expected[i]!.parentId)
-    expect(event.mutation).toStrictEqual(expected[i]!.mutation)
+    expect(event.name).toStrictEqual(expected[i]!.name)
     expect(event.args).toStrictEqual(expected[i]!.args)
   })
 }
