@@ -4,22 +4,15 @@ import { Schema } from '@livestore/utils/effect'
 import type { QueryBuilder } from '../query-builder/mod.js'
 import type { BindValues } from '../sql-queries/sql-queries.js'
 
-export type MutationDefMap = {
-  map: Map<string | 'livestore.RawSql', MutationDef.Any>
+export type EventDefMap = {
+  map: Map<string | 'livestore.RawSql', EventDef.Any>
 }
-export type MutationDefRecord = {
-  'livestore.RawSql': RawSqlMutation
-  [name: string]: MutationDef.Any
-}
-
-export type InternalMutationSchema<TRecord extends MutationDefRecord = MutationDefRecord> = {
-  _DefRecord: TRecord
-
-  map: Map<keyof TRecord, TRecord[keyof TRecord]>
-  schemaHashMap: Map<keyof TRecord, number>
+export type EventDefRecord = {
+  'livestore.RawSql': RawSqlEvent
+  [name: string]: EventDef.Any
 }
 
-export type MutationDefSqlResult<TTo> =
+export type EventDefSqlResult<TTo> =
   | SingleOrReadonlyArray<string>
   | ((
       args: TTo,
@@ -35,7 +28,7 @@ export type MutationDefSqlResult<TTo> =
       | QueryBuilder.Any
     >)
 
-export type MutationHandlerResult = {
+export type MaterializerResult = {
   sql: string
   bindValues: BindValues
   writeTables?: ReadonlySet<string>
@@ -43,7 +36,7 @@ export type MutationHandlerResult = {
 
 export type SingleOrReadonlyArray<T> = T | ReadonlyArray<T>
 
-export type MutationDef<TName extends string, TType, TEncoded = TType, TDerived extends boolean = false> = {
+export type EventDef<TName extends string, TType, TEncoded = TType, TDerived extends boolean = false> = {
   name: TName
   schema: Schema.Schema<TType, TEncoded>
   options: {
@@ -79,8 +72,8 @@ export type FactsCallback<TTo> = (
   require: Iterable<EventDefFactInput>
 }
 
-export namespace MutationDef {
-  export type Any = MutationDef<string, any, any, boolean>
+export namespace EventDef {
+  export type Any = EventDef<string, any, any, boolean>
 
   export type AnyWithoutFn = Pick<Any, 'name' | 'schema' | 'options'>
 }
@@ -110,7 +103,7 @@ export const defineFacts = <
   record: TRecord,
 ): TRecord => record
 
-export type DefineMutationOptions<TTo, TDerived> = {
+export type DefineEventOptions<TTo, TDerived> = {
   // TODO actually implement this
   // onError?: (error: any) => void
   /** Warning: This feature is not fully implemented yet */
@@ -128,7 +121,7 @@ export type DefineMutationOptions<TTo, TDerived> = {
     require?: Iterable<EventDefFactInput>
   }
   /**
-   * When set to true, the mutation won't be synced over the network
+   * When set to true, the event won't be synced over the network
    */
   clientOnly?: boolean
   derived?: TDerived
@@ -138,8 +131,8 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
   args: {
     name: TName
     schema: Schema.Schema<TType, TEncoded>
-  } & DefineMutationOptions<TType, TDerived>,
-): MutationDef<TName, TType, TEncoded, TDerived> => {
+  } & DefineEventOptions<TType, TDerived>,
+): EventDef<TName, TType, TEncoded, TDerived> => {
   const { name, schema, ...options } = args
 
   const makePartialEvent = (args: TType) => {
@@ -168,36 +161,37 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
           }
         : undefined,
       derived: options?.derived ?? false,
-    } satisfies MutationDef.Any['options'],
+    } satisfies EventDef.Any['options'],
   })
 
-  return makePartialEvent as MutationDef<TName, TType, TEncoded, TDerived>
+  return makePartialEvent as EventDef<TName, TType, TEncoded, TDerived>
 }
 
-export const global = <TName extends string, TType, TEncoded = TType>(
+export const synced = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
     schema: Schema.Schema<TType, TEncoded>
-  } & Omit<DefineMutationOptions<TType, false>, 'derived' | 'clientOnly'>,
-): MutationDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: false })
+  } & Omit<DefineEventOptions<TType, false>, 'derived' | 'clientOnly'>,
+): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: false })
 
 export const clientOnly = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
     schema: Schema.Schema<TType, TEncoded>
-  } & Omit<DefineMutationOptions<TType, false>, 'derived' | 'clientOnly'>,
-): MutationDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: true })
-export type Materializer<TMutationDef extends MutationDef.AnyWithoutFn = MutationDef.AnyWithoutFn> =
-  MutationDefSqlResult<TMutationDef['schema']['Type']>
+  } & Omit<DefineEventOptions<TType, false>, 'derived' | 'clientOnly'>,
+): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: true })
+export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyWithoutFn> = EventDefSqlResult<
+  TEventDef['schema']['Type']
+>
 
-export const defineMaterializer = <TMutationDef extends MutationDef.AnyWithoutFn>(
-  mutationDef: TMutationDef,
-  handler: Materializer<TMutationDef>,
-): Materializer<TMutationDef> => {
+export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(
+  eventDef: TEventDef,
+  handler: Materializer<TEventDef>,
+): Materializer<TEventDef> => {
   return handler
 }
 
-export const materializers = <TInputRecord extends Record<string, MutationDef.AnyWithoutFn>>(
+export const materializers = <TInputRecord extends Record<string, EventDef.AnyWithoutFn>>(
   mutationDefRecord: TInputRecord,
   handlers: {
     [TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
@@ -214,37 +208,19 @@ export const materializers = <TInputRecord extends Record<string, MutationDef.An
   return handlers
 }
 
-export const makeMutationDefRecord = <TInputRecord extends Record<string, MutationDef.Any>>(
-  inputRecord: TInputRecord,
-): {
-  [K in TInputRecord[keyof TInputRecord]['name']]: Extract<TInputRecord[keyof TInputRecord], { name: K }>
-} => {
-  const result: any = {}
-
-  for (const [name, def] of Object.entries(inputRecord)) {
-    result[name] = def
-  }
-
-  result['livestore.RawSql'] = rawSqlMutation
-
-  return result
-}
-
-export const rawSqlMutation = defineEvent({
+export const rawSqlEvent = clientOnly({
   name: 'livestore.RawSql',
   schema: Schema.Struct({
     sql: Schema.String,
     bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
     writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
   }),
-  // ({ sql, bindValues, writeTables }) => ({ sql, bindValues: bindValues ?? {}, writeTables }),
 })
 
-export const rawSqlMaterializer = defineMaterializer(rawSqlMutation, ({ sql, bindValues, writeTables }) => ({
+export const rawSqlMaterializer = defineMaterializer(rawSqlEvent, ({ sql, bindValues, writeTables }) => ({
   sql,
   bindValues: bindValues ?? {},
   writeTables,
 }))
 
-export type RawSqlMutation = typeof rawSqlMutation
-export type RawSqlEventDef = ReturnType<typeof rawSqlMutation>
+export type RawSqlEvent = typeof rawSqlEvent

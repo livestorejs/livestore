@@ -11,12 +11,7 @@ if (process.execArgv.includes('--inspect')) {
 import type { SyncOptions } from '@livestore/common'
 import { Devtools, liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import {
-  configureConnection,
-  LeaderThreadCtx,
-  makeLeaderThreadLayer,
-  Mutationlog,
-} from '@livestore/common/leader-thread'
+import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { makeNodeDevtoolsChannel } from '@livestore/devtools-node-common/web-channel'
@@ -86,15 +81,15 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:worker:Export'),
       ),
-    ExportMutationlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbMutationLog.export()).pipe(
+    ExportEventlog: () =>
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-node:worker:ExportMutationlog'),
+        Effect.withSpan('@livestore/adapter-node:worker:ExportEventlog'),
       ),
     GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return Mutationlog.getClientHeadFromDb(workerCtx.dbMutationLog)
+        return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
@@ -120,14 +115,14 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       ),
     Shutdown: () =>
       Effect.gen(function* () {
-        // const { db, dbMutationLog } = yield* LeaderThreadCtx
+        // const { db, dbEventlog } = yield* LeaderThreadCtx
         yield* Effect.logDebug('[@livestore/adapter-node:worker] Shutdown')
 
         // if (devtools.enabled) {
         //   yield* FiberSet.clear(devtools.connections)
         // }
         // db.close()
-        // dbMutationLog.close()
+        // dbEventlog.close()
 
         // Buy some time for Otel to flush
         // TODO find a cleaner way to do this
@@ -178,26 +173,25 @@ const makeLeaderThread = ({
 
     const schemaHashSuffix = schema.migrationOptions.strategy === 'manual' ? 'fixed' : schema.hash.toString()
 
-    const makeDb = (kind: 'app' | 'mutationlog') =>
+    const makeDb = (kind: 'app' | 'eventlog') =>
       makeSqliteDb({
         _tag: 'fs',
         directory: path.join(baseDirectory ?? '', storeId),
-        fileName:
-          kind === 'app' ? getAppDbFileName(schemaHashSuffix) : `mutationlog@${liveStoreStorageFormatVersion}.db`,
+        fileName: kind === 'app' ? getAppDbFileName(schemaHashSuffix) : `eventlog@${liveStoreStorageFormatVersion}.db`,
         // TODO enable WAL for nodejs
         configureDb: (db) =>
           configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
       }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
 
     // Might involve some async work, so we're running them concurrently
-    const [dbReadModel, dbMutationLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], { concurrency: 2 })
+    const [dbReadModel, dbEventlog] = yield* Effect.all([makeDb('app'), makeDb('eventlog')], { concurrency: 2 })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled: devtools.enabled,
       devtoolsPort: devtools.port,
       devtoolsHost: devtools.host,
       dbReadModel,
-      dbMutationLog,
+      dbEventlog,
       storeId,
       clientId,
       schemaPath,
@@ -212,7 +206,7 @@ const makeLeaderThread = ({
       makeSqliteDb,
       syncOptions,
       dbReadModel,
-      dbMutationLog,
+      dbEventlog,
       devtoolsOptions,
       shutdownChannel,
       syncPayload,
@@ -229,7 +223,7 @@ const getAppDbFileName = (suffix: string) => `app${suffix}@${liveStoreStorageFor
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
   dbReadModel,
-  dbMutationLog,
+  dbEventlog,
   storeId,
   clientId,
   devtoolsPort,
@@ -238,7 +232,7 @@ const makeDevtoolsOptions = ({
 }: {
   devtoolsEnabled: boolean
   dbReadModel: LeaderSqliteDb
-  dbMutationLog: LeaderSqliteDb
+  dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
   devtoolsPort: number
@@ -276,7 +270,7 @@ const makeDevtoolsOptions = ({
           devtoolsWebChannel,
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,
-            mutationLog: dbMutationLog.metadata.persistenceInfo,
+            eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }
       }).pipe(Effect.provide(FetchHttpClient.layer)),

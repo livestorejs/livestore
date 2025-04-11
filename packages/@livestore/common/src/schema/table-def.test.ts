@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import { tables } from './__tests__/fixture.js'
-import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
+import { tables } from '../__tests__/fixture.js'
+import type * as LiveStoreEvent from './LiveStoreEvent.js'
 
-describe('derived mutations', () => {
+describe('client document table', () => {
   test('setter', () => {
     expect(patchId(tables.UiState.set({ showSidebar: false }, 'session-1'))).toMatchInlineSnapshot(`
       {

@@ -99,7 +99,7 @@ export namespace LeaderWorkerInner {
     failure: UnexpectedError,
   }) {}
 
-  export class ExportMutationlog extends Schema.TaggedRequest<ExportMutationlog>()('ExportMutationlog', {
+  export class ExportEventlog extends Schema.TaggedRequest<ExportEventlog>()('ExportEventlog', {
     payload: {},
     success: Transferable.Uint8Array,
     failure: UnexpectedError,
@@ -146,7 +146,7 @@ export namespace LeaderWorkerInner {
     PushToLeader,
     PullStream,
     Export,
-    ExportMutationlog,
+    ExportEventlog,
     GetRecreateSnapshot,
     GetLeaderHead,
     GetLeaderSyncState,
@@ -188,7 +188,7 @@ export namespace SharedWorker {
     LeaderWorkerInner.PullStream,
     LeaderWorkerInner.Export,
     LeaderWorkerInner.GetRecreateSnapshot,
-    LeaderWorkerInner.ExportMutationlog,
+    LeaderWorkerInner.ExportEventlog,
     LeaderWorkerInner.GetLeaderHead,
     LeaderWorkerInner.GetLeaderSyncState,
     LeaderWorkerInner.Shutdown,

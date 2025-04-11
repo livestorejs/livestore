@@ -1,5 +1,5 @@
 import type { SessionIdSymbol } from './adapter-types.js'
-import type { DbSchema } from './schema/mod.js'
+import type { State } from './schema/mod.js'
 
 /**
  * Semantic information about a query with supported cases being:
@@ -10,7 +10,7 @@ import type { DbSchema } from './schema/mod.js'
  * This information is currently only used for derived mutations.
  */
 export type QueryInfo = QueryInfo.None | QueryInfo.Row | QueryInfo.Col | QueryInfo.ColJsonValue | QueryInfo.Write
-// export type QueryInfo<TTableDef extends DbSchema.TableDefBase = DbSchema.TableDefBase> =
+// export type QueryInfo<TTableDef extends State.SQLite.TableDefBase = State.SQLite.TableDefBase> =
 // | QueryInfo.None
 // | QueryInfo.Row<TTableDef>
 // | QueryInfo.ColJsonValue<TTableDef, GetJsonColumn<TTableDef>>
@@ -23,20 +23,20 @@ export namespace QueryInfo {
 
   export type Row = {
     _tag: 'Row'
-    table: DbSchema.TableDefBase
+    table: State.SQLite.TableDefBase
     id: string | SessionIdSymbol | number
   }
 
   export type Col = {
     _tag: 'Col'
-    table: DbSchema.TableDefBase
+    table: State.SQLite.TableDefBase
     id: string | SessionIdSymbol | number
     column: string
   }
 
   export type ColJsonValue = {
     _tag: 'ColJsonValue'
-    table: DbSchema.TableDefBase
+    table: State.SQLite.TableDefBase
     id: string | SessionIdSymbol | number
     column: string
     /**
@@ -51,20 +51,20 @@ export namespace QueryInfo {
   }
 
   // NOTE maybe we want to bring back type-params back like below
-  // export type Row<TTableDef extends DbSchema.TableDefBase> = {
+  // export type Row<TTableDef extends State.SQLite.TableDefBase> = {
   //   _tag: 'Row'
   //   table: TTableDef
   //   id: string | SessionIdSymbol
   // }
 
-  // export type Col<TTableDef extends DbSchema.TableDefBase, TColName extends keyof TTableDef['sqliteDef']['columns']> = {
+  // export type Col<TTableDef extends State.SQLite.TableDefBase, TColName extends keyof TTableDef['sqliteDef']['columns']> = {
   //   _tag: 'Col'
   //   table: TTableDef
   //   id: string | SessionIdSymbol
   //   column: TColName
   // }
 
-  // export type ColJsonValue<TTableDef extends DbSchema.TableDefBase, TColName extends GetJsonColumn<TTableDef>> = {
+  // export type ColJsonValue<TTableDef extends State.SQLite.TableDefBase, TColName extends GetJsonColumn<TTableDef>> = {
   //   _tag: 'ColJsonValue'
   //   table: TTableDef
   //   id: string | SessionIdSymbol
@@ -76,7 +76,7 @@ export namespace QueryInfo {
   // }
 }
 
-// type GetJsonColumn<TTableDef extends DbSchema.TableDefBase> = keyof {
+// type GetJsonColumn<TTableDef extends State.SQLite.TableDefBase> = keyof {
 //   [ColName in keyof TTableDef['sqliteDef']['columns'] as TTableDef['sqliteDef']['columns'][ColName]['columnType'] extends 'text'
 //     ? ColName
 //     : never]: {}

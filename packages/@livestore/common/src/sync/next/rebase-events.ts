@@ -1,6 +1,6 @@
+import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.js'
 import * as EventId from '../../schema/EventId.js'
 import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
-import type { EventDefFactsSnapshot, MutationDef } from '../../schema/mutations.js'
 import {
   applyFactGroups,
   factsIntersect,
@@ -20,7 +20,7 @@ export type RebaseInput = {
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
     rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
-    mutationDefs: Record<string, MutationDef.Any>
+    mutationDefs: Record<string, EventDef.Any>
   }) => FactValidationResult
 }
 

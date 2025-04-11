@@ -314,7 +314,7 @@ const makeLeaderThread = ({
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:client-session:export'),
       ),
-      getMutationLogData: Effect.dieMessage('Not implemented'),
+      getEventlogData: Effect.dieMessage('Not implemented'),
       getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),

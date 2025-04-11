@@ -33,12 +33,12 @@ export const dbSelect = <T>(db: SqliteDb, queryStr: string, bindValues?: ParamsO
 }
 
 export interface SchemaManager {
-  getMutationDefInfos: () => ReadonlyArray<MutationDefInfo>
+  getEventDefInfos: () => ReadonlyArray<EventDefInfo>
 
-  setMutationDefInfo: (mutationDefInfo: MutationDefInfo) => void
+  setEventDefInfo: (mutationDefInfo: EventDefInfo) => void
 }
 
-export type MutationDefInfo = {
+export type EventDefInfo = {
   mutationName: string
   schemaHash: number
 }

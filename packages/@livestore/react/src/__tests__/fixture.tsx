@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
-import { DbSchema, Events, makeSchema, State } from '@livestore/common/schema'
+import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { LiveStoreContextRunning, Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
@@ -22,25 +22,25 @@ export type AppState = {
   filter: Filter
 }
 
-const todos = DbSchema.table({
+const todos = State.SQLite.table({
   name: 'todos',
   columns: {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '', nullable: false }),
+    completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
 })
 
-const app = DbSchema.table({
+const app = State.SQLite.table({
   name: 'app',
   columns: {
-    id: DbSchema.text({ primaryKey: true, default: 'static' }),
-    newTodoText: DbSchema.text({ default: '', nullable: true }),
-    filter: DbSchema.text({ default: 'all', nullable: false }),
+    id: State.SQLite.text({ primaryKey: true, default: 'static' }),
+    newTodoText: State.SQLite.text({ default: '', nullable: true }),
+    filter: State.SQLite.text({ default: 'all', nullable: false }),
   },
 })
 
-const userInfo = DbSchema.clientDocument({
+const userInfo = State.SQLite.clientDocument({
   name: 'UserInfo',
   schema: Schema.Struct({
     username: Schema.String,
@@ -49,7 +49,7 @@ const userInfo = DbSchema.clientDocument({
   default: { value: { username: '', text: '' } },
 })
 
-const AppRouterSchema = DbSchema.clientDocument({
+const AppRouterSchema = State.SQLite.clientDocument({
   name: 'AppRouter',
   schema: Schema.Struct({
     currentTaskId: Schema.String.pipe(Schema.NullOr),
@@ -61,11 +61,11 @@ const AppRouterSchema = DbSchema.clientDocument({
 })
 
 export const events = {
-  todoCreated: Events.global({
+  todoCreated: Events.synced({
     name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean }),
   }),
-  todoUpdated: Events.global({
+  todoUpdated: Events.synced({
     name: 'todoUpdated',
     schema: Schema.Struct({
       id: Schema.String,

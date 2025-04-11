@@ -1,30 +1,30 @@
-import { DbSchema, makeSchema, Schema } from '@livestore/livestore'
+import { makeSchema, Schema, State } from '@livestore/livestore'
 
 import { Filter } from '../types.js'
 import * as mutations from './mutations.js'
 
-const todos = DbSchema.table(
+const todos = State.SQLite.table(
   'todos',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '' }),
-    completed: DbSchema.boolean({ default: false }),
-    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '' }),
+    completed: State.SQLite.boolean({ default: false }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
   { deriveEvents: true },
 )
 
-const app = DbSchema.table(
+const app = State.SQLite.table(
   'app',
   {
-    newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.text({ schema: Filter, default: 'all' }),
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
   },
   { deriveEvents: true },
 )
 
-export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
-export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
+export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
+export type AppState = State.SQLite.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
 

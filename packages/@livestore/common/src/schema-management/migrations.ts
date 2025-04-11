@@ -28,10 +28,9 @@ export const makeSchemaManager = (db: SqliteDb): Effect.Effect<SchemaManager> =>
     })
 
     return {
-      getMutationDefInfos: () =>
-        dbSelect<SchemaMutationsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`),
+      getEventDefInfos: () => dbSelect<SchemaMutationsMetaRow>(db, sql`SELECT * FROM ${SCHEMA_MUTATIONS_META_TABLE}`),
 
-      setMutationDefInfo: (info) => {
+      setEventDefInfo: (info) => {
         dbExecute(
           db,
           sql`INSERT OR REPLACE INTO ${SCHEMA_MUTATIONS_META_TABLE} (mutationName, schemaHash, updatedAt) VALUES ($mutationName, $schemaHash, $updatedAt)`,

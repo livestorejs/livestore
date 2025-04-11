@@ -1,11 +1,10 @@
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
-import { deepEqual, indent } from '@livestore/utils'
+import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { useStore } from './LiveStoreContext.js'
 import { useRcResource } from './useRcResource.js'
 import { originalStackLimit } from './utils/stack-info.js'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.js'
@@ -44,7 +43,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   valueRef: React.RefObject<LiveQueries.GetResult<TQuery>>
   queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>>
 } => {
-  const { store } = useStore({ store: options?.store })
+  const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
 
   const rcRefKey = `${store.storeId}_${queryDef.hash}`
 

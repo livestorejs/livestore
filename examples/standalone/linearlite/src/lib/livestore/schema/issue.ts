@@ -1,18 +1,18 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { DbSchema, Schema } from '@livestore/livestore'
-export const issue = DbSchema.table(
+import { State, Schema } from '@livestore/livestore'
+export const issue = State.SQLite.table(
   'issue',
   {
-    id: DbSchema.integer({ primaryKey: true }),
-    title: DbSchema.text({ default: '' }),
-    creator: DbSchema.text({ default: '' }),
-    priority: DbSchema.integer({ schema: Priority, default: 0 }),
-    status: DbSchema.integer({ schema: Status, default: 0 }),
-    created: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
-    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
-    modified: DbSchema.integer({ default: { sql: `(strftime('%s','now'))` } }),
-    kanbanorder: DbSchema.text({ nullable: false, default: '' }),
+    id: State.SQLite.integer({ primaryKey: true }),
+    title: State.SQLite.text({ default: '' }),
+    creator: State.SQLite.text({ default: '' }),
+    priority: State.SQLite.integer({ schema: Priority, default: 0 }),
+    status: State.SQLite.integer({ schema: Status, default: 0 }),
+    created: State.SQLite.integer({ default: { sql: `(strftime('%s','now'))` } }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    modified: State.SQLite.integer({ default: { sql: `(strftime('%s','now'))` } }),
+    kanbanorder: State.SQLite.text({ nullable: false, default: '' }),
   },
   {
     indexes: [
@@ -22,4 +22,4 @@ export const issue = DbSchema.table(
     deriveEvents: true,
   },
 )
-export type Issue = DbSchema.FromTable.RowDecoded<typeof issue>
+export type Issue = State.SQLite.FromTable.RowDecoded<typeof issue>

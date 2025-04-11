@@ -75,7 +75,7 @@ export type WebAdapterOptions = {
    */
   storage: WorkerSchema.StorageTypeEncoded
   /**
-   * Warning: This will reset both the app and mutationlog database.
+   * Warning: This will reset both the app and eventlog database.
    * This should only be used during development.
    *
    * @default false
@@ -358,8 +358,8 @@ export const makePersistedAdapter =
         })
       }
 
-      // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the mutationlog db/table
-      // in order to avoid exporting/transferring the mutationlog db/table, which is important to speed up the fast path.
+      // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the eventlog db/table
+      // in order to avoid exporting/transferring the eventlog db/table, which is important to speed up the fast path.
       const initialLeaderHeadRes = sqliteDb.select<{
         idGlobal: EventId.GlobalEventId
         idClient: EventId.ClientEventId
@@ -423,10 +423,10 @@ export const makePersistedAdapter =
 
           initialState: { leaderHead: initialLeaderHead, migrationsReport },
 
-          getMutationLogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportMutationlog()).pipe(
+          getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInner.ExportEventlog()).pipe(
             Effect.timeout(10_000),
             UnexpectedError.mapToUnexpectedError,
-            Effect.withSpan('@livestore/adapter-web:client-session:getMutationLogData'),
+            Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
           ),
 
           getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
@@ -520,7 +520,7 @@ export const makePersistedAdapter =
       return clientSession
     }).pipe(UnexpectedError.mapToUnexpectedError)
 
-// NOTE for `local` storage we could also use the mutationlog db to store the data
+// NOTE for `local` storage we could also use the eventlog db to store the data
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {
   const makeId = () => nanoid(5)
 

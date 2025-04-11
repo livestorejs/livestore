@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
-import { createStore, DbSchema, makeSchema, State } from '@livestore/livestore'
+import { createStore, makeSchema, State } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
@@ -17,16 +17,16 @@ export type AppState = {
   filter: Filter
 }
 
-export const todos = DbSchema.table({
+export const todos = State.SQLite.table({
   name: 'todos',
   columns: {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '', nullable: false }),
+    completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
 })
 
-export const app = DbSchema.clientDocument({
+export const app = State.SQLite.clientDocument({
   name: 'app',
   schema: Schema.Struct({
     newTodoText: Schema.String,

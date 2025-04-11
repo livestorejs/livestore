@@ -37,7 +37,7 @@ export const MainSection: React.FC = () => {
               <label>{todo.text}</label>
               <button
                 className="destroy"
-                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deleted: new Date() }))}
+                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
               ></button>
             </div>
           </li>

@@ -154,7 +154,7 @@ Vitest.describe('useClientDocument', () => {
 
       ReactTesting.act(() =>
         store.commit(
-          LiveStore.rawSqlMutation({
+          LiveStore.rawSqlEvent({
             sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
           }),
         ),

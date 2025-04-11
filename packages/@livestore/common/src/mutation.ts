@@ -3,18 +3,18 @@ import { Schema } from '@livestore/utils/effect'
 import { SessionIdSymbol } from './adapter-types.js'
 import type { QueryBuilder } from './query-builder/api.js'
 import { isQueryBuilder } from './query-builder/api.js'
+import type { EventDef, Materializer, MaterializerResult } from './schema/EventDef.js'
 import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
-import type { Materializer, MutationDef, MutationHandlerResult } from './schema/mutations.js'
 import type { BindValues } from './sql-queries/sql-queries.js'
 import type { PreparedBindValues } from './util.js'
 import { prepareBindValues } from './util.js'
 
-export const getExecArgsFromMutation = ({
+export const getExecArgsFromEvent = ({
   mutationDef: { eventDef, materializer },
   mutationEvent,
 }: {
   mutationDef: {
-    eventDef: MutationDef.AnyWithoutFn
+    eventDef: EventDef.AnyWithoutFn
     materializer: Materializer
   }
   /** Both encoded and decoded mutation events are supported to reduce the number of times we need to decode/encode */
@@ -47,7 +47,7 @@ export const getExecArgsFromMutation = ({
         currentFacts: new Map(),
       })
 
-      statementRes = (Array.isArray(res) ? res : [res]).map((_: QueryBuilder.Any | MutationHandlerResult) => {
+      statementRes = (Array.isArray(res) ? res : [res]).map((_: QueryBuilder.Any | MaterializerResult) => {
         if (isQueryBuilder(_)) {
           const { query, bindValues } = _.asSql()
           return { sql: query, bindValues: bindValues as BindValues }

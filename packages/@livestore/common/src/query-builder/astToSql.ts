@@ -2,14 +2,14 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../adapter-types.js'
-import type { DbSchema } from '../schema/mod.js'
+import type { State } from '../schema/mod.js'
 import type { SqlValue } from '../util.js'
 import type { QueryBuilderAst } from './api.js'
 
 // Helper functions for SQL generation
 const formatWhereClause = (
   whereConditions: ReadonlyArray<QueryBuilderAst.Where>,
-  tableDef: DbSchema.TableDefBase,
+  tableDef: State.SQLite.TableDefBase,
   bindValues: SqlValue[],
 ): string => {
   if (whereConditions.length === 0) return ''

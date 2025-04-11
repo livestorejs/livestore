@@ -3,7 +3,7 @@ import type { HttpClient } from '@livestore/utils/effect'
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { InvalidPullError, IsOfflineError, MigrationHooks, MigrationsReport, SqliteError } from '../index.js'
-import { initializeSingletonTables, migrateDb, rehydrateFromMutationLog, UnexpectedError } from '../index.js'
+import { migrateDb, rehydrateFromEventlog, UnexpectedError } from '../index.js'
 import { configureConnection } from './connection.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -12,7 +12,7 @@ export const recreateDb: Effect.Effect<
   UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
   LeaderThreadCtx | HttpClient.HttpClient
 > = Effect.gen(function* () {
-  const { dbReadModel, dbMutationLog, schema, bootStatusQueue, applyMutation } = yield* LeaderThreadCtx
+  const { dbReadModel, dbEventlog, schema, bootStatusQueue, applyMutation } = yield* LeaderThreadCtx
 
   const migrationOptions = schema.migrationOptions
   let migrationsReport: MigrationsReport
@@ -41,8 +41,6 @@ export const recreateDb: Effect.Effect<
           Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
       })
 
-      initializeSingletonTables(schema, tmpDb)
-
       yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
 
       return { migrationsReport, tmpDb }
@@ -55,9 +53,9 @@ export const recreateDb: Effect.Effect<
 
       migrationsReport = initResult.migrationsReport
 
-      yield* rehydrateFromMutationLog({
+      yield* rehydrateFromEventlog({
         // db: initResult.tmpDb,
-        dbMutationLog,
+        dbEventlog,
         schema,
         migrationOptions,
         applyMutation,

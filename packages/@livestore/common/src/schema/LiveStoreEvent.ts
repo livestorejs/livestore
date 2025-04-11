@@ -1,39 +1,39 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
+import type { EventDef, EventDefRecord } from './EventDef.js'
 import * as EventId from './EventId.js'
-import type { MutationDef, MutationDefRecord } from './mutations.js'
 import type { LiveStoreSchema } from './schema.js'
 
-export type EventDefPartial<TMutationsDef extends MutationDef.Any> = {
-  mutation: TMutationsDef['name']
-  args: Schema.Schema.Type<TMutationsDef['schema']>
+export type EventDefPartial<TEventDef extends EventDef.Any> = {
+  mutation: TEventDef['name']
+  args: Schema.Schema.Type<TEventDef['schema']>
 }
 
-export type PartialEncoded<TMutationsDef extends MutationDef.Any> = {
-  mutation: TMutationsDef['name']
-  args: Schema.Schema.Encoded<TMutationsDef['schema']>
+export type PartialEncoded<TEventDef extends EventDef.Any> = {
+  mutation: TEventDef['name']
+  args: Schema.Schema.Encoded<TEventDef['schema']>
 }
 
-export type EventDef<TMutationsDef extends MutationDef.Any> = {
-  mutation: TMutationsDef['name']
-  args: Schema.Schema.Type<TMutationsDef['schema']>
+export type ForEventDef<TEventDef extends EventDef.Any> = {
+  mutation: TEventDef['name']
+  args: Schema.Schema.Type<TEventDef['schema']>
   id: EventId.EventId
   parentId: EventId.EventId
   clientId: string
   sessionId: string
 }
 
-export type EventDefEncoded<TMutationsDef extends MutationDef.Any> = {
-  mutation: TMutationsDef['name']
-  args: Schema.Schema.Encoded<TMutationsDef['schema']>
+export type EventDefEncoded<TEventDef extends EventDef.Any> = {
+  mutation: TEventDef['name']
+  args: Schema.Schema.Encoded<TEventDef['schema']>
   id: EventId.EventId
   parentId: EventId.EventId
   clientId: string
   sessionId: string
 }
 
-export type AnyDecoded = EventDef<MutationDef.Any>
+export type AnyDecoded = ForEventDef<EventDef.Any>
 export const AnyDecoded = Schema.Struct({
   mutation: Schema.String,
   args: Schema.Any,
@@ -43,7 +43,7 @@ export const AnyDecoded = Schema.Struct({
   sessionId: Schema.String,
 }).annotations({ title: 'LiveStoreEvent.AnyDecoded' })
 
-export type AnyEncoded = EventDefEncoded<MutationDef.Any>
+export type AnyEncoded = EventDefEncoded<EventDef.Any>
 export const AnyEncoded = Schema.Struct({
   mutation: Schema.String,
   args: Schema.Any,
@@ -63,8 +63,8 @@ export const AnyEncodedGlobal = Schema.Struct({
 }).annotations({ title: 'LiveStoreEvent.AnyEncodedGlobal' })
 export type AnyEncodedGlobal = typeof AnyEncodedGlobal.Type
 
-export type PartialAnyDecoded = EventDefPartial<MutationDef.Any>
-export type PartialAnyEncoded = PartialEncoded<MutationDef.Any>
+export type PartialAnyDecoded = EventDefPartial<EventDef.Any>
+export type PartialAnyEncoded = PartialEncoded<EventDef.Any>
 
 export const PartialAnyEncoded = Schema.Struct({
   mutation: Schema.String,
@@ -72,57 +72,57 @@ export const PartialAnyEncoded = Schema.Struct({
 })
 
 export type PartialForSchema<TSchema extends LiveStoreSchema> = {
-  [K in keyof TSchema['_MutationDefMapType']]: EventDefPartial<TSchema['_MutationDefMapType'][K]>
-}[keyof TSchema['_MutationDefMapType']]
+  [K in keyof TSchema['_EventDefMapType']]: EventDefPartial<TSchema['_EventDefMapType'][K]>
+}[keyof TSchema['_EventDefMapType']]
 
 export type ForSchema<TSchema extends LiveStoreSchema> = {
-  [K in keyof TSchema['_MutationDefMapType']]: EventDef<TSchema['_MutationDefMapType'][K]>
-}[keyof TSchema['_MutationDefMapType']]
+  [K in keyof TSchema['_EventDefMapType']]: ForEventDef<TSchema['_EventDefMapType'][K]>
+}[keyof TSchema['_EventDefMapType']]
 
 export const isPartialEventDef = (mutationEvent: AnyDecoded | PartialAnyDecoded): mutationEvent is PartialAnyDecoded =>
   'id' in mutationEvent === false && 'parentId' in mutationEvent === false
 
-export type ForMutationDefRecord<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
+export type ForEventDefRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
-    [K in keyof TMutationsDefRecord]: {
+    [K in keyof TEventDefRecord]: {
       mutation: K
-      args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
       id: EventId.EventId
       parentId: EventId.EventId
       clientId: string
       sessionId: string
     }
-  }[keyof TMutationsDefRecord],
+  }[keyof TEventDefRecord],
   {
-    [K in keyof TMutationsDefRecord]: {
+    [K in keyof TEventDefRecord]: {
       mutation: K
-      args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
       id: EventId.EventId
       parentId: EventId.EventId
       clientId: string
       sessionId: string
     }
-  }[keyof TMutationsDefRecord]
+  }[keyof TEventDefRecord]
 >
 
-export type EventDefPartialSchema<TMutationsDefRecord extends MutationDefRecord> = Schema.Schema<
+export type EventDefPartialSchema<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
-    [K in keyof TMutationsDefRecord]: {
+    [K in keyof TEventDefRecord]: {
       mutation: K
-      args: Schema.Schema.Type<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
     }
-  }[keyof TMutationsDefRecord],
+  }[keyof TEventDefRecord],
   {
-    [K in keyof TMutationsDefRecord]: {
+    [K in keyof TEventDefRecord]: {
       mutation: K
-      args: Schema.Schema.Encoded<TMutationsDefRecord[K]['schema']>
+      args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
     }
-  }[keyof TMutationsDefRecord]
+  }[keyof TEventDefRecord]
 >
 
 export const makeEventDefSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
-): ForMutationDefRecord<TSchema['_MutationDefMapType']> =>
+): ForEventDefRecord<TSchema['_EventDefMapType']> =>
   Schema.Union(
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
@@ -138,7 +138,7 @@ export const makeEventDefSchema = <TSchema extends LiveStoreSchema>(
 
 export const makeEventDefPartialSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
-): EventDefPartialSchema<TSchema['_MutationDefMapType']> =>
+): EventDefPartialSchema<TSchema['_EventDefMapType']> =>
   Schema.Union(
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({

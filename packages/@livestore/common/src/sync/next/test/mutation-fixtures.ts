@@ -1,8 +1,8 @@
 import { Schema } from '@livestore/utils/effect'
 
+import type { EventDef } from '../../../schema/EventDef.js'
+import { defineEvent, defineFacts } from '../../../schema/EventDef.js'
 import * as EventId from '../../../schema/EventId.js'
-import type { MutationDef } from '../../../schema/mutations.js'
-import { defineEvent, defineFacts } from '../../../schema/mutations.js'
 import { factsSnapshotForDag, getFactsGroupForMutationArgs } from '../facts.js'
 import { historyDagFromNodes } from '../history-dag.js'
 import type { HistoryDagNode } from '../history-dag-common.js'
@@ -125,7 +125,7 @@ export type PartialEvent = { mutation: string; args: any }
 
 export const toEventNodes = (
   partialEvents: PartialEvent[],
-  mutationDefs: Record<string, MutationDef.Any>,
+  mutationDefs: Record<string, EventDef.Any>,
   clientId: string,
   sessionId: string | undefined,
 ): HistoryDagNode[] => {

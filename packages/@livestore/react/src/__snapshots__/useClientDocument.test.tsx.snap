@@ -56,7 +56,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
-            "firstStackInfo": "{"frames":[]}",
+            "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "",
           },
           "children": [
@@ -141,7 +141,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "LiveStore:useClientDocument:UserInfo:u2",
           "attributes": {
-            "firstStackInfo": "{"frames":[]}",
+            "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "",
           },
           "children": [
@@ -262,7 +262,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
-            "firstStackInfo": "{"frames":[]}",
+            "firstStackInfo": "{"frames":[{"name":"Store.store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "",
           },
           "children": [

@@ -1,13 +1,13 @@
 import type { PreparedBindValues, QueryInfo } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
-import { DbSchema } from '@livestore/common/schema'
+import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import type { GetResult, LiveQueryDef, ReactivityGraphContext } from './live-queries/base-class.js'
 import { computed } from './live-queries/computed.js'
 
-export const rowQueryLabel = (table: DbSchema.TableDefBase, id: string | SessionIdSymbol | number | undefined) =>
+export const rowQueryLabel = (table: State.SQLite.TableDefBase, id: string | SessionIdSymbol | number | undefined) =>
   `row:${table.sqliteDef.name}${id === undefined ? '' : id === SessionIdSymbol ? `:sessionId` : `:${id}`}`
 
 export const deriveColQuery: {
@@ -43,11 +43,11 @@ export const makeExecBeforeFirstRun =
   }: {
     id?: string | SessionIdSymbol | number
     explicitDefaultValues?: any
-    table: DbSchema.TableDefBase
+    table: State.SQLite.TableDefBase
     otelContext: otel.Context | undefined
   }) =>
   ({ store }: ReactivityGraphContext) => {
-    if (DbSchema.tableIsClientDocumentTable(table) === false) {
+    if (State.SQLite.tableIsClientDocumentTable(table) === false) {
       return shouldNeverHappen(
         `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveEvents: true' set`,
       )
@@ -64,11 +64,6 @@ export const makeExecBeforeFirstRun =
       ).length === 1
 
     if (rowExists) return
-
-    // const insertValues = mergeDefaultValues(
-    //   table[DbSchema.ClientDocumentTableDefSymbol].options.default.value,
-    //   explicitDefaultValues,
-    // )
 
     // It's important that we only commit and don't refresh here, as this function might be called during a render
     // and otherwise we might end up in a "reactive loop"

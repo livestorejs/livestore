@@ -1,6 +1,6 @@
 import { Priority } from '@/types/priority'
 import { Status } from '@/types/status'
-import { DbSchema, Schema } from '@livestore/livestore'
+import { State, Schema } from '@livestore/livestore'
 
 const OrderDirection = Schema.Literal('asc', 'desc').annotations({ title: 'OrderDirection' })
 export type OrderDirection = typeof OrderDirection.Type
@@ -17,8 +17,8 @@ export const FilterState = Schema.Struct({
 })
 export type FilterState = typeof FilterState.Type
 
-export const filterState = DbSchema.table(
+export const filterState = State.SQLite.table(
   'filter_state',
-  DbSchema.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
+  State.SQLite.json({ schema: FilterState, default: { orderBy: 'created', orderDirection: 'desc' } }),
   { deriveEvents: true },
 )

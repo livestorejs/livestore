@@ -1,16 +1,16 @@
-import { DbSchema, Events, makeSchema, State } from '@livestore/common/schema'
+import { Events, makeSchema, State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
-const todo = DbSchema.table({
+const todo = State.SQLite.table({
   name: 'todo',
   columns: {
-    id: DbSchema.text({ primaryKey: true }),
-    title: DbSchema.text(),
+    id: State.SQLite.text({ primaryKey: true }),
+    title: State.SQLite.text(),
   },
 })
 
 export const events = {
-  todoCreated: Events.global({
+  todoCreated: Events.synced({
     name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, title: Schema.String }),
   }),

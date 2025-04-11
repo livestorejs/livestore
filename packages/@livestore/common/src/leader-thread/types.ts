@@ -52,7 +52,7 @@ export type InitialSyncInfo = Option.Option<{
 //   | { _tag: 'Reuse'; syncInfo: InitialSyncInfo }
 
 export type LeaderSqliteDb = SqliteDb<{ dbPointer: number; persistenceInfo: PersistenceInfo }>
-export type PersistenceInfoPair = { readModel: PersistenceInfo; mutationLog: PersistenceInfo }
+export type PersistenceInfoPair = { readModel: PersistenceInfo; eventlog: PersistenceInfo }
 
 export type DevtoolsOptions =
   | {
@@ -90,12 +90,12 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     clientId: string
     makeSqliteDb: MakeSqliteDb
     dbReadModel: LeaderSqliteDb
-    dbMutationLog: LeaderSqliteDb
+    dbEventlog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
-    mutationEventSchema: LiveStoreEvent.ForMutationDefRecord<any>
+    mutationEventSchema: LiveStoreEvent.ForEventDefRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
@@ -116,8 +116,8 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
 export type ApplyMutation = (
   mutationEventEncoded: LiveStoreEvent.EncodedWithMeta,
   options?: {
-    /** Needed for rehydrateFromMutationLog */
-    skipMutationLog?: boolean
+    /** Needed for rehydrateFromEventlog */
+    skipEventlog?: boolean
   },
 ) => Effect.Effect<
   { sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' } },

@@ -1,43 +1,43 @@
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import { UnexpectedError } from '../adapter-types.js'
+import type { EventDef } from '../schema/EventDef.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
-import type { MutationDef } from '../schema/mutations.js'
-import type { MutationDefInfo, SchemaManager } from './common.js'
+import type { EventDefInfo, SchemaManager } from './common.js'
 
 export const validateSchema = (schema: LiveStoreSchema, schemaManager: SchemaManager) =>
   Effect.gen(function* () {
     // Validate mutation definitions
-    const registeredMutationDefInfos = schemaManager.getMutationDefInfos()
+    const registeredEventDefInfos = schemaManager.getEventDefInfos()
 
-    const missingMutationDefs = registeredMutationDefInfos.filter(
-      (registeredMutationDefInfo) => !schema.eventsDefsMap.has(registeredMutationDefInfo.mutationName),
+    const missingEventDefs = registeredEventDefInfos.filter(
+      (registeredEventDefInfo) => !schema.eventsDefsMap.has(registeredEventDefInfo.mutationName),
     )
 
-    if (missingMutationDefs.length > 0) {
+    if (missingEventDefs.length > 0) {
       yield* new UnexpectedError({
-        cause: `Missing mutation definitions: ${missingMutationDefs.map((info) => info.mutationName).join(', ')}`,
+        cause: `Missing mutation definitions: ${missingEventDefs.map((info) => info.mutationName).join(', ')}`,
       })
     }
 
     for (const [, eventDef] of schema.eventsDefsMap) {
-      const registeredMutationDefInfo = registeredMutationDefInfos.find((info) => info.mutationName === eventDef.name)
+      const registeredEventDefInfo = registeredEventDefInfos.find((info) => info.mutationName === eventDef.name)
 
-      validateMutationDef(eventDef, schemaManager, registeredMutationDefInfo)
+      validateEventDef(eventDef, schemaManager, registeredEventDefInfo)
     }
 
     // Validate table schemas
   })
 
-export const validateMutationDef = (
-  mutationDef: MutationDef.AnyWithoutFn,
+export const validateEventDef = (
+  mutationDef: EventDef.AnyWithoutFn,
   schemaManager: SchemaManager,
-  registeredMutationDefInfo: MutationDefInfo | undefined,
+  registeredEventDefInfo: EventDefInfo | undefined,
 ) => {
   const schemaHash = Schema.hash(mutationDef.schema)
 
-  if (registeredMutationDefInfo === undefined) {
-    schemaManager.setMutationDefInfo({
+  if (registeredEventDefInfo === undefined) {
+    schemaManager.setEventDefInfo({
       schemaHash,
       mutationName: mutationDef.name,
     })
@@ -45,7 +45,7 @@ export const validateMutationDef = (
     return
   }
 
-  if (schemaHash === registeredMutationDefInfo.schemaHash) return
+  if (schemaHash === registeredEventDefInfo.schemaHash) return
 
   // TODO bring back some form of schema compatibility check (see https://github.com/livestorejs/livestore/issues/69)
   // const newSchemaIsCompatibleWithOldSchema = Schema.isSubType(jsonSchemaDefFromMgmtStore, mutationDef.schema)
@@ -54,7 +54,7 @@ export const validateMutationDef = (
   //   shouldNeverHappen(`Schema for mutation ${mutationDef.name} has changed in an incompatible way`)
   // }
 
-  schemaManager.setMutationDefInfo({
+  schemaManager.setEventDefInfo({
     schemaHash,
     mutationName: mutationDef.name,
   })

@@ -15,30 +15,30 @@ LiveStore provides a schema definition language for defining your database table
 ### Example
 
 ```ts
-import { DbSchema, makeSchema, Schema } from '@livestore/livestore'
+import { State, makeSchema, Schema } from '@livestore/livestore'
 
 export const Filter = Schema.Literal('all', 'active', 'completed')
 
-const todos = DbSchema.table(
+const todos = State.SQLite.table(
   'todos',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '' }),
-    completed: DbSchema.boolean({ default: false }),
-    deleted: DbSchema.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '' }),
+    completed: State.SQLite.boolean({ default: false }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
   },
 )
 
-const app = DbSchema.table(
+const app = State.SQLite.table(
   'app',
   {
-    newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.text({ schema: Filter, default: 'all' }),
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
   },
 )
 
-export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
-export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
+export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
+export type AppState = State.SQLite.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
 
@@ -69,17 +69,17 @@ Migration strategies:
 
 #### Core SQLite column types
 
-- `DbSchema.text`: A text field, returns `string`.
-- `DbSchema.integer`: An integer field, returns `number`.
-- `DbSchema.real`: A real field (floating point number), returns `number`.
-- `DbSchema.blob`: A blob field (binary data), returns `Uint8Array`.
+- `State.SQLite.text`: A text field, returns `string`.
+- `State.SQLite.integer`: An integer field, returns `number`.
+- `State.SQLite.real`: A real field (floating point number), returns `number`.
+- `State.SQLite.blob`: A blob field (binary data), returns `Uint8Array`.
 
 #### Higher level column types
 
-- `DbSchema.boolean`: An integer field that stores `0` for `false` and `1` for `true` and returns a `boolean`.
-- `DbSchema.json`: A text field that stores a stringified JSON object and returns a decoded JSON value.
-- `DbSchema.datetime`: A text field that stores dates as ISO 8601 strings and returns a `Date`.
-- `DbSchema.datetimeInteger`: A integer field that stores dates as the number of milliseconds since the epoch and returns a `Date`.
+- `State.SQLite.boolean`: An integer field that stores `0` for `false` and `1` for `true` and returns a `boolean`.
+- `State.SQLite.json`: A text field that stores a stringified JSON object and returns a decoded JSON value.
+- `State.SQLite.datetime`: A text field that stores dates as ISO 8601 strings and returns a `Date`.
+- `State.SQLite.datetimeInteger`: A integer field that stores dates as the number of milliseconds since the epoch and returns a `Date`.
 
 
 #### Custom column schemas
@@ -89,17 +89,17 @@ You can also provide a custom schema for a column which is used to automatically
 #### Example: JSON-encoded struct
 
 ```ts
-import { DbSchema, Schema } from '@livestore/livestore'
+import { State, Schema } from '@livestore/livestore'
 
 export const UserMetadata = Schema.Struct({ 
   petName: Schema.String,
   favoriteColor: Schema.Literal('red', 'blue', 'green'),
  })
 
-export const userTable = DbSchema.table('user', {
-  id: DbSchema.text({ primaryKey: true }),
-  name: DbSchema.text(),
-  metadata: DbSchema.json({ schema: UserMetadata }),
+export const userTable = State.SQLite.table('user', {
+  id: State.SQLite.text({ primaryKey: true }),
+  name: State.SQLite.text(),
+  metadata: State.SQLite.json({ schema: UserMetadata }),
 })
 ```
 
@@ -110,12 +110,12 @@ export const userTable = DbSchema.table('user', {
 ```ts
 import { Events, Schema, sql } from '@livestore/livestore'
 
-export const todoCreated = Events.global({
+export const todoCreated = Events.synced({
   name: 'todoCreated',
   schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
 })
 
-export const todoCompleted = Events.global({
+export const todoCompleted = Events.synced({
   name: 'todoCompleted',
   schema: Schema.Struct({ id: Schema.String }),
 })

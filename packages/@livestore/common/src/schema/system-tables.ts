@@ -2,10 +2,9 @@ import { Schema } from '@livestore/utils/effect'
 
 import { SqliteDsl } from './db-schema/mod.js'
 import * as EventId from './EventId.js'
-import type { FromTable } from './table-def.js'
 import { table } from './table-def.js'
 
-/// App DB
+/// Read model DB
 
 export const SCHEMA_META_TABLE = '__livestore_schema'
 
@@ -17,7 +16,6 @@ export const schemaMetaTable = table({
     /** ISO date format */
     updatedAt: SqliteDsl.text({ nullable: false }),
   },
-  disableAutomaticIdColumn: true,
 })
 
 export type SchemaMetaRow = typeof schemaMetaTable.Type
@@ -32,7 +30,6 @@ export const schemaMutationsMetaTable = table({
     /** ISO date format */
     updatedAt: SqliteDsl.text({ nullable: false }),
   },
-  disableAutomaticIdColumn: true,
 })
 
 export type SchemaMutationsMetaRow = typeof schemaMutationsMetaTable.Type
@@ -52,8 +49,6 @@ export const sessionChangesetMetaTable = table({
     changeset: SqliteDsl.blob({ nullable: true }),
     debug: SqliteDsl.json({ nullable: true }),
   },
-
-  disableAutomaticIdColumn: true,
   indexes: [{ columns: ['idGlobal', 'idClient'], name: 'idx_session_changeset_id' }],
 })
 
@@ -67,7 +62,6 @@ export const leaderMergeCounterTable = table({
     id: SqliteDsl.integer({ primaryKey: true, schema: Schema.Literal(0) }),
     mergeCounter: SqliteDsl.integer({ primaryKey: true }),
   },
-  disableAutomaticIdColumn: true,
 })
 
 export type LeaderMergeCounterRow = typeof leaderMergeCounterTable.Type
@@ -79,15 +73,15 @@ export const systemTables = [
   leaderMergeCounterTable,
 ]
 
-/// Mutation log DB
+/// Eventlog DB
 
 export const SyncStatus = Schema.Literal('synced', 'pending', 'error', 'clientOnly')
 export type SyncStatus = typeof SyncStatus.Type
 
-export const MUTATION_LOG_META_TABLE = 'mutation_log'
+export const EVENTLOG_META_TABLE = 'eventlog'
 
-export const mutationLogMetaTable = table({
-  name: MUTATION_LOG_META_TABLE,
+export const eventlogMetaTable = table({
+  name: EVENTLOG_META_TABLE,
   columns: {
     // TODO Adjust modeling so a global event never needs a client id component
     idGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
@@ -101,14 +95,13 @@ export const mutationLogMetaTable = table({
     schemaHash: SqliteDsl.integer({}),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
-  disableAutomaticIdColumn: true,
   indexes: [
-    { columns: ['idGlobal'], name: 'idx_idGlobal' },
-    { columns: ['idGlobal', 'idClient'], name: 'idx_mutationlog_id' },
+    { columns: ['idGlobal'], name: 'idx_eventlog_idGlobal' },
+    { columns: ['idGlobal', 'idClient'], name: 'idx_eventlog_id' },
   ],
 })
 
-export type MutationLogMetaRow = typeof mutationLogMetaTable.Type
+export type EventlogMetaRow = typeof eventlogMetaTable.Type
 
 export const SYNC_STATUS_TABLE = '__livestore_sync_status'
 
@@ -117,7 +110,6 @@ export const syncStatusTable = table({
   columns: {
     head: SqliteDsl.integer({ primaryKey: true }),
   },
-  disableAutomaticIdColumn: true,
 })
 
 export type SyncStatusRow = typeof syncStatusTable.Type

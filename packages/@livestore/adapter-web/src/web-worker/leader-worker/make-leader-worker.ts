@@ -1,12 +1,7 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, UnexpectedError } from '@livestore/common'
 import type { DevtoolsOptions } from '@livestore/common/leader-thread'
-import {
-  configureConnection,
-  LeaderThreadCtx,
-  makeLeaderThreadLayer,
-  Mutationlog,
-} from '@livestore/common/leader-thread'
+import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { makeChannelForConnectedMeshNode } from '@livestore/devtools-web-common/web-channel'
@@ -113,11 +108,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
         const runtime = yield* Effect.runtime<never>()
 
-        const makeDb = (kind: 'app' | 'mutationlog') =>
+        const makeDb = (kind: 'app' | 'eventlog') =>
           makeSqliteDb({
             _tag: 'opfs',
             opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
-            fileName: kind === 'app' ? getAppDbFileName(schema) : 'mutationlog.db',
+            fileName: kind === 'app' ? getAppDbFileName(schema) : 'eventlog.db',
             configureDb: (db) =>
               configureConnection(db, {
                 //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
@@ -130,11 +125,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Might involve some async work, so we're running them concurrently
-        const [dbReadModel, dbMutationLog] = yield* Effect.all([makeDb('app'), makeDb('mutationlog')], {
+        const [dbReadModel, dbEventlog] = yield* Effect.all([makeDb('app'), makeDb('eventlog')], {
           concurrency: 2,
         })
 
-        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbReadModel, dbMutationLog })
+        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbReadModel, dbEventlog })
         const shutdownChannel = yield* makeShutdownChannel(storeId)
 
         return makeLeaderThreadLayer({
@@ -144,7 +139,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
           makeSqliteDb,
           syncOptions,
           dbReadModel,
-          dbMutationLog,
+          dbEventlog,
           devtoolsOptions,
           shutdownChannel,
           syncPayload,
@@ -195,17 +190,17 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
         UnexpectedError.mapToUnexpectedError,
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
-    ExportMutationlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbMutationLog.export()).pipe(
+    ExportEventlog: () =>
+      Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
         UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-web:worker:ExportMutationlog'),
+        Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     GetLeaderHead: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
-        return Mutationlog.getClientHeadFromDb(workerCtx.dbMutationLog)
+        return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
       }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
@@ -234,11 +229,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions }: WorkerOptions) =>
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
   dbReadModel,
-  dbMutationLog,
+  dbEventlog,
 }: {
   devtoolsEnabled: boolean
   dbReadModel: SqliteDb
-  dbMutationLog: SqliteDb
+  dbEventlog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {
@@ -257,7 +252,7 @@ const makeDevtoolsOptions = ({
           }),
           persistenceInfo: {
             readModel: dbReadModel.metadata.persistenceInfo,
-            mutationLog: dbMutationLog.metadata.persistenceInfo,
+            eventlog: dbEventlog.metadata.persistenceInfo,
           },
         }
       }),

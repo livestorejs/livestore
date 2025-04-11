@@ -2,7 +2,7 @@ import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/ut
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { MUTATION_LOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
+import { EVENTLOG_META_TABLE, SCHEMA_META_TABLE, SCHEMA_MUTATIONS_META_TABLE } from '../schema/mod.js'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -63,7 +63,7 @@ const listenToDevtools = ({
       syncBackend,
       makeSqliteDb,
       dbReadModel,
-      dbMutationLog,
+      dbEventlog,
       shutdownStateSubRef,
       shutdownChannel,
       syncProcessor,
@@ -143,11 +143,11 @@ const listenToDevtools = ({
               }
 
               try {
-                if (tableNames.has(MUTATION_LOG_META_TABLE)) {
+                if (tableNames.has(EVENTLOG_META_TABLE)) {
                   // Is mutation log
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
 
-                  dbMutationLog.import(data)
+                  dbEventlog.import(data)
 
                   dbReadModel.destroy()
                 } else if (tableNames.has(SCHEMA_META_TABLE) && tableNames.has(SCHEMA_MUTATIONS_META_TABLE)) {
@@ -156,7 +156,7 @@ const listenToDevtools = ({
 
                   dbReadModel.import(data)
 
-                  dbMutationLog.destroy()
+                  dbEventlog.destroy()
                 } else {
                   yield* sendMessage(
                     Devtools.Leader.LoadDatabaseFile.Error.make({
@@ -190,7 +190,7 @@ const listenToDevtools = ({
               dbReadModel.destroy()
 
               if (mode === 'all-data') {
-                dbMutationLog.destroy()
+                dbEventlog.destroy()
               }
 
               yield* sendMessage(Devtools.Leader.ResetAllData.Success.make({ ...reqPayload }))
@@ -207,22 +207,22 @@ const listenToDevtools = ({
 
               const dbSizeQuery = `SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`
               const dbFileSize = dbReadModel.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
-              const mutationLogFileSize = dbMutationLog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
+              const eventlogFileSize = dbEventlog.select<{ size: number }>(dbSizeQuery, undefined)[0]!.size
 
               yield* sendMessage(
                 Devtools.Leader.DatabaseFileInfoRes.make({
                   readModel: { fileSize: dbFileSize, persistenceInfo: persistenceInfo.readModel },
-                  mutationLog: { fileSize: mutationLogFileSize, persistenceInfo: persistenceInfo.mutationLog },
+                  eventlog: { fileSize: eventlogFileSize, persistenceInfo: persistenceInfo.eventlog },
                   ...reqPayload,
                 }),
               )
 
               return
             }
-            case 'LSD.Leader.MutationLogReq': {
-              const mutationLog = dbMutationLog.export()
+            case 'LSD.Leader.EventlogReq': {
+              const eventlog = dbEventlog.export()
 
-              yield* sendMessage(Devtools.Leader.MutationLogRes.make({ mutationLog, ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.EventlogRes.make({ eventlog, ...reqPayload }))
 
               return
             }

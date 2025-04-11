@@ -9,11 +9,14 @@ sidebar:
 LiveStore supports arbitrary SQL queries on top of SQLite. In order for LiveStore to handle the query results correctly, you need to provide the result schema.
 
 ```ts
-import { queryDb, DbSchema, Schema, sql } from '@livestore/livestore'
+import { queryDb, State, Schema, sql } from '@livestore/livestore'
 
-const table = DbSchema.table('my_table', {
-	id: DbSchema.text({ primaryKey: true }),
-	name: DbSchema.text(),
+const table = State.SQLite.table({
+	name: 'my_table',
+	columns: {
+		id: State.SQLite.text({ primaryKey: true }),
+		name: State.SQLite.text(),
+	},
 })
 
 const filtered$ = queryDb({
@@ -32,19 +35,25 @@ const count$ = queryDb({
 LiveStore also provides a small query builder for the most common queries. The query builder automatically derives the appropriate result schema internally.
 
 ```ts
-const table = DbSchema.table('my_table', {
-	id: DbSchema.text({ primaryKey: true }),
-	name: DbSchema.text(),
+const table = State.SQLite.table({
+	name: 'my_table',
+	columns: {
+		id: State.SQLite.text({ primaryKey: true }),
+		name: State.SQLite.text(),
+	},
 })
 
-table.query.select('name')
-table.query.where('name', '==', 'Alice')
-table.query.where({ name: 'Alice' })
-table.query.orderBy('name', 'desc').offset(10).limit(10)
-table.query.count().where('name', 'like', '%Ali%')
+// Read queries
+table.select('name')
+table.where('name', '==', 'Alice')
+table.where({ name: 'Alice' })
+table.orderBy('name', 'desc').offset(10).limit(10)
+table.count().where('name', 'like', '%Ali%')
 
-// Automatically inserts a row if it doesn't exist
-table.query.row('123', { insertValues: { name: 'Bob' } })
+// Write queries
+table.insert({ id: '123', name: 'Bob' })
+table.update({ name: 'Alice' }).where({ id: '123' })
+table.delete().where({ id: '123' })
 ```
 
 ## Derived mutations

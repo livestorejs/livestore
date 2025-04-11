@@ -1,13 +1,13 @@
 import { notYetImplemented } from '@livestore/utils'
 
-import type * as EventId from '../../schema/EventId.js'
 import type {
   EventDefFactInput,
   EventDefFacts,
   EventDefFactsGroup,
   EventDefFactsSnapshot,
   FactsCallback,
-} from '../../schema/mutations.js'
+} from '../../schema/EventDef.js'
+import type * as EventId from '../../schema/EventId.js'
 import { graphologyDag } from './graphology_.js'
 import { EMPTY_FACT_VALUE, type HistoryDag, type HistoryDagNode } from './history-dag-common.js'
 

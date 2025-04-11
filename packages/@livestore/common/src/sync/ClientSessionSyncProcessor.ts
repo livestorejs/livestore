@@ -6,7 +6,7 @@ import * as otel from '@opentelemetry/api'
 import type { ClientSession, UnexpectedError } from '../adapter-types.js'
 import * as EventId from '../schema/EventId.js'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
-import { getMutationDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
+import { getEventDef, LEADER_MERGE_COUNTER_TABLE, type LiveStoreSchema } from '../schema/mod.js'
 import { sql } from '../util.js'
 import * as SyncState from './syncstate.js'
 
@@ -68,7 +68,7 @@ export const makeClientSessionSyncProcessor = ({
 
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
   const isClientEvent = (mutationEventEncoded: LiveStoreEvent.EncodedWithMeta) =>
-    getMutationDef(schema, mutationEventEncoded.mutation).eventDef.options.clientOnly
+    getEventDef(schema, mutationEventEncoded.mutation).eventDef.options.clientOnly
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.EncodedWithMeta>().pipe(Effect.runSync)
@@ -78,7 +78,7 @@ export const makeClientSessionSyncProcessor = ({
 
     let baseEventId = syncStateRef.current.localHead
     const encodedEventDefs = batch.map(({ mutation, args }) => {
-      const mutationDef = getMutationDef(schema, mutation)
+      const mutationDef = getEventDef(schema, mutation)
       const nextIdPair = EventId.nextPair(baseEventId, mutationDef.eventDef.options.clientOnly)
       baseEventId = nextIdPair.id
       return new LiveStoreEvent.EncodedWithMeta(

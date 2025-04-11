@@ -1,115 +1,115 @@
-import { DbSchema, makeSchema } from '@livestore/livestore'
+import { makeSchema, State } from '@livestore/livestore'
 
 import { Filter, PRIORITIES, STATUSES } from '../types.ts'
 import * as issuesMutations from './issues-mutations.ts'
 import * as mutations from './mutations.ts'
 import * as userMutations from './user-mutations.ts'
 
-const app = DbSchema.table(
+const app = State.SQLite.table(
   'app',
   {
-    newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.text({ schema: Filter, default: 'all' }),
-    newIssueText: DbSchema.text({ default: '' }),
-    newIssueDescription: DbSchema.text({ default: '' }),
-    selectedHomeTab: DbSchema.text({ default: 'Assigned' }), // Assigned, Created, Subscribed
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
+    newIssueText: State.SQLite.text({ default: '' }),
+    newIssueDescription: State.SQLite.text({ default: '' }),
+    selectedHomeTab: State.SQLite.text({ default: 'Assigned' }), // Assigned, Created, Subscribed
 
     // Assigned tab config
-    assignedTabGrouping: DbSchema.text({ default: 'Status' }), // NoGrouping, Assignee, Priority, Status
-    assignedTabOrdering: DbSchema.text({ default: 'Priority' }), // Priority, Last Updated, Last Created
-    assignedTabCompletedIssues: DbSchema.text({ default: 'None' }), // None, Past Week, Past Month, Past Year
-    assignedTabShowAssignee: DbSchema.boolean({ default: false }),
-    assignedTabShowStatus: DbSchema.boolean({ default: true }),
-    assignedTabShowPriority: DbSchema.boolean({ default: true }),
+    assignedTabGrouping: State.SQLite.text({ default: 'Status' }), // NoGrouping, Assignee, Priority, Status
+    assignedTabOrdering: State.SQLite.text({ default: 'Priority' }), // Priority, Last Updated, Last Created
+    assignedTabCompletedIssues: State.SQLite.text({ default: 'None' }), // None, Past Week, Past Month, Past Year
+    assignedTabShowAssignee: State.SQLite.boolean({ default: false }),
+    assignedTabShowStatus: State.SQLite.boolean({ default: true }),
+    assignedTabShowPriority: State.SQLite.boolean({ default: true }),
 
     // Created tab config
-    createdTabGrouping: DbSchema.text({ default: 'Assignee' }), // NoGrouping, Assignee, Priority, Status
-    createdTabOrdering: DbSchema.text({ default: 'Last Updated' }), // Last Updated, Last Created, Priority
-    createdTabCompletedIssues: DbSchema.text({ default: 'Past Month' }), // None, Past Week, Past Month, Past Year
-    createdTabShowAssignee: DbSchema.boolean({ default: true }),
-    createdTabShowStatus: DbSchema.boolean({ default: true }),
-    createdTabShowPriority: DbSchema.boolean({ default: false }),
+    createdTabGrouping: State.SQLite.text({ default: 'Assignee' }), // NoGrouping, Assignee, Priority, Status
+    createdTabOrdering: State.SQLite.text({ default: 'Last Updated' }), // Last Updated, Last Created, Priority
+    createdTabCompletedIssues: State.SQLite.text({ default: 'Past Month' }), // None, Past Week, Past Month, Past Year
+    createdTabShowAssignee: State.SQLite.boolean({ default: true }),
+    createdTabShowStatus: State.SQLite.boolean({ default: true }),
+    createdTabShowPriority: State.SQLite.boolean({ default: false }),
 
-    navigationHistory: DbSchema.text({ default: '/' }),
+    navigationHistory: State.SQLite.text({ default: '/' }),
   },
   { isSingleton: true, deriveEvents: true },
 )
 
 // Linearlite ↓
 
-const users = DbSchema.table(
+const users = State.SQLite.table(
   'users',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    name: DbSchema.text({ nullable: false }),
-    email: DbSchema.text({ nullable: true }),
-    photoUrl: DbSchema.text({ nullable: true }),
+    id: State.SQLite.text({ primaryKey: true }),
+    name: State.SQLite.text({ nullable: false }),
+    email: State.SQLite.text({ nullable: true }),
+    photoUrl: State.SQLite.text({ nullable: true }),
   },
   { deriveEvents: true },
 )
 
-const issues = DbSchema.table(
+const issues = State.SQLite.table(
   'issues',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    title: DbSchema.text({ nullable: false }),
-    description: DbSchema.text({ nullable: true }),
-    parentIssueId: DbSchema.text({ nullable: true }),
-    assigneeId: DbSchema.text({ nullable: true }),
-    status: DbSchema.text({ default: STATUSES.TODO }), // todo
-    priority: DbSchema.text({ default: PRIORITIES.NONE }), // no priority
-    deletedAt: DbSchema.integer({ nullable: true }),
-    createdAt: DbSchema.integer({ default: null, nullable: true }),
-    updatedAt: DbSchema.integer({ default: null, nullable: true }),
+    id: State.SQLite.text({ primaryKey: true }),
+    title: State.SQLite.text({ nullable: false }),
+    description: State.SQLite.text({ nullable: true }),
+    parentIssueId: State.SQLite.text({ nullable: true }),
+    assigneeId: State.SQLite.text({ nullable: true }),
+    status: State.SQLite.text({ default: STATUSES.TODO }), // todo
+    priority: State.SQLite.text({ default: PRIORITIES.NONE }), // no priority
+    deletedAt: State.SQLite.integer({ nullable: true }),
+    createdAt: State.SQLite.integer({ default: null, nullable: true }),
+    updatedAt: State.SQLite.integer({ default: null, nullable: true }),
   },
   { deriveEvents: true },
 )
 
-const comments = DbSchema.table(
+const comments = State.SQLite.table(
   'comments',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    issueId: DbSchema.text({ nullable: false }),
-    userId: DbSchema.text({ nullable: false }),
-    content: DbSchema.text({ nullable: false }),
-    createdAt: DbSchema.integer({ default: null, nullable: true }),
-    updatedAt: DbSchema.integer({ default: null, nullable: true }),
+    id: State.SQLite.text({ primaryKey: true }),
+    issueId: State.SQLite.text({ nullable: false }),
+    userId: State.SQLite.text({ nullable: false }),
+    content: State.SQLite.text({ nullable: false }),
+    createdAt: State.SQLite.integer({ default: null, nullable: true }),
+    updatedAt: State.SQLite.integer({ default: null, nullable: true }),
   },
   { deriveEvents: true },
 )
 
-const reactions = DbSchema.table(
+const reactions = State.SQLite.table(
   'reactions',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    issueId: DbSchema.text({ nullable: false }),
-    commentId: DbSchema.text({ nullable: false }),
-    userId: DbSchema.text({ nullable: false }),
-    emoji: DbSchema.text(),
+    id: State.SQLite.text({ primaryKey: true }),
+    issueId: State.SQLite.text({ nullable: false }),
+    commentId: State.SQLite.text({ nullable: false }),
+    userId: State.SQLite.text({ nullable: false }),
+    emoji: State.SQLite.text(),
   },
   { deriveEvents: true },
 )
 
 // Activity related to a specific issue
-const activity = DbSchema.table(
+const activity = State.SQLite.table(
   'activity',
   {
-    id: DbSchema.text({ primaryKey: true }),
-    issueId: DbSchema.text({ nullable: false }),
-    userId: DbSchema.text({ nullable: false }),
-    type: DbSchema.text({ nullable: false }),
-    data: DbSchema.json({ nullable: true }), // extra json data of the activity e.g. { type: 'STATUS_CHANGED', from: 'open', to: 'closed' }
-    commentId: DbSchema.text({ nullable: true }), // if it's a comment we can get it by id directly
-    createdAt: DbSchema.integer({ default: null, nullable: true }),
+    id: State.SQLite.text({ primaryKey: true }),
+    issueId: State.SQLite.text({ nullable: false }),
+    userId: State.SQLite.text({ nullable: false }),
+    type: State.SQLite.text({ nullable: false }),
+    data: State.SQLite.json({ nullable: true }), // extra json data of the activity e.g. { type: 'STATUS_CHANGED', from: 'open', to: 'closed' }
+    commentId: State.SQLite.text({ nullable: true }), // if it's a comment we can get it by id directly
+    createdAt: State.SQLite.integer({ default: null, nullable: true }),
   },
   { deriveEvents: true },
 )
 
-export type User = DbSchema.FromTable.RowDecoded<typeof users>
-export type Issue = DbSchema.FromTable.RowDecoded<typeof issues>
-export type Comment = DbSchema.FromTable.RowDecoded<typeof comments>
-export type Reaction = DbSchema.FromTable.RowDecoded<typeof reactions>
-export type Activity = DbSchema.FromTable.RowDecoded<typeof activity>
+export type User = State.SQLite.FromTable.RowDecoded<typeof users>
+export type Issue = State.SQLite.FromTable.RowDecoded<typeof issues>
+export type Comment = State.SQLite.FromTable.RowDecoded<typeof comments>
+export type Reaction = State.SQLite.FromTable.RowDecoded<typeof reactions>
+export type Activity = State.SQLite.FromTable.RowDecoded<typeof activity>
 
 export const tables = {
   app,

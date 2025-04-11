@@ -1,1 +1,1 @@
-export { defineEvent, global, clientOnly } from './mutations.js'
+export { defineEvent, synced, clientOnly } from './EventDef.js'

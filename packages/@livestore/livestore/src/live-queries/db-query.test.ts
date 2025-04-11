@@ -1,5 +1,5 @@
 import { sql } from '@livestore/common'
-import { rawSqlMutation } from '@livestore/common/schema'
+import { rawSqlEvent } from '@livestore/common/schema'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils/node-vitest'
 import * as otel from '@opentelemetry/api'
@@ -69,7 +69,7 @@ Vitest.describe('otel', () => {
       })
       expect(store.query(query$)).toMatchInlineSnapshot('[]')
 
-      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       [
@@ -117,7 +117,7 @@ Vitest.describe('otel', () => {
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
-      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
@@ -157,7 +157,7 @@ Vitest.describe('otel', () => {
       }
     `)
 
-      store.commit(rawSqlMutation({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
+      store.commit(rawSqlEvent({ sql: sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)` }))
 
       expect(store.query(query$)).toMatchInlineSnapshot(`
       {

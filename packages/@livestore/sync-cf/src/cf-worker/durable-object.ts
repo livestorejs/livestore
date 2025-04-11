@@ -1,5 +1,5 @@
 import { makeColumnSpec, UnexpectedError } from '@livestore/common'
-import { DbSchema, EventId, type LiveStoreEvent } from '@livestore/common/schema'
+import { EventId, type LiveStoreEvent, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { DurableObject } from 'cloudflare:workers'
@@ -19,18 +19,18 @@ const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.Backe
 const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(WSMessage.ClientToBackendMessage))
 const decodeIncomingMessage = Schema.decodeUnknownEither(Schema.parseJson(WSMessage.ClientToBackendMessage))
 
-export const mutationLogTable = DbSchema.table({
+export const eventlogTable = State.SQLite.table({
   // NOTE actual table name is determined at runtime
-  name: 'mutation_log_${PERSISTENCE_FORMAT_VERSION}_${storeId}',
+  name: 'eventlog_${PERSISTENCE_FORMAT_VERSION}_${storeId}',
   columns: {
-    id: DbSchema.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
-    parentId: DbSchema.integer({ schema: EventId.GlobalEventId }),
-    mutation: DbSchema.text({}),
-    args: DbSchema.text({ schema: Schema.parseJson(Schema.Any) }),
+    id: State.SQLite.integer({ primaryKey: true, schema: EventId.GlobalEventId }),
+    parentId: State.SQLite.integer({ schema: EventId.GlobalEventId }),
+    mutation: State.SQLite.text({}),
+    args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any) }),
     /** ISO date format. Currently only used for debugging purposes. */
-    createdAt: DbSchema.text({}),
-    clientId: DbSchema.text({}),
-    sessionId: DbSchema.text({}),
+    createdAt: State.SQLite.text({}),
+    clientId: State.SQLite.text({}),
+    sessionId: State.SQLite.text({}),
   },
 })
 
@@ -43,7 +43,7 @@ const WebSocketAttachmentSchema = Schema.parseJson(
 export const PULL_CHUNK_SIZE = 100
 
 /**
- * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
+ * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
  *
  * Changing this version number will lead to a "soft reset".
  */
@@ -90,7 +90,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           ),
         )
 
-        const colSpec = makeColumnSpec(mutationLogTable.sqliteDef.ast)
+        const colSpec = makeColumnSpec(eventlogTable.sqliteDef.ast)
         this.env.DB.exec(`CREATE TABLE IF NOT EXISTS ${storage.dbName} (${colSpec}) strict`)
 
         return new Response(null, {
@@ -298,7 +298,7 @@ type SyncStorage = {
 }
 
 const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncStorage => {
-  const dbName = `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
+  const dbName = `eventlog_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
 
   const execDb = <T>(cb: (db: D1Database) => Promise<D1Result<T>>) =>
     Effect.tryPromise({
@@ -328,7 +328,7 @@ const makeStorage = (ctx: DurableObjectState, env: Env, storeId: string): SyncSt
       const sql = `SELECT * FROM ${dbName} ${whereClause} ORDER BY id ASC`
       // TODO handle case where `cursor` was not found
       const rawEvents = yield* execDb((db) => db.prepare(sql).all())
-      const events = Schema.decodeUnknownSync(Schema.Array(mutationLogTable.rowSchema))(rawEvents).map(
+      const events = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))(rawEvents).map(
         ({ createdAt, ...mutationEventEncoded }) => ({
           mutationEventEncoded,
           metadata: Option.some({ createdAt }),

@@ -2,29 +2,29 @@ import { LS_DEV, memoizeByRef, shouldNeverHappen } from '@livestore/utils'
 import { Effect, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.js'
-import { getExecArgsFromMutation } from '../mutation.js'
+import { getExecArgsFromEvent } from '../mutation.js'
 import type { LiveStoreEvent, LiveStoreSchema, SessionChangesetMetaRow } from '../schema/mod.js'
 import {
   EventId,
-  getMutationDef,
-  MUTATION_LOG_META_TABLE,
+  EVENTLOG_META_TABLE,
+  getEventDef,
   SESSION_CHANGESET_META_TABLE,
   sessionChangesetMetaTable,
 } from '../schema/mod.js'
 import { insertRow } from '../sql-queries/index.js'
 import { sql } from '../util.js'
 import { execSql, execSqlPrepared } from './connection.js'
-import * as Mutationlog from './mutationlog.js'
+import * as Eventlog from './eventlog.js'
 import type { ApplyMutation } from './types.js'
 
 export const makeApplyMutation = ({
   schema,
   dbReadModel: db,
-  dbMutationLog,
+  dbEventlog,
 }: {
   schema: LiveStoreSchema
   dbReadModel: SqliteDb
-  dbMutationLog: SqliteDb
+  dbEventlog: SqliteDb
 }): Effect.Effect<ApplyMutation, never> =>
   Effect.gen(function* () {
     const shouldExcludeMutationFromLog = makeShouldExcludeMutationFromLog(schema)
@@ -38,12 +38,12 @@ export const makeApplyMutation = ({
 
     return (mutationEventEncoded, options) =>
       Effect.gen(function* () {
-        const skipMutationLog = options?.skipMutationLog ?? false
+        const skipEventlog = options?.skipEventlog ?? false
 
         const mutationName = mutationEventEncoded.mutation
-        const mutationDef = getMutationDef(schema, mutationName)
+        const mutationDef = getEventDef(schema, mutationName)
 
-        const execArgsArr = getExecArgsFromMutation({
+        const execArgsArr = getExecArgsFromEvent({
           mutationDef,
           mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
         })
@@ -88,16 +88,16 @@ export const makeApplyMutation = ({
 
         // console.groupEnd()
 
-        // write to mutation_log
-        const excludeFromMutationLog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
-        if (skipMutationLog === false && excludeFromMutationLog === false) {
+        // write to eventlog
+        const excludeFromEventlog = shouldExcludeMutationFromLog(mutationName, mutationEventEncoded)
+        if (skipEventlog === false && excludeFromEventlog === false) {
           const mutationName = mutationEventEncoded.mutation
           const mutationDefSchemaHash =
             mutationDefSchemaHashMap.get(mutationName) ?? shouldNeverHappen(`Unknown mutation: ${mutationName}`)
 
-          yield* Mutationlog.insertIntoMutationLog(
+          yield* Eventlog.insertIntoEventlog(
             mutationEventEncoded,
-            dbMutationLog,
+            dbEventlog,
             mutationDefSchemaHash,
             mutationEventEncoded.clientId,
             mutationEventEncoded.sessionId,
@@ -129,11 +129,11 @@ export const makeApplyMutation = ({
 
 export const rollback = ({
   db,
-  dbMutationLog,
+  dbEventlog,
   eventIdsToRollback,
 }: {
   db: SqliteDb
-  dbMutationLog: SqliteDb
+  dbEventlog: SqliteDb
   eventIdsToRollback: EventId.EventId[]
 }) =>
   Effect.gen(function* () {
@@ -165,8 +165,8 @@ export const rollback = ({
 
     // Delete the mutation log rows
     for (const eventIdPairChunk of eventIdPairChunks) {
-      dbMutationLog.execute(
-        sql`DELETE FROM ${MUTATION_LOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
+      dbEventlog.execute(
+        sql`DELETE FROM ${EVENTLOG_META_TABLE} WHERE (idGlobal, idClient) IN (${eventIdPairChunk.join(', ')})`,
       )
     }
   }).pipe(
@@ -178,16 +178,16 @@ export const rollback = ({
 // TODO let's consider removing this "should exclude" mechanism in favour of log compaction etc
 const makeShouldExcludeMutationFromLog = memoizeByRef((schema: LiveStoreSchema) => {
   const migrationOptions = schema.migrationOptions
-  const mutationLogExclude =
+  const eventlogExclude =
     migrationOptions.strategy === 'from-mutation-log'
       ? (migrationOptions.excludeMutations ?? new Set(['livestore.RawSql']))
       : new Set(['livestore.RawSql'])
 
   return (mutationName: string, mutationEventEncoded: LiveStoreEvent.AnyEncoded): boolean => {
-    if (mutationLogExclude.has(mutationName)) return true
+    if (eventlogExclude.has(mutationName)) return true
 
-    const mutationDef = getMutationDef(schema, mutationName)
-    const execArgsArr = getExecArgsFromMutation({
+    const mutationDef = getEventDef(schema, mutationName)
+    const execArgsArr = getExecArgsFromEvent({
       mutationDef,
       mutationEvent: { decoded: undefined, encoded: mutationEventEncoded },
     })

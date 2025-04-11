@@ -20,7 +20,7 @@ import { UnexpectedError } from '../adapter-types.js'
 import type { LiveStoreSchema } from '../schema/mod.js'
 import {
   EventId,
-  getMutationDef,
+  getEventDef,
   LEADER_MERGE_COUNTER_TABLE,
   LiveStoreEvent,
   SESSION_CHANGESET_META_TABLE,
@@ -29,7 +29,7 @@ import { LeaderAheadError } from '../sync/sync.js'
 import * as SyncState from '../sync/syncstate.js'
 import { sql } from '../util.js'
 import { rollback } from './apply-mutation.js'
-import * as Mutationlog from './mutationlog.js'
+import * as Eventlog from './eventlog.js'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.js'
 import { LeaderThreadCtx } from './types.js'
 
@@ -71,8 +71,8 @@ type LocalPushQueueItem = [
  */
 export const makeLeaderSyncProcessor = ({
   schema,
-  dbMutationLogMissing,
-  dbMutationLog,
+  dbEventlogMissing,
+  dbEventlog,
   dbReadModel,
   dbReadModelMissing,
   initialBlockingSyncContext,
@@ -81,9 +81,9 @@ export const makeLeaderSyncProcessor = ({
   testing,
 }: {
   schema: LiveStoreSchema
-  /** Only used to know whether we can safely query dbMutationLog during setup execution */
-  dbMutationLogMissing: boolean
-  dbMutationLog: SqliteDb
+  /** Only used to know whether we can safely query dbEventlog during setup execution */
+  dbEventlogMissing: boolean
+  dbEventlog: SqliteDb
   dbReadModel: SqliteDb
   /** Only used to know whether we can safely query dbReadModel during setup execution */
   dbReadModelMissing: boolean
@@ -113,7 +113,7 @@ export const makeLeaderSyncProcessor = ({
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
     const isClientEvent = (mutationEventEncoded: LiveStoreEvent.EncodedWithMeta) => {
-      const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
+      const mutationDef = getEventDef(schema, mutationEventEncoded.mutation)
       return mutationDef.eventDef.options.clientOnly
     }
 
@@ -208,7 +208,7 @@ export const makeLeaderSyncProcessor = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const mutationDef = getMutationDef(schema, mutation)
+        const mutationDef = getEventDef(schema, mutation)
 
         const mutationEventEncoded = new LiveStoreEvent.EncodedWithMeta({
           mutation,
@@ -235,11 +235,9 @@ export const makeLeaderSyncProcessor = ({
         runtime,
       }
 
-      const initialLocalHead = dbMutationLogMissing ? EventId.ROOT : Mutationlog.getClientHeadFromDb(dbMutationLog)
+      const initialLocalHead = dbEventlogMissing ? EventId.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const initialBackendHead = dbMutationLogMissing
-        ? EventId.ROOT.global
-        : Mutationlog.getBackendHeadFromDb(dbMutationLog)
+      const initialBackendHead = dbEventlogMissing ? EventId.ROOT.global : Eventlog.getBackendHeadFromDb(dbEventlog)
 
       if (initialBackendHead > initialLocalHead.global) {
         return shouldNeverHappen(
@@ -247,9 +245,9 @@ export const makeLeaderSyncProcessor = ({
         )
       }
 
-      const pendingEvents = dbMutationLogMissing
+      const pendingEvents = dbEventlogMissing
         ? []
-        : yield* Mutationlog.getEventsSince({ global: initialBackendHead, client: EventId.clientDefault })
+        : yield* Eventlog.getEventsSince({ global: initialBackendHead, client: EventId.clientDefault })
 
       const initialSyncState = new SyncState.SyncState({
         pending: pendingEvents,
@@ -265,7 +263,7 @@ export const makeLeaderSyncProcessor = ({
         const globalPendingEvents = pendingEvents
           // Don't sync clientOnly mutations
           .filter((mutationEventEncoded) => {
-            const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
+            const mutationDef = getEventDef(schema, mutationEventEncoded.mutation)
             return mutationDef.eventDef.options.clientOnly === false
           })
 
@@ -554,7 +552,7 @@ const backgroundApplyLocalPushes = ({
 
       // Don't sync clientOnly mutations
       const filteredBatch = mergeResult.newEvents.filter((mutationEventEncoded) => {
-        const mutationDef = getMutationDef(schema, mutationEventEncoded.mutation)
+        const mutationDef = getEventDef(schema, mutationEventEncoded.mutation)
         return mutationDef.eventDef.options.clientOnly === false
       })
 
@@ -579,11 +577,11 @@ type ApplyMutationsBatch = (_: {
 // TODO how to handle errors gracefully
 const applyMutationsBatch: ApplyMutationsBatch = ({ batchItems, deferreds }) =>
   Effect.gen(function* () {
-    const { dbReadModel: db, dbMutationLog, applyMutation } = yield* LeaderThreadCtx
+    const { dbReadModel: db, dbEventlog, applyMutation } = yield* LeaderThreadCtx
 
     // NOTE We always start a transaction to ensure consistency between db and mutation log (even for single-item batches)
     db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-    dbMutationLog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+    dbEventlog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
     yield* Effect.addFinalizer((exit) =>
       Effect.gen(function* () {
@@ -591,7 +589,7 @@ const applyMutationsBatch: ApplyMutationsBatch = ({ batchItems, deferreds }) =>
 
         // Rollback in case of an error
         db.execute('ROLLBACK', undefined)
-        dbMutationLog.execute('ROLLBACK', undefined)
+        dbEventlog.execute('ROLLBACK', undefined)
       }),
     )
 
@@ -605,7 +603,7 @@ const applyMutationsBatch: ApplyMutationsBatch = ({ batchItems, deferreds }) =>
     }
 
     db.execute('COMMIT', undefined) // Commit the transaction
-    dbMutationLog.execute('COMMIT', undefined) // Commit the transaction
+    dbEventlog.execute('COMMIT', undefined) // Commit the transaction
   }).pipe(
     Effect.uninterruptible,
     Effect.scoped,
@@ -648,7 +646,7 @@ const backgroundBackendPulling = ({
   advancePushHead: (eventId: EventId.EventId) => void
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, dbReadModel: db, dbMutationLog, schema } = yield* LeaderThreadCtx
+    const { syncBackend, dbReadModel: db, dbEventlog, schema } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -691,7 +689,7 @@ const backgroundBackendPulling = ({
 
         const newBackendHead = newEvents.at(-1)!.id
 
-        Mutationlog.updateBackendHead(dbMutationLog, newBackendHead)
+        Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
         if (mergeResult._tag === 'rebase') {
           otelSpan?.addEvent(`[${mergeCounter}]:pull:rebase`, {
@@ -702,13 +700,13 @@ const backgroundBackendPulling = ({
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((mutationEvent) => {
-            const mutationDef = getMutationDef(schema, mutationEvent.mutation)
+            const mutationDef = getEventDef(schema, mutationEvent.mutation)
             return mutationDef.eventDef.options.clientOnly === false
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
-            yield* rollback({ db, dbMutationLog, eventIdsToRollback: mergeResult.rollbackEvents.map((_) => _.id) })
+            yield* rollback({ db, dbEventlog, eventIdsToRollback: mergeResult.rollbackEvents.map((_) => _.id) })
           }
 
           yield* connectedClientSessionPullQueues.offer({
@@ -745,7 +743,7 @@ const backgroundBackendPulling = ({
                 EventId.isEqual(mutationEvent.id, confirmedEvent.id),
               ),
             )
-            yield* Mutationlog.updateSyncMetadata(confirmedNewEvents)
+            yield* Eventlog.updateSyncMetadata(confirmedNewEvents)
           }
         }
 
@@ -764,7 +762,7 @@ const backgroundBackendPulling = ({
         }
       })
 
-    const cursorInfo = yield* Mutationlog.getSyncBackendCursorInfo(initialBackendHead)
+    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo(initialBackendHead)
 
     yield* syncBackend.pull(cursorInfo).pipe(
       // TODO only take from queue while connected

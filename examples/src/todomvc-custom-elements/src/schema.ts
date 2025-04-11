@@ -1,26 +1,26 @@
-import { DbSchema, defineMutation, makeSchema, Schema, sql } from '@livestore/livestore'
+import { defineMutation, makeSchema, Schema, sql, State } from '@livestore/livestore'
 
-const todos = DbSchema.table('todos', {
-  id: DbSchema.text({ primaryKey: true }),
-  text: DbSchema.text({ default: '' }),
-  completed: DbSchema.boolean({ default: false }),
-  deleted: DbSchema.integer({ nullable: true }),
+const todos = State.SQLite.table('todos', {
+  id: State.SQLite.text({ primaryKey: true }),
+  text: State.SQLite.text({ default: '' }),
+  completed: State.SQLite.boolean({ default: false }),
+  deleted: State.SQLite.integer({ nullable: true }),
 })
 
 const Filter = Schema.Literal('all', 'active', 'completed')
 export type Filter = typeof Filter.Type
 
-const app = DbSchema.table(
+const app = State.SQLite.table(
   'app',
   {
-    newTodoText: DbSchema.text({ default: '' }),
-    filter: DbSchema.text({ schema: Filter, default: 'all' }),
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
   },
   { isSingleton: true },
 )
 
-export type Todo = DbSchema.FromTable.RowDecoded<typeof todos>
-export type AppState = DbSchema.FromTable.RowDecoded<typeof app>
+export type Todo = State.SQLite.FromTable.RowDecoded<typeof todos>
+export type AppState = State.SQLite.FromTable.RowDecoded<typeof app>
 
 export const tables = { todos, app }
 

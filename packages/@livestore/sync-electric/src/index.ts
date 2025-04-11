@@ -333,7 +333,7 @@ export const makeSyncBackend =
     })
 
 /**
- * Needs to be bumped when the storage format changes (e.g. mutationLogTable schema changes)
+ * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
  *
  * Changing this version number will lead to a "soft reset".
  */
@@ -341,5 +341,5 @@ export const PERSISTENCE_FORMAT_VERSION = 4
 
 export const toTableName = (storeId: string) => {
   const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')
-  return `mutation_log_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
+  return `eventlog_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
 }

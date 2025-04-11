@@ -1,18 +1,15 @@
 import { shouldNeverHappen } from '@livestore/utils'
 
 import type { QueryBuilder } from '../query-builder/api.js'
-import { type Materializer, rawSqlMaterializer, rawSqlMutation } from './mutations.js'
+import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.js'
+import { type Materializer, rawSqlEvent, rawSqlMaterializer } from './EventDef.js'
 import type { State } from './schema.js'
 import { systemTables } from './system-tables.js'
-import {
-  ClientDocumentTableDefSymbol,
-  type TableDef,
-  type TableDefBase,
-  tableIsClientDocumentTable,
-} from './table-def.js'
+import { type TableDef, type TableDefBase } from './table-def.js'
 
 export * from './table-def.js'
-export * from './mutations.js'
+export * from './client-document-def.js'
+export * from './EventDef.js'
 
 // TODO adjust return table types to remove write-capabilities from query builder API
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): State => {
@@ -42,7 +39,7 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
     materializers.set(name, materializer)
   }
 
-  materializers.set(rawSqlMutation.name, rawSqlMaterializer)
+  materializers.set(rawSqlEvent.name, rawSqlMaterializer)
 
   for (const tableDef of inputTables) {
     if (tableIsClientDocumentTable(tableDef)) {
@@ -50,12 +47,6 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
         tableDef[ClientDocumentTableDefSymbol].derived.setEventDef.name,
         tableDef[ClientDocumentTableDefSymbol].derived.setMaterializer,
       )
-      // } else {
-
-      // const updateKey = `${tableDef.sqliteDef.name}Updated`
-      // if (tableHasDerivedMutations(tableDef) && materializers.has(updateKey) === false) {
-      //   console.warn(`No materializer found for ${updateKey}. Please add a materializer for this event.`)
-      // }
     }
   }
 
@@ -96,7 +87,7 @@ export type QueryableSingle<TTableDef extends TableDefBase> = QueryBuilder<
 export namespace FromInputState {
   // export type DeriveSchema<TInputSchema extends InputState> = <
   //   DbSchemaFromInputSchemaTables<TInputSchema['tables']>,
-  //   MutationDefRecordFromInputSchemaMutations<TInputSchema['materializers']>
+  //   EventDefRecordFromInputSchemaMutations<TInputSchema['materializers']>
   // >
 
   // export type FromInputState<TTables extends InputState['tables']> =

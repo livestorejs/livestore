@@ -62,7 +62,7 @@ export interface ClientSessionLeaderThreadProxy {
     readonly migrationsReport: MigrationsReport
   }
   export: Effect.Effect<Uint8Array, UnexpectedError>
-  getMutationLogData: Effect.Effect<Uint8Array, UnexpectedError>
+  getEventlogData: Effect.Effect<Uint8Array, UnexpectedError>
   getSyncState: Effect.Effect<SyncState, UnexpectedError>
   /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
   sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void, UnexpectedError>
@@ -189,7 +189,7 @@ export class SqliteError extends Schema.TaggedError<SqliteError>()('LiveStore.Sq
 // TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app
 export type MigrationOptions<TSchema extends LiveStoreSchema = LiveStoreSchema> =
-  | MigrationOptionsFromMutationLog<TSchema>
+  | MigrationOptionsFromEventlog<TSchema>
   | {
       strategy: 'hard-reset'
       hooks?: Partial<MigrationHooks>
@@ -210,14 +210,14 @@ export type MigrationHooks = {
 
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
-export interface MigrationOptionsFromMutationLog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
+export interface MigrationOptionsFromEventlog<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   strategy: 'from-mutation-log'
   /**
    * Mutations to exclude in the mutation log
    *
    * @default new Set(['livestore.RawSql'])
    */
-  excludeMutations?: ReadonlySet<keyof TSchema['_MutationDefMapType'] & string>
+  excludeMutations?: ReadonlySet<keyof TSchema['_EventDefMapType'] & string>
   hooks?: Partial<MigrationHooks>
   logging?: {
     excludeAffectedRows?: (sqlStmt: string) => boolean

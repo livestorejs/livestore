@@ -1,12 +1,12 @@
-import { DbSchema, Events, makeSchema, State } from '@livestore/common/schema'
+import { Events, makeSchema, State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
-const todos = DbSchema.table({
+const todos = State.SQLite.table({
   name: 'todos',
   columns: {
-    id: DbSchema.text({ primaryKey: true }),
-    text: DbSchema.text({ default: '', nullable: false }),
-    completed: DbSchema.boolean({ default: false, nullable: false }),
+    id: State.SQLite.text({ primaryKey: true }),
+    text: State.SQLite.text({ default: '', nullable: false }),
+    completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
 })
 
@@ -15,14 +15,14 @@ const Config = Schema.Struct({
   theme: Schema.Literal('light', 'dark'),
 })
 
-const appConfig = DbSchema.clientDocument({
+const appConfig = State.SQLite.clientDocument({
   name: 'app_config',
   schema: Config,
   default: { value: { fontSize: 16, theme: 'light' } },
 })
 
 export const events = {
-  todoCreated: Events.global({
+  todoCreated: Events.synced({
     name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean.pipe(Schema.optional) }),
   }),

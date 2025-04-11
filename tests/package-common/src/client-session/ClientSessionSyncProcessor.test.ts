@@ -2,7 +2,7 @@ import '@livestore/utils/node-vitest-polyfill'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-node'
 import { SyncState, type UnexpectedError } from '@livestore/common'
-import { Mutationlog } from '@livestore/common/leader-thread'
+import { Eventlog } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventId, LiveStoreEvent } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
@@ -177,12 +177,12 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
         testing: {
           overrides: {
             makeLeaderThread: {
-              dbMutationLog: Effect.fn(function* (makeSqliteDb) {
-                const dbMutationLog = yield* makeSqliteDb({ _tag: 'in-memory' })
+              dbEventlog: Effect.fn(function* (makeSqliteDb) {
+                const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
 
-                yield* Mutationlog.initMutationLogDb(dbMutationLog)
+                yield* Eventlog.initEventlogDb(dbEventlog)
 
-                yield* Mutationlog.insertIntoMutationLog(
+                yield* Eventlog.insertIntoEventlog(
                   LiveStoreEvent.EncodedWithMeta.make({
                     ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
                     clientId: 'client',
@@ -190,13 +190,13 @@ Vitest.describe('ClientSessionSyncProcessor', () => {
                     parentId: EventId.ROOT,
                     sessionId: 'static-session-id',
                   }),
-                  dbMutationLog,
+                  dbEventlog,
                   0, // unused mutation def schema hash
                   'client',
                   'static-session-id',
                 )
 
-                return dbMutationLog
+                return dbEventlog
               }, Effect.orDie),
             },
           },

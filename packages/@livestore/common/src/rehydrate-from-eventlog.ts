@@ -1,15 +1,15 @@
 import { memoizeByRef } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
-import { type MigrationOptionsFromMutationLog, type SqliteDb, UnexpectedError } from './adapter-types.js'
+import { type MigrationOptionsFromEventlog, type SqliteDb, UnexpectedError } from './adapter-types.js'
 import type { ApplyMutation } from './leader-thread/mod.js'
-import type { LiveStoreSchema, MutationDef, MutationLogMetaRow } from './schema/mod.js'
-import { EventId, getMutationDef, LiveStoreEvent, MUTATION_LOG_META_TABLE } from './schema/mod.js'
+import type { EventDef, EventlogMetaRow, LiveStoreSchema } from './schema/mod.js'
+import { EventId, EVENTLOG_META_TABLE, getEventDef, LiveStoreEvent } from './schema/mod.js'
 import type { PreparedBindValues } from './util.js'
 import { sql } from './util.js'
 
-export const rehydrateFromMutationLog = ({
-  dbMutationLog,
+export const rehydrateFromEventlog = ({
+  dbEventlog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
   // db,
   schema,
@@ -17,23 +17,23 @@ export const rehydrateFromMutationLog = ({
   onProgress,
   applyMutation,
 }: {
-  dbMutationLog: SqliteDb
+  dbEventlog: SqliteDb
   // db: SqliteDb
   schema: LiveStoreSchema
-  migrationOptions: MigrationOptionsFromMutationLog
+  migrationOptions: MigrationOptionsFromEventlog
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   applyMutation: ApplyMutation
 }) =>
   Effect.gen(function* () {
-    const mutationsCount = dbMutationLog.select<{ count: number }>(
-      `SELECT COUNT(*) AS count FROM ${MUTATION_LOG_META_TABLE}`,
+    const mutationsCount = dbEventlog.select<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM ${EVENTLOG_META_TABLE}`,
     )[0]!.count
 
-    const hashMutation = memoizeByRef((mutation: MutationDef.AnyWithoutFn) => Schema.hash(mutation.schema))
+    const hashMutation = memoizeByRef((mutation: EventDef.AnyWithoutFn) => Schema.hash(mutation.schema))
 
-    const processMutation = (row: MutationLogMetaRow) =>
+    const processMutation = (row: EventlogMetaRow) =>
       Effect.gen(function* () {
-        const mutationDef = getMutationDef(schema, row.mutation)
+        const mutationDef = getEventDef(schema, row.mutation)
 
         if (migrationOptions.excludeMutations?.has(row.mutation) === true) return
 
@@ -68,13 +68,13 @@ This likely means the schema has changed in an incompatible way.
           sessionId: row.sessionId,
         })
 
-        yield* applyMutation(mutationEventEncoded, { skipMutationLog: true })
-      }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromMutationLog:processMutation`))
+        yield* applyMutation(mutationEventEncoded, { skipEventlog: true })
+      }).pipe(Effect.withSpan(`@livestore/common:rehydrateFromEventlog:processMutation`))
 
     const CHUNK_SIZE = 100
 
-    const stmt = dbMutationLog.prepare(sql`\
-SELECT * FROM ${MUTATION_LOG_META_TABLE} 
+    const stmt = dbEventlog.prepare(sql`\
+SELECT * FROM ${EVENTLOG_META_TABLE} 
 WHERE idGlobal > $idGlobal OR (idGlobal = $idGlobal AND idClient > $idClient)
 ORDER BY idGlobal ASC, idClient ASC
 LIMIT ${CHUNK_SIZE}
@@ -82,7 +82,7 @@ LIMIT ${CHUNK_SIZE}
 
     let processedMutations = 0
 
-    yield* Stream.unfoldChunk<Chunk.Chunk<MutationLogMetaRow> | { _tag: 'Initial ' }, MutationLogMetaRow>(
+    yield* Stream.unfoldChunk<Chunk.Chunk<EventlogMetaRow> | { _tag: 'Initial ' }, EventlogMetaRow>(
       { _tag: 'Initial ' },
       (item) => {
         // End stream if no more rows
@@ -95,7 +95,7 @@ LIMIT ${CHUNK_SIZE}
             )
           : EventId.ROOT
         const nextItem = Chunk.fromIterable(
-          stmt.select<MutationLogMetaRow>({
+          stmt.select<EventlogMetaRow>({
             $idGlobal: lastId?.global,
             $idClient: lastId?.client,
           } as any as PreparedBindValues),
@@ -116,6 +116,6 @@ LIMIT ${CHUNK_SIZE}
       Stream.runDrain,
     )
   }).pipe(
-    Effect.withPerformanceMeasure('@livestore/common:rehydrateFromMutationLog'),
-    Effect.withSpan('@livestore/common:rehydrateFromMutationLog'),
+    Effect.withPerformanceMeasure('@livestore/common:rehydrateFromEventlog'),
+    Effect.withSpan('@livestore/common:rehydrateFromEventlog'),
   )

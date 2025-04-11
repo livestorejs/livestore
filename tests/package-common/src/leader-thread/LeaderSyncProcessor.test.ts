@@ -246,7 +246,7 @@ const LeaderThreadCtxLive = ({
       makeSqliteDb,
       syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
       dbReadModel: yield* makeSqliteDb({ _tag: 'in-memory' }),
-      dbMutationLog: yield* makeSqliteDb({ _tag: 'in-memory' }),
+      dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
       devtoolsOptions: { enabled: false },
       shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
       testing: {

@@ -1,5 +1,5 @@
+import type { EventDefFactsGroup } from '../../schema/EventDef.js'
 import * as EventId from '../../schema/EventId.js'
-import type { EventDefFactsGroup } from '../../schema/mutations.js'
 import { graphology } from './graphology_.js'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const

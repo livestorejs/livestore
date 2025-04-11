@@ -1,36 +1,35 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../adapter-types.js'
-import { makeDerivedMutationDefsForTable } from '../derived-mutations.js'
+import { tableIsClientDocumentTable } from './client-document-def.js'
 import type { SqliteDsl } from './db-schema/mod.js'
 import { SqliteAst } from './db-schema/mod.js'
-import type { Materializer, MutationDef, MutationDefMap, MutationDefRecord, RawSqlMutation } from './mutations.js'
-import { rawSqlMutation } from './mutations.js'
+import type { EventDef, EventDefRecord, Materializer, RawSqlEvent } from './EventDef.js'
+import { rawSqlEvent } from './EventDef.js'
 import { systemTables } from './system-tables.js'
-import type { AtomTableDef, TableDef, TableDefBase } from './table-def.js'
-import { tableHasDerivedMutations, tableIsClientDocumentTable } from './table-def.js'
+import type { TableDef } from './table-def.js'
 
 export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
 
 export type LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
-  TMutationsDefRecord extends MutationDefRecord = MutationDefRecord,
+  TMutationsDefRecord extends EventDefRecord = EventDefRecord,
 > = {
   readonly _Type: LiveStoreSchemaSymbol
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
-  readonly _MutationDefMapType: TMutationsDefRecord
+  readonly _EventDefMapType: TMutationsDefRecord
 
   // TODO remove in favour of `state`
   readonly tables: Map<string, TableDef>
-  // readonly mutations: MutationDefMap
+  // readonly mutations: EventDefMap
   /** Compound hash of all table defs etc */
   readonly hash: number
   readonly state: State
 
-  readonly eventsDefsMap: Map<string, MutationDef.AnyWithoutFn>
+  readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
 
   // readonly materializers: Map<string, Materializer>
 
@@ -45,7 +44,7 @@ export type State = {
 
 export type InputSchema = {
   // readonly tables?: Record<string, TableDefBase> | ReadonlyArray<TableDefBase>
-  readonly events: ReadonlyArray<MutationDef.AnyWithoutFn> | Record<string, MutationDef.AnyWithoutFn>
+  readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
   readonly state: State
   /**
    * Can be used to isolate multiple LiveStore apps running in the same origin
@@ -85,7 +84,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
-  const eventsDefsMap = new Map<string, MutationDef.AnyWithoutFn>()
+  const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
 
   if (isReadonlyArray(inputSchema.events)) {
     for (const eventDef of inputSchema.events) {
@@ -100,7 +99,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  eventsDefsMap.set(rawSqlMutation.name, rawSqlMutation)
+  eventsDefsMap.set(rawSqlEvent.name, rawSqlEvent)
 
   for (const tableDef of tables.values()) {
     if (tableIsClientDocumentTable(tableDef) && eventsDefsMap.has(tableDef.set.name) === false) {
@@ -117,7 +116,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   return {
     _Type: LiveStoreSchemaSymbol,
     _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
-    _MutationDefMapType: Symbol.for('livestore.MutationDefMapType') as any,
+    _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
     // tables,
     // mutations,
     state,
@@ -128,11 +127,11 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   } satisfies LiveStoreSchema
 }
 
-export const getMutationDef = <TSchema extends LiveStoreSchema>(
+export const getEventDef = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
   mutationName: string,
 ): {
-  eventDef: MutationDef.AnyWithoutFn
+  eventDef: EventDef.AnyWithoutFn
   materializer: Materializer
 } => {
   const eventDef = schema.eventsDefsMap.get(mutationName)
@@ -149,7 +148,7 @@ export const getMutationDef = <TSchema extends LiveStoreSchema>(
 export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
     DbSchemaFromInputSchemaTables<TInputSchema['state']['tables']>,
-    MutationDefRecordFromInputSchemaMutations<TInputSchema['events']>
+    EventDefRecordFromInputSchemaMutations<TInputSchema['events']>
   >
 
   /**
@@ -164,10 +163,10 @@ export namespace FromInputSchema {
         ? { [K in keyof TTables as TTables[K]['sqliteDef']['name']]: TTables[K]['sqliteDef'] }
         : never
 
-  type MutationDefRecordFromInputSchemaMutations<TMutations extends InputSchema['events']> =
-    TMutations extends ReadonlyArray<MutationDef.Any>
-      ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlMutation }
-      : TMutations extends { [name: string]: MutationDef.Any }
-        ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlMutation }
+  type EventDefRecordFromInputSchemaMutations<TMutations extends InputSchema['events']> =
+    TMutations extends ReadonlyArray<EventDef.Any>
+      ? { [K in TMutations[number] as K['name']]: K } & { 'livestore.RawSql': RawSqlEvent }
+      : TMutations extends { [name: string]: EventDef.Any }
+        ? { [K in keyof TMutations as TMutations[K]['name']]: TMutations[K] } & { 'livestore.RawSql': RawSqlEvent }
         : never
 }

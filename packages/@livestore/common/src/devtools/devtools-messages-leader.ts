@@ -18,7 +18,7 @@ export class DatabaseFileInfo extends Schema.Struct({
 
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
   readModel: DatabaseFileInfo,
-  mutationLog: DatabaseFileInfo,
+  eventlog: DatabaseFileInfo,
 }) {}
 
 export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {
@@ -100,10 +100,10 @@ export class RunMutationReq extends LSDReqResMessage('LSD.Leader.RunMutationReq'
 
 export class RunMutationRes extends LSDReqResMessage('LSD.Leader.RunMutationRes', {}) {}
 
-export class MutationLogReq extends LSDReqResMessage('LSD.Leader.MutationLogReq', {}) {}
+export class EventlogReq extends LSDReqResMessage('LSD.Leader.EventlogReq', {}) {}
 
-export class MutationLogRes extends LSDReqResMessage('LSD.Leader.MutationLogRes', {
-  mutationLog: Transferable.Uint8Array,
+export class EventlogRes extends LSDReqResMessage('LSD.Leader.EventlogRes', {
+  eventlog: Transferable.Uint8Array,
 }) {}
 
 export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {}) {}
@@ -153,7 +153,7 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 export const MessageToApp = Schema.Union(
   SnapshotReq,
   LoadDatabaseFile.Request,
-  MutationLogReq,
+  EventlogReq,
   ResetAllData.Request,
   NetworkStatusSubscribe,
   NetworkStatusUnsubscribe,
@@ -174,7 +174,7 @@ export type MessageToApp = typeof MessageToApp.Type
 export const MessageFromApp = Schema.Union(
   SnapshotRes,
   LoadDatabaseFile.Response,
-  MutationLogRes,
+  EventlogRes,
   Disconnect,
   SyncPull,
   NetworkStatusRes,

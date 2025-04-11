@@ -9,7 +9,7 @@ import type {
 import {
   Devtools,
   getDurationMsFromSpan,
-  getExecArgsFromMutation,
+  getExecArgsFromEvent,
   getResultSchema,
   IntentionalShutdownCause,
   isQueryBuilder,
@@ -21,7 +21,7 @@ import {
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
-  getMutationDef,
+  getEventDef,
   LEADER_MERGE_COUNTER_TABLE,
   LiveStoreEvent,
   SCHEMA_META_TABLE,
@@ -115,9 +115,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       clientSession,
       runtime: effectContext.runtime,
       applyMutation: (mutationEventDecoded, { otelContext, withChangeset }) => {
-        const mutationDef = getMutationDef(schema, mutationEventDecoded.mutation)
+        const mutationDef = getEventDef(schema, mutationEventDecoded.mutation)
 
-        const execArgsArr = getExecArgsFromMutation({
+        const execArgsArr = getExecArgsFromEvent({
           mutationDef,
           mutationEvent: { decoded: mutationEventDecoded, encoded: undefined },
         })
@@ -626,10 +626,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
       }).pipe(this.runEffectFork)
     },
 
-    downloadMutationLogDb: () => {
+    downloadEventlogDb: () => {
       Effect.gen(this, function* () {
-        const data = yield* this.clientSession.leaderThread.getMutationLogData
-        downloadBlob(data, `livestore-mutationlog-${Date.now()}.db`)
+        const data = yield* this.clientSession.leaderThread.getEventlogData
+        downloadBlob(data, `livestore-eventlog-${Date.now()}.db`)
       }).pipe(this.runEffectFork)
     },
 
