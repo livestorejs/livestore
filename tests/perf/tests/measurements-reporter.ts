@@ -8,12 +8,14 @@ import {
   Option,
   ParseResult,
   MetricState,
+  Data,
   Pretty,
   ReadonlyArray,
   Schema,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+import { TableConsoleRenderer } from './table-console-renderer.js'
 
 const MeasurementUnit = Schema.Literal('ms', 'bytes')
 type MeasurementUnit = typeof MeasurementUnit.Type
@@ -21,10 +23,10 @@ type MeasurementUnit = typeof MeasurementUnit.Type
 const DisplayUnit = Schema.Literal('ms', 'MB')
 type DisplayUnit = typeof DisplayUnit.Type
 
-class MissingAnnotationError extends Schema.TaggedError<MissingAnnotationError>()('MissingAnnotationError', {
-  annotationType: Schema.String,
-  testTitle: Schema.String,
-}) {}
+class MissingAnnotationError extends Data.TaggedError('MissingAnnotationError')<{
+  annotationType: string
+  testTitle: string
+}> {}
 
 const StringDescribedAnnotation = <T extends string>(typeLiteral: T) =>
   Schema.Struct({
@@ -60,6 +62,15 @@ const MeasurementUnitAnnotation = Schema.Struct({
   type: Schema.Literal('measurement unit'),
   description: MeasurementUnit,
 })
+
+const getRequiredAnnotation = <T extends AnyAnnotation['type']>(
+  decodedAnnotations: ReadonlyArray<AnyAnnotation>, // Change this line
+  type: T,
+  testTitle: string,
+): Effect.Effect<Extract<AnyAnnotation, { type: T }>, MissingAnnotationError> =>
+  ReadonlyArray.findFirst(decodedAnnotations, (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type).pipe(
+    Effect.mapError(() => new MissingAnnotationError({ annotationType: type, testTitle: testTitle })),
+  )
 
 const AnyAnnotation = Schema.Union(
   MeasurementAnnotation,
@@ -190,41 +201,31 @@ export default class MeasurementsReporter implements Reporter {
       Effect.gen(this, function* () {
         const decodedAnnotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
 
-        const getRequiredAnnotation = <T extends AnyAnnotation['type']>(type: T) =>
-          ReadonlyArray.findFirst(
-            decodedAnnotations,
-            (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type,
-          ).pipe(Effect.mapError(() => new MissingAnnotationError({ annotationType: type, testTitle: test.title })))
-
-        const measurementUnitAnnotation = yield* getRequiredAnnotation('measurement unit')
+        const measurementUnitAnnotation = yield* getRequiredAnnotation(
+          decodedAnnotations,
+          'measurement unit',
+          test.title,
+        )
         const unit = measurementUnitAnnotation.description
 
         const testSuiteTitle = test.parent?.parent?.title ?? 'n/a'
         const testSuiteTitlePath = test.parent.titlePath().slice(1, -2).join(' > ')
 
+        const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
+
         const metric = Metric.summary({
-          name: `perf_test_${test.title.replaceAll(/[^a-zA-Z0-9]/g, '_')}`,
+          name: `${snakeCase(testSuiteTitle)}_${snakeCase(test.title)}`,
           maxAge: '1 hour',
           maxSize: 100_000,
           error: 0.01,
           quantiles: [0.5, 0.9],
           description: `Performance measurement ${test.title}`,
         }).pipe(
-          Metric.tagged('unit', unit), // Keep tags on metric for export
+          Metric.tagged('unit', unit),
           Metric.tagged('test_suite_title', testSuiteTitle),
           Metric.tagged('test_suite_title_path', testSuiteTitlePath),
-          Metric.tagged('os.type', this.systemInfo.os.type),
-          Metric.tagged('os.platform', this.systemInfo.os.platform),
-          Metric.tagged('os.release', this.systemInfo.os.release),
-          Metric.tagged('os.arch', this.systemInfo.os.arch),
-          Metric.tagged('cpu.model', this.systemInfo.cpus.model),
-          Metric.tagged('cpu.count', this.systemInfo.cpus.count.toString()),
-          Metric.tagged('cpu.speed', this.systemInfo.cpus.speed.toString()),
-          Metric.tagged('memory.total', this.systemInfo.memory.total.toString()),
-          Metric.tagged('memory.free', this.systemInfo.memory.free.toString()),
         )
 
-        // Store the TrackedMetric object
         this.metricsByTestTitle[test.title] = {
           metric: metric,
           meta: {
@@ -234,7 +235,18 @@ export default class MeasurementsReporter implements Reporter {
           },
         }
       }),
-    ).pipe(Effect.runSync)
+    ).pipe(
+      Effect.tagMetrics('os.type', this.systemInfo.os.type),
+      Effect.tagMetrics('os.platform', this.systemInfo.os.platform),
+      Effect.tagMetrics('os.release', this.systemInfo.os.release),
+      Effect.tagMetrics('os.arch', this.systemInfo.os.arch),
+      Effect.tagMetrics('cpu.model', this.systemInfo.cpus.model),
+      Effect.tagMetrics('cpu.count', this.systemInfo.cpus.count.toString()),
+      Effect.tagMetrics('cpu.speed', this.systemInfo.cpus.speed.toString()),
+      Effect.tagMetrics('memory.total', this.systemInfo.memory.total.toString()),
+      Effect.tagMetrics('memory.free', this.systemInfo.memory.free.toString()),
+      Effect.runSync,
+    )
   }
 
   onTestEnd = async (test: TestCase, result: TestResult): Promise<void> => {
@@ -242,16 +254,9 @@ export default class MeasurementsReporter implements Reporter {
 
     const processMeasurementEffect = Effect.gen(this, function* () {
       const decodedAnnotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
-      const getRequiredAnnotation = <T extends AnyAnnotation['type']>(type: T) =>
-        ReadonlyArray.findFirst(
-          decodedAnnotations,
-          (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type,
-        ).pipe(Effect.mapError(() => new MissingAnnotationError({ annotationType: type, testTitle: test.title })))
-
-      const measurementAnnotation = yield* getRequiredAnnotation('measurement')
+      const measurementAnnotation = yield* getRequiredAnnotation(decodedAnnotations, 'measurement', test.title)
       const value = measurementAnnotation.description
 
-      // Get the TrackedMetric object
       const trackedMetric = this.metricsByTestTitle[test.title]
       if (trackedMetric === undefined) {
         return Effect.void
@@ -276,21 +281,17 @@ export default class MeasurementsReporter implements Reporter {
   }
 
   private printMeasurements = async (): Promise<void> => {
-    console.log('\n📊 Performance Test Measurements:\n')
-
     const metricsByTitlePath = this.groupMetricsByTitlePath()
 
     for (const [testSuiteTitlePath, trackedMetricsInGroup] of Object.entries(metricsByTitlePath)) {
       if (Object.keys(trackedMetricsInGroup).length === 0) continue
 
-      // Get the suite title from the first tracked metric's tags
       const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]
       if (!firstTrackedMetric) continue
 
       const testSuiteTitle = firstTrackedMetric.meta.testSuiteTitle
 
       console.log(`\n🧪 ${testSuiteTitlePath} (${testSuiteTitle}):\n`)
-      // Pass the group of TrackedMetric objects
       await this.printMeasurementsTable(testSuiteTitle, trackedMetricsInGroup)
     }
   }
@@ -312,38 +313,33 @@ export default class MeasurementsReporter implements Reporter {
 
   private printMeasurementsTable = async (
     testSuiteTitle: string,
-    // Accept the group of TrackedMetric objects
     trackedMetricsInGroup: Record<string, TrackedMetric>,
   ): Promise<void> => {
     if (Object.keys(trackedMetricsInGroup).length === 0) return
 
-    // Fetch all metric states concurrently
     const metricStatesResult = await Effect.all(
       Object.entries(trackedMetricsInGroup).reduce(
         (acc, [testTitle, trackedMetric]) => {
-          // Get state from the 'metric' property
           acc[testTitle] = Metric.value(trackedMetric.metric)
           return acc
         },
-        {} as Record<string, Effect.Effect<MetricState.MetricState.Summary>>
+        {} as Record<string, Effect.Effect<MetricState.MetricState.Summary>>,
       ),
-      { concurrency: 'inherit' },
-    ).pipe(this.runtime.runPromise)
+    ).pipe(Effect.provide(OtelTestLayer), this.runtime.runPromise)
 
     const hasSingleMeasurementPerTestTitle = Object.values(metricStatesResult).every((state) => state.count === 1)
 
-    // Get unit and formatter from the first tracked metric's tags
     const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]!
     const unit = firstTrackedMetric.meta.unit
     const displayUnit = measurementUnitToDisplayUnit[unit]
     const formatValue = unitFormatters[unit]
 
     if (hasSingleMeasurementPerTestTitle) {
-      const headers = [testSuiteTitle, `Measurement (${displayUnit})`]
+      const headers = [testSuiteTitle, `Measurement`]
       const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
-        return [testTitle, `${formatValue(state.sum)}`]
+        return [testTitle, `${formatValue(state.sum)} ${displayUnit}`]
       })
-      TableRenderer.renderTable(headers, rows)
+      TableConsoleRenderer.renderTable(headers, rows)
     } else {
       const headers = [testSuiteTitle, 'Mean', 'Median', 'P90', 'Min', 'Max']
       const rows: string[][] = []
@@ -352,9 +348,10 @@ export default class MeasurementsReporter implements Reporter {
         if (metricState.count === 0) continue
 
         const quantiles = Object.fromEntries(metricState.quantiles)
+
         const getQuantileValue = (q: number): number | undefined => {
           const quantileOption = quantiles[q]
-          return quantileOption && Option.isSome(quantileOption) ? Option.getOrThrow(quantileOption) : undefined
+          return quantileOption ? Option.getOrUndefined(quantileOption) : undefined
         }
 
         const median = getQuantileValue(0.5)
@@ -370,66 +367,7 @@ export default class MeasurementsReporter implements Reporter {
           `${formatValue(metricState.max)} ${displayUnit}`,
         ])
       }
-      TableRenderer.renderTable(headers, rows)
+      TableConsoleRenderer.renderTable(headers, rows)
     }
-  }
-}
-
-class TableRenderer {
-  static renderTable = (headers: string[], rows: string[][], firstColumnLeftAligned = true): void => {
-    const columnWidths = this.calculateColumnWidths(headers, rows)
-    this.printTableHeader(headers, columnWidths, firstColumnLeftAligned)
-    this.printTableRows(rows, columnWidths, firstColumnLeftAligned)
-    this.printTableFooter(columnWidths)
-  }
-
-  private static calculateColumnWidths = (headers: string[], rows: string[][]): number[] =>
-    headers.map((header, columnIndex) => {
-      const maxContentWidth = Math.max(
-        header.length,
-        ...rows.map((row) => (row[columnIndex] ? row[columnIndex]!.toString().length : 0)),
-      )
-      return maxContentWidth + 2 // Add padding
-    })
-
-  private static printTableHeader = (
-    headers: string[],
-    columnWidths: number[],
-    firstColumnLeftAligned: boolean,
-  ): void => {
-    console.log('┌' + columnWidths.map((width) => '─'.repeat(width)).join('┬') + '┐')
-
-    const headerRow = headers
-      .map((header, i) => {
-        // First column left-aligned if specified, others right-aligned
-        return i === 0 && firstColumnLeftAligned
-          ? header.padEnd(columnWidths[i]!)
-          : header.padStart(columnWidths[i]! - 1).padEnd(columnWidths[i]!)
-      })
-      .join('│')
-
-    console.log('│' + headerRow + '│')
-    console.log('├' + columnWidths.map((width) => '─'.repeat(width)).join('┼') + '┤')
-  }
-
-  private static printTableRows = (rows: string[][], columnWidths: number[], firstColumnLeftAligned: boolean): void => {
-    for (const row of rows) {
-      const formattedRow = row
-        .map((cell, i) => {
-          // First column left-aligned if specified, others right-aligned
-          return i === 0 && firstColumnLeftAligned
-            ? cell.toString().padEnd(columnWidths[i]!)
-            : cell
-                .toString()
-                .padStart(columnWidths[i]! - 1)
-                .padEnd(columnWidths[i]!)
-        })
-        .join('│')
-      console.log('│' + formattedRow + '│')
-    }
-  }
-
-  private static printTableFooter = (columnWidths: number[]): void => {
-    console.log('└' + columnWidths.map((width) => '─'.repeat(width)).join('┴') + '┘')
   }
 }
