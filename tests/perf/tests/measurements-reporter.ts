@@ -7,30 +7,19 @@ import {
   Metric,
   Option,
   ParseResult,
+  MetricState,
   Pretty,
   ReadonlyArray,
   Schema,
 } from '@livestore/utils/effect'
 import { OtelLiveHttp } from '@livestore/utils/node'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
-import { assertNever } from '@livestore/utils/src/index.js'
 
 const MeasurementUnit = Schema.Literal('ms', 'bytes')
 type MeasurementUnit = typeof MeasurementUnit.Type
 
 const DisplayUnit = Schema.Literal('ms', 'MB')
 type DisplayUnit = typeof DisplayUnit.Type
-
-const Measurement = Schema.Struct({
-  testSuiteTitle: Schema.String,
-  testSuiteTitlePath: Schema.String,
-  testTitle: Schema.String,
-  value: Schema.Number,
-  unit: MeasurementUnit,
-  cpuThrottlingRate: Schema.optional(Schema.Number),
-  warmupCount: Schema.optional(Schema.Number),
-})
-type Measurement = typeof Measurement.Type
 
 class MissingAnnotationError extends Schema.TaggedError<MissingAnnotationError>()('MissingAnnotationError', {
   annotationType: Schema.String,
@@ -81,7 +70,6 @@ const AnyAnnotation = Schema.Union(
 type AnyAnnotation = Schema.Schema.Type<typeof AnyAnnotation>
 
 const Annotations = Schema.NonEmptyArray(AnyAnnotation)
-type Annotations = Schema.Schema.Type<typeof Annotations>
 
 const Cpus = Schema.NonEmptyArray(
   Schema.Struct({
@@ -182,26 +170,37 @@ const collectSystemInfo = (): SystemInfo => {
   })
 }
 
+type TrackedMetric = {
+  metric: Metric.Metric.Summary<number>
+  meta: {
+    unit: MeasurementUnit
+    testSuiteTitle: string
+    testSuiteTitlePath: string
+  }
+}
+
 export default class MeasurementsReporter implements Reporter {
   private readonly systemInfo = collectSystemInfo()
-  private measurements: Measurement[] = []
-  private metricsByTestTitle: Record<string, Metric.Metric.Summary<number>> = {}
-  private measurementEffects: Effect.Effect<number>[] = []
+  private metricsByTestTitle: Record<string, TrackedMetric> = {}
+  private measurementEffects: Effect.Effect<unknown, ParseResult.ParseError | MissingAnnotationError>[] = []
   private runtime = ManagedRuntime.make(OtelTestLayer)
 
   onBegin = (config: FullConfig, suite: Suite): void => {
-    this.metricsByTestTitle = Object.fromEntries(
-      suite.allTests().map((test) => {
-        const decodedAnnotations = Schema.decodeUnknownSync(Annotations)(test.annotations)
-        const measurementUnitAnnotationOption = ReadonlyArray.findFirst(
-          decodedAnnotations,
-          (a): a is Extract<AnyAnnotation, { type: 'measurement unit' }> => a.type === 'measurement unit',
-        )
+    Effect.forEach(suite.allTests(), (test) =>
+      Effect.gen(this, function* () {
+        const decodedAnnotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
 
-        if (Option.isNone(measurementUnitAnnotationOption)) {
-          throw new MissingAnnotationError({ annotationType: 'measurement unit', testTitle: test.title })
-        }
-        const unit = measurementUnitAnnotationOption.value.description
+        const getRequiredAnnotation = <T extends AnyAnnotation['type']>(type: T) =>
+          ReadonlyArray.findFirst(
+            decodedAnnotations,
+            (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type,
+          ).pipe(Effect.mapError(() => new MissingAnnotationError({ annotationType: type, testTitle: test.title })))
+
+        const measurementUnitAnnotation = yield* getRequiredAnnotation('measurement unit')
+        const unit = measurementUnitAnnotation.description
+
+        const testSuiteTitle = test.parent?.parent?.title ?? 'n/a'
+        const testSuiteTitlePath = test.parent.titlePath().slice(1, -2).join(' > ')
 
         const metric = Metric.summary({
           name: `perf_test_${test.title.replaceAll(/[^a-zA-Z0-9]/g, '_')}`,
@@ -211,8 +210,9 @@ export default class MeasurementsReporter implements Reporter {
           quantiles: [0.5, 0.9],
           description: `Performance measurement ${test.title}`,
         }).pipe(
-          Metric.tagged('unit', unit),
-          Metric.tagged('test_suite', test.parent?.parent?.title ?? 'n/a'),
+          Metric.tagged('unit', unit), // Keep tags on metric for export
+          Metric.tagged('test_suite_title', testSuiteTitle),
+          Metric.tagged('test_suite_title_path', testSuiteTitlePath),
           Metric.tagged('os.type', this.systemInfo.os.type),
           Metric.tagged('os.platform', this.systemInfo.os.platform),
           Metric.tagged('os.release', this.systemInfo.os.release),
@@ -224,22 +224,42 @@ export default class MeasurementsReporter implements Reporter {
           Metric.tagged('memory.free', this.systemInfo.memory.free.toString()),
         )
 
-        return [test.title, metric]
+        // Store the TrackedMetric object
+        this.metricsByTestTitle[test.title] = {
+          metric: metric,
+          meta: {
+            unit: unit,
+            testSuiteTitle: testSuiteTitle,
+            testSuiteTitlePath: testSuiteTitlePath,
+          },
+        }
       }),
-    )
+    ).pipe(Effect.runSync)
   }
 
   onTestEnd = async (test: TestCase, result: TestResult): Promise<void> => {
     if (result.status !== 'passed') return
 
-    const measurement = Effect.runSync(this.extractMeasurement(test))
-    if (!measurement) return
-    this.measurements.push(measurement)
+    const processMeasurementEffect = Effect.gen(this, function* () {
+      const decodedAnnotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
+      const getRequiredAnnotation = <T extends AnyAnnotation['type']>(type: T) =>
+        ReadonlyArray.findFirst(
+          decodedAnnotations,
+          (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type,
+        ).pipe(Effect.mapError(() => new MissingAnnotationError({ annotationType: type, testTitle: test.title })))
 
-    const metric = this.metricsByTestTitle[measurement.testTitle]
-    if (!metric) return
+      const measurementAnnotation = yield* getRequiredAnnotation('measurement')
+      const value = measurementAnnotation.description
 
-    this.measurementEffects.push(metric(Effect.succeed(measurement.value)))
+      // Get the TrackedMetric object
+      const trackedMetric = this.metricsByTestTitle[test.title]
+      if (trackedMetric === undefined) {
+        return Effect.void
+      }
+      return trackedMetric.metric(Effect.succeed(value))
+    }).pipe(Effect.flatten)
+
+    this.measurementEffects.push(processMeasurementEffect)
   }
 
   onEnd = async (): Promise<void> => {
@@ -251,42 +271,6 @@ export default class MeasurementsReporter implements Reporter {
   printsToStdio = (): boolean => true
 
   // Private methods
-  private extractMeasurement = (test: TestCase) =>
-    Effect.gen(function* () {
-      const decodedAnnotations: Annotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
-
-      const getRequiredAnnotation = <T extends AnyAnnotation['type']>(type: T) =>
-        ReadonlyArray.findFirst(
-          decodedAnnotations,
-          (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type,
-        ).pipe(
-          Effect.mapError(
-            () => new MissingAnnotationError({ annotationType: type, testTitle: test.title }), // Pass context
-          ),
-        )
-
-      const measurementUnitAnnotation = yield* getRequiredAnnotation('measurement unit')
-      const measurementAnnotation = yield* getRequiredAnnotation('measurement')
-
-      const cpuAnnotationOption = ReadonlyArray.findFirst(decodedAnnotations, (a) => a.type === 'cpu throttling rate')
-      const warmupAnnotationOption = ReadonlyArray.findFirst(decodedAnnotations, (a) => a.type === 'warmup runs')
-
-      const parsedCpuThrottlingRate = Option.map(cpuAnnotationOption, (a) => a.description).pipe(Option.getOrUndefined)
-      const parsedWarmupCount = Option.map(warmupAnnotationOption, (a) => a.description).pipe(Option.getOrUndefined)
-
-      const measurement: Measurement = {
-        testSuiteTitle: test.parent.parent!.title,
-        testSuiteTitlePath: test.parent.titlePath().slice(1, -2).join(' > '),
-        testTitle: test.title,
-        value: measurementAnnotation.description,
-        unit: measurementUnitAnnotation.description,
-        ...(parsedCpuThrottlingRate !== undefined && { cpuThrottlingRate: parsedCpuThrottlingRate }),
-        ...(parsedWarmupCount !== undefined && { warmupCount: parsedWarmupCount }),
-      }
-
-      return measurement
-    })
-
   private printSystemInfo = (): void => {
     console.log(PrettySystemInfo(this.systemInfo))
   }
@@ -294,90 +278,98 @@ export default class MeasurementsReporter implements Reporter {
   private printMeasurements = async (): Promise<void> => {
     console.log('\n📊 Performance Test Measurements:\n')
 
-    const measurementsByFile = this.groupMeasurementsByTitlePath()
+    const metricsByTitlePath = this.groupMetricsByTitlePath()
 
-    for (const [testSuiteTitlePath, measurements] of Object.entries(measurementsByFile)) {
-      if (measurements.length === 0) continue
+    for (const [testSuiteTitlePath, trackedMetricsInGroup] of Object.entries(metricsByTitlePath)) {
+      if (Object.keys(trackedMetricsInGroup).length === 0) continue
 
-      console.log(`\n🧪 ${testSuiteTitlePath}:\n`)
-      await this.printMeasurementsTable(measurements)
+      // Get the suite title from the first tracked metric's tags
+      const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]
+      if (!firstTrackedMetric) continue
+
+      const testSuiteTitle = firstTrackedMetric.meta.testSuiteTitle
+
+      console.log(`\n🧪 ${testSuiteTitlePath} (${testSuiteTitle}):\n`)
+      // Pass the group of TrackedMetric objects
+      await this.printMeasurementsTable(testSuiteTitle, trackedMetricsInGroup)
     }
   }
 
-  private groupMeasurementsByTitlePath = (): Record<string, Measurement[]> => {
-    const result: Record<string, Measurement[]> = {}
+  private groupMetricsByTitlePath = (): Record<string, Record<string, TrackedMetric>> => {
+    const result: Record<string, Record<string, TrackedMetric>> = {}
 
-    for (const measurement of this.measurements) {
-      if (!result[measurement.testSuiteTitlePath]) {
-        result[measurement.testSuiteTitlePath] = []
+    for (const [testTitle, trackedMetric] of Object.entries(this.metricsByTestTitle)) {
+      const path = trackedMetric.meta.testSuiteTitlePath
+
+      if (!result[path]) {
+        result[path] = {}
       }
-      result[measurement.testSuiteTitlePath]?.push(measurement)
+      result[path]![testTitle] = trackedMetric
     }
 
     return result
   }
 
-  private printMeasurementsTable = async (measurements: Measurement[]): Promise<void> => {
-    if (measurements.length === 0) return
+  private printMeasurementsTable = async (
+    testSuiteTitle: string,
+    // Accept the group of TrackedMetric objects
+    trackedMetricsInGroup: Record<string, TrackedMetric>,
+  ): Promise<void> => {
+    if (Object.keys(trackedMetricsInGroup).length === 0) return
 
-    const testSuiteTitle = measurements[0]!.testSuiteTitle
-    const unit = measurements[0]!.unit
+    // Fetch all metric states concurrently
+    const metricStatesResult = await Effect.all(
+      Object.entries(trackedMetricsInGroup).reduce(
+        (acc, [testTitle, trackedMetric]) => {
+          // Get state from the 'metric' property
+          acc[testTitle] = Metric.value(trackedMetric.metric)
+          return acc
+        },
+        {} as Record<string, Effect.Effect<MetricState.MetricState.Summary>>
+      ),
+      { concurrency: 'inherit' },
+    ).pipe(this.runtime.runPromise)
+
+    const hasSingleMeasurementPerTestTitle = Object.values(metricStatesResult).every((state) => state.count === 1)
+
+    // Get unit and formatter from the first tracked metric's tags
+    const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]!
+    const unit = firstTrackedMetric.meta.unit
     const displayUnit = measurementUnitToDisplayUnit[unit]
     const formatValue = unitFormatters[unit]
 
-    const measurementsByTestTitle: Record<string, Measurement[]> = {}
-    for (const m of measurements) {
-      if (!measurementsByTestTitle[m.testTitle]) {
-        measurementsByTestTitle[m.testTitle] = []
-      }
-      measurementsByTestTitle[m.testTitle]?.push(m)
-    }
-
-    const hasSingleMeasurementPerTestTitle = Object.values(measurementsByTestTitle).every((group) => group.length === 1)
-
     if (hasSingleMeasurementPerTestTitle) {
-      const headers = [testSuiteTitle, 'Measurement']
-      const rows = Object.entries(measurementsByTestTitle).map(([testTitle, group]) => {
-        const measurement = group[0]!
-        return [testTitle, `${formatValue(measurement.value)} ${displayUnit}`]
+      const headers = [testSuiteTitle, `Measurement (${displayUnit})`]
+      const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
+        return [testTitle, `${formatValue(state.sum)}`]
       })
       TableRenderer.renderTable(headers, rows)
     } else {
       const headers = [testSuiteTitle, 'Mean', 'Median', 'P90', 'Min', 'Max']
+      const rows: string[][] = []
 
-      const relevantMetricEntries = Object.entries(this.metricsByTestTitle).filter(
-        ([testTitle]) => measurementsByTestTitle[testTitle],
-      )
+      for (const [testTitle, metricState] of Object.entries(metricStatesResult)) {
+        if (metricState.count === 0) continue
 
-      const rows = await Effect.gen(this, function* () {
-        const rows = []
-        for (const [testTitle, metric] of relevantMetricEntries) {
-          const metricState = yield* Metric.value(metric)
-          assertNever(metricState.count > 0, 'Metric count should be greater than 0')
-
-          const quantiles = Object.fromEntries(metricState.quantiles)
-
-          const getQuantileValue = (q: number): number | undefined => {
-            const quantileOption = quantiles[q]
-            return quantileOption && Option.isSome(quantileOption) ? Option.getOrUndefined(quantileOption) : undefined
-          }
-
-          const median = getQuantileValue(0.5)
-          const p90 = getQuantileValue(0.9)
-          const mean = metricState.sum / metricState.count
-
-          rows.push([
-            testTitle,
-            `${formatValue(mean)} ${displayUnit}`,
-            median === undefined ? 'n/a' : `${formatValue(median)} ${displayUnit}`,
-            p90 === undefined ? 'n/a' : `${formatValue(p90)} ${displayUnit}`,
-            `${formatValue(metricState.min)} ${displayUnit}`,
-            `${formatValue(metricState.max)} ${displayUnit}`,
-          ])
+        const quantiles = Object.fromEntries(metricState.quantiles)
+        const getQuantileValue = (q: number): number | undefined => {
+          const quantileOption = quantiles[q]
+          return quantileOption && Option.isSome(quantileOption) ? Option.getOrThrow(quantileOption) : undefined
         }
-        return rows
-      }).pipe(Effect.provide(OtelTestLayer), this.runtime.runPromise)
 
+        const median = getQuantileValue(0.5)
+        const p90 = getQuantileValue(0.9)
+        const mean = metricState.sum / metricState.count
+
+        rows.push([
+          testTitle,
+          `${formatValue(mean)} ${displayUnit}`,
+          median === undefined ? 'n/a' : `${formatValue(median)} ${displayUnit}`,
+          p90 === undefined ? 'n/a' : `${formatValue(p90)} ${displayUnit}`,
+          `${formatValue(metricState.min)} ${displayUnit}`,
+          `${formatValue(metricState.max)} ${displayUnit}`,
+        ])
+      }
       TableRenderer.renderTable(headers, rows)
     }
   }
