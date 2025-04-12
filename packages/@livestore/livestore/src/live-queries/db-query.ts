@@ -1,4 +1,4 @@
-import type { Bindable, QueryBuilder, QueryInfo } from '@livestore/common'
+import type { Bindable, QueryBuilder } from '@livestore/common'
 import {
   getDurationMsFromSpan,
   getResultSchema,
@@ -15,13 +15,13 @@ import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.js'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.js'
-import { makeExecBeforeFirstRun, rowQueryLabel } from '../row-query-utils.js'
 import type { RefreshReason } from '../store/store-types.js'
 import { isValidFunctionString } from '../utils/function-string.js'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
+import { makeExecBeforeFirstRun, rowQueryLabel } from './row-query-utils.js'
 
-export type QueryInputRaw<TDecoded, TEncoded, TQueryInfo extends QueryInfo> = {
+export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
   schema: Schema.Schema<TDecoded, TEncoded>
   bindValues?: Bindable
@@ -31,25 +31,20 @@ export type QueryInputRaw<TDecoded, TEncoded, TQueryInfo extends QueryInfo> = {
    * NOTE In the future we want to do this automatically at build time
    */
   queriedTables?: Set<string>
-  queryInfo?: TQueryInfo
   execBeforeFirstRun?: (ctx: ReactivityGraphContext) => void
 }
 
-export const isQueryInputRaw = (value: unknown): value is QueryInputRaw<any, any, any> =>
+export const isQueryInputRaw = (value: unknown): value is QueryInputRaw<any, any> =>
   Predicate.hasProperty(value, 'query') && Predicate.hasProperty(value, 'schema')
 
-export type QueryInput<TDecoded, TEncoded, TQueryInfo extends QueryInfo> =
-  | QueryInputRaw<TDecoded, TEncoded, TQueryInfo>
-  | QueryBuilder<TDecoded, any, any, TQueryInfo>
+export type QueryInput<TDecoded, TEncoded> = QueryInputRaw<TDecoded, TEncoded> | QueryBuilder<TDecoded, any, any>
 
 /**
  * NOTE `queryDb` is only supposed to read data. Don't use it to insert/update/delete data but use events instead.
  */
 export const queryDb: {
-  <TResultSchema, TResult = TResultSchema, TQueryInfo extends QueryInfo = QueryInfo.None>(
-    queryInput:
-      | QueryInputRaw<TResultSchema, ReadonlyArray<any>, TQueryInfo>
-      | QueryBuilder<TResultSchema, any, any, TQueryInfo>,
+  <TResultSchema, TResult = TResultSchema>(
+    queryInput: QueryInputRaw<TResultSchema, ReadonlyArray<any>> | QueryBuilder<TResultSchema, any, any>,
     options?: {
       map?: (rows: TResultSchema) => TResult
       /**
@@ -57,16 +52,15 @@ export const queryDb: {
        */
       label?: string
       deps?: DepKey
-      queryInfo?: TQueryInfo
     },
-  ): LiveQueryDef<TResult, TQueryInfo>
+  ): LiveQueryDef<TResult>
   // NOTE in this "thunk case", we can't directly derive label/queryInfo from the queryInput,
   // so the caller needs to provide them explicitly otherwise queryInfo will be set to `None`,
   // and label will be set during the query execution
-  <TResultSchema, TResult = TResultSchema, TQueryInfo extends QueryInfo = QueryInfo.None>(
+  <TResultSchema, TResult = TResultSchema>(
     queryInput:
-      | ((get: GetAtomResult) => QueryInputRaw<TResultSchema, ReadonlyArray<any>, TQueryInfo>)
-      | ((get: GetAtomResult) => QueryBuilder<TResultSchema, any, any, TQueryInfo>),
+      | ((get: GetAtomResult) => QueryInputRaw<TResultSchema, ReadonlyArray<any>>)
+      | ((get: GetAtomResult) => QueryBuilder<TResultSchema, any, any>),
     options?: {
       map?: (rows: TResultSchema) => TResult
       /**
@@ -74,9 +68,8 @@ export const queryDb: {
        */
       label?: string
       deps?: DepKey
-      queryInfo?: TQueryInfo
     },
-  ): LiveQueryDef<TResult, TQueryInfo>
+  ): LiveQueryDef<TResult>
 } = (queryInput, options) => {
   const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
 
@@ -101,15 +94,11 @@ export const queryDb: {
         queryInput,
         label,
         map: options?.map,
-        // We're not falling back to `None` here as the queryInfo will be set dynamically
-        queryInfo: options?.queryInfo,
         otelContext,
       })
     }),
     label,
     hash,
-    queryInfo:
-      options?.queryInfo ?? (isQueryBuilder(queryInput) ? queryInfoFromQueryBuilder(queryInput) : { _tag: 'None' }),
   }
 }
 
@@ -124,7 +113,7 @@ const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
 }
 
 const getQueryStringAndExtraDeps = (
-  queryInput: QueryInput<any, any, any> | ((get: GetAtomResult) => QueryInput<any, any, any>),
+  queryInput: QueryInput<any, any> | ((get: GetAtomResult) => QueryInput<any, any>),
 ): { queryString: string; extraDeps: DepKey } => {
   if (isQueryBuilder(queryInput)) {
     const { query, bindValues } = queryInput.asSql()
@@ -143,22 +132,16 @@ const getQueryStringAndExtraDeps = (
 }
 
 /* An object encapsulating a reactive SQL query */
-export class LiveStoreDbQuery<
-  TResultSchema,
-  TResult = TResultSchema,
-  TQueryInfo extends QueryInfo = QueryInfo.None,
-> extends LiveStoreQueryBase<TResult, TQueryInfo> {
+export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends LiveStoreQueryBase<TResult> {
   _tag: 'db' = 'db'
 
   /** A reactive thunk representing the query text */
-  queryInput$: Thunk<QueryInputRaw<any, any, QueryInfo>, ReactivityGraphContext, RefreshReason> | undefined
+  queryInput$: Thunk<QueryInputRaw<any, any>, ReactivityGraphContext, RefreshReason> | undefined
 
   /** A reactive thunk representing the query results */
   results$: Thunk<TResult, ReactivityGraphContext, RefreshReason>
 
   label: string
-
-  queryInfo: TQueryInfo
 
   readonly reactivityGraph
 
@@ -169,23 +152,20 @@ export class LiveStoreDbQuery<
     label: inputLabel,
     reactivityGraph,
     map,
-    queryInfo: inputQueryInfo,
     otelContext,
   }: {
     label?: string
     queryInput:
-      | QueryInput<TResultSchema, ReadonlyArray<any>, TQueryInfo>
-      | ((get: GetAtomResult, ctx: ReactivityGraphContext) => QueryInput<TResultSchema, ReadonlyArray<any>, TQueryInfo>)
+      | QueryInput<TResultSchema, ReadonlyArray<any>>
+      | ((get: GetAtomResult, ctx: ReactivityGraphContext) => QueryInput<TResultSchema, ReadonlyArray<any>>)
     reactivityGraph: ReactivityGraph
     map?: (rows: TResultSchema) => TResult
-    queryInfo?: TQueryInfo
     /** Only used for the initial query execution */
     otelContext?: otel.Context
   }) {
     super()
 
     let label = inputLabel ?? 'db(unknown)'
-    let queryInfo = inputQueryInfo ?? ({ _tag: 'None' } as TQueryInfo)
     this.reactivityGraph = reactivityGraph
 
     this.mapResult = map === undefined ? (rows: any) => rows as TResult : map
@@ -201,7 +181,7 @@ export class LiveStoreDbQuery<
       current: undefined,
     }
 
-    type TQueryInputRaw = QueryInputRaw<any, any, QueryInfo>
+    type TQueryInputRaw = QueryInputRaw<any, any>
 
     let queryInputRaw$OrQueryInputRaw: TQueryInputRaw | Thunk<TQueryInputRaw, ReactivityGraphContext, RefreshReason>
 
@@ -217,7 +197,6 @@ export class LiveStoreDbQuery<
             schema,
             bindValues: qbRes.bindValues,
             queriedTables: new Set([ast.tableDef.sqliteDef.name]),
-            queryInfo: queryInfoFromQueryBuilder(qb),
           } satisfies TQueryInputRaw,
           label: ast._tag === 'RowQuery' ? rowQueryLabel(ast.tableDef, ast.id) : qb.toString(),
           execBeforeFirstRun:
@@ -261,10 +240,6 @@ export class LiveStoreDbQuery<
 
           schemaRef.current = queryInputRaw.schema
 
-          if (inputQueryInfo === undefined && queryInputRaw.queryInfo !== undefined) {
-            queryInfo = queryInputRaw.queryInfo as TQueryInfo
-          }
-
           return queryInputRaw
         },
         {
@@ -296,10 +271,6 @@ export class LiveStoreDbQuery<
         if (ast._tag === 'RowQuery') {
           label = `db(${rowQueryLabel(ast.tableDef, ast.id)})`
         }
-      }
-
-      if (inputQueryInfo === undefined && queryInputRaw.queryInfo !== undefined) {
-        queryInfo = queryInputRaw.queryInfo as TQueryInfo
       }
     }
 
@@ -417,7 +388,6 @@ Result:`,
     this.results$ = results$
 
     this.label = label
-    this.queryInfo = queryInfo
   }
 
   destroy = () => {
@@ -433,9 +403,4 @@ Result:`,
       query.deref()
     }
   }
-}
-
-const queryInfoFromQueryBuilder = (qb: QueryBuilder.Any): QueryInfo.Row | QueryInfo.None => {
-  const ast = qb[QueryBuilderAstSymbol]
-  return ast._tag === 'RowQuery' ? { _tag: 'Row', table: ast.tableDef, id: ast.id } : { _tag: 'None' }
 }

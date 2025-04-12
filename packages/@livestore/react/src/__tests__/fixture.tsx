@@ -1,7 +1,7 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
-import type { LiveStoreContextRunning, Store } from '@livestore/livestore'
+import type { Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'

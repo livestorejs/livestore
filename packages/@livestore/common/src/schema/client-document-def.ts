@@ -5,7 +5,6 @@ import { Schema, SchemaAST } from '@livestore/utils/effect'
 import { SessionIdSymbol } from '../adapter-types.js'
 import type { QueryBuilder, QueryBuilderAst } from '../query-builder/mod.js'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from '../query-builder/mod.js'
-import type { QueryInfo } from '../query-info.js'
 import { sql } from '../util.js'
 import { SqliteDsl } from './db-schema/mod.js'
 import type { EventDef, Materializer } from './EventDef.js'
@@ -99,8 +98,6 @@ export const clientDocument = <
         setMaterializer: derivedSetMaterializer as any,
       },
       options,
-      Type: 'only-for-type-inference' as any,
-      Encoded: 'only-for-type-inference' as any,
     },
   }
 
@@ -301,7 +298,7 @@ export namespace ClientDocumentTableDef {
     }
   >
 
-  export type Trait<TName extends string, TType, TEncoded, TOptions extends ClientDocumentTableOptions<TType>> = {
+  export interface Trait<TName extends string, TType, TEncoded, TOptions extends ClientDocumentTableOptions<TType>> {
     // get: QueryBuilder<TType, ClientDocumentTableDef<TName, TType, TEncoded, TOptions>>['getOrCreate']
     readonly get: MakeGetQueryBuilder<TName, TType, TOptions>
     // readonly get: MakeGetQueryBuilder<ClientDocumentTableDef.Trait<TName, TType, TEncoded, TOptions>>
@@ -311,8 +308,6 @@ export namespace ClientDocumentTableDef {
     readonly default: TOptions['default']
     readonly [ClientDocumentTableDefSymbol]: {
       readonly options: TOptions
-      readonly Type: TType
-      readonly Encoded: TEncoded
       readonly derived: {
         readonly setEventDef: SetEventDef<TName, TType, TOptions>
         readonly setMaterializer: Materializer<SetEventDef<TName, TType, TOptions>>
@@ -367,21 +362,11 @@ export namespace ClientDocumentTableDef {
     ? (
         id?: TOptions['default']['id'] | SessionIdSymbol,
         options?: { default: Partial<TType> },
-      ) => QueryBuilder<
-        TType,
-        ClientDocumentTableDef.TableDefBase_<TName, TType>,
-        QueryBuilder.ApiFeature,
-        QueryInfo.Row
-      >
+      ) => QueryBuilder<TType, ClientDocumentTableDef.TableDefBase_<TName, TType>, QueryBuilder.ApiFeature>
     : (
         id: string | SessionIdSymbol,
         options?: { default: Partial<TType> },
-      ) => QueryBuilder<
-        TType,
-        ClientDocumentTableDef.TableDefBase_<TName, TType>,
-        QueryBuilder.ApiFeature,
-        QueryInfo.Row
-      >
+      ) => QueryBuilder<TType, ClientDocumentTableDef.TableDefBase_<TName, TType>, QueryBuilder.ApiFeature>
 }
 
 export const ClientDocumentTableDefSymbol = Symbol('ClientDocumentTableDef')

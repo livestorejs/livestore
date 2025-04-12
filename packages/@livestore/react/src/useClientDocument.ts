@@ -1,4 +1,4 @@
-import type { QueryInfo, RowQuery } from '@livestore/common'
+import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
@@ -10,10 +10,10 @@ import { LiveStoreContext } from './LiveStoreContext.js'
 import { useQueryRef } from './useQuery.js'
 
 export type UseRowResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
-  row: TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['Type'],
+  row: TTableDef['Value'],
   setRow: StateSetters<TTableDef>,
   id: string,
-  query$: LiveQuery<TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['Type'], QueryInfo>,
+  query$: LiveQuery<TTableDef['Value']>,
 ]
 
 /**
@@ -106,7 +106,7 @@ export const useClientDocument: {
 
   const idStr: string = id === SessionIdSymbol ? store.clientSession.sessionId : id
 
-  type QueryDef = LiveQueryDef<TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['Type'], QueryInfo.Row>
+  type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef: QueryDef = React.useMemo(
     () =>
       queryDb(table.get(id!, { default: defaultValues! }), {
@@ -121,7 +121,7 @@ export const useClientDocument: {
   })
 
   const setState = React.useMemo<StateSetters<TTableDef>>(
-    () => (newValueOrFn: TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['Type']) => {
+    () => (newValueOrFn: TTableDef['Value']) => {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current) : newValueOrFn
       if (queryRef.valueRef.current === newValue) return
 
@@ -137,7 +137,7 @@ export type Dispatch<A> = (action: A) => void
 export type SetStateAction<S> = Partial<S> | ((previousValue: S) => Partial<S>)
 
 export type StateSetters<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = Dispatch<
-  SetStateAction<TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['Type']>
+  SetStateAction<TTableDef['Value']>
 >
 
 const validateTableOptions = (table: State.SQLite.TableDef<any, any>) => {

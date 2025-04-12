@@ -1,38 +1,13 @@
-import type { PreparedBindValues, QueryInfo } from '@livestore/common'
+import type { PreparedBindValues } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
-import type { GetResult, LiveQueryDef, ReactivityGraphContext } from './live-queries/base-class.js'
-import { computed } from './live-queries/computed.js'
+import type { ReactivityGraphContext } from './base-class.js'
 
 export const rowQueryLabel = (table: State.SQLite.TableDefBase, id: string | SessionIdSymbol | number | undefined) =>
   `row:${table.sqliteDef.name}${id === undefined ? '' : id === SessionIdSymbol ? `:sessionId` : `:${id}`}`
-
-export const deriveColQuery: {
-  <TQueryDef extends LiveQueryDef<any, QueryInfo.None>, TCol extends keyof GetResult<TQueryDef> & string>(
-    queryDef: TQueryDef,
-    colName: TCol,
-  ): LiveQueryDef<GetResult<TQueryDef>[TCol], QueryInfo.None>
-  <TQueryDef extends LiveQueryDef<any, QueryInfo.Row>, TCol extends keyof GetResult<TQueryDef> & string>(
-    queryDef: TQueryDef,
-    colName: TCol,
-  ): LiveQueryDef<GetResult<TQueryDef>[TCol], QueryInfo.Col>
-} = (queryDef: LiveQueryDef<any, QueryInfo.Row | QueryInfo.Col>, colName: string) => {
-  return computed((get) => get(queryDef)[colName], {
-    label: `deriveColQuery:${queryDef.label}:${colName}`,
-    queryInfo:
-      queryDef.queryInfo._tag === 'Row'
-        ? { _tag: 'Col', table: queryDef.queryInfo.table, column: colName, id: queryDef.queryInfo.id }
-        : undefined,
-    deps: [
-      queryDef.queryInfo.table.sqliteDef.name,
-      queryDef.queryInfo.id === SessionIdSymbol ? 'sessionId' : queryDef.queryInfo.id,
-      queryDef.queryInfo._tag === 'Col' ? queryDef.queryInfo.column : undefined,
-    ],
-  }) as any
-}
 
 export const makeExecBeforeFirstRun =
   ({

@@ -1,5 +1,5 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { getDurationMsFromSpan, type QueryInfo } from '@livestore/common'
+import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -46,7 +46,7 @@ export const queryGraphQL = <
     map?: MapResult<TResultMapped, TResult>
     deps?: LiveQueries.DepKey
   } = {},
-): LiveQueries.LiveQueryDef<TResultMapped, QueryInfo.None> => {
+): LiveQueries.LiveQueryDef<TResultMapped> => {
   const documentName = graphql.getOperationAST(document)?.name?.value
   const hash = options.deps
     ? LiveQueries.depsToString(options.deps)
@@ -67,7 +67,6 @@ export const queryGraphQL = <
     }),
     label,
     hash,
-    queryInfo: { _tag: 'None' },
   }
 }
 
@@ -75,7 +74,7 @@ export class LiveStoreGraphQLQuery<
   TResult extends Record<string, any>,
   TVariableValues extends Record<string, any>,
   TResultMapped extends Record<string, any> = TResult,
-> extends LiveQueries.LiveStoreQueryBase<TResultMapped, QueryInfo.None> {
+> extends LiveQueries.LiveStoreQueryBase<TResultMapped> {
   _tag: 'graphql' = 'graphql'
 
   /** The abstract GraphQL query */
@@ -89,8 +88,6 @@ export class LiveStoreGraphQLQuery<
   label: string
 
   reactivityGraph: LiveQueries.ReactivityGraph
-
-  queryInfo: QueryInfo.None = { _tag: 'None' }
 
   private mapResult
 

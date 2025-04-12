@@ -140,6 +140,15 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
   // UPDATE query
   if (ast._tag === 'UpdateQuery') {
     const setColumns = Object.keys(ast.values)
+
+    if (setColumns.length === 0) {
+      console.warn(
+        `UPDATE query requires at least one column to set (for table ${ast.tableDef.sqliteDef.name}). Running no-op query instead to skip this update query.`,
+      )
+      return { query: 'SELECT 1', bindValues: [] }
+      // return shouldNeverHappen('UPDATE query requires at least one column to set.')
+    }
+
     const encodedValues = Schema.encodeSync(Schema.partial(ast.tableDef.rowSchema))(ast.values)
 
     // Ensure bind values are added in the same order as columns

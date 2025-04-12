@@ -42,8 +42,8 @@ import type {
   ReactivityGraphContext,
 } from '../live-queries/base-class.js'
 import { makeReactivityGraph } from '../live-queries/base-class.js'
+import { makeExecBeforeFirstRun } from '../live-queries/row-query-utils.js'
 import type { Ref } from '../reactive.js'
-import { makeExecBeforeFirstRun } from '../row-query-utils.js'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.js'
 import { ReferenceCountedSet } from '../utils/data-structures.js'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.js'
@@ -259,11 +259,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
    * ```
    */
   subscribe = <TResult>(
-    query: LiveQueryDef<TResult, any> | LiveQuery<TResult, any>,
+    query: LiveQueryDef<TResult> | LiveQuery<TResult>,
     options: {
       /** Called when the query result has changed */
       onUpdate: (value: TResult) => void
-      onSubscribe?: (query$: LiveQuery<TResult, any>) => void
+      onSubscribe?: (query$: LiveQuery<TResult>) => void
       /** Gets called after the query subscription has been removed */
       onUnsubsubscribe?: () => void
       label?: string
@@ -337,7 +337,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
     )
 
   subscribeStream = <TResult>(
-    query$: LiveQueryDef<TResult, any>,
+    query$: LiveQueryDef<TResult>,
     options?: { label?: string; skipInitialRun?: boolean } | undefined,
   ): Stream.Stream<TResult> =>
     Stream.asyncPush<TResult>((emit) =>
@@ -377,8 +377,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema, TContext =
   query = <TResult>(
     query:
       | QueryBuilder<TResult, any, any>
-      | LiveQuery<TResult, any>
-      | LiveQueryDef<TResult, any>
+      | LiveQuery<TResult>
+      | LiveQueryDef<TResult>
       | { query: string; bindValues: ParamsObject },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {

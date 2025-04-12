@@ -5,6 +5,10 @@
 
 ## 0.3.0
 
+### WIP API simplification
+
+- [ ] get rid of row query from query builder
+
 ### New features
 
 - New sync implementation (based on git-like push/pull semantics)
@@ -43,6 +47,93 @@
 - Breaking: Removed `@livestore/db-schema` package and moved to `@livestore/common/schema`
 - Breaking: Renamed `store.mutate` to `store.commit`
   - Reason: Make it more clear that committing mutations is also syncing them across other clients
+
+- Breaking: Adjusted schema API
+
+  - The new API aims to separate the schema into state and events
+  - Mutations are now split up into event definitions and materializer functions
+
+  Before:
+
+  ```ts
+  // mutations.ts
+  import { Schema, defineMutation } from '@livestore/livestore'
+
+  // Mutations are now split up into event definitions and materializer functions
+  export const todoCreated = defineMutation('todoCreated',
+    Schema.Struct({
+      id: DbSchema.text(),
+      text: DbSchema.text(),
+    }),
+    sql`INSERT INTO todos (id, text) VALUES (${id}, ${text})`,
+  )
+
+  // schema.ts
+  import { DbSchema, makeSchema } from '@livestore/livestore'
+  import * as mutations from './mutations.js'
+
+  const todos = DbSchema.table('todos', {
+    id: DbSchema.text({ primaryKey: true }),
+    text: DbSchema.text(),
+  })
+
+  const uiState = DbSchema.table('uiState', {
+    id: DbSchema.text({ primaryKey: true }),
+    newTodoText: DbSchema.text(),
+    filter: DbSchema.text({ }),
+  }, {
+    derivedMutations: { clientOnly: true }
+  })
+
+  const tables = { todos, uiState }
+  const schema = makeSchema({ tables, mutations })
+  ```
+
+  After:
+
+  ```ts
+  // events.ts
+  import { Events, Schema } from '@livestore/livestore'
+
+  export const todoCreated = Events.synced({
+    name: 'todoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String, }),
+  })
+
+  // schema.ts
+  import { State, Schema, makeSchema } from '@livestore/livestore'
+  import * as events from './events.js'
+
+  const todos = State.SQLite.table({
+    name: 'todos',
+    schema: {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text(),
+    }
+  })
+
+  // tables with `deriveMutations` are now called `clientDocuments`
+  const uiState = State.SQLite.clientDocument({
+    name: 'uiState',
+    schema: Schema.Struct({
+      newTodoText: Schema.String,
+      filter: Schema.String,
+    }),
+  })
+
+  const tables = { todos, uiState }
+
+  // Materalizers let you materialize events into the state
+  const materializers = State.SQLite.materializers(events, {
+    'v1.TodoCreated': ({ id, text }) => todos.insert({ id, text }),
+  })
+
+  // Currently SQLite is the only supported state implementation but there might be more in the future (e.g. pure in-memory JS, DuckDB, ...)
+  const state = State.SQLite.makeState({ tables, materializers })
+
+  // Schema is now more clearly separated into state and events
+  const schema = makeSchema({ state, events })
+  ```
 
 - Breaking `@livestore/react`: Removed `useScopedQuery` in favour of `useQuery`. Migration example:
   ```ts
@@ -129,6 +220,7 @@
 - Separate mutation handler from mutation definition
 - Get rid of `excludeFromEventlog` (etc)
 - Syncing
+  - when no sync backend is configured, the leader sync state should not keep `pending` events in memory
   - Refactor: Rename `EventId` to `EventNumber`
   - Attempts sync push after read-model re-creation leading to some other bugs: (see https://share.cleanshot.com/hQ269Fkc)
     - Get rid of `migrationOptions` as part of this fix (also document in changelog once done)
@@ -165,6 +257,7 @@
   - Write blog post
   - Prepare X/Bluesky thread
 - After release:
+  - Get rid of `sql-queries` module
   - Bring back rehydrating via in-memory database (requires both app and mutation db to be in-memory)
   - chrome extension: Prevent service worker from going inactive (otherwise extension worker message channels will also go down)
   - Improve sync testing (prop testing): introduce arbitrary latency for any kind of async step (~ chaos testing)
@@ -196,7 +289,7 @@
   table.query.where({ name: 'Alice' })
   table.query.orderBy('name', 'desc').offset(10).limit(10)
   table.query.count().where('name', 'like', '%Ali%')
-  table.query.row('123', { insertValues: { name: 'Bob' } })
+  table.get('123', { insertValues: { name: 'Bob' } })
   ```
 
 - Breaking: Renamed `querySQL` to `queryDb` and adjusted the signature to allow both the new query builder API and raw SQL queries:
@@ -216,7 +309,7 @@
   const query$ = queryDb(table.query.select('name').where({ name: 'Alice' }))
   ```
 
-- Breaking: Replaced `rowQuery()` with `table.query.row()` (as part of the new query builder API)
+- Breaking: Replaced `rowQuery()` with `table.get()` (as part of the new query builder API)
 
 ### React integration
 

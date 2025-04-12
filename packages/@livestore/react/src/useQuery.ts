@@ -26,9 +26,6 @@ export const useQuery = <TQuery extends LiveQueryDef.Any>(
   options?: { store?: Store },
 ): LiveQueries.GetResult<TQuery> => useQueryRef(queryDef, options).valueRef.current
 
-type GetQueryInfo<TQuery extends LiveQueryDef.Any> =
-  TQuery extends LiveQueryDef<infer _1, infer TQueryInfo> ? TQueryInfo : never
-
 /**
  */
 export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
@@ -42,7 +39,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
   },
 ): {
   valueRef: React.RefObject<LiveQueries.GetResult<TQuery>>
-  queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>>
+  queryRcRef: LiveQueries.RcRef<LiveQuery<LiveQueries.GetResult<TQuery>>>
 } => {
   const store =
     options?.store ??
@@ -81,7 +78,7 @@ export const useQueryRef = <TQuery extends LiveQueryDef.Any>(
     // which takes care of disposing the queryRcRef
     () => {},
   )
-  const query$ = queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>, GetQueryInfo<TQuery>>
+  const query$ = queryRcRef.value as LiveQuery<LiveQueries.GetResult<TQuery>>
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
   // console.debug(`LiveStore:useQuery:${query$.id}:${query$.label}`)

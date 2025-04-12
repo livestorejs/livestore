@@ -13,8 +13,6 @@ export {
 
 export { SqliteDbWrapper, emptyDebugInfo } from './SqliteDbWrapper.js'
 
-export { deriveColQuery } from './row-query-utils.js'
-
 export { queryDb, computed, makeRef, type LiveQuery, type LiveQueryDef } from './live-queries/mod.js'
 
 export * from '@livestore/common/schema'

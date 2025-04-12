@@ -17,7 +17,7 @@ import {
   sql,
   SqliteError,
 } from '@livestore/common'
-import { isDevEnv } from '@livestore/utils'
+import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.js'
@@ -212,6 +212,9 @@ export class SqliteDbWrapper implements SqliteDb {
         } catch (cause: any) {
           span.recordException(cause)
           span.end()
+          if (LS_DEV) {
+            debugger
+          }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })
         }
       },

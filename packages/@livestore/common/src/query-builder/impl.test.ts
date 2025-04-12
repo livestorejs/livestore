@@ -384,6 +384,14 @@ describe('query builder', () => {
           "query": "UPDATE 'todos' SET status = ? WHERE id = ?",
         }
       `)
+
+      // empty update set
+      expect(db.todos.update({}).where({ id: '123' }).asSql()).toMatchInlineSnapshot(`
+        {
+          "bindValues": [],
+          "query": "SELECT 1",
+        }
+      `)
     })
 
     it('should handle UPDATE queries with undefined values', () => {
