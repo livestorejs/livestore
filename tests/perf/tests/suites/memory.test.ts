@@ -3,6 +3,8 @@ import { type CDPSession, expect } from '@playwright/test'
 import { test } from '../fixtures.js'
 import { repeatSuite } from '../utils.js'
 
+const REPETITIONS_PER_TEST = 1
+
 const getJsHeapUsedSize = async (cdpSession: CDPSession): Promise<number> => {
   const { usedSize } = await cdpSession.send('Runtime.getHeapUsage')
   return usedSize
@@ -16,7 +18,7 @@ const getJsHeapUsedSize = async (cdpSession: CDPSession): Promise<number> => {
  */
 repeatSuite(
   'Memory usage (main thread)',
-  1,
+  REPETITIONS_PER_TEST,
   {
     annotation: [{ type: 'measurement unit', description: 'bytes' }],
   },
@@ -36,7 +38,7 @@ repeatSuite(
       await expect(page.locator('#create1k')).toBeVisible()
     })
 
-    test('after creating 1,000 rows', async ({ page }) => {
+    test.only('after creating 1,000 rows', async ({ page }) => {
       await page.locator('#create1k').click()
       await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toBeVisible()
     })

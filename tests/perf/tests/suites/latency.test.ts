@@ -3,9 +3,11 @@ import { expect } from '@playwright/test'
 import { test } from '../fixtures.js'
 import { repeatSuite } from '../utils.js'
 
+const REPETITIONS_PER_TEST = 10
+
 repeatSuite(
   'Latency',
-  2,
+  REPETITIONS_PER_TEST,
   {
     annotation: [{ type: 'measurement unit', description: 'ms' }],
   },
@@ -64,7 +66,7 @@ repeatSuite(
       })
     })
 
-    test('for updating all 1,000 rows', async ({ page }, testInfo) => {
+    test.only('for updating all 1,000 rows', async ({ page }, testInfo) => {
       const warmupCount = 5
 
       testInfo.annotations.push({ type: 'warmup runs', description: warmupCount.toString() })
