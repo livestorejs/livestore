@@ -34,11 +34,11 @@ repeatSuite(
       testInfo.annotations.push({ type: 'measurement', description: measurement.toString() })
     })
 
-    test.only('after startup', async ({ page }) => {
+    test('after startup', async ({ page }) => {
       await expect(page.locator('#create1k')).toBeVisible()
     })
 
-    test.only('after creating 1,000 rows', async ({ page }) => {
+    test('after creating 1,000 rows', async ({ page }) => {
       await page.locator('#create1k').click()
       await expect(page.locator('tbody>tr:nth-of-type(1)>td:nth-of-type(2)>button')).toBeVisible()
     })

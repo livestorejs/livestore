@@ -162,7 +162,7 @@ const unitFormatters: Record<MeasurementUnit, (value: number) => string> = {
   bytes: (value) => (value / (1024 * 1024)).toFixed(2),
 }
 
-const OtelTestLayer = OtelLiveHttp({ serviceName: 'livestore-perf-tests', skipLogUrl: true })
+const OtelLayer = OtelLiveHttp({ serviceName: 'livestore-perf-tests', skipLogUrl: true })
 
 const collectSystemInfo = (): SystemInfo => {
   const cpus = os.cpus()
@@ -194,7 +194,7 @@ export default class MeasurementsReporter implements Reporter {
   private readonly systemInfo = collectSystemInfo()
   private metricsByTestTitle: Record<string, TrackedMetric> = {}
   private measurementEffects: Effect.Effect<unknown, ParseResult.ParseError | MissingAnnotationError>[] = []
-  private runtime = ManagedRuntime.make(OtelTestLayer)
+  private runtime = ManagedRuntime.make(OtelLayer)
 
   onBegin = (config: FullConfig, suite: Suite): void => {
     Effect.forEach(suite.allTests(), (test) =>
@@ -220,11 +220,7 @@ export default class MeasurementsReporter implements Reporter {
           error: 0.01,
           quantiles: [0.5, 0.9],
           description: `Performance measurement ${test.title}`,
-        }).pipe(
-          Metric.tagged('unit', unit),
-          Metric.tagged('test_suite_title', testSuiteTitle),
-          Metric.tagged('test_suite_title_path', testSuiteTitlePath),
-        )
+        }).pipe(Metric.tagged('unit', unit), Metric.tagged('test_suite', testSuiteTitle))
 
         this.metricsByTestTitle[test.title] = {
           metric: metric,
@@ -268,7 +264,7 @@ export default class MeasurementsReporter implements Reporter {
   }
 
   onEnd = async (): Promise<void> => {
-    await this.runtime.runPromise(Effect.all(this.measurementEffects))
+    await Effect.all(this.measurementEffects).pipe(Effect.provide(OtelLayer), this.runtime.runPromise)
     this.printSystemInfo()
     await this.printMeasurements()
   }
@@ -325,7 +321,7 @@ export default class MeasurementsReporter implements Reporter {
         },
         {} as Record<string, Effect.Effect<MetricState.MetricState.Summary>>,
       ),
-    ).pipe(Effect.provide(OtelTestLayer), this.runtime.runPromise)
+    ).pipe(this.runtime.runPromise)
 
     const hasSingleMeasurementPerTestTitle = Object.values(metricStatesResult).every((state) => state.count === 1)
 
